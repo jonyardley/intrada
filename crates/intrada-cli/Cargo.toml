@@ -9,8 +9,10 @@ path = "src/main.rs"
 
 [dependencies]
 intrada-core = { path = "../intrada-core" }
+crux_core = { workspace = true }
 rusqlite = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
 dirs = { workspace = true }
