@@ -5,13 +5,13 @@
 
 ## Summary
 
-Build a personal music library as a Rust workspace using **Crux** (crux_core 0.16.2) for cross-platform shared business logic. The core is a pure Crux App that handles all domain logic (add, browse, tag, search, edit, delete pieces and exercises) via an Event/Command architecture. The CLI is the first shell, handling SQLite persistence and terminal I/O. The core is designed to be consumed unchanged by future iOS and web shells.
+Build a personal music library as a Rust workspace using **Crux** (crux_core 0.17.0-rc2) for cross-platform shared business logic. The core is a pure Crux App that handles all domain logic (add, browse, tag, search, edit, delete pieces and exercises) via an Event/Command architecture. The CLI is the first shell, handling SQLite persistence and terminal I/O. The core is designed to be consumed unchanged by future iOS and web shells.
 
 ## Technical Context
 
 **Language/Version**: Rust stable (1.88+, 2021 edition)
-**Application Framework**: Crux (crux_core 0.16.2) — pure core / effectful shell architecture
-**Primary Dependencies**: crux_core, serde, serde_json, facet, ulid, chrono, thiserror (core); rusqlite (bundled), clap 4.5 (derive), anyhow, dirs (CLI shell)
+**Application Framework**: Crux (crux_core 0.17.0-rc2) — pure core / effectful shell architecture
+**Primary Dependencies**: crux_core, serde, serde_json, ulid, chrono, thiserror (core); rusqlite (bundled), clap 4.5 (derive), anyhow, dirs (CLI shell)
 **Storage**: SQLite via rusqlite in the CLI shell (storage is a shell concern, not in core)
 **Testing**: cargo test — pure unit tests on core (no mocking needed), integration tests on CLI shell
 **Target Platform**: macOS, Linux (CLI binary); core is platform-agnostic (future iOS/web)
@@ -121,10 +121,9 @@ impl App for Intrada {
     type Event = Event;
     type Model = Model;
     type ViewModel = ViewModel;
-    type Capabilities = ();        // Using Command API, not old capabilities
     type Effect = Effect;
 
-    fn update(&self, event: Event, model: &mut Model, _caps: &()) -> Command<Effect, Event> {
+    fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         // Dispatches to per-domain handlers
     }
 
@@ -150,8 +149,8 @@ CLI parses command
 
 ```rust
 pub enum Effect {
-    Render(RenderOperation),              // Trigger ViewModel display
-    Storage(StorageEffect),               // Persistence operations
+    Render(Request<RenderOperation>),     // Trigger ViewModel display
+    Storage(Request<StorageEffect>),      // Persistence operations
 }
 
 pub enum StorageEffect {
@@ -167,7 +166,7 @@ pub enum StorageEffect {
 ### Model vs ViewModel
 
 - **Model**: Complete in-memory state. Holds `Vec<Piece>`, `Vec<Exercise>`, current error, active query/filter state.
-- **ViewModel**: Computed for display. Contains formatted items, error messages, status text. Derives `Facet` + `Serialize` + `Deserialize` for FFI type generation.
+- **ViewModel**: Computed for display. Contains formatted items, error messages, status text. Derives `Serialize` + `Deserialize` for shell consumption.
 
 ## Complexity Tracking
 

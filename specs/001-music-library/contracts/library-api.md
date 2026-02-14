@@ -102,12 +102,25 @@ pub enum StorageEffect {
 
 **Validation errors**: When validation fails, the event handler sets `model.last_error` to a descriptive message and returns only `Render` (no Storage effect). The ViewModel exposes the error for the shell to display.
 
+## ListQuery
+
+```rust
+pub struct ListQuery {
+    pub text: Option<String>,
+    pub item_type: Option<String>,
+    pub key: Option<String>,
+    pub category: Option<String>,
+    pub tags: Option<Vec<String>>,
+}
+```
+
 ## Model
 
 ```rust
 pub struct Model {
     pub pieces: Vec<Piece>,
     pub exercises: Vec<Exercise>,
+    pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
 }
 ```

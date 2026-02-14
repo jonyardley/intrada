@@ -24,7 +24,7 @@ pub enum Event {
 
 pub enum Effect {
     Render(Request<RenderOperation>),
-    Storage(Request<StorageEffect>),
+    Storage(Box<Request<StorageEffect>>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -51,7 +51,7 @@ impl From<Request<RenderOperation>> for Effect {
 
 impl From<Request<StorageEffect>> for Effect {
     fn from(request: Request<StorageEffect>) -> Self {
-        Effect::Storage(request)
+        Effect::Storage(Box::new(request))
     }
 }
 
@@ -279,6 +279,143 @@ mod tests {
 
         let vm = app.view(&model);
         assert_eq!(vm.error, Some("Something went wrong".to_string()));
+    }
+
+    // --- T042: Unicode handling in core ---
+
+    #[test]
+    fn test_unicode_in_piece_add() {
+        let app = Intrada;
+        let mut model = Model::default();
+
+        let _cmd = app.update(
+            Event::Piece(crate::domain::piece::PieceEvent::Add(
+                crate::domain::types::CreatePiece {
+                    title: "Ménuet en Sol".to_string(),
+                    composer: "Dvořák".to_string(),
+                    key: Some("ré mineur".to_string()),
+                    tempo: None,
+                    notes: Some("Pièce très jolie — «superbe»".to_string()),
+                    tags: vec!["日本語タグ".to_string()],
+                },
+            )),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.pieces.len(), 1);
+        assert_eq!(model.pieces[0].title, "Ménuet en Sol");
+        assert_eq!(model.pieces[0].composer, "Dvořák");
+        assert_eq!(model.pieces[0].key, Some("ré mineur".to_string()));
+        assert_eq!(model.pieces[0].notes, Some("Pièce très jolie — «superbe»".to_string()));
+        assert_eq!(model.pieces[0].tags, vec!["日本語タグ".to_string()]);
+
+        // Verify ViewModel preserves Unicode
+        let vm = app.view(&model);
+        assert_eq!(vm.items[0].title, "Ménuet en Sol");
+        assert_eq!(vm.items[0].subtitle, "Dvořák");
+    }
+
+    // --- T045: Performance benchmark ---
+
+    #[test]
+    fn test_performance_10k_items() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+
+        // Populate 10,000 items (5k pieces + 5k exercises)
+        let start = std::time::Instant::now();
+        for i in 0..5000 {
+            model.pieces.push(Piece {
+                id: format!("p{i:05}"),
+                title: format!("Piece {i}"),
+                composer: format!("Composer {}", i % 100),
+                key: if i % 3 == 0 { Some("C Major".to_string()) } else { None },
+                tempo: if i % 5 == 0 {
+                    Some(crate::domain::types::Tempo {
+                        marking: Some("Allegro".to_string()),
+                        bpm: Some(120),
+                    })
+                } else {
+                    None
+                },
+                notes: if i % 7 == 0 { Some(format!("Notes for piece {i}")) } else { None },
+                tags: vec![format!("tag{}", i % 10)],
+                created_at: now,
+                updated_at: now,
+            });
+        }
+        for i in 0..5000 {
+            model.exercises.push(Exercise {
+                id: format!("e{i:05}"),
+                title: format!("Exercise {i}"),
+                composer: None,
+                category: Some(format!("Category {}", i % 20)),
+                key: if i % 4 == 0 { Some("G Major".to_string()) } else { None },
+                tempo: None,
+                notes: None,
+                tags: vec![format!("etag{}", i % 10)],
+                created_at: now,
+                updated_at: now,
+            });
+        }
+        let populate_time = start.elapsed();
+        assert!(
+            populate_time.as_millis() < 100,
+            "Populating 10k items took {}ms (target: <100ms)",
+            populate_time.as_millis()
+        );
+
+        // Benchmark: view() with 10k items
+        let start = std::time::Instant::now();
+        let vm = app.view(&model);
+        let view_time = start.elapsed();
+        assert_eq!(vm.item_count, 10_000);
+        assert!(
+            view_time.as_millis() < 200,
+            "view() with 10k items took {}ms (target: <200ms)",
+            view_time.as_millis()
+        );
+
+        // Benchmark: add one more item with 10k existing
+        let start = std::time::Instant::now();
+        let _cmd = app.update(
+            Event::Piece(crate::domain::piece::PieceEvent::Add(
+                crate::domain::types::CreatePiece {
+                    title: "New Piece".to_string(),
+                    composer: "New Composer".to_string(),
+                    key: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                },
+            )),
+            &mut model,
+        );
+        let add_time = start.elapsed();
+        assert_eq!(model.pieces.len(), 5001);
+        assert!(
+            add_time.as_millis() < 100,
+            "Adding item with 10k existing took {}ms (target: <100ms)",
+            add_time.as_millis()
+        );
+
+        // Benchmark: delete item with 10k existing
+        let start = std::time::Instant::now();
+        let _cmd = app.update(
+            Event::Piece(crate::domain::piece::PieceEvent::Delete {
+                id: "p00042".to_string(),
+            }),
+            &mut model,
+        );
+        let delete_time = start.elapsed();
+        assert_eq!(model.pieces.len(), 5000);
+        assert!(
+            delete_time.as_millis() < 100,
+            "Deleting item with 10k existing took {}ms (target: <100ms)",
+            delete_time.as_millis()
+        );
     }
 
     #[test]

@@ -60,6 +60,18 @@ Stored as an optional struct with two optional inner fields (`marking: Option<St
 
 A plain string (1–100 characters). Tags are normalised by trimming whitespace. Comparison is case-insensitive for deduplication (e.g. "Warm-Up" and "warm-up" are the same tag). Display preserves the original casing of the first occurrence.
 
+#### ListQuery
+
+Used to filter and search the library. All fields are optional; when omitted, no filtering is applied for that dimension. Multiple filters combine with AND logic.
+
+| Field     | Type              | Description                                          |
+|-----------|-------------------|------------------------------------------------------|
+| text      | Option\<String\>  | Case-insensitive substring match across title, composer, category, notes |
+| item_type | Option\<String\>  | Filter by "piece" or "exercise"                      |
+| key       | Option\<String\>  | Filter by musical key (exact match)                  |
+| category  | Option\<String\>  | Filter by exercise category (exact match)            |
+| tags      | Option\<Vec\<String\>\> | Filter by tags (item must have ALL specified tags) |
+
 ## Relationships
 
 ```

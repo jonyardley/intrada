@@ -114,23 +114,19 @@ pub fn validate_update_piece(input: &UpdatePiece) -> Result<(), LibraryError> {
             });
         }
     }
-    if let Some(ref notes_opt) = input.notes {
-        if let Some(ref notes) = notes_opt {
-            if notes.len() > 5000 {
-                return Err(LibraryError::Validation {
-                    field: "notes".to_string(),
-                    message: "Notes must not exceed 5000 characters".to_string(),
-                });
-            }
+    if let Some(Some(ref notes)) = input.notes {
+        if notes.len() > 5000 {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: "Notes must not exceed 5000 characters".to_string(),
+            });
         }
     }
     if let Some(ref tags) = input.tags {
         validate_tags(tags)?;
     }
-    if let Some(ref tempo_opt) = input.tempo {
-        if let Some(ref tempo) = tempo_opt {
-            validate_tempo(tempo)?;
-        }
+    if let Some(Some(ref tempo)) = input.tempo {
+        validate_tempo(tempo)?;
     }
     Ok(())
 }
@@ -150,43 +146,35 @@ pub fn validate_update_exercise(input: &UpdateExercise) -> Result<(), LibraryErr
             });
         }
     }
-    if let Some(ref composer_opt) = input.composer {
-        if let Some(ref composer) = composer_opt {
-            if composer.is_empty() || composer.len() > 200 {
-                return Err(LibraryError::Validation {
-                    field: "composer".to_string(),
-                    message: "Composer must be between 1 and 200 characters".to_string(),
-                });
-            }
+    if let Some(Some(ref composer)) = input.composer {
+        if composer.is_empty() || composer.len() > 200 {
+            return Err(LibraryError::Validation {
+                field: "composer".to_string(),
+                message: "Composer must be between 1 and 200 characters".to_string(),
+            });
         }
     }
-    if let Some(ref category_opt) = input.category {
-        if let Some(ref category) = category_opt {
-            if category.is_empty() || category.len() > 100 {
-                return Err(LibraryError::Validation {
-                    field: "category".to_string(),
-                    message: "Category must be between 1 and 100 characters".to_string(),
-                });
-            }
+    if let Some(Some(ref category)) = input.category {
+        if category.is_empty() || category.len() > 100 {
+            return Err(LibraryError::Validation {
+                field: "category".to_string(),
+                message: "Category must be between 1 and 100 characters".to_string(),
+            });
         }
     }
-    if let Some(ref notes_opt) = input.notes {
-        if let Some(ref notes) = notes_opt {
-            if notes.len() > 5000 {
-                return Err(LibraryError::Validation {
-                    field: "notes".to_string(),
-                    message: "Notes must not exceed 5000 characters".to_string(),
-                });
-            }
+    if let Some(Some(ref notes)) = input.notes {
+        if notes.len() > 5000 {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: "Notes must not exceed 5000 characters".to_string(),
+            });
         }
     }
     if let Some(ref tags) = input.tags {
         validate_tags(tags)?;
     }
-    if let Some(ref tempo_opt) = input.tempo {
-        if let Some(ref tempo) = tempo_opt {
-            validate_tempo(tempo)?;
-        }
+    if let Some(Some(ref tempo)) = input.tempo {
+        validate_tempo(tempo)?;
     }
     Ok(())
 }
@@ -219,7 +207,7 @@ pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
         }
     }
     if let Some(bpm) = tempo.bpm {
-        if bpm < 1 || bpm > 400 {
+        if !(1..=400).contains(&bpm) {
             return Err(LibraryError::Validation {
                 field: "tempo".to_string(),
                 message: "BPM must be between 1 and 400".to_string(),

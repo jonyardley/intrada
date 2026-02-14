@@ -59,8 +59,7 @@ intrada/
 
 | Crate | Version | Used in | Purpose |
 |-------|---------|---------|---------|
-| `crux_core` | 0.16.2 | intrada-core | Cross-platform app framework |
-| `facet` | 0.28 | intrada-core | FFI type generation |
+| `crux_core` | 0.17.0-rc2 | intrada-core | Cross-platform app framework |
 | `ulid` | latest | intrada-core | ID generation |
 | `serde` | latest | intrada-core | Serialization |
 | `thiserror` | latest | intrada-core | Typed error definitions |
