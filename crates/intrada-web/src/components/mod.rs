@@ -10,6 +10,7 @@ pub mod page_heading;
 pub mod text_area;
 pub mod text_field;
 pub mod type_badge;
+pub mod type_tabs;
 
 pub use app_footer::AppFooter;
 pub use app_header::AppHeader;
@@ -23,3 +24,4 @@ pub use page_heading::PageHeading;
 pub use text_area::TextArea;
 pub use text_field::TextField;
 pub use type_badge::TypeBadge;
+pub use type_tabs::TypeTabs;

@@ -57,16 +57,11 @@ pub fn DetailView(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl Int
     // Clone IDs for closures
     let id_for_edit = item_id.clone();
     let id_for_delete = item_id.clone();
-    let type_for_edit = item_type.clone();
     let type_for_badge = item_type.clone();
     let type_for_delete = item_type;
 
-    // Build edit href based on item type
-    let edit_href = if type_for_edit == "piece" {
-        format!("/pieces/{}/edit", id_for_edit)
-    } else {
-        format!("/exercises/{}/edit", id_for_edit)
-    };
+    // Build edit href — unified route (FR-015)
+    let edit_href = format!("/library/{}/edit", id_for_edit);
 
     view! {
         <div>

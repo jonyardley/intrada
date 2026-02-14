@@ -37,12 +37,3 @@ pub fn create_stub_data() -> (Vec<Piece>, Vec<Exercise>) {
     }];
     (pieces, exercises)
 }
-
-/// Sample piece names for the "Add Sample Item" button
-pub const SAMPLE_PIECES: &[(&str, &str)] = &[
-    ("Moonlight Sonata", "Ludwig van Beethoven"),
-    ("Nocturne Op. 9 No. 2", "Fr\u{00e9}d\u{00e9}ric Chopin"),
-    ("Gymnop\u{00e9}die No. 1", "Erik Satie"),
-    ("Prelude in C Major", "Johann Sebastian Bach"),
-    ("Liebestr\u{00e4}ume No. 3", "Franz Liszt"),
-];
