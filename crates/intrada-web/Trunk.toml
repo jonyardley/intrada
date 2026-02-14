@@ -1,0 +1,15 @@
+[serve]
+port = 8080
+open = false
+
+[watch]
+ignore = ["dist/"]
+
+[build]
+# Release builds use wasm-opt for smaller binaries
+
+# Tailwind CSS v4 — run as pre-build hook since trunk's built-in tailwind-css uses v3
+[[hooks]]
+stage = "pre_build"
+command = "tailwindcss"
+command_arguments = ["-i", "input.css", "-o", "tailwind-output.css"]

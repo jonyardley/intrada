@@ -12,3 +12,7 @@ Thumbs.db
 *.tmp
 *.swp
 .vscode/
+# Trunk build output
+dist/
+# Generated Tailwind CSS
+tailwind-output.css
