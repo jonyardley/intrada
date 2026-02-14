@@ -372,15 +372,24 @@ mod tests {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
             composer: "Beethoven".to_string(),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
         model.exercises.push(Exercise {
             id: "e1".to_string(),
             title: "Scales".to_string(),
-            composer: None, category: Some("Technique".to_string()),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            composer: None,
+            category: Some("Technique".to_string()),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
 
         // No filter — both items
@@ -415,15 +424,23 @@ mod tests {
             id: "p1".to_string(),
             title: "Moonlight Sonata".to_string(),
             composer: "Beethoven".to_string(),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
         model.pieces.push(Piece {
             id: "p2".to_string(),
             title: "Clair de Lune".to_string(),
             composer: "Debussy".to_string(),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
 
         model.active_query = Some(ListQuery {
@@ -447,16 +464,24 @@ mod tests {
             title: "C Scale".to_string(),
             composer: Some("Hanon".to_string()),
             category: Some("Scales".to_string()),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
         model.exercises.push(Exercise {
             id: "e2".to_string(),
             title: "Chord Inversions".to_string(),
             composer: None,
             category: Some("Chords".to_string()),
-            key: None, tempo: None, notes: None, tags: vec![],
-            created_at: now, updated_at: now,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
         });
 
         model.active_query = Some(ListQuery {
@@ -479,17 +504,23 @@ mod tests {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
             composer: "Beethoven".to_string(),
-            key: None, tempo: None, notes: None,
+            key: None,
+            tempo: None,
+            notes: None,
             tags: vec!["classical".to_string(), "piano".to_string()],
-            created_at: now, updated_at: now,
+            created_at: now,
+            updated_at: now,
         });
         model.pieces.push(Piece {
             id: "p2".to_string(),
             title: "Etude".to_string(),
             composer: "Chopin".to_string(),
-            key: None, tempo: None, notes: None,
+            key: None,
+            tempo: None,
+            notes: None,
             tags: vec!["romantic".to_string(), "piano".to_string()],
-            created_at: now, updated_at: now,
+            created_at: now,
+            updated_at: now,
         });
 
         model.active_query = Some(ListQuery {

@@ -36,10 +36,7 @@ pub enum PieceEvent {
     Deleted { id: String },
 }
 
-pub fn handle_piece_event(
-    event: PieceEvent,
-    model: &mut Model,
-) -> Command<Effect, Event> {
+pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         PieceEvent::Add(input) => {
             if let Err(e) = validation::validate_create_piece(&input) {
@@ -75,9 +72,7 @@ pub fn handle_piece_event(
             }
 
             let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -112,9 +107,7 @@ pub fn handle_piece_event(
             let len_before = model.pieces.len();
             model.pieces.retain(|p| p.id != id);
             if model.pieces.len() == len_before {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             }
             model.last_error = None;
@@ -131,9 +124,7 @@ pub fn handle_piece_event(
             }
 
             let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -154,14 +145,14 @@ pub fn handle_piece_event(
         }
         PieceEvent::RemoveTags { id, tags } => {
             let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
             let tags_lower: Vec<String> = tags.iter().map(|t| t.to_lowercase()).collect();
-            piece.tags.retain(|t| !tags_lower.contains(&t.to_lowercase()));
+            piece
+                .tags
+                .retain(|t| !tags_lower.contains(&t.to_lowercase()));
             piece.updated_at = chrono::Utc::now();
             model.last_error = None;
 

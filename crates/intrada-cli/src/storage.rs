@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use intrada_core::domain::piece::Piece;
 use intrada_core::domain::exercise::Exercise;
+use intrada_core::domain::piece::Piece;
 use intrada_core::domain::types::Tempo;
 use rusqlite::{params, Connection};
 
@@ -60,7 +60,7 @@ impl SqliteStore {
                 tags TEXT NOT NULL DEFAULT '[]',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
-            );"
+            );",
         )?;
         Ok(())
     }
@@ -231,8 +231,10 @@ impl SqliteStore {
     }
 
     pub fn delete_item(&self, id: &str) -> Result<()> {
-        self.conn.execute("DELETE FROM pieces WHERE id=?1", params![id])?;
-        self.conn.execute("DELETE FROM exercises WHERE id=?1", params![id])?;
+        self.conn
+            .execute("DELETE FROM pieces WHERE id=?1", params![id])?;
+        self.conn
+            .execute("DELETE FROM exercises WHERE id=?1", params![id])?;
         Ok(())
     }
 }

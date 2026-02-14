@@ -87,14 +87,16 @@ mod tests {
         let shell = test_shell();
         shell.load_data().unwrap();
 
-        let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "Clair de Lune".to_string(),
-            composer: "Debussy".to_string(),
-            key: Some("Db Major".to_string()),
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        }))).unwrap();
+        let vm = shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "Clair de Lune".to_string(),
+                composer: "Debussy".to_string(),
+                key: Some("Db Major".to_string()),
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })))
+            .unwrap();
 
         assert_eq!(vm.item_count, 1);
         assert_eq!(vm.items[0].title, "Clair de Lune");
@@ -114,14 +116,16 @@ mod tests {
         // Add via shell
         let shell = Shell::new(store);
         shell.load_data().unwrap();
-        shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec!["classical".to_string()],
-        }))).unwrap();
+        shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "Sonata".to_string(),
+                composer: "Beethoven".to_string(),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec!["classical".to_string()],
+            })))
+            .unwrap();
 
         // Verify in DB by loading again
         let vm = shell.load_data().unwrap();
@@ -138,14 +142,16 @@ mod tests {
         shell.load_data().unwrap();
 
         // Add piece with Unicode characters in title and composer
-        let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "Ménuet in G".to_string(),
-            composer: "Dvořák".to_string(),
-            key: Some("G Máj".to_string()),
-            tempo: None,
-            notes: Some("Très belle pièce — «magnifique»".to_string()),
-            tags: vec!["romántico".to_string(), "日本語".to_string()],
-        }))).unwrap();
+        let vm = shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "Ménuet in G".to_string(),
+                composer: "Dvořák".to_string(),
+                key: Some("G Máj".to_string()),
+                tempo: None,
+                notes: Some("Très belle pièce — «magnifique»".to_string()),
+                tags: vec!["romántico".to_string(), "日本語".to_string()],
+            })))
+            .unwrap();
 
         assert!(vm.error.is_none());
         assert_eq!(vm.item_count, 1);
@@ -158,8 +164,14 @@ mod tests {
         assert_eq!(vm2.items[0].title, "Ménuet in G");
         assert_eq!(vm2.items[0].subtitle, "Dvořák");
         assert_eq!(vm2.items[0].key, Some("G Máj".to_string()));
-        assert_eq!(vm2.items[0].notes, Some("Très belle pièce — «magnifique»".to_string()));
-        assert_eq!(vm2.items[0].tags, vec!["romántico".to_string(), "日本語".to_string()]);
+        assert_eq!(
+            vm2.items[0].notes,
+            Some("Très belle pièce — «magnifique»".to_string())
+        );
+        assert_eq!(
+            vm2.items[0].tags,
+            vec!["romántico".to_string(), "日本語".to_string()]
+        );
     }
 
     #[test]
@@ -167,19 +179,21 @@ mod tests {
         let shell = test_shell();
         shell.load_data().unwrap();
 
-        let vm = shell.run(Event::Exercise(
-            intrada_core::domain::exercise::ExerciseEvent::Add(
-                intrada_core::domain::types::CreateExercise {
-                    title: "Übung für die linke Hand".to_string(),
-                    composer: Some("Czerny".to_string()),
-                    category: Some("Técnica".to_string()),
-                    key: None,
-                    tempo: None,
-                    notes: None,
-                    tags: vec!["größe".to_string()],
-                },
-            ),
-        )).unwrap();
+        let vm = shell
+            .run(Event::Exercise(
+                intrada_core::domain::exercise::ExerciseEvent::Add(
+                    intrada_core::domain::types::CreateExercise {
+                        title: "Übung für die linke Hand".to_string(),
+                        composer: Some("Czerny".to_string()),
+                        category: Some("Técnica".to_string()),
+                        key: None,
+                        tempo: None,
+                        notes: None,
+                        tags: vec!["größe".to_string()],
+                    },
+                ),
+            ))
+            .unwrap();
 
         assert!(vm.error.is_none());
 
@@ -196,14 +210,16 @@ mod tests {
         shell.load_data().unwrap();
 
         // Title at max (500 chars) — should succeed
-        let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "x".repeat(500),
-            composer: "y".repeat(200), // composer at max
-            key: None,
-            tempo: None,
-            notes: Some("z".repeat(5000)), // notes at max
-            tags: vec!["t".repeat(100)],   // tag at max
-        }))).unwrap();
+        let vm = shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "x".repeat(500),
+                composer: "y".repeat(200), // composer at max
+                key: None,
+                tempo: None,
+                notes: Some("z".repeat(5000)), // notes at max
+                tags: vec!["t".repeat(100)],   // tag at max
+            })))
+            .unwrap();
         assert!(vm.error.is_none());
         assert_eq!(vm.item_count, 1);
 
@@ -218,14 +234,16 @@ mod tests {
         shell.load_data().unwrap();
 
         // Title over max (501 chars) — should fail
-        let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "x".repeat(501),
-            composer: "Composer".to_string(),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        }))).unwrap();
+        let vm = shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "x".repeat(501),
+                composer: "Composer".to_string(),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })))
+            .unwrap();
         assert!(vm.error.is_some());
         assert_eq!(vm.item_count, 0);
     }
@@ -235,14 +253,16 @@ mod tests {
         let shell = test_shell();
         shell.load_data().unwrap();
 
-        let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
-            title: "".to_string(), // invalid: empty title
-            composer: "Debussy".to_string(),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        }))).unwrap();
+        let vm = shell
+            .run(Event::Piece(PieceEvent::Add(CreatePiece {
+                title: "".to_string(), // invalid: empty title
+                composer: "Debussy".to_string(),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })))
+            .unwrap();
 
         assert!(vm.error.is_some());
         assert_eq!(vm.item_count, 0);
