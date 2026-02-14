@@ -15,7 +15,7 @@ pub fn TextArea(
     errors: RwSignal<HashMap<String, String>>,
 ) -> impl IntoView {
     let rows_str = rows.to_string();
-    let error_id: &'static str = Box::leak(format!("{id}-error").into_boxed_str());
+    let error_id = format!("{id}-error");
     let has_error = move || errors.get().contains_key(field_name);
 
     view! {
@@ -28,10 +28,10 @@ pub fn TextArea(
                 rows=rows_str
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 bind:value=value
-                aria-describedby=error_id
+                aria-describedby=error_id.clone()
                 aria-invalid=move || if has_error() { "true" } else { "false" }
             />
-            <FormFieldError field=field_name.to_string() errors=errors error_id=error_id />
+            <FormFieldError field=field_name errors=errors error_id=error_id />
         </div>
     }
 }

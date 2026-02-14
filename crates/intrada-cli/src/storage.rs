@@ -246,14 +246,6 @@ fn split_tempo(tempo: &Option<Tempo>) -> (Option<&str>, Option<u16>) {
     }
 }
 
-fn parse_tempo(marking: Option<String>, bpm: Option<u16>) -> Option<Tempo> {
-    if marking.is_some() || bpm.is_some() {
-        Some(Tempo { marking, bpm })
-    } else {
-        None
-    }
-}
-
 fn parse_timestamp(s: &str) -> Result<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.with_timezone(&Utc))
@@ -296,7 +288,7 @@ fn piece_from_row(row: PieceRow) -> Result<Piece> {
         title: row.title,
         composer: row.composer,
         key: row.key,
-        tempo: parse_tempo(row.tempo_marking, row.tempo_bpm),
+        tempo: Tempo::from_parts(row.tempo_marking, row.tempo_bpm),
         notes: row.notes,
         tags,
         created_at: parse_timestamp(&row.created_str)?,
@@ -314,7 +306,7 @@ fn exercise_from_row(row: ExerciseRow) -> Result<Exercise> {
         composer: row.composer,
         category: row.category,
         key: row.key,
-        tempo: parse_tempo(row.tempo_marking, row.tempo_bpm),
+        tempo: Tempo::from_parts(row.tempo_marking, row.tempo_bpm),
         notes: row.notes,
         tags,
         created_at: parse_timestamp(&row.created_str)?,

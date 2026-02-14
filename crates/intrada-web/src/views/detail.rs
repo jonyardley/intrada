@@ -13,7 +13,9 @@ use crate::core_bridge::process_effects;
 use crate::types::SharedCore;
 
 #[component]
-pub fn DetailView(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+pub fn DetailView() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
     let params = use_params_map();
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
@@ -33,35 +35,32 @@ pub fn DetailView(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl Int
             <div class="text-center py-8">
                 <p class="text-slate-600 mb-4">"Item not found."</p>
                 <A href="/" attr:class="text-indigo-600 hover:text-indigo-800 font-medium">
-                    "\u{2190} Back to Library"
+                    "← Back to Library"
                 </A>
             </div>
         }
         .into_any();
     };
 
-    let item_id = item.id.clone();
-    let item_type = item.item_type.clone();
+    // Destructure item fields to avoid excessive cloning
+    let intrada_core::LibraryItemView {
+        id: item_id,
+        title,
+        subtitle,
+        item_type,
+        category,
+        key,
+        tempo,
+        notes,
+        tags,
+        created_at,
+        updated_at,
+    } = item;
 
-    // Clone fields for display
-    let title = item.title.clone();
-    let subtitle = item.subtitle.clone();
-    let category = item.category.clone();
-    let key = item.key.clone();
-    let tempo = item.tempo.clone();
-    let notes = item.notes.clone();
-    let tags = item.tags.clone();
-    let created_at = item.created_at.clone();
-    let updated_at = item.updated_at.clone();
-
-    // Clone IDs for closures
-    let id_for_edit = item_id.clone();
+    let edit_href = format!("/library/{}/edit", item_id);
     let id_for_delete = item_id.clone();
     let type_for_badge = item_type.clone();
     let type_for_delete = item_type;
-
-    // Build edit href — unified route (FR-015)
-    let edit_href = format!("/library/{}/edit", id_for_edit);
 
     view! {
         <div>

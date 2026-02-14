@@ -16,10 +16,12 @@ use crate::components::{
 use crate::core_bridge::process_effects;
 use crate::helpers::{parse_tags, parse_tempo};
 use crate::types::{ItemType, SharedCore};
-use crate::validation::validate_library_form;
+use crate::validation::{validate_library_form, FormData};
 
 #[component]
-pub fn AddLibraryItemForm(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+pub fn AddLibraryItemForm() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
     let navigate = use_navigate();
     let navigate_cancel = navigate.clone();
 
@@ -58,13 +60,15 @@ pub fn AddLibraryItemForm(view_model: RwSignal<ViewModel>, core: SharedCore) -> 
                         // Validate using unified function (FR-006)
                         let validation_errors = validate_library_form(
                             current_tab,
-                            &title.get(),
-                            &composer.get(),
-                            &category.get(),
-                            &notes.get(),
-                            &bpm.get(),
-                            &tempo_marking.get(),
-                            &tags_input.get(),
+                            &FormData {
+                                title: &title.get(),
+                                composer: &composer.get(),
+                                category: &category.get(),
+                                notes: &notes.get(),
+                                bpm_str: &bpm.get(),
+                                tempo_marking: &tempo_marking.get(),
+                                tags_str: &tags_input.get(),
+                            },
                         );
 
                         if !validation_errors.is_empty() {

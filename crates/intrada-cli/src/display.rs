@@ -17,7 +17,12 @@ pub fn print_item_list(vm: &ViewModel) {
         print_table_row(item);
     }
 
-    println!("\n{} item(s)", vm.item_count);
+    let count = vm.items.len();
+    if count == 1 {
+        println!("\n1 item");
+    } else {
+        println!("\n{count} items");
+    }
 }
 
 pub fn print_item_detail(item: &LibraryItemView) {

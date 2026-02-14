@@ -12,7 +12,7 @@ pub fn create_stub_data() -> (Vec<Piece>, Vec<Exercise>) {
         composer: "Claude Debussy".to_string(),
         key: Some("Db Major".to_string()),
         tempo: Some(Tempo {
-            marking: Some("Andante tr\u{00e8}s expressif".to_string()),
+            marking: Some("Andante très expressif".to_string()),
             bpm: Some(66),
         }),
         notes: Some("Third movement of Suite bergamasque".to_string()),
@@ -30,7 +30,7 @@ pub fn create_stub_data() -> (Vec<Piece>, Vec<Exercise>) {
             marking: Some("Moderato".to_string()),
             bpm: Some(108),
         }),
-        notes: Some("The Virtuoso Pianist \u{2014} Exercise 1".to_string()),
+        notes: Some("The Virtuoso Pianist — Exercise 1".to_string()),
         tags: vec!["technique".to_string(), "warm-up".to_string()],
         created_at: now,
         updated_at: now,

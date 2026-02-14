@@ -6,7 +6,8 @@ use intrada_core::ViewModel;
 use crate::components::LibraryItemCard;
 
 #[component]
-pub fn LibraryListView(view_model: RwSignal<ViewModel>) -> impl IntoView {
+pub fn LibraryListView() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
     view! {
         // Hero section
         <section class="mb-10" aria-labelledby="welcome-heading">
@@ -16,7 +17,7 @@ pub fn LibraryListView(view_model: RwSignal<ViewModel>) -> impl IntoView {
             <p class="text-slate-600 leading-relaxed max-w-2xl">
                 "Organize your music library, track your practice pieces and exercises, "
                 "and build better practice habits. Intrada helps musicians stay focused "
-                "on what matters \u{2014} making music."
+                "on what matters — making music."
             </p>
         </section>
 
@@ -33,17 +34,6 @@ pub fn LibraryListView(view_model: RwSignal<ViewModel>) -> impl IntoView {
             })
         }}
 
-        // Status message
-        {move || {
-            view_model.get().status.map(|status| {
-                view! {
-                    <div class="mb-6 rounded-lg bg-blue-50 border border-blue-200 p-4" role="status">
-                        <p class="text-sm text-blue-800">{status}</p>
-                    </div>
-                }
-            })
-        }}
-
         // Library section header
         <section class="mb-10" aria-labelledby="library-heading">
             <div class="flex items-center justify-between mb-4">
@@ -51,8 +41,12 @@ pub fn LibraryListView(view_model: RwSignal<ViewModel>) -> impl IntoView {
                 <div class="flex items-center gap-3">
                     <span class="text-sm text-slate-500">
                         {move || {
-                            let count = view_model.get().item_count;
-                            format!("{count} item(s)")
+                            let count = view_model.get().items.len();
+                            if count == 1 {
+                                "1 item".to_string()
+                            } else {
+                                format!("{count} items")
+                            }
                         }}
                     </span>
 

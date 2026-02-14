@@ -13,29 +13,16 @@ pub fn parse_tags(input: &str) -> Vec<String> {
 /// Parse tempo marking + BPM string into Option<Tempo>.
 /// Returns None if both are empty.
 pub fn parse_tempo(marking: &str, bpm_str: &str) -> Option<Tempo> {
-    let marking = marking.trim();
-    let bpm_str = bpm_str.trim();
-
-    if marking.is_empty() && bpm_str.is_empty() {
-        return None;
-    }
-
-    let marking_opt = if marking.is_empty() {
-        None
-    } else {
-        Some(marking.to_string())
+    let marking_opt = {
+        let m = marking.trim();
+        if m.is_empty() {
+            None
+        } else {
+            Some(m.to_string())
+        }
     };
-
-    let bpm_opt = if bpm_str.is_empty() {
-        None
-    } else {
-        bpm_str.parse::<u16>().ok()
-    };
-
-    Some(Tempo {
-        marking: marking_opt,
-        bpm: bpm_opt,
-    })
+    let bpm_opt = bpm_str.trim().parse::<u16>().ok();
+    Tempo::from_parts(marking_opt, bpm_opt)
 }
 
 /// Parse a formatted tempo display string back into (marking, bpm_str) for edit form pre-population.
