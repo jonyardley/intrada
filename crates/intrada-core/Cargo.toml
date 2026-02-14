@@ -1,0 +1,12 @@
+[package]
+name = "intrada-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+crux_core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ulid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
