@@ -4,6 +4,8 @@ use wasm_bindgen::JsCast;
 
 use intrada_core::LibraryItemView;
 
+use crate::components::TypeBadge;
+
 #[component]
 pub fn LibraryItemCard<F>(item: LibraryItemView, on_click: F) -> impl IntoView
 where
@@ -18,12 +20,6 @@ where
         tags,
         ..
     } = item;
-
-    let badge_classes = if item_type == "piece" {
-        "inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800"
-    } else {
-        "inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800"
-    };
 
     let has_subtitle = !subtitle.is_empty();
     let has_tags = !tags.is_empty();
@@ -88,7 +84,7 @@ where
                         None
                     }}
                 </div>
-                <span class=badge_classes>{item_type}</span>
+                <TypeBadge item_type=item_type />
             </div>
         </li>
     }

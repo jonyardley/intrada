@@ -4,6 +4,7 @@ use intrada_core::domain::exercise::ExerciseEvent;
 use intrada_core::domain::piece::PieceEvent;
 use intrada_core::{Event, ViewModel};
 
+use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
 use crate::core_bridge::process_effects;
 use crate::types::{SharedCore, ViewState};
 
@@ -31,7 +32,6 @@ pub fn DetailView(
 
     let item_id = item.id.clone();
     let item_type = item.item_type.clone();
-    let is_piece = item_type == "piece";
 
     // Clone fields for display
     let title = item.title.clone();
@@ -48,32 +48,27 @@ pub fn DetailView(
     let id_for_edit = item_id.clone();
     let id_for_delete = item_id.clone();
     let type_for_edit = item_type.clone();
+    let type_for_badge = item_type.clone();
+    let type_for_delete = item_type;
 
     view! {
         <div>
             // Back button
-            <button
-                class="mb-6 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-                on:click=move |_| { view_state.set(ViewState::List); }
-            >
-                "\u{2190} Back to Library"
-            </button>
+            <BackLink label="Back to Library" on_click=Callback::new(move |_| { view_state.set(ViewState::List); }) />
 
             // Delete confirmation banner (FR-011)
             {move || {
                 if show_delete_confirm.get() {
                     let id_del = id_for_delete.clone();
                     let core_del = core.clone();
-                    let item_type_del = item_type.clone();
+                    let item_type_del = type_for_delete.clone();
                     Some(view! {
                         <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4" role="alert">
                             <p class="text-sm text-red-800 mb-3">
                                 "Are you sure you want to delete this item? This action cannot be undone."
                             </p>
                             <div class="flex gap-3">
-                                <button
-                                    class="rounded-lg bg-red-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-red-500 transition-colors"
-                                    on:click=move |_| {
+                                <Button variant=ButtonVariant::Danger on_click=Callback::new(move |_| {
                                         let event = if item_type_del == "piece" {
                                             Event::Piece(PieceEvent::Delete { id: id_del.clone() })
                                         } else {
@@ -83,16 +78,12 @@ pub fn DetailView(
                                         let effects = core_ref.process_event(event);
                                         process_effects(&core_ref, effects, &view_model);
                                         view_state.set(ViewState::List);
-                                    }
-                                >
+                                    })>
                                     "Confirm Delete"
-                                </button>
-                                <button
-                                    class="rounded-lg bg-white px-3.5 py-2 text-sm font-medium text-slate-700 border border-slate-300 hover:bg-slate-50 transition-colors"
-                                    on:click=move |_| { show_delete_confirm.set(false); }
-                                >
+                                </Button>
+                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| { show_delete_confirm.set(false); })>
                                     "Cancel"
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     })
@@ -102,7 +93,7 @@ pub fn DetailView(
             }}
 
             // Detail card
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <Card>
                 // Header: title + type badge
                 <div class="flex items-start justify-between gap-3 mb-6">
                     <div>
@@ -115,13 +106,7 @@ pub fn DetailView(
                             None
                         }}
                     </div>
-                    <span class={if is_piece {
-                        "inline-flex items-center rounded-full bg-violet-100 px-3 py-1 text-sm font-medium text-violet-800"
-                    } else {
-                        "inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800"
-                    }}>
-                        {if is_piece { "Piece" } else { "Exercise" }}
-                    </span>
+                    <TypeBadge item_type=type_for_badge.clone() />
                 </div>
 
                 // Fields grid (FR-007, FR-008: omit empty optional fields)
@@ -129,7 +114,7 @@ pub fn DetailView(
                     {category.map(|cat| {
                         view! {
                             <div>
-                                <dt class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Category"</dt>
+                                <FieldLabel text="Category" />
                                 <dd class="mt-1 text-sm text-slate-700">{cat}</dd>
                             </div>
                         }
@@ -137,7 +122,7 @@ pub fn DetailView(
                     {key.map(|k| {
                         view! {
                             <div>
-                                <dt class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Key"</dt>
+                                <FieldLabel text="Key" />
                                 <dd class="mt-1 text-sm text-slate-700">{k}</dd>
                             </div>
                         }
@@ -145,7 +130,7 @@ pub fn DetailView(
                     {tempo.map(|t| {
                         view! {
                             <div>
-                                <dt class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Tempo"</dt>
+                                <FieldLabel text="Tempo" />
                                 <dd class="mt-1 text-sm text-slate-700">{t}</dd>
                             </div>
                         }
@@ -156,7 +141,7 @@ pub fn DetailView(
                 {notes.map(|n| {
                     view! {
                         <div class="mb-6">
-                            <dt class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">"Notes"</dt>
+                            <FieldLabel text="Notes" />
                             <dd class="text-sm text-slate-700 whitespace-pre-wrap">{n}</dd>
                         </div>
                     }
@@ -166,7 +151,7 @@ pub fn DetailView(
                 {if !tags.is_empty() {
                     Some(view! {
                         <div class="mb-6">
-                            <dt class="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">"Tags"</dt>
+                            <FieldLabel text="Tags" />
                             <dd class="flex flex-wrap gap-1.5">
                                 {tags.into_iter().map(|tag| {
                                     view! {
@@ -191,28 +176,22 @@ pub fn DetailView(
                         <span class="font-medium">"Updated: "</span>{updated_at}
                     </div>
                 </div>
-            </div>
+            </Card>
 
             // Action buttons (FR-009, FR-011)
             <div class="mt-6 flex gap-3">
-                <button
-                    class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
-                    on:click=move |_| {
+                <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
                         if type_for_edit == "piece" {
                             view_state.set(ViewState::EditPiece(id_for_edit.clone()));
                         } else {
                             view_state.set(ViewState::EditExercise(id_for_edit.clone()));
                         }
-                    }
-                >
+                    })>
                     "Edit"
-                </button>
-                <button
-                    class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-red-600 border border-red-300 hover:bg-red-50 transition-colors"
-                    on:click=move |_| { show_delete_confirm.set(true); }
-                >
+                </Button>
+                <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| { show_delete_confirm.set(true); })>
                     "Delete"
-                </button>
+                </Button>
             </div>
         </div>
     }.into_any()

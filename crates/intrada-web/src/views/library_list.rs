@@ -5,7 +5,7 @@ use intrada_core::domain::piece::PieceEvent;
 use intrada_core::domain::types::CreatePiece;
 use intrada_core::{Event, ViewModel};
 
-use crate::components::LibraryItemCard;
+use crate::components::{Button, ButtonVariant, LibraryItemCard};
 use crate::core_bridge::process_effects;
 use crate::data::SAMPLE_PIECES;
 use crate::types::{SharedCore, ViewState};
@@ -71,15 +71,10 @@ pub fn LibraryListView(
 
                     // Add dropdown (FR-001)
                     <div class="relative">
-                        <button
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
-                            aria-label="Add a new item"
-                            aria-expanded=move || show_add_menu.get().to_string()
-                            on:click=move |_| { show_add_menu.set(!show_add_menu.get()); }
-                        >
+                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| { show_add_menu.set(!show_add_menu.get()); })>
                             <span aria-hidden="true">"+"</span>
                             " Add"
-                        </button>
+                        </Button>
                         {move || {
                             if show_add_menu.get() {
                                 Some(view! {
