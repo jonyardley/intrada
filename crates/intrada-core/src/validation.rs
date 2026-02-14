@@ -1,5 +1,5 @@
-use crate::error::LibraryError;
 use crate::domain::types::{CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece};
+use crate::error::LibraryError;
 
 pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
     if input.title.is_empty() {

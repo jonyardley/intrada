@@ -37,10 +37,7 @@ pub enum ExerciseEvent {
     Deleted { id: String },
 }
 
-pub fn handle_exercise_event(
-    event: ExerciseEvent,
-    model: &mut Model,
-) -> Command<Effect, Event> {
+pub fn handle_exercise_event(event: ExerciseEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         ExerciseEvent::Add(input) => {
             if let Err(e) = validation::validate_create_exercise(&input) {
@@ -77,9 +74,7 @@ pub fn handle_exercise_event(
             }
 
             let Some(exercise) = model.exercises.iter_mut().find(|e| e.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -117,9 +112,7 @@ pub fn handle_exercise_event(
             let len_before = model.exercises.len();
             model.exercises.retain(|e| e.id != id);
             if model.exercises.len() == len_before {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             }
             model.last_error = None;
@@ -136,9 +129,7 @@ pub fn handle_exercise_event(
             }
 
             let Some(exercise) = model.exercises.iter_mut().find(|e| e.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
@@ -159,14 +150,14 @@ pub fn handle_exercise_event(
         }
         ExerciseEvent::RemoveTags { id, tags } => {
             let Some(exercise) = model.exercises.iter_mut().find(|e| e.id == id) else {
-                model.last_error = Some(
-                    LibraryError::NotFound { id }.to_string(),
-                );
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
             let tags_lower: Vec<String> = tags.iter().map(|t| t.to_lowercase()).collect();
-            exercise.tags.retain(|t| !tags_lower.contains(&t.to_lowercase()));
+            exercise
+                .tags
+                .retain(|t| !tags_lower.contains(&t.to_lowercase()));
             exercise.updated_at = chrono::Utc::now();
             model.last_error = None;
 
