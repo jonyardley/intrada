@@ -1,24 +1,12 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use intrada_core::domain::piece::PieceEvent;
-use intrada_core::domain::types::CreatePiece;
-use intrada_core::{Event, ViewModel};
+use intrada_core::ViewModel;
 
-use crate::components::{Button, ButtonVariant, LibraryItemCard};
-use crate::core_bridge::process_effects;
-use crate::data::SAMPLE_PIECES;
-use crate::types::SharedCore;
+use crate::components::LibraryItemCard;
 
 #[component]
-pub fn LibraryListView(
-    view_model: RwSignal<ViewModel>,
-    core: SharedCore,
-    sample_counter: RwSignal<usize>,
-) -> impl IntoView {
-    let show_add_menu = RwSignal::new(false);
-    let core_for_sample = core.clone();
-
+pub fn LibraryListView(view_model: RwSignal<ViewModel>) -> impl IntoView {
     view! {
         // Hero section
         <section class="mb-10" aria-labelledby="welcome-heading">
@@ -68,55 +56,11 @@ pub fn LibraryListView(
                         }}
                     </span>
 
-                    // Add dropdown (FR-001)
-                    <div class="relative">
-                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| { show_add_menu.set(!show_add_menu.get()); })>
-                            <span aria-hidden="true">"+"</span>
-                            " Add"
-                        </Button>
-                        {move || {
-                            if show_add_menu.get() {
-                                Some(view! {
-                                    <div class="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg border border-slate-200 z-10">
-                                        <A href="/pieces/new" attr:class="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-t-lg">
-                                            "Piece"
-                                        </A>
-                                        <A href="/exercises/new" attr:class="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-b-lg">
-                                            "Exercise"
-                                        </A>
-                                    </div>
-                                })
-                            } else {
-                                None
-                            }
-                        }}
-                    </div>
-
-                    // "Add Sample Item" button (retained from MVP)
-                    <button
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-slate-200 px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-300 transition-colors"
-                        aria-label="Add a sample piece to the library"
-                        on:click=move |_| {
-                            let idx = sample_counter.get() % SAMPLE_PIECES.len();
-                            let (title, composer) = SAMPLE_PIECES[idx];
-                            sample_counter.set(sample_counter.get() + 1);
-
-                            let event = Event::Piece(PieceEvent::Add(CreatePiece {
-                                title: title.to_string(),
-                                composer: composer.to_string(),
-                                key: None,
-                                tempo: None,
-                                notes: None,
-                                tags: vec!["sample".to_string()],
-                            }));
-
-                            let core_ref = core_for_sample.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model);
-                        }
-                    >
-                        "Add Sample"
-                    </button>
+                    // Single "Add Item" button — navigates to unified form (FR-011)
+                    <A href="/library/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+                        <span aria-hidden="true" class="mr-1">"+"</span>
+                        " Add Item"
+                    </A>
                 </div>
             </div>
 

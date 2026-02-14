@@ -14,15 +14,13 @@ use crate::core_bridge::process_effects;
 use crate::data::create_stub_data;
 use crate::types::SharedCore;
 use crate::views::{
-    AddExerciseForm, AddPieceForm, DetailView, EditExerciseForm, EditPieceForm, LibraryListView,
-    NotFoundView,
+    AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
 };
 
 #[component]
 pub fn App() -> impl IntoView {
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
-    let sample_counter = RwSignal::new(0_usize);
 
     // Initialize: load stub data on mount
     {
@@ -32,12 +30,9 @@ pub fn App() -> impl IntoView {
         process_effects(&core_ref, effects, &view_model);
     }
 
-    let core_clone = core.clone();
     let core_clone2 = core.clone();
     let core_clone3 = core.clone();
     let core_clone4 = core.clone();
-    let core_clone5 = core.clone();
-    let core_clone6 = core.clone();
 
     view! {
         <Router>
@@ -51,38 +46,25 @@ pub fn App() -> impl IntoView {
                         <Route path=path!("/") view=move || view! {
                             <LibraryListView
                                 view_model=view_model
-                                core=core_clone.clone()
-                                sample_counter=sample_counter
+                            />
+                        } />
+                        // /library/new MUST come before /library/:id to avoid "new" matching :id
+                        <Route path=path!("/library/new") view=move || view! {
+                            <AddLibraryItemForm
+                                view_model=view_model
+                                core=core_clone2.clone()
                             />
                         } />
                         <Route path=path!("/library/:id") view=move || view! {
                             <DetailView
                                 view_model=view_model
-                                core=core_clone2.clone()
-                            />
-                        } />
-                        <Route path=path!("/pieces/new") view=move || view! {
-                            <AddPieceForm
-                                view_model=view_model
                                 core=core_clone3.clone()
                             />
                         } />
-                        <Route path=path!("/exercises/new") view=move || view! {
-                            <AddExerciseForm
+                        <Route path=path!("/library/:id/edit") view=move || view! {
+                            <EditLibraryItemForm
                                 view_model=view_model
                                 core=core_clone4.clone()
-                            />
-                        } />
-                        <Route path=path!("/pieces/:id/edit") view=move || view! {
-                            <EditPieceForm
-                                view_model=view_model
-                                core=core_clone5.clone()
-                            />
-                        } />
-                        <Route path=path!("/exercises/:id/edit") view=move || view! {
-                            <EditExerciseForm
-                                view_model=view_model
-                                core=core_clone6.clone()
                             />
                         } />
                     </Routes>
