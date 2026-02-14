@@ -73,10 +73,9 @@ fn process_effects(core: &Core<Intrada>, effects: Vec<Effect>, view_model: &RwSi
                         let (pieces, exercises) = create_stub_data();
                         let inner_effects =
                             core.process_event(Event::DataLoaded { pieces, exercises });
-                        // Recursively process effects from DataLoaded
-                        // (will produce a Render effect)
+                        // Process the inner effects (will produce a Render effect)
                         process_effects(core, inner_effects, view_model);
-                        return; // We've already updated the view inside the recursive call
+                        // Continue processing any remaining effects in this batch
                     }
                     StorageEffect::SavePiece(_)
                     | StorageEffect::SaveExercise(_)
@@ -269,23 +268,28 @@ fn App() -> impl IntoView {
     }
 }
 
-/// A styled card component for a single library item (T019, T020)
+/// A styled card component for a single library item (T019, T020).
+/// Takes ownership of the `LibraryItemView` and destructures it to avoid cloning.
 #[component]
 fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
-    let badge_classes = if item.item_type == "piece" {
+    // Destructure to consume owned fields directly (no cloning needed)
+    let LibraryItemView {
+        title,
+        subtitle,
+        item_type,
+        key,
+        tempo,
+        tags,
+        ..
+    } = item;
+
+    let badge_classes = if item_type == "piece" {
         "inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800"
     } else {
         "inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800"
     };
 
-    // Clone owned values for the view macro (Leptos requires owned Strings)
-    let title = item.title.clone();
-    let subtitle = item.subtitle.clone();
-    let item_type = item.item_type.clone();
     let has_subtitle = !subtitle.is_empty();
-    let key = item.key.clone();
-    let tempo = item.tempo.clone();
-    let tags = item.tags.clone();
     let has_tags = !tags.is_empty();
 
     view! {
