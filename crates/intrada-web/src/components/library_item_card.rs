@@ -39,14 +39,14 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
                             {key.map(|k| {
                                 view! {
                                     <span class="flex items-center gap-1">
-                                        <span aria-hidden="true">"\u{266F}"</span>{k}
+                                        <span aria-hidden="true">"♯"</span>{k}
                                     </span>
                                 }
                             })}
                             {tempo.map(|t| {
                                 view! {
                                     <span class="flex items-center gap-1">
-                                        <span aria-hidden="true">"\u{2669}"</span>{t}
+                                        <span aria-hidden="true">"♩"</span>{t}
                                     </span>
                                 }
                             })}

@@ -78,7 +78,6 @@ mod tests {
     fn test_load_empty_data() {
         let shell = test_shell();
         let vm = shell.load_data().unwrap();
-        assert_eq!(vm.item_count, 0);
         assert!(vm.items.is_empty());
     }
 
@@ -98,7 +97,7 @@ mod tests {
             })))
             .unwrap();
 
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Clair de Lune");
         assert!(vm.error.is_none());
 
@@ -106,7 +105,7 @@ mod tests {
         // (can't reuse store, but verify via load_data which re-reads model)
         // Instead, verify the view is correct
         let vm2 = shell.run(Event::ClearError).unwrap();
-        assert_eq!(vm2.item_count, 1);
+        assert_eq!(vm2.items.len(), 1);
     }
 
     #[test]
@@ -130,7 +129,7 @@ mod tests {
         // Verify in DB by loading again
         let vm = shell.load_data().unwrap();
         // DataLoaded replaces model, so we get only what's in DB
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Sonata");
     }
 
@@ -154,13 +153,13 @@ mod tests {
             .unwrap();
 
         assert!(vm.error.is_none());
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Ménuet in G");
         assert_eq!(vm.items[0].subtitle, "Dvořák");
 
         // Reload from SQLite to verify round-trip
         let vm2 = shell.load_data().unwrap();
-        assert_eq!(vm2.item_count, 1);
+        assert_eq!(vm2.items.len(), 1);
         assert_eq!(vm2.items[0].title, "Ménuet in G");
         assert_eq!(vm2.items[0].subtitle, "Dvořák");
         assert_eq!(vm2.items[0].key, Some("G Máj".to_string()));
@@ -221,7 +220,7 @@ mod tests {
             })))
             .unwrap();
         assert!(vm.error.is_none());
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
 
         // Verify persisted correctly
         let vm2 = shell.load_data().unwrap();
@@ -245,7 +244,7 @@ mod tests {
             })))
             .unwrap();
         assert!(vm.error.is_some());
-        assert_eq!(vm.item_count, 0);
+        assert_eq!(vm.items.len(), 0);
     }
 
     #[test]
@@ -265,6 +264,6 @@ mod tests {
             .unwrap();
 
         assert!(vm.error.is_some());
-        assert_eq!(vm.item_count, 0);
+        assert_eq!(vm.items.len(), 0);
     }
 }

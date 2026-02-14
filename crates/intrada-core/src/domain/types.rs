@@ -1,9 +1,33 @@
 use serde::{Deserialize, Serialize};
 
+/// Tempo representation with optional marking (e.g. "Allegro") and BPM.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Tempo {
     pub marking: Option<String>,
     pub bpm: Option<u16>,
+}
+
+impl Tempo {
+    /// Build a Tempo from optional parts. Returns None if both are absent.
+    #[must_use]
+    pub fn from_parts(marking: Option<String>, bpm: Option<u16>) -> Option<Self> {
+        if marking.is_some() || bpm.is_some() {
+            Some(Self { marking, bpm })
+        } else {
+            None
+        }
+    }
+
+    /// Format for display: "Allegro (132 BPM)", "Allegro", "132 BPM", or empty string.
+    #[must_use]
+    pub fn format_display(&self) -> String {
+        match (&self.marking, self.bpm) {
+            (Some(marking), Some(bpm)) => format!("{marking} ({bpm} BPM)"),
+            (Some(marking), None) => marking.clone(),
+            (None, Some(bpm)) => format!("{bpm} BPM"),
+            (None, None) => String::new(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -27,6 +51,10 @@ pub struct CreateExercise {
     pub tags: Vec<String>,
 }
 
+/// PATCH-style update. `Option<Option<T>>` fields use three-state semantics:
+/// - `None` = field not being updated (skip)
+/// - `Some(None)` = clear the field
+/// - `Some(Some(v))` = set to new value
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct UpdatePiece {
     pub title: Option<String>,
@@ -48,6 +76,7 @@ pub struct UpdateExercise {
     pub tags: Option<Vec<String>>,
 }
 
+/// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ListQuery {
     pub text: Option<String>,
@@ -55,4 +84,50 @@ pub struct ListQuery {
     pub key: Option<String>,
     pub category: Option<String>,
     pub tags: Option<Vec<String>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_parts_both_none_returns_none() {
+        assert_eq!(Tempo::from_parts(None, None), None);
+    }
+
+    #[test]
+    fn test_from_parts_marking_only() {
+        let tempo = Tempo::from_parts(Some("Allegro".to_string()), None);
+        assert_eq!(
+            tempo,
+            Some(Tempo {
+                marking: Some("Allegro".to_string()),
+                bpm: None,
+            })
+        );
+    }
+
+    #[test]
+    fn test_from_parts_bpm_only() {
+        let tempo = Tempo::from_parts(None, Some(120));
+        assert_eq!(
+            tempo,
+            Some(Tempo {
+                marking: None,
+                bpm: Some(120),
+            })
+        );
+    }
+
+    #[test]
+    fn test_from_parts_both_present() {
+        let tempo = Tempo::from_parts(Some("Andante".to_string()), Some(72));
+        assert_eq!(
+            tempo,
+            Some(Tempo {
+                marking: Some("Andante".to_string()),
+                bpm: Some(72),
+            })
+        );
+    }
 }

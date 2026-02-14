@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::{Exercise, ListQuery, Piece};
 
+/// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
 pub struct Model {
     pub pieces: Vec<Piece>,
@@ -10,14 +11,14 @@ pub struct Model {
     pub last_error: Option<String>,
 }
 
+/// Serializable view state sent to shells for rendering.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ViewModel {
     pub items: Vec<LibraryItemView>,
-    pub item_count: usize,
     pub error: Option<String>,
-    pub status: Option<String>,
 }
 
+/// Flattened representation of a piece or exercise for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct LibraryItemView {
     pub id: String,

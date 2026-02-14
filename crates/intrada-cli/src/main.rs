@@ -175,7 +175,7 @@ fn main() -> Result<()> {
                 tag,
             } => {
                 let title_for_msg = title.clone();
-                let tempo = build_tempo(tempo_marking, tempo_bpm);
+                let tempo = Tempo::from_parts(tempo_marking, tempo_bpm);
                 let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
                     title,
                     composer,
@@ -184,11 +184,7 @@ fn main() -> Result<()> {
                     notes,
                     tags: tag,
                 })))?;
-
-                if let Some(ref err) = vm.error {
-                    print_error(err);
-                    std::process::exit(1);
-                }
+                check_error(&vm);
 
                 if let Some(item) = vm.items.last() {
                     print_success(&format!("Added piece: {} ({})", title_for_msg, item.id));
@@ -205,7 +201,7 @@ fn main() -> Result<()> {
                 tag,
             } => {
                 let title_for_msg = title.clone();
-                let tempo = build_tempo(tempo_marking, tempo_bpm);
+                let tempo = Tempo::from_parts(tempo_marking, tempo_bpm);
                 let vm = shell.run(Event::Exercise(ExerciseEvent::Add(CreateExercise {
                     title,
                     composer,
@@ -215,11 +211,7 @@ fn main() -> Result<()> {
                     notes,
                     tags: tag,
                 })))?;
-
-                if let Some(ref err) = vm.error {
-                    print_error(err);
-                    std::process::exit(1);
-                }
+                check_error(&vm);
 
                 if let Some(item) = vm.items.last() {
                     print_success(&format!("Added exercise: {} ({})", title_for_msg, item.id));
@@ -268,12 +260,7 @@ fn main() -> Result<()> {
             tempo_bpm,
             notes,
         } => {
-            // Determine item type from current ViewModel
-            let item_type = vm
-                .items
-                .iter()
-                .find(|i| i.id == id)
-                .map(|i| i.item_type.as_str());
+            let item_type = resolve_item_type(&vm, &id);
 
             let tempo = if tempo_marking.is_some() || tempo_bpm.is_some() {
                 Some(Some(Tempo {
@@ -285,7 +272,7 @@ fn main() -> Result<()> {
             };
 
             let event = match item_type {
-                Some("piece") => Event::Piece(PieceEvent::Update {
+                "piece" => Event::Piece(PieceEvent::Update {
                     id: id.clone(),
                     input: UpdatePiece {
                         title,
@@ -296,7 +283,7 @@ fn main() -> Result<()> {
                         tags: None,
                     },
                 }),
-                Some("exercise") => Event::Exercise(ExerciseEvent::Update {
+                "exercise" => Event::Exercise(ExerciseEvent::Update {
                     id: id.clone(),
                     input: UpdateExercise {
                         title,
@@ -308,17 +295,11 @@ fn main() -> Result<()> {
                         tags: None,
                     },
                 }),
-                _ => {
-                    print_error(&format!("Item not found: {id}"));
-                    std::process::exit(1);
-                }
+                other => unreachable!("unexpected item type: {other}"),
             };
 
             let vm = shell.run(event)?;
-            if let Some(ref err) = vm.error {
-                print_error(err);
-                std::process::exit(1);
-            }
+            check_error(&vm);
             print_success("Item updated.");
         }
 
@@ -333,87 +314,53 @@ fn main() -> Result<()> {
                 }
             }
 
-            // Determine item type
-            let item_type = vm
-                .items
-                .iter()
-                .find(|i| i.id == id)
-                .map(|i| i.item_type.as_str());
-
+            let item_type = resolve_item_type(&vm, &id);
             let event = match item_type {
-                Some("piece") => Event::Piece(PieceEvent::Delete { id: id.clone() }),
-                Some("exercise") => Event::Exercise(ExerciseEvent::Delete { id: id.clone() }),
-                _ => {
-                    print_error(&format!("Item not found: {id}"));
-                    std::process::exit(1);
-                }
+                "piece" => Event::Piece(PieceEvent::Delete { id: id.clone() }),
+                "exercise" => Event::Exercise(ExerciseEvent::Delete { id: id.clone() }),
+                other => unreachable!("unexpected item type: {other}"),
             };
 
             let vm = shell.run(event)?;
-            if let Some(ref err) = vm.error {
-                print_error(err);
-                std::process::exit(1);
-            }
+            check_error(&vm);
             print_success("Item deleted.");
         }
 
         Commands::Tag { id, tags } => {
-            let item_type = vm
-                .items
-                .iter()
-                .find(|i| i.id == id)
-                .map(|i| i.item_type.as_str());
-
+            let item_type = resolve_item_type(&vm, &id);
             let event = match item_type {
-                Some("piece") => Event::Piece(PieceEvent::AddTags {
+                "piece" => Event::Piece(PieceEvent::AddTags {
                     id: id.clone(),
                     tags: tags.clone(),
                 }),
-                Some("exercise") => Event::Exercise(ExerciseEvent::AddTags {
+                "exercise" => Event::Exercise(ExerciseEvent::AddTags {
                     id: id.clone(),
                     tags: tags.clone(),
                 }),
-                _ => {
-                    print_error(&format!("Item not found: {id}"));
-                    std::process::exit(1);
-                }
+                other => unreachable!("unexpected item type: {other}"),
             };
 
             let vm = shell.run(event)?;
-            if let Some(ref err) = vm.error {
-                print_error(err);
-                std::process::exit(1);
-            }
+            check_error(&vm);
             print_success(&format!("Tags added: {}", tags.join(", ")));
         }
 
         Commands::Untag { id, tags } => {
-            let item_type = vm
-                .items
-                .iter()
-                .find(|i| i.id == id)
-                .map(|i| i.item_type.as_str());
-
+            let item_type = resolve_item_type(&vm, &id);
             let event = match item_type {
-                Some("piece") => Event::Piece(PieceEvent::RemoveTags {
+                "piece" => Event::Piece(PieceEvent::RemoveTags {
                     id: id.clone(),
                     tags: tags.clone(),
                 }),
-                Some("exercise") => Event::Exercise(ExerciseEvent::RemoveTags {
+                "exercise" => Event::Exercise(ExerciseEvent::RemoveTags {
                     id: id.clone(),
                     tags: tags.clone(),
                 }),
-                _ => {
-                    print_error(&format!("Item not found: {id}"));
-                    std::process::exit(1);
-                }
+                other => unreachable!("unexpected item type: {other}"),
             };
 
             let vm = shell.run(event)?;
-            if let Some(ref err) = vm.error {
-                print_error(err);
-                std::process::exit(1);
-            }
+            check_error(&vm);
             print_success(&format!("Tags removed: {}", tags.join(", ")));
         }
 
@@ -430,10 +377,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn build_tempo(marking: Option<String>, bpm: Option<u16>) -> Option<Tempo> {
-    if marking.is_some() || bpm.is_some() {
-        Some(Tempo { marking, bpm })
-    } else {
-        None
+/// Look up the item type ("piece" or "exercise") by ID in the current view model.
+/// Exits with an error message if the item is not found.
+fn resolve_item_type<'a>(vm: &'a intrada_core::ViewModel, id: &str) -> &'a str {
+    match vm.items.iter().find(|i| i.id == id) {
+        Some(item) => item.item_type.as_str(),
+        None => {
+            print_error(&format!("Item not found: {id}"));
+            std::process::exit(1);
+        }
+    }
+}
+
+/// If the view model contains an error, print it and exit.
+fn check_error(vm: &intrada_core::ViewModel) {
+    if let Some(ref err) = vm.error {
+        print_error(err);
+        std::process::exit(1);
     }
 }

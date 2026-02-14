@@ -6,10 +6,7 @@ use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::domain::exercise::ExerciseEvent;
-use intrada_core::domain::piece::PieceEvent;
-use intrada_core::domain::types::{UpdateExercise, UpdatePiece};
-use intrada_core::{Event, ViewModel};
+use intrada_core::{Event, ExerciseEvent, PieceEvent, UpdateExercise, UpdatePiece, ViewModel};
 
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField, TypeTabs,
@@ -17,10 +14,12 @@ use crate::components::{
 use crate::core_bridge::process_effects;
 use crate::helpers::{parse_tags, parse_tempo, parse_tempo_display};
 use crate::types::{ItemType, SharedCore};
-use crate::validation::validate_library_form;
+use crate::validation::{validate_library_form, FormData};
 
 #[component]
-pub fn EditLibraryItemForm(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+pub fn EditLibraryItemForm() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
     let params = use_params_map();
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
@@ -37,7 +36,7 @@ pub fn EditLibraryItemForm(view_model: RwSignal<ViewModel>, core: SharedCore) ->
             <div class="text-center py-8">
                 <p class="text-slate-600 mb-4">"Item not found."</p>
                 <A href="/" attr:class="text-indigo-600 hover:text-indigo-800 font-medium">
-                    "\u{2190} Back to Library"
+                    "← Back to Library"
                 </A>
             </div>
         }
@@ -103,13 +102,15 @@ pub fn EditLibraryItemForm(view_model: RwSignal<ViewModel>, core: SharedCore) ->
                             // Validate using unified function
                             let validation_errors = validate_library_form(
                                 item_type,
-                                &title.get(),
-                                &composer.get(),
-                                &category.get(),
-                                &notes.get(),
-                                &bpm.get(),
-                                &tempo_marking.get(),
-                                &tags_input.get(),
+                                &FormData {
+                                    title: &title.get(),
+                                    composer: &composer.get(),
+                                    category: &category.get(),
+                                    notes: &notes.get(),
+                                    bpm_str: &bpm.get(),
+                                    tempo_marking: &tempo_marking.get(),
+                                    tags_str: &tags_input.get(),
+                                },
                             );
 
                             if !validation_errors.is_empty() {

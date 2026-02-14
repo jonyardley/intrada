@@ -1,8 +1,7 @@
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
 
-use intrada_core::app::{Effect, StorageEffect};
-use intrada_core::{Event, Intrada, ViewModel};
+use intrada_core::{Effect, Event, Intrada, StorageEffect, ViewModel};
 
 use crate::data::create_stub_data;
 

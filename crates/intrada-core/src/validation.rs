@@ -1,6 +1,16 @@
 use crate::domain::types::{CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece};
 use crate::error::LibraryError;
 
+/// Validation limits shared across shells (web, CLI).
+pub const MAX_TITLE: usize = 500;
+pub const MAX_COMPOSER: usize = 200;
+pub const MAX_CATEGORY: usize = 100;
+pub const MAX_NOTES: usize = 5000;
+pub const MAX_TAG: usize = 100;
+pub const MAX_TEMPO_MARKING: usize = 100;
+pub const MIN_BPM: u16 = 1;
+pub const MAX_BPM: u16 = 400;
+
 pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
     if input.title.is_empty() {
         return Err(LibraryError::Validation {
@@ -8,10 +18,10 @@ pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
             message: "Title is required".to_string(),
         });
     }
-    if input.title.len() > 500 {
+    if input.title.len() > MAX_TITLE {
         return Err(LibraryError::Validation {
             field: "title".to_string(),
-            message: "Title must be between 1 and 500 characters".to_string(),
+            message: format!("Title must be between 1 and {MAX_TITLE} characters"),
         });
     }
     if input.composer.is_empty() {
@@ -20,17 +30,17 @@ pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
             message: "Composer is required".to_string(),
         });
     }
-    if input.composer.len() > 200 {
+    if input.composer.len() > MAX_COMPOSER {
         return Err(LibraryError::Validation {
             field: "composer".to_string(),
-            message: "Composer must be between 1 and 200 characters".to_string(),
+            message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
         });
     }
     if let Some(ref notes) = input.notes {
-        if notes.len() > 5000 {
+        if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
-                message: "Notes must not exceed 5000 characters".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
             });
         }
     }
@@ -48,33 +58,33 @@ pub fn validate_create_exercise(input: &CreateExercise) -> Result<(), LibraryErr
             message: "Title is required".to_string(),
         });
     }
-    if input.title.len() > 500 {
+    if input.title.len() > MAX_TITLE {
         return Err(LibraryError::Validation {
             field: "title".to_string(),
-            message: "Title must be between 1 and 500 characters".to_string(),
+            message: format!("Title must be between 1 and {MAX_TITLE} characters"),
         });
     }
     if let Some(ref composer) = input.composer {
-        if composer.is_empty() || composer.len() > 200 {
+        if composer.is_empty() || composer.len() > MAX_COMPOSER {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
-                message: "Composer must be between 1 and 200 characters".to_string(),
+                message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
             });
         }
     }
     if let Some(ref category) = input.category {
-        if category.is_empty() || category.len() > 100 {
+        if category.is_empty() || category.len() > MAX_CATEGORY {
             return Err(LibraryError::Validation {
                 field: "category".to_string(),
-                message: "Category must be between 1 and 100 characters".to_string(),
+                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
             });
         }
     }
     if let Some(ref notes) = input.notes {
-        if notes.len() > 5000 {
+        if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
-                message: "Notes must not exceed 5000 characters".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
             });
         }
     }
@@ -93,10 +103,10 @@ pub fn validate_update_piece(input: &UpdatePiece) -> Result<(), LibraryError> {
                 message: "Title is required".to_string(),
             });
         }
-        if title.len() > 500 {
+        if title.len() > MAX_TITLE {
             return Err(LibraryError::Validation {
                 field: "title".to_string(),
-                message: "Title must be between 1 and 500 characters".to_string(),
+                message: format!("Title must be between 1 and {MAX_TITLE} characters"),
             });
         }
     }
@@ -107,18 +117,18 @@ pub fn validate_update_piece(input: &UpdatePiece) -> Result<(), LibraryError> {
                 message: "Composer is required".to_string(),
             });
         }
-        if composer.len() > 200 {
+        if composer.len() > MAX_COMPOSER {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
-                message: "Composer must be between 1 and 200 characters".to_string(),
+                message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
             });
         }
     }
     if let Some(Some(ref notes)) = input.notes {
-        if notes.len() > 5000 {
+        if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
-                message: "Notes must not exceed 5000 characters".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
             });
         }
     }
@@ -139,34 +149,34 @@ pub fn validate_update_exercise(input: &UpdateExercise) -> Result<(), LibraryErr
                 message: "Title is required".to_string(),
             });
         }
-        if title.len() > 500 {
+        if title.len() > MAX_TITLE {
             return Err(LibraryError::Validation {
                 field: "title".to_string(),
-                message: "Title must be between 1 and 500 characters".to_string(),
+                message: format!("Title must be between 1 and {MAX_TITLE} characters"),
             });
         }
     }
     if let Some(Some(ref composer)) = input.composer {
-        if composer.is_empty() || composer.len() > 200 {
+        if composer.is_empty() || composer.len() > MAX_COMPOSER {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
-                message: "Composer must be between 1 and 200 characters".to_string(),
+                message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
             });
         }
     }
     if let Some(Some(ref category)) = input.category {
-        if category.is_empty() || category.len() > 100 {
+        if category.is_empty() || category.len() > MAX_CATEGORY {
             return Err(LibraryError::Validation {
                 field: "category".to_string(),
-                message: "Category must be between 1 and 100 characters".to_string(),
+                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
             });
         }
     }
     if let Some(Some(ref notes)) = input.notes {
-        if notes.len() > 5000 {
+        if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
-                message: "Notes must not exceed 5000 characters".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
             });
         }
     }
@@ -181,10 +191,10 @@ pub fn validate_update_exercise(input: &UpdateExercise) -> Result<(), LibraryErr
 
 pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
     for tag in tags {
-        if tag.is_empty() || tag.len() > 100 {
+        if tag.is_empty() || tag.len() > MAX_TAG {
             return Err(LibraryError::Validation {
                 field: "tags".to_string(),
-                message: "Each tag must be between 1 and 100 characters".to_string(),
+                message: format!("Each tag must be between 1 and {MAX_TAG} characters"),
             });
         }
     }
@@ -199,18 +209,18 @@ pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
         });
     }
     if let Some(ref marking) = tempo.marking {
-        if marking.len() > 100 {
+        if marking.len() > MAX_TEMPO_MARKING {
             return Err(LibraryError::Validation {
                 field: "tempo".to_string(),
-                message: "Tempo marking must not exceed 100 characters".to_string(),
+                message: format!("Tempo marking must not exceed {MAX_TEMPO_MARKING} characters"),
             });
         }
     }
     if let Some(bpm) = tempo.bpm {
-        if !(1..=400).contains(&bpm) {
+        if !(MIN_BPM..=MAX_BPM).contains(&bpm) {
             return Err(LibraryError::Validation {
                 field: "tempo".to_string(),
-                message: "BPM must be between 1 and 400".to_string(),
+                message: format!("BPM must be between {MIN_BPM} and {MAX_BPM}"),
             });
         }
     }

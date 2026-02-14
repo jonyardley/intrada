@@ -30,9 +30,10 @@ pub fn App() -> impl IntoView {
         process_effects(&core_ref, effects, &view_model);
     }
 
-    let core_clone2 = core.clone();
-    let core_clone3 = core.clone();
-    let core_clone4 = core.clone();
+    // Provide core and view_model via Leptos context so child components
+    // can access them with use_context() instead of prop drilling.
+    provide_context(core);
+    provide_context(view_model);
 
     view! {
         <Router>
@@ -44,28 +45,17 @@ pub fn App() -> impl IntoView {
                 <main class="max-w-4xl mx-auto px-6 py-10" role="main">
                     <Routes fallback=|| view! { <NotFoundView /> }>
                         <Route path=path!("/") view=move || view! {
-                            <LibraryListView
-                                view_model=view_model
-                            />
+                            <LibraryListView />
                         } />
                         // /library/new MUST come before /library/:id to avoid "new" matching :id
                         <Route path=path!("/library/new") view=move || view! {
-                            <AddLibraryItemForm
-                                view_model=view_model
-                                core=core_clone2.clone()
-                            />
+                            <AddLibraryItemForm />
                         } />
                         <Route path=path!("/library/:id") view=move || view! {
-                            <DetailView
-                                view_model=view_model
-                                core=core_clone3.clone()
-                            />
+                            <DetailView />
                         } />
                         <Route path=path!("/library/:id/edit") view=move || view! {
-                            <EditLibraryItemForm
-                                view_model=view_model
-                                core=core_clone4.clone()
-                            />
+                            <EditLibraryItemForm />
                         } />
                     </Routes>
                 </main>

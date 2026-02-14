@@ -1,113 +1,119 @@
 use std::collections::HashMap;
 
+use intrada_core::{
+    MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE, MIN_BPM,
+};
+
 use crate::helpers::parse_tags;
 use crate::types::ItemType;
 
+/// Bundles form field values so `validate_library_form` takes two arguments
+/// instead of eight.
+pub struct FormData<'a> {
+    pub title: &'a str,
+    pub composer: &'a str,
+    pub category: &'a str,
+    pub notes: &'a str,
+    pub bpm_str: &'a str,
+    pub tempo_marking: &'a str,
+    pub tags_str: &'a str,
+}
+
 /// Unified validation for the library item form.
-/// Applies validation rules based on `item_type`: Piece requires composer; Exercise does not.
-#[allow(clippy::too_many_arguments)]
-pub fn validate_library_form(
-    item_type: ItemType,
-    title: &str,
-    composer: &str,
-    category: &str,
-    notes: &str,
-    bpm_str: &str,
-    tempo_marking: &str,
-    tags_str: &str,
-) -> HashMap<String, String> {
+/// Uses limits exported by intrada-core so rules stay in sync.
+pub fn validate_library_form(item_type: ItemType, data: &FormData<'_>) -> HashMap<String, String> {
     let mut errors = HashMap::new();
 
-    // Title: required, 1-500 chars
-    let title = title.trim();
+    // Title: required, 1..=MAX_TITLE chars
+    let title = data.title.trim();
     if title.is_empty() {
         errors.insert("title".to_string(), "Title is required".to_string());
-    } else if title.len() > 500 {
+    } else if title.len() > MAX_TITLE {
         errors.insert(
             "title".to_string(),
-            "Title must be between 1 and 500 characters".to_string(),
+            format!("Title must be between 1 and {MAX_TITLE} characters"),
         );
     }
 
     // Composer: required for Piece, optional for Exercise
-    let composer = composer.trim();
+    let composer = data.composer.trim();
     match item_type {
         ItemType::Piece => {
             if composer.is_empty() {
                 errors.insert("composer".to_string(), "Composer is required".to_string());
-            } else if composer.len() > 200 {
+            } else if composer.len() > MAX_COMPOSER {
                 errors.insert(
                     "composer".to_string(),
-                    "Composer must be between 1 and 200 characters".to_string(),
+                    format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
                 );
             }
         }
         ItemType::Exercise => {
-            if !composer.is_empty() && composer.len() > 200 {
+            if !composer.is_empty() && composer.len() > MAX_COMPOSER {
                 errors.insert(
                     "composer".to_string(),
-                    "Composer must be between 1 and 200 characters".to_string(),
+                    format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
                 );
             }
         }
     }
 
-    // Category: only validated for Exercise, optional max 100
+    // Category: only validated for Exercise, optional max MAX_CATEGORY
     if item_type == ItemType::Exercise {
-        let category = category.trim();
-        if !category.is_empty() && category.len() > 100 {
+        let category = data.category.trim();
+        if !category.is_empty() && category.len() > MAX_CATEGORY {
             errors.insert(
                 "category".to_string(),
-                "Category must be between 1 and 100 characters".to_string(),
+                format!("Category must be between 1 and {MAX_CATEGORY} characters"),
             );
         }
     }
 
-    // Notes: optional, max 5000
-    let notes = notes.trim();
-    if !notes.is_empty() && notes.len() > 5000 {
+    // Notes: optional, max MAX_NOTES
+    let notes = data.notes.trim();
+    if !notes.is_empty() && notes.len() > MAX_NOTES {
         errors.insert(
             "notes".to_string(),
-            "Notes must not exceed 5000 characters".to_string(),
+            format!("Notes must not exceed {MAX_NOTES} characters"),
         );
     }
 
-    // BPM: optional, 1-400
-    let bpm_str = bpm_str.trim();
+    // BPM: optional, MIN_BPM..=MAX_BPM
+    let bpm_str = data.bpm_str.trim();
     if !bpm_str.is_empty() {
         match bpm_str.parse::<u16>() {
-            Ok(bpm_val) if !(1..=400).contains(&bpm_val) => {
+            Ok(bpm_val) if !(MIN_BPM..=MAX_BPM).contains(&bpm_val) => {
                 errors.insert(
                     "bpm".to_string(),
-                    "BPM must be between 1 and 400".to_string(),
+                    format!("BPM must be between {MIN_BPM} and {MAX_BPM}"),
                 );
             }
             Err(_) => {
                 errors.insert(
                     "bpm".to_string(),
-                    "BPM must be between 1 and 400".to_string(),
+                    format!("BPM must be between {MIN_BPM} and {MAX_BPM}"),
                 );
             }
             _ => {}
         }
     }
 
-    // Tempo marking: optional, max 100
-    let tempo_marking = tempo_marking.trim();
-    if !tempo_marking.is_empty() && tempo_marking.len() > 100 {
+    // Tempo marking: optional, max MAX_TEMPO_MARKING
+    let tempo_marking = data.tempo_marking.trim();
+    if !tempo_marking.is_empty() && tempo_marking.len() > MAX_TEMPO_MARKING {
         errors.insert(
             "tempo_marking".to_string(),
-            "Tempo marking must not exceed 100 characters".to_string(),
+            format!("Tempo marking must not exceed {MAX_TEMPO_MARKING} characters"),
         );
     }
 
-    // Tags: each 1-100 chars
-    let tags = parse_tags(tags_str);
+    // Tags: each 1..=MAX_TAG chars
+    let tags = parse_tags(data.tags_str);
     for tag in &tags {
-        if tag.len() > 100 {
+        if tag.len() > MAX_TAG {
             errors.insert(
                 "tags".to_string(),
-                "Each tag must be between 1 and 100 characters".to_string(),
+                format!("Each tag must be between 1 and {MAX_TAG} characters"),
             );
             break;
         }

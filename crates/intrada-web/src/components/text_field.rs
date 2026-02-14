@@ -16,9 +16,7 @@ pub fn TextField(
     errors: RwSignal<HashMap<String, String>>,
     #[prop(default = "text")] input_type: &'static str,
 ) -> impl IntoView {
-    // Build a static error element ID for aria-describedby linkage.
-    // We use a leaked &'static str since Leptos attribute values need 'static.
-    let error_id: &'static str = Box::leak(format!("{id}-error").into_boxed_str());
+    let error_id = format!("{id}-error");
     let has_error = move || errors.get().contains_key(field_name);
 
     view! {
@@ -33,10 +31,10 @@ pub fn TextField(
                 placeholder=placeholder.unwrap_or("")
                 bind:value=value
                 required=required
-                aria-describedby=error_id
+                aria-describedby=error_id.clone()
                 aria-invalid=move || if has_error() { "true" } else { "false" }
             />
-            <FormFieldError field=field_name.to_string() errors=errors error_id=error_id />
+            <FormFieldError field=field_name errors=errors error_id=error_id />
         </div>
     }
 }

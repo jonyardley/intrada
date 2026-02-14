@@ -8,9 +8,11 @@ use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
 use crate::domain::types::ListQuery;
 use crate::model::{LibraryItemView, Model, ViewModel};
 
+/// Root Crux application for the music practice library.
 #[derive(Default)]
 pub struct Intrada;
 
+/// All events the application can process.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Event {
     Piece(PieceEvent),
@@ -24,11 +26,13 @@ pub enum Event {
     SetQuery(Option<ListQuery>),
 }
 
+/// Side effects the core requests from shells.
 pub enum Effect {
     Render(Request<RenderOperation>),
     Storage(Box<Request<StorageEffect>>),
 }
 
+/// Storage operations handled by the shell (SQLite, IndexedDB, etc.).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum StorageEffect {
     LoadAll,
@@ -103,7 +107,11 @@ impl App for Intrada {
                 subtitle: piece.composer.clone(),
                 category: None,
                 key: piece.key.clone(),
-                tempo: format_tempo(&piece.tempo),
+                tempo: piece
+                    .tempo
+                    .as_ref()
+                    .map(|t| t.format_display())
+                    .filter(|s| !s.is_empty()),
                 notes: piece.notes.clone(),
                 tags: piece.tags.clone(),
                 created_at: piece.created_at.to_rfc3339(),
@@ -123,7 +131,11 @@ impl App for Intrada {
                     .unwrap_or_default(),
                 category: exercise.category.clone(),
                 key: exercise.key.clone(),
-                tempo: format_tempo(&exercise.tempo),
+                tempo: exercise
+                    .tempo
+                    .as_ref()
+                    .map(|t| t.format_display())
+                    .filter(|s| !s.is_empty()),
                 notes: exercise.notes.clone(),
                 tags: exercise.tags.clone(),
                 created_at: exercise.created_at.to_rfc3339(),
@@ -139,13 +151,9 @@ impl App for Intrada {
         // Sort by created_at descending (newest first)
         items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-        let item_count = items.len();
-
         ViewModel {
             items,
-            item_count,
             error: model.last_error.clone(),
-            status: None,
         }
     }
 }
@@ -212,16 +220,6 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
         .collect()
 }
 
-fn format_tempo(tempo: &Option<crate::domain::types::Tempo>) -> Option<String> {
-    let tempo = tempo.as_ref()?;
-    match (&tempo.marking, tempo.bpm) {
-        (Some(marking), Some(bpm)) => Some(format!("{marking} ({bpm} BPM)")),
-        (Some(marking), None) => Some(marking.clone()),
-        (None, Some(bpm)) => Some(format!("{bpm} BPM")),
-        (None, None) => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,8 +272,10 @@ mod tests {
     #[test]
     fn test_clear_error() {
         let app = Intrada;
-        let mut model = Model::default();
-        model.last_error = Some("some error".to_string());
+        let mut model = Model {
+            last_error: Some("some error".to_string()),
+            ..Default::default()
+        };
 
         let _cmd = app.update(Event::ClearError, &mut model);
 
@@ -289,7 +289,7 @@ mod tests {
         let vm = app.view(&model);
 
         assert!(vm.items.is_empty());
-        assert_eq!(vm.item_count, 0);
+        assert_eq!(vm.items.len(), 0);
         assert!(vm.error.is_none());
     }
 
@@ -329,7 +329,6 @@ mod tests {
 
         let vm = app.view(&model);
 
-        assert_eq!(vm.item_count, 2);
         assert_eq!(vm.items.len(), 2);
 
         // Check piece
@@ -394,7 +393,7 @@ mod tests {
 
         // No filter — both items
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 2);
+        assert_eq!(vm.items.len(), 2);
 
         // Filter to pieces only
         let _cmd = app.update(
@@ -405,13 +404,13 @@ mod tests {
             &mut model,
         );
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].item_type, "piece");
 
         // Clear filter
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 2);
+        assert_eq!(vm.items.len(), 2);
     }
 
     #[test]
@@ -449,7 +448,7 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Moonlight Sonata");
     }
 
@@ -490,7 +489,7 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "C Scale");
     }
 
@@ -529,7 +528,7 @@ mod tests {
         });
 
         let vm = app.view(&model);
-        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Sonata");
     }
 
@@ -638,7 +637,7 @@ mod tests {
         let start = std::time::Instant::now();
         let vm = app.view(&model);
         let view_time = start.elapsed();
-        assert_eq!(vm.item_count, 10_000);
+        assert_eq!(vm.items.len(), 10_000);
         assert!(
             view_time.as_millis() < 200,
             "view() with 10k items took {}ms (target: <200ms)",
@@ -686,28 +685,39 @@ mod tests {
     }
 
     #[test]
-    fn test_format_tempo() {
-        assert_eq!(format_tempo(&None), None);
-        assert_eq!(
-            format_tempo(&Some(crate::domain::types::Tempo {
-                marking: Some("Adagio".to_string()),
-                bpm: None
-            })),
-            Some("Adagio".to_string())
-        );
-        assert_eq!(
-            format_tempo(&Some(crate::domain::types::Tempo {
-                marking: None,
-                bpm: Some(120)
-            })),
-            Some("120 BPM".to_string())
-        );
-        assert_eq!(
-            format_tempo(&Some(crate::domain::types::Tempo {
-                marking: Some("Allegro".to_string()),
-                bpm: Some(132)
-            })),
-            Some("Allegro (132 BPM)".to_string())
-        );
+    fn test_tempo_format_display() {
+        use crate::domain::types::Tempo;
+
+        // None tempo — map returns None
+        let none_tempo: Option<Tempo> = None;
+        assert_eq!(none_tempo.as_ref().map(|t| t.format_display()), None);
+
+        // Both None — empty string
+        let tempo = Tempo {
+            marking: None,
+            bpm: None,
+        };
+        assert_eq!(tempo.format_display(), "");
+
+        // Marking only
+        let tempo = Tempo {
+            marking: Some("Adagio".to_string()),
+            bpm: None,
+        };
+        assert_eq!(tempo.format_display(), "Adagio");
+
+        // BPM only
+        let tempo = Tempo {
+            marking: None,
+            bpm: Some(120),
+        };
+        assert_eq!(tempo.format_display(), "120 BPM");
+
+        // Both
+        let tempo = Tempo {
+            marking: Some("Allegro".to_string()),
+            bpm: Some(132),
+        };
+        assert_eq!(tempo.format_display(), "Allegro (132 BPM)");
     }
 }
