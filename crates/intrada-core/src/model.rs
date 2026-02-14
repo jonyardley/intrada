@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{Exercise, Piece};
+use crate::domain::{Exercise, ListQuery, Piece};
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Model {
     pub pieces: Vec<Piece>,
     pub exercises: Vec<Exercise>,
+    pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
 }
 
@@ -23,6 +24,7 @@ pub struct LibraryItemView {
     pub item_type: String,
     pub title: String,
     pub subtitle: String,
+    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<String>,
     pub notes: Option<String>,

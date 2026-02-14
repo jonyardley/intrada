@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::exercise::{handle_exercise_event, Exercise, ExerciseEvent};
 use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
+use crate::domain::types::ListQuery;
 use crate::model::{LibraryItemView, Model, ViewModel};
 
 #[derive(Default)]
@@ -20,6 +21,7 @@ pub enum Event {
     },
     LoadFailed(String),
     ClearError,
+    SetQuery(Option<ListQuery>),
 }
 
 pub enum Effect {
@@ -83,6 +85,10 @@ impl App for Intrada {
                 model.last_error = None;
                 crux_core::render::render()
             }
+            Event::SetQuery(query) => {
+                model.active_query = query;
+                crux_core::render::render()
+            }
         }
     }
 
@@ -95,6 +101,7 @@ impl App for Intrada {
                 item_type: "piece".to_string(),
                 title: piece.title.clone(),
                 subtitle: piece.composer.clone(),
+                category: None,
                 key: piece.key.clone(),
                 tempo: format_tempo(&piece.tempo),
                 notes: piece.notes.clone(),
@@ -109,7 +116,12 @@ impl App for Intrada {
                 id: exercise.id.clone(),
                 item_type: "exercise".to_string(),
                 title: exercise.title.clone(),
-                subtitle: exercise.category.clone().or_else(|| exercise.composer.clone()).unwrap_or_default(),
+                subtitle: exercise
+                    .category
+                    .clone()
+                    .or_else(|| exercise.composer.clone())
+                    .unwrap_or_default(),
+                category: exercise.category.clone(),
                 key: exercise.key.clone(),
                 tempo: format_tempo(&exercise.tempo),
                 notes: exercise.notes.clone(),
@@ -117,6 +129,11 @@ impl App for Intrada {
                 created_at: exercise.created_at.to_rfc3339(),
                 updated_at: exercise.updated_at.to_rfc3339(),
             });
+        }
+
+        // Apply active query filter
+        if let Some(ref query) = model.active_query {
+            items = apply_query_filter(items, query);
         }
 
         // Sort by created_at descending (newest first)
@@ -131,6 +148,68 @@ impl App for Intrada {
             status: None,
         }
     }
+}
+
+fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
+    items
+        .into_iter()
+        .filter(|item| {
+            // Filter by item type
+            if let Some(ref item_type) = query.item_type {
+                if item.item_type != *item_type {
+                    return false;
+                }
+            }
+
+            // Filter by key
+            if let Some(ref key) = query.key {
+                if item.key.as_deref() != Some(key.as_str()) {
+                    return false;
+                }
+            }
+
+            // Filter by category (exercises only)
+            if let Some(ref category) = query.category {
+                if item.category.as_deref() != Some(category.as_str()) {
+                    return false;
+                }
+            }
+
+            // Filter by tags (all must match, case-insensitive)
+            if let Some(ref tags) = query.tags {
+                for tag in tags {
+                    let tag_lower = tag.to_lowercase();
+                    if !item.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
+                        return false;
+                    }
+                }
+            }
+
+            // Filter by text search (case-insensitive substring match)
+            if let Some(ref text) = query.text {
+                let text_lower = text.to_lowercase();
+                let matches = item.title.to_lowercase().contains(&text_lower)
+                    || item.subtitle.to_lowercase().contains(&text_lower)
+                    || item
+                        .notes
+                        .as_ref()
+                        .is_some_and(|n| n.to_lowercase().contains(&text_lower))
+                    || item
+                        .tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&text_lower))
+                    || item
+                        .category
+                        .as_ref()
+                        .is_some_and(|c| c.to_lowercase().contains(&text_lower));
+                if !matches {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .collect()
 }
 
 fn format_tempo(tempo: &Option<crate::domain::types::Tempo>) -> Option<String> {
@@ -245,7 +324,7 @@ mod tests {
                 created_at: now,
                 updated_at: now,
             }],
-            last_error: None,
+            ..Default::default()
         };
 
         let vm = app.view(&model);
@@ -266,19 +345,161 @@ mod tests {
         assert_eq!(ex_view.item_type, "exercise");
         assert_eq!(ex_view.title, "Scales");
         assert_eq!(ex_view.subtitle, "Technique");
+        assert_eq!(ex_view.category, Some("Technique".to_string()));
     }
 
     #[test]
     fn test_view_shows_error() {
         let app = Intrada;
         let model = Model {
-            pieces: vec![],
-            exercises: vec![],
             last_error: Some("Something went wrong".to_string()),
+            ..Default::default()
         };
 
         let vm = app.view(&model);
         assert_eq!(vm.error, Some("Something went wrong".to_string()));
+    }
+
+    // --- Query filtering in core ---
+
+    #[test]
+    fn test_set_query_filters_by_type() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+        model.exercises.push(Exercise {
+            id: "e1".to_string(),
+            title: "Scales".to_string(),
+            composer: None, category: Some("Technique".to_string()),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+
+        // No filter — both items
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 2);
+
+        // Filter to pieces only
+        let _cmd = app.update(
+            Event::SetQuery(Some(ListQuery {
+                item_type: Some("piece".to_string()),
+                ..Default::default()
+            })),
+            &mut model,
+        );
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items[0].item_type, "piece");
+
+        // Clear filter
+        let _cmd = app.update(Event::SetQuery(None), &mut model);
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 2);
+    }
+
+    #[test]
+    fn test_set_query_filters_by_text() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Moonlight Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+        model.pieces.push(Piece {
+            id: "p2".to_string(),
+            title: "Clair de Lune".to_string(),
+            composer: "Debussy".to_string(),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+
+        model.active_query = Some(ListQuery {
+            text: Some("beethoven".to_string()),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items[0].title, "Moonlight Sonata");
+    }
+
+    #[test]
+    fn test_set_query_filters_by_category() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+
+        model.exercises.push(Exercise {
+            id: "e1".to_string(),
+            title: "C Scale".to_string(),
+            composer: Some("Hanon".to_string()),
+            category: Some("Scales".to_string()),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+        model.exercises.push(Exercise {
+            id: "e2".to_string(),
+            title: "Chord Inversions".to_string(),
+            composer: None,
+            category: Some("Chords".to_string()),
+            key: None, tempo: None, notes: None, tags: vec![],
+            created_at: now, updated_at: now,
+        });
+
+        model.active_query = Some(ListQuery {
+            category: Some("Scales".to_string()),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items[0].title, "C Scale");
+    }
+
+    #[test]
+    fn test_set_query_filters_by_tags() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let now = chrono::Utc::now();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None, tempo: None, notes: None,
+            tags: vec!["classical".to_string(), "piano".to_string()],
+            created_at: now, updated_at: now,
+        });
+        model.pieces.push(Piece {
+            id: "p2".to_string(),
+            title: "Etude".to_string(),
+            composer: "Chopin".to_string(),
+            key: None, tempo: None, notes: None,
+            tags: vec!["romantic".to_string(), "piano".to_string()],
+            created_at: now, updated_at: now,
+        });
+
+        model.active_query = Some(ListQuery {
+            tags: Some(vec!["classical".to_string()]),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert_eq!(vm.item_count, 1);
+        assert_eq!(vm.items[0].title, "Sonata");
     }
 
     // --- T042: Unicode handling in core ---
@@ -307,7 +528,10 @@ mod tests {
         assert_eq!(model.pieces[0].title, "Ménuet en Sol");
         assert_eq!(model.pieces[0].composer, "Dvořák");
         assert_eq!(model.pieces[0].key, Some("ré mineur".to_string()));
-        assert_eq!(model.pieces[0].notes, Some("Pièce très jolie — «superbe»".to_string()));
+        assert_eq!(
+            model.pieces[0].notes,
+            Some("Pièce très jolie — «superbe»".to_string())
+        );
         assert_eq!(model.pieces[0].tags, vec!["日本語タグ".to_string()]);
 
         // Verify ViewModel preserves Unicode
@@ -331,7 +555,11 @@ mod tests {
                 id: format!("p{i:05}"),
                 title: format!("Piece {i}"),
                 composer: format!("Composer {}", i % 100),
-                key: if i % 3 == 0 { Some("C Major".to_string()) } else { None },
+                key: if i % 3 == 0 {
+                    Some("C Major".to_string())
+                } else {
+                    None
+                },
                 tempo: if i % 5 == 0 {
                     Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
@@ -340,7 +568,11 @@ mod tests {
                 } else {
                     None
                 },
-                notes: if i % 7 == 0 { Some(format!("Notes for piece {i}")) } else { None },
+                notes: if i % 7 == 0 {
+                    Some(format!("Notes for piece {i}"))
+                } else {
+                    None
+                },
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
@@ -352,7 +584,11 @@ mod tests {
                 title: format!("Exercise {i}"),
                 composer: None,
                 category: Some(format!("Category {}", i % 20)),
-                key: if i % 4 == 0 { Some("G Major".to_string()) } else { None },
+                key: if i % 4 == 0 {
+                    Some("G Major".to_string())
+                } else {
+                    None
+                },
                 tempo: None,
                 notes: None,
                 tags: vec![format!("etag{}", i % 10)],

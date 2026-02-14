@@ -9,14 +9,18 @@ Auto-generated from all feature plans. Last updated: 2026-02-08
 ## Project Structure
 
 ```text
-src/
-tests/
+crates/
+  intrada-core/   # Pure Crux core (no I/O)
+  intrada-cli/    # CLI shell (SQLite + terminal)
+specs/            # SpecKit design artifacts
 ```
 
 ## Commands
 
+```bash
 cargo test
 cargo clippy
+```
 
 ## Code Style
 

@@ -7,18 +7,6 @@ pub struct Tempo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum LibraryItem {
-    Piece(super::piece::Piece),
-    Exercise(super::exercise::Exercise),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-pub enum ItemType {
-    Piece,
-    Exercise,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct CreatePiece {
     pub title: String,
     pub composer: String,
@@ -62,9 +50,9 @@ pub struct UpdateExercise {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ListQuery {
-    pub search: Option<String>,
-    pub item_type: Option<ItemType>,
+    pub text: Option<String>,
+    pub item_type: Option<String>,
     pub key: Option<String>,
     pub category: Option<String>,
-    pub tags: Vec<String>,
+    pub tags: Option<Vec<String>>,
 }

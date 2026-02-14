@@ -7,14 +7,11 @@ use clap::{Parser, Subcommand};
 use intrada_core::domain::exercise::ExerciseEvent;
 use intrada_core::domain::piece::PieceEvent;
 use intrada_core::domain::types::{
-    CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece,
+    CreateExercise, CreatePiece, ListQuery, Tempo, UpdateExercise, UpdatePiece,
 };
 use intrada_core::Event;
 
-use crate::display::{
-    print_error, print_filtered_list, print_item_detail, print_item_list, print_search_results,
-    print_success,
-};
+use crate::display::{print_error, print_item_detail, print_item_list, print_success};
 use crate::shell::Shell;
 use crate::storage::SqliteStore;
 
@@ -177,6 +174,7 @@ fn main() -> Result<()> {
                 notes,
                 tag,
             } => {
+                let title_for_msg = title.clone();
                 let tempo = build_tempo(tempo_marking, tempo_bpm);
                 let vm = shell.run(Event::Piece(PieceEvent::Add(CreatePiece {
                     title,
@@ -192,8 +190,8 @@ fn main() -> Result<()> {
                     std::process::exit(1);
                 }
 
-                if let Some(item) = vm.items.first() {
-                    print_success(&format!("Added piece: {} ({})", item.title, item.id));
+                if let Some(item) = vm.items.last() {
+                    print_success(&format!("Added piece: {} ({})", title_for_msg, item.id));
                 }
             }
             AddCommands::Exercise {
@@ -206,6 +204,7 @@ fn main() -> Result<()> {
                 notes,
                 tag,
             } => {
+                let title_for_msg = title.clone();
                 let tempo = build_tempo(tempo_marking, tempo_bpm);
                 let vm = shell.run(Event::Exercise(ExerciseEvent::Add(CreateExercise {
                     title,
@@ -222,8 +221,8 @@ fn main() -> Result<()> {
                     std::process::exit(1);
                 }
 
-                if let Some(item) = vm.items.first() {
-                    print_success(&format!("Added exercise: {} ({})", item.title, item.id));
+                if let Some(item) = vm.items.last() {
+                    print_success(&format!("Added exercise: {} ({})", title_for_msg, item.id));
                 }
             }
         },
@@ -234,28 +233,31 @@ fn main() -> Result<()> {
             category,
             tag,
         } => {
-            if r#type.is_none() && key.is_none() && category.is_none() && tag.is_empty() {
+            let has_filters =
+                r#type.is_some() || key.is_some() || category.is_some() || !tag.is_empty();
+
+            if has_filters {
+                let tags = if tag.is_empty() { None } else { Some(tag) };
+                let vm = shell.run(Event::SetQuery(Some(ListQuery {
+                    text: None,
+                    item_type: r#type,
+                    key,
+                    category,
+                    tags,
+                })))?;
                 print_item_list(&vm);
             } else {
-                print_filtered_list(
-                    &vm,
-                    r#type.as_deref(),
-                    key.as_deref(),
-                    category.as_deref(),
-                    &tag,
-                );
+                print_item_list(&vm);
             }
         }
 
-        Commands::Show { id } => {
-            match vm.items.iter().find(|item| item.id == id) {
-                Some(item) => print_item_detail(item),
-                None => {
-                    print_error(&format!("Item not found: {id}"));
-                    std::process::exit(1);
-                }
+        Commands::Show { id } => match vm.items.iter().find(|item| item.id == id) {
+            Some(item) => print_item_detail(item),
+            None => {
+                print_error(&format!("Item not found: {id}"));
+                std::process::exit(1);
             }
-        }
+        },
 
         Commands::Edit {
             id,
@@ -267,7 +269,11 @@ fn main() -> Result<()> {
             notes,
         } => {
             // Determine item type from current ViewModel
-            let item_type = vm.items.iter().find(|i| i.id == id).map(|i| i.item_type.as_str());
+            let item_type = vm
+                .items
+                .iter()
+                .find(|i| i.id == id)
+                .map(|i| i.item_type.as_str());
 
             let tempo = if tempo_marking.is_some() || tempo_bpm.is_some() {
                 Some(Some(Tempo {
@@ -328,7 +334,11 @@ fn main() -> Result<()> {
             }
 
             // Determine item type
-            let item_type = vm.items.iter().find(|i| i.id == id).map(|i| i.item_type.as_str());
+            let item_type = vm
+                .items
+                .iter()
+                .find(|i| i.id == id)
+                .map(|i| i.item_type.as_str());
 
             let event = match item_type {
                 Some("piece") => Event::Piece(PieceEvent::Delete { id: id.clone() }),
@@ -348,7 +358,11 @@ fn main() -> Result<()> {
         }
 
         Commands::Tag { id, tags } => {
-            let item_type = vm.items.iter().find(|i| i.id == id).map(|i| i.item_type.as_str());
+            let item_type = vm
+                .items
+                .iter()
+                .find(|i| i.id == id)
+                .map(|i| i.item_type.as_str());
 
             let event = match item_type {
                 Some("piece") => Event::Piece(PieceEvent::AddTags {
@@ -374,7 +388,11 @@ fn main() -> Result<()> {
         }
 
         Commands::Untag { id, tags } => {
-            let item_type = vm.items.iter().find(|i| i.id == id).map(|i| i.item_type.as_str());
+            let item_type = vm
+                .items
+                .iter()
+                .find(|i| i.id == id)
+                .map(|i| i.item_type.as_str());
 
             let event = match item_type {
                 Some("piece") => Event::Piece(PieceEvent::RemoveTags {
@@ -400,7 +418,12 @@ fn main() -> Result<()> {
         }
 
         Commands::Search { query, r#type } => {
-            print_search_results(&vm, &query, r#type.as_deref());
+            let vm = shell.run(Event::SetQuery(Some(ListQuery {
+                text: Some(query),
+                item_type: r#type,
+                ..Default::default()
+            })))?;
+            print_item_list(&vm);
         }
     }
 

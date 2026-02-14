@@ -20,57 +20,16 @@ pub fn print_item_list(vm: &ViewModel) {
     println!("\n{} item(s)", vm.item_count);
 }
 
-pub fn print_filtered_list(vm: &ViewModel, type_filter: Option<&str>, key_filter: Option<&str>, category_filter: Option<&str>, tag_filters: &[String]) {
-    if let Some(ref err) = vm.error {
-        print_error(err);
-        return;
-    }
-
-    let filtered: Vec<&LibraryItemView> = vm.items.iter().filter(|item| {
-        if let Some(t) = type_filter {
-            if item.item_type != t {
-                return false;
-            }
-        }
-        if let Some(k) = key_filter {
-            if item.key.as_deref() != Some(k) {
-                return false;
-            }
-        }
-        if let Some(cat) = category_filter {
-            if item.item_type != "exercise" || item.subtitle != cat {
-                return false;
-            }
-        }
-        for tag in tag_filters {
-            let tag_lower = tag.to_lowercase();
-            if !item.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
-                return false;
-            }
-        }
-        true
-    }).collect();
-
-    if filtered.is_empty() {
-        println!("No matching items.");
-        return;
-    }
-
-    print_table_header();
-
-    for item in &filtered {
-        print_table_row(item);
-    }
-
-    println!("\n{} item(s)", filtered.len());
-}
-
 pub fn print_item_detail(item: &LibraryItemView) {
     println!("ID:       {}", item.id);
     println!("Type:     {}", item.item_type);
     println!("Title:    {}", item.title);
     if !item.subtitle.is_empty() {
-        let label = if item.item_type == "exercise" { "Category" } else { "Composer" };
+        let label = if item.category.is_some() {
+            "Category"
+        } else {
+            "Composer"
+        };
         println!("{label}:  {}", item.subtitle);
     }
     if let Some(ref key) = item.key {
@@ -87,35 +46,6 @@ pub fn print_item_detail(item: &LibraryItemView) {
     }
     println!("Created:  {}", item.created_at);
     println!("Updated:  {}", item.updated_at);
-}
-
-pub fn print_search_results(vm: &ViewModel, query: &str, type_filter: Option<&str>) {
-    let query_lower = query.to_lowercase();
-
-    let filtered: Vec<&LibraryItemView> = vm.items.iter().filter(|item| {
-        if let Some(t) = type_filter {
-            if item.item_type != t {
-                return false;
-            }
-        }
-        item.title.to_lowercase().contains(&query_lower)
-            || item.subtitle.to_lowercase().contains(&query_lower)
-            || item.notes.as_ref().is_some_and(|n| n.to_lowercase().contains(&query_lower))
-            || item.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
-    }).collect();
-
-    if filtered.is_empty() {
-        println!("No items matching \"{query}\".");
-        return;
-    }
-
-    print_table_header();
-
-    for item in &filtered {
-        print_table_row(item);
-    }
-
-    println!("\n{} result(s)", filtered.len());
 }
 
 pub fn print_error(msg: &str) {
@@ -135,11 +65,7 @@ fn print_table_header() {
 }
 
 fn print_table_row(item: &LibraryItemView) {
-    let id_short = if item.id.len() > 26 {
-        &item.id[..26]
-    } else {
-        &item.id
-    };
+    let id_short = truncate(&item.id, 26);
     let title_display = truncate(&item.title, 28);
     let subtitle_display = truncate(&item.subtitle, 18);
     let key_display = item.key.as_deref().unwrap_or("");
@@ -151,9 +77,36 @@ fn print_table_row(item: &LibraryItemView) {
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() > max {
-        format!("{}...", &s[..max.saturating_sub(3)])
+    let char_count = s.chars().count();
+    if char_count > max {
+        let truncated: String = s.chars().take(max.saturating_sub(3)).collect();
+        format!("{truncated}...")
     } else {
         s.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_truncate_ascii() {
+        assert_eq!(truncate("hello", 10), "hello");
+        assert_eq!(truncate("hello world!", 8), "hello...");
+    }
+
+    #[test]
+    fn test_truncate_unicode() {
+        // Dvořák — the 'ř' is multi-byte in UTF-8
+        assert_eq!(truncate("Dvořák", 10), "Dvořák");
+        // Japanese characters are multi-byte
+        assert_eq!(truncate("日本語タグテスト", 5), "日本...");
+    }
+
+    #[test]
+    fn test_truncate_exact_boundary() {
+        assert_eq!(truncate("12345", 5), "12345");
+        assert_eq!(truncate("123456", 5), "12...");
     }
 }

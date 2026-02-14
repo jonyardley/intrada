@@ -1,7 +1,7 @@
 # Library API Contract: Music Library
 
 **Feature Branch**: `001-music-library`
-**Date**: 2026-02-08
+**Date**: 2026-02-14
 
 This defines the public API of the `intrada-core` Crux App — the contract between the pure core and any shell (CLI, iOS, web). The core processes Events and returns Commands containing Effects. Shells fulfil Effects and resolve them back as Events.
 
@@ -20,6 +20,9 @@ pub enum Event {
     // Data lifecycle
     DataLoaded { pieces: Vec<Piece>, exercises: Vec<Exercise> },
     LoadFailed(String),
+
+    // Query / filtering
+    SetQuery(Option<ListQuery>),
 
     // Error handling
     ClearError,
@@ -64,10 +67,12 @@ pub enum ExerciseEvent {
 
 ### Effect Enum
 
+Effect variants carry `Request<Op>`, not `Op` directly. The shell matches on them but does not call `core.resolve()` for `notify_shell` effects (which have `RequestHandle::Never`).
+
 ```rust
 pub enum Effect {
-    Render(RenderOperation),
-    Storage(StorageEffect),
+    Render(Request<RenderOperation>),
+    Storage(Box<Request<StorageEffect>>),
 }
 ```
 
@@ -98,19 +103,23 @@ pub enum StorageEffect {
 | `ExerciseEvent::Update { id, input }` | Validates, updates exercise | `Storage(UpdateExercise(exercise))` + `Render` |
 | `ExerciseEvent::Delete { id }` | Removes exercise | `Storage(DeleteItem { id })` + `Render` |
 | `DataLoaded { pieces, exercises }` | Sets `model.pieces` and `model.exercises` | `Render` |
+| `SetQuery(Some(query))` | Sets `model.active_query` — `view()` applies it | `Render` |
+| `SetQuery(None)` | Clears `model.active_query` — `view()` returns all items | `Render` |
 | `ClearError` | Clears `model.last_error` | `Render` |
 
 **Validation errors**: When validation fails, the event handler sets `model.last_error` to a descriptive message and returns only `Render` (no Storage effect). The ViewModel exposes the error for the shell to display.
 
 ## ListQuery
 
+Used by `Event::SetQuery` to filter items in `view()`. All fields are optional — only set fields are applied as AND filters.
+
 ```rust
 pub struct ListQuery {
-    pub text: Option<String>,
-    pub item_type: Option<String>,
-    pub key: Option<String>,
-    pub category: Option<String>,
-    pub tags: Option<Vec<String>>,
+    pub text: Option<String>,           // Case-insensitive substring match across title, subtitle, notes, tags, category
+    pub item_type: Option<String>,      // "piece" or "exercise"
+    pub key: Option<String>,            // Exact match on key
+    pub category: Option<String>,       // Exact match on exercise category
+    pub tags: Option<Vec<String>>,      // All tags must match (case-insensitive)
 }
 ```
 
@@ -127,12 +136,14 @@ pub struct Model {
 
 ## ViewModel
 
+Computed in `view()` from Model. When `model.active_query` is set, items are filtered before being returned. Items are sorted by `created_at` descending (newest first).
+
 ```rust
 pub struct ViewModel {
-    pub items: Vec<LibraryItemView>,       // All items, filtered/sorted
-    pub item_count: usize,                 // Total items in library
+    pub items: Vec<LibraryItemView>,       // Filtered/sorted items
+    pub item_count: usize,                 // Number of items after filtering
     pub error: Option<String>,             // Current error message
-    pub status: Option<String>,            // Status message (e.g. "Piece added")
+    pub status: Option<String>,            // Status message (reserved for future use)
 }
 ```
 
@@ -143,12 +154,13 @@ pub struct LibraryItemView {
     pub id: String,
     pub item_type: String,                 // "piece" or "exercise"
     pub title: String,
-    pub subtitle: String,                  // Composer (piece) or Category (exercise)
+    pub subtitle: String,                  // Composer (piece) or Category/Composer fallback (exercise)
+    pub category: Option<String>,          // Exercise category (None for pieces)
     pub key: Option<String>,
     pub tempo: Option<String>,             // Formatted: "Allegro (132 BPM)"
     pub notes: Option<String>,
     pub tags: Vec<String>,
-    pub created_at: String,                // Formatted timestamp
+    pub created_at: String,                // RFC 3339 timestamp
     pub updated_at: String,
 }
 ```
@@ -178,23 +190,25 @@ Note: `StorageError` is no longer in the core — storage errors are shell-side.
 |-------------|-----------|---------|
 | `intrada add piece` | `Event::Piece(PieceEvent::Add(..))` | `intrada add piece "Clair de Lune" --composer "Debussy"` |
 | `intrada add exercise` | `Event::Exercise(ExerciseEvent::Add(..))` | `intrada add exercise "C Major Scale" --category "Scales"` |
-| `intrada list` | Shell reads `ViewModel.items` (loads data first via `DataLoaded`) | `intrada list --type exercise` |
-| `intrada show <id>` | Shell reads `ViewModel.items` and filters by ID | `intrada show 01HYX...` |
+| `intrada list` | Reads `ViewModel.items` (no filters → no `SetQuery` needed) | `intrada list` |
+| `intrada list --type piece` | `Event::SetQuery(Some(ListQuery { item_type: Some("piece"), .. }))` | `intrada list --type piece --tag baroque` |
+| `intrada show <id>` | Shell reads `ViewModel.items` and finds by ID | `intrada show 01HYX...` |
 | `intrada edit <id>` | `Event::Piece(PieceEvent::Update { .. })` or `Event::Exercise(ExerciseEvent::Update { .. })` | `intrada edit 01HYX... --title "New"` |
 | `intrada delete <id>` | `Event::Piece(PieceEvent::Delete { .. })` or `Event::Exercise(ExerciseEvent::Delete { .. })` | `intrada delete 01HYX...` |
 | `intrada tag <id>` | `Event::Piece(PieceEvent::AddTags { .. })` or `Event::Exercise(ExerciseEvent::AddTags { .. })` | `intrada tag 01HYX... "exam"` |
 | `intrada untag <id>` | `Event::Piece(PieceEvent::RemoveTags { .. })` or `Event::Exercise(ExerciseEvent::RemoveTags { .. })` | `intrada untag 01HYX... "exam"` |
-| `intrada search` | Shell applies search/filter to `ViewModel.items` | `intrada search "beethoven"` |
+| `intrada search` | `Event::SetQuery(Some(ListQuery { text: Some(query), .. }))` | `intrada search "beethoven"` |
 
 ### Shell Flow (CLI)
 
 1. Shell starts, loads data from SQLite
 2. Shell sends `Event::DataLoaded { pieces, exercises }` to core
 3. Shell parses CLI args, constructs the appropriate Event
-4. Shell calls `core.update(event)`, receives `Command<Effect, Event>`
-5. Shell processes Effects:
+4. For list/search with filters: shell sends `Event::SetQuery(Some(query))`, reads filtered ViewModel
+5. Shell calls `core.update(event)`, receives `Command<Effect, Event>`
+6. Shell processes Effects:
    - `Render` → read ViewModel, print to terminal
-   - `Storage(op)` → execute against SQLite, resolve with response Event
-6. Shell exits
+   - `Storage(op)` → execute against SQLite (fire-and-forget, no resolve)
+7. Shell exits
 
-For list/show/search: the shell can filter `ViewModel.items` client-side (no Event needed for read-only operations once data is loaded).
+Filtering and search logic lives entirely in the core's `view()` method via `model.active_query`. The shell never filters `ViewModel.items` — it only sends the appropriate `SetQuery` event and displays whatever `view()` returns.
