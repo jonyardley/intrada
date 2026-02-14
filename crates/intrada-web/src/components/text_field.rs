@@ -18,8 +18,7 @@ pub fn TextField(
 ) -> impl IntoView {
     // Build a static error element ID for aria-describedby linkage.
     // We use a leaked &'static str since Leptos attribute values need 'static.
-    let error_id: &'static str =
-        Box::leak(format!("{id}-error").into_boxed_str());
+    let error_id: &'static str = Box::leak(format!("{id}-error").into_boxed_str());
     let has_error = move || errors.get().contains_key(field_name);
 
     view! {

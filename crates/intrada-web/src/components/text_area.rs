@@ -15,8 +15,7 @@ pub fn TextArea(
     errors: RwSignal<HashMap<String, String>>,
 ) -> impl IntoView {
     let rows_str = rows.to_string();
-    let error_id: &'static str =
-        Box::leak(format!("{id}-error").into_boxed_str());
+    let error_id: &'static str = Box::leak(format!("{id}-error").into_boxed_str());
     let has_error = move || errors.get().contains_key(field_name);
 
     view! {
