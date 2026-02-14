@@ -4,9 +4,7 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::hooks::use_params_map;
 use leptos_router::NavigateOptions;
 
-use intrada_core::domain::exercise::ExerciseEvent;
-use intrada_core::domain::piece::PieceEvent;
-use intrada_core::{Event, ViewModel};
+use intrada_core::{Event, ExerciseEvent, PieceEvent, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
 use crate::core_bridge::process_effects;

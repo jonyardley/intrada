@@ -6,10 +6,7 @@ use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::domain::exercise::ExerciseEvent;
-use intrada_core::domain::piece::PieceEvent;
-use intrada_core::domain::types::{UpdateExercise, UpdatePiece};
-use intrada_core::{Event, ViewModel};
+use intrada_core::{Event, ExerciseEvent, PieceEvent, UpdateExercise, UpdatePiece, ViewModel};
 
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField, TypeTabs,

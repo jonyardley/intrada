@@ -107,7 +107,11 @@ impl App for Intrada {
                 subtitle: piece.composer.clone(),
                 category: None,
                 key: piece.key.clone(),
-                tempo: piece.tempo.as_ref().and_then(|t| t.format_display()),
+                tempo: piece
+                    .tempo
+                    .as_ref()
+                    .map(|t| t.format_display())
+                    .filter(|s| !s.is_empty()),
                 notes: piece.notes.clone(),
                 tags: piece.tags.clone(),
                 created_at: piece.created_at.to_rfc3339(),
@@ -127,7 +131,11 @@ impl App for Intrada {
                     .unwrap_or_default(),
                 category: exercise.category.clone(),
                 key: exercise.key.clone(),
-                tempo: exercise.tempo.as_ref().and_then(|t| t.format_display()),
+                tempo: exercise
+                    .tempo
+                    .as_ref()
+                    .map(|t| t.format_display())
+                    .filter(|s| !s.is_empty()),
                 notes: exercise.notes.clone(),
                 tags: exercise.tags.clone(),
                 created_at: exercise.created_at.to_rfc3339(),
@@ -680,32 +688,36 @@ mod tests {
     fn test_tempo_format_display() {
         use crate::domain::types::Tempo;
 
-        // None tempo
+        // None tempo — map returns None
         let none_tempo: Option<Tempo> = None;
-        assert_eq!(none_tempo.as_ref().and_then(|t| t.format_display()), None);
+        assert_eq!(none_tempo.as_ref().map(|t| t.format_display()), None);
+
+        // Both None — empty string
+        let tempo = Tempo {
+            marking: None,
+            bpm: None,
+        };
+        assert_eq!(tempo.format_display(), "");
 
         // Marking only
         let tempo = Tempo {
             marking: Some("Adagio".to_string()),
             bpm: None,
         };
-        assert_eq!(tempo.format_display(), Some("Adagio".to_string()));
+        assert_eq!(tempo.format_display(), "Adagio");
 
         // BPM only
         let tempo = Tempo {
             marking: None,
             bpm: Some(120),
         };
-        assert_eq!(tempo.format_display(), Some("120 BPM".to_string()));
+        assert_eq!(tempo.format_display(), "120 BPM");
 
         // Both
         let tempo = Tempo {
             marking: Some("Allegro".to_string()),
             bpm: Some(132),
         };
-        assert_eq!(
-            tempo.format_display(),
-            Some("Allegro (132 BPM)".to_string())
-        );
+        assert_eq!(tempo.format_display(), "Allegro (132 BPM)");
     }
 }

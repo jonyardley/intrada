@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use leptos::prelude::*;
 
@@ -9,9 +10,10 @@ pub fn FormFieldError(
     errors: RwSignal<HashMap<String, String>>,
     #[prop(default = String::new())] error_id: String,
 ) -> impl IntoView {
+    let error_id: Arc<str> = error_id.into();
     view! {
         {move || {
-            let eid = error_id.clone();
+            let eid = String::from(&*error_id);
             errors.get().get(field).cloned().map(|msg| {
                 view! {
                     <p id=eid class="mt-1 text-sm text-red-600" role="alert">{msg}</p>

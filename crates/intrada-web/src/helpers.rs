@@ -1,4 +1,4 @@
-use intrada_core::domain::types::Tempo;
+use intrada_core::Tempo;
 
 /// Parse comma-separated tags string into Vec<String>.
 /// Trims whitespace, filters empty entries.

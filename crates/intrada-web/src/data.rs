@@ -1,7 +1,5 @@
 use chrono::Utc;
-use intrada_core::domain::exercise::Exercise;
-use intrada_core::domain::piece::Piece;
-use intrada_core::domain::types::Tempo;
+use intrada_core::{Exercise, Piece, Tempo};
 
 /// Create the stub data per data-model.md
 pub fn create_stub_data() -> (Vec<Piece>, Vec<Exercise>) {
