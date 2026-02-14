@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 intrada-core = { path = "../intrada-core" }
 crux_core = { workspace = true }
-leptos = { version = "0.7", features = ["csr"] }
+leptos = { version = "0.8", features = ["csr"] }
 console_error_panic_hook = "0.1"
 wasm-bindgen = "0.2"
 chrono = { workspace = true }
