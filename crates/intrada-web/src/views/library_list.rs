@@ -1,5 +1,5 @@
-use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::components::A;
 
 use intrada_core::domain::piece::PieceEvent;
 use intrada_core::domain::types::CreatePiece;
@@ -8,12 +8,11 @@ use intrada_core::{Event, ViewModel};
 use crate::components::{Button, ButtonVariant, LibraryItemCard};
 use crate::core_bridge::process_effects;
 use crate::data::SAMPLE_PIECES;
-use crate::types::{SharedCore, ViewState};
+use crate::types::SharedCore;
 
 #[component]
 pub fn LibraryListView(
     view_model: RwSignal<ViewModel>,
-    view_state: RwSignal<ViewState>,
     core: SharedCore,
     sample_counter: RwSignal<usize>,
 ) -> impl IntoView {
@@ -79,24 +78,12 @@ pub fn LibraryListView(
                             if show_add_menu.get() {
                                 Some(view! {
                                     <div class="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg border border-slate-200 z-10">
-                                        <button
-                                            class="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-t-lg"
-                                            on:click=move |_| {
-                                                show_add_menu.set(false);
-                                                view_state.set(ViewState::AddPiece);
-                                            }
-                                        >
+                                        <A href="/pieces/new" attr:class="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-t-lg">
                                             "Piece"
-                                        </button>
-                                        <button
-                                            class="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-b-lg"
-                                            on:click=move |_| {
-                                                show_add_menu.set(false);
-                                                view_state.set(ViewState::AddExercise);
-                                            }
-                                        >
+                                        </A>
+                                        <A href="/exercises/new" attr:class="block w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-b-lg">
                                             "Exercise"
-                                        </button>
+                                        </A>
                                     </div>
                                 })
                             } else {
@@ -147,15 +134,8 @@ pub fn LibraryListView(
                         view! {
                             <ul class="space-y-3" role="list" aria-label="Library items">
                                 {vm.items.into_iter().map(|item| {
-                                    let item_id = item.id.clone();
-                                    let vs = view_state;
                                     view! {
-                                        <LibraryItemCard
-                                            item=item
-                                            on_click=move |_: ev::MouseEvent| {
-                                                vs.set(ViewState::Detail(item_id.clone()));
-                                            }
-                                        />
+                                        <LibraryItemCard item=item />
                                     }
                                 }).collect::<Vec<_>>()}
                             </ul>

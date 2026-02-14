@@ -2,6 +2,9 @@ use std::collections::HashMap;
 
 use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::components::A;
+use leptos_router::hooks::{use_navigate, use_params_map};
+use leptos_router::NavigateOptions;
 
 use intrada_core::domain::exercise::ExerciseEvent;
 use intrada_core::domain::types::UpdateExercise;
@@ -10,16 +13,15 @@ use intrada_core::{Event, ViewModel};
 use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField};
 use crate::core_bridge::process_effects;
 use crate::helpers::{parse_tags, parse_tempo, parse_tempo_display};
-use crate::types::{SharedCore, ViewState};
+use crate::types::SharedCore;
 use crate::validation::validate_exercise_form;
 
 #[component]
-pub fn EditExerciseForm(
-    id: String,
-    view_model: RwSignal<ViewModel>,
-    view_state: RwSignal<ViewState>,
-    core: SharedCore,
-) -> impl IntoView {
+pub fn EditExerciseForm(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+    let params = use_params_map();
+    let id = params.read().get("id").unwrap_or_default();
+    let navigate = use_navigate();
+
     let item = view_model
         .get_untracked()
         .items
@@ -27,11 +29,19 @@ pub fn EditExerciseForm(
         .find(|i| i.id == id);
 
     let Some(item) = item else {
-        view_state.set(ViewState::List);
-        return view! { <p>"Item not found."</p> }.into_any();
+        return view! {
+            <div class="text-center py-8">
+                <p class="text-slate-600 mb-4">"Item not found."</p>
+                <A href="/" attr:class="text-indigo-600 hover:text-indigo-800 font-medium">
+                    "\u{2190} Back to Library"
+                </A>
+            </div>
+        }
+        .into_any();
     };
 
     let item_id = item.id.clone();
+    let back_href = format!("/library/{}", item_id);
 
     // For exercises: subtitle = category.or(composer), so we read category and need
     // to figure out composer. We use the category field directly from ViewModel.
@@ -62,12 +72,11 @@ pub fn EditExerciseForm(
     let tags_input = RwSignal::new(item.tags.join(", "));
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
+    let cancel_href = back_href.clone();
+
     view! {
         <div>
-            <BackLink label="Cancel" on_click={
-                let id_back = item_id.clone();
-                Callback::new(move |_| { view_state.set(ViewState::Detail(id_back.clone())); })
-            } />
+            <BackLink label="Cancel" href=back_href />
 
             <PageHeading text="Edit Exercise" />
 
@@ -139,7 +148,8 @@ pub fn EditExerciseForm(
                         let core_ref = core.borrow();
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model);
-                        view_state.set(ViewState::Detail(item_id.clone()));
+                        let detail_url = format!("/library/{}", item_id);
+                        navigate(&detail_url, NavigateOptions { replace: true, ..Default::default() });
                     }
                 }
             >
@@ -171,8 +181,11 @@ pub fn EditExerciseForm(
                 <div class="flex gap-3 pt-2">
                     <Button variant=ButtonVariant::Primary button_type="submit">"Save"</Button>
                     <Button variant=ButtonVariant::Secondary on_click={
-                        let id_cancel = item_id.clone();
-                        Callback::new(move |_| { view_state.set(ViewState::Detail(id_cancel.clone())); })
+                        let cancel_href = cancel_href.clone();
+                        Callback::new(move |_| {
+                            let navigate = use_navigate();
+                            navigate(&cancel_href, NavigateOptions::default());
+                        })
                     }>"Cancel"</Button>
                 </div>
             </form>

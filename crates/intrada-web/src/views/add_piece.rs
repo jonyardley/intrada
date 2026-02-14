@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::hooks::use_navigate;
+use leptos_router::NavigateOptions;
 
 use intrada_core::domain::piece::PieceEvent;
 use intrada_core::domain::types::CreatePiece;
@@ -10,15 +12,13 @@ use intrada_core::{Event, ViewModel};
 use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField};
 use crate::core_bridge::process_effects;
 use crate::helpers::{parse_tags, parse_tempo};
-use crate::types::{SharedCore, ViewState};
+use crate::types::SharedCore;
 use crate::validation::validate_piece_form;
 
 #[component]
-pub fn AddPieceForm(
-    view_model: RwSignal<ViewModel>,
-    view_state: RwSignal<ViewState>,
-    core: SharedCore,
-) -> impl IntoView {
+pub fn AddPieceForm(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+    let navigate = use_navigate();
+
     let title = RwSignal::new(String::new());
     let composer = RwSignal::new(String::new());
     let key_sig = RwSignal::new(String::new());
@@ -30,7 +30,7 @@ pub fn AddPieceForm(
 
     view! {
         <div>
-            <BackLink label="Cancel" on_click=Callback::new(move |_| { view_state.set(ViewState::List); }) />
+            <BackLink label="Cancel" href="/".to_string() />
 
             <PageHeading text="Add Piece" />
 
@@ -80,7 +80,7 @@ pub fn AddPieceForm(
                     let core_ref = core.borrow();
                     let effects = core_ref.process_event(event);
                     process_effects(&core_ref, effects, &view_model);
-                    view_state.set(ViewState::List);
+                    navigate("/", NavigateOptions { replace: true, ..Default::default() });
                 }
             >
                 // Title (required)
@@ -107,7 +107,10 @@ pub fn AddPieceForm(
                 // Buttons
                 <div class="flex gap-3 pt-2">
                     <Button variant=ButtonVariant::Primary button_type="submit">"Save"</Button>
-                    <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| { view_state.set(ViewState::List); })>"Cancel"</Button>
+                    <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                        let navigate = use_navigate();
+                        navigate("/", NavigateOptions::default());
+                    })>"Cancel"</Button>
                 </div>
             </form>
             </Card>
