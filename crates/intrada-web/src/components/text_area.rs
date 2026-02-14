@@ -27,8 +27,7 @@ pub fn TextArea(
                 id=id
                 rows=rows_str
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                prop:value=move || value.get()
-                on:input=move |ev| { value.set(event_target_value(&ev)); }
+                bind:value=value
                 aria-describedby=error_id
                 aria-invalid=move || if has_error() { "true" } else { "false" }
             />

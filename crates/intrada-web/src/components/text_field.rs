@@ -31,8 +31,7 @@ pub fn TextField(
                 type=input_type
                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 placeholder=placeholder.unwrap_or("")
-                prop:value=move || value.get()
-                on:input=move |ev| { value.set(event_target_value(&ev)); }
+                bind:value=value
                 required=required
                 aria-describedby=error_id
                 aria-invalid=move || if has_error() { "true" } else { "false" }
