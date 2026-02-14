@@ -7,6 +7,7 @@ use send_wrapper::SendWrapper;
 
 use intrada_core::{Event, Intrada, ViewModel};
 
+use crate::components::{AppFooter, AppHeader};
 use crate::core_bridge::process_effects;
 use crate::data::create_stub_data;
 use crate::types::{SharedCore, ViewState};
@@ -34,20 +35,7 @@ pub fn App() -> impl IntoView {
     view! {
         <div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800">
             // Header
-            <header class="bg-white shadow-sm border-b border-slate-200" role="banner">
-                <div class="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
-                    <div>
-                        <h1 class="text-3xl font-bold tracking-tight text-slate-900">"Intrada"</h1>
-                        <p class="text-sm text-slate-500 mt-0.5">"Your music practice companion"</p>
-                    </div>
-                    <span
-                        class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
-                        aria-label="Application version"
-                    >
-                        "v0.1.0"
-                    </span>
-                </div>
-            </header>
+            <AppHeader />
 
             // Main content — routed by ViewState
             <main class="max-w-4xl mx-auto px-6 py-10" role="main">
@@ -118,11 +106,7 @@ pub fn App() -> impl IntoView {
             </main>
 
             // Footer
-            <footer class="max-w-4xl mx-auto px-6 py-6 border-t border-slate-200" role="contentinfo">
-                <p class="text-xs text-slate-400 text-center">
-                    "Built with Rust, Leptos & Crux \u{2014} Page reload resets to stub data"
-                </p>
-            </footer>
+            <AppFooter />
         </div>
     }
 }
