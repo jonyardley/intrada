@@ -1,4 +1,8 @@
 use leptos::prelude::*;
+use leptos_router::components::A;
+use leptos_router::hooks::use_navigate;
+use leptos_router::hooks::use_params_map;
+use leptos_router::NavigateOptions;
 
 use intrada_core::domain::exercise::ExerciseEvent;
 use intrada_core::domain::piece::PieceEvent;
@@ -6,15 +10,14 @@ use intrada_core::{Event, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
 use crate::core_bridge::process_effects;
-use crate::types::{SharedCore, ViewState};
+use crate::types::SharedCore;
 
 #[component]
-pub fn DetailView(
-    id: String,
-    view_model: RwSignal<ViewModel>,
-    view_state: RwSignal<ViewState>,
-    core: SharedCore,
-) -> impl IntoView {
+pub fn DetailView(view_model: RwSignal<ViewModel>, core: SharedCore) -> impl IntoView {
+    let params = use_params_map();
+    let id = params.read().get("id").unwrap_or_default();
+    let navigate = use_navigate();
+
     let show_delete_confirm = RwSignal::new(false);
 
     // Find the item in the current ViewModel
@@ -25,9 +28,16 @@ pub fn DetailView(
         .find(|i| i.id == id);
 
     let Some(item) = item else {
-        // Item not found — navigate back to list (handles deleted-item edge case)
-        view_state.set(ViewState::List);
-        return view! { <p>"Item not found."</p> }.into_any();
+        // Item not found — show message with link back to list
+        return view! {
+            <div class="text-center py-8">
+                <p class="text-slate-600 mb-4">"Item not found."</p>
+                <A href="/" attr:class="text-indigo-600 hover:text-indigo-800 font-medium">
+                    "\u{2190} Back to Library"
+                </A>
+            </div>
+        }
+        .into_any();
     };
 
     let item_id = item.id.clone();
@@ -51,10 +61,17 @@ pub fn DetailView(
     let type_for_badge = item_type.clone();
     let type_for_delete = item_type;
 
+    // Build edit href based on item type
+    let edit_href = if type_for_edit == "piece" {
+        format!("/pieces/{}/edit", id_for_edit)
+    } else {
+        format!("/exercises/{}/edit", id_for_edit)
+    };
+
     view! {
         <div>
-            // Back button
-            <BackLink label="Back to Library" on_click=Callback::new(move |_| { view_state.set(ViewState::List); }) />
+            // Back link
+            <BackLink label="Back to Library" href="/".to_string() />
 
             // Delete confirmation banner (FR-011)
             {move || {
@@ -62,6 +79,7 @@ pub fn DetailView(
                     let id_del = id_for_delete.clone();
                     let core_del = core.clone();
                     let item_type_del = type_for_delete.clone();
+                    let navigate_del = navigate.clone();
                     Some(view! {
                         <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4" role="alert">
                             <p class="text-sm text-red-800 mb-3">
@@ -77,7 +95,7 @@ pub fn DetailView(
                                         let core_ref = core_del.borrow();
                                         let effects = core_ref.process_event(event);
                                         process_effects(&core_ref, effects, &view_model);
-                                        view_state.set(ViewState::List);
+                                        navigate_del("/", NavigateOptions { replace: true, ..Default::default() });
                                     })>
                                     "Confirm Delete"
                                 </Button>
@@ -180,15 +198,9 @@ pub fn DetailView(
 
             // Action buttons (FR-009, FR-011)
             <div class="mt-6 flex gap-3">
-                <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                        if type_for_edit == "piece" {
-                            view_state.set(ViewState::EditPiece(id_for_edit.clone()));
-                        } else {
-                            view_state.set(ViewState::EditExercise(id_for_edit.clone()));
-                        }
-                    })>
+                <A href=edit_href attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
                     "Edit"
-                </Button>
+                </A>
                 <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| { show_delete_confirm.set(true); })>
                     "Delete"
                 </Button>
