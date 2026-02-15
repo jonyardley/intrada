@@ -1,4 +1,6 @@
-use crate::domain::types::{CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece};
+use crate::domain::types::{
+    CreateExercise, CreatePiece, LogSession, Tempo, UpdateExercise, UpdatePiece, UpdateSession,
+};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
@@ -10,6 +12,8 @@ pub const MAX_TAG: usize = 100;
 pub const MAX_TEMPO_MARKING: usize = 100;
 pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
+pub const MIN_DURATION: u32 = 1;
+pub const MAX_DURATION: u32 = 1440;
 
 pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
     if input.title.is_empty() {
@@ -185,6 +189,52 @@ pub fn validate_update_exercise(input: &UpdateExercise) -> Result<(), LibraryErr
     }
     if let Some(Some(ref tempo)) = input.tempo {
         validate_tempo(tempo)?;
+    }
+    Ok(())
+}
+
+pub fn validate_log_session(input: &LogSession) -> Result<(), LibraryError> {
+    if input.item_id.is_empty() {
+        return Err(LibraryError::Validation {
+            field: "item_id".to_string(),
+            message: "Item ID is required".to_string(),
+        });
+    }
+    if input.duration_minutes < MIN_DURATION || input.duration_minutes > MAX_DURATION {
+        return Err(LibraryError::Validation {
+            field: "duration_minutes".to_string(),
+            message: format!("Duration must be between {MIN_DURATION} and {MAX_DURATION} minutes"),
+        });
+    }
+    if let Some(ref notes) = input.notes {
+        if notes.len() > MAX_NOTES {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_update_session(input: &UpdateSession) -> Result<(), LibraryError> {
+    if let Some(duration_minutes) = input.duration_minutes {
+        if !(MIN_DURATION..=MAX_DURATION).contains(&duration_minutes) {
+            return Err(LibraryError::Validation {
+                field: "duration_minutes".to_string(),
+                message: format!(
+                    "Duration must be between {MIN_DURATION} and {MAX_DURATION} minutes"
+                ),
+            });
+        }
+    }
+    if let Some(Some(ref notes)) = input.notes {
+        if notes.len() > MAX_NOTES {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: format!("Notes must not exceed {MAX_NOTES} characters"),
+            });
+        }
     }
     Ok(())
 }

@@ -1,4 +1,4 @@
-use intrada_core::{LibraryItemView, ViewModel};
+use intrada_core::{LibraryItemView, SessionView, ViewModel};
 
 pub fn print_item_list(vm: &ViewModel) {
     if let Some(ref err) = vm.error {
@@ -51,6 +51,67 @@ pub fn print_item_detail(item: &LibraryItemView) {
     }
     println!("Created:  {}", item.created_at);
     println!("Updated:  {}", item.updated_at);
+
+    if let Some(ref practice) = item.practice {
+        println!();
+        println!(
+            "Practice: {} session{}, {} min total",
+            practice.session_count,
+            if practice.session_count == 1 { "" } else { "s" },
+            practice.total_minutes
+        );
+    }
+}
+
+pub fn print_session_logged(duration: u32, item_id: &str) {
+    println!("Logged {duration} min practice session for item {item_id}");
+}
+
+pub fn print_session_detail(session: &SessionView) {
+    println!("Session:  {}", session.id);
+    println!("Item:     {} ({})", session.item_title, session.item_type);
+    println!("Duration: {} min", session.duration_minutes);
+    println!("Started:  {}", session.started_at);
+    println!("Logged:   {}", session.logged_at);
+    if let Some(ref notes) = session.notes {
+        println!("Notes:    {notes}");
+    }
+}
+
+pub fn print_session_list(sessions: &[&SessionView]) {
+    if sessions.is_empty() {
+        println!("No practice sessions found.");
+        return;
+    }
+
+    println!(
+        "{:<28} {:<24} {:<8} {:<24} NOTES",
+        "SESSION ID", "ITEM", "MINS", "DATE"
+    );
+    println!("{}", "-".repeat(100));
+
+    for session in sessions {
+        let id_short = truncate(&session.id, 26);
+        let item_display = truncate(&session.item_title, 22);
+        let date_display = truncate(&session.logged_at, 22);
+        let notes_preview = session
+            .notes
+            .as_deref()
+            .map(|n| truncate(n, 20))
+            .unwrap_or_default();
+
+        println!(
+            "{:<28} {:<24} {:<8} {:<24} {}",
+            id_short, item_display, session.duration_minutes, date_display, notes_preview
+        );
+    }
+
+    let count = sessions.len();
+    if count == 1 {
+        println!("\n1 session");
+    } else {
+        println!("\n{count} sessions");
+    }
 }
 
 pub fn print_error(msg: &str) {

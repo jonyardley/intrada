@@ -3,10 +3,12 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use intrada_core::domain::exercise::Exercise;
 use intrada_core::domain::piece::Piece;
-use intrada_core::LibraryData;
+use intrada_core::domain::session::Session;
+use intrada_core::{LibraryData, SessionsData};
 
 pub struct JsonStore {
     path: PathBuf,
+    sessions_path: PathBuf,
 }
 
 impl JsonStore {
@@ -19,12 +21,17 @@ impl JsonStore {
 
         Ok(Self {
             path: data_dir.join("library.json"),
+            sessions_path: data_dir.join("sessions.json"),
         })
     }
 
     #[cfg(test)]
     pub fn new_with_path(path: PathBuf) -> Self {
-        Self { path }
+        let sessions_path = path.with_file_name("sessions.json");
+        Self {
+            path,
+            sessions_path,
+        }
     }
 
     pub fn load_all(&self) -> Result<(Vec<Piece>, Vec<Exercise>)> {
@@ -74,6 +81,70 @@ impl JsonStore {
         data.pieces.retain(|p| p.id != id);
         data.exercises.retain(|e| e.id != id);
         self.write_library(&data)
+    }
+
+    pub fn load_sessions(&self) -> Result<Vec<Session>> {
+        if !self.sessions_path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let contents = std::fs::read_to_string(&self.sessions_path)
+            .with_context(|| format!("Could not read {}", self.sessions_path.display()))?;
+
+        let data: SessionsData = serde_json::from_str(&contents)
+            .with_context(|| format!("Invalid JSON in {}", self.sessions_path.display()))?;
+
+        Ok(data.sessions)
+    }
+
+    pub fn save_session(&self, session: &Session) -> Result<()> {
+        let mut data = self.read_sessions()?;
+        data.sessions.push(session.clone());
+        self.write_sessions(&data)
+    }
+
+    pub fn update_session(&self, session: &Session) -> Result<()> {
+        let mut data = self.read_sessions()?;
+        if let Some(existing) = data.sessions.iter_mut().find(|s| s.id == session.id) {
+            *existing = session.clone();
+        }
+        self.write_sessions(&data)
+    }
+
+    pub fn delete_session(&self, id: &str) -> Result<()> {
+        let mut data = self.read_sessions()?;
+        data.sessions.retain(|s| s.id != id);
+        self.write_sessions(&data)
+    }
+
+    fn read_sessions(&self) -> Result<SessionsData> {
+        if !self.sessions_path.exists() {
+            return Ok(SessionsData::default());
+        }
+        let contents = std::fs::read_to_string(&self.sessions_path)
+            .with_context(|| format!("Could not read {}", self.sessions_path.display()))?;
+        serde_json::from_str(&contents)
+            .with_context(|| format!("Invalid JSON in {}", self.sessions_path.display()))
+    }
+
+    fn write_sessions(&self, data: &SessionsData) -> Result<()> {
+        let json = serde_json::to_string_pretty(data)?;
+
+        let dir = self
+            .sessions_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."));
+        let tmp_path = dir.join(".sessions.json.tmp");
+        std::fs::write(&tmp_path, &json)
+            .with_context(|| format!("Could not write temp file: {}", tmp_path.display()))?;
+        std::fs::rename(&tmp_path, &self.sessions_path).with_context(|| {
+            format!(
+                "Could not rename temp file to {}",
+                self.sessions_path.display()
+            )
+        })?;
+
+        Ok(())
     }
 
     fn read_library(&self) -> Result<LibraryData> {

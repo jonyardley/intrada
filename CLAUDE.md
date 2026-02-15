@@ -16,6 +16,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-08
 - Rust stable (1.75+, 2021 edition) + leptos 0.7 (CSR), leptos_router 0.8, crux_core 0.17.0-rc2 (workspace), send_wrapper 0.6, tailwindcss v4 (standalone CLI), trunk 0.21.x (009-unified-library-form)
 - Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2, serde_json 1, web-sys (with Storage+Window features), dirs 5 (011-json-persistence)
 - JSON files (CLI: `~/.local/share/intrada/library.json`), localStorage (web: `intrada:library` key) (011-json-persistence)
+- Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2, serde/serde_json 1, ulid, chrono, clap 4.5 (CLI), leptos 0.8.x (web), web-sys with Storage+Window features (web) (012-practice-sessions)
+- JSON files (CLI: `~/.local/share/intrada/sessions.json`), localStorage (web: `intrada:sessions` key) (012-practice-sessions)
 
 - Rust stable (1.75+, 2021 edition) + rusqlite (bundled), clap 4.5 (derive), ulid, serde, thiserror, anyhow, chrono (001-music-library)
 
@@ -40,9 +42,9 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 012-practice-sessions: Added Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2, serde/serde_json 1, ulid, chrono, clap 4.5 (CLI), leptos 0.8.x (web), web-sys with Storage+Window features (web)
 - 011-json-persistence: Added Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2, serde_json 1, web-sys (with Storage+Window features), dirs 5
 - 011-json-persistence: Added Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2, serde_json 1, web-sys (with Storage+Window features), dirs 5
-- 009-unified-library-form: Added Rust stable (1.75+, 2021 edition) + leptos 0.7 (CSR), leptos_router 0.8, crux_core 0.17.0-rc2 (workspace), send_wrapper 0.6, tailwindcss v4 (standalone CLI), trunk 0.21.x
 
 
 <!-- MANUAL ADDITIONS START -->
