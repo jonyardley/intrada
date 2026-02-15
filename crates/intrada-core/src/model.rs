@@ -127,7 +127,10 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
 
 /// Build views from an `ActiveSession`.
 pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
-    let current = &active.entries[active.current_index];
+    let safe_index = active
+        .current_index
+        .min(active.entries.len().saturating_sub(1));
+    let current = &active.entries[safe_index];
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
         current_item_type: current.item_type.clone(),

@@ -27,11 +27,8 @@ test.describe("detail view", () => {
     await expect(page.getByText("impressionist")).toBeVisible();
     await expect(page.getByText("piano")).toBeVisible();
 
-    // Action buttons
+    // Action buttons (Edit and Delete — "Log Session" removed in setlist model)
     await expect(page.getByRole("link", { name: "Edit" })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Log Session" })
-    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Delete" })
     ).toBeVisible();
@@ -77,35 +74,5 @@ test.describe("detail view", () => {
       .getByRole("list", { name: "Library items" })
       .locator("li");
     await expect(items).toHaveCount(1);
-  });
-
-  test("log a manual practice session", async ({ page }) => {
-    await page.goto("/");
-
-    // Navigate to Clair de Lune
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
-
-    // No sessions yet
-    await expect(page.getByText("No practice sessions logged")).toBeVisible();
-
-    // Open log session form
-    await page.getByRole("button", { name: "Log Session" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Log Practice Session" })
-    ).toBeVisible();
-
-    // Fill in and submit
-    await page.locator("#log-duration").fill("25");
-    await page.locator("#log-notes").fill("Focused on the arpeggios");
-    await page.getByRole("button", { name: "Save" }).click();
-
-    // Session should appear in history
-    await expect(page.getByText("25 min")).toBeVisible();
-    await expect(page.getByText("Focused on the arpeggios")).toBeVisible();
-
-    // Practice summary updates on re-navigation (detail view captures item at mount)
-    await page.getByRole("link", { name: "Back to Library" }).click();
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
-    await expect(page.getByText("1 session, 25 min total")).toBeVisible();
   });
 });

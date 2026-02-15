@@ -308,7 +308,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             let SessionStatus::Building(ref mut building) = model.session_status else {
-                unreachable!()
+                model.last_error = Some("Internal error: expected Building state".to_string());
+                return crux_core::render::render();
             };
             let position = building.entries.len();
             let entry = create_entry(&item_id, &title, &item_type, position);
@@ -397,7 +398,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             if new_position >= building.entries.len() {
                 model.last_error = Some(format!(
                     "Invalid position: {new_position} (max: {})",
-                    building.entries.len() - 1
+                    building.entries.len().saturating_sub(1)
                 ));
                 return crux_core::render::render();
             }
@@ -530,7 +531,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             let SessionStatus::Active(ref mut active) = model.session_status else {
-                unreachable!()
+                model.last_error = Some("Internal error: expected Active state".to_string());
+                return crux_core::render::render();
             };
             let position = active.entries.len();
             let entry = create_entry(&item_id, &title, &item_type, position);

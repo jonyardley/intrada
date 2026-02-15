@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use leptos_router::components::A;
 
 use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
 
@@ -24,11 +25,21 @@ pub fn SessionsListView() -> impl IntoView {
                         <div class="text-center py-12">
                             <p class="text-slate-500">"No practice sessions recorded yet."</p>
                             <p class="text-sm text-slate-400 mt-2">"Start a practice session to begin tracking your progress."</p>
+                            <div class="mt-6">
+                                <A href="/sessions/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+                                    "New Session"
+                                </A>
+                            </div>
                         </div>
                     }.into_any()
                 } else {
                     let core = core.clone();
                     view! {
+                        <div class="mb-4">
+                            <A href="/sessions/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+                                "New Session"
+                            </A>
+                        </div>
                         <div class="space-y-3">
                             {vm.sessions.iter().map(|session| {
                                 view! {
