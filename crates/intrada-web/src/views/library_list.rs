@@ -51,7 +51,7 @@ pub fn LibraryListView() -> impl IntoView {
                     </span>
 
                     // Single "Add Item" button — navigates to unified form (FR-011)
-                    <A href="/library/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-400 motion-safe:transition-colors">
+                    <A href="/library/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors">
                         <span aria-hidden="true" class="mr-1">"+"</span>
                         " Add Item"
                     </A>

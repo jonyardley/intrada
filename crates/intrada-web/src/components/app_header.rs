@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
 
-/// Application header with name, tagline, navigation, and version badge.
+/// Application header with name, tagline, and navigation.
 ///
 /// Nav links highlight the active section using the same colour
 /// (`text-indigo-300`) as the mobile bottom tab bar.
@@ -56,12 +56,6 @@ pub fn AppHeader() -> impl IntoView {
                     >
                         "Sessions"
                     </A>
-                    <span
-                        class="inline-flex items-center rounded-full bg-amber-900/40 px-3 py-1 text-xs font-medium text-amber-300"
-                        aria-label="Application version"
-                    >
-                        "v0.1.0"
-                    </span>
                 </nav>
             </div>
         </header>

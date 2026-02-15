@@ -207,7 +207,7 @@ pub fn DetailView() -> impl IntoView {
 
             // Action buttons (FR-009, FR-011)
             <div class="mt-6 flex flex-col sm:flex-row gap-3">
-                <A href=edit_href attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-400 motion-safe:transition-colors min-h-[44px]">
+                <A href=edit_href attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
                     "Edit"
                 </A>
                 <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| { show_delete_confirm.set(true); })>
