@@ -1,5 +1,19 @@
 use serde::{Deserialize, Serialize};
 
+use super::exercise::Exercise;
+use super::piece::Piece;
+
+/// Top-level serialisation unit for `library.json` / `intrada:library`.
+///
+/// Both CLI and web shells share this format for persistence.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct LibraryData {
+    #[serde(default)]
+    pub pieces: Vec<Piece>,
+    #[serde(default)]
+    pub exercises: Vec<Exercise>,
+}
+
 /// Tempo representation with optional marking (e.g. "Allegro") and BPM.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Tempo {
