@@ -7,11 +7,14 @@ pub mod validation;
 pub use app::{Effect, Event, Intrada, StorageEffect};
 pub use domain::exercise::{Exercise, ExerciseEvent};
 pub use domain::piece::{Piece, PieceEvent};
+pub use domain::session::{Session, SessionEvent};
 pub use domain::types::{
-    CreateExercise, CreatePiece, LibraryData, ListQuery, Tempo, UpdateExercise, UpdatePiece,
+    CreateExercise, CreatePiece, LibraryData, ListQuery, LogSession, SessionsData, Tempo,
+    UpdateExercise, UpdatePiece, UpdateSession,
 };
 pub use error::LibraryError;
-pub use model::{LibraryItemView, Model, ViewModel};
+pub use model::{ItemPracticeSummary, LibraryItemView, Model, SessionView, ViewModel};
 pub use validation::{
-    MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE, MIN_BPM,
+    MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_DURATION, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING,
+    MAX_TITLE, MIN_BPM, MIN_DURATION,
 };

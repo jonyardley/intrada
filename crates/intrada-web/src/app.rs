@@ -10,10 +10,11 @@ use send_wrapper::SendWrapper;
 use intrada_core::{Event, Intrada, ViewModel};
 
 use crate::components::{AppFooter, AppHeader};
-use crate::core_bridge::{load_library_data, process_effects};
+use crate::core_bridge::{load_library_data, load_sessions_data, process_effects};
 use crate::types::SharedCore;
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
+    SessionsListView,
 };
 
 #[component]
@@ -26,6 +27,10 @@ pub fn App() -> impl IntoView {
         let core_ref = core.borrow();
         let (pieces, exercises) = load_library_data();
         let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
+        process_effects(&core_ref, effects, &view_model);
+
+        let sessions = load_sessions_data();
+        let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
         process_effects(&core_ref, effects, &view_model);
     }
 
@@ -55,6 +60,9 @@ pub fn App() -> impl IntoView {
                         } />
                         <Route path=path!("/library/:id/edit") view=move || view! {
                             <EditLibraryItemForm />
+                        } />
+                        <Route path=path!("/sessions") view=move || view! {
+                            <SessionsListView />
                         } />
                     </Routes>
                 </main>

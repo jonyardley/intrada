@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::exercise::{handle_exercise_event, Exercise, ExerciseEvent};
 use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
+use crate::domain::session::{handle_session_event, Session, SessionEvent};
 use crate::domain::types::ListQuery;
-use crate::model::{LibraryItemView, Model, ViewModel};
+use crate::model::{ItemPracticeSummary, LibraryItemView, Model, SessionView, ViewModel};
 
 /// Root Crux application for the music practice library.
 #[derive(Default)]
@@ -17,9 +18,13 @@ pub struct Intrada;
 pub enum Event {
     Piece(PieceEvent),
     Exercise(ExerciseEvent),
+    Session(SessionEvent),
     DataLoaded {
         pieces: Vec<Piece>,
         exercises: Vec<Exercise>,
+    },
+    SessionsLoaded {
+        sessions: Vec<Session>,
     },
     LoadFailed(String),
     ClearError,
@@ -32,7 +37,7 @@ pub enum Effect {
     Storage(Box<Request<StorageEffect>>),
 }
 
-/// Storage operations handled by the shell (SQLite, IndexedDB, etc.).
+/// Storage operations handled by the shell.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum StorageEffect {
     LoadAll,
@@ -41,6 +46,10 @@ pub enum StorageEffect {
     UpdatePiece(Piece),
     UpdateExercise(Exercise),
     DeleteItem { id: String },
+    LoadSessions,
+    SaveSession(Session),
+    UpdateSession(Session),
+    DeleteSession { id: String },
 }
 
 impl Operation for StorageEffect {
@@ -75,10 +84,15 @@ impl App for Intrada {
         match event {
             Event::Piece(piece_event) => handle_piece_event(piece_event, model),
             Event::Exercise(exercise_event) => handle_exercise_event(exercise_event, model),
+            Event::Session(session_event) => handle_session_event(session_event, model),
             Event::DataLoaded { pieces, exercises } => {
                 model.pieces = pieces;
                 model.exercises = exercises;
                 model.last_error = None;
+                crux_core::render::render()
+            }
+            Event::SessionsLoaded { sessions } => {
+                model.sessions = sessions;
                 crux_core::render::render()
             }
             Event::LoadFailed(msg) => {
@@ -100,6 +114,7 @@ impl App for Intrada {
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for piece in &model.pieces {
+            let practice = compute_practice_summary(&model.sessions, &piece.id);
             items.push(LibraryItemView {
                 id: piece.id.clone(),
                 item_type: "piece".to_string(),
@@ -116,10 +131,12 @@ impl App for Intrada {
                 tags: piece.tags.clone(),
                 created_at: piece.created_at.to_rfc3339(),
                 updated_at: piece.updated_at.to_rfc3339(),
+                practice,
             });
         }
 
         for exercise in &model.exercises {
+            let practice = compute_practice_summary(&model.sessions, &exercise.id);
             items.push(LibraryItemView {
                 id: exercise.id.clone(),
                 item_type: "exercise".to_string(),
@@ -140,6 +157,7 @@ impl App for Intrada {
                 tags: exercise.tags.clone(),
                 created_at: exercise.created_at.to_rfc3339(),
                 updated_at: exercise.updated_at.to_rfc3339(),
+                practice,
             });
         }
 
@@ -151,11 +169,53 @@ impl App for Intrada {
         // Sort by created_at descending (newest first)
         items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
+        // Build session views sorted newest-first
+        let mut sessions: Vec<SessionView> = model
+            .sessions
+            .iter()
+            .map(|s| {
+                let (item_title, item_type) = find_item_info(model, &s.item_id);
+                SessionView {
+                    id: s.id.clone(),
+                    item_id: s.item_id.clone(),
+                    item_title,
+                    item_type,
+                    duration_minutes: s.duration_minutes,
+                    started_at: s.started_at.to_rfc3339(),
+                    logged_at: s.logged_at.to_rfc3339(),
+                    notes: s.notes.clone(),
+                }
+            })
+            .collect();
+        sessions.sort_by(|a, b| b.logged_at.cmp(&a.logged_at));
+
         ViewModel {
             items,
+            sessions,
             error: model.last_error.clone(),
         }
     }
+}
+
+fn compute_practice_summary(sessions: &[Session], item_id: &str) -> Option<ItemPracticeSummary> {
+    let item_sessions: Vec<&Session> = sessions.iter().filter(|s| s.item_id == item_id).collect();
+    if item_sessions.is_empty() {
+        return None;
+    }
+    Some(ItemPracticeSummary {
+        session_count: item_sessions.len(),
+        total_minutes: item_sessions.iter().map(|s| s.duration_minutes).sum(),
+    })
+}
+
+fn find_item_info(model: &Model, item_id: &str) -> (String, String) {
+    if let Some(piece) = model.pieces.iter().find(|p| p.id == item_id) {
+        return (piece.title.clone(), "piece".to_string());
+    }
+    if let Some(exercise) = model.exercises.iter().find(|e| e.id == item_id) {
+        return (exercise.title.clone(), "exercise".to_string());
+    }
+    ("Deleted item".to_string(), "unknown".to_string())
 }
 
 fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
@@ -682,6 +742,103 @@ mod tests {
             "Deleting item with 10k existing took {}ms (target: <100ms)",
             delete_time.as_millis()
         );
+    }
+
+    // --- T027: Session view tests ---
+
+    fn add_piece(model: &mut Model, id: &str, title: &str) {
+        let now = chrono::Utc::now();
+        model.pieces.push(Piece {
+            id: id.to_string(),
+            title: title.to_string(),
+            composer: "Composer".to_string(),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+    }
+
+    fn add_session(model: &mut Model, item_id: &str, duration: u32, minutes_ago: i64) {
+        use crate::domain::session::Session;
+        let logged_at = chrono::Utc::now() - chrono::Duration::minutes(minutes_ago);
+        let started_at = logged_at - chrono::Duration::minutes(i64::from(duration));
+        model.sessions.push(Session {
+            id: ulid::Ulid::new().to_string(),
+            item_id: item_id.to_string(),
+            duration_minutes: duration,
+            started_at,
+            logged_at,
+            notes: None,
+        });
+    }
+
+    #[test]
+    fn test_view_sessions_sorted_newest_first() {
+        let app = Intrada;
+        let mut model = Model::default();
+        add_piece(&mut model, "p1", "Sonata");
+
+        // Add sessions at different times (minutes_ago: higher = older)
+        add_session(&mut model, "p1", 30, 120); // oldest
+        add_session(&mut model, "p1", 15, 60);
+        add_session(&mut model, "p1", 45, 0); // newest
+
+        let vm = app.view(&model);
+        assert_eq!(vm.sessions.len(), 3);
+        // Newest first
+        assert_eq!(vm.sessions[0].duration_minutes, 45);
+        assert_eq!(vm.sessions[1].duration_minutes, 15);
+        assert_eq!(vm.sessions[2].duration_minutes, 30);
+    }
+
+    #[test]
+    fn test_view_orphaned_session_shows_deleted_item() {
+        let app = Intrada;
+        let mut model = Model::default();
+
+        // Session referencing a non-existent item
+        add_session(&mut model, "deleted_item", 30, 0);
+
+        let vm = app.view(&model);
+        assert_eq!(vm.sessions.len(), 1);
+        assert_eq!(vm.sessions[0].item_title, "Deleted item");
+        assert_eq!(vm.sessions[0].item_type, "unknown");
+    }
+
+    #[test]
+    fn test_view_practice_summary() {
+        let app = Intrada;
+        let mut model = Model::default();
+        add_piece(&mut model, "p1", "Sonata");
+        add_piece(&mut model, "p2", "Etude");
+
+        add_session(&mut model, "p1", 30, 60);
+        add_session(&mut model, "p1", 45, 0);
+        // p2 has no sessions
+
+        let vm = app.view(&model);
+        let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let p2_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
+
+        assert_eq!(
+            p1_view.practice,
+            Some(crate::model::ItemPracticeSummary {
+                session_count: 2,
+                total_minutes: 75,
+            })
+        );
+        assert_eq!(p2_view.practice, None);
+    }
+
+    #[test]
+    fn test_view_empty_sessions() {
+        let app = Intrada;
+        let model = Model::default();
+        let vm = app.view(&model);
+        assert!(vm.sessions.is_empty());
     }
 
     #[test]

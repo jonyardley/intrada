@@ -3,14 +3,16 @@ use std::cell::RefCell;
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
 
-use intrada_core::{Effect, Event, Intrada, LibraryData, StorageEffect, ViewModel};
+use intrada_core::{Effect, Event, Intrada, LibraryData, SessionsData, StorageEffect, ViewModel};
 
 use crate::data::create_stub_data;
 
 const STORAGE_KEY: &str = "intrada:library";
+const SESSIONS_KEY: &str = "intrada:sessions";
 
 thread_local! {
     static LIBRARY: RefCell<LibraryData> = RefCell::new(LibraryData::default());
+    static SESSIONS: RefCell<SessionsData> = RefCell::new(SessionsData::default());
 }
 
 fn get_local_storage() -> Option<web_sys::Storage> {
@@ -47,6 +49,45 @@ fn save_to_local_storage(data: &LibraryData) {
             );
         }
     }
+}
+
+fn load_sessions_from_local_storage() -> SessionsData {
+    let Some(storage) = get_local_storage() else {
+        return SessionsData::default();
+    };
+
+    match storage.get_item(SESSIONS_KEY) {
+        Ok(Some(json)) => serde_json::from_str(&json).unwrap_or_default(),
+        _ => SessionsData::default(),
+    }
+}
+
+fn save_sessions_to_local_storage(data: &SessionsData) {
+    let Some(storage) = get_local_storage() else {
+        return;
+    };
+
+    match serde_json::to_string(data) {
+        Ok(json) => {
+            if storage.set_item(SESSIONS_KEY, &json).is_err() {
+                web_sys::console::warn_1(
+                    &"intrada: localStorage write failed for sessions (storage may be full)".into(),
+                );
+            }
+        }
+        Err(e) => {
+            web_sys::console::warn_1(
+                &format!("intrada: failed to serialise sessions data: {e}").into(),
+            );
+        }
+    }
+}
+
+/// Load sessions data from localStorage.
+pub fn load_sessions_data() -> Vec<intrada_core::Session> {
+    let data = load_sessions_from_local_storage();
+    SESSIONS.with(|s| *s.borrow_mut() = data.clone());
+    data.sessions
 }
 
 /// Load library data from localStorage (or seed with stub data on first run).
@@ -122,6 +163,36 @@ pub fn process_effects(
                         data.pieces.retain(|p| p.id != *id);
                         data.exercises.retain(|e| e.id != *id);
                         save_to_local_storage(&data);
+                    });
+                }
+                StorageEffect::LoadSessions => {
+                    let sessions = load_sessions_data();
+                    let inner_effects = core.process_event(Event::SessionsLoaded { sessions });
+                    process_effects(core, inner_effects, view_model);
+                }
+                StorageEffect::SaveSession(session) => {
+                    SESSIONS.with(|s| {
+                        let mut data = s.borrow_mut();
+                        data.sessions.push(session.clone());
+                        save_sessions_to_local_storage(&data);
+                    });
+                }
+                StorageEffect::UpdateSession(session) => {
+                    SESSIONS.with(|s| {
+                        let mut data = s.borrow_mut();
+                        if let Some(existing) =
+                            data.sessions.iter_mut().find(|sess| sess.id == session.id)
+                        {
+                            *existing = session.clone();
+                        }
+                        save_sessions_to_local_storage(&data);
+                    });
+                }
+                StorageEffect::DeleteSession { id } => {
+                    SESSIONS.with(|s| {
+                        let mut data = s.borrow_mut();
+                        data.sessions.retain(|sess| sess.id != *id);
+                        save_sessions_to_local_storage(&data);
                     });
                 }
             },

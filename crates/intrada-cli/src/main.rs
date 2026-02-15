@@ -6,12 +6,17 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use intrada_core::domain::exercise::ExerciseEvent;
 use intrada_core::domain::piece::PieceEvent;
+use intrada_core::domain::session::SessionEvent;
 use intrada_core::domain::types::{
-    CreateExercise, CreatePiece, ListQuery, Tempo, UpdateExercise, UpdatePiece,
+    CreateExercise, CreatePiece, ListQuery, LogSession, Tempo, UpdateExercise, UpdatePiece,
+    UpdateSession,
 };
 use intrada_core::Event;
 
-use crate::display::{print_error, print_item_detail, print_item_list, print_success};
+use crate::display::{
+    print_error, print_item_detail, print_item_list, print_session_detail, print_session_list,
+    print_session_logged, print_success,
+};
 use crate::shell::Shell;
 use crate::storage::JsonStore;
 
@@ -101,6 +106,54 @@ enum Commands {
         /// Filter by type (piece or exercise)
         #[arg(long, value_name = "TYPE")]
         r#type: Option<String>,
+    },
+    /// Log a practice session
+    Log {
+        /// Library item ID to log against
+        item_id: String,
+        /// Duration in minutes (1-1440)
+        #[arg(long)]
+        duration: u32,
+        /// Optional session notes
+        #[arg(long)]
+        notes: Option<String>,
+    },
+    /// Manage practice sessions
+    #[command(subcommand)]
+    Session(SessionCommands),
+}
+
+#[derive(Subcommand)]
+enum SessionCommands {
+    /// Show details of a specific session
+    Show {
+        /// Session ID
+        id: String,
+    },
+    /// List all practice sessions
+    List {
+        /// Filter by library item ID
+        #[arg(long)]
+        item: Option<String>,
+    },
+    /// Edit a practice session
+    Edit {
+        /// Session ID
+        id: String,
+        /// New duration in minutes (1-1440)
+        #[arg(long)]
+        duration: Option<u32>,
+        /// New notes
+        #[arg(long)]
+        notes: Option<String>,
+    },
+    /// Delete a practice session
+    Delete {
+        /// Session ID
+        id: String,
+        /// Skip confirmation
+        #[arg(long, short)]
+        yes: bool,
     },
 }
 
@@ -372,6 +425,73 @@ fn main() -> Result<()> {
             })))?;
             print_item_list(&vm);
         }
+
+        Commands::Log {
+            item_id,
+            duration,
+            notes,
+        } => {
+            let vm = shell.run(Event::Session(SessionEvent::Log(LogSession {
+                item_id: item_id.clone(),
+                duration_minutes: duration,
+                notes,
+            })))?;
+            check_error(&vm);
+            print_session_logged(duration, &item_id);
+        }
+
+        Commands::Session(action) => match action {
+            SessionCommands::Show { id } => match vm.sessions.iter().find(|s| s.id == id) {
+                Some(session) => print_session_detail(session),
+                None => {
+                    print_error(&format!("Session not found: {id}"));
+                    std::process::exit(1);
+                }
+            },
+            SessionCommands::List { item } => {
+                let sessions: Vec<_> = if let Some(ref item_id) = item {
+                    vm.sessions
+                        .iter()
+                        .filter(|s| s.item_id == *item_id)
+                        .collect()
+                } else {
+                    vm.sessions.iter().collect()
+                };
+                print_session_list(&sessions);
+            }
+            SessionCommands::Edit {
+                id,
+                duration,
+                notes,
+            } => {
+                let notes_update = notes.map(|n| if n.is_empty() { None } else { Some(n) });
+
+                let vm = shell.run(Event::Session(SessionEvent::Update {
+                    id,
+                    input: UpdateSession {
+                        duration_minutes: duration,
+                        notes: notes_update,
+                    },
+                }))?;
+                check_error(&vm);
+                print_success("Session updated.");
+            }
+            SessionCommands::Delete { id, yes } => {
+                if !yes {
+                    eprint!("Delete session {id}? [y/N] ");
+                    let mut input = String::new();
+                    std::io::stdin().read_line(&mut input)?;
+                    if !input.trim().eq_ignore_ascii_case("y") {
+                        println!("Cancelled.");
+                        return Ok(());
+                    }
+                }
+
+                let vm = shell.run(Event::Session(SessionEvent::Delete { id }))?;
+                check_error(&vm);
+                print_success("Session deleted.");
+            }
+        },
     }
 
     Ok(())

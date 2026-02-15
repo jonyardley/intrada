@@ -90,6 +90,32 @@ pub struct UpdateExercise {
     pub tags: Option<Vec<String>>,
 }
 
+use super::session::Session;
+
+/// Top-level serialisation unit for `sessions.json` / `intrada:sessions`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct SessionsData {
+    #[serde(default)]
+    pub sessions: Vec<Session>,
+}
+
+/// Input for logging a new practice session.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct LogSession {
+    pub item_id: String,
+    pub duration_minutes: u32,
+    pub notes: Option<String>,
+}
+
+/// PATCH-style update for an existing session.
+/// - `duration_minutes`: `None` = skip, `Some(v)` = set new value
+/// - `notes`: `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set new value
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct UpdateSession {
+    pub duration_minutes: Option<u32>,
+    pub notes: Option<Option<String>>,
+}
+
 /// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ListQuery {

@@ -4,9 +4,11 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::hooks::use_params_map;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, ExerciseEvent, PieceEvent, ViewModel};
+use intrada_core::{Event, ExerciseEvent, LogSession, PieceEvent, SessionEvent, ViewModel};
 
-use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
+use crate::components::{
+    BackLink, Button, ButtonVariant, Card, FieldLabel, PracticeTimer, SessionHistory, TypeBadge,
+};
 use crate::core_bridge::process_effects;
 use crate::types::SharedCore;
 
@@ -53,12 +55,22 @@ pub fn DetailView() -> impl IntoView {
         tags,
         created_at,
         updated_at,
+        practice,
     } = item;
 
     let edit_href = format!("/library/{}/edit", item_id);
     let id_for_delete = item_id.clone();
+    let id_for_history = item_id.clone();
+    let id_for_timer = item_id.clone();
+    let id_for_log = item_id.clone();
     let type_for_badge = item_type.clone();
     let type_for_delete = item_type;
+
+    let show_log_form = RwSignal::new(false);
+    let log_duration = RwSignal::new(String::new());
+    let log_notes = RwSignal::new(String::new());
+    let log_error: RwSignal<Option<String>> = RwSignal::new(None);
+    let core_for_log = core.clone();
 
     view! {
         <div>
@@ -188,15 +200,123 @@ pub fn DetailView() -> impl IntoView {
                 </div>
             </Card>
 
+            // Practice summary
+            {practice.map(|p| {
+                view! {
+                    <div class="mt-4 rounded-lg bg-indigo-50 border border-indigo-100 px-4 py-3">
+                        <p class="text-sm font-medium text-indigo-900">
+                            {format!(
+                                "{} session{}, {} min total",
+                                p.session_count,
+                                if p.session_count == 1 { "" } else { "s" },
+                                p.total_minutes
+                            )}
+                        </p>
+                    </div>
+                }
+            })}
+
             // Action buttons (FR-009, FR-011)
             <div class="mt-6 flex gap-3">
                 <A href=edit_href attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
                     "Edit"
                 </A>
+                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                    show_log_form.update(|v| *v = !*v);
+                })>
+                    "Log Session"
+                </Button>
                 <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| { show_delete_confirm.set(true); })>
                     "Delete"
                 </Button>
             </div>
+
+            // Manual log session form (T023)
+            {move || {
+                if show_log_form.get() {
+                    let core_log = core_for_log.clone();
+                    let item_id_log = id_for_log.clone();
+                    Some(view! {
+                        <div class="mt-4 rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+                            <h4 class="text-sm font-semibold text-slate-900">"Log Practice Session"</h4>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1" for="log-duration">"Duration (minutes)"</label>
+                                <input
+                                    id="log-duration"
+                                    type="number"
+                                    min="1"
+                                    max="1440"
+                                    placeholder="30"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    bind:value=log_duration
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1" for="log-notes">"Notes (optional)"</label>
+                                <textarea
+                                    id="log-notes"
+                                    rows="2"
+                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    bind:value=log_notes
+                                />
+                            </div>
+                            {move || log_error.get().map(|msg| {
+                                view! {
+                                    <p class="text-sm text-red-600">{msg}</p>
+                                }
+                            })}
+                            <div class="flex gap-2">
+                                <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
+                                    let dur_str = log_duration.get();
+                                    let dur: u32 = match dur_str.parse() {
+                                        Ok(d) => d,
+                                        Err(_) => {
+                                            log_error.set(Some("Please enter a valid number.".to_string()));
+                                            return;
+                                        }
+                                    };
+                                    let notes_val = log_notes.get();
+                                    let session_notes = if notes_val.is_empty() { None } else { Some(notes_val) };
+                                    let event = Event::Session(SessionEvent::Log(LogSession {
+                                        item_id: item_id_log.clone(),
+                                        duration_minutes: dur,
+                                        notes: session_notes,
+                                    }));
+                                    let core_ref = core_log.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model);
+
+                                    let vm = view_model.get_untracked();
+                                    if let Some(err) = vm.error {
+                                        log_error.set(Some(err));
+                                    } else {
+                                        show_log_form.set(false);
+                                        log_duration.set(String::new());
+                                        log_notes.set(String::new());
+                                        log_error.set(None);
+                                    }
+                                })>
+                                    "Save"
+                                </Button>
+                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                    show_log_form.set(false);
+                                    log_error.set(None);
+                                })>
+                                    "Cancel"
+                                </Button>
+                            </div>
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+
+            // Practice timer (T032-T035)
+            <PracticeTimer item_id=id_for_timer />
+
+            // Session history (T030-T031)
+            <SessionHistory item_id=id_for_history />
         </div>
     }.into_any()
 }

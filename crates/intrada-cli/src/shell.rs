@@ -26,7 +26,16 @@ impl Shell {
 
     pub fn load_data(&self) -> Result<ViewModel> {
         let (pieces, exercises) = self.store.load_all()?;
-        self.run(Event::DataLoaded { pieces, exercises })
+        let effects = self
+            .core
+            .process_event(Event::DataLoaded { pieces, exercises });
+        self.handle_effects(effects)?;
+
+        let sessions = self.store.load_sessions()?;
+        let effects = self.core.process_event(Event::SessionsLoaded { sessions });
+        self.handle_effects(effects)?;
+
+        Ok(self.core.view())
     }
 
     fn handle_effects(&self, effects: Vec<Effect>) -> Result<()> {
@@ -54,6 +63,18 @@ impl Shell {
                         }
                         StorageEffect::DeleteItem { id } => {
                             self.store.delete_item(id)?;
+                        }
+                        StorageEffect::LoadSessions => {
+                            // Shell handles LoadSessions via load_data(), not here
+                        }
+                        StorageEffect::SaveSession(session) => {
+                            self.store.save_session(session)?;
+                        }
+                        StorageEffect::UpdateSession(session) => {
+                            self.store.update_session(session)?;
+                        }
+                        StorageEffect::DeleteSession { id } => {
+                            self.store.delete_session(id)?;
                         }
                     }
                 }
@@ -256,5 +277,93 @@ mod tests {
 
         assert!(vm.error.is_some());
         assert_eq!(vm.items.len(), 0);
+    }
+
+    // --- Session logging integration tests ---
+
+    #[test]
+    fn test_log_session_valid() {
+        use intrada_core::domain::session::SessionEvent;
+        use intrada_core::domain::types::LogSession;
+
+        let (shell, _dir) = test_shell();
+        shell.load_data().unwrap();
+
+        let vm = shell
+            .run(Event::Session(SessionEvent::Log(LogSession {
+                item_id: "item1".to_string(),
+                duration_minutes: 30,
+                notes: Some("Good practice".to_string()),
+            })))
+            .unwrap();
+
+        assert!(vm.error.is_none());
+    }
+
+    #[test]
+    fn test_log_session_without_notes() {
+        use intrada_core::domain::session::SessionEvent;
+        use intrada_core::domain::types::LogSession;
+
+        let (shell, _dir) = test_shell();
+        shell.load_data().unwrap();
+
+        let vm = shell
+            .run(Event::Session(SessionEvent::Log(LogSession {
+                item_id: "item1".to_string(),
+                duration_minutes: 15,
+                notes: None,
+            })))
+            .unwrap();
+
+        assert!(vm.error.is_none());
+    }
+
+    #[test]
+    fn test_log_session_validation_error() {
+        use intrada_core::domain::session::SessionEvent;
+        use intrada_core::domain::types::LogSession;
+
+        let (shell, _dir) = test_shell();
+        shell.load_data().unwrap();
+
+        // Duration 0 should fail
+        let vm = shell
+            .run(Event::Session(SessionEvent::Log(LogSession {
+                item_id: "item1".to_string(),
+                duration_minutes: 0,
+                notes: None,
+            })))
+            .unwrap();
+
+        assert!(vm.error.is_some());
+    }
+
+    #[test]
+    fn test_log_session_persists_to_json() {
+        use intrada_core::domain::session::SessionEvent;
+        use intrada_core::domain::types::LogSession;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("library.json");
+        let store = JsonStore::new_with_path(path);
+
+        let shell = Shell::new(store);
+        shell.load_data().unwrap();
+
+        shell
+            .run(Event::Session(SessionEvent::Log(LogSession {
+                item_id: "item1".to_string(),
+                duration_minutes: 45,
+                notes: Some("Practiced scales".to_string()),
+            })))
+            .unwrap();
+
+        // Reload to verify persistence
+        let sessions = shell.store.load_sessions().unwrap();
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].item_id, "item1");
+        assert_eq!(sessions[0].duration_minutes, 45);
+        assert_eq!(sessions[0].notes, Some("Practiced scales".to_string()));
     }
 }
