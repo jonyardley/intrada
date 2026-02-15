@@ -1,6 +1,7 @@
 [workspace]
 members = ["crates/*"]
 resolver = "2"
+package.rust-version = "1.75"
 
 [workspace.dependencies]
 crux_core = "0.17.0-rc2"
