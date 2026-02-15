@@ -1,2 +1,12 @@
 @import 'tailwindcss';
 @source "./src/**/*.rs";
+
+@custom-variant supports-backdrop {
+  @supports (backdrop-filter: blur(1px)) {
+    @slot;
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

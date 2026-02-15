@@ -1,6 +1,7 @@
 pub mod app_footer;
 pub mod app_header;
 pub mod back_link;
+pub mod bottom_tab_bar;
 pub mod button;
 pub mod card;
 pub mod field_label;
@@ -19,6 +20,7 @@ pub mod type_tabs;
 pub use app_footer::AppFooter;
 pub use app_header::AppHeader;
 pub use back_link::BackLink;
+pub use bottom_tab_bar::BottomTabBar;
 pub use button::{Button, ButtonVariant};
 pub use card::Card;
 pub use field_label::FieldLabel;

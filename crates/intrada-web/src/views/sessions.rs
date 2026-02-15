@@ -22,11 +22,11 @@ pub fn SessionsListView() -> impl IntoView {
 
                 if vm.sessions.is_empty() {
                     view! {
-                        <div class="text-center py-12">
-                            <p class="text-slate-500">"No practice sessions recorded yet."</p>
-                            <p class="text-sm text-slate-400 mt-2">"Start a practice session to begin tracking your progress."</p>
+                        <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
+                            <p class="text-gray-400">"No practice sessions recorded yet."</p>
+                            <p class="text-sm text-gray-500 mt-2">"Start a practice session to begin tracking your progress."</p>
                             <div class="mt-6">
-                                <A href="/sessions/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+                                <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
                                     "New Session"
                                 </A>
                             </div>
@@ -36,7 +36,7 @@ pub fn SessionsListView() -> impl IntoView {
                     let core = core.clone();
                     view! {
                         <div class="mb-4">
-                            <A href="/sessions/new" attr:class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors">
+                            <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
                                 "New Session"
                             </A>
                         </div>
@@ -51,7 +51,7 @@ pub fn SessionsListView() -> impl IntoView {
                                 }
                             }).collect::<Vec<_>>()}
                         </div>
-                        <p class="text-sm text-slate-400 mt-4">
+                        <p class="text-sm text-gray-400 mt-4">
                             {format!("{} session{}", vm.sessions.len(), if vm.sessions.len() == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
@@ -85,7 +85,7 @@ fn SessionRow(
                     let id_del = id_for_delete.clone();
                     view! {
                         <div>
-                            <p class="text-sm text-red-800 mb-3">"Delete this session? This cannot be undone."</p>
+                            <p class="text-sm text-red-300 mb-3">"Delete this session? This cannot be undone."</p>
                             <div class="flex gap-2">
                                 <Button variant=ButtonVariant::Danger on_click=Callback::new(move |_| {
                                     let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
@@ -109,35 +109,35 @@ fn SessionRow(
                     let completion_status = completion_status.clone();
                     let session_notes = session_notes.clone();
                     view! {
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-baseline gap-3">
-                                    <span class="text-sm font-medium text-slate-900">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                    <span class="text-sm font-medium text-white">
                                         {total_duration}
                                     </span>
-                                    <span class="text-xs text-slate-500">
+                                    <span class="text-xs text-gray-400">
                                         {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
                                     </span>
                                     {if completion_status == "ended_early" {
                                         Some(view! {
-                                            <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 ring-inset">
+                                            <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
                                                 "Ended Early"
                                             </span>
                                         })
                                     } else {
                                         None
                                     }}
-                                    <span class="text-xs text-slate-400">{started_at}</span>
+                                    <span class="text-xs text-gray-500">{started_at}</span>
                                 </div>
                                 {session_notes.map(|n| {
                                     view! {
-                                        <p class="text-sm text-slate-600 mt-1">{n}</p>
+                                        <p class="text-sm text-gray-300 mt-1">{n}</p>
                                     }
                                 })}
                             </div>
-                            <div class="flex gap-2 ml-4">
+                            <div class="flex gap-2 sm:ml-4">
                                 <button
-                                    class="text-xs text-red-600 hover:text-red-800 font-medium"
+                                    class="text-xs text-red-400 hover:text-red-300 font-medium"
                                     on:click=move |_| { confirm_delete.set(true); }
                                 >
                                     "Delete"

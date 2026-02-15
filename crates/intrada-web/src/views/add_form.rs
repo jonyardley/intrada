@@ -41,7 +41,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
     view! {
-        <div>
+        <div class="sm:max-w-2xl sm:mx-auto">
             <BackLink label="Cancel" href="/".to_string() />
 
             <PageHeading text="Add Library Item" />
@@ -170,7 +170,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         <TextField id="add-key" label="Key" value=key_sig placeholder="e.g. C Major, Db Minor" field_name="key" errors=errors />
 
                         // Tempo: marking + BPM on one row (shared)
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <TextField id="add-tempo-marking" label="Tempo Marking" value=tempo_marking placeholder="e.g. Allegro" field_name="tempo_marking" errors=errors />
                             <TextField id="add-bpm" label="BPM" value=bpm input_type="number" placeholder="1-400" field_name="bpm" errors=errors />
                         </div>
@@ -182,7 +182,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         <TextField id="add-tags" label="Tags" value=tags_input placeholder="Comma-separated, e.g. classical, piano" field_name="tags" errors=errors />
 
                         // Buttons
-                        <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <Button variant=ButtonVariant::Primary button_type="submit">"Save"</Button>
                             <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
                                 navigate_cancel("/", NavigateOptions::default());

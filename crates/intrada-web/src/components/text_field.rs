@@ -21,13 +21,13 @@ pub fn TextField(
 
     view! {
         <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1" for=id>
+            <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
                 {label}
             </label>
             <input
                 id=id
                 type=input_type
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
                 placeholder=placeholder.unwrap_or("")
                 bind:value=value
                 required=required

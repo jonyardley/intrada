@@ -19,14 +19,14 @@ pub fn TypeTabs(
     // Helper to build class strings — pill-style segmented control
     let tab_class = move |tab: ItemType| {
         let is_active = active.get() == tab;
-        let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1";
+        let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-0";
         if is_active {
             format!("{base} bg-indigo-600 text-white shadow-sm")
         } else if is_interactive {
-            format!("{base} text-slate-600 hover:text-slate-900 cursor-pointer")
+            format!("{base} text-gray-400 hover:text-white cursor-pointer")
         } else {
             // Display-only inactive
-            format!("{base} text-slate-400 cursor-default")
+            format!("{base} text-gray-500 cursor-default")
         }
     };
 
@@ -122,7 +122,7 @@ pub fn TypeTabs(
         <div
             role="tablist"
             aria-label="Item type"
-            class="inline-flex items-center rounded-full bg-slate-100 p-1 gap-1"
+            class="inline-flex items-center rounded-full bg-white/10 p-1 gap-1"
             on:keydown=handle_keydown
         >
             <button
