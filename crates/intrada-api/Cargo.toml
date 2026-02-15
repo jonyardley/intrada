@@ -1,0 +1,27 @@
+[package]
+name = "intrada-api"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+
+[[bin]]
+name = "intrada-api"
+path = "src/main.rs"
+
+[dependencies]
+intrada-core = { path = "../intrada-core" }
+
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors"] }
+libsql = { version = "0.9", default-features = false, features = ["remote"] }
+libsql_migration = { version = "0.2", features = ["content"] }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+ulid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
