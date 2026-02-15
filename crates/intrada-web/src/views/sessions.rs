@@ -26,7 +26,7 @@ pub fn SessionsListView() -> impl IntoView {
                             <p class="text-gray-400">"No practice sessions recorded yet."</p>
                             <p class="text-sm text-gray-500 mt-2">"Start a practice session to begin tracking your progress."</p>
                             <div class="mt-6">
-                                <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
+                                <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-400 motion-safe:transition-colors min-h-[44px]">
                                     "New Session"
                                 </A>
                             </div>
@@ -36,7 +36,7 @@ pub fn SessionsListView() -> impl IntoView {
                     let core = core.clone();
                     view! {
                         <div class="mb-4">
-                            <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
+                            <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-400 motion-safe:transition-colors min-h-[44px]">
                                 "New Session"
                             </A>
                         </div>
