@@ -1,0 +1,24 @@
+[package]
+name = "intrada-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+intrada-core = { path = "../intrada-core" }
+
+shuttle-runtime = "0.57"
+shuttle-axum = "0.57"
+shuttle-shared-db = { version = "0.57", features = ["postgres", "sqlx"] }
+
+axum = "0.8"
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono"] }
+tower-http = { version = "0.6", features = ["fs"] }
+tokio = { version = "1", features = ["macros"] }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+ulid = { workspace = true }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

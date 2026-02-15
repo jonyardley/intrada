@@ -12,6 +12,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - localStorage (web: `intrada:sessions` key for completed sessions, `intrada:session-in-progress` key for crash recovery) (015-rework-sessions)
 - Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, Tailwind CSS v4 (standalone CLI v4.1.18), trunk 0.21.x (016-glassmorphism-responsive)
 - N/A (no storage changes — visual only) (016-glassmorphism-responsive)
+- Rust stable (1.75+ workspace minimum; axum 0.8 requires 1.78+) + shuttle-runtime 0.57, shuttle-axum 0.57, axum 0.8, sqlx 0.8 (Postgres), tower-http 0.6 (fs), intrada-core (workspace) (017-shuttle-api-deploy)
+- Shuttle-managed Postgres via `shuttle-shared-db` (zero-config, auto-provisioned) (017-shuttle-api-deploy)
 
 ## Project Structure
 
@@ -35,9 +37,9 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 017-shuttle-api-deploy: Added Rust stable (1.75+ workspace minimum; axum 0.8 requires 1.78+) + shuttle-runtime 0.57, shuttle-axum 0.57, axum 0.8, sqlx 0.8 (Postgres), tower-http 0.6 (fs), intrada-core (workspace)
 - 016-glassmorphism-responsive: Added Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, Tailwind CSS v4 (standalone CLI v4.1.18), trunk 0.21.x
 - 015-rework-sessions: Added Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2 (workspace), leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (Storage+Window), wasm-bindgen, serde/serde_json 1, ulid 1, chrono 0.4, send_wrapper 0.6
-- 015-rework-sessions: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->

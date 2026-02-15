@@ -1,0 +1,5 @@
+name = "intrada"
+crate = "crates/intrada-api"
+
+[build]
+assets = ["crates/intrada-web/dist/*"]
