@@ -4,13 +4,15 @@ use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::components::{Button, ButtonVariant, Card};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// End-of-session summary component: shows results, allows notes, save/discard.
 #[component]
 pub fn SessionSummary() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
 
     let session_notes = RwSignal::new(String::new());
 
@@ -96,7 +98,7 @@ pub fn SessionSummary() -> impl IntoView {
                                                             });
                                                             let core_ref = core_notes.borrow();
                                                             let effects = core_ref.process_event(event);
-                                                            process_effects(&core_ref, effects, &view_model);
+                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                         }
                                                     />
                                                 </div>
@@ -120,7 +122,7 @@ pub fn SessionSummary() -> impl IntoView {
                                         let event = Event::Session(SessionEvent::UpdateSessionNotes { notes });
                                         let core_ref = core_session_notes.borrow();
                                         let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                     }
                                 />
                             </Card>
@@ -132,7 +134,7 @@ pub fn SessionSummary() -> impl IntoView {
                                     let event = Event::Session(SessionEvent::SaveSession { now });
                                     let core_ref = core_save.borrow();
                                     let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                 })>
                                     "Save Session"
                                 </Button>
@@ -140,7 +142,7 @@ pub fn SessionSummary() -> impl IntoView {
                                     let event = Event::Session(SessionEvent::DiscardSession);
                                     let core_ref = core_discard.borrow();
                                     let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                 })>
                                     "Discard"
                                 </Button>

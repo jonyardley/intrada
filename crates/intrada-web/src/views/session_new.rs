@@ -6,13 +6,15 @@ use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::components::{BackLink, PageHeading, SetlistBuilder};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Session creation view: start building a setlist and launch practice.
 #[component]
 pub fn SessionNewView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
     let navigate = use_navigate();
 
     // Dispatch StartBuilding on mount if not already building
@@ -21,7 +23,7 @@ pub fn SessionNewView() -> impl IntoView {
         if vm.session_status != "building" {
             let core_ref = core.borrow();
             let effects = core_ref.process_event(Event::Session(SessionEvent::StartBuilding));
-            process_effects(&core_ref, effects, &view_model);
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
         }
     }
 

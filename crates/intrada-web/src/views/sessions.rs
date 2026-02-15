@@ -5,19 +5,28 @@ use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
 
 use crate::components::{Button, ButtonVariant, Card, PageHeading};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// All-sessions list view showing every completed practice session.
 #[component]
 pub fn SessionsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
 
     view! {
         <div>
             <PageHeading text="Practice Sessions" />
 
             {move || {
+                if is_loading.get() {
+                    return view! {
+                        <div class="flex justify-center py-12">
+                            <div class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400 border-t-transparent"></div>
+                        </div>
+                    }.into_any();
+                }
+
                 let vm = view_model.get();
 
                 if vm.sessions.is_empty() {
@@ -68,6 +77,8 @@ fn SessionRow(
     core: SharedCore,
     view_model: RwSignal<ViewModel>,
 ) -> impl IntoView {
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
     let confirm_delete = RwSignal::new(false);
 
     let id_for_delete = session.id.clone();
@@ -91,7 +102,7 @@ fn SessionRow(
                                     let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
                                     let core_ref = core_del.borrow();
                                     let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                 })>
                                     "Confirm Delete"
                                 </Button>

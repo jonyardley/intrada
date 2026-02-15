@@ -4,10 +4,12 @@ use leptos_router::components::A;
 use intrada_core::ViewModel;
 
 use crate::components::LibraryItemCard;
+use intrada_web::types::IsLoading;
 
 #[component]
 pub fn LibraryListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
+    let is_loading = expect_context::<IsLoading>();
     view! {
         // Hero section
         <section class="mb-10 px-4 sm:px-6 lg:px-0" aria-labelledby="welcome-heading">
@@ -17,22 +19,9 @@ pub fn LibraryListView() -> impl IntoView {
             <p class="text-gray-300 leading-relaxed max-w-2xl">
                 "Organize your music library, track your practice pieces and exercises, "
                 "and build better practice habits. Intrada helps musicians stay focused "
-                "on what matters — making music."
+                "on what matters \u{2014} making music."
             </p>
         </section>
-
-        // Error banner
-        {move || {
-            view_model.get().error.map(|err| {
-                view! {
-                    <div class="mb-6 rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
-                        <p class="text-sm text-red-300">
-                            <span class="font-medium">"Error: "</span>{err}
-                        </p>
-                    </div>
-                }
-            })
-        }}
 
         // Library section header
         <section class="mb-10 px-4 sm:px-6 lg:px-0" aria-labelledby="library-heading">
@@ -58,26 +47,34 @@ pub fn LibraryListView() -> impl IntoView {
                 </div>
             </div>
 
-            // Items list (FR-006: clickable items)
+            // Items list
             <div>
                 {move || {
-                    let vm = view_model.get();
-                    if vm.items.is_empty() {
+                    if is_loading.get() {
                         view! {
-                            <div class="bg-white/5 rounded-xl border border-white/10 p-8 text-center">
-                                <p class="text-gray-400">"No items in your library yet."</p>
+                            <div class="flex justify-center py-12">
+                                <div class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400 border-t-transparent"></div>
                             </div>
                         }.into_any()
                     } else {
-                        view! {
-                            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
-                                {vm.items.into_iter().map(|item| {
-                                    view! {
-                                        <LibraryItemCard item=item />
-                                    }
-                                }).collect::<Vec<_>>()}
-                            </ul>
-                        }.into_any()
+                        let vm = view_model.get();
+                        if vm.items.is_empty() {
+                            view! {
+                                <div class="bg-white/5 rounded-xl border border-white/10 p-8 text-center">
+                                    <p class="text-gray-400">"No items in your library yet."</p>
+                                </div>
+                            }.into_any()
+                        } else {
+                            view! {
+                                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
+                                    {vm.items.into_iter().map(|item| {
+                                        view! {
+                                            <LibraryItemCard item=item />
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </ul>
+                            }.into_any()
+                        }
                     }
                 }}
             </div>

@@ -4,13 +4,15 @@ use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::components::{Button, ButtonVariant, Card, SetlistEntryRow};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Setlist builder component: shows library items to add, current setlist, and controls.
 #[component]
 pub fn SetlistBuilder() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
 
     let core_setlist = core.clone();
     let core_actions = core.clone();
@@ -40,7 +42,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                             let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
                                             let core_ref = core_r.borrow();
                                             let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                         });
                                         let on_move_up = if idx > 0 {
                                             let core_mu = core_u.clone();
@@ -48,7 +50,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                 let event = Event::Session(SessionEvent::ReorderSetlist { entry_id, new_position: idx - 1 });
                                                 let core_ref = core_mu.borrow();
                                                 let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             }))
                                         } else {
                                             None
@@ -59,7 +61,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                 let event = Event::Session(SessionEvent::ReorderSetlist { entry_id, new_position: idx + 1 });
                                                 let core_ref = core_md.borrow();
                                                 let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             }))
                                         } else {
                                             None
@@ -98,7 +100,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                             let event = Event::Session(SessionEvent::StartSession { now });
                             let core_ref = core_start.borrow();
                             let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model);
+                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                         })>
                             "Start Session"
                         </Button>
@@ -106,7 +108,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                             let event = Event::Session(SessionEvent::CancelBuilding);
                             let core_ref = core_cancel.borrow();
                             let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model);
+                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                         })>
                             "Cancel"
                         </Button>
@@ -154,7 +156,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                     let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
                                                     let core_ref = core_a.borrow();
                                                     let effects = core_ref.process_event(event);
-                                                    process_effects(&core_ref, effects, &view_model);
+                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                 }
                                             >
                                                 "+ Add"

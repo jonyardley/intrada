@@ -53,6 +53,8 @@ jobs:
           mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
       - name: Build WASM (release)
         working-directory: crates/intrada-web
+        env:
+          INTRADA_API_URL: https://intrada-api.fly.dev
         run: trunk build --release
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4

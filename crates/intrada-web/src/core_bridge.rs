@@ -1,108 +1,16 @@
-use std::cell::RefCell;
-
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
+use wasm_bindgen_futures::spawn_local;
 
-use intrada_core::{Effect, Event, Intrada, LibraryData, SessionsData, StorageEffect, ViewModel};
+use intrada_core::{Effect, Event, Intrada, StorageEffect, ViewModel};
 
-use crate::data::create_stub_data;
+use crate::api_client;
+use crate::types::{IsLoading, IsSubmitting, SharedCore};
 
-pub const STORAGE_KEY: &str = "intrada:library";
-pub const SESSIONS_KEY: &str = "intrada:sessions";
 pub const SESSION_IN_PROGRESS_KEY: &str = "intrada:session-in-progress";
-
-thread_local! {
-    static LIBRARY: RefCell<LibraryData> = RefCell::new(LibraryData::default());
-    static SESSIONS: RefCell<SessionsData> = RefCell::new(SessionsData::default());
-}
 
 fn get_local_storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok()?
-}
-
-fn load_from_local_storage() -> LibraryData {
-    let Some(storage) = get_local_storage() else {
-        return LibraryData::default();
-    };
-
-    match storage.get_item(STORAGE_KEY) {
-        Ok(Some(json)) => serde_json::from_str(&json).unwrap_or_default(),
-        _ => LibraryData::default(),
-    }
-}
-
-pub fn save_to_local_storage(data: &LibraryData) {
-    let Some(storage) = get_local_storage() else {
-        return;
-    };
-
-    match serde_json::to_string(data) {
-        Ok(json) => {
-            if storage.set_item(STORAGE_KEY, &json).is_err() {
-                web_sys::console::warn_1(
-                    &"intrada: localStorage write failed (storage may be full)".into(),
-                );
-            }
-        }
-        Err(e) => {
-            web_sys::console::warn_1(
-                &format!("intrada: failed to serialise library data: {e}").into(),
-            );
-        }
-    }
-}
-
-fn load_sessions_from_local_storage() -> SessionsData {
-    let Some(storage) = get_local_storage() else {
-        return SessionsData::default();
-    };
-
-    match storage.get_item(SESSIONS_KEY) {
-        Ok(Some(json)) => {
-            // Detect old schema: if JSON is an array of objects with "item_id",
-            // wipe it and return empty new-schema data.
-            if let Ok(serde_json::Value::Object(ref map)) =
-                serde_json::from_str::<serde_json::Value>(&json)
-            {
-                if let Some(serde_json::Value::Array(arr)) = map.get("sessions") {
-                    if let Some(serde_json::Value::Object(first)) = arr.first() {
-                        if first.contains_key("item_id") && !first.contains_key("entries") {
-                            // Old schema detected — wipe it
-                            web_sys::console::log_1(
-                                &"intrada: old session schema detected, wiping data".into(),
-                            );
-                            let empty = SessionsData::default();
-                            save_sessions_to_local_storage(&empty);
-                            return empty;
-                        }
-                    }
-                }
-            }
-            serde_json::from_str(&json).unwrap_or_default()
-        }
-        _ => SessionsData::default(),
-    }
-}
-
-pub fn save_sessions_to_local_storage(data: &SessionsData) {
-    let Some(storage) = get_local_storage() else {
-        return;
-    };
-
-    match serde_json::to_string(data) {
-        Ok(json) => {
-            if storage.set_item(SESSIONS_KEY, &json).is_err() {
-                web_sys::console::warn_1(
-                    &"intrada: localStorage write failed for sessions (storage may be full)".into(),
-                );
-            }
-        }
-        Err(e) => {
-            web_sys::console::warn_1(
-                &format!("intrada: failed to serialise sessions data: {e}").into(),
-            );
-        }
-    }
 }
 
 fn save_session_in_progress(session: &intrada_core::ActiveSession) {
@@ -135,109 +43,235 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
     serde_json::from_str(&json).ok()
 }
 
-/// Load sessions data from localStorage.
-pub fn load_sessions_data() -> Vec<intrada_core::PracticeSession> {
-    let data = load_sessions_from_local_storage();
-    SESSIONS.with(|s| *s.borrow_mut() = data.clone());
-    data.sessions
-}
-
-/// Load library data from localStorage (or seed with stub data on first run).
-///
-/// Called by `App()` during initialisation, mirroring the CLI shell's `load_data()`.
-pub fn load_library_data() -> (Vec<intrada_core::Piece>, Vec<intrada_core::Exercise>) {
-    let mut data = load_from_local_storage();
-
-    // If localStorage was empty, seed with stub data
-    if data.pieces.is_empty() && data.exercises.is_empty() {
-        let (pieces, exercises) = create_stub_data();
-        data.pieces = pieces;
-        data.exercises = exercises;
-        save_to_local_storage(&data);
-    }
-
-    LIBRARY.with(|lib| *lib.borrow_mut() = data.clone());
-    (data.pieces, data.exercises)
-}
-
 /// Process effects returned by the Crux core.
+///
+/// HTTP-backed effects use `spawn_local()` to run async tasks.
+/// Session-in-progress effects remain localStorage-based (FR-008).
 pub fn process_effects(
     core: &Core<Intrada>,
     effects: Vec<Effect>,
     view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
 ) {
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
             Effect::Storage(boxed_request) => match &boxed_request.operation {
+                // ---- Load operations: spawn async HTTP fetch ----
                 StorageEffect::LoadAll => {
-                    let (pieces, exercises) = load_library_data();
-                    let inner_effects = core.process_event(Event::DataLoaded { pieces, exercises });
-                    process_effects(core, inner_effects, view_model);
-                }
-                StorageEffect::SavePiece(piece) => {
-                    LIBRARY.with(|lib| {
-                        let mut data = lib.borrow_mut();
-                        data.pieces.push(piece.clone());
-                        save_to_local_storage(&data);
-                    });
-                }
-                StorageEffect::SaveExercise(exercise) => {
-                    LIBRARY.with(|lib| {
-                        let mut data = lib.borrow_mut();
-                        data.exercises.push(exercise.clone());
-                        save_to_local_storage(&data);
-                    });
-                }
-                StorageEffect::UpdatePiece(piece) => {
-                    LIBRARY.with(|lib| {
-                        let mut data = lib.borrow_mut();
-                        if let Some(existing) = data.pieces.iter_mut().find(|p| p.id == piece.id) {
-                            *existing = piece.clone();
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    spawn_local(async move {
+                        loading.set(true);
+                        let pieces_result = api_client::fetch_pieces().await;
+                        let exercises_result = api_client::fetch_exercises().await;
+
+                        match (pieces_result, exercises_result) {
+                            (Ok(pieces), Ok(exercises)) => {
+                                let core_ref = core.borrow();
+                                let effects =
+                                    core_ref.process_event(Event::DataLoaded { pieces, exercises });
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
+                            (Err(e), _) | (_, Err(e)) => {
+                                let core_ref = core.borrow();
+                                let effects =
+                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
                         }
-                        save_to_local_storage(&data);
+                        loading.set(false);
                     });
                 }
-                StorageEffect::UpdateExercise(exercise) => {
-                    LIBRARY.with(|lib| {
-                        let mut data = lib.borrow_mut();
-                        if let Some(existing) =
-                            data.exercises.iter_mut().find(|e| e.id == exercise.id)
-                        {
-                            *existing = exercise.clone();
-                        }
-                        save_to_local_storage(&data);
-                    });
-                }
-                StorageEffect::DeleteItem { id } => {
-                    LIBRARY.with(|lib| {
-                        let mut data = lib.borrow_mut();
-                        data.pieces.retain(|p| p.id != *id);
-                        data.exercises.retain(|e| e.id != *id);
-                        save_to_local_storage(&data);
-                    });
-                }
+
                 StorageEffect::LoadSessions => {
-                    let sessions = load_sessions_data();
-                    let inner_effects = core.process_event(Event::SessionsLoaded { sessions });
-                    process_effects(core, inner_effects, view_model);
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    spawn_local(async move {
+                        loading.set(true);
+                        match api_client::fetch_sessions().await {
+                            Ok(sessions) => {
+                                let core_ref = core.borrow();
+                                let effects =
+                                    core_ref.process_event(Event::SessionsLoaded { sessions });
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
+                            Err(e) => {
+                                let core_ref = core.borrow();
+                                let effects =
+                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
+                        }
+                        loading.set(false);
+                    });
                 }
+
+                // ---- Library write operations ----
+                StorageEffect::SavePiece(piece) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let create = intrada_core::CreatePiece {
+                        title: piece.title.clone(),
+                        composer: piece.composer.clone(),
+                        key: piece.key.clone(),
+                        tempo: piece.tempo.clone(),
+                        notes: piece.notes.clone(),
+                        tags: piece.tags.clone(),
+                    };
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::create_piece(&create).await {
+                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::SaveExercise(exercise) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let create = intrada_core::CreateExercise {
+                        title: exercise.title.clone(),
+                        composer: exercise.composer.clone(),
+                        category: exercise.category.clone(),
+                        key: exercise.key.clone(),
+                        tempo: exercise.tempo.clone(),
+                        notes: exercise.notes.clone(),
+                        tags: exercise.tags.clone(),
+                    };
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::create_exercise(&create).await {
+                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::UpdatePiece(piece) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let piece_id = piece.id.clone();
+                    let update = intrada_core::UpdatePiece {
+                        title: Some(piece.title.clone()),
+                        composer: Some(piece.composer.clone()),
+                        key: Some(piece.key.clone()),
+                        tempo: Some(piece.tempo.clone()),
+                        notes: Some(piece.notes.clone()),
+                        tags: Some(piece.tags.clone()),
+                    };
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::update_piece(&piece_id, &update).await {
+                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::UpdateExercise(exercise) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let exercise_id = exercise.id.clone();
+                    let update = intrada_core::UpdateExercise {
+                        title: Some(exercise.title.clone()),
+                        composer: Some(exercise.composer.clone()),
+                        category: Some(exercise.category.clone()),
+                        key: Some(exercise.key.clone()),
+                        tempo: Some(exercise.tempo.clone()),
+                        notes: Some(exercise.notes.clone()),
+                        tags: Some(exercise.tags.clone()),
+                    };
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::update_exercise(&exercise_id, &update).await {
+                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::DeleteItem { id } => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let item_id = id.clone();
+                    submitting.set(true);
+                    spawn_local(async move {
+                        // Try deleting as piece first, then as exercise
+                        // (DeleteItem doesn't carry the item type)
+                        let piece_result = api_client::delete_piece(&item_id).await;
+                        if piece_result.is_err() {
+                            if let Err(e) = api_client::delete_exercise(&item_id).await {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                                return;
+                            }
+                        }
+                        refresh_library(core, vm, loading, submitting).await;
+                    });
+                }
+
+                // ---- Session write operations ----
                 StorageEffect::SavePracticeSession(session) => {
-                    SESSIONS.with(|s| {
-                        let mut data = s.borrow_mut();
-                        data.sessions.push(session.clone());
-                        save_sessions_to_local_storage(&data);
-                    });
-                    // Clear in-progress when session is saved
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let session_data = session.clone();
+                    // Clear in-progress from localStorage immediately (FR-008)
                     clear_session_in_progress();
-                }
-                StorageEffect::DeletePracticeSession { id } => {
-                    SESSIONS.with(|s| {
-                        let mut data = s.borrow_mut();
-                        data.sessions.retain(|sess| sess.id != *id);
-                        save_sessions_to_local_storage(&data);
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::create_session(&session_data).await {
+                            Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
                     });
                 }
+
+                StorageEffect::DeletePracticeSession { id } => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let session_id = id.clone();
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::delete_session(&session_id).await {
+                            Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                            }
+                        }
+                    });
+                }
+
+                // ---- Session-in-progress: localStorage only (FR-008) ----
                 StorageEffect::SaveSessionInProgress(session) => {
                     save_session_in_progress(session);
                 }
@@ -248,6 +282,65 @@ pub fn process_effects(
         }
     }
     view_model.set(core.view());
+}
+
+/// Refresh library data from API after a mutation (refresh-after-mutate pattern).
+async fn refresh_library(
+    core: SharedCore,
+    view_model: RwSignal<ViewModel>,
+    is_loading: IsLoading,
+    is_submitting: IsSubmitting,
+) {
+    let pieces_result = api_client::fetch_pieces().await;
+    let exercises_result = api_client::fetch_exercises().await;
+
+    match (pieces_result, exercises_result) {
+        (Ok(pieces), Ok(exercises)) => {
+            let core_ref = core.borrow();
+            let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        }
+        (Err(e), _) | (_, Err(e)) => {
+            report_error(&core, &view_model, &is_loading, &is_submitting, e);
+        }
+    }
+
+    is_submitting.set(false);
+}
+
+/// Refresh sessions data from API after a mutation.
+async fn refresh_sessions(
+    core: SharedCore,
+    view_model: RwSignal<ViewModel>,
+    is_loading: IsLoading,
+    is_submitting: IsSubmitting,
+) {
+    match api_client::fetch_sessions().await {
+        Ok(sessions) => {
+            let core_ref = core.borrow();
+            let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        }
+        Err(e) => {
+            report_error(&core, &view_model, &is_loading, &is_submitting, e);
+        }
+    }
+
+    is_submitting.set(false);
+}
+
+/// Report an API error to the core via LoadFailed event.
+fn report_error(
+    core: &SharedCore,
+    view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
+    error: api_client::ApiError,
+) {
+    let core_ref = core.borrow();
+    let effects = core_ref.process_event(Event::LoadFailed(error.to_user_message()));
+    process_effects(&core_ref, effects, view_model, is_loading, is_submitting);
+    is_submitting.set(false);
 }
 
 #[cfg(test)]
@@ -295,7 +388,6 @@ mod tests {
     #[test]
     fn test_add_piece_produces_save_piece_effect() {
         let core = Core::<Intrada>::new();
-        // Load empty data first
         let _ = core.process_event(Event::DataLoaded {
             pieces: vec![],
             exercises: vec![],
@@ -371,16 +463,13 @@ mod tests {
 
         let (core, piece_id) = loaded_core();
 
-        // Start building
         let effects = core.process_event(Event::Session(SessionEvent::StartBuilding));
         let storage = storage_effects(effects);
-        // No storage effect for start building — just a render
         assert!(
             storage.is_empty(),
             "Expected no storage effects for StartBuilding"
         );
 
-        // Add item to setlist
         let effects = core.process_event(Event::Session(SessionEvent::AddToSetlist {
             item_id: piece_id,
         }));
@@ -390,7 +479,6 @@ mod tests {
             "Expected no storage effects for AddToSetlist"
         );
 
-        // Start session
         let now = chrono::Utc::now();
         let effects = core.process_event(Event::Session(SessionEvent::StartSession { now }));
         let storage = storage_effects(effects);
@@ -408,7 +496,6 @@ mod tests {
 
         let (core, piece_id) = loaded_core();
 
-        // Build and complete a session
         let _ = core.process_event(Event::Session(SessionEvent::StartBuilding));
         let _ = core.process_event(Event::Session(SessionEvent::AddToSetlist {
             item_id: piece_id,
@@ -418,7 +505,6 @@ mod tests {
         let later = now + chrono::Duration::minutes(10);
         let _ = core.process_event(Event::Session(SessionEvent::FinishSession { now: later }));
 
-        // Save session to get the ID
         let save_now = later + chrono::Duration::seconds(5);
         let effects =
             core.process_event(Event::Session(SessionEvent::SaveSession { now: save_now }));
@@ -429,7 +515,6 @@ mod tests {
         });
         assert!(session_id.is_some(), "Expected SavePracticeSession effect");
 
-        // Delete session
         let effects = core.process_event(Event::Session(SessionEvent::DeleteSession {
             id: session_id.unwrap(),
         }));
@@ -476,7 +561,6 @@ mod tests {
             exercises: vec![],
         });
 
-        // Empty title should trigger validation error
         let _ = core.process_event(Event::Piece(PieceEvent::Add(CreatePiece {
             title: "".to_string(),
             composer: "Someone".to_string(),

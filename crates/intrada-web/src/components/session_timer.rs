@@ -6,13 +6,15 @@ use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::components::{Button, ButtonVariant, Card, SetlistEntryRow, TypeBadge};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Active session timer: shows current item, elapsed time, progress, and controls.
 #[component]
 pub fn SessionTimer() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
 
     let elapsed_secs = RwSignal::new(0u32);
     let interval_id: RwSignal<Option<i32>> = RwSignal::new(None);
@@ -88,7 +90,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             let event = Event::Session(SessionEvent::FinishSession { now });
                                             let core_ref = core_finish.borrow();
                                             let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
                                         })>
                                             "Finish Session"
@@ -101,7 +103,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             let event = Event::Session(SessionEvent::NextItem { now });
                                             let core_ref = core_next.borrow();
                                             let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
                                         })>
                                             "Next Item"
@@ -113,7 +115,7 @@ pub fn SessionTimer() -> impl IntoView {
                                     let event = Event::Session(SessionEvent::SkipItem { now });
                                     let core_ref = core_skip.borrow();
                                     let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                     elapsed_secs.set(0);
                                 })>
                                     "Skip"
@@ -123,7 +125,7 @@ pub fn SessionTimer() -> impl IntoView {
                                     let event = Event::Session(SessionEvent::EndSessionEarly { now });
                                     let core_ref = core_end.borrow();
                                     let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                     elapsed_secs.set(0);
                                 })>
                                     "End Early"

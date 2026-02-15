@@ -12,13 +12,15 @@ use crate::components::{
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tags, parse_tempo};
-use intrada_web::types::{ItemType, SharedCore};
+use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::{validate_library_form, FormData};
 
 #[component]
 pub fn AddLibraryItemForm() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
     let navigate = use_navigate();
     let navigate_cancel = navigate.clone();
 
@@ -123,7 +125,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
 
                         let core_ref = core.borrow();
                         let effects = core_ref.process_event(event);
-                        process_effects(&core_ref, effects, &view_model);
+                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                         navigate("/", NavigateOptions { replace: true, ..Default::default() });
                     }
                 >
