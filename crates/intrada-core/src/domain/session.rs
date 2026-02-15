@@ -89,18 +89,13 @@ pub struct SummarySession {
 }
 
 /// The lifecycle state of a session in the core Model.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum SessionStatus {
+    #[default]
     Idle,
     Building(BuildingSession),
     Active(ActiveSession),
     Summary(SummarySession),
-}
-
-impl Default for SessionStatus {
-    fn default() -> Self {
-        Self::Idle
-    }
 }
 
 // ── Events ─────────────────────────────────────────────────────────────
