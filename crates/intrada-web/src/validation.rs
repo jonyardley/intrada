@@ -121,3 +121,160 @@ pub fn validate_library_form(item_type: ItemType, data: &FormData<'_>) -> HashMa
 
     errors
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_piece_data() -> FormData<'static> {
+        FormData {
+            title: "Clair de Lune",
+            composer: "Claude Debussy",
+            category: "",
+            notes: "",
+            bpm_str: "",
+            tempo_marking: "",
+            tags_str: "",
+        }
+    }
+
+    fn valid_exercise_data() -> FormData<'static> {
+        FormData {
+            title: "Hanon No. 1",
+            composer: "",
+            category: "Technique",
+            notes: "",
+            bpm_str: "",
+            tempo_marking: "",
+            tags_str: "",
+        }
+    }
+
+    #[test]
+    fn test_valid_piece_no_errors() {
+        let errors = validate_library_form(ItemType::Piece, &valid_piece_data());
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn test_valid_exercise_no_errors() {
+        let errors = validate_library_form(ItemType::Exercise, &valid_exercise_data());
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn test_missing_title() {
+        let data = FormData {
+            title: "",
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("title"));
+    }
+
+    #[test]
+    fn test_title_too_long() {
+        let long_title = "x".repeat(MAX_TITLE + 1);
+        let data = FormData {
+            title: &long_title,
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("title"));
+    }
+
+    #[test]
+    fn test_missing_composer_for_piece() {
+        let data = FormData {
+            composer: "",
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("composer"));
+    }
+
+    #[test]
+    fn test_composer_optional_for_exercise() {
+        let data = FormData {
+            composer: "",
+            ..valid_exercise_data()
+        };
+        let errors = validate_library_form(ItemType::Exercise, &data);
+        assert!(!errors.contains_key("composer"));
+    }
+
+    #[test]
+    fn test_oversized_composer() {
+        let long_composer = "x".repeat(MAX_COMPOSER + 1);
+        let data = FormData {
+            composer: &long_composer,
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("composer"));
+    }
+
+    #[test]
+    fn test_oversized_category_for_exercise() {
+        let long_cat = "x".repeat(MAX_CATEGORY + 1);
+        let data = FormData {
+            category: &long_cat,
+            ..valid_exercise_data()
+        };
+        let errors = validate_library_form(ItemType::Exercise, &data);
+        assert!(errors.contains_key("category"));
+    }
+
+    #[test]
+    fn test_oversized_notes() {
+        let long_notes = "x".repeat(MAX_NOTES + 1);
+        let data = FormData {
+            notes: &long_notes,
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("notes"));
+    }
+
+    #[test]
+    fn test_invalid_bpm_non_numeric() {
+        let data = FormData {
+            bpm_str: "fast",
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("bpm"));
+    }
+
+    #[test]
+    fn test_bpm_out_of_range() {
+        let data = FormData {
+            bpm_str: "999",
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("bpm"));
+    }
+
+    #[test]
+    fn test_oversized_tempo_marking() {
+        let long_marking = "x".repeat(MAX_TEMPO_MARKING + 1);
+        let data = FormData {
+            tempo_marking: &long_marking,
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("tempo_marking"));
+    }
+
+    #[test]
+    fn test_tag_too_long() {
+        let long_tag = "x".repeat(MAX_TAG + 1);
+        let data = FormData {
+            tags_str: &long_tag,
+            ..valid_piece_data()
+        };
+        let errors = validate_library_form(ItemType::Piece, &data);
+        assert!(errors.contains_key("tags"));
+    }
+}

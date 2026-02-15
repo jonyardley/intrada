@@ -54,3 +54,112 @@ pub fn parse_tempo_display(tempo: &Option<String>) -> (String, String) {
     // Just a marking
     (t.clone(), String::new())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // T005: parse_tags tests
+    #[test]
+    fn test_parse_tags_empty_string() {
+        assert!(parse_tags("").is_empty());
+    }
+
+    #[test]
+    fn test_parse_tags_single() {
+        assert_eq!(parse_tags("classical"), vec!["classical"]);
+    }
+
+    #[test]
+    fn test_parse_tags_multiple() {
+        assert_eq!(
+            parse_tags("classical, piano, romantic"),
+            vec!["classical", "piano", "romantic"]
+        );
+    }
+
+    #[test]
+    fn test_parse_tags_whitespace_trimming() {
+        assert_eq!(
+            parse_tags("  jazz ,  blues , funk  "),
+            vec!["jazz", "blues", "funk"]
+        );
+    }
+
+    #[test]
+    fn test_parse_tags_trailing_comma() {
+        assert_eq!(parse_tags("rock,"), vec!["rock"]);
+    }
+
+    #[test]
+    fn test_parse_tags_empty_entries_filtered() {
+        assert_eq!(parse_tags("a,,b,,,c"), vec!["a", "b", "c"]);
+    }
+
+    // T006: parse_tempo tests
+    #[test]
+    fn test_parse_tempo_both_empty() {
+        assert!(parse_tempo("", "").is_none());
+    }
+
+    #[test]
+    fn test_parse_tempo_marking_only() {
+        let tempo = parse_tempo("Allegro", "").unwrap();
+        assert_eq!(tempo.marking, Some("Allegro".to_string()));
+        assert_eq!(tempo.bpm, None);
+    }
+
+    #[test]
+    fn test_parse_tempo_bpm_only() {
+        let tempo = parse_tempo("", "120").unwrap();
+        assert_eq!(tempo.marking, None);
+        assert_eq!(tempo.bpm, Some(120));
+    }
+
+    #[test]
+    fn test_parse_tempo_both_present() {
+        let tempo = parse_tempo("Allegro", "132").unwrap();
+        assert_eq!(tempo.marking, Some("Allegro".to_string()));
+        assert_eq!(tempo.bpm, Some(132));
+    }
+
+    #[test]
+    fn test_parse_tempo_invalid_bpm() {
+        // Invalid BPM string is treated as no BPM
+        let tempo = parse_tempo("Andante", "fast");
+        // "Andante" alone should still produce Some with marking
+        assert!(tempo.is_some());
+        let t = tempo.unwrap();
+        assert_eq!(t.marking, Some("Andante".to_string()));
+        assert_eq!(t.bpm, None);
+    }
+
+    // T007: parse_tempo_display tests
+    #[test]
+    fn test_parse_tempo_display_none() {
+        let (marking, bpm) = parse_tempo_display(&None);
+        assert!(marking.is_empty());
+        assert!(bpm.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tempo_display_marking_only() {
+        let (marking, bpm) = parse_tempo_display(&Some("Allegro".to_string()));
+        assert_eq!(marking, "Allegro");
+        assert!(bpm.is_empty());
+    }
+
+    #[test]
+    fn test_parse_tempo_display_bpm_only() {
+        let (marking, bpm) = parse_tempo_display(&Some("132 BPM".to_string()));
+        assert!(marking.is_empty());
+        assert_eq!(bpm, "132");
+    }
+
+    #[test]
+    fn test_parse_tempo_display_full_format() {
+        let (marking, bpm) = parse_tempo_display(&Some("Allegro (132 BPM)".to_string()));
+        assert_eq!(marking, "Allegro");
+        assert_eq!(bpm, "132");
+    }
+}

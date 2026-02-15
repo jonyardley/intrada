@@ -47,6 +47,54 @@ jobs:
       - name: Build WASM
         working-directory: crates/intrada-web
         run: trunk build
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: crates/intrada-web/dist/
+
+  wasm-test:
+    name: WASM Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "wasm"
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Run WASM tests
+        working-directory: crates/intrada-web
+        run: wasm-pack test --headless --chrome -- --test wasm
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: wasm-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download web-dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-dist
+      - name: Install dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install chromium
+      - name: Run E2E tests
+        working-directory: e2e
+        env:
+          DIST_DIR: ${{ github.workspace }}/web-dist
+        run: npx playwright test
 
   fmt:
     name: Formatting

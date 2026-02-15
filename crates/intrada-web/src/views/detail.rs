@@ -9,8 +9,8 @@ use intrada_core::{Event, ExerciseEvent, LogSession, PieceEvent, SessionEvent, V
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, FieldLabel, PracticeTimer, SessionHistory, TypeBadge,
 };
-use crate::core_bridge::process_effects;
-use crate::types::SharedCore;
+use intrada_web::core_bridge::process_effects;
+use intrada_web::types::SharedCore;
 
 #[component]
 pub fn DetailView() -> impl IntoView {

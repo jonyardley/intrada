@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use leptos::web_sys;
 use wasm_bindgen::JsCast;
 
-use crate::types::ItemType;
+use intrada_web::types::ItemType;
 
 /// Horizontal toggle switch for selecting between Piece and Exercise types.
 ///
