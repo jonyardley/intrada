@@ -37,13 +37,13 @@ pub fn SessionSummary() -> impl IntoView {
                             // Summary header
                             <Card>
                                 <div class="text-center space-y-2">
-                                    <h2 class="text-2xl font-bold text-slate-900">"Session Complete!"</h2>
-                                    <p class="text-lg text-slate-600">
+                                    <h2 class="text-2xl font-bold text-white">"Session Complete!"</h2>
+                                    <p class="text-lg text-gray-300">
                                         {format!("Total: {}", total_duration)}
                                     </p>
                                     {if completion_status == "ended_early" {
                                         Some(view! {
-                                            <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-600/20 ring-inset">
+                                            <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
                                                 "Ended Early"
                                             </span>
                                         })
@@ -55,7 +55,7 @@ pub fn SessionSummary() -> impl IntoView {
 
                             // Entries breakdown
                             <Card>
-                                <h3 class="text-lg font-semibold text-slate-900 mb-3">"Items Practiced"</h3>
+                                <h3 class="text-lg font-semibold text-white mb-3">"Items Practiced"</h3>
                                 <div class="space-y-3">
                                     {entries.into_iter().map(|entry| {
                                         let entry_id = entry.id.clone();
@@ -67,25 +67,25 @@ pub fn SessionSummary() -> impl IntoView {
                                             _ => "—",
                                         };
                                         let status_color = match entry.status.as_str() {
-                                            "completed" => "text-green-600",
-                                            "skipped" => "text-amber-600",
-                                            _ => "text-slate-400",
+                                            "completed" => "text-green-400",
+                                            "skipped" => "text-amber-400",
+                                            _ => "text-gray-500",
                                         };
                                         view! {
-                                            <div class="rounded-lg border border-slate-200 p-3 space-y-2">
+                                            <div class="rounded-lg border border-white/10 p-3 space-y-2">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
                                                         <span class={format!("text-sm font-medium {}", status_color)}>{status_label}</span>
-                                                        <span class="text-sm font-medium text-slate-900">{entry.item_title}</span>
-                                                        <span class="text-xs text-slate-400">{entry.item_type}</span>
+                                                        <span class="text-sm font-medium text-white">{entry.item_title}</span>
+                                                        <span class="text-xs text-gray-500">{entry.item_type}</span>
                                                     </div>
-                                                    <span class="text-sm text-slate-500">{entry.duration_display}</span>
+                                                    <span class="text-sm text-gray-400">{entry.duration_display}</span>
                                                 </div>
                                                 <div>
                                                     <input
                                                         type="text"
                                                         placeholder="Add notes for this item..."
-                                                        class="w-full rounded border border-slate-200 px-2 py-1 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                                        class="w-full rounded border border-white/20 bg-white/10 text-white placeholder-gray-400 px-2 py-1 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
                                                         bind:value=entry_notes
                                                         on:blur=move |_| {
                                                             let notes_val = entry_notes.get_untracked();
@@ -108,11 +108,11 @@ pub fn SessionSummary() -> impl IntoView {
 
                             // Session notes
                             <Card>
-                                <h3 class="text-lg font-semibold text-slate-900 mb-3">"Session Notes"</h3>
+                                <h3 class="text-lg font-semibold text-white mb-3">"Session Notes"</h3>
                                 <textarea
                                     rows="3"
                                     placeholder="How did this session go?"
-                                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    class="w-full rounded-lg border border-white/20 bg-white/10 text-white placeholder-gray-400 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
                                     bind:value=session_notes
                                     on:blur=move |_| {
                                         let notes_val = session_notes.get_untracked();
@@ -151,7 +151,7 @@ pub fn SessionSummary() -> impl IntoView {
                                 let vm = view_model.get();
                                 vm.error.map(|err| {
                                     view! {
-                                        <p class="text-sm text-red-600">{err}</p>
+                                        <p class="text-sm text-red-400">{err}</p>
                                     }
                                 })
                             }}
@@ -159,7 +159,7 @@ pub fn SessionSummary() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-slate-500 text-center py-8">"No session summary available."</p>
+                            <p class="text-sm text-gray-400 text-center py-8">"No session summary available."</p>
                         }.into_any()
                     }
                 }

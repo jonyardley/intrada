@@ -34,8 +34,8 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let Some(item) = item else {
         return view! {
             <div class="text-center py-8">
-                <p class="text-slate-600 mb-4">"Item not found."</p>
-                <A href="/" attr:class="text-indigo-600 hover:text-indigo-800 font-medium">
+                <p class="text-gray-300 mb-4">"Item not found."</p>
+                <A href="/" attr:class="text-indigo-300 hover:text-indigo-200 font-medium">
                     "← Back to Library"
                 </A>
             </div>
@@ -86,7 +86,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let cancel_href = back_href.clone();
 
     view! {
-        <div>
+        <div class="sm:max-w-2xl sm:mx-auto">
             <BackLink label="Cancel" href=back_href />
 
             <PageHeading text="Edit Library Item" />
@@ -223,7 +223,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         <TextField id="edit-key" label="Key" value=key_sig placeholder="e.g. C Major, Db Minor" field_name="key" errors=errors />
 
                         // Tempo: marking + BPM on one row (shared)
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <TextField id="edit-tempo-marking" label="Tempo Marking" value=tempo_marking placeholder="e.g. Allegro" field_name="tempo_marking" errors=errors />
                             <TextField id="edit-bpm" label="BPM" value=bpm input_type="number" placeholder="1-400" field_name="bpm" errors=errors />
                         </div>
@@ -235,7 +235,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         <TextField id="edit-tags" label="Tags" value=tags_input placeholder="Comma-separated, e.g. classical, piano" field_name="tags" errors=errors />
 
                         // Buttons
-                        <div class="flex gap-3 pt-2">
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
                             <Button variant=ButtonVariant::Primary button_type="submit">"Save"</Button>
                             <Button variant=ButtonVariant::Secondary on_click={
                                 let cancel_href = cancel_href.clone();

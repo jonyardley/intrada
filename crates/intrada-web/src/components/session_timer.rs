@@ -65,12 +65,12 @@ pub fn SessionTimer() -> impl IntoView {
                             // Current item card
                             <Card>
                                 <div class="text-center space-y-3">
-                                    <p class="text-xs text-slate-400 uppercase tracking-wider">
+                                    <p class="text-xs text-gray-400 uppercase tracking-wider">
                                         {format!("Item {} of {}", position + 1, total)}
                                     </p>
-                                    <h2 class="text-2xl font-bold text-slate-900">{current_title}</h2>
+                                    <h2 class="text-2xl font-bold text-white">{current_title}</h2>
                                     <TypeBadge item_type=current_type />
-                                    <p class="text-4xl font-mono font-bold text-slate-900 mt-4">
+                                    <p class="text-4xl sm:text-6xl font-mono font-bold text-white mt-4">
                                         {move || {
                                             let secs = elapsed_secs.get();
                                             format!("{:02}:{:02}", secs / 60, secs % 60)
@@ -80,7 +80,7 @@ pub fn SessionTimer() -> impl IntoView {
                             </Card>
 
                             // Controls
-                            <div class="flex gap-3 justify-center">
+                            <div class="flex flex-wrap gap-3 justify-center">
                                 {if is_last {
                                     view! {
                                         <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
@@ -134,7 +134,7 @@ pub fn SessionTimer() -> impl IntoView {
                             {if !completed_entries.is_empty() {
                                 Some(view! {
                                     <div class="mt-4">
-                                        <h4 class="text-sm font-medium text-slate-500 mb-2">"Completed"</h4>
+                                        <h4 class="text-sm font-medium text-gray-400 mb-2">"Completed"</h4>
                                         <div class="space-y-1">
                                             {completed_entries.into_iter().map(|entry| {
                                                 view! {
@@ -151,7 +151,7 @@ pub fn SessionTimer() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-slate-500 text-center py-8">"No active session."</p>
+                            <p class="text-sm text-gray-400 text-center py-8">"No active session."</p>
                         }.into_any()
                     }
                 }

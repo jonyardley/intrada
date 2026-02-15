@@ -20,7 +20,7 @@ pub fn SetlistBuilder() -> impl IntoView {
         <div class="space-y-6">
             // Current setlist
             <Card>
-                <h3 class="text-lg font-semibold text-slate-900 mb-4">"Your Setlist"</h3>
+                <h3 class="text-lg font-semibold text-white mb-4">"Your Setlist"</h3>
                 {move || {
                     let vm = view_model.get();
                     match vm.building_setlist {
@@ -78,7 +78,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                         }
                         _ => {
                             view! {
-                                <p class="text-sm text-slate-500 text-center py-4">
+                                <p class="text-sm text-gray-400 text-center py-4">
                                     "No items added yet. Select items from your library below."
                                 </p>
                             }.into_any()
@@ -119,19 +119,19 @@ pub fn SetlistBuilder() -> impl IntoView {
                 let vm = view_model.get();
                 vm.error.map(|err| {
                     view! {
-                        <p class="text-sm text-red-600">{err}</p>
+                        <p class="text-sm text-red-400">{err}</p>
                     }
                 })
             }}
 
             // Library items to add
             <Card>
-                <h3 class="text-lg font-semibold text-slate-900 mb-4">"Library Items"</h3>
+                <h3 class="text-lg font-semibold text-white mb-4">"Library Items"</h3>
                 {move || {
                     let vm = view_model.get();
                     if vm.items.is_empty() {
                         view! {
-                            <p class="text-sm text-slate-500">"No library items available."</p>
+                            <p class="text-sm text-gray-400">"No library items available."</p>
                         }.into_any()
                     } else {
                         let core_add = core_library.clone();
@@ -143,13 +143,13 @@ pub fn SetlistBuilder() -> impl IntoView {
                                     let item_type = item.item_type.clone();
                                     let core_a = core_add.clone();
                                     view! {
-                                        <div class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 hover:bg-slate-50">
+                                        <div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 hover:bg-white/10">
                                             <div class="flex items-center gap-2">
-                                                <span class="text-sm text-slate-900">{title}</span>
-                                                <span class="text-xs text-slate-400">{item_type}</span>
+                                                <span class="text-sm text-white">{title}</span>
+                                                <span class="text-xs text-gray-500">{item_type}</span>
                                             </div>
                                             <button
-                                                class="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                                                class="text-xs font-medium text-indigo-300 hover:text-indigo-200"
                                                 on:click=move |_| {
                                                     let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
                                                     let core_ref = core_a.borrow();

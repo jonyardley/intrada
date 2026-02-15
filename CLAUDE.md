@@ -10,6 +10,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - Workspace dependencies: crux_core 0.17.0-rc2, serde 1, serde_json 1, ulid 1, chrono 0.4, thiserror 1 (014-remove-cli)
 - Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2 (workspace), leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (Storage+Window), wasm-bindgen, serde/serde_json 1, ulid 1, chrono 0.4, send_wrapper 0.6 (015-rework-sessions)
 - localStorage (web: `intrada:sessions` key for completed sessions, `intrada:session-in-progress` key for crash recovery) (015-rework-sessions)
+- Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, Tailwind CSS v4 (standalone CLI v4.1.18), trunk 0.21.x (016-glassmorphism-responsive)
+- N/A (no storage changes — visual only) (016-glassmorphism-responsive)
 
 ## Project Structure
 
@@ -33,9 +35,9 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 016-glassmorphism-responsive: Added Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, Tailwind CSS v4 (standalone CLI v4.1.18), trunk 0.21.x
 - 015-rework-sessions: Added Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2 (workspace), leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (Storage+Window), wasm-bindgen, serde/serde_json 1, ulid 1, chrono 0.4, send_wrapper 0.6
 - 015-rework-sessions: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 014-remove-cli: Removed CLI shell crate and its workspace dependencies (`clap`, `anyhow`, `dirs`). Project now focuses on core + web only.
 
 
 <!-- MANUAL ADDITIONS START -->

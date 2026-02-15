@@ -9,7 +9,7 @@ use send_wrapper::SendWrapper;
 
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
-use crate::components::{AppFooter, AppHeader};
+use crate::components::{AppFooter, AppHeader, BottomTabBar};
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
     SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
@@ -50,12 +50,15 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Router>
-            <div class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800">
+            // Fixed gradient background — stays behind all content, does not scroll
+            <div class="fixed inset-0 -z-10 bg-linear-to-br from-gray-950 via-indigo-950 to-purple-950"></div>
+
+            <div class="relative z-0 min-h-screen text-white">
                 // Header
                 <AppHeader />
 
                 // Main content — routed by URL
-                <main class="max-w-4xl mx-auto px-6 py-10" role="main">
+                <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10" role="main">
                     <Routes fallback=|| view! { <NotFoundView /> }>
                         <Route path=path!("/") view=move || view! {
                             <LibraryListView />
@@ -87,6 +90,9 @@ pub fn App() -> impl IntoView {
 
                 // Footer
                 <AppFooter />
+
+                // Mobile bottom tab bar (hidden on sm: and wider)
+                <BottomTabBar />
             </div>
         </Router>
     }
