@@ -19,7 +19,7 @@ pub fn TypeTabs(
     // Helper to build class strings — pill-style segmented control
     let tab_class = move |tab: ItemType| {
         let is_active = active.get() == tab;
-        let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-0";
+        let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-0";
         if is_active {
             format!("{base} bg-indigo-600 text-white shadow-sm")
         } else if is_interactive {
