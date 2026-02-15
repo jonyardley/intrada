@@ -79,23 +79,35 @@ fn test_library_data_round_trip() {
     assert_eq!(exercises[0].category, Some("Scales".to_string()));
 }
 
-// T013: Session data round-trip
+// T013: Session data round-trip (updated for new PracticeSession model)
 #[wasm_bindgen_test]
 fn test_session_data_round_trip() {
-    use intrada_core::SessionsData;
+    use intrada_core::{
+        CompletionStatus, EntryStatus, PracticeSession, SessionsData, SetlistEntry,
+    };
     use intrada_web::core_bridge::{save_sessions_to_local_storage, SESSIONS_KEY};
 
     clear_local_storage();
 
     let now = chrono::Utc::now();
     let data = SessionsData {
-        sessions: vec![intrada_core::Session {
+        sessions: vec![PracticeSession {
             id: "s1".to_string(),
-            item_id: "p1".to_string(),
-            duration_minutes: 30,
+            entries: vec![SetlistEntry {
+                id: "e1".to_string(),
+                item_id: "p1".to_string(),
+                item_title: "Test Piece".to_string(),
+                item_type: "piece".to_string(),
+                position: 0,
+                duration_secs: 1800,
+                status: EntryStatus::Completed,
+                notes: Some("Great practice".to_string()),
+            }],
+            session_notes: None,
             started_at: now,
-            logged_at: now,
-            notes: Some("Great practice".to_string()),
+            completed_at: now,
+            total_duration_secs: 1800,
+            completion_status: CompletionStatus::Completed,
         }],
     };
 
@@ -109,8 +121,11 @@ fn test_session_data_round_trip() {
     // Read back via the public API
     let sessions = intrada_web::core_bridge::load_sessions_data();
     assert_eq!(sessions.len(), 1, "Expected 1 session");
-    assert_eq!(sessions[0].duration_minutes, 30);
-    assert_eq!(sessions[0].notes, Some("Great practice".to_string()));
+    assert_eq!(sessions[0].total_duration_secs, 1800);
+    assert_eq!(
+        sessions[0].entries[0].notes,
+        Some("Great practice".to_string())
+    );
 }
 
 // T014: Empty localStorage seeds stub data

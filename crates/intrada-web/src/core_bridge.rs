@@ -9,6 +9,7 @@ use crate::data::create_stub_data;
 
 pub const STORAGE_KEY: &str = "intrada:library";
 pub const SESSIONS_KEY: &str = "intrada:sessions";
+pub const SESSION_IN_PROGRESS_KEY: &str = "intrada:session-in-progress";
 
 thread_local! {
     static LIBRARY: RefCell<LibraryData> = RefCell::new(LibraryData::default());
@@ -57,7 +58,28 @@ fn load_sessions_from_local_storage() -> SessionsData {
     };
 
     match storage.get_item(SESSIONS_KEY) {
-        Ok(Some(json)) => serde_json::from_str(&json).unwrap_or_default(),
+        Ok(Some(json)) => {
+            // Detect old schema: if JSON is an array of objects with "item_id",
+            // wipe it and return empty new-schema data.
+            if let Ok(serde_json::Value::Object(ref map)) =
+                serde_json::from_str::<serde_json::Value>(&json)
+            {
+                if let Some(serde_json::Value::Array(arr)) = map.get("sessions") {
+                    if let Some(serde_json::Value::Object(first)) = arr.first() {
+                        if first.contains_key("item_id") && !first.contains_key("entries") {
+                            // Old schema detected — wipe it
+                            web_sys::console::log_1(
+                                &"intrada: old session schema detected, wiping data".into(),
+                            );
+                            let empty = SessionsData::default();
+                            save_sessions_to_local_storage(&empty);
+                            return empty;
+                        }
+                    }
+                }
+            }
+            serde_json::from_str(&json).unwrap_or_default()
+        }
         _ => SessionsData::default(),
     }
 }
@@ -83,8 +105,38 @@ pub fn save_sessions_to_local_storage(data: &SessionsData) {
     }
 }
 
+fn save_session_in_progress(session: &intrada_core::ActiveSession) {
+    let Some(storage) = get_local_storage() else {
+        return;
+    };
+
+    match serde_json::to_string(session) {
+        Ok(json) => {
+            let _ = storage.set_item(SESSION_IN_PROGRESS_KEY, &json);
+        }
+        Err(e) => {
+            web_sys::console::warn_1(
+                &format!("intrada: failed to serialise session-in-progress: {e}").into(),
+            );
+        }
+    }
+}
+
+fn clear_session_in_progress() {
+    if let Some(storage) = get_local_storage() {
+        let _ = storage.remove_item(SESSION_IN_PROGRESS_KEY);
+    }
+}
+
+/// Load the in-progress session from localStorage (for crash recovery).
+pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
+    let storage = get_local_storage()?;
+    let json = storage.get_item(SESSION_IN_PROGRESS_KEY).ok()??;
+    serde_json::from_str(&json).ok()
+}
+
 /// Load sessions data from localStorage.
-pub fn load_sessions_data() -> Vec<intrada_core::Session> {
+pub fn load_sessions_data() -> Vec<intrada_core::PracticeSession> {
     let data = load_sessions_from_local_storage();
     SESSIONS.with(|s| *s.borrow_mut() = data.clone());
     data.sessions
@@ -170,30 +222,27 @@ pub fn process_effects(
                     let inner_effects = core.process_event(Event::SessionsLoaded { sessions });
                     process_effects(core, inner_effects, view_model);
                 }
-                StorageEffect::SaveSession(session) => {
+                StorageEffect::SavePracticeSession(session) => {
                     SESSIONS.with(|s| {
                         let mut data = s.borrow_mut();
                         data.sessions.push(session.clone());
                         save_sessions_to_local_storage(&data);
                     });
+                    // Clear in-progress when session is saved
+                    clear_session_in_progress();
                 }
-                StorageEffect::UpdateSession(session) => {
-                    SESSIONS.with(|s| {
-                        let mut data = s.borrow_mut();
-                        if let Some(existing) =
-                            data.sessions.iter_mut().find(|sess| sess.id == session.id)
-                        {
-                            *existing = session.clone();
-                        }
-                        save_sessions_to_local_storage(&data);
-                    });
-                }
-                StorageEffect::DeleteSession { id } => {
+                StorageEffect::DeletePracticeSession { id } => {
                     SESSIONS.with(|s| {
                         let mut data = s.borrow_mut();
                         data.sessions.retain(|sess| sess.id != *id);
                         save_sessions_to_local_storage(&data);
                     });
+                }
+                StorageEffect::SaveSessionInProgress(session) => {
+                    save_session_in_progress(session);
+                }
+                StorageEffect::ClearSessionInProgress => {
+                    clear_session_in_progress();
                 }
             },
         }
@@ -205,8 +254,8 @@ pub fn process_effects(
 mod tests {
     use crux_core::Core;
     use intrada_core::{
-        CreateExercise, CreatePiece, Effect, Event, ExerciseEvent, Intrada, LogSession, Piece,
-        PieceEvent, SessionEvent, StorageEffect, UpdateSession,
+        CreateExercise, CreatePiece, Effect, Event, ExerciseEvent, Intrada, Piece, PieceEvent,
+        StorageEffect,
     };
 
     /// Extract storage effects from a Vec<Effect>, skipping Render effects.
@@ -317,89 +366,79 @@ mod tests {
     }
 
     #[test]
-    fn test_log_session_produces_save_session_effect() {
+    fn test_session_building_and_start() {
+        use intrada_core::SessionEvent;
+
         let (core, piece_id) = loaded_core();
 
-        let effects = core.process_event(Event::Session(SessionEvent::Log(LogSession {
-            item_id: piece_id,
-            duration_minutes: 30,
-            notes: Some("Good practice".to_string()),
-        })));
+        // Start building
+        let effects = core.process_event(Event::Session(SessionEvent::StartBuilding));
+        let storage = storage_effects(effects);
+        // No storage effect for start building — just a render
+        assert!(
+            storage.is_empty(),
+            "Expected no storage effects for StartBuilding"
+        );
 
+        // Add item to setlist
+        let effects = core.process_event(Event::Session(SessionEvent::AddToSetlist {
+            item_id: piece_id,
+        }));
+        let storage = storage_effects(effects);
+        assert!(
+            storage.is_empty(),
+            "Expected no storage effects for AddToSetlist"
+        );
+
+        // Start session
+        let now = chrono::Utc::now();
+        let effects = core.process_event(Event::Session(SessionEvent::StartSession { now }));
         let storage = storage_effects(effects);
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::SaveSession(s) if s.duration_minutes == 30)),
-            "Expected SaveSession effect, got: {storage:?}"
+                .any(|e| matches!(e, StorageEffect::SaveSessionInProgress(_))),
+            "Expected SaveSessionInProgress effect, got: {storage:?}"
         );
     }
 
     #[test]
-    fn test_update_session_produces_update_session_effect() {
+    fn test_delete_session_produces_delete_practice_session_effect() {
+        use intrada_core::SessionEvent;
+
         let (core, piece_id) = loaded_core();
 
-        // First log a session
-        let effects = core.process_event(Event::Session(SessionEvent::Log(LogSession {
+        // Build and complete a session
+        let _ = core.process_event(Event::Session(SessionEvent::StartBuilding));
+        let _ = core.process_event(Event::Session(SessionEvent::AddToSetlist {
             item_id: piece_id,
-            duration_minutes: 30,
-            notes: None,
-        })));
-        let session_id = storage_effects(effects)
-            .into_iter()
-            .find_map(|e| match e {
-                StorageEffect::SaveSession(s) => Some(s.id),
-                _ => None,
-            })
-            .expect("Should have SaveSession effect");
-
-        // Now update it
-        let effects = core.process_event(Event::Session(SessionEvent::Update {
-            id: session_id,
-            input: UpdateSession {
-                duration_minutes: Some(45),
-                notes: None,
-            },
         }));
+        let now = chrono::Utc::now();
+        let _ = core.process_event(Event::Session(SessionEvent::StartSession { now }));
+        let later = now + chrono::Duration::minutes(10);
+        let _ = core.process_event(Event::Session(SessionEvent::FinishSession { now: later }));
 
+        // Save session to get the ID
+        let save_now = later + chrono::Duration::seconds(5);
+        let effects =
+            core.process_event(Event::Session(SessionEvent::SaveSession { now: save_now }));
+        let storage = storage_effects(effects);
+        let session_id = storage.iter().find_map(|e| match e {
+            StorageEffect::SavePracticeSession(s) => Some(s.id.clone()),
+            _ => None,
+        });
+        assert!(session_id.is_some(), "Expected SavePracticeSession effect");
+
+        // Delete session
+        let effects = core.process_event(Event::Session(SessionEvent::DeleteSession {
+            id: session_id.unwrap(),
+        }));
         let storage = storage_effects(effects);
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::UpdateSession(s) if s.duration_minutes == 45)),
-            "Expected UpdateSession effect, got: {storage:?}"
-        );
-    }
-
-    #[test]
-    fn test_delete_session_produces_delete_session_effect() {
-        let (core, piece_id) = loaded_core();
-
-        // Log a session first
-        let effects = core.process_event(Event::Session(SessionEvent::Log(LogSession {
-            item_id: piece_id,
-            duration_minutes: 20,
-            notes: None,
-        })));
-        let session_id = storage_effects(effects)
-            .into_iter()
-            .find_map(|e| match e {
-                StorageEffect::SaveSession(s) => Some(s.id),
-                _ => None,
-            })
-            .expect("Should have SaveSession effect");
-
-        // Delete it
-        let effects = core.process_event(Event::Session(SessionEvent::Delete {
-            id: session_id.clone(),
-        }));
-
-        let storage = storage_effects(effects);
-        assert!(
-            storage
-                .iter()
-                .any(|e| matches!(e, StorageEffect::DeleteSession { id } if id == &session_id)),
-            "Expected DeleteSession effect, got: {storage:?}"
+                .any(|e| matches!(e, StorageEffect::DeletePracticeSession { .. })),
+            "Expected DeletePracticeSession effect, got: {storage:?}"
         );
     }
 

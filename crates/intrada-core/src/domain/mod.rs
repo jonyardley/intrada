@@ -5,8 +5,11 @@ pub mod types;
 
 pub use exercise::{Exercise, ExerciseEvent};
 pub use piece::{Piece, PieceEvent};
-pub use session::{Session, SessionEvent};
+pub use session::{
+    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionEvent, SessionStatus,
+    SetlistEntry,
+};
 pub use types::{
-    CreateExercise, CreatePiece, LibraryData, ListQuery, LogSession, SessionsData, Tempo,
-    UpdateExercise, UpdatePiece, UpdateSession,
+    CreateExercise, CreatePiece, LibraryData, ListQuery, SessionsData, Tempo, UpdateExercise,
+    UpdatePiece,
 };

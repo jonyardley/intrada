@@ -7,14 +7,16 @@ use leptos_router::components::{Route, Router, Routes};
 use leptos_router::path;
 use send_wrapper::SendWrapper;
 
-use intrada_core::{Event, Intrada, ViewModel};
+use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::{AppFooter, AppHeader};
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
-    SessionsListView,
+    SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
 };
-use intrada_web::core_bridge::{load_library_data, load_sessions_data, process_effects};
+use intrada_web::core_bridge::{
+    load_library_data, load_session_in_progress, load_sessions_data, process_effects,
+};
 use intrada_web::types::SharedCore;
 
 #[component]
@@ -32,6 +34,13 @@ pub fn App() -> impl IntoView {
         let sessions = load_sessions_data();
         let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
         process_effects(&core_ref, effects, &view_model);
+
+        // Recover any in-progress session from localStorage (crash recovery)
+        if let Some(session) = load_session_in_progress() {
+            let effects =
+                core_ref.process_event(Event::Session(SessionEvent::RecoverSession { session }));
+            process_effects(&core_ref, effects, &view_model);
+        }
     }
 
     // Provide core and view_model via Leptos context so child components
@@ -63,6 +72,15 @@ pub fn App() -> impl IntoView {
                         } />
                         <Route path=path!("/sessions") view=move || view! {
                             <SessionsListView />
+                        } />
+                        <Route path=path!("/sessions/new") view=move || view! {
+                            <SessionNewView />
+                        } />
+                        <Route path=path!("/sessions/active") view=move || view! {
+                            <SessionActiveView />
+                        } />
+                        <Route path=path!("/sessions/summary") view=move || view! {
+                            <SessionSummaryView />
                         } />
                     </Routes>
                 </main>
