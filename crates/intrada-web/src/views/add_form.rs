@@ -10,10 +10,10 @@ use intrada_core::{CreateExercise, CreatePiece, Event, ExerciseEvent, PieceEvent
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField, TypeTabs,
 };
-use crate::core_bridge::process_effects;
-use crate::helpers::{parse_tags, parse_tempo};
-use crate::types::{ItemType, SharedCore};
-use crate::validation::{validate_library_form, FormData};
+use intrada_web::core_bridge::process_effects;
+use intrada_web::helpers::{parse_tags, parse_tempo};
+use intrada_web::types::{ItemType, SharedCore};
+use intrada_web::validation::{validate_library_form, FormData};
 
 #[component]
 pub fn AddLibraryItemForm() -> impl IntoView {

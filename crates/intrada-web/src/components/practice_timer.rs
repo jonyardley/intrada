@@ -5,8 +5,8 @@ use wasm_bindgen::JsCast;
 use intrada_core::{Event, LogSession, SessionEvent, ViewModel};
 
 use crate::components::{Button, ButtonVariant};
-use crate::core_bridge::process_effects;
-use crate::types::SharedCore;
+use intrada_web::core_bridge::process_effects;
+use intrada_web::types::SharedCore;
 
 /// Client-side practice timer. Uses Leptos signals + web_sys intervals (not Crux core).
 /// When stopped, rounds elapsed time to nearest minute and logs a session.

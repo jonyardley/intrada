@@ -1,10 +1,5 @@
 mod app;
 mod components;
-mod core_bridge;
-mod data;
-mod helpers;
-mod types;
-mod validation;
 mod views;
 
 use app::App;

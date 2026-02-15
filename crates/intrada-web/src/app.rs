@@ -10,12 +10,12 @@ use send_wrapper::SendWrapper;
 use intrada_core::{Event, Intrada, ViewModel};
 
 use crate::components::{AppFooter, AppHeader};
-use crate::core_bridge::{load_library_data, load_sessions_data, process_effects};
-use crate::types::SharedCore;
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
     SessionsListView,
 };
+use intrada_web::core_bridge::{load_library_data, load_sessions_data, process_effects};
+use intrada_web::types::SharedCore;
 
 #[component]
 pub fn App() -> impl IntoView {

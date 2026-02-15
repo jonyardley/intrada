@@ -16,3 +16,6 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 send_wrapper = "0.6.0"
 serde_json = { workspace = true }
 web-sys = { version = "0.3", features = ["Window", "Storage"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"

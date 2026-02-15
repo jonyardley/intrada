@@ -3,8 +3,8 @@ use leptos::prelude::*;
 use intrada_core::{Event, SessionEvent, SessionView, UpdateSession, ViewModel};
 
 use crate::components::{Button, ButtonVariant, Card};
-use crate::core_bridge::process_effects;
-use crate::types::SharedCore;
+use intrada_web::core_bridge::process_effects;
+use intrada_web::types::SharedCore;
 
 /// Session history list for a specific library item.
 /// Shows sessions in reverse chronological order with edit/delete actions.
