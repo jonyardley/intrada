@@ -10,8 +10,7 @@ use send_wrapper::SendWrapper;
 use intrada_core::{Event, Intrada, ViewModel};
 
 use crate::components::{AppFooter, AppHeader};
-use crate::core_bridge::process_effects;
-use crate::data::create_stub_data;
+use crate::core_bridge::{load_library_data, process_effects};
 use crate::types::SharedCore;
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
@@ -22,10 +21,10 @@ pub fn App() -> impl IntoView {
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
 
-    // Initialize: load stub data on mount
+    // Initialize: load from localStorage (or seed stub data on first run)
     {
         let core_ref = core.borrow();
-        let (pieces, exercises) = create_stub_data();
+        let (pieces, exercises) = load_library_data();
         let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
         process_effects(&core_ref, effects, &view_model);
     }

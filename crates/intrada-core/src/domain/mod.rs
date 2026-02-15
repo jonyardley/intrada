@@ -4,4 +4,6 @@ pub mod types;
 
 pub use exercise::{Exercise, ExerciseEvent};
 pub use piece::{Piece, PieceEvent};
-pub use types::{CreateExercise, CreatePiece, ListQuery, Tempo, UpdateExercise, UpdatePiece};
+pub use types::{
+    CreateExercise, CreatePiece, LibraryData, ListQuery, Tempo, UpdateExercise, UpdatePiece,
+};

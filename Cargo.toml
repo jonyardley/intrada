@@ -9,7 +9,6 @@ serde_json = "1"
 ulid = "1"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
-rusqlite = { version = "0.31", features = ["bundled"] }
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1"
 dirs = "5"

@@ -3,15 +3,15 @@ use crux_core::Core;
 use intrada_core::app::{Effect, StorageEffect};
 use intrada_core::{Event, Intrada, ViewModel};
 
-use crate::storage::SqliteStore;
+use crate::storage::JsonStore;
 
 pub struct Shell {
     core: Core<Intrada>,
-    store: SqliteStore,
+    store: JsonStore,
 }
 
 impl Shell {
-    pub fn new(store: SqliteStore) -> Self {
+    pub fn new(store: JsonStore) -> Self {
         Self {
             core: Core::new(),
             store,
@@ -69,21 +69,23 @@ mod tests {
     use intrada_core::domain::piece::PieceEvent;
     use intrada_core::domain::types::CreatePiece;
 
-    fn test_shell() -> Shell {
-        let store = SqliteStore::new_in_memory().unwrap();
-        Shell::new(store)
+    fn test_shell() -> (Shell, tempfile::TempDir) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("library.json");
+        let store = JsonStore::new_with_path(path);
+        (Shell::new(store), dir)
     }
 
     #[test]
     fn test_load_empty_data() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         let vm = shell.load_data().unwrap();
         assert!(vm.items.is_empty());
     }
 
     #[test]
     fn test_add_piece_round_trip() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
         let vm = shell
@@ -101,18 +103,16 @@ mod tests {
         assert_eq!(vm.items[0].title, "Clair de Lune");
         assert!(vm.error.is_none());
 
-        // Verify persisted — create a new shell with same store
-        // (can't reuse store, but verify via load_data which re-reads model)
-        // Instead, verify the view is correct
         let vm2 = shell.run(Event::ClearError).unwrap();
         assert_eq!(vm2.items.len(), 1);
     }
 
     #[test]
-    fn test_add_piece_persists_to_db() {
-        let store = SqliteStore::new_in_memory().unwrap();
+    fn test_add_piece_persists_to_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("library.json");
+        let store = JsonStore::new_with_path(path);
 
-        // Add via shell
         let shell = Shell::new(store);
         shell.load_data().unwrap();
         shell
@@ -126,21 +126,17 @@ mod tests {
             })))
             .unwrap();
 
-        // Verify in DB by loading again
+        // Reload from JSON file to verify persistence
         let vm = shell.load_data().unwrap();
-        // DataLoaded replaces model, so we get only what's in DB
         assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Sonata");
     }
 
-    // --- T042: Unicode handling ---
-
     #[test]
     fn test_unicode_piece_round_trip() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
-        // Add piece with Unicode characters in title and composer
         let vm = shell
             .run(Event::Piece(PieceEvent::Add(CreatePiece {
                 title: "Ménuet in G".to_string(),
@@ -157,7 +153,7 @@ mod tests {
         assert_eq!(vm.items[0].title, "Ménuet in G");
         assert_eq!(vm.items[0].subtitle, "Dvořák");
 
-        // Reload from SQLite to verify round-trip
+        // Reload from JSON to verify round-trip
         let vm2 = shell.load_data().unwrap();
         assert_eq!(vm2.items.len(), 1);
         assert_eq!(vm2.items[0].title, "Ménuet in G");
@@ -175,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_unicode_exercise_round_trip() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
         let vm = shell
@@ -201,38 +197,33 @@ mod tests {
         assert_eq!(vm2.items[0].tags, vec!["größe".to_string()]);
     }
 
-    // --- T043: Edge cases ---
-
     #[test]
     fn test_field_length_at_boundary() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
-        // Title at max (500 chars) — should succeed
         let vm = shell
             .run(Event::Piece(PieceEvent::Add(CreatePiece {
                 title: "x".repeat(500),
-                composer: "y".repeat(200), // composer at max
+                composer: "y".repeat(200),
                 key: None,
                 tempo: None,
-                notes: Some("z".repeat(5000)), // notes at max
-                tags: vec!["t".repeat(100)],   // tag at max
+                notes: Some("z".repeat(5000)),
+                tags: vec!["t".repeat(100)],
             })))
             .unwrap();
         assert!(vm.error.is_none());
         assert_eq!(vm.items.len(), 1);
 
-        // Verify persisted correctly
         let vm2 = shell.load_data().unwrap();
         assert_eq!(vm2.items[0].title.len(), 500);
     }
 
     #[test]
     fn test_field_length_over_boundary() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
-        // Title over max (501 chars) — should fail
         let vm = shell
             .run(Event::Piece(PieceEvent::Add(CreatePiece {
                 title: "x".repeat(501),
@@ -249,12 +240,12 @@ mod tests {
 
     #[test]
     fn test_validation_error_surfaces() {
-        let shell = test_shell();
+        let (shell, _dir) = test_shell();
         shell.load_data().unwrap();
 
         let vm = shell
             .run(Event::Piece(PieceEvent::Add(CreatePiece {
-                title: "".to_string(), // invalid: empty title
+                title: "".to_string(),
                 composer: "Debussy".to_string(),
                 key: None,
                 tempo: None,

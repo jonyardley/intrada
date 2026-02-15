@@ -13,7 +13,7 @@ use intrada_core::Event;
 
 use crate::display::{print_error, print_item_detail, print_item_list, print_success};
 use crate::shell::Shell;
-use crate::storage::SqliteStore;
+use crate::storage::JsonStore;
 
 #[derive(Parser)]
 #[command(name = "intrada", about = "A music practice library manager")]
@@ -159,7 +159,7 @@ enum AddCommands {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let store = SqliteStore::new()?;
+    let store = JsonStore::new()?;
     let shell = Shell::new(store);
     let vm = shell.load_data()?;
 
