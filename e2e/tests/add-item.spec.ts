@@ -67,14 +67,16 @@ test.describe("add library item", () => {
     ).toBeVisible();
   });
 
-  test("shows validation error when title is empty", async ({ page }) => {
+  test("shows validation error for missing composer on piece", async ({
+    page,
+  }) => {
     await page.goto("/library/new");
 
-    // Submit with empty form
+    // Fill title but leave composer empty, then submit
+    await page.locator("#add-title").fill("Test Piece");
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Should show validation errors and stay on page
-    await expect(page.getByText("Title is required")).toBeVisible();
+    // Composer is required for pieces — custom validation should fire
     await expect(page.getByText("Composer is required")).toBeVisible();
 
     // Should still be on the add form
@@ -86,13 +88,14 @@ test.describe("add library item", () => {
   test("switching tabs clears validation errors", async ({ page }) => {
     await page.goto("/library/new");
 
-    // Trigger validation errors on Piece tab
+    // Fill title but leave composer empty to trigger composer validation
+    await page.locator("#add-title").fill("Test Piece");
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(page.getByText("Title is required")).toBeVisible();
+    await expect(page.getByText("Composer is required")).toBeVisible();
 
     // Switch to Exercise tab — errors should clear
     await page.getByRole("tab", { name: "Exercise" }).click();
-    await expect(page.getByText("Title is required")).not.toBeVisible();
+    await expect(page.getByText("Composer is required")).not.toBeVisible();
   });
 
   test("category field only visible for exercises", async ({ page }) => {

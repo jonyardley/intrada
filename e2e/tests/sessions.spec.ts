@@ -31,7 +31,7 @@ test.describe("sessions page", () => {
     await expect(page.getByText("15 min")).toBeVisible();
     await expect(page.getByText("Clair de Lune")).toBeVisible();
 
-    // Session count footer
-    await expect(page.getByText("1 session(s)")).toBeVisible();
+    // Session count footer (singular: "1 session")
+    await expect(page.getByText("1 session", { exact: true })).toBeVisible();
   });
 });

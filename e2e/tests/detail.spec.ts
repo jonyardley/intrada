@@ -103,7 +103,9 @@ test.describe("detail view", () => {
     await expect(page.getByText("25 min")).toBeVisible();
     await expect(page.getByText("Focused on the arpeggios")).toBeVisible();
 
-    // Practice summary should appear
+    // Practice summary updates on re-navigation (detail view captures item at mount)
+    await page.getByRole("link", { name: "Back to Library" }).click();
+    await page.getByRole("heading", { name: "Clair de Lune" }).click();
     await expect(page.getByText("1 session, 25 min total")).toBeVisible();
   });
 });
