@@ -8,12 +8,14 @@ use intrada_core::{Event, ExerciseEvent, PieceEvent, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::SharedCore;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
 pub fn DetailView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
     let params = use_params_map();
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
@@ -87,7 +89,7 @@ pub fn DetailView() -> impl IntoView {
                                         };
                                         let core_ref = core_del.borrow();
                                         let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                         navigate_del("/", NavigateOptions { replace: true, ..Default::default() });
                                     })>
                                     "Confirm Delete"

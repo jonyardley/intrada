@@ -9,44 +9,40 @@ use send_wrapper::SendWrapper;
 
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
-use crate::components::{AppFooter, AppHeader, BottomTabBar};
+use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
 use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
     SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
 };
-use intrada_web::core_bridge::{
-    load_library_data, load_session_in_progress, load_sessions_data, process_effects,
-};
-use intrada_web::types::SharedCore;
+use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
 pub fn App() -> impl IntoView {
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
+    let is_loading: IsLoading = RwSignal::new(false);
+    let is_submitting: IsSubmitting = RwSignal::new(false);
 
-    // Initialize: load from localStorage (or seed stub data on first run)
+    // Provide context BEFORE init so process_effects can use expect_context
+    provide_context(core.clone());
+    provide_context(view_model);
+    provide_context(is_loading);
+    provide_context(is_submitting);
+
+    // Initialize: fetch data from API and recover any in-progress session
     {
-        let core_ref = core.borrow();
-        let (pieces, exercises) = load_library_data();
-        let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
-        process_effects(&core_ref, effects, &view_model);
+        // Spawn async HTTP fetches for library data and sessions
+        fetch_initial_data(&view_model, &is_loading, &is_submitting);
 
-        let sessions = load_sessions_data();
-        let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
-        process_effects(&core_ref, effects, &view_model);
-
-        // Recover any in-progress session from localStorage (crash recovery)
+        // Recover any in-progress session from localStorage (crash recovery — FR-008)
         if let Some(session) = load_session_in_progress() {
+            let core_ref = core.borrow();
             let effects =
                 core_ref.process_event(Event::Session(SessionEvent::RecoverSession { session }));
-            process_effects(&core_ref, effects, &view_model);
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
         }
     }
-
-    // Provide core and view_model via Leptos context so child components
-    // can access them with use_context() instead of prop drilling.
-    provide_context(core);
-    provide_context(view_model);
 
     view! {
         <Router>
@@ -59,6 +55,9 @@ pub fn App() -> impl IntoView {
 
                 // Main content — routed by URL
                 <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10" role="main">
+                    // Global error banner
+                    <ErrorBanner />
+
                     <Routes fallback=|| view! { <NotFoundView /> }>
                         <Route path=path!("/") view=move || view! {
                             <LibraryListView />

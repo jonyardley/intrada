@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/api-mock";
 
 test.describe("navigation", () => {
   test("header links navigate between library and sessions", async ({

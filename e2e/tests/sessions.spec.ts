@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/api-mock";
 
 test.describe("sessions page", () => {
   test("shows empty state when no sessions exist", async ({ page }) => {

@@ -1,27 +1,31 @@
-app = "intrada-api"
-primary_region = "lhr"
+# fly.toml app configuration file generated for intrada-api on 2026-02-15T20:35:39Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'intrada-api'
+primary_region = 'lhr'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  RUST_LOG = "info"
+  RUST_LOG = 'info'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "suspend"
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
 
   [[http_service.checks]]
-    grace_period = "15s"
-    interval = "60s"
-    method = "GET"
-    timeout = "5s"
-    path = "/api/health"
+    interval = '1m0s'
+    timeout = '5s'
+    grace_period = '15s'
+    method = 'GET'
+    path = '/api/health'
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
-  swap_size_mb = 256
+  size = 'shared-cpu-1x'
+  memory = '256mb'

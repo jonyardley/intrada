@@ -15,7 +15,10 @@ chrono = { workspace = true }
 ulid = { workspace = true }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 send_wrapper = "0.6.0"
+serde = { workspace = true }
 serde_json = { workspace = true }
+gloo-net = { version = "0.6", features = ["http", "json"] }
+wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Window", "Storage"] }
 
 [dev-dependencies]

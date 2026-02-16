@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/api-mock";
 
 test.describe("detail view", () => {
   test("displays all fields for a stub piece", async ({ page }) => {
