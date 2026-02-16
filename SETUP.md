@@ -147,10 +147,14 @@ The single workflow `.github/workflows/ci.yml` handles both CI and deployment:
 
 ```
 push to PR:   test → clippy → fmt → wasm-build → wasm-test → e2e
-push to main: test → clippy → fmt → wasm-build → wasm-test → e2e → deploy (Cloudflare)
+push to main: all checks → deploy frontend (Cloudflare) + deploy API (Fly.io)
 ```
 
-Deploy only runs after all checks pass. The WASM app is built once (release mode) and reused for E2E tests and deployment.
+Both deploy jobs run in parallel after their required checks pass:
+- **Frontend** (`deploy`): gates on all checks including E2E tests
+- **API** (`deploy-api`): gates on test, clippy, fmt only (no WASM dependency — deploys faster)
+
+The WASM app is built once (release mode) and reused for E2E tests and deployment.
 
 ### All GitHub Actions secrets
 
@@ -158,10 +162,17 @@ Deploy only runs after all checks pass. The WASM app is built once (release mode
 |--------|---------|-------------|
 | `CLOUDFLARE_API_TOKEN` | Cloudflare | Frontend deployment |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | Frontend deployment |
+| `FLY_API_TOKEN` | Fly.io | API deployment |
 
 Set at: **GitHub repo → Settings → Secrets and variables → Actions**
 
-> **Note**: Fly.io deployment is manual (`fly deploy`) for now. The API server is not yet part of the CI/CD pipeline.
+### Generating the Fly.io deploy token
+
+```bash
+fly tokens create deploy -a intrada-api
+```
+
+Add the output as the `FLY_API_TOKEN` secret in GitHub Actions.
 
 ## 5. Local Development
 
