@@ -24,6 +24,7 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 crates/
   intrada-core/   # Pure Crux core (no I/O)
   intrada-web/    # Web shell (Leptos CSR + WASM)
+  intrada-api/    # REST API server (Axum + Turso)
 e2e/              # Playwright E2E tests
 specs/            # SpecKit design artifacts
 ```
