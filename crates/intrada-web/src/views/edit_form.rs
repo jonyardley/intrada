@@ -238,7 +238,13 @@ pub fn EditLibraryItemForm() -> impl IntoView {
 
                         // Buttons
                         <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                            <Button variant=ButtonVariant::Primary button_type="submit">"Save"</Button>
+                            <Button
+                                variant=ButtonVariant::Primary
+                                button_type="submit"
+                                loading=Signal::derive(move || is_submitting.get())
+                            >
+                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
+                            </Button>
                             <Button variant=ButtonVariant::Secondary on_click={
                                 let cancel_href = cancel_href.clone();
                                 let navigate = navigate.clone();

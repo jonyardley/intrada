@@ -98,13 +98,17 @@ fn SessionRow(
                         <div>
                             <p class="text-sm text-red-300 mb-3">"Delete this session? This cannot be undone."</p>
                             <div class="flex gap-2">
-                                <Button variant=ButtonVariant::Danger on_click=Callback::new(move |_| {
-                                    let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
-                                    let core_ref = core_del.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                })>
-                                    "Confirm Delete"
+                                <Button
+                                    variant=ButtonVariant::Danger
+                                    loading=Signal::derive(move || is_submitting.get())
+                                    on_click=Callback::new(move |_| {
+                                        let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
+                                        let core_ref = core_del.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                    })
+                                >
+                                    {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
                                 </Button>
                                 <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
                                     confirm_delete.set(false);
