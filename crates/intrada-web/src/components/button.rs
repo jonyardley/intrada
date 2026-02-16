@@ -22,23 +22,51 @@ impl ButtonVariant {
 }
 
 /// Shared button component with consistent styling per variant.
+///
+/// When `disabled` is true, the button is visually dimmed, shows a
+/// `not-allowed` cursor, and ignores click events.
+/// When `loading` is true, a small spinner is prepended to the label
+/// and the button is also treated as disabled.
 #[component]
 pub fn Button(
     variant: ButtonVariant,
     #[prop(optional)] on_click: Option<Callback<ev::MouseEvent>>,
     #[prop(default = "button")] button_type: &'static str,
+    #[prop(optional, into)] disabled: Signal<bool>,
+    #[prop(optional, into)] loading: Signal<bool>,
     children: Children,
 ) -> impl IntoView {
+    let is_disabled = Signal::derive(move || disabled.get() || loading.get());
+
     view! {
         <button
             type=button_type
-            class=variant.classes()
+            class=move || {
+                let base = variant.classes();
+                if is_disabled.get() {
+                    format!("{base} opacity-50 cursor-not-allowed")
+                } else {
+                    base.to_string()
+                }
+            }
+            disabled=is_disabled
             on:click=move |ev| {
-                if let Some(cb) = &on_click {
-                    cb.run(ev);
+                if !is_disabled.get() {
+                    if let Some(cb) = &on_click {
+                        cb.run(ev);
+                    }
                 }
             }
         >
+            {move || {
+                if loading.get() {
+                    Some(view! {
+                        <span class="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" aria-hidden="true"></span>
+                    })
+                } else {
+                    None
+                }
+            }}
             {children()}
         </button>
     }

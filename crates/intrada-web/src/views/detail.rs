@@ -81,7 +81,10 @@ pub fn DetailView() -> impl IntoView {
                                 "Are you sure you want to delete this item? This action cannot be undone."
                             </p>
                             <div class="flex gap-3">
-                                <Button variant=ButtonVariant::Danger on_click=Callback::new(move |_| {
+                                <Button
+                                    variant=ButtonVariant::Danger
+                                    loading=Signal::derive(move || is_submitting.get())
+                                    on_click=Callback::new(move |_| {
                                         let event = if item_type_del == "piece" {
                                             Event::Piece(PieceEvent::Delete { id: id_del.clone() })
                                         } else {
@@ -92,7 +95,7 @@ pub fn DetailView() -> impl IntoView {
                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                         navigate_del("/", NavigateOptions { replace: true, ..Default::default() });
                                     })>
-                                    "Confirm Delete"
+                                    {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
                                 </Button>
                                 <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| { show_delete_confirm.set(false); })>
                                     "Cancel"
@@ -212,7 +215,11 @@ pub fn DetailView() -> impl IntoView {
                 <A href=edit_href attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
                     "Edit"
                 </A>
-                <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| { show_delete_confirm.set(true); })>
+                <Button
+                    variant=ButtonVariant::DangerOutline
+                    disabled=Signal::derive(move || is_submitting.get())
+                    on_click=Callback::new(move |_| { show_delete_confirm.set(true); })
+                >
                     "Delete"
                 </Button>
             </div>
