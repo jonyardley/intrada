@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.78"
 
+[lib]
+name = "intrada_api"
+path = "src/lib.rs"
+
 [[bin]]
 name = "intrada-api"
 path = "src/main.rs"
@@ -14,7 +18,7 @@ intrada-core = { path = "../intrada-core" }
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors"] }
-libsql = { version = "0.9", default-features = false, features = ["remote"] }
+libsql = { version = "0.9", default-features = false, features = ["remote", "core"] }
 libsql_migration = { version = "0.2", features = ["content"] }
 
 serde = { workspace = true }
@@ -25,3 +29,7 @@ thiserror = { workspace = true }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

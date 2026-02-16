@@ -1525,6 +1525,7 @@ version = "0.1.0"
 dependencies = [
  "axum 0.8.8",
  "chrono",
+ "http-body-util",
  "intrada-core",
  "libsql",
  "libsql_migration",
@@ -1532,6 +1533,7 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
+ "tower 0.5.3",
  "tower-http 0.6.8",
  "tracing",
  "tracing-subscriber",
