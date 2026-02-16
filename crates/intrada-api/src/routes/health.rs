@@ -24,7 +24,7 @@ async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
         }
     };
 
-    match conn.execute("SELECT 1", ()).await {
+    match conn.query("SELECT 1", ()).await {
         Ok(_) => (
             StatusCode::OK,
             Json(serde_json::json!({

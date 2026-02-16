@@ -1,10 +1,6 @@
-mod db;
-mod error;
-mod migrations;
-mod routes;
-mod state;
-
-use state::AppState;
+use intrada_api::migrations;
+use intrada_api::routes;
+use intrada_api::state::AppState;
 
 #[tokio::main]
 async fn main() {
