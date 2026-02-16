@@ -14,7 +14,7 @@ use crate::views::{
     AddLibraryItemForm, DetailView, EditLibraryItemForm, LibraryListView, NotFoundView,
     SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
 };
-use intrada_web::core_bridge::{load_session_in_progress, process_effects};
+use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
@@ -30,22 +30,14 @@ pub fn App() -> impl IntoView {
     provide_context(is_loading);
     provide_context(is_submitting);
 
-    // Initialize: start with empty data, then let async API fetch populate
+    // Initialize: fetch data from API and recover any in-progress session
     {
-        let core_ref = core.borrow();
-
-        // Seed empty data — triggers LoadAll effect which spawns async HTTP fetch
-        let effects = core_ref.process_event(Event::DataLoaded {
-            pieces: vec![],
-            exercises: vec![],
-        });
-        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-
-        let effects = core_ref.process_event(Event::SessionsLoaded { sessions: vec![] });
-        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        // Spawn async HTTP fetches for library data and sessions
+        fetch_initial_data(&view_model, &is_loading, &is_submitting);
 
         // Recover any in-progress session from localStorage (crash recovery — FR-008)
         if let Some(session) = load_session_in_progress() {
+            let core_ref = core.borrow();
             let effects =
                 core_ref.process_event(Event::Session(SessionEvent::RecoverSession { session }));
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);

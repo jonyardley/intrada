@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../fixtures/api-mock";
 
 test("app renders with library list", async ({ page }) => {
   await page.goto("/");

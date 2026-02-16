@@ -43,6 +43,65 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
     serde_json::from_str(&json).ok()
 }
 
+/// Fetch library and session data from the API on app startup.
+///
+/// Spawns two async tasks (library + sessions) that call the API and
+/// dispatch the results into the Crux core.
+pub fn fetch_initial_data(
+    view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
+) {
+    // Fetch library data (pieces + exercises)
+    {
+        let core = leptos::prelude::expect_context::<SharedCore>();
+        let vm = *view_model;
+        let loading = *is_loading;
+        let submitting = *is_submitting;
+        spawn_local(async move {
+            loading.set(true);
+            let pieces_result = api_client::fetch_pieces().await;
+            let exercises_result = api_client::fetch_exercises().await;
+
+            match (pieces_result, exercises_result) {
+                (Ok(pieces), Ok(exercises)) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+                (Err(e), _) | (_, Err(e)) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+            }
+            loading.set(false);
+        });
+    }
+
+    // Fetch sessions
+    {
+        let core = leptos::prelude::expect_context::<SharedCore>();
+        let vm = *view_model;
+        let loading = *is_loading;
+        let submitting = *is_submitting;
+        spawn_local(async move {
+            match api_client::fetch_sessions().await {
+                Ok(sessions) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+                Err(e) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+            }
+        });
+    }
+}
+
 /// Process effects returned by the Crux core.
 ///
 /// HTTP-backed effects use `spawn_local()` to run async tasks.
