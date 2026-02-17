@@ -18,7 +18,7 @@ pub use domain::types::{
 pub use error::LibraryError;
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
-    PracticeSessionView, SetlistEntryView, SummaryView, ViewModel,
+    PracticeSessionView, ScoreHistoryEntry, SetlistEntryView, SummaryView, ViewModel,
 };
 pub use validation::{
     MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE, MIN_BPM,

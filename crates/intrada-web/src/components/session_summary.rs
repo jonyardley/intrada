@@ -19,6 +19,7 @@ pub fn SessionSummary() -> impl IntoView {
     let core_save = core.clone();
     let core_discard = core.clone();
     let core_entries = core.clone();
+    let core_score = core.clone();
     let core_session_notes_outer = core;
 
     view! {
@@ -30,6 +31,7 @@ pub fn SessionSummary() -> impl IntoView {
                         let core_save = core_save.clone();
                         let core_discard = core_discard.clone();
                         let core_entries = core_entries.clone();
+                        let core_score = core_score.clone();
                         let core_session_notes = core_session_notes_outer.clone();
                         let total_duration = summary.total_duration_display.clone();
                         let completion_status = summary.completion_status.clone();
@@ -61,8 +63,12 @@ pub fn SessionSummary() -> impl IntoView {
                                 <div class="space-y-3">
                                     {entries.into_iter().map(|entry| {
                                         let entry_id = entry.id.clone();
+                                        let entry_id_for_score = entry.id.clone();
                                         let entry_notes = RwSignal::new(entry.notes.clone().unwrap_or_default());
                                         let core_notes = core_entries.clone();
+                                        let core_score_inner = core_score.clone();
+                                        let is_completed = entry.status == "completed";
+                                        let current_score = entry.score;
                                         let status_label = match entry.status.as_str() {
                                             "completed" => "✓",
                                             "skipped" => "⊘",
@@ -102,6 +108,46 @@ pub fn SessionSummary() -> impl IntoView {
                                                         }
                                                     />
                                                 </div>
+                                                // Score buttons — only for completed entries
+                                                {if is_completed {
+                                                    let entry_id_score = entry_id_for_score.clone();
+                                                    let core_score_btns = core_score_inner.clone();
+                                                    Some(view! {
+                                                        <div class="flex items-center gap-2">
+                                                            <span class="text-xs text-gray-400 mr-1">"Confidence:"</span>
+                                                            {(1u8..=5).map(|n| {
+                                                                let entry_id_n = entry_id_score.clone();
+                                                                let core_n = core_score_btns.clone();
+                                                                let is_selected = current_score == Some(n);
+                                                                let btn_class = if is_selected {
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-indigo-600 text-white shadow-md transition-all duration-150"
+                                                                } else {
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all duration-150"
+                                                                };
+                                                                view! {
+                                                                    <button
+                                                                        class=btn_class
+                                                                        on:click=move |_| {
+                                                                            // Toggle: if same score is clicked, clear it
+                                                                            let new_score = if current_score == Some(n) { None } else { Some(n) };
+                                                                            let event = Event::Session(SessionEvent::UpdateEntryScore {
+                                                                                entry_id: entry_id_n.clone(),
+                                                                                score: new_score,
+                                                                            });
+                                                                            let core_ref = core_n.borrow();
+                                                                            let effects = core_ref.process_event(event);
+                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                        }
+                                                                    >
+                                                                        {n.to_string()}
+                                                                    </button>
+                                                                }
+                                                            }).collect::<Vec<_>>()}
+                                                        </div>
+                                                    })
+                                                } else {
+                                                    None
+                                                }}
                                             </div>
                                         }
                                     }).collect::<Vec<_>>()}

@@ -49,6 +49,7 @@ fn test_session_in_progress_round_trip() {
             duration_secs: 0,
             status: EntryStatus::NotAttempted,
             notes: None,
+            score: None,
         }],
         current_index: 0,
         session_started_at: now,

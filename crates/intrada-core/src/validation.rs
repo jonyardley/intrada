@@ -11,6 +11,8 @@ pub const MAX_TAG: usize = 100;
 pub const MAX_TEMPO_MARKING: usize = 100;
 pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
+pub const MIN_SCORE: u8 = 1;
+pub const MAX_SCORE: u8 = 5;
 
 pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
     if input.title.is_empty() {
@@ -230,6 +232,18 @@ pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
             return Err(LibraryError::Validation {
                 field: "tags".to_string(),
                 message: format!("Each tag must be between 1 and {MAX_TAG} characters"),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_score(score: &Option<u8>) -> Result<(), LibraryError> {
+    if let Some(s) = score {
+        if !(MIN_SCORE..=MAX_SCORE).contains(s) {
+            return Err(LibraryError::Validation {
+                field: "score".to_string(),
+                message: format!("Score must be between {MIN_SCORE} and {MAX_SCORE}"),
             });
         }
     }

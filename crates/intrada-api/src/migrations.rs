@@ -44,7 +44,8 @@ pub const MIGRATION_SQL: &[&str] = &[
         position INTEGER NOT NULL,
         duration_secs INTEGER NOT NULL,
         status TEXT NOT NULL,
-        notes TEXT
+        notes TEXT,
+        score INTEGER
     );",
     "CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
 ];
@@ -113,6 +114,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         );
 
         CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
+    ),
+    (
+        "0004_add_score_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN score INTEGER;",
     ),
 ];
 

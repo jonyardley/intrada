@@ -196,17 +196,64 @@ pub fn DetailView() -> impl IntoView {
 
             // Practice summary
             {practice.map(|p| {
+                let has_scores = !p.score_history.is_empty();
                 view! {
-                    <div class="mt-4 rounded-lg bg-indigo-500/10 border border-indigo-400/20 px-4 py-3">
-                        <p class="text-sm font-medium text-indigo-200">
-                            {format!(
-                                "{} session{}, {} min total",
-                                p.session_count,
-                                if p.session_count == 1 { "" } else { "s" },
-                                p.total_minutes
-                            )}
-                        </p>
-                    </div>
+                    <Card>
+                        <div class="space-y-4">
+                            // Practice stats
+                            <div>
+                                <h3 class="text-sm font-semibold text-white mb-1">"Practice Summary"</h3>
+                                <p class="text-sm text-gray-300">
+                                    {format!(
+                                        "{} session{}, {} min total",
+                                        p.session_count,
+                                        if p.session_count == 1 { "" } else { "s" },
+                                        p.total_minutes
+                                    )}
+                                </p>
+                            </div>
+
+                            // Latest confidence score
+                            {p.latest_score.map(|score| {
+                                view! {
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-sm text-gray-400">"Current confidence:"</span>
+                                        <span class="text-2xl font-bold text-indigo-300">
+                                            {format!("{}/5", score)}
+                                        </span>
+                                    </div>
+                                }
+                            })}
+
+                            // Score history
+                            {if has_scores {
+                                let history = p.score_history;
+                                view! {
+                                    <div>
+                                        <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">"Score History"</h4>
+                                        <div class="space-y-1.5">
+                                            {history.into_iter().map(|entry| {
+                                                // Format date for display (extract date portion from RFC3339)
+                                                let display_date = entry.session_date.split('T').next().unwrap_or(&entry.session_date).to_string();
+                                                view! {
+                                                    <div class="flex items-center justify-between text-sm">
+                                                        <span class="text-gray-400">{display_date}</span>
+                                                        <span class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-400/20 ring-inset">
+                                                            {format!("{}/5", entry.score)}
+                                                        </span>
+                                                    </div>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    </div>
+                                }.into_any()
+                            } else {
+                                view! {
+                                    <p class="text-xs text-gray-500">"No confidence scores recorded yet"</p>
+                                }.into_any()
+                            }}
+                        </div>
+                    </Card>
                 }
             })}
 

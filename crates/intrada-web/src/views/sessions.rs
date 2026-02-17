@@ -87,6 +87,7 @@ fn SessionRow(
     let completion_status = session.completion_status.clone();
     let session_notes = session.notes.clone();
     let entry_count = session.entries.len();
+    let entries = session.entries.clone();
 
     view! {
         <Card>
@@ -123,40 +124,82 @@ fn SessionRow(
                     let total_duration = total_duration.clone();
                     let completion_status = completion_status.clone();
                     let session_notes = session_notes.clone();
+                    let entries = entries.clone();
                     view! {
-                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div class="flex-1 min-w-0">
-                                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                    <span class="text-sm font-medium text-white">
-                                        {total_duration}
-                                    </span>
-                                    <span class="text-xs text-gray-400">
-                                        {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
-                                    </span>
-                                    {if completion_status == "ended_early" {
-                                        Some(view! {
-                                            <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
-                                                "Ended Early"
-                                            </span>
-                                        })
-                                    } else {
-                                        None
-                                    }}
-                                    <span class="text-xs text-gray-500">{started_at}</span>
+                        <div class="space-y-3">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                        <span class="text-sm font-medium text-white">
+                                            {total_duration}
+                                        </span>
+                                        <span class="text-xs text-gray-400">
+                                            {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
+                                        </span>
+                                        {if completion_status == "ended_early" {
+                                            Some(view! {
+                                                <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
+                                                    "Ended Early"
+                                                </span>
+                                            })
+                                        } else {
+                                            None
+                                        }}
+                                        <span class="text-xs text-gray-500">{started_at}</span>
+                                    </div>
+                                    {session_notes.map(|n| {
+                                        view! {
+                                            <p class="text-sm text-gray-300 mt-1">{n}</p>
+                                        }
+                                    })}
                                 </div>
-                                {session_notes.map(|n| {
-                                    view! {
-                                        <p class="text-sm text-gray-300 mt-1">{n}</p>
-                                    }
-                                })}
+                                <div class="flex gap-2 sm:ml-4">
+                                    <button
+                                        class="text-xs text-red-400 hover:text-red-300 font-medium"
+                                        on:click=move |_| { confirm_delete.set(true); }
+                                    >
+                                        "Delete"
+                                    </button>
+                                </div>
                             </div>
-                            <div class="flex gap-2 sm:ml-4">
-                                <button
-                                    class="text-xs text-red-400 hover:text-red-300 font-medium"
-                                    on:click=move |_| { confirm_delete.set(true); }
-                                >
-                                    "Delete"
-                                </button>
+                            // Entry details with scores
+                            <div class="border-t border-white/10 pt-2 space-y-1.5">
+                                {entries.into_iter().map(|entry| {
+                                    let status_label = match entry.status.as_str() {
+                                        "completed" => "✓",
+                                        "skipped" => "⊘",
+                                        _ => "—",
+                                    };
+                                    let status_color = match entry.status.as_str() {
+                                        "completed" => "text-green-400",
+                                        "skipped" => "text-amber-400",
+                                        _ => "text-gray-500",
+                                    };
+                                    view! {
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-2 min-w-0">
+                                                <span class={format!("font-medium {}", status_color)}>{status_label}</span>
+                                                <span class="text-white truncate">{entry.item_title}</span>
+                                                <span class="text-gray-500 shrink-0">{entry.duration_display}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0 ml-2">
+                                                {entry.score.map(|s| {
+                                                    view! {
+                                                        <span class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-400/20 ring-inset">
+                                                            {format!("{}/5", s)}
+                                                        </span>
+                                                    }
+                                                })}
+                                                {entry.notes.map(|n| {
+                                                    let title = n.clone();
+                                                    view! {
+                                                        <span class="text-gray-400 truncate max-w-[120px]" title={title}>{n}</span>
+                                                    }
+                                                })}
+                                            </div>
+                                        </div>
+                                    }
+                                }).collect::<Vec<_>>()}
                             </div>
                         </div>
                     }.into_any()
