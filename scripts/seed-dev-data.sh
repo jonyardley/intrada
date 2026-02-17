@@ -245,11 +245,17 @@ echo ""
 
 echo "Creating ~25 practice sessions..."
 
-# Counter for unique entry IDs
-ENTRY_SEQ=0
+# File-based counter for unique entry IDs (persists across subshells)
+ENTRY_SEQ_FILE=$(mktemp)
+echo "0" > "$ENTRY_SEQ_FILE"
+trap 'rm -f "$ENTRY_SEQ_FILE"' EXIT
+
 next_entry_id() {
-  ENTRY_SEQ=$((ENTRY_SEQ + 1))
-  printf "SEEDENTRY%016d" "$ENTRY_SEQ"
+  local seq
+  seq=$(cat "$ENTRY_SEQ_FILE")
+  seq=$((seq + 1))
+  echo "$seq" > "$ENTRY_SEQ_FILE"
+  printf "SEEDENTRY%016d" "$seq"
 }
 
 # Helper: create a session via the API
@@ -263,12 +269,13 @@ create_session() {
   local entries="$6"
 
   local duration_secs=$((duration_mins * 60))
-  local started_at="${date}T${start_hour}:00:00Z"
+  local started_at="${date}T${start_hour}:00Z"
 
   # Calculate end time (approximate — just add duration)
+  # Use 10# prefix to force base-10 (avoids bash treating "09" as invalid octal)
   local start_h=${start_hour%%:*}
   local start_m=${start_hour##*:}
-  local total_mins=$((start_h * 60 + start_m + duration_mins))
+  local total_mins=$((10#$start_h * 60 + 10#$start_m + duration_mins))
   local end_h=$((total_mins / 60))
   local end_m=$((total_mins % 60))
   local completed_at
@@ -279,17 +286,17 @@ create_session() {
     notes_json="\"$notes\""
   fi
 
-  post "/api/sessions" "$(cat <<EOJSON
-{
-  "entries": $entries,
-  "session_notes": $notes_json,
-  "started_at": "$started_at",
-  "completed_at": "$completed_at",
-  "total_duration_secs": $duration_secs,
-  "completion_status": "$status"
-}
-EOJSON
-)" > /dev/null
+  local payload
+  payload=$(jq -n \
+    --argjson entries "$entries" \
+    --argjson notes "$notes_json" \
+    --arg started "$started_at" \
+    --arg completed "$completed_at" \
+    --argjson duration "$duration_secs" \
+    --arg status "$status" \
+    '{entries: $entries, session_notes: $notes, started_at: $started, completed_at: $completed, total_duration_secs: $duration, completion_status: $status}')
+
+  post "/api/sessions" "$payload" > /dev/null
 
   echo "  ${date} (${duration_mins}m, ${status})"
 }
@@ -303,9 +310,8 @@ entry() {
   if [ "$7" != "null" ]; then
     score_json="$7"
   fi
-  cat <<EOJSON
-{"id":"$eid","item_id":"$1","item_title":"$2","item_type":"$3","position":$4,"duration_secs":$5,"status":"$6","notes":null,"score":$score_json}
-EOJSON
+  printf '{"id":"%s","item_id":"%s","item_title":"%s","item_type":"%s","position":%d,"duration_secs":%d,"status":"%s","notes":null,"score":%s}' \
+    "$eid" "$1" "$2" "$3" "$4" "$5" "$6" "$score_json"
 }
 
 # ── Day -35: First session (35 days ago) ─────────────────
