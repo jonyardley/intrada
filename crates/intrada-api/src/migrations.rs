@@ -99,9 +99,11 @@ const MIGRATIONS: &[(&str, &str)] = &[
             completed_at TEXT NOT NULL,
             total_duration_secs INTEGER NOT NULL,
             completion_status TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS setlist_entries (
+        );",
+    ),
+    (
+        "0004_create_setlist_entries",
+        "CREATE TABLE IF NOT EXISTS setlist_entries (
             id TEXT PRIMARY KEY NOT NULL,
             session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
             item_id TEXT NOT NULL,
@@ -111,12 +113,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
             duration_secs INTEGER NOT NULL,
             status TEXT NOT NULL,
             notes TEXT
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
+        );",
     ),
     (
-        "0004_add_score_to_setlist_entries",
+        "0005_index_setlist_entries_session_id",
+        "CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
+    ),
+    (
+        "0006_add_score_to_setlist_entries",
         "ALTER TABLE setlist_entries ADD COLUMN score INTEGER;",
     ),
 ];
