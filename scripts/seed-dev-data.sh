@@ -3,22 +3,34 @@
 #
 # Usage:
 #   bash scripts/seed-dev-data.sh              # seed into localhost:8080
-#   API_URL=https://... bash scripts/seed-dev-data.sh   # custom API URL
+#   bash scripts/seed-dev-data.sh --live       # seed into production (Fly.io)
 #   bash scripts/seed-dev-data.sh --clean      # delete all data first, then seed
+#   API_URL=https://... bash scripts/seed-dev-data.sh   # custom API URL
 #
 # Requires: curl, jq
 
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:8080}"
+LIVE_API_URL="https://intrada-api.fly.dev"
+LIVE=false
 CLEAN=false
 
 for arg in "$@"; do
   case "$arg" in
+    --live) LIVE=true ;;
     --clean) CLEAN=true ;;
     *) echo "Unknown argument: $arg"; exit 1 ;;
   esac
 done
+
+if [ "$LIVE" = true ]; then
+  API_URL="${API_URL:-$LIVE_API_URL}"
+  echo "⚠️  Targeting LIVE environment: $API_URL"
+  echo "   Press Enter to continue or Ctrl+C to abort..."
+  read -r
+else
+  API_URL="${API_URL:-http://localhost:8080}"
+fi
 
 # Check dependencies
 if ! command -v jq &>/dev/null; then

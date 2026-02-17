@@ -72,6 +72,9 @@ bash scripts/seed-dev-data.sh
 This creates a realistic dataset with score progression, practice streaks, varied session lengths, and mixed completion statuses — useful for seeing how the library, session history, and analytics dashboard look with real data.
 
 ```bash
+# Seed the live environment (Fly.io) — prompts for confirmation
+bash scripts/seed-dev-data.sh --live
+
 # Point at a different API server
 API_URL=https://your-api.example.com bash scripts/seed-dev-data.sh
 
