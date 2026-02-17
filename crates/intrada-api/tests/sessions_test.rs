@@ -184,3 +184,188 @@ async fn session_ended_early_status() {
     let session: PracticeSession = common::json(&body);
     assert_eq!(format!("{:?}", session.completion_status), "EndedEarly");
 }
+
+// ── Score-related tests (T014) ──────────────────────────────────────
+
+fn sample_session_with_scores() -> serde_json::Value {
+    json!({
+        "entries": [
+            {
+                "id": "entry-s1",
+                "item_id": "piece-001",
+                "item_title": "Clair de Lune",
+                "item_type": "Piece",
+                "position": 0,
+                "duration_secs": 600,
+                "status": "Completed",
+                "notes": "Good dynamics",
+                "score": 4
+            },
+            {
+                "id": "entry-s2",
+                "item_id": "exercise-001",
+                "item_title": "Hanon No. 1",
+                "item_type": "Exercise",
+                "position": 1,
+                "duration_secs": 300,
+                "status": "Completed",
+                "notes": null,
+                "score": 2
+            },
+            {
+                "id": "entry-s3",
+                "item_id": "piece-002",
+                "item_title": "Moonlight Sonata",
+                "item_type": "Piece",
+                "position": 2,
+                "duration_secs": 200,
+                "status": "Skipped",
+                "notes": null,
+                "score": null
+            }
+        ],
+        "session_notes": "Scored session",
+        "started_at": "2026-02-16T10:00:00Z",
+        "completed_at": "2026-02-16T10:18:20Z",
+        "total_duration_secs": 1100,
+        "completion_status": "Completed"
+    })
+}
+
+#[tokio::test]
+async fn save_session_with_scores_returns_scores() {
+    let app = common::setup_test_app().await;
+    let (status, body) =
+        common::post_json(app, "/api/sessions", sample_session_with_scores()).await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let session: PracticeSession = common::json(&body);
+    assert_eq!(session.entries.len(), 3);
+    assert_eq!(session.entries[0].score, Some(4));
+    assert_eq!(session.entries[1].score, Some(2));
+    assert_eq!(session.entries[2].score, None);
+}
+
+#[tokio::test]
+async fn get_session_returns_scores() {
+    let app = common::setup_test_app().await;
+
+    let (_, body) =
+        common::post_json(app.clone(), "/api/sessions", sample_session_with_scores()).await;
+    let created: PracticeSession = common::json(&body);
+
+    let (status, body) = common::get(app, &format!("/api/sessions/{}", created.id)).await;
+    assert_eq!(status, StatusCode::OK);
+    let fetched: PracticeSession = common::json(&body);
+    assert_eq!(fetched.entries[0].score, Some(4));
+    assert_eq!(fetched.entries[1].score, Some(2));
+    assert_eq!(fetched.entries[2].score, None);
+}
+
+#[tokio::test]
+async fn save_session_invalid_score_returns_400() {
+    let app = common::setup_test_app().await;
+    let (status, _body) = common::post_json(
+        app,
+        "/api/sessions",
+        json!({
+            "entries": [{
+                "id": "entry-001",
+                "item_id": "piece-001",
+                "item_title": "Scales",
+                "item_type": "Exercise",
+                "position": 0,
+                "duration_secs": 120,
+                "status": "Completed",
+                "notes": null,
+                "score": 6
+            }],
+            "started_at": "2026-02-16T10:00:00Z",
+            "completed_at": "2026-02-16T10:02:00Z",
+            "total_duration_secs": 120,
+            "completion_status": "Completed"
+        }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn save_session_score_zero_returns_400() {
+    let app = common::setup_test_app().await;
+    let (status, _body) = common::post_json(
+        app,
+        "/api/sessions",
+        json!({
+            "entries": [{
+                "id": "entry-001",
+                "item_id": "piece-001",
+                "item_title": "Scales",
+                "item_type": "Exercise",
+                "position": 0,
+                "duration_secs": 120,
+                "status": "Completed",
+                "notes": null,
+                "score": 0
+            }],
+            "started_at": "2026-02-16T10:00:00Z",
+            "completed_at": "2026-02-16T10:02:00Z",
+            "total_duration_secs": 120,
+            "completion_status": "Completed"
+        }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+// ── Backward compatibility (T015) ───────────────────────────────────
+
+#[tokio::test]
+async fn save_session_without_scores_returns_null_scores() {
+    let app = common::setup_test_app().await;
+
+    // Use the original sample body which has no score fields
+    let (status, body) = common::post_json(app, "/api/sessions", sample_session_body()).await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let session: PracticeSession = common::json(&body);
+    assert_eq!(session.entries.len(), 2);
+    // Both entries should have score: None when not provided
+    assert_eq!(session.entries[0].score, None);
+    assert_eq!(session.entries[1].score, None);
+}
+
+#[tokio::test]
+async fn get_session_without_scores_returns_null_scores() {
+    let app = common::setup_test_app().await;
+
+    // Create a session without scores
+    let (_, body) = common::post_json(app.clone(), "/api/sessions", sample_session_body()).await;
+    let created: PracticeSession = common::json(&body);
+
+    // Fetch it back
+    let (status, body) = common::get(app, &format!("/api/sessions/{}", created.id)).await;
+    assert_eq!(status, StatusCode::OK);
+    let fetched: PracticeSession = common::json(&body);
+    assert_eq!(fetched.entries[0].score, None);
+    assert_eq!(fetched.entries[1].score, None);
+}
+
+#[tokio::test]
+async fn list_sessions_without_scores_returns_null_scores() {
+    let app = common::setup_test_app().await;
+
+    // Create a session without scores
+    common::post_json(app.clone(), "/api/sessions", sample_session_body()).await;
+
+    let (status, body) = common::get(app, "/api/sessions").await;
+    assert_eq!(status, StatusCode::OK);
+    let sessions: Vec<PracticeSession> = common::json(&body);
+    assert_eq!(sessions.len(), 1);
+    // All entries should have score: None
+    for entry in &sessions[0].entries {
+        assert_eq!(entry.score, None);
+    }
+}

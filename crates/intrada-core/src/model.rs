@@ -51,6 +51,16 @@ pub struct LibraryItemView {
 pub struct ItemPracticeSummary {
     pub session_count: usize,
     pub total_minutes: u32,
+    pub latest_score: Option<u8>,
+    pub score_history: Vec<ScoreHistoryEntry>,
+}
+
+/// A single score data point for an item's progress history.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ScoreHistoryEntry {
+    pub session_date: String,
+    pub score: u8,
+    pub session_id: String,
 }
 
 /// A completed practice session in history view.
@@ -76,6 +86,7 @@ pub struct SetlistEntryView {
     pub duration_display: String,
     pub status: String,
     pub notes: Option<String>,
+    pub score: Option<u8>,
 }
 
 /// View for the in-progress active session.
@@ -122,6 +133,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
             EntryStatus::NotAttempted => "not_attempted".to_string(),
         },
         notes: entry.notes.clone(),
+        score: entry.score,
     }
 }
 

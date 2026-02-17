@@ -30,6 +30,8 @@ pub struct SaveSessionEntry {
     pub duration_secs: u64,
     pub status: EntryStatus,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub score: Option<u8>,
 }
 
 fn completion_status_to_str(status: &CompletionStatus) -> &'static str {
@@ -76,6 +78,8 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let duration_secs: i64 = row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
     let status_str: String = row.get(7).map_err(|e| ApiError::Internal(e.to_string()))?;
     let notes: Option<String> = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let score_raw: Option<i64> = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let score = score_raw.map(|s| s as u8);
 
     Ok(SetlistEntry {
         id,
@@ -86,6 +90,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         duration_secs: duration_secs as u64,
         status: entry_status_from_str(&status_str)?,
         notes,
+        score,
     })
 }
 
@@ -93,7 +98,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes
+            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score
              FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC",
             libsql::params![session_id],
         )
@@ -217,9 +222,10 @@ pub async fn insert_session(
         let mut entries = Vec::with_capacity(input.entries.len());
         for entry in &input.entries {
             let status_str = entry_status_to_str(&entry.status);
+            let score_val: Option<i64> = entry.score.map(|s| s as i64);
             conn.execute(
-                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 libsql::params![
                     entry.id.as_str(),
                     id.as_str(),
@@ -229,7 +235,8 @@ pub async fn insert_session(
                     entry.position as i64,
                     entry.duration_secs as i64,
                     status_str,
-                    entry.notes.as_deref()
+                    entry.notes.as_deref(),
+                    score_val
                 ],
             )
             .await?;
@@ -243,6 +250,7 @@ pub async fn insert_session(
                 duration_secs: entry.duration_secs,
                 status: entry.status.clone(),
                 notes: entry.notes.clone(),
+                score: entry.score,
             });
         }
 

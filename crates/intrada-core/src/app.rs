@@ -223,14 +223,25 @@ fn compute_practice_summary(
     sessions: &[PracticeSession],
     item_id: &str,
 ) -> Option<ItemPracticeSummary> {
+    use crate::model::ScoreHistoryEntry;
+
     let mut session_count = 0usize;
     let mut total_secs = 0u64;
+    let mut score_history: Vec<ScoreHistoryEntry> = Vec::new();
 
     for session in sessions {
         for entry in &session.entries {
             if entry.item_id == item_id {
                 session_count += 1;
                 total_secs += entry.duration_secs;
+
+                if let Some(score) = entry.score {
+                    score_history.push(ScoreHistoryEntry {
+                        session_date: session.started_at.to_rfc3339(),
+                        score,
+                        session_id: session.id.clone(),
+                    });
+                }
             }
         }
     }
@@ -239,9 +250,16 @@ fn compute_practice_summary(
         return None;
     }
 
+    // Sort by session date descending (most recent first)
+    score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
+
+    let latest_score = score_history.first().map(|e| e.score);
+
     Some(ItemPracticeSummary {
         session_count,
         total_minutes: (total_secs / 60) as u32,
+        latest_score,
+        score_history,
     })
 }
 
@@ -825,6 +843,7 @@ mod tests {
                     duration_secs: 1800, // 30 min
                     status: EntryStatus::Completed,
                     notes: None,
+                    score: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -835,6 +854,7 @@ mod tests {
                     duration_secs: 900, // 15 min
                     status: EntryStatus::Completed,
                     notes: None,
+                    score: None,
                 },
             ],
         });
@@ -843,16 +863,270 @@ mod tests {
         let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let p2_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
 
-        // p1 has 2 entries totalling 45 minutes
+        // p1 has 2 entries totalling 45 minutes, no scores
         assert_eq!(
             p1_view.practice,
             Some(ItemPracticeSummary {
                 session_count: 2,
                 total_minutes: 45,
+                latest_score: None,
+                score_history: vec![],
             })
         );
         // p2 has no entries
         assert_eq!(p2_view.practice, None);
+    }
+
+    // ── Score history tests (T019) ────────────────────────────────────
+
+    #[test]
+    fn test_score_history_multiple_sessions() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model::default();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+        };
+
+        // Session 1: older, score 3
+        model.sessions.push(PracticeSession {
+            id: "sess1".to_string(),
+            started_at: now - chrono::Duration::hours(2),
+            completed_at: now - chrono::Duration::hours(1),
+            total_duration_secs: 3600,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            entries: vec![SetlistEntry {
+                id: "e1".to_string(),
+                item_id: "p1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: "piece".to_string(),
+                position: 0,
+                duration_secs: 1800,
+                status: EntryStatus::Completed,
+                notes: None,
+                score: Some(3),
+            }],
+        });
+
+        // Session 2: newer, score 5
+        model.sessions.push(PracticeSession {
+            id: "sess2".to_string(),
+            started_at: now - chrono::Duration::minutes(30),
+            completed_at: now,
+            total_duration_secs: 1800,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            entries: vec![SetlistEntry {
+                id: "e2".to_string(),
+                item_id: "p1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: "piece".to_string(),
+                position: 0,
+                duration_secs: 900,
+                status: EntryStatus::Completed,
+                notes: None,
+                score: Some(5),
+            }],
+        });
+
+        let vm = app.view(&model);
+        let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let practice = p1.practice.as_ref().unwrap();
+
+        // latest_score should be from the newer session
+        assert_eq!(practice.latest_score, Some(5));
+        assert_eq!(practice.score_history.len(), 2);
+        // First entry = most recent (score 5)
+        assert_eq!(practice.score_history[0].score, 5);
+        assert_eq!(practice.score_history[0].session_id, "sess2");
+        // Second entry = older (score 3)
+        assert_eq!(practice.score_history[1].score, 3);
+        assert_eq!(practice.score_history[1].session_id, "sess1");
+    }
+
+    #[test]
+    fn test_score_history_no_scored_sessions() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model::default();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+        };
+
+        // Session with no score
+        model.sessions.push(PracticeSession {
+            id: "sess1".to_string(),
+            started_at: now - chrono::Duration::hours(1),
+            completed_at: now,
+            total_duration_secs: 1800,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            entries: vec![SetlistEntry {
+                id: "e1".to_string(),
+                item_id: "p1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: "piece".to_string(),
+                position: 0,
+                duration_secs: 1800,
+                status: EntryStatus::Completed,
+                notes: None,
+                score: None,
+            }],
+        });
+
+        let vm = app.view(&model);
+        let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let practice = p1.practice.as_ref().unwrap();
+
+        assert_eq!(practice.latest_score, None);
+        assert!(practice.score_history.is_empty());
+    }
+
+    #[test]
+    fn test_score_history_item_multiple_times_in_one_session() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model::default();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+        };
+
+        // Single session with the same item twice (different scores)
+        model.sessions.push(PracticeSession {
+            id: "sess1".to_string(),
+            started_at: now - chrono::Duration::hours(1),
+            completed_at: now,
+            total_duration_secs: 3600,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            entries: vec![
+                SetlistEntry {
+                    id: "e1".to_string(),
+                    item_id: "p1".to_string(),
+                    item_title: "Sonata".to_string(),
+                    item_type: "piece".to_string(),
+                    position: 0,
+                    duration_secs: 1800,
+                    status: EntryStatus::Completed,
+                    notes: None,
+                    score: Some(2),
+                },
+                SetlistEntry {
+                    id: "e2".to_string(),
+                    item_id: "p1".to_string(),
+                    item_title: "Sonata".to_string(),
+                    item_type: "piece".to_string(),
+                    position: 1,
+                    duration_secs: 1800,
+                    status: EntryStatus::Completed,
+                    notes: None,
+                    score: Some(4),
+                },
+            ],
+        });
+
+        let vm = app.view(&model);
+        let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let practice = p1.practice.as_ref().unwrap();
+
+        // Both entries from the same session should appear in score_history
+        assert_eq!(practice.score_history.len(), 2);
+        // Both have the same session_id
+        assert!(practice
+            .score_history
+            .iter()
+            .all(|e| e.session_id == "sess1"));
+    }
+
+    #[test]
+    fn test_score_history_skipped_entries_excluded() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model::default();
+
+        model.pieces.push(Piece {
+            id: "p1".to_string(),
+            title: "Sonata".to_string(),
+            composer: "Beethoven".to_string(),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+        };
+
+        // A skipped entry won't have a score (scores only set on completed entries)
+        model.sessions.push(PracticeSession {
+            id: "sess1".to_string(),
+            started_at: now - chrono::Duration::hours(1),
+            completed_at: now,
+            total_duration_secs: 600,
+            completion_status: CompletionStatus::EndedEarly,
+            session_notes: None,
+            entries: vec![SetlistEntry {
+                id: "e1".to_string(),
+                item_id: "p1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: "piece".to_string(),
+                position: 0,
+                duration_secs: 600,
+                status: EntryStatus::Skipped,
+                notes: None,
+                score: None, // Skipped entries never have scores
+            }],
+        });
+
+        let vm = app.view(&model);
+        let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let practice = p1.practice.as_ref().unwrap();
+
+        assert_eq!(practice.latest_score, None);
+        assert!(practice.score_history.is_empty());
     }
 
     #[test]

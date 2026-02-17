@@ -44,6 +44,8 @@ pub struct SetlistEntry {
     pub duration_secs: u64,
     pub status: EntryStatus,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub score: Option<u8>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -149,6 +151,10 @@ pub enum SessionEvent {
         entry_id: String,
         notes: Option<String>,
     },
+    UpdateEntryScore {
+        entry_id: String,
+        score: Option<u8>,
+    },
     UpdateSessionNotes {
         notes: Option<String>,
     },
@@ -207,6 +213,7 @@ fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usiz
         duration_secs: 0,
         status: EntryStatus::NotAttempted,
         notes: None,
+        score: None,
     }
 }
 
@@ -617,6 +624,35 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         // ── Summary Phase ──────────────────────────────────────────
+        SessionEvent::UpdateEntryScore { entry_id, score } => {
+            let SessionStatus::Summary(ref mut summary) = model.session_status else {
+                // Silent no-op if not in summary state (consistent with existing pattern)
+                return crux_core::render::render();
+            };
+
+            // Validate score range if present
+            if let Some(s) = score {
+                if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
+                    // Silent no-op for out-of-range score
+                    return crux_core::render::render();
+                }
+            }
+
+            let Some(entry) = summary.entries.iter_mut().find(|e| e.id == entry_id) else {
+                // Silent no-op if entry not found
+                return crux_core::render::render();
+            };
+
+            // Only allow scoring on completed entries
+            if entry.status != EntryStatus::Completed {
+                return crux_core::render::render();
+            }
+
+            entry.score = score;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
         SessionEvent::UpdateEntryNotes { entry_id, notes } => {
             let SessionStatus::Summary(ref mut summary) = model.session_status else {
                 model.last_error = Some("Not in summary state".to_string());
@@ -1546,6 +1582,207 @@ mod tests {
         assert_eq!(session.session_notes, Some("Focused session".to_string()));
         assert_eq!(session.total_duration_secs, 90); // 30 + 0 + 60
         assert_eq!(session.completion_status, CompletionStatus::Completed);
+    }
+
+    // --- UpdateEntryScore Tests ---
+
+    #[test]
+    fn test_update_entry_score_on_completed_entry() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(4),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, Some(4));
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_toggle_clears_score() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Set score to 4
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(4),
+            }),
+        );
+
+        // Clear score by setting to None (toggle)
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: None,
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, None);
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_ignored_on_skipped_entry() {
+        // Create a session where one item is skipped
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(5);
+        let t2 = t1 + chrono::Duration::seconds(30);
+
+        // Skip the first item
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem { now: t1 }),
+        );
+        // Finish the second item
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        let skipped_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].status, EntryStatus::Skipped);
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Try to score the skipped entry — should be a no-op
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: skipped_entry_id.clone(),
+                score: Some(3),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, None); // Score not set
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_out_of_range_rejected() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Score 0 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(0),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, None); // Score not set
+        }
+
+        // Score 6 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(6),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, None); // Score still not set
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_only_works_during_summary() {
+        let (mut model, _start) = model_with_active_session(2);
+
+        // In Active state, try to update score
+        let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id,
+                score: Some(3),
+            }),
+        );
+
+        // Should still be in Active state, no crash, no error
+        assert!(matches!(model.session_status, SessionStatus::Active(_)));
+    }
+
+    #[test]
+    fn test_update_entry_score_boundary_values() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Score 1 — minimum valid
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(1),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, Some(1));
+        }
+
+        // Score 5 — maximum valid
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(5),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].score, Some(5));
+        }
     }
 
     // --- format_duration_display Tests ---

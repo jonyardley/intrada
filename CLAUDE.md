@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - Turso (managed libsql/SQLite) via HTTP protocol — `libsql` crate with `remote` feature (020-api-server)
 - Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, gloo-net 0.6 (NEW), wasm-bindgen-futures 0.4 (NEW), serde/serde_json 1 (021-api-sync)
 - REST API (Turso/libsql via intrada-api) for pieces, exercises, sessions; localStorage for session-in-progress crash recovery only (021-api-sync)
+- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4 (022-session-scoring)
+- Turso (managed libsql/SQLite) via REST API; localStorage for session-in-progress crash recovery only (022-session-scoring)
 
 ## Project Structure
 
@@ -41,9 +43,9 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 022-session-scoring: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4
 - 021-api-sync: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, gloo-net 0.6 (NEW), wasm-bindgen-futures 0.4 (NEW), serde/serde_json 1
 - 020-api-server: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75, axum 0.8 requires 1.78+) + axum 0.8, libsql 0.9 (remote feature), libsql_migration 0.2.2 (content feature), tower-http 0.6 (cors), tokio 1, serde/serde_json 1, ulid 1, chrono 0.4, thiserror 1, tracing 0.1
-- 019-improve-cicd: Added GitHub Actions YAML (no Rust code changes) + GitHub Actions (checkout@v4, upload-artifact@v4, download-artifact@v4, rust-toolchain, rust-cache@v2, trunk-action, wrangler-action@v3)
 
 
 <!-- MANUAL ADDITIONS START -->
