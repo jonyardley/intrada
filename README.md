@@ -60,6 +60,25 @@ cargo run -p intrada-api
 
 See [SETUP.md](SETUP.md) for full deployment and configuration instructions.
 
+### Seed data (local development)
+
+To populate the API with realistic sample data (8 pieces, 5 exercises, ~25 practice sessions spanning 35 days), run the seed script while the API server is running:
+
+```bash
+# Requires: curl, jq
+bash scripts/seed-dev-data.sh
+```
+
+This creates a realistic dataset with score progression, practice streaks, varied session lengths, and mixed completion statuses — useful for seeing how the library, session history, and analytics dashboard look with real data.
+
+```bash
+# Point at a different API server
+API_URL=https://your-api.example.com bash scripts/seed-dev-data.sh
+
+# Delete all existing data first, then re-seed
+bash scripts/seed-dev-data.sh --clean
+```
+
 ## Project structure
 
 ```
@@ -99,6 +118,8 @@ crates/
 e2e/                  # Playwright E2E tests
   fixtures/           # API mocking (page.route interception)
   tests/              # Test specs (smoke, add-item, detail, navigation, sessions)
+scripts/              # Development utilities
+  seed-dev-data.sh    # Populate API with realistic sample data
 specs/                # SpecKit design artifacts
 ```
 
