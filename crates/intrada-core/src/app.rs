@@ -3,6 +3,7 @@ use crux_core::render::RenderOperation;
 use crux_core::{App, Command, Request};
 use serde::{Deserialize, Serialize};
 
+use crate::analytics::compute_analytics;
 use crate::domain::exercise::{handle_exercise_event, Exercise, ExerciseEvent};
 use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
 use crate::domain::session::{
@@ -207,6 +208,18 @@ impl App for Intrada {
             SessionStatus::Summary(_) => "summary".to_string(),
         };
 
+        // Compute analytics from session data.
+        // Note: Uses Utc::now() which makes view() impure. This is a pragmatic
+        // tradeoff — the date only changes once/day and caching analytics in the
+        // Model would require plumbing a clock through the event system. All
+        // computation functions accept `today` as a parameter for testability.
+        let analytics = if model.sessions.is_empty() {
+            None
+        } else {
+            let today = chrono::Utc::now().date_naive();
+            Some(compute_analytics(&model.sessions, today))
+        };
+
         ViewModel {
             items,
             sessions,
@@ -215,6 +228,7 @@ impl App for Intrada {
             summary,
             session_status,
             error: model.last_error.clone(),
+            analytics,
         }
     }
 }

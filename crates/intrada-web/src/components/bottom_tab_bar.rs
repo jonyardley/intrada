@@ -4,7 +4,7 @@ use leptos_router::hooks::use_location;
 
 /// Mobile bottom tab bar for primary navigation.
 ///
-/// Shows Library and Sessions tabs. Hidden on `sm:` and wider
+/// Shows Library, Sessions, and Analytics tabs. Hidden on `sm:` and wider
 /// where the header nav is visible instead.
 #[component]
 pub fn BottomTabBar() -> impl IntoView {
@@ -18,6 +18,11 @@ pub fn BottomTabBar() -> impl IntoView {
     let is_sessions_active = move || {
         let path = location.pathname.get();
         path.starts_with("/sessions")
+    };
+
+    let is_analytics_active = move || {
+        let path = location.pathname.get();
+        path.starts_with("/analytics")
     };
 
     view! {
@@ -79,6 +84,31 @@ pub fn BottomTabBar() -> impl IntoView {
                         />
                     </svg>
                     <span class="text-xs font-medium">"Sessions"</span>
+                </A>
+
+                // Analytics tab
+                <A
+                    href="/analytics"
+                    attr:class=move || {
+                        if is_analytics_active() {
+                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                        } else {
+                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                        }
+                    }
+                    attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
+                >
+                    // Chart/bar-chart icon (SVG)
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                    </svg>
+                    <span class="text-xs font-medium">"Analytics"</span>
                 </A>
             </div>
         </nav>
