@@ -117,10 +117,8 @@ pub fn compute_streak(sessions: &[PracticeSession], today: NaiveDate) -> Practic
     }
 
     // Collect unique dates that had a session
-    let session_dates: HashSet<NaiveDate> = sessions
-        .iter()
-        .map(|s| s.started_at.date_naive())
-        .collect();
+    let session_dates: HashSet<NaiveDate> =
+        sessions.iter().map(|s| s.started_at.date_naive()).collect();
 
     // Start counting from today; if today has no session, start from yesterday
     let mut current = today;
@@ -179,9 +177,14 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
 
     for session in sessions {
         for entry in &session.entries {
-            let record = items
-                .entry(entry.item_id.clone())
-                .or_insert_with(|| (entry.item_title.clone(), entry.item_type.clone(), 0, HashSet::new()));
+            let record = items.entry(entry.item_id.clone()).or_insert_with(|| {
+                (
+                    entry.item_title.clone(),
+                    entry.item_type.clone(),
+                    0,
+                    HashSet::new(),
+                )
+            });
             record.2 += entry.duration_secs;
             record.3.insert(session.id.clone());
         }
@@ -189,13 +192,15 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
 
     let mut rankings: Vec<ItemRanking> = items
         .into_iter()
-        .map(|(item_id, (title, item_type, total_secs, session_ids))| ItemRanking {
-            item_id,
-            item_title: title,
-            item_type,
-            total_minutes: (total_secs / 60) as u32,
-            session_count: session_ids.len(),
-        })
+        .map(
+            |(item_id, (title, item_type, total_secs, session_ids))| ItemRanking {
+                item_id,
+                item_title: title,
+                item_type,
+                total_minutes: (total_secs / 60) as u32,
+                session_count: session_ids.len(),
+            },
+        )
         .collect();
 
     rankings.sort_by(|a, b| b.total_minutes.cmp(&a.total_minutes));
@@ -279,11 +284,7 @@ mod tests {
         total_secs: u64,
         entries: Vec<SetlistEntry>,
     ) -> PracticeSession {
-        let started = Utc.from_utc_datetime(
-            &date
-                .and_hms_opt(10, 0, 0)
-                .expect("valid time"),
-        );
+        let started = Utc.from_utc_datetime(&date.and_hms_opt(10, 0, 0).expect("valid time"));
         let finished = started + chrono::Duration::seconds(total_secs as i64);
         PracticeSession {
             id: id.to_string(),
@@ -327,9 +328,9 @@ mod tests {
         let tue = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
 
         let sessions = vec![
-            make_session("s1", mon, 1800, vec![]), // 30 min
-            make_session("s2", tue, 2700, vec![]), // 45 min
-            make_session("s3", today, 600, vec![]),  // 10 min
+            make_session("s1", mon, 1800, vec![]),  // 30 min
+            make_session("s2", tue, 2700, vec![]),  // 45 min
+            make_session("s3", today, 600, vec![]), // 10 min
         ];
 
         let summary = compute_weekly_summary(&sessions, today);
@@ -344,8 +345,8 @@ mod tests {
         let last_week = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap(); // previous Wed
 
         let sessions = vec![
-            make_session("s1", last_week, 3600, vec![]),  // 60 min (previous week)
-            make_session("s2", today, 1200, vec![]),       // 20 min (this week)
+            make_session("s1", last_week, 3600, vec![]), // 60 min (previous week)
+            make_session("s2", today, 1200, vec![]),     // 20 min (this week)
         ];
 
         let summary = compute_weekly_summary(&sessions, today);
@@ -431,11 +432,11 @@ mod tests {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![
-            make_session("s1", today, 1800, vec![]),  // 30 min
+            make_session("s1", today, 1800, vec![]), // 30 min
             make_session("s2", today - chrono::Duration::days(1), 2700, vec![]), // 45 min
-            make_session("s3", today - chrono::Duration::days(5), 600, vec![]),  // 10 min
+            make_session("s3", today - chrono::Duration::days(5), 600, vec![]), // 10 min
             make_session("s4", today - chrono::Duration::days(10), 3600, vec![]), // 60 min
-            make_session("s5", today - chrono::Duration::days(27), 900, vec![]),  // 15 min (oldest in range)
+            make_session("s5", today - chrono::Duration::days(27), 900, vec![]), // 15 min (oldest in range)
         ];
 
         let totals = compute_daily_totals(&sessions, today);
@@ -464,9 +465,9 @@ mod tests {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![
-            make_session("s1", today, 1800, vec![]),  // 30 min
-            make_session("s2", today, 1200, vec![]),  // 20 min
-            make_session("s3", today, 600, vec![]),   // 10 min
+            make_session("s1", today, 1800, vec![]), // 30 min
+            make_session("s2", today, 1200, vec![]), // 20 min
+            make_session("s3", today, 600, vec![]),  // 10 min
         ];
 
         let totals = compute_daily_totals(&sessions, today);
@@ -489,15 +490,18 @@ mod tests {
         // T034: 5 items with varying durations, verify sorted by total_minutes descending
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
-        let sessions = vec![
-            make_session("s1", today, 9000, vec![
-                make_entry("p1", "Sonata", "piece", 3600, None),  // 60 min
-                make_entry("p2", "Etude", "piece", 1800, None),   // 30 min
+        let sessions = vec![make_session(
+            "s1",
+            today,
+            9000,
+            vec![
+                make_entry("p1", "Sonata", "piece", 3600, None), // 60 min
+                make_entry("p2", "Etude", "piece", 1800, None),  // 30 min
                 make_entry("e1", "Scales", "exercise", 900, None), // 15 min
-                make_entry("e2", "Arps", "exercise", 1500, None),  // 25 min
+                make_entry("e2", "Arps", "exercise", 1500, None), // 25 min
                 make_entry("p3", "Nocturne", "piece", 1200, None), // 20 min
-            ]),
-        ];
+            ],
+        )];
 
         let ranking = compute_top_items(&sessions);
         assert_eq!(ranking.len(), 5);
@@ -515,13 +519,15 @@ mod tests {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let entries: Vec<SetlistEntry> = (0..15)
-            .map(|i| make_entry(
-                &format!("item{i}"),
-                &format!("Item {i}"),
-                "piece",
-                (i + 1) as u64 * 60, // 1 min, 2 min, ..., 15 min
-                None,
-            ))
+            .map(|i| {
+                make_entry(
+                    &format!("item{i}"),
+                    &format!("Item {i}"),
+                    "piece",
+                    (i + 1) as u64 * 60, // 1 min, 2 min, ..., 15 min
+                    None,
+                )
+            })
             .collect();
 
         let total_secs: u64 = entries.iter().map(|e| e.duration_secs).sum();
@@ -542,15 +548,24 @@ mod tests {
         let day_before = today - chrono::Duration::days(2);
 
         let sessions = vec![
-            make_session("s1", today, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, None),
-            ]),
-            make_session("s2", yesterday, 1200, vec![
-                make_entry("p1", "Sonata", "piece", 1200, None),
-            ]),
-            make_session("s3", day_before, 600, vec![
-                make_entry("p1", "Sonata", "piece", 600, None),
-            ]),
+            make_session(
+                "s1",
+                today,
+                1800,
+                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+            ),
+            make_session(
+                "s2",
+                yesterday,
+                1200,
+                vec![make_entry("p1", "Sonata", "piece", 1200, None)],
+            ),
+            make_session(
+                "s3",
+                day_before,
+                600,
+                vec![make_entry("p1", "Sonata", "piece", 600, None)],
+            ),
         ];
 
         let ranking = compute_top_items(&sessions);
@@ -577,15 +592,24 @@ mod tests {
         let d3 = today;
 
         let sessions = vec![
-            make_session("s1", d1, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, Some(2)),
-            ]),
-            make_session("s2", d2, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, Some(3)),
-            ]),
-            make_session("s3", d3, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, Some(4)),
-            ]),
+            make_session(
+                "s1",
+                d1,
+                1800,
+                vec![make_entry("p1", "Sonata", "piece", 1800, Some(2))],
+            ),
+            make_session(
+                "s2",
+                d2,
+                1800,
+                vec![make_entry("p1", "Sonata", "piece", 1800, Some(3))],
+            ),
+            make_session(
+                "s3",
+                d3,
+                1800,
+                vec![make_entry("p1", "Sonata", "piece", 1800, Some(4))],
+            ),
         ];
 
         let trends = compute_score_trends(&sessions);
@@ -605,13 +629,15 @@ mod tests {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let entries: Vec<SetlistEntry> = (0..8)
-            .map(|i| make_entry(
-                &format!("item{i}"),
-                &format!("Item {i}"),
-                "piece",
-                900,
-                Some(3),
-            ))
+            .map(|i| {
+                make_entry(
+                    &format!("item{i}"),
+                    &format!("Item {i}"),
+                    "piece",
+                    900,
+                    Some(3),
+                )
+            })
             .collect();
 
         // Create sessions on different days so each item has a different "most recent" date
@@ -639,12 +665,15 @@ mod tests {
         // T043: mix of scored and unscored entries
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
-        let sessions = vec![
-            make_session("s1", today, 3600, vec![
+        let sessions = vec![make_session(
+            "s1",
+            today,
+            3600,
+            vec![
                 make_entry("p1", "Sonata", "piece", 1800, Some(4)), // scored
                 make_entry("p2", "Etude", "piece", 1800, None),     // unscored
-            ]),
-        ];
+            ],
+        )];
 
         let trends = compute_score_trends(&sessions);
         assert_eq!(trends.len(), 1);
@@ -655,11 +684,12 @@ mod tests {
     fn test_score_trends_empty() {
         // T044: sessions with no scored entries
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let sessions = vec![
-            make_session("s1", today, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, None),
-            ]),
-        ];
+        let sessions = vec![make_session(
+            "s1",
+            today,
+            1800,
+            vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+        )];
 
         let trends = compute_score_trends(&sessions);
         assert!(trends.is_empty());
@@ -670,11 +700,12 @@ mod tests {
     #[test]
     fn test_compute_analytics_populates_all_fields() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let sessions = vec![
-            make_session("s1", today, 1800, vec![
-                make_entry("p1", "Sonata", "piece", 1800, Some(4)),
-            ]),
-        ];
+        let sessions = vec![make_session(
+            "s1",
+            today,
+            1800,
+            vec![make_entry("p1", "Sonata", "piece", 1800, Some(4))],
+        )];
 
         let analytics = compute_analytics(&sessions, today);
         assert_eq!(analytics.weekly_summary.session_count, 1);
@@ -689,9 +720,7 @@ mod tests {
     #[test]
     fn test_ended_early_sessions_included() {
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
-        let started = Utc.from_utc_datetime(
-            &today.and_hms_opt(10, 0, 0).unwrap(),
-        );
+        let started = Utc.from_utc_datetime(&today.and_hms_opt(10, 0, 0).unwrap());
 
         let sessions = vec![PracticeSession {
             id: "s1".to_string(),

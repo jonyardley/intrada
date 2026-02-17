@@ -24,7 +24,11 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
     let y_max = (max_minutes.div_ceil(10) * 10).max(10) as f64;
 
     let n = data.len() as f64;
-    let step_x = if n > 1.0 { chart_width / (n - 1.0) } else { 0.0 };
+    let step_x = if n > 1.0 {
+        chart_width / (n - 1.0)
+    } else {
+        0.0
+    };
 
     // Build polyline points string
     let points: String = data
@@ -80,12 +84,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
         .map(|(i, d)| {
             let x = padding_left + i as f64 * step_x;
             // Extract day part (dd) from "YYYY-MM-DD"
-            let label = d
-                .date
-                .split('-')
-                .nth(2)
-                .unwrap_or(&d.date)
-                .to_string();
+            let label = d.date.split('-').nth(2).unwrap_or(&d.date).to_string();
             (x, label)
         })
         .collect();
