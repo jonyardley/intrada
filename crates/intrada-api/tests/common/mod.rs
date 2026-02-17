@@ -22,7 +22,7 @@ pub async fn setup_test_app() -> Router {
 
     let conn = db.connect().expect("Failed to connect to test database");
 
-    migrations::run_migrations_sql(&conn)
+    migrations::run_migrations_direct(&conn)
         .await
         .expect("Failed to run migrations");
 
