@@ -1,4 +1,5 @@
 pub mod add_form;
+pub mod analytics;
 pub mod detail;
 pub mod edit_form;
 pub mod library_list;
@@ -9,6 +10,7 @@ pub mod session_summary;
 pub mod sessions;
 
 pub use add_form::AddLibraryItemForm;
+pub use analytics::AnalyticsPage;
 pub use detail::DetailView;
 pub use edit_form::EditLibraryItemForm;
 pub use library_list::LibraryListView;

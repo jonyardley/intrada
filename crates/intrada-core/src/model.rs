@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::analytics::AnalyticsView;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
     SummarySession,
@@ -27,6 +28,7 @@ pub struct ViewModel {
     pub summary: Option<SummaryView>,
     pub session_status: String,
     pub error: Option<String>,
+    pub analytics: Option<AnalyticsView>,
 }
 
 /// Flattened representation of a piece or exercise for display.

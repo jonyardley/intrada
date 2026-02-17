@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - REST API (Turso/libsql via intrada-api) for pieces, exercises, sessions; localStorage for session-in-progress crash recovery only (021-api-sync)
 - Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4 (022-session-scoring)
 - Turso (managed libsql/SQLite) via REST API; localStorage for session-in-progress crash recovery only (022-session-scoring)
+- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), chrono 0.4, serde 1 (023-analytics-dashboard)
+- N/A (read-only — computed from existing session data, no new persistence) (023-analytics-dashboard)
 
 ## Project Structure
 
@@ -43,9 +45,9 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 023-analytics-dashboard: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), chrono 0.4, serde 1
 - 022-session-scoring: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4
 - 021-api-sync: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, gloo-net 0.6 (NEW), wasm-bindgen-futures 0.4 (NEW), serde/serde_json 1
-- 020-api-server: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75, axum 0.8 requires 1.78+) + axum 0.8, libsql 0.9 (remote feature), libsql_migration 0.2.2 (content feature), tower-http 0.6 (cors), tokio 1, serde/serde_json 1, ulid 1, chrono 0.4, thiserror 1, tracing 0.1
 
 
 <!-- MANUAL ADDITIONS START -->
