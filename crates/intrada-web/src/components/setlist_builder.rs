@@ -1,8 +1,10 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, SessionEvent, ViewModel};
+use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card, SetlistEntryRow};
+use crate::components::{
+    Button, ButtonVariant, Card, RoutineLoader, RoutineSaveForm, SetlistEntryRow,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -17,6 +19,7 @@ pub fn SetlistBuilder() -> impl IntoView {
     let core_setlist = core.clone();
     let core_actions = core.clone();
     let core_library = core.clone();
+    let core_routine_save = core.clone();
 
     view! {
         <div class="space-y-6">
@@ -136,6 +139,28 @@ pub fn SetlistBuilder() -> impl IntoView {
                     }
                 }
             </div>
+
+            // Save as Routine (only when setlist has entries)
+            {move || {
+                let vm = view_model.get();
+                let has_entries = matches!(&vm.building_setlist, Some(setlist) if !setlist.entries.is_empty());
+                if has_entries {
+                    let core_save_routine = core_routine_save.clone();
+                    Some(view! {
+                        <RoutineSaveForm on_save=Callback::new(move |name: String| {
+                            let event = Event::Routine(RoutineEvent::SaveBuildingAsRoutine { name });
+                            let core_ref = core_save_routine.borrow();
+                            let effects = core_ref.process_event(event);
+                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        }) />
+                    })
+                } else {
+                    None
+                }
+            }}
+
+            // Load saved routines
+            <RoutineLoader />
 
             // Library items to add
             <Card>

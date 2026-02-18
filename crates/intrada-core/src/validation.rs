@@ -1,3 +1,4 @@
+use crate::domain::routine::RoutineEntry;
 use crate::domain::session::SetlistEntry;
 use crate::domain::types::{CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece};
 use crate::error::LibraryError;
@@ -13,6 +14,7 @@ pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
 pub const MIN_SCORE: u8 = 1;
 pub const MAX_SCORE: u8 = 5;
+pub const MAX_ROUTINE_NAME: usize = 200;
 
 pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
     if input.title.is_empty() {
@@ -272,6 +274,33 @@ pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
                 message: format!("BPM must be between {MIN_BPM} and {MAX_BPM}"),
             });
         }
+    }
+    Ok(())
+}
+
+pub fn validate_routine_name(name: &str) -> Result<(), LibraryError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(LibraryError::Validation {
+            field: "name".to_string(),
+            message: "Routine name is required".to_string(),
+        });
+    }
+    if trimmed.len() > MAX_ROUTINE_NAME {
+        return Err(LibraryError::Validation {
+            field: "name".to_string(),
+            message: format!("Routine name must not exceed {MAX_ROUTINE_NAME} characters"),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_routine_entries_not_empty(entries: &[RoutineEntry]) -> Result<(), LibraryError> {
+    if entries.is_empty() {
+        return Err(LibraryError::Validation {
+            field: "entries".to_string(),
+            message: "Routine must have at least one entry".to_string(),
+        });
     }
     Ok(())
 }

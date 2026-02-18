@@ -2,7 +2,7 @@ use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
 use wasm_bindgen_futures::spawn_local;
 
-use intrada_core::{Effect, Event, Intrada, StorageEffect, ViewModel};
+use intrada_core::{Effect, Event, Intrada, Routine, StorageEffect, ViewModel};
 
 use crate::api_client;
 use crate::types::{IsLoading, IsSubmitting, SharedCore};
@@ -90,6 +90,28 @@ pub fn fetch_initial_data(
                 Ok(sessions) => {
                     let core_ref = core.borrow();
                     let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+                Err(e) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+            }
+        });
+    }
+
+    // Fetch routines
+    {
+        let core = leptos::prelude::expect_context::<SharedCore>();
+        let vm = *view_model;
+        let loading = *is_loading;
+        let submitting = *is_submitting;
+        spawn_local(async move {
+            match api_client::fetch_routines().await {
+                Ok(routines) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::RoutinesLoaded { routines });
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
                 Err(e) => {
@@ -346,6 +368,62 @@ pub fn process_effects(
                 StorageEffect::ClearSessionInProgress => {
                     clear_session_in_progress();
                 }
+
+                // ---- Routine operations ----
+                StorageEffect::SaveRoutine(routine) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let create = build_create_routine_request(routine);
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::create_routine(&create).await {
+                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_routines(core, vm, loading, submitting).await;
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::UpdateRoutine(routine) => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let routine_id = routine.id.clone();
+                    let update = build_update_routine_request(routine);
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::update_routine(&routine_id, &update).await {
+                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_routines(core, vm, loading, submitting).await;
+                            }
+                        }
+                    });
+                }
+
+                StorageEffect::DeleteRoutine { id } => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    let routine_id = id.clone();
+                    submitting.set(true);
+                    spawn_local(async move {
+                        match api_client::delete_routine(&routine_id).await {
+                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
+                            Err(e) => {
+                                report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_routines(core, vm, loading, submitting).await;
+                            }
+                        }
+                    });
+                }
             },
         }
     }
@@ -395,6 +473,59 @@ async fn refresh_sessions(
     }
 
     is_submitting.set(false);
+}
+
+/// Refresh routines data from API after a mutation.
+async fn refresh_routines(
+    core: SharedCore,
+    view_model: RwSignal<ViewModel>,
+    is_loading: IsLoading,
+    is_submitting: IsSubmitting,
+) {
+    match api_client::fetch_routines().await {
+        Ok(routines) => {
+            let core_ref = core.borrow();
+            let effects = core_ref.process_event(Event::RoutinesLoaded { routines });
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        }
+        Err(e) => {
+            report_error(&core, &view_model, &is_loading, &is_submitting, e);
+        }
+    }
+
+    is_submitting.set(false);
+}
+
+/// Build a CreateRoutineApiRequest from a domain Routine.
+fn build_create_routine_request(routine: &Routine) -> api_client::CreateRoutineApiRequest {
+    api_client::CreateRoutineApiRequest {
+        name: routine.name.clone(),
+        entries: routine
+            .entries
+            .iter()
+            .map(|e| api_client::CreateRoutineEntryApiRequest {
+                item_id: e.item_id.clone(),
+                item_title: e.item_title.clone(),
+                item_type: e.item_type.clone(),
+            })
+            .collect(),
+    }
+}
+
+/// Build an UpdateRoutineApiRequest from a domain Routine.
+fn build_update_routine_request(routine: &Routine) -> api_client::UpdateRoutineApiRequest {
+    api_client::UpdateRoutineApiRequest {
+        name: routine.name.clone(),
+        entries: routine
+            .entries
+            .iter()
+            .map(|e| api_client::CreateRoutineEntryApiRequest {
+                item_id: e.item_id.clone(),
+                item_title: e.item_title.clone(),
+                item_type: e.item_type.clone(),
+            })
+            .collect(),
+    }
 }
 
 /// Report an API error to the core via LoadFailed event.

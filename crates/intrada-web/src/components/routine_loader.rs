@@ -1,0 +1,66 @@
+use leptos::prelude::*;
+
+use intrada_core::{Event, RoutineEvent, ViewModel};
+
+use crate::components::Card;
+use intrada_web::core_bridge::process_effects;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+
+/// Shows saved routines and lets the user load one into the current setlist.
+///
+/// Each routine is displayed as a row with name, entry count, and a Load button.
+/// Only visible when at least one routine exists.
+#[component]
+pub fn RoutineLoader() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
+
+    view! {
+        {move || {
+            let vm = view_model.get();
+            if vm.routines.is_empty() {
+                None
+            } else {
+                let core_load = core.clone();
+                Some(view! {
+                    <Card>
+                        <h3 class="text-lg font-semibold text-white mb-4">"Saved Routines"</h3>
+                        <div class="space-y-2">
+                            {vm.routines.iter().map(|routine| {
+                                let routine_id = routine.id.clone();
+                                let name = routine.name.clone();
+                                let entry_count = routine.entry_count;
+                                let core_l = core_load.clone();
+                                view! {
+                                    <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm text-white font-medium">{name}</span>
+                                            <span class="inline-flex items-center rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
+                                                {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
+                                            </span>
+                                        </div>
+                                        <button
+                                            class="text-xs font-medium text-indigo-300 hover:text-indigo-200 px-2 py-1 rounded hover:bg-white/5 motion-safe:transition-colors motion-safe:duration-150"
+                                            on:click=move |_| {
+                                                let event = Event::Routine(RoutineEvent::LoadRoutineIntoSetlist {
+                                                    routine_id: routine_id.clone(),
+                                                });
+                                                let core_ref = core_l.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            }
+                                        >
+                                            "Load"
+                                        </button>
+                                    </div>
+                                }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    </Card>
+                })
+            }
+        }}
+    }
+}

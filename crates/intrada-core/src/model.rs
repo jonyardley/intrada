@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
+use crate::domain::routine::Routine;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
     SummarySession,
@@ -16,6 +17,7 @@ pub struct Model {
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
+    pub routines: Vec<Routine>,
 }
 
 /// Serializable view state sent to shells for rendering.
@@ -29,6 +31,26 @@ pub struct ViewModel {
     pub session_status: String,
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
+    pub routines: Vec<RoutineView>,
+}
+
+/// Represents a routine for display in the UI.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct RoutineView {
+    pub id: String,
+    pub name: String,
+    pub entry_count: usize,
+    pub entries: Vec<RoutineEntryView>,
+}
+
+/// Represents a single entry within a routine for display.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct RoutineEntryView {
+    pub id: String,
+    pub item_id: String,
+    pub item_title: String,
+    pub item_type: String,
+    pub position: usize,
 }
 
 /// Flattened representation of a piece or exercise for display.

@@ -14,7 +14,8 @@ use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
 use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
-    NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
+    NotFoundView, RoutineEditView, RoutinesListView, SessionActiveView, SessionNewView,
+    SessionSummaryView, SessionsListView,
 };
 use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -85,6 +86,12 @@ pub fn App() -> impl IntoView {
                         } />
                         <Route path=path!("/sessions/summary") view=move || view! {
                             <SessionSummaryView />
+                        } />
+                        <Route path=path!("/routines") view=move || view! {
+                            <RoutinesListView />
+                        } />
+                        <Route path=path!("/routines/:id/edit") view=move || view! {
+                            <RoutineEditView />
                         } />
                         <Route path=path!("/analytics") view=move || view! {
                             <AnalyticsPage />

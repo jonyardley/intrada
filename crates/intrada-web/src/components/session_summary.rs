@@ -1,8 +1,8 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, SessionEvent, ViewModel};
+use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card};
+use crate::components::{Button, ButtonVariant, Card, RoutineSaveForm};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -20,6 +20,7 @@ pub fn SessionSummary() -> impl IntoView {
     let core_discard = core.clone();
     let core_entries = core.clone();
     let core_score = core.clone();
+    let core_routine_save = core.clone();
     let core_session_notes_outer = core;
 
     view! {
@@ -182,6 +183,19 @@ pub fn SessionSummary() -> impl IntoView {
                                     }
                                 />
                             </Card>
+
+                            // Save as Routine
+                            {
+                                let core_save_routine = core_routine_save.clone();
+                                view! {
+                                    <RoutineSaveForm on_save=Callback::new(move |name: String| {
+                                        let event = Event::Routine(RoutineEvent::SaveSummaryAsRoutine { name });
+                                        let core_ref = core_save_routine.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                    }) />
+                                }
+                            }
 
                             // Actions
                             <div class="flex gap-3">

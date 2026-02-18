@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::compute_analytics;
 use crate::domain::exercise::{handle_exercise_event, Exercise, ExerciseEvent};
 use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
+use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
@@ -25,12 +26,16 @@ pub enum Event {
     Piece(PieceEvent),
     Exercise(ExerciseEvent),
     Session(SessionEvent),
+    Routine(RoutineEvent),
     DataLoaded {
         pieces: Vec<Piece>,
         exercises: Vec<Exercise>,
     },
     SessionsLoaded {
         sessions: Vec<PracticeSession>,
+    },
+    RoutinesLoaded {
+        routines: Vec<Routine>,
     },
     LoadFailed(String),
     ClearError,
@@ -57,6 +62,9 @@ pub enum StorageEffect {
     DeletePracticeSession { id: String },
     SaveSessionInProgress(ActiveSession),
     ClearSessionInProgress,
+    SaveRoutine(Routine),
+    UpdateRoutine(Routine),
+    DeleteRoutine { id: String },
 }
 
 impl Operation for StorageEffect {
@@ -92,6 +100,7 @@ impl App for Intrada {
             Event::Piece(piece_event) => handle_piece_event(piece_event, model),
             Event::Exercise(exercise_event) => handle_exercise_event(exercise_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
+            Event::Routine(routine_event) => handle_routine_event(routine_event, model),
             Event::DataLoaded { pieces, exercises } => {
                 model.pieces = pieces;
                 model.exercises = exercises;
@@ -100,6 +109,10 @@ impl App for Intrada {
             }
             Event::SessionsLoaded { sessions } => {
                 model.sessions = sessions;
+                crux_core::render::render()
+            }
+            Event::RoutinesLoaded { routines } => {
+                model.routines = routines;
                 crux_core::render::render()
             }
             Event::LoadFailed(msg) => {
@@ -220,6 +233,31 @@ impl App for Intrada {
             Some(compute_analytics(&model.sessions, today))
         };
 
+        // Build routine views
+        let routines = model
+            .routines
+            .iter()
+            .map(|r| {
+                use crate::model::{RoutineEntryView, RoutineView};
+                RoutineView {
+                    id: r.id.clone(),
+                    name: r.name.clone(),
+                    entry_count: r.entries.len(),
+                    entries: r
+                        .entries
+                        .iter()
+                        .map(|e| RoutineEntryView {
+                            id: e.id.clone(),
+                            item_id: e.item_id.clone(),
+                            item_title: e.item_title.clone(),
+                            item_type: e.item_type.clone(),
+                            position: e.position,
+                        })
+                        .collect(),
+                }
+            })
+            .collect();
+
         ViewModel {
             items,
             sessions,
@@ -229,6 +267,7 @@ impl App for Intrada {
             session_status,
             error: model.last_error.clone(),
             analytics,
+            routines,
         }
     }
 }
