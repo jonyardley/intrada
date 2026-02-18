@@ -131,6 +131,7 @@ fly deploy
 | `TURSO_AUTH_TOKEN` | `fly secrets set` | Token from `turso db tokens create` |
 | `ALLOWED_ORIGIN` | `fly secrets set` | Frontend URL (e.g. `https://intrada.xxx.workers.dev`) |
 | `RUST_LOG` | `fly.toml` [env] | `info` (already configured) |
+| `PORT` | `fly.toml` [env] | `8080` (production; defaults to `3001` locally) |
 
 ### Verify deployment
 
@@ -176,41 +177,73 @@ Add the output as the `FLY_API_TOKEN` secret in GitHub Actions.
 
 ## 5. Local Development
 
-### Frontend only (no API)
+### Prerequisites
+
+- Rust stable (1.75+)
+- [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
+- [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
+
+### Quick start (recommended)
 
 ```bash
-cd crates/intrada-web
-trunk serve
-# Open http://localhost:8080
+# 1. Set up environment
+cp .env.example .env
+# Edit .env with your Turso credentials
+
+# 2. Start both API and web dev servers
+just dev
+# → API on :3001, web on :8080 (proxies /api/* to API)
+
+# 3. Open http://localhost:8080
 ```
 
-Uses localStorage — no API or database needed.
+The `just dev` command starts both servers concurrently. The Trunk dev server on port 8080 proxies all `/api/*` requests to the API server on port 3001, so the browser only talks to one origin (no CORS issues).
 
-### API server (requires Turso)
+### Manual setup (without just)
 
 ```bash
+# Terminal 1: API server (requires Turso credentials)
 export TURSO_DATABASE_URL="libsql://intrada-<your-org>.turso.io"
 export TURSO_AUTH_TOKEN="<your-token>"
 export ALLOWED_ORIGIN="http://localhost:8080"
+export PORT=3001
 
 cargo run -p intrada-api
-# Server starts on http://localhost:8080
+# → API on http://localhost:3001
+
+# Terminal 2: Web dev server
+trunk serve --config crates/intrada-web/Trunk.toml
+# → Web on http://localhost:8080 (proxies /api/* to :3001)
 ```
 
 ### Quick verification
 
 ```bash
-# Health check
+# Health check (via API directly)
+curl http://localhost:3001/api/health
+
+# Health check (via Trunk proxy)
 curl http://localhost:8080/api/health
 
 # Create a piece
-curl -X POST http://localhost:8080/api/pieces \
+curl -X POST http://localhost:3001/api/pieces \
   -H "Content-Type: application/json" \
   -d '{"title":"Clair de Lune","composer":"Debussy","tags":[]}'
 
 # List pieces
-curl http://localhost:8080/api/pieces
+curl http://localhost:3001/api/pieces
 ```
+
+### Seed data
+
+To populate the API with realistic sample data:
+
+```bash
+just seed
+# or: bash scripts/seed-dev-data.sh
+```
+
+See [README.md](README.md) for more seed options.
 
 ## Checklist
 

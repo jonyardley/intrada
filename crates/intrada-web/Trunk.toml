@@ -13,3 +13,9 @@ ignore = ["dist/"]
 stage = "pre_build"
 command = "tailwindcss"
 command_arguments = ["-i", "input.css", "-o", "tailwind-output.css"]
+
+# Proxy API requests to the backend server during development.
+# The web app makes requests to /api/* which Trunk forwards to the API server,
+# avoiding CORS issues entirely in local development.
+[[proxy]]
+backend = "http://localhost:3001/api/"
