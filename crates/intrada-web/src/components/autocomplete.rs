@@ -29,6 +29,9 @@ pub fn Autocomplete(
     /// Called on paste events with the raw pasted text.
     #[prop(optional)]
     on_paste: Option<Callback<String>>,
+    /// Whether the input is required (HTML `required` attribute).
+    #[prop(default = false)]
+    required: bool,
 ) -> impl IntoView {
     let is_open = RwSignal::new(false);
     let highlight_index = RwSignal::new(Option::<usize>::None);
@@ -177,6 +180,7 @@ pub fn Autocomplete(
                 role="combobox"
                 aria-autocomplete="list"
                 aria-expanded=move || if show_dropdown() { "true" } else { "false" }
+                required=required
                 aria-controls=listbox_id.clone()
                 aria-activedescendant=move || {
                     highlight_index.get().map(|idx| format!("{id}-option-{idx}")).unwrap_or_default()
@@ -234,7 +238,6 @@ pub fn Autocomplete(
 /// A thin wrapper combining `Autocomplete` behaviour with `TextField`-like props.
 /// Renders a labelled input with autocomplete suggestions and error display.
 /// Used for the composer field.
-#[allow(unused_variables)]
 #[component]
 pub fn AutocompleteTextField(
     id: &'static str,
@@ -268,6 +271,7 @@ pub fn AutocompleteTextField(
                     value=value
                     on_select=on_select
                     placeholder=placeholder.unwrap_or("")
+                    required=required
                 />
             </div>
             <FormFieldError field=field_name errors=errors error_id=error_id />
