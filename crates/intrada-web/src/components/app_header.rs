@@ -26,7 +26,7 @@ pub fn AppHeader() -> impl IntoView {
     };
 
     view! {
-        <header class="bg-gray-900/60 supports-backdrop:backdrop-blur-md border-b border-white/10" role="banner">
+        <header class="glass-chrome border-b border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
                 <div>
                     <A href="/" attr:class="no-underline">

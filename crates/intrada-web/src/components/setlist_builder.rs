@@ -156,7 +156,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                     let item_type = item.item_type.clone();
                                     let core_a = core_add.clone();
                                     view! {
-                                        <div class="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 hover:bg-white/10">
+                                        <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10">
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm text-white">{title}</span>
                                                 <span class="text-xs text-gray-500">{item_type}</span>

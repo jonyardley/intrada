@@ -10,6 +10,8 @@ use send_wrapper::SendWrapper;
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
+#[cfg(debug_assertions)]
+use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
     NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
@@ -87,6 +89,9 @@ pub fn App() -> impl IntoView {
                         <Route path=path!("/analytics") view=move || view! {
                             <AnalyticsPage />
                         } />
+                        <Route path=path!("/design") view=move || view! {
+                            <DesignRouteView />
+                        } />
                     </Routes>
                 </main>
 
@@ -97,5 +102,19 @@ pub fn App() -> impl IntoView {
                 <BottomTabBar />
             </div>
         </Router>
+    }
+}
+
+/// Design catalogue route — shows the component catalogue in debug builds,
+/// falls back to 404 in release builds.
+#[component]
+fn DesignRouteView() -> impl IntoView {
+    #[cfg(debug_assertions)]
+    {
+        view! { <DesignCatalogue /> }.into_any()
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        view! { <NotFoundView /> }.into_any()
     }
 }

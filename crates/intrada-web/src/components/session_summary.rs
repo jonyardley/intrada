@@ -82,7 +82,7 @@ pub fn SessionSummary() -> impl IntoView {
                                             _ => "text-gray-500",
                                         };
                                         view! {
-                                            <div class="rounded-lg border border-white/10 p-3 space-y-2">
+                                            <div class="rounded-lg bg-white/5 p-3 space-y-2">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
                                                         <span class={format!("text-sm font-medium {}", status_color)}>{status_label}</span>
@@ -99,7 +99,7 @@ pub fn SessionSummary() -> impl IntoView {
                                                         type="text"
                                                         id=notes_input_id
                                                         placeholder="Add notes for this item..."
-                                                        class="w-full rounded border border-white/20 bg-white/10 text-white placeholder-gray-400 px-2 py-1 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                                                        class="input-base"
                                                         bind:value=entry_notes
                                                         on:blur=move |_| {
                                                             let notes_val = entry_notes.get_untracked();
@@ -126,9 +126,9 @@ pub fn SessionSummary() -> impl IntoView {
                                                                 let core_n = core_score_btns.clone();
                                                                 let is_selected = current_score == Some(n);
                                                                 let btn_class = if is_selected {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-indigo-600 text-white shadow-md transition-all duration-150"
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-accent text-white shadow-md motion-safe:transition-all motion-safe:duration-150"
                                                                 } else {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all duration-150"
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-surface-primary text-white/60 hover:bg-surface-hover hover:text-white motion-safe:transition-all motion-safe:duration-150"
                                                                 };
                                                                 let aria_label = format!("Rate confidence {} out of 5", n);
                                                                 let aria_pressed = if is_selected { "true" } else { "false" };
@@ -170,7 +170,7 @@ pub fn SessionSummary() -> impl IntoView {
                                 <textarea
                                     rows="3"
                                     placeholder="How did this session go?"
-                                    class="w-full rounded-lg border border-white/20 bg-white/10 text-white placeholder-gray-400 px-3 py-2 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                                    class="input-base"
                                     bind:value=session_notes
                                     on:blur=move |_| {
                                         let notes_val = session_notes.get_untracked();

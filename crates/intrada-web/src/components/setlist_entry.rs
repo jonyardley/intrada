@@ -19,7 +19,7 @@ pub fn SetlistEntryRow(
     let entry_id_down = entry.id.clone();
 
     view! {
-        <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+        <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
             <span class="text-sm font-mono text-gray-500 w-6 text-right">
                 {entry.position + 1}
             </span>

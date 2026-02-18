@@ -103,7 +103,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                 y1={format!("{:.1}", padding_top)}
                 x2={format!("{:.1}", padding_left)}
                 y2={format!("{:.1}", padding_top + chart_height)}
-                stroke="rgba(255,255,255,0.1)"
+                stroke="var(--color-chart-grid)"
                 stroke-width="1"
             />
             <line
@@ -111,7 +111,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                 y1={format!("{:.1}", padding_top + chart_height)}
                 x2={format!("{:.1}", width - padding_right)}
                 y2={format!("{:.1}", padding_top + chart_height)}
-                stroke="rgba(255,255,255,0.1)"
+                stroke="var(--color-chart-grid)"
                 stroke-width="1"
             />
             // Mid grid line
@@ -120,7 +120,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                 y1={format!("{:.1}", padding_top + chart_height / 2.0)}
                 x2={format!("{:.1}", width - padding_right)}
                 y2={format!("{:.1}", padding_top + chart_height / 2.0)}
-                stroke="rgba(255,255,255,0.05)"
+                stroke="var(--color-chart-grid-mid)"
                 stroke-width="1"
                 stroke-dasharray="4,4"
             />
@@ -128,14 +128,14 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
             // Filled area under the line
             <polygon
                 points={area_points}
-                fill="rgba(129, 140, 248, 0.15)"
+                fill="var(--color-chart-area)"
             />
 
             // Line
             <polyline
                 points={points}
                 fill="none"
-                stroke="rgb(129, 140, 248)"
+                stroke="var(--color-chart-line)"
                 stroke-width="2"
                 stroke-linejoin="round"
                 stroke-linecap="round"
@@ -148,8 +148,8 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                         cx={format!("{:.1}", x)}
                         cy={format!("{:.1}", y)}
                         r="3"
-                        fill="rgb(129, 140, 248)"
-                        stroke="rgb(30, 27, 75)"
+                        fill="var(--color-chart-line)"
+                        stroke="var(--color-chart-point-stroke)"
                         stroke-width="1.5"
                     >
                         <title>{format!("{}: {}m", date, minutes)}</title>
@@ -165,7 +165,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                         y={format!("{:.1}", y + 3.0)}
                         text-anchor="end"
                         font-size="10"
-                        fill="rgba(156, 163, 175, 0.7)"
+                        fill="var(--color-chart-label)"
                     >
                         {label}
                     </text>
@@ -180,7 +180,7 @@ pub fn LineChart(data: Vec<DailyPracticeTotal>) -> impl IntoView {
                         y={format!("{:.1}", padding_top + chart_height + 15.0)}
                         text-anchor="middle"
                         font-size="10"
-                        fill="rgba(156, 163, 175, 0.7)"
+                        fill="var(--color-chart-label)"
                     >
                         {label}
                     </text>

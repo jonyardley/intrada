@@ -64,7 +64,7 @@ pub fn DetailView() -> impl IntoView {
     let type_for_delete = item_type;
 
     view! {
-        <div>
+        <div class="space-y-4">
             // Back link
             <BackLink label="Back to Library" href="/".to_string() />
 
@@ -76,7 +76,7 @@ pub fn DetailView() -> impl IntoView {
                     let item_type_del = type_for_delete.clone();
                     let navigate_del = navigate.clone();
                     Some(view! {
-                        <div class="mb-6 rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
+                        <div class="rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
                             <p class="text-sm text-red-300 mb-3">
                                 "Are you sure you want to delete this item? This action cannot be undone."
                             </p>
@@ -171,7 +171,7 @@ pub fn DetailView() -> impl IntoView {
                             <dd class="flex flex-wrap gap-1.5">
                                 {tags.into_iter().map(|tag| {
                                     view! {
-                                        <span class="inline-flex items-center rounded-md bg-white/10 px-2.5 py-1 text-xs text-gray-300">
+                                        <span class="inline-flex items-center rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-gray-400">
                                             {tag}
                                         </span>
                                     }
@@ -184,7 +184,7 @@ pub fn DetailView() -> impl IntoView {
                 }}
 
                 // Timestamps
-                <div class="border-t border-white/10 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-400">
+                <div class="mt-2 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-500">
                     <div>
                         <span class="font-medium">"Created: "</span>{created_at}
                     </div>
@@ -194,7 +194,7 @@ pub fn DetailView() -> impl IntoView {
                 </div>
             </Card>
 
-            // Practice summary
+            // Practice summary (spacing between stacked cards)
             {practice.map(|p| {
                 let has_scores = !p.score_history.is_empty();
                 view! {
@@ -258,7 +258,7 @@ pub fn DetailView() -> impl IntoView {
             })}
 
             // Action buttons (FR-009, FR-011)
-            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+            <div class="flex flex-col sm:flex-row gap-3">
                 <A href=edit_href attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
                     "Edit"
                 </A>

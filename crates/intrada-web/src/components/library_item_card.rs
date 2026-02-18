@@ -23,7 +23,7 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
     let href = format!("/library/{id}");
 
     view! {
-        <li class="bg-indigo-950/80 supports-backdrop:bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 motion-safe:transition-colors">
+        <li class="bg-surface-fallback supports-backdrop:bg-surface-secondary rounded-xl border border-border-default hover:bg-surface-primary motion-safe:transition-colors">
             <A href=href attr:class="block p-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
@@ -56,7 +56,7 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
                                 <div class="flex flex-wrap gap-1.5 mt-2">
                                     {tags.into_iter().map(|tag| {
                                         view! {
-                                            <span class="inline-flex items-center rounded-md bg-white/10 px-2 py-0.5 text-xs text-gray-300">
+                                            <span class="inline-flex items-center rounded-full border border-white/10 px-2 py-0.5 text-xs text-gray-400">
                                                 {tag}
                                             </span>
                                         }

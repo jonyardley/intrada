@@ -27,7 +27,7 @@ pub fn BottomTabBar() -> impl IntoView {
 
     view! {
         <nav
-            class="fixed inset-x-0 bottom-0 z-50 h-16 bg-gray-900/60 supports-backdrop:backdrop-blur-md border-t border-white/10 pb-safe sm:hidden"
+            class="fixed inset-x-0 bottom-0 z-50 h-16 glass-chrome border-t border-border-default pb-safe sm:hidden"
             role="navigation"
             aria-label="Mobile navigation"
         >
