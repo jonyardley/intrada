@@ -29,7 +29,6 @@ pub enum PieceEvent {
     Delete { id: String },
     AddTags { id: String, tags: Vec<String> },
     RemoveTags { id: String, tags: Vec<String> },
-
 }
 
 pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -109,7 +108,11 @@ pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effec
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteItem { id, item_type: "piece".to_string() }).into(),
+                Command::notify_shell(StorageEffect::DeleteItem {
+                    id,
+                    item_type: "piece".to_string(),
+                })
+                .into(),
                 crux_core::render::render(),
             ])
         }
