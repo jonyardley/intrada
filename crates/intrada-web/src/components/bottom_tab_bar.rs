@@ -20,6 +20,11 @@ pub fn BottomTabBar() -> impl IntoView {
         path.starts_with("/sessions")
     };
 
+    let is_routines_active = move || {
+        let path = location.pathname.get();
+        path.starts_with("/routines")
+    };
+
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
@@ -84,6 +89,35 @@ pub fn BottomTabBar() -> impl IntoView {
                         />
                     </svg>
                     <span class="text-xs font-medium">"Sessions"</span>
+                </A>
+
+                // Routines tab
+                <A
+                    href="/routines"
+                    attr:class=move || {
+                        if is_routines_active() {
+                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                        } else {
+                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                        }
+                    }
+                    attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
+                >
+                    // List/template icon (SVG)
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                    <span class="text-xs font-medium">"Routines"</span>
                 </A>
 
                 // Analytics tab

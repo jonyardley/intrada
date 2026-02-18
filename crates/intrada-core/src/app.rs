@@ -62,7 +62,6 @@ pub enum StorageEffect {
     DeletePracticeSession { id: String },
     SaveSessionInProgress(ActiveSession),
     ClearSessionInProgress,
-    LoadRoutines,
     SaveRoutine(Routine),
     UpdateRoutine(Routine),
     DeleteRoutine { id: String },

@@ -15,10 +15,23 @@ pub fn RoutineSaveForm(
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
 
+    let try_save = move || {
+        let trimmed = name.get_untracked().trim().to_string();
+        if trimmed.is_empty() {
+            error.set(Some("Name is required".to_string()));
+        } else {
+            error.set(None);
+            on_save.run(trimmed);
+            name.set(String::new());
+            expanded.set(false);
+        }
+    };
+
     view! {
         {move || {
             if expanded.get() {
-                let on_save = on_save;
+                let try_save_enter = try_save;
+                let try_save_btn = try_save;
                 view! {
                     <Card>
                         <h4 class="text-sm font-semibold text-white mb-3">"Save as Routine"</h4>
@@ -33,15 +46,7 @@ pub fn RoutineSaveForm(
                                     bind:value=name
                                     on:keydown=move |ev: leptos::ev::KeyboardEvent| {
                                         if ev.key() == "Enter" {
-                                            let trimmed = name.get_untracked().trim().to_string();
-                                            if trimmed.is_empty() {
-                                                error.set(Some("Name is required".to_string()));
-                                            } else {
-                                                error.set(None);
-                                                on_save.run(trimmed);
-                                                name.set(String::new());
-                                                expanded.set(false);
-                                            }
+                                            try_save_enter();
                                         }
                                     }
                                 />
@@ -53,15 +58,7 @@ pub fn RoutineSaveForm(
                                 <Button
                                     variant=ButtonVariant::Primary
                                     on_click=Callback::new(move |_| {
-                                        let trimmed = name.get_untracked().trim().to_string();
-                                        if trimmed.is_empty() {
-                                            error.set(Some("Name is required".to_string()));
-                                        } else {
-                                            error.set(None);
-                                            on_save.run(trimmed);
-                                            name.set(String::new());
-                                            expanded.set(false);
-                                        }
+                                        try_save_btn();
                                     })
                                 >
                                     "Save"
@@ -86,7 +83,7 @@ pub fn RoutineSaveForm(
                         class="w-full rounded-lg border border-dashed border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-indigo-300 hover:bg-white/10 hover:border-indigo-400/40 motion-safe:transition-colors motion-safe:duration-150"
                         on:click=move |_| expanded.set(true)
                     >
-                        "💾 Save as Routine"
+                        "Save as Routine"
                     </button>
                 }.into_any()
             }

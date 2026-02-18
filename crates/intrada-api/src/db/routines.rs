@@ -289,7 +289,14 @@ pub async fn update_routine(
 }
 
 pub async fn delete_routine(conn: &Connection, id: &str) -> Result<bool, ApiError> {
-    // routine_entries will be cascade-deleted due to ON DELETE CASCADE
+    // Explicitly delete entries first — SQLite only enforces ON DELETE CASCADE
+    // when PRAGMA foreign_keys = ON, which is off by default.
+    conn.execute(
+        "DELETE FROM routine_entries WHERE routine_id = ?1",
+        libsql::params![id],
+    )
+    .await?;
+
     let rows_affected = conn
         .execute("DELETE FROM routines WHERE id = ?1", libsql::params![id])
         .await?;

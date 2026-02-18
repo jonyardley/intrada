@@ -7,9 +7,33 @@ use intrada_core::domain::routine::Routine;
 use intrada_core::validation;
 
 use crate::db;
-use crate::db::routines::{CreateRoutineRequest, UpdateRoutineRequest};
+use crate::db::routines::{CreateRoutineEntry, CreateRoutineRequest, UpdateRoutineRequest};
 use crate::error::ApiError;
 use crate::state::AppState;
+
+const VALID_ITEM_TYPES: &[&str] = &["piece", "exercise"];
+
+fn validate_entries(entries: &[CreateRoutineEntry]) -> Result<(), ApiError> {
+    for entry in entries {
+        if entry.item_id.trim().is_empty() {
+            return Err(ApiError::Validation(
+                "Entry item_id must not be empty".to_string(),
+            ));
+        }
+        if entry.item_title.trim().is_empty() {
+            return Err(ApiError::Validation(
+                "Entry item_title must not be empty".to_string(),
+            ));
+        }
+        if !VALID_ITEM_TYPES.contains(&entry.item_type.as_str()) {
+            return Err(ApiError::Validation(format!(
+                "Entry item_type must be 'piece' or 'exercise', got '{}'",
+                entry.item_type
+            )));
+        }
+    }
+    Ok(())
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -51,6 +75,9 @@ async fn create_routine(
         ));
     }
 
+    // Validate each entry has required fields and valid item_type
+    validate_entries(&input.entries)?;
+
     let conn = state.db.connect()?;
     let routine = db::routines::insert_routine(&conn, &input).await?;
     Ok((StatusCode::CREATED, Json(routine)))
@@ -70,6 +97,9 @@ async fn update_routine(
             "Routine must have at least one entry".to_string(),
         ));
     }
+
+    // Validate each entry has required fields and valid item_type
+    validate_entries(&input.entries)?;
 
     let conn = state.db.connect()?;
     let routine = db::routines::update_routine(&conn, &id, &input)

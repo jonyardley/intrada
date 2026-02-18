@@ -4,6 +4,7 @@ use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
+use intrada_core::validation::MAX_ROUTINE_NAME;
 use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading};
@@ -67,8 +68,8 @@ pub fn RoutineEditView() -> impl IntoView {
                                 name_error.set(Some("Name is required".to_string()));
                                 return;
                             }
-                            if trimmed.len() > 200 {
-                                name_error.set(Some("Name must be 200 characters or fewer".to_string()));
+                            if trimmed.len() > MAX_ROUTINE_NAME {
+                                name_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
                                 return;
                             }
                             name_error.set(None);

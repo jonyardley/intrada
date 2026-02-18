@@ -370,31 +370,6 @@ pub fn process_effects(
                 }
 
                 // ---- Routine operations ----
-                StorageEffect::LoadRoutines => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    spawn_local(async move {
-                        loading.set(true);
-                        match api_client::fetch_routines().await {
-                            Ok(routines) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::RoutinesLoaded { routines });
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                            Err(e) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                        }
-                        loading.set(false);
-                    });
-                }
-
                 StorageEffect::SaveRoutine(routine) => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
