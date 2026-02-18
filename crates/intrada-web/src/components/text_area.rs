@@ -11,6 +11,7 @@ pub fn TextArea(
     label: &'static str,
     value: RwSignal<String>,
     #[prop(default = 3)] rows: u32,
+    #[prop(optional)] hint: Option<&'static str>,
     field_name: &'static str,
     errors: RwSignal<HashMap<String, String>>,
 ) -> impl IntoView {
@@ -23,6 +24,9 @@ pub fn TextArea(
             <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
                 {label}
             </label>
+            {hint.map(|h| view! {
+                <p class="text-xs text-gray-400 mb-1">{h}</p>
+            })}
             <textarea
                 id=id
                 rows=rows_str

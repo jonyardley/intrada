@@ -12,6 +12,7 @@ pub fn TextField(
     value: RwSignal<String>,
     #[prop(default = false)] required: bool,
     #[prop(optional)] placeholder: Option<&'static str>,
+    #[prop(optional)] hint: Option<&'static str>,
     field_name: &'static str,
     errors: RwSignal<HashMap<String, String>>,
     #[prop(default = "text")] input_type: &'static str,
@@ -24,6 +25,9 @@ pub fn TextField(
             <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
                 {label}
             </label>
+            {hint.map(|h| view! {
+                <p class="text-xs text-gray-400 mb-1">{h}</p>
+            })}
             <input
                 id=id
                 type=input_type
