@@ -36,6 +36,7 @@ specs/            # SpecKit design artifacts
 ## Commands
 
 ```bash
+cargo fmt --check  # must pass before commit — CI enforces this
 cargo test
 cargo clippy
 ```
