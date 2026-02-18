@@ -87,10 +87,59 @@ export const STUB_EXERCISE: Exercise = {
   updated_at: NOW,
 };
 
+export interface RoutineEntry {
+  id: string;
+  item_id: string;
+  item_title: string;
+  item_type: string;
+  position: number;
+}
+
+export interface Routine {
+  id: string;
+  name: string;
+  entries: RoutineEntry[];
+  created_at: string;
+  updated_at: string;
+}
+
+const STUB_ROUTINE_ID = "01JSTUB0000000000ROUTN00001";
+
+export const STUB_ROUTINE: Routine = {
+  id: STUB_ROUTINE_ID,
+  name: "Morning Warm-up",
+  entries: [
+    {
+      id: "01JSTUB0000000000RENTY00001",
+      item_id: STUB_EXERCISE_ID,
+      item_title: "Hanon No. 1",
+      item_type: "exercise",
+      position: 0,
+    },
+    {
+      id: "01JSTUB0000000000RENTY00002",
+      item_id: STUB_PIECE_ID,
+      item_title: "Clair de Lune",
+      item_type: "piece",
+      position: 1,
+    },
+  ],
+  created_at: NOW,
+  updated_at: NOW,
+};
+
 export function createSeedPieces(): Piece[] {
   return [structuredClone(STUB_PIECE)];
 }
 
 export function createSeedExercises(): Exercise[] {
   return [structuredClone(STUB_EXERCISE)];
+}
+
+export function createSeedRoutines(): Routine[] {
+  return [];
+}
+
+export function createSeedRoutinesWithStub(): Routine[] {
+  return [structuredClone(STUB_ROUTINE)];
 }
