@@ -3,9 +3,10 @@ use leptos::prelude::*;
 use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, Card, RoutineLoader, RoutineSaveForm, SetlistEntryRow,
+    Button, ButtonVariant, Card, DropIndicator, RoutineLoader, RoutineSaveForm, SetlistEntryRow,
 };
 use intrada_web::core_bridge::process_effects;
+use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Setlist builder component: shows library items to add, current setlist, and controls.
@@ -20,6 +21,33 @@ pub fn SetlistBuilder() -> impl IntoView {
     let core_actions = core.clone();
     let core_library = core.clone();
     let core_routine_save = core.clone();
+    let core_drag = core.clone();
+
+    // --- Drag-and-drop setup ---
+    let setlist_container_ref = NodeRef::<leptos::html::Div>::new();
+
+    let item_count = Signal::derive(move || {
+        let vm = view_model.get();
+        vm.building_setlist
+            .as_ref()
+            .map(|s| s.entries.len())
+            .unwrap_or(0)
+    });
+
+    let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
+        let event = Event::Session(SessionEvent::ReorderSetlist {
+            entry_id,
+            new_position,
+        });
+        let core_ref = core_drag.borrow();
+        let effects = core_ref.process_event(event);
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+    });
+
+    let drag = use_drag_reorder(on_reorder, item_count, setlist_container_ref);
+    let dragged_id = drag.dragged_id;
+    let drag_hover_index = drag.hover_index;
+    let on_drag_pointer_down = drag.on_pointer_down;
 
     view! {
         <div class="space-y-6">
@@ -36,7 +64,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                             let entries = setlist.entries.clone();
                             let entry_count = entries.len();
                             view! {
-                                <div class="space-y-2">
+                                <div node_ref=setlist_container_ref aria-roledescription="sortable">
                                     {entries.into_iter().enumerate().map(|(idx, entry)| {
                                         let core_r = core_remove.clone();
                                         let core_u = core_up.clone();
@@ -69,13 +97,40 @@ pub fn SetlistBuilder() -> impl IntoView {
                                         } else {
                                             None
                                         };
+
+                                        // Drag state for this entry
+                                        let eid = entry.id.clone();
+                                        let is_dragging_this = Signal::derive(move || {
+                                            dragged_id.get().as_deref() == Some(eid.as_str())
+                                        });
+
+                                        // Drop indicator before this entry (visible when hover_index == idx)
+                                        let drop_before_visible = Signal::derive(move || {
+                                            drag_hover_index.get() == Some(idx)
+                                        });
+
+                                        // Drop indicator after the last entry
+                                        let is_last = idx == entry_count - 1;
+                                        let drop_after_visible = Signal::derive(move || {
+                                            is_last && drag_hover_index.get() == Some(entry_count)
+                                        });
+
                                         view! {
+                                            <DropIndicator visible=drop_before_visible />
                                             <SetlistEntryRow
                                                 entry=entry
                                                 on_remove=Some(on_remove)
                                                 on_move_up=on_move_up
                                                 on_move_down=on_move_down
+                                                is_dragging_this=is_dragging_this
+                                                on_drag_pointer_down=Some(on_drag_pointer_down)
+                                                index=idx
                                             />
+                                            {if is_last {
+                                                Some(view! { <DropIndicator visible=drop_after_visible /> })
+                                            } else {
+                                                None
+                                            }}
                                         }
                                     }).collect::<Vec<_>>()}
                                 </div>
@@ -162,7 +217,7 @@ pub fn SetlistBuilder() -> impl IntoView {
             // Load saved routines
             <RoutineLoader />
 
-            // Library items to add
+            // Library items to add (T013: whole row is clickable)
             <Card>
                 <h3 class="text-lg font-semibold text-white mb-4">"Library Items"</h3>
                 {move || {
@@ -181,22 +236,22 @@ pub fn SetlistBuilder() -> impl IntoView {
                                     let item_type = item.item_type.clone();
                                     let core_a = core_add.clone();
                                     view! {
-                                        <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10">
+                                        <div
+                                            class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10 cursor-pointer"
+                                            on:click=move |_| {
+                                                let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
+                                                let core_ref = core_a.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            }
+                                        >
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm text-white">{title}</span>
                                                 <span class="text-xs text-gray-500">{item_type}</span>
                                             </div>
-                                            <button
-                                                class="text-xs font-medium text-indigo-300 hover:text-indigo-200"
-                                                on:click=move |_| {
-                                                    let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
-                                                    let core_ref = core_a.borrow();
-                                                    let effects = core_ref.process_event(event);
-                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                }
-                                            >
+                                            <span class="text-xs font-medium text-indigo-300">
                                                 "+ Add"
-                                            </button>
+                                            </span>
                                         </div>
                                     }
                                 }).collect::<Vec<_>>()}

@@ -24,6 +24,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (DOM events), wasm-bindgen (024-form-autocomplete)
 - N/A (no new storage; reads from existing ViewModel populated by API) (024-form-autocomplete)
 - Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), leptos_router 0.8.x, axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4 (025-reusable-routines)
+- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys 0.3 (extended features), wasm-bindgen 0.2 (026-drag-drop-builder)
+- N/A (no storage changes — UI interaction only) (026-drag-drop-builder)
 
 ## Project Structure
 
@@ -49,6 +51,7 @@ cargo clippy
 Rust stable (1.75+, 2021 edition): Follow standard conventions
 
 ## Recent Changes
+- 026-drag-drop-builder: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys 0.3 (extended features), wasm-bindgen 0.2
 - 025-reusable-routines: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), leptos_router 0.8.x, axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4
 - 024-form-autocomplete: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (DOM events), wasm-bindgen
 - 023-analytics-dashboard: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), chrono 0.4, serde 1

@@ -30,8 +30,8 @@ test.describe("sessions page", () => {
     await expect(page.getByText("Your Setlist")).toBeVisible();
 
     // Add "Clair de Lune" from the library items list
-    const addButtons = page.getByRole("button", { name: "+ Add" });
-    await addButtons.first().click();
+    // (026-drag-drop-builder: whole library row is now the click target)
+    await page.getByText("Clair de Lune").click();
 
     // Start the session
     await page.getByRole("button", { name: "Start Session" }).click();
