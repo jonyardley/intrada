@@ -31,10 +31,6 @@ pub enum ExerciseEvent {
     AddTags { id: String, tags: Vec<String> },
     RemoveTags { id: String, tags: Vec<String> },
 
-    // Storage responses
-    Saved(Exercise),
-    Updated(Exercise),
-    Deleted { id: String },
 }
 
 pub fn handle_exercise_event(event: ExerciseEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -118,7 +114,7 @@ pub fn handle_exercise_event(event: ExerciseEvent, model: &mut Model) -> Command
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteItem { id }).into(),
+                Command::notify_shell(StorageEffect::DeleteItem { id, item_type: "exercise".to_string() }).into(),
                 crux_core::render::render(),
             ])
         }
@@ -166,10 +162,6 @@ pub fn handle_exercise_event(event: ExerciseEvent, model: &mut Model) -> Command
                 Command::notify_shell(StorageEffect::UpdateExercise(exercise)).into(),
                 crux_core::render::render(),
             ])
-        }
-        // Storage confirmation events
-        ExerciseEvent::Saved(_) | ExerciseEvent::Updated(_) | ExerciseEvent::Deleted { .. } => {
-            Command::done()
         }
     }
 }

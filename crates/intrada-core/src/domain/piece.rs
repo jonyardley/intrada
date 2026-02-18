@@ -30,10 +30,6 @@ pub enum PieceEvent {
     AddTags { id: String, tags: Vec<String> },
     RemoveTags { id: String, tags: Vec<String> },
 
-    // Storage responses
-    Saved(Piece),
-    Updated(Piece),
-    Deleted { id: String },
 }
 
 pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -113,7 +109,7 @@ pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effec
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteItem { id }).into(),
+                Command::notify_shell(StorageEffect::DeleteItem { id, item_type: "piece".to_string() }).into(),
                 crux_core::render::render(),
             ])
         }
@@ -161,10 +157,6 @@ pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effec
                 Command::notify_shell(StorageEffect::UpdatePiece(piece)).into(),
                 crux_core::render::render(),
             ])
-        }
-        // Storage confirmation events — model already updated optimistically
-        PieceEvent::Saved(_) | PieceEvent::Updated(_) | PieceEvent::Deleted { .. } => {
-            Command::done()
         }
     }
 }

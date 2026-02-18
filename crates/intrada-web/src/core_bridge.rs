@@ -191,6 +191,7 @@ pub fn process_effects(
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_library(core, vm, loading, submitting).await;
                             }
                         }
                     });
@@ -216,6 +217,7 @@ pub fn process_effects(
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_library(core, vm, loading, submitting).await;
                             }
                         }
                     });
@@ -241,6 +243,7 @@ pub fn process_effects(
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_library(core, vm, loading, submitting).await;
                             }
                         }
                     });
@@ -267,29 +270,33 @@ pub fn process_effects(
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_library(core, vm, loading, submitting).await;
                             }
                         }
                     });
                 }
 
-                StorageEffect::DeleteItem { id } => {
+                StorageEffect::DeleteItem { id, item_type } => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
                     let submitting = *is_submitting;
                     let item_id = id.clone();
+                    let item_type = item_type.clone();
                     submitting.set(true);
                     spawn_local(async move {
-                        // Try deleting as piece first, then as exercise
-                        // (DeleteItem doesn't carry the item type)
-                        let piece_result = api_client::delete_piece(&item_id).await;
-                        if piece_result.is_err() {
-                            if let Err(e) = api_client::delete_exercise(&item_id).await {
+                        let result = if item_type == "exercise" {
+                            api_client::delete_exercise(&item_id).await
+                        } else {
+                            api_client::delete_piece(&item_id).await
+                        };
+                        match result {
+                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
+                            Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
-                                return;
+                                refresh_library(core, vm, loading, submitting).await;
                             }
                         }
-                        refresh_library(core, vm, loading, submitting).await;
                     });
                 }
 
@@ -308,6 +315,7 @@ pub fn process_effects(
                             Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_sessions(core, vm, loading, submitting).await;
                             }
                         }
                     });
@@ -325,6 +333,7 @@ pub fn process_effects(
                             Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
+                                refresh_sessions(core, vm, loading, submitting).await;
                             }
                         }
                     });
@@ -511,7 +520,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::DeleteItem { id } if id == &piece_id)),
+                .any(|e| matches!(e, StorageEffect::DeleteItem { id, item_type } if id == &piece_id && item_type == "piece")),
             "Expected DeleteItem effect, got: {storage:?}"
         );
     }

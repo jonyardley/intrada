@@ -51,7 +51,7 @@ pub enum StorageEffect {
     SaveExercise(Exercise),
     UpdatePiece(Piece),
     UpdateExercise(Exercise),
-    DeleteItem { id: String },
+    DeleteItem { id: String, item_type: String },
     LoadSessions,
     SavePracticeSession(PracticeSession),
     DeletePracticeSession { id: String },
