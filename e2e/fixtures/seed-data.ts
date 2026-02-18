@@ -10,20 +10,9 @@ export interface Tempo {
   bpm: number | null;
 }
 
-export interface Piece {
+export interface Item {
   id: string;
-  title: string;
-  composer: string;
-  key: string | null;
-  tempo: Tempo | null;
-  notes: string | null;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Exercise {
-  id: string;
+  kind: "piece" | "exercise";
   title: string;
   composer: string | null;
   category: string | null;
@@ -62,10 +51,12 @@ const STUB_EXERCISE_ID = "01JSTUB0000000000EXERC00001";
 
 const NOW = new Date().toISOString();
 
-export const STUB_PIECE: Piece = {
+export const STUB_PIECE: Item = {
   id: STUB_PIECE_ID,
+  kind: "piece",
   title: "Clair de Lune",
   composer: "Claude Debussy",
+  category: null,
   key: "Db Major",
   tempo: { marking: "Andante très expressif", bpm: 66 },
   notes: "Third movement of Suite bergamasque",
@@ -74,8 +65,9 @@ export const STUB_PIECE: Piece = {
   updated_at: NOW,
 };
 
-export const STUB_EXERCISE: Exercise = {
+export const STUB_EXERCISE: Item = {
   id: STUB_EXERCISE_ID,
+  kind: "exercise",
   title: "Hanon No. 1",
   composer: "Charles-Louis Hanon",
   category: "Technique",
@@ -128,12 +120,8 @@ export const STUB_ROUTINE: Routine = {
   updated_at: NOW,
 };
 
-export function createSeedPieces(): Piece[] {
-  return [structuredClone(STUB_PIECE)];
-}
-
-export function createSeedExercises(): Exercise[] {
-  return [structuredClone(STUB_EXERCISE)];
+export function createSeedItems(): Item[] {
+  return [structuredClone(STUB_PIECE), structuredClone(STUB_EXERCISE)];
 }
 
 export function createSeedRoutines(): Routine[] {

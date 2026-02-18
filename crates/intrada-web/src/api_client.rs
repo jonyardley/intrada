@@ -6,10 +6,7 @@
 use gloo_net::http::Request;
 use serde::Serialize;
 
-use intrada_core::{
-    CreateExercise, CreatePiece, Exercise, Piece, PracticeSession, Routine, UpdateExercise,
-    UpdatePiece,
-};
+use intrada_core::{CreateItem, Item, PracticeSession, Routine, UpdateItem};
 
 /// Compile-time API base URL with fallback to production.
 const API_BASE_URL: &str = match option_env!("INTRADA_API_URL") {
@@ -79,9 +76,9 @@ async fn parse_error_body(response: gloo_net::http::Response) -> String {
 // Library Operations
 // ---------------------------------------------------------------------------
 
-/// Fetch all pieces from the API.
-pub async fn fetch_pieces() -> Result<Vec<Piece>, ApiError> {
-    let response = Request::get(&endpoint("/api/pieces"))
+/// Fetch all items from the API.
+pub async fn fetch_items() -> Result<Vec<Item>, ApiError> {
+    let response = Request::get(&endpoint("/api/items"))
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
@@ -92,57 +89,24 @@ pub async fn fetch_pieces() -> Result<Vec<Piece>, ApiError> {
     }
 
     response
-        .json::<Vec<Piece>>()
+        .json::<Vec<Item>>()
         .await
         .map_err(|e| ApiError::Deserialize(e.to_string()))
 }
 
-/// Fetch all exercises from the API.
-pub async fn fetch_exercises() -> Result<Vec<Exercise>, ApiError> {
-    let response = Request::get(&endpoint("/api/exercises"))
-        .send()
-        .await
-        .map_err(|e| ApiError::Network(e.to_string()))?;
-
-    if !response.ok() {
-        let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(0, msg));
-    }
-
-    response
-        .json::<Vec<Exercise>>()
-        .await
-        .map_err(|e| ApiError::Deserialize(e.to_string()))
+/// Create a new item on the server.
+pub async fn create_item(item: &CreateItem) -> Result<Item, ApiError> {
+    post_json("/api/items", item).await
 }
 
-/// Create a new piece on the server.
-pub async fn create_piece(piece: &CreatePiece) -> Result<Piece, ApiError> {
-    post_json("/api/pieces", piece).await
+/// Update an existing item on the server.
+pub async fn update_item(id: &str, item: &UpdateItem) -> Result<Item, ApiError> {
+    put_json(&format!("/api/items/{id}"), item).await
 }
 
-/// Update an existing piece on the server.
-pub async fn update_piece(id: &str, piece: &UpdatePiece) -> Result<Piece, ApiError> {
-    put_json(&format!("/api/pieces/{id}"), piece).await
-}
-
-/// Delete a piece from the server.
-pub async fn delete_piece(id: &str) -> Result<(), ApiError> {
-    delete(&format!("/api/pieces/{id}")).await
-}
-
-/// Create a new exercise on the server.
-pub async fn create_exercise(exercise: &CreateExercise) -> Result<Exercise, ApiError> {
-    post_json("/api/exercises", exercise).await
-}
-
-/// Update an existing exercise on the server.
-pub async fn update_exercise(id: &str, exercise: &UpdateExercise) -> Result<Exercise, ApiError> {
-    put_json(&format!("/api/exercises/{id}"), exercise).await
-}
-
-/// Delete an exercise from the server.
-pub async fn delete_exercise(id: &str) -> Result<(), ApiError> {
-    delete(&format!("/api/exercises/{id}")).await
+/// Delete an item from the server.
+pub async fn delete_item(id: &str) -> Result<(), ApiError> {
+    delete(&format!("/api/items/{id}")).await
 }
 
 // ---------------------------------------------------------------------------

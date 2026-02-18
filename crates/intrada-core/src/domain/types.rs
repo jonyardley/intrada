@@ -1,17 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use super::exercise::Exercise;
-use super::piece::Piece;
+use super::item::{Item, ItemKind};
 
-/// Top-level serialisation unit for `library.json` / `intrada:library`.
-///
-/// Both CLI and web shells share this format for persistence.
+/// Top-level serialisation unit for library data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct LibraryData {
     #[serde(default)]
-    pub pieces: Vec<Piece>,
-    #[serde(default)]
-    pub exercises: Vec<Exercise>,
+    pub items: Vec<Item>,
 }
 
 /// Tempo representation with optional marking (e.g. "Allegro") and BPM.
@@ -45,18 +40,9 @@ impl Tempo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CreatePiece {
+pub struct CreateItem {
     pub title: String,
-    pub composer: String,
-    pub key: Option<String>,
-    pub tempo: Option<Tempo>,
-    pub notes: Option<String>,
-    pub tags: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CreateExercise {
-    pub title: String,
+    pub kind: ItemKind,
     pub composer: Option<String>,
     pub category: Option<String>,
     pub key: Option<String>,
@@ -70,17 +56,7 @@ pub struct CreateExercise {
 /// - `Some(None)` = clear the field
 /// - `Some(Some(v))` = set to new value
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-pub struct UpdatePiece {
-    pub title: Option<String>,
-    pub composer: Option<String>,
-    pub key: Option<Option<String>>,
-    pub tempo: Option<Option<Tempo>>,
-    pub notes: Option<Option<String>>,
-    pub tags: Option<Vec<String>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-pub struct UpdateExercise {
+pub struct UpdateItem {
     pub title: Option<String>,
     pub composer: Option<Option<String>>,
     pub category: Option<Option<String>>,
@@ -103,7 +79,7 @@ pub struct SessionsData {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct ListQuery {
     pub text: Option<String>,
-    pub item_type: Option<String>,
+    pub item_type: Option<ItemKind>,
     pub key: Option<String>,
     pub category: Option<String>,
     pub tags: Option<Vec<String>>,

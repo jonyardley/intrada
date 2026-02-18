@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use libsql::Connection;
 
-use intrada_core::domain::piece::Piece;
-use intrada_core::domain::types::{CreatePiece, Tempo, UpdatePiece};
+use intrada_core::domain::item::{Item, ItemKind};
+use intrada_core::domain::types::{CreateItem, Tempo, UpdateItem};
 
 use crate::error::ApiError;
 
@@ -21,19 +21,30 @@ fn tags_from_json(json: &str) -> Vec<String> {
     serde_json::from_str(json).unwrap_or_default()
 }
 
-/// Helper: parse a row from the pieces table into a Piece.
-fn row_to_piece(row: &libsql::Row) -> Result<Piece, ApiError> {
+/// Helper: parse a kind string from the database into ItemKind.
+fn parse_kind(s: &str) -> Result<ItemKind, ApiError> {
+    match s {
+        "piece" => Ok(ItemKind::Piece),
+        "exercise" => Ok(ItemKind::Exercise),
+        other => Err(ApiError::Internal(format!("Unknown item kind: {other}"))),
+    }
+}
+
+/// Helper: parse a row from the items table into an Item.
+fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
     let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let title: String = row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let composer: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let key: Option<String> = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let kind_str: String = row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let title: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let composer: Option<String> = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let category: Option<String> = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let key: Option<String> = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
     let tempo_marking: Option<String> =
-        row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let tempo_bpm: Option<i64> = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let notes: Option<String> = row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let tags_json: String = row.get(7).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let created_at_str: String = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let updated_at_str: String = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
+        row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let tempo_bpm: Option<i64> = row.get(7).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let notes: Option<String> = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let tags_json: String = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let created_at_str: String = row.get(10).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let updated_at_str: String = row.get(11).map_err(|e| ApiError::Internal(e.to_string()))?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
@@ -42,10 +53,12 @@ fn row_to_piece(row: &libsql::Row) -> Result<Piece, ApiError> {
         .parse()
         .map_err(|e| ApiError::Internal(format!("Invalid updated_at: {e}")))?;
 
-    Ok(Piece {
+    Ok(Item {
         id,
+        kind: parse_kind(&kind_str)?,
         title,
         composer,
+        category,
         key,
         tempo: tempo_from_row(tempo_marking, tempo_bpm),
         notes,
@@ -56,31 +69,31 @@ fn row_to_piece(row: &libsql::Row) -> Result<Piece, ApiError> {
 }
 
 const SELECT_COLUMNS: &str =
-    "id, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
+    "id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
 
-pub async fn list_pieces(conn: &Connection) -> Result<Vec<Piece>, ApiError> {
+pub async fn list_items(conn: &Connection) -> Result<Vec<Item>, ApiError> {
     let mut rows = conn
         .query(
-            &format!("SELECT {SELECT_COLUMNS} FROM pieces ORDER BY created_at DESC"),
+            &format!("SELECT {SELECT_COLUMNS} FROM items ORDER BY created_at DESC"),
             (),
         )
         .await?;
 
-    let mut pieces = Vec::new();
+    let mut items = Vec::new();
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        pieces.push(row_to_piece(&row)?);
+        items.push(row_to_item(&row)?);
     }
-    Ok(pieces)
+    Ok(items)
 }
 
-pub async fn get_piece(conn: &Connection, id: &str) -> Result<Option<Piece>, ApiError> {
+pub async fn get_item(conn: &Connection, id: &str) -> Result<Option<Item>, ApiError> {
     let mut rows = conn
         .query(
-            &format!("SELECT {SELECT_COLUMNS} FROM pieces WHERE id = ?1"),
+            &format!("SELECT {SELECT_COLUMNS} FROM items WHERE id = ?1"),
             libsql::params![id],
         )
         .await?;
@@ -90,15 +103,16 @@ pub async fn get_piece(conn: &Connection, id: &str) -> Result<Option<Piece>, Api
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        Some(row) => Ok(Some(row_to_piece(&row)?)),
+        Some(row) => Ok(Some(row_to_item(&row)?)),
         None => Ok(None),
     }
 }
 
-pub async fn insert_piece(conn: &Connection, input: &CreatePiece) -> Result<Piece, ApiError> {
+pub async fn insert_item(conn: &Connection, input: &CreateItem) -> Result<Item, ApiError> {
     let id = ulid::Ulid::new().to_string();
     let now = Utc::now();
     let now_str = now.to_rfc3339();
+    let kind_str = input.kind.to_string();
 
     let (tempo_marking, tempo_bpm) = match &input.tempo {
         Some(t) => (t.marking.clone(), t.bpm.map(|b| b as i64)),
@@ -108,12 +122,14 @@ pub async fn insert_piece(conn: &Connection, input: &CreatePiece) -> Result<Piec
     let tags_json = tags_to_json(&input.tags);
 
     conn.execute(
-        "INSERT INTO pieces (id, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        "INSERT INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         libsql::params![
             id.as_str(),
+            kind_str.as_str(),
             input.title.as_str(),
-            input.composer.as_str(),
+            input.composer.as_deref(),
+            input.category.as_deref(),
             input.key.as_deref(),
             tempo_marking.as_deref(),
             tempo_bpm,
@@ -125,10 +141,12 @@ pub async fn insert_piece(conn: &Connection, input: &CreatePiece) -> Result<Piec
     )
     .await?;
 
-    Ok(Piece {
+    Ok(Item {
         id,
+        kind: input.kind.clone(),
         title: input.title.clone(),
         composer: input.composer.clone(),
+        category: input.category.clone(),
         key: input.key.clone(),
         tempo: input.tempo.clone(),
         notes: input.notes.clone(),
@@ -138,20 +156,27 @@ pub async fn insert_piece(conn: &Connection, input: &CreatePiece) -> Result<Piec
     })
 }
 
-pub async fn update_piece(
+pub async fn update_item(
     conn: &Connection,
     id: &str,
-    input: &UpdatePiece,
-) -> Result<Option<Piece>, ApiError> {
-    // Fetch current row
-    let current = match get_piece(conn, id).await? {
-        Some(p) => p,
+    input: &UpdateItem,
+) -> Result<Option<Item>, ApiError> {
+    let current = match get_item(conn, id).await? {
+        Some(i) => i,
         None => return Ok(None),
     };
 
-    // Apply three-state update semantics
     let title = input.title.as_ref().unwrap_or(&current.title);
-    let composer = input.composer.as_ref().unwrap_or(&current.composer);
+
+    let composer = match &input.composer {
+        None => current.composer.as_deref(),
+        Some(opt) => opt.as_deref(),
+    };
+
+    let category = match &input.category {
+        None => current.category.as_deref(),
+        Some(opt) => opt.as_deref(),
+    };
 
     let key = match &input.key {
         None => current.key.as_deref(),
@@ -180,10 +205,11 @@ pub async fn update_piece(
     let tags_json = tags_to_json(tags);
 
     conn.execute(
-        "UPDATE pieces SET title = ?1, composer = ?2, key_signature = ?3, tempo_marking = ?4, tempo_bpm = ?5, notes = ?6, tags = ?7, updated_at = ?8 WHERE id = ?9",
+        "UPDATE items SET title = ?1, composer = ?2, category = ?3, key_signature = ?4, tempo_marking = ?5, tempo_bpm = ?6, notes = ?7, tags = ?8, updated_at = ?9 WHERE id = ?10",
         libsql::params![
             title.as_str(),
-            composer.as_str(),
+            composer,
+            category,
             key,
             tempo_marking.as_deref(),
             tempo_bpm,
@@ -195,10 +221,12 @@ pub async fn update_piece(
     )
     .await?;
 
-    Ok(Some(Piece {
+    Ok(Some(Item {
         id: id.to_string(),
+        kind: current.kind,
         title: title.to_string(),
-        composer: composer.to_string(),
+        composer: composer.map(|s| s.to_string()),
+        category: category.map(|s| s.to_string()),
         key: key.map(|s| s.to_string()),
         tempo,
         notes: notes.map(|s| s.to_string()),
@@ -208,9 +236,9 @@ pub async fn update_piece(
     }))
 }
 
-pub async fn delete_piece(conn: &Connection, id: &str) -> Result<bool, ApiError> {
+pub async fn delete_item(conn: &Connection, id: &str) -> Result<bool, ApiError> {
     let rows_affected = conn
-        .execute("DELETE FROM pieces WHERE id = ?1", libsql::params![id])
+        .execute("DELETE FROM items WHERE id = ?1", libsql::params![id])
         .await?;
 
     Ok(rows_affected > 0)

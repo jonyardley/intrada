@@ -8,12 +8,10 @@
 
 import { test as base, Page } from "@playwright/test";
 import {
-  Piece,
-  Exercise,
+  Item,
   PracticeSession,
   Routine,
-  createSeedPieces,
-  createSeedExercises,
+  createSeedItems,
   createSeedRoutines,
 } from "./seed-data";
 
@@ -26,8 +24,7 @@ function generateId(): string {
 }
 
 export interface MockStore {
-  pieces: Piece[];
-  exercises: Exercise[];
+  items: Item[];
   sessions: PracticeSession[];
   routines: Routine[];
 }
@@ -39,96 +36,21 @@ async function setupApiMock(page: Page, store: MockStore) {
     const method = request.method();
     const path = url.pathname;
 
-    // ---- Pieces ----
-    if (path === "/api/pieces" && method === "GET") {
+    // ---- Items ----
+    if (path === "/api/items" && method === "GET") {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(store.pieces),
+        body: JSON.stringify(store.items),
       });
     }
 
-    if (path === "/api/pieces" && method === "POST") {
+    if (path === "/api/items" && method === "POST") {
       const body = request.postDataJSON();
       const now = new Date().toISOString();
-      const piece: Piece = {
+      const item: Item = {
         id: generateId(),
-        title: body.title,
-        composer: body.composer,
-        key: body.key ?? null,
-        tempo: body.tempo ?? null,
-        notes: body.notes ?? null,
-        tags: body.tags ?? [],
-        created_at: now,
-        updated_at: now,
-      };
-      store.pieces.push(piece);
-      return route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify(piece),
-      });
-    }
-
-    const pieceMatch = path.match(/^\/api\/pieces\/(.+)$/);
-    if (pieceMatch) {
-      const id = pieceMatch[1];
-      if (method === "PUT") {
-        const idx = store.pieces.findIndex((p) => p.id === id);
-        if (idx === -1) {
-          return route.fulfill({
-            status: 404,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "Not found" }),
-          });
-        }
-        const body = request.postDataJSON();
-        const piece = store.pieces[idx];
-        if (body.title !== undefined) piece.title = body.title;
-        if (body.composer !== undefined) piece.composer = body.composer;
-        if (body.key !== undefined) piece.key = body.key;
-        if (body.tempo !== undefined) piece.tempo = body.tempo;
-        if (body.notes !== undefined) piece.notes = body.notes;
-        if (body.tags !== undefined) piece.tags = body.tags;
-        piece.updated_at = new Date().toISOString();
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(piece),
-        });
-      }
-      if (method === "DELETE") {
-        const idx = store.pieces.findIndex((p) => p.id === id);
-        if (idx === -1) {
-          return route.fulfill({
-            status: 404,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "Not found" }),
-          });
-        }
-        store.pieces.splice(idx, 1);
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "Piece deleted" }),
-        });
-      }
-    }
-
-    // ---- Exercises ----
-    if (path === "/api/exercises" && method === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(store.exercises),
-      });
-    }
-
-    if (path === "/api/exercises" && method === "POST") {
-      const body = request.postDataJSON();
-      const now = new Date().toISOString();
-      const exercise: Exercise = {
-        id: generateId(),
+        kind: body.kind,
         title: body.title,
         composer: body.composer ?? null,
         category: body.category ?? null,
@@ -139,19 +61,19 @@ async function setupApiMock(page: Page, store: MockStore) {
         created_at: now,
         updated_at: now,
       };
-      store.exercises.push(exercise);
+      store.items.push(item);
       return route.fulfill({
         status: 201,
         contentType: "application/json",
-        body: JSON.stringify(exercise),
+        body: JSON.stringify(item),
       });
     }
 
-    const exerciseMatch = path.match(/^\/api\/exercises\/(.+)$/);
-    if (exerciseMatch) {
-      const id = exerciseMatch[1];
+    const itemMatch = path.match(/^\/api\/items\/(.+)$/);
+    if (itemMatch) {
+      const id = itemMatch[1];
       if (method === "PUT") {
-        const idx = store.exercises.findIndex((e) => e.id === id);
+        const idx = store.items.findIndex((i) => i.id === id);
         if (idx === -1) {
           return route.fulfill({
             status: 404,
@@ -160,23 +82,23 @@ async function setupApiMock(page: Page, store: MockStore) {
           });
         }
         const body = request.postDataJSON();
-        const exercise = store.exercises[idx];
-        if (body.title !== undefined) exercise.title = body.title;
-        if (body.composer !== undefined) exercise.composer = body.composer;
-        if (body.category !== undefined) exercise.category = body.category;
-        if (body.key !== undefined) exercise.key = body.key;
-        if (body.tempo !== undefined) exercise.tempo = body.tempo;
-        if (body.notes !== undefined) exercise.notes = body.notes;
-        if (body.tags !== undefined) exercise.tags = body.tags;
-        exercise.updated_at = new Date().toISOString();
+        const item = store.items[idx];
+        if (body.title !== undefined) item.title = body.title;
+        if (body.composer !== undefined) item.composer = body.composer;
+        if (body.category !== undefined) item.category = body.category;
+        if (body.key !== undefined) item.key = body.key;
+        if (body.tempo !== undefined) item.tempo = body.tempo;
+        if (body.notes !== undefined) item.notes = body.notes;
+        if (body.tags !== undefined) item.tags = body.tags;
+        item.updated_at = new Date().toISOString();
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(exercise),
+          body: JSON.stringify(item),
         });
       }
       if (method === "DELETE") {
-        const idx = store.exercises.findIndex((e) => e.id === id);
+        const idx = store.items.findIndex((i) => i.id === id);
         if (idx === -1) {
           return route.fulfill({
             status: 404,
@@ -184,11 +106,11 @@ async function setupApiMock(page: Page, store: MockStore) {
             body: JSON.stringify({ error: "Not found" }),
           });
         }
-        store.exercises.splice(idx, 1);
+        store.items.splice(idx, 1);
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ message: "Exercise deleted" }),
+          body: JSON.stringify({ message: "Item deleted" }),
         });
       }
     }
@@ -351,8 +273,7 @@ export const test = base.extend<{ mockApi: MockStore }>({
   mockApi: [
     async ({ page }, use) => {
       const store: MockStore = {
-        pieces: createSeedPieces(),
-        exercises: createSeedExercises(),
+        items: createSeedItems(),
         sessions: [],
         routines: createSeedRoutines(),
       };

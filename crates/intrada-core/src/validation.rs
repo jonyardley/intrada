@@ -1,6 +1,7 @@
+use crate::domain::item::ItemKind;
 use crate::domain::routine::RoutineEntry;
 use crate::domain::session::SetlistEntry;
-use crate::domain::types::{CreateExercise, CreatePiece, Tempo, UpdateExercise, UpdatePiece};
+use crate::domain::types::{CreateItem, Tempo, UpdateItem};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
@@ -16,7 +17,7 @@ pub const MIN_SCORE: u8 = 1;
 pub const MAX_SCORE: u8 = 5;
 pub const MAX_ROUTINE_NAME: usize = 200;
 
-pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
+pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     if input.title.is_empty() {
         return Err(LibraryError::Validation {
             field: "title".to_string(),
@@ -29,52 +30,34 @@ pub fn validate_create_piece(input: &CreatePiece) -> Result<(), LibraryError> {
             message: format!("Title must be between 1 and {MAX_TITLE} characters"),
         });
     }
-    if input.composer.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "composer".to_string(),
-            message: "Composer is required".to_string(),
-        });
-    }
-    if input.composer.len() > MAX_COMPOSER {
-        return Err(LibraryError::Validation {
-            field: "composer".to_string(),
-            message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
-        });
-    }
-    if let Some(ref notes) = input.notes {
-        if notes.len() > MAX_NOTES {
-            return Err(LibraryError::Validation {
-                field: "notes".to_string(),
-                message: format!("Notes must not exceed {MAX_NOTES} characters"),
-            });
+    // Composer is required for pieces, optional for exercises.
+    match input.kind {
+        ItemKind::Piece => {
+            let composer = input.composer.as_deref().unwrap_or("");
+            if composer.is_empty() {
+                return Err(LibraryError::Validation {
+                    field: "composer".to_string(),
+                    message: "Composer is required".to_string(),
+                });
+            }
+            if composer.len() > MAX_COMPOSER {
+                return Err(LibraryError::Validation {
+                    field: "composer".to_string(),
+                    message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
+                });
+            }
         }
-    }
-    validate_tags(&input.tags)?;
-    if let Some(ref tempo) = input.tempo {
-        validate_tempo(tempo)?;
-    }
-    Ok(())
-}
-
-pub fn validate_create_exercise(input: &CreateExercise) -> Result<(), LibraryError> {
-    if input.title.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "title".to_string(),
-            message: "Title is required".to_string(),
-        });
-    }
-    if input.title.len() > MAX_TITLE {
-        return Err(LibraryError::Validation {
-            field: "title".to_string(),
-            message: format!("Title must be between 1 and {MAX_TITLE} characters"),
-        });
-    }
-    if let Some(ref composer) = input.composer {
-        if composer.is_empty() || composer.len() > MAX_COMPOSER {
-            return Err(LibraryError::Validation {
-                field: "composer".to_string(),
-                message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
-            });
+        ItemKind::Exercise => {
+            if let Some(ref composer) = input.composer {
+                if composer.is_empty() || composer.len() > MAX_COMPOSER {
+                    return Err(LibraryError::Validation {
+                        field: "composer".to_string(),
+                        message: format!(
+                            "Composer must be between 1 and {MAX_COMPOSER} characters"
+                        ),
+                    });
+                }
+            }
         }
     }
     if let Some(ref category) = input.category {
@@ -100,53 +83,7 @@ pub fn validate_create_exercise(input: &CreateExercise) -> Result<(), LibraryErr
     Ok(())
 }
 
-pub fn validate_update_piece(input: &UpdatePiece) -> Result<(), LibraryError> {
-    if let Some(ref title) = input.title {
-        if title.is_empty() {
-            return Err(LibraryError::Validation {
-                field: "title".to_string(),
-                message: "Title is required".to_string(),
-            });
-        }
-        if title.len() > MAX_TITLE {
-            return Err(LibraryError::Validation {
-                field: "title".to_string(),
-                message: format!("Title must be between 1 and {MAX_TITLE} characters"),
-            });
-        }
-    }
-    if let Some(ref composer) = input.composer {
-        if composer.is_empty() {
-            return Err(LibraryError::Validation {
-                field: "composer".to_string(),
-                message: "Composer is required".to_string(),
-            });
-        }
-        if composer.len() > MAX_COMPOSER {
-            return Err(LibraryError::Validation {
-                field: "composer".to_string(),
-                message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
-            });
-        }
-    }
-    if let Some(Some(ref notes)) = input.notes {
-        if notes.len() > MAX_NOTES {
-            return Err(LibraryError::Validation {
-                field: "notes".to_string(),
-                message: format!("Notes must not exceed {MAX_NOTES} characters"),
-            });
-        }
-    }
-    if let Some(ref tags) = input.tags {
-        validate_tags(tags)?;
-    }
-    if let Some(Some(ref tempo)) = input.tempo {
-        validate_tempo(tempo)?;
-    }
-    Ok(())
-}
-
-pub fn validate_update_exercise(input: &UpdateExercise) -> Result<(), LibraryError> {
+pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
     if let Some(ref title) = input.title {
         if title.is_empty() {
             return Err(LibraryError::Validation {
@@ -309,13 +246,15 @@ pub fn validate_routine_entries_not_empty(entries: &[RoutineEntry]) -> Result<()
 mod tests {
     use super::*;
 
-    // --- validate_create_piece tests ---
+    // --- validate_create_item tests (piece kind) ---
 
     #[test]
     fn test_valid_create_piece() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Moonlight Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: Some("C# minor".to_string()),
             tempo: Some(Tempo {
                 marking: Some("Adagio sostenuto".to_string()),
@@ -324,20 +263,22 @@ mod tests {
             notes: Some("First movement".to_string()),
             tags: vec!["classical".to_string(), "piano".to_string()],
         };
-        assert!(validate_create_piece(&input).is_ok());
+        assert!(validate_create_item(&input).is_ok());
     }
 
     #[test]
     fn test_create_piece_empty_title() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -349,15 +290,17 @@ mod tests {
 
     #[test]
     fn test_create_piece_title_too_long() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "x".repeat(501),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -368,16 +311,40 @@ mod tests {
     }
 
     #[test]
-    fn test_create_piece_empty_composer() {
-        let input = CreatePiece {
+    fn test_create_piece_no_composer() {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "composer");
+                assert_eq!(message, "Composer is required");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_create_piece_empty_composer() {
+        let input = CreateItem {
+            title: "Sonata".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("".to_string()),
+            category: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        };
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "composer");
@@ -389,15 +356,17 @@ mod tests {
 
     #[test]
     fn test_create_piece_composer_too_long() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "x".repeat(201),
+            kind: ItemKind::Piece,
+            composer: Some("x".repeat(201)),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "composer");
@@ -409,15 +378,17 @@ mod tests {
 
     #[test]
     fn test_create_piece_notes_too_long() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "notes");
@@ -429,36 +400,41 @@ mod tests {
 
     #[test]
     fn test_create_piece_notes_at_limit() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5000)),
             tags: vec![],
         };
-        assert!(validate_create_piece(&input).is_ok());
+        assert!(validate_create_item(&input).is_ok());
     }
 
     #[test]
     fn test_create_piece_minimal() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "A".to_string(),
-            composer: "B".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("B".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec![],
         };
-        assert!(validate_create_piece(&input).is_ok());
+        assert!(validate_create_item(&input).is_ok());
     }
 
-    // --- validate_create_exercise tests ---
+    // --- validate_create_item tests (exercise kind) ---
 
     #[test]
     fn test_valid_create_exercise() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scale Practice".to_string(),
+            kind: ItemKind::Exercise,
             composer: Some("Hanon".to_string()),
             category: Some("Scales".to_string()),
             key: Some("C major".to_string()),
@@ -469,13 +445,14 @@ mod tests {
             notes: Some("Practice daily".to_string()),
             tags: vec!["technique".to_string()],
         };
-        assert!(validate_create_exercise(&input).is_ok());
+        assert!(validate_create_item(&input).is_ok());
     }
 
     #[test]
     fn test_create_exercise_empty_title() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: None,
             key: None,
@@ -483,7 +460,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -495,8 +472,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_title_too_long() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "x".repeat(501),
+            kind: ItemKind::Exercise,
             composer: None,
             category: None,
             key: None,
@@ -504,7 +482,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -516,8 +494,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_empty_composer() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: Some("".to_string()),
             category: None,
             key: None,
@@ -525,7 +504,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "composer");
@@ -537,8 +516,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_composer_too_long() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: Some("x".repeat(201)),
             category: None,
             key: None,
@@ -546,7 +526,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "composer");
@@ -558,8 +538,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_empty_category() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: Some("".to_string()),
             key: None,
@@ -567,7 +548,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "category");
@@ -579,8 +560,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_category_too_long() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: Some("x".repeat(101)),
             key: None,
@@ -588,7 +570,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "category");
@@ -600,8 +582,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_notes_too_long() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: None,
             key: None,
@@ -609,7 +592,7 @@ mod tests {
             notes: Some("x".repeat(5001)),
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "notes");
@@ -621,8 +604,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_no_optional_fields() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Warm up".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: None,
             key: None,
@@ -630,7 +614,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        assert!(validate_create_exercise(&input).is_ok());
+        assert!(validate_create_item(&input).is_ok());
     }
 
     // --- validate_tags tests ---
@@ -796,21 +780,21 @@ mod tests {
         assert!(validate_tempo(&tempo_max).is_ok());
     }
 
-    // --- validate_update_piece tests ---
+    // --- validate_update_item tests ---
 
     #[test]
-    fn test_valid_update_piece_no_fields() {
-        let input = UpdatePiece::default();
-        assert!(validate_update_piece(&input).is_ok());
+    fn test_valid_update_item_no_fields() {
+        let input = UpdateItem::default();
+        assert!(validate_update_item(&input).is_ok());
     }
 
     #[test]
-    fn test_update_piece_empty_title() {
-        let input = UpdatePiece {
+    fn test_update_item_empty_title() {
+        let input = UpdateItem {
             title: Some("".to_string()),
             ..Default::default()
         };
-        let err = validate_update_piece(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -821,12 +805,12 @@ mod tests {
     }
 
     #[test]
-    fn test_update_piece_title_too_long() {
-        let input = UpdatePiece {
+    fn test_update_item_title_too_long() {
+        let input = UpdateItem {
             title: Some("x".repeat(501)),
             ..Default::default()
         };
-        let err = validate_update_piece(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
@@ -837,121 +821,12 @@ mod tests {
     }
 
     #[test]
-    fn test_update_piece_empty_composer() {
-        let input = UpdatePiece {
-            composer: Some("".to_string()),
-            ..Default::default()
-        };
-        let err = validate_update_piece(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "composer");
-                assert_eq!(message, "Composer is required");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_piece_notes_too_long() {
-        let input = UpdatePiece {
-            notes: Some(Some("x".repeat(5001))),
-            ..Default::default()
-        };
-        let err = validate_update_piece(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "notes");
-                assert_eq!(message, "Notes must not exceed 5000 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_piece_clear_notes() {
-        let input = UpdatePiece {
-            notes: Some(None),
-            ..Default::default()
-        };
-        assert!(validate_update_piece(&input).is_ok());
-    }
-
-    #[test]
-    fn test_update_piece_invalid_tags() {
-        let input = UpdatePiece {
-            tags: Some(vec!["".to_string()]),
-            ..Default::default()
-        };
-        let err = validate_update_piece(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "tags");
-                assert_eq!(message, "Each tag must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_piece_invalid_tempo() {
-        let input = UpdatePiece {
-            tempo: Some(Some(Tempo {
-                marking: None,
-                bpm: None,
-            })),
-            ..Default::default()
-        };
-        let err = validate_update_piece(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "tempo");
-                assert_eq!(message, "Tempo must have at least a marking or BPM value");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_piece_clear_tempo() {
-        let input = UpdatePiece {
-            tempo: Some(None),
-            ..Default::default()
-        };
-        assert!(validate_update_piece(&input).is_ok());
-    }
-
-    // --- validate_update_exercise tests ---
-
-    #[test]
-    fn test_valid_update_exercise_no_fields() {
-        let input = UpdateExercise::default();
-        assert!(validate_update_exercise(&input).is_ok());
-    }
-
-    #[test]
-    fn test_update_exercise_empty_title() {
-        let input = UpdateExercise {
-            title: Some("".to_string()),
-            ..Default::default()
-        };
-        let err = validate_update_exercise(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "title");
-                assert_eq!(message, "Title is required");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_exercise_empty_composer() {
-        let input = UpdateExercise {
+    fn test_update_item_empty_composer() {
+        let input = UpdateItem {
             composer: Some(Some("".to_string())),
             ..Default::default()
         };
-        let err = validate_update_exercise(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "composer");
@@ -962,21 +837,21 @@ mod tests {
     }
 
     #[test]
-    fn test_update_exercise_clear_composer() {
-        let input = UpdateExercise {
+    fn test_update_item_clear_composer() {
+        let input = UpdateItem {
             composer: Some(None),
             ..Default::default()
         };
-        assert!(validate_update_exercise(&input).is_ok());
+        assert!(validate_update_item(&input).is_ok());
     }
 
     #[test]
-    fn test_update_exercise_empty_category() {
-        let input = UpdateExercise {
+    fn test_update_item_empty_category() {
+        let input = UpdateItem {
             category: Some(Some("".to_string())),
             ..Default::default()
         };
-        let err = validate_update_exercise(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "category");
@@ -987,21 +862,21 @@ mod tests {
     }
 
     #[test]
-    fn test_update_exercise_clear_category() {
-        let input = UpdateExercise {
+    fn test_update_item_clear_category() {
+        let input = UpdateItem {
             category: Some(None),
             ..Default::default()
         };
-        assert!(validate_update_exercise(&input).is_ok());
+        assert!(validate_update_item(&input).is_ok());
     }
 
     #[test]
-    fn test_update_exercise_notes_too_long() {
-        let input = UpdateExercise {
+    fn test_update_item_notes_too_long() {
+        let input = UpdateItem {
             notes: Some(Some("x".repeat(5001))),
             ..Default::default()
         };
-        let err = validate_update_exercise(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "notes");
@@ -1012,12 +887,21 @@ mod tests {
     }
 
     #[test]
-    fn test_update_exercise_invalid_tags() {
-        let input = UpdateExercise {
-            tags: Some(vec!["x".repeat(101)]),
+    fn test_update_item_clear_notes() {
+        let input = UpdateItem {
+            notes: Some(None),
             ..Default::default()
         };
-        let err = validate_update_exercise(&input).unwrap_err();
+        assert!(validate_update_item(&input).is_ok());
+    }
+
+    #[test]
+    fn test_update_item_invalid_tags() {
+        let input = UpdateItem {
+            tags: Some(vec!["".to_string()]),
+            ..Default::default()
+        };
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tags");
@@ -1028,29 +912,40 @@ mod tests {
     }
 
     #[test]
-    fn test_update_exercise_invalid_tempo() {
-        let input = UpdateExercise {
+    fn test_update_item_invalid_tempo() {
+        let input = UpdateItem {
             tempo: Some(Some(Tempo {
                 marking: None,
-                bpm: Some(0),
+                bpm: None,
             })),
             ..Default::default()
         };
-        let err = validate_update_exercise(&input).unwrap_err();
+        let err = validate_update_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tempo");
-                assert_eq!(message, "BPM must be between 1 and 400");
+                assert_eq!(message, "Tempo must have at least a marking or BPM value");
             }
             _ => panic!("Expected Validation error"),
         }
     }
 
     #[test]
+    fn test_update_item_clear_tempo() {
+        let input = UpdateItem {
+            tempo: Some(None),
+            ..Default::default()
+        };
+        assert!(validate_update_item(&input).is_ok());
+    }
+
+    #[test]
     fn test_create_piece_with_invalid_tempo() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "Bach".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Bach".to_string()),
+            category: None,
             key: None,
             tempo: Some(Tempo {
                 marking: Some("x".repeat(101)),
@@ -1059,7 +954,7 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tempo");
@@ -1071,15 +966,17 @@ mod tests {
 
     #[test]
     fn test_create_piece_with_invalid_tags() {
-        let input = CreatePiece {
+        let input = CreateItem {
             title: "Sonata".to_string(),
-            composer: "Bach".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Bach".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
             tags: vec!["good".to_string(), "".to_string()],
         };
-        let err = validate_create_piece(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tags");
@@ -1091,8 +988,9 @@ mod tests {
 
     #[test]
     fn test_create_exercise_with_invalid_tempo() {
-        let input = CreateExercise {
+        let input = CreateItem {
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: None,
             key: None,
@@ -1103,11 +1001,46 @@ mod tests {
             notes: None,
             tags: vec![],
         };
-        let err = validate_create_exercise(&input).unwrap_err();
+        let err = validate_create_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tempo");
                 assert_eq!(message, "BPM must be between 1 and 400");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_update_item_invalid_tempo_bpm() {
+        let input = UpdateItem {
+            tempo: Some(Some(Tempo {
+                marking: None,
+                bpm: Some(0),
+            })),
+            ..Default::default()
+        };
+        let err = validate_update_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "tempo");
+                assert_eq!(message, "BPM must be between 1 and 400");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_update_item_tags_too_long() {
+        let input = UpdateItem {
+            tags: Some(vec!["x".repeat(101)]),
+            ..Default::default()
+        };
+        let err = validate_update_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "tags");
+                assert_eq!(message, "Each tag must be between 1 and 100 characters");
             }
             _ => panic!("Expected Validation error"),
         }

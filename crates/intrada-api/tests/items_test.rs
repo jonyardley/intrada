@@ -1,17 +1,17 @@
 mod common;
 
 use axum::http::StatusCode;
-use intrada_core::domain::piece::Piece;
+use intrada_core::domain::item::Item;
 use serde_json::json;
 
 #[tokio::test]
-async fn list_pieces_empty() {
+async fn list_items_empty() {
     let app = common::setup_test_app().await;
-    let (status, body) = common::get(app, "/api/pieces").await;
+    let (status, body) = common::get(app, "/api/items").await;
 
     assert_eq!(status, StatusCode::OK);
-    let pieces: Vec<Piece> = common::json(&body);
-    assert!(pieces.is_empty());
+    let items: Vec<Item> = common::json(&body);
+    assert!(items.is_empty());
 }
 
 #[tokio::test]
@@ -19,9 +19,10 @@ async fn create_piece_valid() {
     let app = common::setup_test_app().await;
     let (status, body) = common::post_json(
         app,
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "tags": []
         }),
@@ -29,10 +30,33 @@ async fn create_piece_valid() {
     .await;
 
     assert_eq!(status, StatusCode::CREATED);
-    let piece: Piece = common::json(&body);
-    assert_eq!(piece.title, "Clair de Lune");
-    assert_eq!(piece.composer, "Claude Debussy");
-    assert!(!piece.id.is_empty());
+    let item: Item = common::json(&body);
+    assert_eq!(item.title, "Clair de Lune");
+    assert_eq!(item.composer.as_deref(), Some("Claude Debussy"));
+    assert_eq!(item.kind.to_string(), "piece");
+    assert!(!item.id.is_empty());
+}
+
+#[tokio::test]
+async fn create_exercise_valid() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({
+            "title": "Hanon No. 1",
+            "kind": "exercise",
+            "tags": []
+        }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert_eq!(item.title, "Hanon No. 1");
+    assert_eq!(item.kind.to_string(), "exercise");
+    assert!(!item.id.is_empty());
+    assert!(item.composer.is_none());
 }
 
 #[tokio::test]
@@ -40,9 +64,10 @@ async fn create_piece_empty_title_returns_400() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::post_json(
         app,
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "",
+            "kind": "piece",
             "composer": "Debussy",
             "tags": []
         }),
@@ -57,9 +82,10 @@ async fn create_piece_empty_composer_returns_400() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::post_json(
         app,
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "",
             "tags": []
         }),
@@ -70,75 +96,73 @@ async fn create_piece_empty_composer_returns_400() {
 }
 
 #[tokio::test]
-async fn get_piece_existing() {
+async fn get_item_existing() {
     let app = common::setup_test_app().await;
 
-    // Create a piece
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "tags": []
         }),
     )
     .await;
-    let created: Piece = common::json(&body);
+    let created: Item = common::json(&body);
 
-    // Get it back
-    let (status, body) = common::get(app, &format!("/api/pieces/{}", created.id)).await;
+    let (status, body) = common::get(app, &format!("/api/items/{}", created.id)).await;
     assert_eq!(status, StatusCode::OK);
-    let fetched: Piece = common::json(&body);
+    let fetched: Item = common::json(&body);
     assert_eq!(fetched.id, created.id);
     assert_eq!(fetched.title, "Clair de Lune");
 }
 
 #[tokio::test]
-async fn get_piece_not_found() {
+async fn get_item_not_found() {
     let app = common::setup_test_app().await;
-    let (status, _body) = common::get(app, "/api/pieces/nonexistent-id").await;
+    let (status, _body) = common::get(app, "/api/items/nonexistent-id").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn update_piece_existing() {
+async fn update_item_existing() {
     let app = common::setup_test_app().await;
 
-    // Create
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "tags": []
         }),
     )
     .await;
-    let created: Piece = common::json(&body);
+    let created: Item = common::json(&body);
 
-    // Update title only
     let (status, body) = common::put_json(
         app,
-        &format!("/api/pieces/{}", created.id),
+        &format!("/api/items/{}", created.id),
         json!({ "title": "Reverie" }),
     )
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    let updated: Piece = common::json(&body);
+    let updated: Item = common::json(&body);
     assert_eq!(updated.title, "Reverie");
-    assert_eq!(updated.composer, "Claude Debussy"); // unchanged
+    assert_eq!(updated.composer.as_deref(), Some("Claude Debussy")); // unchanged
     assert!(updated.updated_at > created.updated_at);
 }
 
 #[tokio::test]
-async fn update_piece_not_found() {
+async fn update_item_not_found() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::put_json(
         app,
-        "/api/pieces/nonexistent-id",
+        "/api/items/nonexistent-id",
         json!({ "title": "Reverie" }),
     )
     .await;
@@ -146,35 +170,34 @@ async fn update_piece_not_found() {
 }
 
 #[tokio::test]
-async fn delete_piece_existing() {
+async fn delete_item_existing() {
     let app = common::setup_test_app().await;
 
-    // Create
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "tags": []
         }),
     )
     .await;
-    let created: Piece = common::json(&body);
+    let created: Item = common::json(&body);
 
-    // Delete
-    let (status, _body) = common::delete(app.clone(), &format!("/api/pieces/{}", created.id)).await;
+    let (status, _body) = common::delete(app.clone(), &format!("/api/items/{}", created.id)).await;
     assert_eq!(status, StatusCode::OK);
 
     // Verify gone
-    let (status, _body) = common::get(app, &format!("/api/pieces/{}", created.id)).await;
+    let (status, _body) = common::get(app, &format!("/api/items/{}", created.id)).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn delete_piece_not_found() {
+async fn delete_item_not_found() {
     let app = common::setup_test_app().await;
-    let (status, _body) = common::delete(app, "/api/pieces/nonexistent-id").await;
+    let (status, _body) = common::delete(app, "/api/items/nonexistent-id").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
@@ -184,20 +207,20 @@ async fn create_piece_with_tags_roundtrip() {
 
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "tags": ["impressionist", "piano"]
         }),
     )
     .await;
-    let created: Piece = common::json(&body);
+    let created: Item = common::json(&body);
     assert_eq!(created.tags, vec!["impressionist", "piano"]);
 
-    // Fetch and verify tags persisted
-    let (_, body) = common::get(app, &format!("/api/pieces/{}", created.id)).await;
-    let fetched: Piece = common::json(&body);
+    let (_, body) = common::get(app, &format!("/api/items/{}", created.id)).await;
+    let fetched: Item = common::json(&body);
     assert_eq!(fetched.tags, vec!["impressionist", "piano"]);
 }
 
@@ -205,12 +228,12 @@ async fn create_piece_with_tags_roundtrip() {
 async fn create_piece_with_tempo() {
     let app = common::setup_test_app().await;
 
-    // Tempo with both marking and BPM
     let (status, body) = common::post_json(
-        app.clone(),
-        "/api/pieces",
+        app,
+        "/api/items",
         json!({
             "title": "Pathetique",
+            "kind": "piece",
             "composer": "Beethoven",
             "tempo": { "marking": "Grave", "bpm": 50 },
             "tags": []
@@ -219,8 +242,8 @@ async fn create_piece_with_tempo() {
     .await;
 
     assert_eq!(status, StatusCode::CREATED);
-    let piece: Piece = common::json(&body);
-    let tempo = piece.tempo.unwrap();
+    let item: Item = common::json(&body);
+    let tempo = item.tempo.unwrap();
     assert_eq!(tempo.marking.as_deref(), Some("Grave"));
     assert_eq!(tempo.bpm, Some(50));
 }
@@ -231,9 +254,10 @@ async fn create_piece_with_all_fields() {
 
     let (status, body) = common::post_json(
         app,
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "key": "Db Major",
             "tempo": { "marking": "Andante", "bpm": 66 },
@@ -244,53 +268,52 @@ async fn create_piece_with_all_fields() {
     .await;
 
     assert_eq!(status, StatusCode::CREATED);
-    let piece: Piece = common::json(&body);
-    assert_eq!(piece.key.as_deref(), Some("Db Major"));
+    let item: Item = common::json(&body);
+    assert_eq!(item.key.as_deref(), Some("Db Major"));
     assert_eq!(
-        piece.notes.as_deref(),
+        item.notes.as_deref(),
         Some("Third movement of Suite bergamasque")
     );
     assert_eq!(
-        piece.tempo.as_ref().and_then(|t| t.marking.as_deref()),
+        item.tempo.as_ref().and_then(|t| t.marking.as_deref()),
         Some("Andante")
     );
-    assert_eq!(piece.tempo.as_ref().and_then(|t| t.bpm), Some(66));
+    assert_eq!(item.tempo.as_ref().and_then(|t| t.bpm), Some(66));
 }
 
 #[tokio::test]
-async fn list_pieces_returns_created_items() {
+async fn list_items_returns_created_items() {
     let app = common::setup_test_app().await;
 
-    // Create two pieces
     common::post_json(
         app.clone(),
-        "/api/pieces",
-        json!({ "title": "Piece A", "composer": "Composer A", "tags": [] }),
+        "/api/items",
+        json!({ "title": "Piece A", "kind": "piece", "composer": "Composer A", "tags": [] }),
     )
     .await;
     common::post_json(
         app.clone(),
-        "/api/pieces",
-        json!({ "title": "Piece B", "composer": "Composer B", "tags": [] }),
+        "/api/items",
+        json!({ "title": "Exercise B", "kind": "exercise", "tags": [] }),
     )
     .await;
 
-    let (status, body) = common::get(app, "/api/pieces").await;
+    let (status, body) = common::get(app, "/api/items").await;
     assert_eq!(status, StatusCode::OK);
-    let pieces: Vec<Piece> = common::json(&body);
-    assert_eq!(pieces.len(), 2);
+    let items: Vec<Item> = common::json(&body);
+    assert_eq!(items.len(), 2);
 }
 
 #[tokio::test]
-async fn update_piece_partial_preserves_other_fields() {
+async fn update_item_partial_preserves_other_fields() {
     let app = common::setup_test_app().await;
 
-    // Create with all fields
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/pieces",
+        "/api/items",
         json!({
             "title": "Clair de Lune",
+            "kind": "piece",
             "composer": "Claude Debussy",
             "key": "Db Major",
             "tempo": { "marking": "Andante", "bpm": 66 },
@@ -299,19 +322,18 @@ async fn update_piece_partial_preserves_other_fields() {
         }),
     )
     .await;
-    let created: Piece = common::json(&body);
+    let created: Item = common::json(&body);
 
-    // Update only the title
     let (_, body) = common::put_json(
         app,
-        &format!("/api/pieces/{}", created.id),
+        &format!("/api/items/{}", created.id),
         json!({ "title": "Reverie" }),
     )
     .await;
-    let updated: Piece = common::json(&body);
+    let updated: Item = common::json(&body);
 
     assert_eq!(updated.title, "Reverie");
-    assert_eq!(updated.composer, "Claude Debussy");
+    assert_eq!(updated.composer.as_deref(), Some("Claude Debussy"));
     assert_eq!(updated.key.as_deref(), Some("Db Major"));
     assert_eq!(updated.notes.as_deref(), Some("Third movement"));
     assert_eq!(updated.tags, vec!["piano"]);
@@ -319,4 +341,60 @@ async fn update_piece_partial_preserves_other_fields() {
         updated.tempo.as_ref().and_then(|t| t.marking.as_deref()),
         Some("Andante")
     );
+}
+
+#[tokio::test]
+async fn create_exercise_with_all_fields() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({
+            "title": "Hanon No. 1",
+            "kind": "exercise",
+            "composer": "Charles-Louis Hanon",
+            "category": "Technique",
+            "key": "C Major",
+            "tempo": { "marking": "Allegro", "bpm": 120 },
+            "notes": "Focus on even finger strength",
+            "tags": ["technique", "warm-up"]
+        }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert_eq!(item.title, "Hanon No. 1");
+    assert_eq!(item.kind.to_string(), "exercise");
+    assert_eq!(item.composer.as_deref(), Some("Charles-Louis Hanon"));
+    assert_eq!(item.category.as_deref(), Some("Technique"));
+    assert_eq!(item.key.as_deref(), Some("C Major"));
+    assert_eq!(item.tags, vec!["technique", "warm-up"]);
+}
+
+#[tokio::test]
+async fn exercise_optional_composer() {
+    let app = common::setup_test_app().await;
+
+    // Create without composer
+    let (status, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({ "title": "Scales", "kind": "exercise", "tags": [] }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert!(item.composer.is_none());
+
+    // Update to add composer
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", item.id),
+        json!({ "composer": "Teacher" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert_eq!(updated.composer.as_deref(), Some("Teacher"));
 }

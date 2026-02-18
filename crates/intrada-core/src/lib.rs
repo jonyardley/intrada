@@ -6,17 +6,13 @@ pub mod model;
 pub mod validation;
 
 pub use app::{Effect, Event, Intrada, StorageEffect};
-pub use domain::exercise::{Exercise, ExerciseEvent};
-pub use domain::piece::{Piece, PieceEvent};
+pub use domain::item::{Item, ItemEvent, ItemKind};
 pub use domain::routine::{Routine, RoutineEntry, RoutineEvent};
 pub use domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionEvent, SessionStatus,
     SetlistEntry,
 };
-pub use domain::types::{
-    CreateExercise, CreatePiece, LibraryData, ListQuery, SessionsData, Tempo, UpdateExercise,
-    UpdatePiece,
-};
+pub use domain::types::{CreateItem, LibraryData, ListQuery, SessionsData, Tempo, UpdateItem};
 pub use error::LibraryError;
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,

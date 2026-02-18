@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
+use crate::domain::item::Item;
 use crate::domain::routine::Routine;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
     SummarySession,
 };
-use crate::domain::{Exercise, ListQuery, Piece};
+use crate::domain::ListQuery;
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
 pub struct Model {
-    pub pieces: Vec<Piece>,
-    pub exercises: Vec<Exercise>,
+    pub items: Vec<Item>,
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,

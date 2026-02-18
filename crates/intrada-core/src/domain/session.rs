@@ -3,8 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event, StorageEffect};
-use crate::domain::exercise::Exercise;
-use crate::domain::piece::Piece;
+use crate::domain::item::{Item, ItemKind};
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
@@ -193,13 +192,11 @@ pub fn format_duration_display(secs: u64) -> String {
 
 /// Look up a library item by ID and return (title, type_string).
 fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, String)> {
-    if let Some(piece) = model.pieces.iter().find(|p| p.id == item_id) {
-        return Some((piece.title.clone(), "piece".to_string()));
-    }
-    if let Some(exercise) = model.exercises.iter().find(|e| e.id == item_id) {
-        return Some((exercise.title.clone(), "exercise".to_string()));
-    }
-    None
+    model
+        .items
+        .iter()
+        .find(|i| i.id == item_id)
+        .map(|i| (i.title.clone(), i.kind.to_string()))
 }
 
 /// Create a new SetlistEntry from a library item lookup.
@@ -224,28 +221,13 @@ fn reindex_entries(entries: &mut [SetlistEntry]) {
     }
 }
 
-/// Create a minimal Piece from title-only input.
-fn create_piece_from_title(title: &str) -> Piece {
+/// Create a minimal Item from title-only input.
+fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     let now = Utc::now();
-    Piece {
+    Item {
         id: ulid::Ulid::new().to_string(),
         title: title.to_string(),
-        composer: String::new(),
-        key: None,
-        tempo: None,
-        notes: None,
-        tags: vec![],
-        created_at: now,
-        updated_at: now,
-    }
-}
-
-/// Create a minimal Exercise from title-only input.
-fn create_exercise_from_title(title: &str) -> Exercise {
-    let now = Utc::now();
-    Exercise {
-        id: ulid::Ulid::new().to_string(),
-        title: title.to_string(),
+        kind,
         composer: None,
         category: None,
         key: None,
@@ -339,24 +321,18 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let (new_item_id, storage_effect) = match item_type.as_str() {
-                "piece" => {
-                    let piece = create_piece_from_title(&title);
-                    let id = piece.id.clone();
-                    model.pieces.push(piece.clone());
-                    (id, StorageEffect::SavePiece(piece))
-                }
-                "exercise" => {
-                    let exercise = create_exercise_from_title(&title);
-                    let id = exercise.id.clone();
-                    model.exercises.push(exercise.clone());
-                    (id, StorageEffect::SaveExercise(exercise))
-                }
+            let kind = match item_type.as_str() {
+                "piece" => ItemKind::Piece,
+                "exercise" => ItemKind::Exercise,
                 _ => {
                     model.last_error = Some("Item type must be 'piece' or 'exercise'".to_string());
                     return crux_core::render::render();
                 }
             };
+
+            let item = create_item_from_title(&title, kind);
+            let new_item_id = item.id.clone();
+            model.items.push(item.clone());
 
             let position = building.entries.len();
             let entry = create_entry(&new_item_id, &title, &item_type, position);
@@ -364,7 +340,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(storage_effect).into(),
+                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -567,24 +543,18 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let (new_item_id, storage_effect) = match item_type.as_str() {
-                "piece" => {
-                    let piece = create_piece_from_title(&title);
-                    let id = piece.id.clone();
-                    model.pieces.push(piece.clone());
-                    (id, StorageEffect::SavePiece(piece))
-                }
-                "exercise" => {
-                    let exercise = create_exercise_from_title(&title);
-                    let id = exercise.id.clone();
-                    model.exercises.push(exercise.clone());
-                    (id, StorageEffect::SaveExercise(exercise))
-                }
+            let kind = match item_type.as_str() {
+                "piece" => ItemKind::Piece,
+                "exercise" => ItemKind::Exercise,
                 _ => {
                     model.last_error = Some("Item type must be 'piece' or 'exercise'".to_string());
                     return crux_core::render::render();
                 }
             };
+
+            let item = create_item_from_title(&title, kind);
+            let new_item_id = item.id.clone();
+            model.items.push(item.clone());
 
             let position = active.entries.len();
             let entry = create_entry(&new_item_id, &title, &item_type, position);
@@ -593,7 +563,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             let save_effect_session = StorageEffect::SaveSessionInProgress(active.clone());
             Command::all([
-                Command::notify_shell(storage_effect).into(),
+                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
                 Command::notify_shell(save_effect_session).into(),
                 crux_core::render::render(),
             ])
@@ -778,11 +748,13 @@ mod tests {
     fn model_with_library() -> Model {
         let now = Utc::now();
         Model {
-            pieces: vec![
-                Piece {
+            items: vec![
+                Item {
                     id: "piece-1".to_string(),
                     title: "Moonlight Sonata".to_string(),
-                    composer: "Beethoven".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: Some("Beethoven".to_string()),
+                    category: None,
                     key: None,
                     tempo: None,
                     notes: None,
@@ -790,10 +762,25 @@ mod tests {
                     created_at: now,
                     updated_at: now,
                 },
-                Piece {
+                Item {
                     id: "piece-2".to_string(),
                     title: "Clair de Lune".to_string(),
-                    composer: "Debussy".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: Some("Debussy".to_string()),
+                    category: None,
+                    key: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                },
+                Item {
+                    id: "exercise-1".to_string(),
+                    title: "C Major Scale".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    category: Some("Scales".to_string()),
                     key: None,
                     tempo: None,
                     notes: None,
@@ -802,18 +789,6 @@ mod tests {
                     updated_at: now,
                 },
             ],
-            exercises: vec![Exercise {
-                id: "exercise-1".to_string(),
-                title: "C Major Scale".to_string(),
-                composer: None,
-                category: Some("Scales".to_string()),
-                key: None,
-                tempo: None,
-                notes: None,
-                tags: vec![],
-                created_at: now,
-                updated_at: now,
-            }],
             ..Default::default()
         }
     }
@@ -1226,8 +1201,8 @@ mod tests {
         } else {
             panic!("Expected Active state");
         }
-        // Verify item was added to library
-        assert_eq!(model.exercises.len(), 2); // original + new
+        // Verify item was added to library (3 original + 1 new)
+        assert_eq!(model.items.len(), 4);
     }
 
     // --- Summary Phase Tests ---
@@ -1835,9 +1810,9 @@ mod tests {
         );
 
         assert!(model.last_error.is_none());
-        // Verify new item in library
-        assert_eq!(model.pieces.len(), 3);
-        assert_eq!(model.pieces[2].title, "New Piece");
+        // Verify new item in library (3 original + 1 new)
+        assert_eq!(model.items.len(), 4);
+        assert_eq!(model.items[3].title, "New Piece");
         // Verify in setlist
         if let SessionStatus::Building(ref b) = model.session_status {
             assert_eq!(b.entries.len(), 1);
@@ -1861,7 +1836,8 @@ mod tests {
         );
 
         assert!(model.last_error.is_none());
-        assert_eq!(model.exercises.len(), 2);
+        // 3 original + 1 new
+        assert_eq!(model.items.len(), 4);
     }
 
     #[test]

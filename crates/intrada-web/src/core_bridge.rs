@@ -52,7 +52,7 @@ pub fn fetch_initial_data(
     is_loading: &IsLoading,
     is_submitting: &IsSubmitting,
 ) {
-    // Fetch library data (pieces + exercises)
+    // Fetch library data (items)
     {
         let core = leptos::prelude::expect_context::<SharedCore>();
         let vm = *view_model;
@@ -60,16 +60,13 @@ pub fn fetch_initial_data(
         let submitting = *is_submitting;
         spawn_local(async move {
             loading.set(true);
-            let pieces_result = api_client::fetch_pieces().await;
-            let exercises_result = api_client::fetch_exercises().await;
-
-            match (pieces_result, exercises_result) {
-                (Ok(pieces), Ok(exercises)) => {
+            match api_client::fetch_items().await {
+                Ok(items) => {
                     let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
+                    let effects = core_ref.process_event(Event::DataLoaded { items });
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
-                (Err(e), _) | (_, Err(e)) => {
+                Err(e) => {
                     let core_ref = core.borrow();
                     let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
@@ -147,17 +144,13 @@ pub fn process_effects(
                     let submitting = *is_submitting;
                     spawn_local(async move {
                         loading.set(true);
-                        let pieces_result = api_client::fetch_pieces().await;
-                        let exercises_result = api_client::fetch_exercises().await;
-
-                        match (pieces_result, exercises_result) {
-                            (Ok(pieces), Ok(exercises)) => {
+                        match api_client::fetch_items().await {
+                            Ok(items) => {
                                 let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::DataLoaded { pieces, exercises });
+                                let effects = core_ref.process_event(Event::DataLoaded { items });
                                 process_effects(&core_ref, effects, &vm, &loading, &submitting);
                             }
-                            (Err(e), _) | (_, Err(e)) => {
+                            Err(e) => {
                                 let core_ref = core.borrow();
                                 let effects =
                                     core_ref.process_event(Event::LoadFailed(e.to_user_message()));
@@ -194,22 +187,24 @@ pub fn process_effects(
                 }
 
                 // ---- Library write operations ----
-                StorageEffect::SavePiece(piece) => {
+                StorageEffect::SaveItem(item) => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
                     let submitting = *is_submitting;
-                    let create = intrada_core::CreatePiece {
-                        title: piece.title.clone(),
-                        composer: piece.composer.clone(),
-                        key: piece.key.clone(),
-                        tempo: piece.tempo.clone(),
-                        notes: piece.notes.clone(),
-                        tags: piece.tags.clone(),
+                    let create = intrada_core::CreateItem {
+                        title: item.title.clone(),
+                        kind: item.kind.clone(),
+                        composer: item.composer.clone(),
+                        category: item.category.clone(),
+                        key: item.key.clone(),
+                        tempo: item.tempo.clone(),
+                        notes: item.notes.clone(),
+                        tags: item.tags.clone(),
                     };
                     submitting.set(true);
                     spawn_local(async move {
-                        match api_client::create_piece(&create).await {
+                        match api_client::create_item(&create).await {
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
@@ -219,23 +214,24 @@ pub fn process_effects(
                     });
                 }
 
-                StorageEffect::SaveExercise(exercise) => {
+                StorageEffect::UpdateItem(item) => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
                     let submitting = *is_submitting;
-                    let create = intrada_core::CreateExercise {
-                        title: exercise.title.clone(),
-                        composer: exercise.composer.clone(),
-                        category: exercise.category.clone(),
-                        key: exercise.key.clone(),
-                        tempo: exercise.tempo.clone(),
-                        notes: exercise.notes.clone(),
-                        tags: exercise.tags.clone(),
+                    let item_id = item.id.clone();
+                    let update = intrada_core::UpdateItem {
+                        title: Some(item.title.clone()),
+                        composer: Some(item.composer.clone()),
+                        category: Some(item.category.clone()),
+                        key: Some(item.key.clone()),
+                        tempo: Some(item.tempo.clone()),
+                        notes: Some(item.notes.clone()),
+                        tags: Some(item.tags.clone()),
                     };
                     submitting.set(true);
                     spawn_local(async move {
-                        match api_client::create_exercise(&create).await {
+                        match api_client::update_item(&item_id, &update).await {
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
@@ -245,74 +241,15 @@ pub fn process_effects(
                     });
                 }
 
-                StorageEffect::UpdatePiece(piece) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    let piece_id = piece.id.clone();
-                    let update = intrada_core::UpdatePiece {
-                        title: Some(piece.title.clone()),
-                        composer: Some(piece.composer.clone()),
-                        key: Some(piece.key.clone()),
-                        tempo: Some(piece.tempo.clone()),
-                        notes: Some(piece.notes.clone()),
-                        tags: Some(piece.tags.clone()),
-                    };
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::update_piece(&piece_id, &update).await {
-                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_library(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
-                }
-
-                StorageEffect::UpdateExercise(exercise) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    let exercise_id = exercise.id.clone();
-                    let update = intrada_core::UpdateExercise {
-                        title: Some(exercise.title.clone()),
-                        composer: Some(exercise.composer.clone()),
-                        category: Some(exercise.category.clone()),
-                        key: Some(exercise.key.clone()),
-                        tempo: Some(exercise.tempo.clone()),
-                        notes: Some(exercise.notes.clone()),
-                        tags: Some(exercise.tags.clone()),
-                    };
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::update_exercise(&exercise_id, &update).await {
-                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_library(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
-                }
-
-                StorageEffect::DeleteItem { id, item_type } => {
+                StorageEffect::DeleteItem { id } => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
                     let submitting = *is_submitting;
                     let item_id = id.clone();
-                    let item_type = item_type.clone();
                     submitting.set(true);
                     spawn_local(async move {
-                        let result = if item_type == "exercise" {
-                            api_client::delete_exercise(&item_id).await
-                        } else {
-                            api_client::delete_piece(&item_id).await
-                        };
-                        match result {
+                        match api_client::delete_item(&item_id).await {
                             Ok(_) => refresh_library(core, vm, loading, submitting).await,
                             Err(e) => {
                                 report_error(&core, &vm, &loading, &submitting, e);
@@ -437,16 +374,13 @@ async fn refresh_library(
     is_loading: IsLoading,
     is_submitting: IsSubmitting,
 ) {
-    let pieces_result = api_client::fetch_pieces().await;
-    let exercises_result = api_client::fetch_exercises().await;
-
-    match (pieces_result, exercises_result) {
-        (Ok(pieces), Ok(exercises)) => {
+    match api_client::fetch_items().await {
+        Ok(items) => {
             let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::DataLoaded { pieces, exercises });
+            let effects = core_ref.process_event(Event::DataLoaded { items });
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
         }
-        (Err(e), _) | (_, Err(e)) => {
+        Err(e) => {
             report_error(&core, &view_model, &is_loading, &is_submitting, e);
         }
     }
@@ -546,8 +480,7 @@ fn report_error(
 mod tests {
     use crux_core::Core;
     use intrada_core::{
-        CreateExercise, CreatePiece, Effect, Event, ExerciseEvent, Intrada, Piece, PieceEvent,
-        StorageEffect,
+        CreateItem, Effect, Event, Intrada, Item, ItemEvent, ItemKind, StorageEffect,
     };
 
     /// Extract storage effects from a Vec<Effect>, skipping Render effects.
@@ -565,10 +498,12 @@ mod tests {
     fn loaded_core() -> (Core<Intrada>, String) {
         let core = Core::<Intrada>::new();
         let now = chrono::Utc::now();
-        let piece = Piece {
-            id: "piece-1".to_string(),
+        let item = Item {
+            id: "item-1".to_string(),
             title: "Test Piece".to_string(),
-            composer: "Test Composer".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Test Composer".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -576,26 +511,22 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        let _effects = core.process_event(Event::DataLoaded {
-            pieces: vec![piece],
-            exercises: vec![],
-        });
+        let _effects = core.process_event(Event::DataLoaded { items: vec![item] });
         let _effects = core.process_event(Event::SessionsLoaded { sessions: vec![] });
-        (core, "piece-1".to_string())
+        (core, "item-1".to_string())
     }
 
     #[test]
-    fn test_add_piece_produces_save_piece_effect() {
+    fn test_add_piece_produces_save_item_effect() {
         let core = Core::<Intrada>::new();
-        let _ = core.process_event(Event::DataLoaded {
-            pieces: vec![],
-            exercises: vec![],
-        });
+        let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
-        let effects = core.process_event(Event::Piece(PieceEvent::Add(CreatePiece {
+        let effects = core.process_event(Event::Item(ItemEvent::Add(CreateItem {
             title: "Moonlight Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -606,22 +537,20 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::SavePiece(p) if p.title == "Moonlight Sonata")),
-            "Expected SavePiece effect, got: {storage:?}"
+                .any(|e| matches!(e, StorageEffect::SaveItem(i) if i.title == "Moonlight Sonata")),
+            "Expected SaveItem effect, got: {storage:?}"
         );
     }
 
     #[test]
-    fn test_add_exercise_produces_save_exercise_effect() {
+    fn test_add_exercise_produces_save_item_effect() {
         let core = Core::<Intrada>::new();
-        let _ = core.process_event(Event::DataLoaded {
-            pieces: vec![],
-            exercises: vec![],
-        });
+        let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
-        let effects = core.process_event(Event::Exercise(ExerciseEvent::Add(CreateExercise {
+        let effects = core.process_event(Event::Item(ItemEvent::Add(CreateItem {
             title: "C Major Scale".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: Some("Scales".to_string()),
             key: None,
@@ -632,26 +561,26 @@ mod tests {
 
         let storage = storage_effects(effects);
         assert!(
-            storage.iter().any(
-                |e| matches!(e, StorageEffect::SaveExercise(ex) if ex.title == "C Major Scale")
-            ),
-            "Expected SaveExercise effect, got: {storage:?}"
+            storage
+                .iter()
+                .any(|e| matches!(e, StorageEffect::SaveItem(i) if i.title == "C Major Scale")),
+            "Expected SaveItem effect, got: {storage:?}"
         );
     }
 
     #[test]
     fn test_delete_item_produces_delete_effect() {
-        let (core, piece_id) = loaded_core();
+        let (core, item_id) = loaded_core();
 
-        let effects = core.process_event(Event::Piece(PieceEvent::Delete {
-            id: piece_id.clone(),
+        let effects = core.process_event(Event::Item(ItemEvent::Delete {
+            id: item_id.clone(),
         }));
 
         let storage = storage_effects(effects);
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::DeleteItem { id, item_type } if id == &piece_id && item_type == "piece")),
+                .any(|e| matches!(e, StorageEffect::DeleteItem { id } if id == &item_id)),
             "Expected DeleteItem effect, got: {storage:?}"
         );
     }
@@ -660,7 +589,7 @@ mod tests {
     fn test_session_building_and_start() {
         use intrada_core::SessionEvent;
 
-        let (core, piece_id) = loaded_core();
+        let (core, item_id) = loaded_core();
 
         let effects = core.process_event(Event::Session(SessionEvent::StartBuilding));
         let storage = storage_effects(effects);
@@ -669,9 +598,7 @@ mod tests {
             "Expected no storage effects for StartBuilding"
         );
 
-        let effects = core.process_event(Event::Session(SessionEvent::AddToSetlist {
-            item_id: piece_id,
-        }));
+        let effects = core.process_event(Event::Session(SessionEvent::AddToSetlist { item_id }));
         let storage = storage_effects(effects);
         assert!(
             storage.is_empty(),
@@ -693,12 +620,10 @@ mod tests {
     fn test_delete_session_produces_delete_practice_session_effect() {
         use intrada_core::SessionEvent;
 
-        let (core, piece_id) = loaded_core();
+        let (core, item_id) = loaded_core();
 
         let _ = core.process_event(Event::Session(SessionEvent::StartBuilding));
-        let _ = core.process_event(Event::Session(SessionEvent::AddToSetlist {
-            item_id: piece_id,
-        }));
+        let _ = core.process_event(Event::Session(SessionEvent::AddToSetlist { item_id }));
         let now = chrono::Utc::now();
         let _ = core.process_event(Event::Session(SessionEvent::StartSession { now }));
         let later = now + chrono::Duration::minutes(10);
@@ -727,20 +652,19 @@ mod tests {
     }
 
     #[test]
-    fn test_view_reflects_added_piece() {
+    fn test_view_reflects_added_item() {
         let core = Core::<Intrada>::new();
-        let _ = core.process_event(Event::DataLoaded {
-            pieces: vec![],
-            exercises: vec![],
-        });
+        let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
         let vm_before = core.view();
         assert!(vm_before.items.is_empty());
 
-        let _ = core.process_event(Event::Piece(PieceEvent::Add(CreatePiece {
+        let _ = core.process_event(Event::Item(ItemEvent::Add(CreateItem {
             title: "Clair de Lune".to_string(),
-            composer: "Debussy".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -755,14 +679,13 @@ mod tests {
     #[test]
     fn test_view_shows_error_on_validation_failure() {
         let core = Core::<Intrada>::new();
-        let _ = core.process_event(Event::DataLoaded {
-            pieces: vec![],
-            exercises: vec![],
-        });
+        let _ = core.process_event(Event::DataLoaded { items: vec![] });
 
-        let _ = core.process_event(Event::Piece(PieceEvent::Add(CreatePiece {
+        let _ = core.process_event(Event::Item(ItemEvent::Add(CreateItem {
             title: "".to_string(),
-            composer: "Someone".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Someone".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
