@@ -55,7 +55,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
 
             <Card>
                 <form
-                    class="space-y-5"
+                    class="space-y-4"
                     on:submit=move |ev: ev::SubmitEvent| {
                         ev.prevent_default();
 
@@ -147,7 +147,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                     />
 
                     // Tab panel content
-                    <div id="tabpanel-content" role="tabpanel">
+                    <div id="tabpanel-content" role="tabpanel" class="space-y-4">
                         // Title (required — shared)
                         <TextField id="add-title" label="Title *" value=title required=true field_name="title" errors=errors />
 

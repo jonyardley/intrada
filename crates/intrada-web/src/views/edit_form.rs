@@ -100,7 +100,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
 
             <Card>
                 <form
-                    class="space-y-5"
+                    class="space-y-4"
                     on:submit={
                         let item_id = item_id.clone();
                         move |ev: ev::SubmitEvent| {
@@ -204,7 +204,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                     />
 
                     // Tab panel content
-                    <div id="tabpanel-content" role="tabpanel">
+                    <div id="tabpanel-content" role="tabpanel" class="space-y-4">
                         // Title (required — shared)
                         <TextField id="edit-title" label="Title *" value=title required=true field_name="title" errors=errors />
 

@@ -36,7 +36,7 @@
   /* ── Border colours ── */
   --color-border-default: oklch(100% 0 0 / 10%);        /* white/10 — separators, list borders */
   --color-border-card: oklch(100% 0 0 / 15%);           /* white/15 — card borders (slightly visible) */
-  --color-border-input: oklch(100% 0 0 / 20%);          /* white/20 — form input borders */
+  --color-border-input: oklch(100% 0 0 / 12%);          /* white/12 — form input borders (subtle against glass cards) */
 
   /* ── Text colours ── */
   --color-text-primary: oklch(100% 0 0);                 /* white — headings, titles */
