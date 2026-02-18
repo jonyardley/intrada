@@ -8,10 +8,11 @@ use leptos_router::NavigateOptions;
 use intrada_core::{CreateExercise, CreatePiece, Event, ExerciseEvent, PieceEvent, ViewModel};
 
 use crate::components::{
-    BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField, TypeTabs,
+    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
+    TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::helpers::{parse_tags, parse_tempo};
+use intrada_web::helpers::{parse_tempo, unique_composers, unique_tags};
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::{validate_library_form, FormData};
 
@@ -34,13 +35,17 @@ pub fn AddLibraryItemForm() -> impl IntoView {
     let tempo_marking = RwSignal::new(String::new());
     let bpm = RwSignal::new(String::new());
     let notes = RwSignal::new(String::new());
-    let tags_input = RwSignal::new(String::new());
+    let tags = RwSignal::new(Vec::<String>::new());
 
     // Type-specific field — value preserved in memory when hidden (FR-005)
     let category = RwSignal::new(String::new());
 
     // Validation errors — cleared on tab switch (FR-007)
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
+
+    // Derive autocomplete suggestions from library data
+    let all_tags_signal = Signal::derive(move || unique_tags(&view_model.get().items));
+    let all_composers_signal = Signal::derive(move || unique_composers(&view_model.get().items));
 
     view! {
         <div class="sm:max-w-2xl sm:mx-auto">
@@ -56,6 +61,9 @@ pub fn AddLibraryItemForm() -> impl IntoView {
 
                         let current_tab = active_tab.get();
 
+                        // Build tags string for validation (validation expects comma-separated)
+                        let tags_str = tags.get().join(", ");
+
                         // Validate using unified function (FR-006)
                         let validation_errors = validate_library_form(
                             current_tab,
@@ -66,7 +74,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                                 notes: &notes.get(),
                                 bpm_str: &bpm.get(),
                                 tempo_marking: &tempo_marking.get(),
-                                tags_str: &tags_input.get(),
+                                tags_str: &tags_str,
                             },
                         );
 
@@ -87,7 +95,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                             let n = notes.get().trim().to_string();
                             if n.is_empty() { None } else { Some(n) }
                         };
-                        let tags_val = parse_tags(&tags_input.get());
+                        let tags_val = tags.get();
 
                         // FR-008: Create correct item type based on active tab
                         let event = match current_tab {
@@ -143,16 +151,16 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         // Title (required — shared)
                         <TextField id="add-title" label="Title *" value=title required=true field_name="title" errors=errors />
 
-                        // Composer field — two TextFields sharing the same signal (research.md: Option B)
+                        // Composer field with autocomplete suggestions
                         // Piece: required; Exercise: optional
                         {move || {
                             if active_tab.get() == ItemType::Piece {
                                 view! {
-                                    <TextField id="add-composer" label="Composer *" value=composer required=true field_name="composer" errors=errors />
+                                    <AutocompleteTextField id="add-composer" label="Composer *" value=composer suggestions=all_composers_signal required=true field_name="composer" errors=errors />
                                 }.into_any()
                             } else {
                                 view! {
-                                    <TextField id="add-composer" label="Composer (optional)" value=composer field_name="composer" errors=errors />
+                                    <AutocompleteTextField id="add-composer" label="Composer (optional)" value=composer suggestions=all_composers_signal field_name="composer" errors=errors />
                                 }.into_any()
                             }
                         }}
@@ -180,8 +188,8 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         // Notes (optional — shared)
                         <TextArea id="add-notes" label="Notes" value=notes hint="Practice notes, goals, or reminders" field_name="notes" errors=errors />
 
-                        // Tags (shared)
-                        <TextField id="add-tags" label="Tags" value=tags_input hint="Comma-separated" placeholder="e.g. classical, piano" field_name="tags" errors=errors />
+                        // Tags — chip-based input with autocomplete
+                        <TagInput id="add-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
                         // Buttons
                         <div class="flex flex-col sm:flex-row gap-3 pt-2">

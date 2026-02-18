@@ -9,10 +9,11 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ExerciseEvent, PieceEvent, UpdateExercise, UpdatePiece, ViewModel};
 
 use crate::components::{
-    BackLink, Button, ButtonVariant, Card, PageHeading, TextArea, TextField, TypeTabs,
+    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
+    TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::helpers::{parse_tags, parse_tempo, parse_tempo_display};
+use intrada_web::helpers::{parse_tempo, parse_tempo_display, unique_composers, unique_tags};
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::{validate_library_form, FormData};
 
@@ -62,7 +63,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let tempo_marking = RwSignal::new(initial_marking);
     let bpm = RwSignal::new(initial_bpm);
     let notes = RwSignal::new(item.notes.clone().unwrap_or_default());
-    let tags_input = RwSignal::new(item.tags.join(", "));
+    let tags = RwSignal::new(item.tags.clone());
 
     // Pre-populate composer based on item type
     // For Piece: subtitle is always the composer
@@ -85,6 +86,10 @@ pub fn EditLibraryItemForm() -> impl IntoView {
 
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
+    // Derive autocomplete suggestions from library data
+    let all_tags_signal = Signal::derive(move || unique_tags(&view_model.get().items));
+    let all_composers_signal = Signal::derive(move || unique_composers(&view_model.get().items));
+
     let cancel_href = back_href.clone();
 
     view! {
@@ -101,6 +106,9 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         move |ev: ev::SubmitEvent| {
                             ev.prevent_default();
 
+                            // Build tags string for validation (validation expects comma-separated)
+                            let tags_str = tags.get().join(", ");
+
                             // Validate using unified function
                             let validation_errors = validate_library_form(
                                 item_type,
@@ -111,7 +119,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                                     notes: &notes.get(),
                                     bpm_str: &bpm.get(),
                                     tempo_marking: &tempo_marking.get(),
-                                    tags_str: &tags_input.get(),
+                                    tags_str: &tags_str,
                                 },
                             );
 
@@ -138,7 +146,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                                 let n = notes.get().trim().to_string();
                                 if n.is_empty() { Some(None) } else { Some(Some(n)) }
                             };
-                            let tags_val = parse_tags(&tags_input.get());
+                            let tags_val = tags.get();
 
                             // Build event based on item type
                             let event = match item_type {
@@ -200,15 +208,15 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         // Title (required — shared)
                         <TextField id="edit-title" label="Title *" value=title required=true field_name="title" errors=errors />
 
-                        // Composer field — static conditional (item type is fixed for edits)
+                        // Composer field with autocomplete — static conditional (item type is fixed for edits)
                         // Piece: required; Exercise: optional
                         {if item_type == ItemType::Piece {
                             view! {
-                                <TextField id="edit-composer" label="Composer *" value=composer required=true field_name="composer" errors=errors />
+                                <AutocompleteTextField id="edit-composer" label="Composer *" value=composer suggestions=all_composers_signal required=true field_name="composer" errors=errors />
                             }.into_any()
                         } else {
                             view! {
-                                <TextField id="edit-composer" label="Composer (optional)" value=composer field_name="composer" errors=errors />
+                                <AutocompleteTextField id="edit-composer" label="Composer (optional)" value=composer suggestions=all_composers_signal field_name="composer" errors=errors />
                             }.into_any()
                         }}
 
@@ -233,8 +241,8 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         // Notes (optional — shared)
                         <TextArea id="edit-notes" label="Notes" value=notes hint="Practice notes, goals, or reminders" field_name="notes" errors=errors />
 
-                        // Tags (shared)
-                        <TextField id="edit-tags" label="Tags" value=tags_input hint="Comma-separated" placeholder="e.g. classical, piano" field_name="tags" errors=errors />
+                        // Tags — chip-based input with autocomplete
+                        <TagInput id="edit-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
                         // Buttons
                         <div class="flex flex-col sm:flex-row gap-3 pt-2">
