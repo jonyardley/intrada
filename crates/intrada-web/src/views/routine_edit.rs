@@ -7,8 +7,11 @@ use leptos_router::NavigateOptions;
 use intrada_core::validation::MAX_ROUTINE_NAME;
 use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
 
-use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading};
+use crate::components::{
+    BackLink, Button, ButtonVariant, Card, DragHandle, DropIndicator, PageHeading,
+};
 use intrada_web::core_bridge::process_effects;
+use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Edit page for a single routine — update name, reorder/remove entries, add from library.
@@ -47,6 +50,27 @@ pub fn RoutineEditView() -> impl IntoView {
     let name_error = RwSignal::new(Option::<String>::None);
 
     let core_save = core;
+
+    // --- Drag-and-drop setup for routine entries ---
+    let entries_container_ref = NodeRef::<leptos::html::Div>::new();
+
+    let item_count = Signal::derive(move || entries.get().len());
+
+    let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
+        entries.update(|e| {
+            if let Some(src_idx) = e.iter().position(|x| x.id == entry_id) {
+                let entry = e.remove(src_idx);
+                // Clamp new_position to valid range
+                let dst = new_position.min(e.len());
+                e.insert(dst, entry);
+            }
+        });
+    });
+
+    let drag = use_drag_reorder(on_reorder, item_count, entries_container_ref);
+    let dragged_id = drag.dragged_id;
+    let drag_hover_index = drag.hover_index;
+    let on_drag_pointer_down = drag.on_pointer_down;
 
     view! {
         <div class="sm:max-w-2xl sm:mx-auto">
@@ -118,7 +142,7 @@ pub fn RoutineEditView() -> impl IntoView {
                             <p class="text-xs text-red-400">{msg}</p>
                         })}
 
-                        // Current entries with reorder/remove
+                        // Current entries with drag handle + reorder/remove (T021, T022)
                         <div>
                             <h4 class="text-sm font-medium text-gray-300 mb-2">"Entries"</h4>
                             {move || {
@@ -130,19 +154,54 @@ pub fn RoutineEditView() -> impl IntoView {
                                 } else {
                                     let len = current.len();
                                     view! {
-                                        <div class="space-y-2">
+                                        <div node_ref=entries_container_ref aria-roledescription="sortable">
                                             {current.into_iter().enumerate().map(|(idx, entry)| {
                                                 let entry_id = entry.id.clone();
                                                 let entry_id_up = entry.id.clone();
                                                 let entry_id_down = entry.id.clone();
+
+                                                // Drag state for this entry
+                                                let eid = entry.id.clone();
+                                                let is_dragging_this = Signal::derive(move || {
+                                                    dragged_id.get().as_deref() == Some(eid.as_str())
+                                                });
+
+                                                // Drop indicator before this entry
+                                                let drop_before_visible = Signal::derive(move || {
+                                                    drag_hover_index.get() == Some(idx)
+                                                });
+
+                                                // Drop indicator after last entry
+                                                let is_last = idx == len - 1;
+                                                let drop_after_visible = Signal::derive(move || {
+                                                    is_last && drag_hover_index.get() == Some(len)
+                                                });
+
                                                 view! {
-                                                    <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                                                    <DropIndicator visible=drop_before_visible />
+                                                    <div
+                                                        class=move || {
+                                                            if is_dragging_this.get() {
+                                                                "flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 drag-active ring-2 ring-indigo-400"
+                                                            } else {
+                                                                "flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+                                                            }
+                                                        }
+                                                        data-entry-index=idx.to_string()
+                                                    >
                                                         <div class="flex items-center gap-2">
+                                                            // Drag handle (leftmost)
+                                                            <DragHandle
+                                                                entry_id=entry.id.clone()
+                                                                index=idx
+                                                                on_pointer_down=on_drag_pointer_down
+                                                            />
                                                             <span class="text-xs text-gray-500 w-5 text-center">{idx + 1}</span>
                                                             <span class="text-sm text-white">{entry.item_title}</span>
                                                             <span class="text-xs text-gray-500">{entry.item_type}</span>
                                                         </div>
                                                         <div class="flex items-center gap-1">
+                                                            // Up/down arrow buttons always visible (FR-012)
                                                             {if idx > 0 {
                                                                 Some(view! {
                                                                     <button
@@ -201,6 +260,11 @@ pub fn RoutineEditView() -> impl IntoView {
                                                             </button>
                                                         </div>
                                                     </div>
+                                                    {if is_last {
+                                                        Some(view! { <DropIndicator visible=drop_after_visible /> })
+                                                    } else {
+                                                        None
+                                                    }}
                                                 }
                                             }).collect::<Vec<_>>()}
                                         </div>
@@ -228,7 +292,7 @@ pub fn RoutineEditView() -> impl IntoView {
                     </form>
                 </Card>
 
-                // Add from Library
+                // Add from Library (T014: whole row is clickable)
                 <Card>
                     <h3 class="text-lg font-semibold text-white mb-4">"Add from Library"</h3>
                     {move || {
@@ -247,27 +311,26 @@ pub fn RoutineEditView() -> impl IntoView {
                                         let title_for_entry = item.title.clone();
                                         let type_for_entry = item.item_type.clone();
                                         view! {
-                                            <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10">
+                                            <div
+                                                class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10 cursor-pointer"
+                                                on:click=move |_| {
+                                                    let new_entry = RoutineEntryView {
+                                                        id: ulid::Ulid::new().to_string(),
+                                                        item_id: id_for_entry.clone(),
+                                                        item_title: title_for_entry.clone(),
+                                                        item_type: type_for_entry.clone(),
+                                                        position: entries.get_untracked().len(),
+                                                    };
+                                                    entries.update(|e| e.push(new_entry));
+                                                }
+                                            >
                                                 <div class="flex items-center gap-2">
                                                     <span class="text-sm text-white">{title}</span>
                                                     <span class="text-xs text-gray-500">{item_type}</span>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    class="text-xs font-medium text-indigo-300 hover:text-indigo-200"
-                                                    on:click=move |_| {
-                                                        let new_entry = RoutineEntryView {
-                                                            id: ulid::Ulid::new().to_string(),
-                                                            item_id: id_for_entry.clone(),
-                                                            item_title: title_for_entry.clone(),
-                                                            item_type: type_for_entry.clone(),
-                                                            position: entries.get_untracked().len(),
-                                                        };
-                                                        entries.update(|e| e.push(new_entry));
-                                                    }
-                                                >
+                                                <span class="text-xs font-medium text-indigo-300">
                                                     "+ Add"
-                                                </button>
+                                                </span>
                                             </div>
                                         }
                                     }).collect::<Vec<_>>()}

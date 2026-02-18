@@ -138,3 +138,26 @@
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Drag-and-Drop Utilities
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Drop indicator line — appears between entries during drag.
+   Transitions are wrapped in motion-safe to honour prefers-reduced-motion (FR-011). */
+@utility drop-indicator {
+  width: 100%;
+  background-color: var(--color-accent-focus);     /* indigo-400 */
+  border-radius: 1px;
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity 150ms ease, height 150ms ease;
+  }
+}
+
+/* Visual highlight applied to the entry row being dragged (FR-003). */
+@utility drag-active {
+  opacity: 0.5;
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity 150ms ease;
+  }
+}

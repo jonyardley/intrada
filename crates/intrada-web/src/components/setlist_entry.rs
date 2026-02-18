@@ -1,8 +1,9 @@
 use leptos::prelude::*;
+use web_sys::PointerEvent;
 
 use intrada_core::SetlistEntryView;
 
-use crate::components::TypeBadge;
+use crate::components::{DragHandle, TypeBadge};
 
 /// A single entry in the setlist (building or active phase).
 #[component]
@@ -12,14 +13,45 @@ pub fn SetlistEntryRow(
     #[prop(default = None)] on_move_up: Option<Callback<String>>,
     #[prop(default = None)] on_move_down: Option<Callback<String>>,
     #[prop(default = true)] show_controls: bool,
+    /// Whether this entry is currently being dragged (applies visual highlight).
+    #[prop(default = Signal::derive(|| false))]
+    is_dragging_this: Signal<bool>,
+    /// Callback from `use_drag_reorder` hook for drag handle pointer down.
+    /// If `None`, drag handle is not shown.
+    #[prop(default = None)]
+    on_drag_pointer_down: Option<Callback<(String, usize, PointerEvent)>>,
+    /// The index of this entry in the list (used by drag handle).
+    #[prop(default = 0)]
+    index: usize,
 ) -> impl IntoView {
     let show = show_controls;
     let entry_id = entry.id.clone();
     let entry_id_up = entry.id.clone();
     let entry_id_down = entry.id.clone();
+    let entry_id_drag = entry.id.clone();
 
     view! {
-        <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
+        <div
+            class=move || {
+                if is_dragging_this.get() {
+                    "flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3 drag-active ring-2 ring-indigo-400"
+                } else {
+                    "flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3"
+                }
+            }
+            data-entry-index=index.to_string()
+        >
+            // Drag handle (leftmost, before position number)
+            {on_drag_pointer_down.map(|cb| {
+                view! {
+                    <DragHandle
+                        entry_id=entry_id_drag.clone()
+                        index=index
+                        on_pointer_down=cb
+                    />
+                }
+            })}
+
             <span class="text-sm font-mono text-gray-500 w-6 text-right">
                 {entry.position + 1}
             </span>
