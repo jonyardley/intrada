@@ -11,8 +11,10 @@ import {
   Piece,
   Exercise,
   PracticeSession,
+  Routine,
   createSeedPieces,
   createSeedExercises,
+  createSeedRoutines,
 } from "./seed-data";
 
 const API_BASE = "https://intrada-api.fly.dev";
@@ -27,6 +29,7 @@ export interface MockStore {
   pieces: Piece[];
   exercises: Exercise[];
   sessions: PracticeSession[];
+  routines: Routine[];
 }
 
 async function setupApiMock(page: Page, store: MockStore) {
@@ -230,6 +233,105 @@ async function setupApiMock(page: Page, store: MockStore) {
       }
     }
 
+    // ---- Routines ----
+    if (path === "/api/routines" && method === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(store.routines),
+      });
+    }
+
+    if (path === "/api/routines" && method === "POST") {
+      const body = request.postDataJSON();
+      const now = new Date().toISOString();
+      const routine: Routine = {
+        id: generateId(),
+        name: body.name,
+        entries: (body.entries ?? []).map(
+          (e: { item_id: string; item_title: string; item_type: string }, i: number) => ({
+            id: generateId(),
+            item_id: e.item_id,
+            item_title: e.item_title,
+            item_type: e.item_type,
+            position: i,
+          })
+        ),
+        created_at: now,
+        updated_at: now,
+      };
+      store.routines.push(routine);
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify(routine),
+      });
+    }
+
+    const routineMatch = path.match(/^\/api\/routines\/(.+)$/);
+    if (routineMatch) {
+      const id = routineMatch[1];
+      if (method === "GET") {
+        const routine = store.routines.find((r) => r.id === id);
+        if (!routine) {
+          return route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "Not found" }),
+          });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(routine),
+        });
+      }
+      if (method === "PUT") {
+        const idx = store.routines.findIndex((r) => r.id === id);
+        if (idx === -1) {
+          return route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "Not found" }),
+          });
+        }
+        const body = request.postDataJSON();
+        const routine = store.routines[idx];
+        routine.name = body.name;
+        routine.entries = (body.entries ?? []).map(
+          (e: { item_id: string; item_title: string; item_type: string }, i: number) => ({
+            id: generateId(),
+            item_id: e.item_id,
+            item_title: e.item_title,
+            item_type: e.item_type,
+            position: i,
+          })
+        );
+        routine.updated_at = new Date().toISOString();
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(routine),
+        });
+      }
+      if (method === "DELETE") {
+        const idx = store.routines.findIndex((r) => r.id === id);
+        if (idx === -1) {
+          return route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "Not found" }),
+          });
+        }
+        store.routines.splice(idx, 1);
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Routine deleted" }),
+        });
+      }
+    }
+
     // Unmatched routes
     return route.fulfill({
       status: 404,
@@ -252,6 +354,7 @@ export const test = base.extend<{ mockApi: MockStore }>({
         pieces: createSeedPieces(),
         exercises: createSeedExercises(),
         sessions: [],
+        routines: createSeedRoutines(),
       };
       await setupApiMock(page, store);
       await use(store);
