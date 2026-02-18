@@ -20,6 +20,11 @@ pub fn AppHeader() -> impl IntoView {
         path.starts_with("/sessions")
     };
 
+    let is_analytics_active = move || {
+        let path = location.pathname.get();
+        path.starts_with("/analytics")
+    };
+
     view! {
         <header class="bg-gray-900/60 supports-backdrop:backdrop-blur-md border-b border-white/10" role="banner">
             <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
@@ -55,6 +60,19 @@ pub fn AppHeader() -> impl IntoView {
                         attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
                     >
                         "Sessions"
+                    </A>
+                    <A
+                        href="/analytics"
+                        attr:class=move || {
+                            if is_analytics_active() {
+                                "text-sm font-medium text-indigo-300 motion-safe:transition-colors"
+                            } else {
+                                "text-sm font-medium text-gray-300 hover:text-white motion-safe:transition-colors"
+                            }
+                        }
+                        attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
+                    >
+                        "Analytics"
                     </A>
                 </nav>
             </div>
