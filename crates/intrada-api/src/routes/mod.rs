@@ -1,6 +1,5 @@
-mod exercises;
 mod health;
-mod pieces;
+mod items;
 mod routines;
 mod sessions;
 
@@ -30,8 +29,7 @@ pub fn api_router(state: AppState) -> Router {
 fn api_routes() -> Router<AppState> {
     Router::new()
         .merge(health::router())
-        .nest("/pieces", pieces::router())
-        .nest("/exercises", exercises::router())
+        .nest("/items", items::router())
         .nest("/sessions", sessions::router())
         .nest("/routines", routines::router())
 }

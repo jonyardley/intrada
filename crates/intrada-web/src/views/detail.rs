@@ -4,7 +4,7 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::hooks::use_params_map;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, ExerciseEvent, PieceEvent, ViewModel};
+use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
 use intrada_web::core_bridge::process_effects;
@@ -60,8 +60,7 @@ pub fn DetailView() -> impl IntoView {
 
     let edit_href = format!("/library/{}/edit", item_id);
     let id_for_delete = item_id.clone();
-    let type_for_badge = item_type.clone();
-    let type_for_delete = item_type;
+    let type_for_badge = item_type;
 
     view! {
         <div class="space-y-4">
@@ -73,7 +72,6 @@ pub fn DetailView() -> impl IntoView {
                 if show_delete_confirm.get() {
                     let id_del = id_for_delete.clone();
                     let core_del = core.clone();
-                    let item_type_del = type_for_delete.clone();
                     let navigate_del = navigate.clone();
                     Some(view! {
                         <div class="rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
@@ -85,11 +83,7 @@ pub fn DetailView() -> impl IntoView {
                                     variant=ButtonVariant::Danger
                                     loading=Signal::derive(move || is_submitting.get())
                                     on_click=Callback::new(move |_| {
-                                        let event = if item_type_del == "piece" {
-                                            Event::Piece(PieceEvent::Delete { id: id_del.clone() })
-                                        } else {
-                                            Event::Exercise(ExerciseEvent::Delete { id: id_del.clone() })
-                                        };
+                                        let event = Event::Item(ItemEvent::Delete { id: id_del.clone() });
                                         let core_ref = core_del.borrow();
                                         let effects = core_ref.process_event(event);
                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);

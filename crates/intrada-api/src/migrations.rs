@@ -94,6 +94,31 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0009_index_routine_entries_routine_id",
         "CREATE INDEX IF NOT EXISTS idx_routine_entries_routine_id ON routine_entries(routine_id);",
     ),
+    (
+        "0010_create_items",
+        "CREATE TABLE IF NOT EXISTS items (
+            id TEXT PRIMARY KEY NOT NULL,
+            kind TEXT NOT NULL,
+            title TEXT NOT NULL,
+            composer TEXT,
+            category TEXT,
+            key_signature TEXT,
+            tempo_marking TEXT,
+            tempo_bpm INTEGER,
+            notes TEXT,
+            tags TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0011_migrate_pieces_to_items",
+        "INSERT OR IGNORE INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at) SELECT id, 'piece', title, composer, NULL, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at FROM pieces;",
+    ),
+    (
+        "0012_migrate_exercises_to_items",
+        "INSERT OR IGNORE INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at) SELECT id, 'exercise', title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at FROM exercises;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

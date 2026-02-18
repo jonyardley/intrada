@@ -6,7 +6,7 @@ use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, ExerciseEvent, PieceEvent, UpdateExercise, UpdatePiece, ViewModel};
+use intrada_core::{Event, ItemEvent, UpdateItem, ViewModel};
 
 use crate::components::{
     AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
@@ -148,47 +148,34 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                             };
                             let tags_val = tags.get();
 
-                            // Build event based on item type
-                            let event = match item_type {
-                                ItemType::Piece => {
-                                    let composer_val = composer.get().trim().to_string();
-                                    let input = UpdatePiece {
-                                        title: Some(title_val),
-                                        composer: Some(composer_val),
-                                        key: key_val,
-                                        tempo: tempo_val,
-                                        notes: notes_val,
-                                        tags: Some(tags_val),
-                                    };
-                                    Event::Piece(PieceEvent::Update {
-                                        id: item_id.clone(),
-                                        input,
-                                    })
-                                }
-                                ItemType::Exercise => {
-                                    let composer_val = {
-                                        let c = composer.get().trim().to_string();
+                            // Build unified update event
+                            let composer_val = {
+                                let c = composer.get().trim().to_string();
+                                match item_type {
+                                    ItemType::Piece => Some(Some(c)),
+                                    ItemType::Exercise => {
                                         if c.is_empty() { Some(None) } else { Some(Some(c)) }
-                                    };
-                                    let category_val = {
-                                        let c = category.get().trim().to_string();
-                                        if c.is_empty() { Some(None) } else { Some(Some(c)) }
-                                    };
-                                    let input = UpdateExercise {
-                                        title: Some(title_val),
-                                        composer: composer_val,
-                                        category: category_val,
-                                        key: key_val,
-                                        tempo: tempo_val,
-                                        notes: notes_val,
-                                        tags: Some(tags_val),
-                                    };
-                                    Event::Exercise(ExerciseEvent::Update {
-                                        id: item_id.clone(),
-                                        input,
-                                    })
+                                    }
                                 }
                             };
+                            let category_val = {
+                                let c = category.get().trim().to_string();
+                                if c.is_empty() { Some(None) } else { Some(Some(c)) }
+                            };
+
+                            let input = UpdateItem {
+                                title: Some(title_val),
+                                composer: composer_val,
+                                category: category_val,
+                                key: key_val,
+                                tempo: tempo_val,
+                                notes: notes_val,
+                                tags: Some(tags_val),
+                            };
+                            let event = Event::Item(ItemEvent::Update {
+                                id: item_id.clone(),
+                                input,
+                            });
 
                             let core_ref = core.borrow();
                             let effects = core_ref.process_event(event);

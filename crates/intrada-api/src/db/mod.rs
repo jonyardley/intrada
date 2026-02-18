@@ -1,4 +1,3 @@
-pub mod exercises;
-pub mod pieces;
+pub mod items;
 pub mod routines;
 pub mod sessions;

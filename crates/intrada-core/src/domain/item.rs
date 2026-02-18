@@ -1,18 +1,38 @@
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
-use super::types::{CreatePiece, Tempo, UpdatePiece};
+use super::types::{CreateItem, Tempo, UpdateItem};
 use crate::app::{Effect, Event, StorageEffect};
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
 
+/// Discriminates between a piece (repertoire) and an exercise (technique drill).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum ItemKind {
+    Piece,
+    Exercise,
+}
+
+impl fmt::Display for ItemKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ItemKind::Piece => write!(f, "piece"),
+            ItemKind::Exercise => write!(f, "exercise"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct Piece {
+pub struct Item {
     pub id: String,
     pub title: String,
-    pub composer: String,
+    pub kind: ItemKind,
+    pub composer: Option<String>,
+    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
@@ -22,28 +42,29 @@ pub struct Piece {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum PieceEvent {
-    // User actions
-    Add(CreatePiece),
-    Update { id: String, input: UpdatePiece },
+pub enum ItemEvent {
+    Add(CreateItem),
+    Update { id: String, input: UpdateItem },
     Delete { id: String },
     AddTags { id: String, tags: Vec<String> },
     RemoveTags { id: String, tags: Vec<String> },
 }
 
-pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effect, Event> {
+pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        PieceEvent::Add(input) => {
-            if let Err(e) = validation::validate_create_piece(&input) {
+        ItemEvent::Add(input) => {
+            if let Err(e) = validation::validate_create_item(&input) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
             let now = chrono::Utc::now();
-            let piece = Piece {
+            let item = Item {
                 id: ulid::Ulid::new().to_string(),
                 title: input.title,
+                kind: input.kind,
                 composer: input.composer,
+                category: input.category,
                 key: input.key,
                 tempo: input.tempo,
                 notes: input.notes,
@@ -52,112 +73,110 @@ pub fn handle_piece_event(event: PieceEvent, model: &mut Model) -> Command<Effec
                 updated_at: now,
             };
 
-            model.pieces.push(piece.clone());
+            model.items.push(item.clone());
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SavePiece(piece)).into(),
+                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
-        PieceEvent::Update { id, input } => {
-            if let Err(e) = validation::validate_update_piece(&input) {
+        ItemEvent::Update { id, input } => {
+            if let Err(e) = validation::validate_update_item(&input) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
+            let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
                 model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
             if let Some(title) = input.title {
-                piece.title = title;
+                item.title = title;
             }
             if let Some(composer) = input.composer {
-                piece.composer = composer;
+                item.composer = composer;
+            }
+            if let Some(category) = input.category {
+                item.category = category;
             }
             if let Some(key) = input.key {
-                piece.key = key;
+                item.key = key;
             }
             if let Some(tempo) = input.tempo {
-                piece.tempo = tempo;
+                item.tempo = tempo;
             }
             if let Some(notes) = input.notes {
-                piece.notes = notes;
+                item.notes = notes;
             }
             if let Some(tags) = input.tags {
-                piece.tags = tags;
+                item.tags = tags;
             }
-            piece.updated_at = chrono::Utc::now();
+            item.updated_at = chrono::Utc::now();
             model.last_error = None;
 
-            let piece = piece.clone();
+            let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdatePiece(piece)).into(),
+                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
-        PieceEvent::Delete { id } => {
-            let len_before = model.pieces.len();
-            model.pieces.retain(|p| p.id != id);
-            if model.pieces.len() == len_before {
+        ItemEvent::Delete { id } => {
+            let len_before = model.items.len();
+            model.items.retain(|i| i.id != id);
+            if model.items.len() == len_before {
                 model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             }
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteItem {
-                    id,
-                    item_type: "piece".to_string(),
-                })
-                .into(),
+                Command::notify_shell(StorageEffect::DeleteItem { id }).into(),
                 crux_core::render::render(),
             ])
         }
-        PieceEvent::AddTags { id, tags } => {
+        ItemEvent::AddTags { id, tags } => {
             if let Err(e) = validation::validate_tags(&tags) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
+            let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
                 model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
             for tag in tags {
                 let tag_lower = tag.to_lowercase();
-                if !piece.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
-                    piece.tags.push(tag);
+                if !item.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
+                    item.tags.push(tag);
                 }
             }
-            piece.updated_at = chrono::Utc::now();
+            item.updated_at = chrono::Utc::now();
             model.last_error = None;
 
-            let piece = piece.clone();
+            let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdatePiece(piece)).into(),
+                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
-        PieceEvent::RemoveTags { id, tags } => {
-            let Some(piece) = model.pieces.iter_mut().find(|p| p.id == id) else {
+        ItemEvent::RemoveTags { id, tags } => {
+            let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
                 model.last_error = Some(LibraryError::NotFound { id }.to_string());
                 return crux_core::render::render();
             };
 
             let tags_lower: Vec<String> = tags.iter().map(|t| t.to_lowercase()).collect();
-            piece
-                .tags
+            item.tags
                 .retain(|t| !tags_lower.contains(&t.to_lowercase()));
-            piece.updated_at = chrono::Utc::now();
+            item.updated_at = chrono::Utc::now();
             model.last_error = None;
 
-            let piece = piece.clone();
+            let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdatePiece(piece)).into(),
+                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }

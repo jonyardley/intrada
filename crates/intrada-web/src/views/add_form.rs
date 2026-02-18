@@ -5,7 +5,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{CreateExercise, CreatePiece, Event, ExerciseEvent, PieceEvent, ViewModel};
+use intrada_core::{CreateItem, Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
     AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
@@ -98,38 +98,30 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         let tags_val = tags.get();
 
                         // FR-008: Create correct item type based on active tab
-                        let event = match current_tab {
+                        let (kind, composer_val, category_val) = match current_tab {
                             ItemType::Piece => {
-                                let composer_val = composer.get().trim().to_string();
-                                Event::Piece(PieceEvent::Add(CreatePiece {
-                                    title: title_val,
-                                    composer: composer_val,
-                                    key: key_val,
-                                    tempo: tempo_val,
-                                    notes: notes_val,
-                                    tags: tags_val,
-                                }))
+                                let c = composer.get().trim().to_string();
+                                (ItemKind::Piece, Some(c), None)
                             }
                             ItemType::Exercise => {
-                                let composer_val = {
-                                    let c = composer.get().trim().to_string();
-                                    if c.is_empty() { None } else { Some(c) }
-                                };
-                                let category_val = {
-                                    let c = category.get().trim().to_string();
-                                    if c.is_empty() { None } else { Some(c) }
-                                };
-                                Event::Exercise(ExerciseEvent::Add(CreateExercise {
-                                    title: title_val,
-                                    composer: composer_val,
-                                    category: category_val,
-                                    key: key_val,
-                                    tempo: tempo_val,
-                                    notes: notes_val,
-                                    tags: tags_val,
-                                }))
+                                let c = composer.get().trim().to_string();
+                                let composer_opt = if c.is_empty() { None } else { Some(c) };
+                                let cat = category.get().trim().to_string();
+                                let category_opt = if cat.is_empty() { None } else { Some(cat) };
+                                (ItemKind::Exercise, composer_opt, category_opt)
                             }
                         };
+
+                        let event = Event::Item(ItemEvent::Add(CreateItem {
+                            title: title_val,
+                            kind,
+                            composer: composer_val,
+                            category: category_val,
+                            key: key_val,
+                            tempo: tempo_val,
+                            notes: notes_val,
+                            tags: tags_val,
+                        }));
 
                         let core_ref = core.borrow();
                         let effects = core_ref.process_event(event);

@@ -4,8 +4,7 @@ use crux_core::{App, Command, Request};
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
-use crate::domain::exercise::{handle_exercise_event, Exercise, ExerciseEvent};
-use crate::domain::piece::{handle_piece_event, Piece, PieceEvent};
+use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
@@ -23,20 +22,12 @@ pub struct Intrada;
 /// All events the application can process.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Event {
-    Piece(PieceEvent),
-    Exercise(ExerciseEvent),
+    Item(ItemEvent),
     Session(SessionEvent),
     Routine(RoutineEvent),
-    DataLoaded {
-        pieces: Vec<Piece>,
-        exercises: Vec<Exercise>,
-    },
-    SessionsLoaded {
-        sessions: Vec<PracticeSession>,
-    },
-    RoutinesLoaded {
-        routines: Vec<Routine>,
-    },
+    DataLoaded { items: Vec<Item> },
+    SessionsLoaded { sessions: Vec<PracticeSession> },
+    RoutinesLoaded { routines: Vec<Routine> },
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
@@ -52,11 +43,9 @@ pub enum Effect {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum StorageEffect {
     LoadAll,
-    SavePiece(Piece),
-    SaveExercise(Exercise),
-    UpdatePiece(Piece),
-    UpdateExercise(Exercise),
-    DeleteItem { id: String, item_type: String },
+    SaveItem(Item),
+    UpdateItem(Item),
+    DeleteItem { id: String },
     LoadSessions,
     SavePracticeSession(PracticeSession),
     DeletePracticeSession { id: String },
@@ -97,13 +86,11 @@ impl App for Intrada {
         model: &mut Self::Model,
     ) -> Command<Self::Effect, Self::Event> {
         match event {
-            Event::Piece(piece_event) => handle_piece_event(piece_event, model),
-            Event::Exercise(exercise_event) => handle_exercise_event(exercise_event, model),
+            Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Routine(routine_event) => handle_routine_event(routine_event, model),
-            Event::DataLoaded { pieces, exercises } => {
-                model.pieces = pieces;
-                model.exercises = exercises;
+            Event::DataLoaded { items } => {
+                model.items = items;
                 model.last_error = None;
                 crux_core::render::render()
             }
@@ -133,50 +120,32 @@ impl App for Intrada {
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
         let mut items: Vec<LibraryItemView> = Vec::new();
 
-        for piece in &model.pieces {
-            let practice = compute_practice_summary(&model.sessions, &piece.id);
-            items.push(LibraryItemView {
-                id: piece.id.clone(),
-                item_type: "piece".to_string(),
-                title: piece.title.clone(),
-                subtitle: piece.composer.clone(),
-                category: None,
-                key: piece.key.clone(),
-                tempo: piece
-                    .tempo
-                    .as_ref()
-                    .map(|t| t.format_display())
-                    .filter(|s| !s.is_empty()),
-                notes: piece.notes.clone(),
-                tags: piece.tags.clone(),
-                created_at: piece.created_at.to_rfc3339(),
-                updated_at: piece.updated_at.to_rfc3339(),
-                practice,
-            });
-        }
-
-        for exercise in &model.exercises {
-            let practice = compute_practice_summary(&model.sessions, &exercise.id);
-            items.push(LibraryItemView {
-                id: exercise.id.clone(),
-                item_type: "exercise".to_string(),
-                title: exercise.title.clone(),
-                subtitle: exercise
+        for item in &model.items {
+            let practice = compute_practice_summary(&model.sessions, &item.id);
+            let subtitle = match item.kind {
+                ItemKind::Piece => item.composer.clone().unwrap_or_default(),
+                ItemKind::Exercise => item
                     .category
                     .clone()
-                    .or_else(|| exercise.composer.clone())
+                    .or_else(|| item.composer.clone())
                     .unwrap_or_default(),
-                category: exercise.category.clone(),
-                key: exercise.key.clone(),
-                tempo: exercise
+            };
+            items.push(LibraryItemView {
+                id: item.id.clone(),
+                item_type: item.kind.to_string(),
+                title: item.title.clone(),
+                subtitle,
+                category: item.category.clone(),
+                key: item.key.clone(),
+                tempo: item
                     .tempo
                     .as_ref()
                     .map(|t| t.format_display())
                     .filter(|s| !s.is_empty()),
-                notes: exercise.notes.clone(),
-                tags: exercise.tags.clone(),
-                created_at: exercise.created_at.to_rfc3339(),
-                updated_at: exercise.updated_at.to_rfc3339(),
+                notes: item.notes.clone(),
+                tags: item.tags.clone(),
+                created_at: item.created_at.to_rfc3339(),
+                updated_at: item.updated_at.to_rfc3339(),
                 practice,
             });
         }
@@ -322,7 +291,7 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
         .filter(|item| {
             // Filter by item type
             if let Some(ref item_type) = query.item_type {
-                if item.item_type != *item_type {
+                if item.item_type != item_type.to_string() {
                     return false;
                 }
             }
@@ -388,42 +357,40 @@ mod tests {
         let mut model = Model::default();
 
         let now = chrono::Utc::now();
-        let pieces = vec![Piece {
-            id: "piece1".to_string(),
-            title: "Clair de Lune".to_string(),
-            composer: "Debussy".to_string(),
-            key: Some("Db Major".to_string()),
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        }];
-        let exercises = vec![Exercise {
-            id: "ex1".to_string(),
-            title: "C Major Scale".to_string(),
-            composer: None,
-            category: Some("Scales".to_string()),
-            key: Some("C Major".to_string()),
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        }];
-
-        let _cmd = app.update(
-            Event::DataLoaded {
-                pieces: pieces.clone(),
-                exercises: exercises.clone(),
+        let items = vec![
+            Item {
+                id: "piece1".to_string(),
+                title: "Clair de Lune".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Debussy".to_string()),
+                category: None,
+                key: Some("Db Major".to_string()),
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
             },
-            &mut model,
-        );
+            Item {
+                id: "ex1".to_string(),
+                title: "C Major Scale".to_string(),
+                kind: ItemKind::Exercise,
+                composer: None,
+                category: Some("Scales".to_string()),
+                key: Some("C Major".to_string()),
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+            },
+        ];
 
-        assert_eq!(model.pieces.len(), 1);
-        assert_eq!(model.exercises.len(), 1);
-        assert_eq!(model.pieces[0].title, "Clair de Lune");
-        assert_eq!(model.exercises[0].title, "C Major Scale");
+        let _cmd = app.update(Event::DataLoaded { items }, &mut model);
+
+        assert_eq!(model.items.len(), 2);
+        assert_eq!(model.items[0].title, "Clair de Lune");
+        assert_eq!(model.items[1].title, "C Major Scale");
         assert!(model.last_error.is_none());
     }
 
@@ -457,32 +424,37 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            pieces: vec![Piece {
-                id: "p1".to_string(),
-                title: "Sonata".to_string(),
-                composer: "Beethoven".to_string(),
-                key: None,
-                tempo: Some(crate::domain::types::Tempo {
-                    marking: Some("Allegro".to_string()),
-                    bpm: Some(132),
-                }),
-                notes: None,
-                tags: vec!["classical".to_string()],
-                created_at: now,
-                updated_at: now,
-            }],
-            exercises: vec![Exercise {
-                id: "e1".to_string(),
-                title: "Scales".to_string(),
-                composer: None,
-                category: Some("Technique".to_string()),
-                key: None,
-                tempo: None,
-                notes: None,
-                tags: vec![],
-                created_at: now,
-                updated_at: now,
-            }],
+            items: vec![
+                Item {
+                    id: "p1".to_string(),
+                    title: "Sonata".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: Some("Beethoven".to_string()),
+                    category: None,
+                    key: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: Some("Allegro".to_string()),
+                        bpm: Some(132),
+                    }),
+                    notes: None,
+                    tags: vec!["classical".to_string()],
+                    created_at: now,
+                    updated_at: now,
+                },
+                Item {
+                    id: "e1".to_string(),
+                    title: "Scales".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    category: Some("Technique".to_string()),
+                    key: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                },
+            ],
             ..Default::default()
         };
 
@@ -526,10 +498,12 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -537,9 +511,10 @@ mod tests {
             created_at: now,
             updated_at: now,
         });
-        model.exercises.push(Exercise {
+        model.items.push(Item {
             id: "e1".to_string(),
             title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: Some("Technique".to_string()),
             key: None,
@@ -557,7 +532,7 @@ mod tests {
         // Filter to pieces only
         let _cmd = app.update(
             Event::SetQuery(Some(ListQuery {
-                item_type: Some("piece".to_string()),
+                item_type: Some(ItemKind::Piece),
                 ..Default::default()
             })),
             &mut model,
@@ -578,10 +553,12 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Moonlight Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -589,10 +566,12 @@ mod tests {
             created_at: now,
             updated_at: now,
         });
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p2".to_string(),
             title: "Clair de Lune".to_string(),
-            composer: "Debussy".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -617,9 +596,10 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
 
-        model.exercises.push(Exercise {
+        model.items.push(Item {
             id: "e1".to_string(),
             title: "C Scale".to_string(),
+            kind: ItemKind::Exercise,
             composer: Some("Hanon".to_string()),
             category: Some("Scales".to_string()),
             key: None,
@@ -629,9 +609,10 @@ mod tests {
             created_at: now,
             updated_at: now,
         });
-        model.exercises.push(Exercise {
+        model.items.push(Item {
             id: "e2".to_string(),
             title: "Chord Inversions".to_string(),
+            kind: ItemKind::Exercise,
             composer: None,
             category: Some("Chords".to_string()),
             key: None,
@@ -658,10 +639,12 @@ mod tests {
         let mut model = Model::default();
         let now = chrono::Utc::now();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -669,10 +652,12 @@ mod tests {
             created_at: now,
             updated_at: now,
         });
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p2".to_string(),
             title: "Etude".to_string(),
-            composer: "Chopin".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Chopin".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -694,34 +679,34 @@ mod tests {
     // --- T042: Unicode handling in core ---
 
     #[test]
-    fn test_unicode_in_piece_add() {
+    fn test_unicode_in_item_add() {
         let app = Intrada;
         let mut model = Model::default();
 
         let _cmd = app.update(
-            Event::Piece(crate::domain::piece::PieceEvent::Add(
-                crate::domain::types::CreatePiece {
-                    title: "Ménuet en Sol".to_string(),
-                    composer: "Dvořák".to_string(),
-                    key: Some("ré mineur".to_string()),
-                    tempo: None,
-                    notes: Some("Pièce très jolie — «superbe»".to_string()),
-                    tags: vec!["日本語タグ".to_string()],
-                },
-            )),
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Ménuet en Sol".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Dvořák".to_string()),
+                category: None,
+                key: Some("ré mineur".to_string()),
+                tempo: None,
+                notes: Some("Pièce très jolie — «superbe»".to_string()),
+                tags: vec!["日本語タグ".to_string()],
+            })),
             &mut model,
         );
 
         assert!(model.last_error.is_none());
-        assert_eq!(model.pieces.len(), 1);
-        assert_eq!(model.pieces[0].title, "Ménuet en Sol");
-        assert_eq!(model.pieces[0].composer, "Dvořák");
-        assert_eq!(model.pieces[0].key, Some("ré mineur".to_string()));
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].title, "Ménuet en Sol");
+        assert_eq!(model.items[0].composer, Some("Dvořák".to_string()));
+        assert_eq!(model.items[0].key, Some("ré mineur".to_string()));
         assert_eq!(
-            model.pieces[0].notes,
+            model.items[0].notes,
             Some("Pièce très jolie — «superbe»".to_string())
         );
-        assert_eq!(model.pieces[0].tags, vec!["日本語タグ".to_string()]);
+        assert_eq!(model.items[0].tags, vec!["日本語タグ".to_string()]);
 
         // Verify ViewModel preserves Unicode
         let vm = app.view(&model);
@@ -740,10 +725,12 @@ mod tests {
         // Populate 10,000 items (5k pieces + 5k exercises)
         let start = std::time::Instant::now();
         for i in 0..5000 {
-            model.pieces.push(Piece {
+            model.items.push(Item {
                 id: format!("p{i:05}"),
                 title: format!("Piece {i}"),
-                composer: format!("Composer {}", i % 100),
+                kind: ItemKind::Piece,
+                composer: Some(format!("Composer {}", i % 100)),
+                category: None,
                 key: if i % 3 == 0 {
                     Some("C Major".to_string())
                 } else {
@@ -768,9 +755,10 @@ mod tests {
             });
         }
         for i in 0..5000 {
-            model.exercises.push(Exercise {
+            model.items.push(Item {
                 id: format!("e{i:05}"),
                 title: format!("Exercise {i}"),
+                kind: ItemKind::Exercise,
                 composer: None,
                 category: Some(format!("Category {}", i % 20)),
                 key: if i % 4 == 0 {
@@ -806,20 +794,20 @@ mod tests {
         // Benchmark: add one more item with 10k existing
         let start = std::time::Instant::now();
         let _cmd = app.update(
-            Event::Piece(crate::domain::piece::PieceEvent::Add(
-                crate::domain::types::CreatePiece {
-                    title: "New Piece".to_string(),
-                    composer: "New Composer".to_string(),
-                    key: None,
-                    tempo: None,
-                    notes: None,
-                    tags: vec![],
-                },
-            )),
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "New Piece".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("New Composer".to_string()),
+                category: None,
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
             &mut model,
         );
         let add_time = start.elapsed();
-        assert_eq!(model.pieces.len(), 5001);
+        assert_eq!(model.items.len(), 10_001);
         assert!(
             add_time.as_millis() < 100,
             "Adding item with 10k existing took {}ms (target: <100ms)",
@@ -829,13 +817,13 @@ mod tests {
         // Benchmark: delete item with 10k existing
         let start = std::time::Instant::now();
         let _cmd = app.update(
-            Event::Piece(crate::domain::piece::PieceEvent::Delete {
+            Event::Item(ItemEvent::Delete {
                 id: "p00042".to_string(),
             }),
             &mut model,
         );
         let delete_time = start.elapsed();
-        assert_eq!(model.pieces.len(), 5000);
+        assert_eq!(model.items.len(), 10_000);
         assert!(
             delete_time.as_millis() < 100,
             "Deleting item with 10k existing took {}ms (target: <100ms)",
@@ -851,10 +839,12 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
 
-        let p1 = Piece {
+        let p1 = Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -862,10 +852,12 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        let p2 = Piece {
+        let p2 = Item {
             id: "p2".to_string(),
             title: "Etude".to_string(),
-            composer: "Chopin".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Chopin".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -873,7 +865,7 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        model.pieces = vec![p1, p2];
+        model.items = vec![p1, p2];
 
         // Create a completed session with two entries
         use crate::domain::session::{
@@ -938,10 +930,12 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1017,10 +1011,12 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1068,10 +1064,12 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1137,10 +1135,12 @@ mod tests {
         let now = chrono::Utc::now();
         let mut model = Model::default();
 
-        model.pieces.push(Piece {
+        model.items.push(Item {
             id: "p1".to_string(),
             title: "Sonata".to_string(),
-            composer: "Beethoven".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Beethoven".to_string()),
+            category: None,
             key: None,
             tempo: None,
             notes: None,
