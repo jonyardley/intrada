@@ -208,7 +208,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                             }.into_any()
                         } else {
                             view! {
-                                <TextField id="edit-composer" label="Composer" value=composer field_name="composer" errors=errors />
+                                <TextField id="edit-composer" label="Composer (optional)" value=composer field_name="composer" errors=errors />
                             }.into_any()
                         }}
 
@@ -222,7 +222,7 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         }}
 
                         // Key (optional — shared)
-                        <TextField id="edit-key" label="Key" value=key_sig placeholder="e.g. C Major, Db Minor" field_name="key" errors=errors />
+                        <TextField id="edit-key" label="Key" value=key_sig hint="e.g. C Major, Db Minor" field_name="key" errors=errors />
 
                         // Tempo: marking + BPM on one row (shared)
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -231,10 +231,10 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                         </div>
 
                         // Notes (optional — shared)
-                        <TextArea id="edit-notes" label="Notes" value=notes field_name="notes" errors=errors />
+                        <TextArea id="edit-notes" label="Notes" value=notes hint="Practice notes, goals, or reminders" field_name="notes" errors=errors />
 
                         // Tags (shared)
-                        <TextField id="edit-tags" label="Tags" value=tags_input placeholder="Comma-separated, e.g. classical, piano" field_name="tags" errors=errors />
+                        <TextField id="edit-tags" label="Tags" value=tags_input hint="Comma-separated" placeholder="e.g. classical, piano" field_name="tags" errors=errors />
 
                         // Buttons
                         <div class="flex flex-col sm:flex-row gap-3 pt-2">

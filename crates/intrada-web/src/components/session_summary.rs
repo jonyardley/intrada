@@ -69,6 +69,8 @@ pub fn SessionSummary() -> impl IntoView {
                                         let core_score_inner = core_score.clone();
                                         let is_completed = entry.status == "completed";
                                         let current_score = entry.score;
+                                        let notes_label = format!("Notes for {}", entry.item_title);
+                                        let notes_input_id = format!("entry-notes-{}", entry.id);
                                         let status_label = match entry.status.as_str() {
                                             "completed" => "✓",
                                             "skipped" => "⊘",
@@ -90,8 +92,12 @@ pub fn SessionSummary() -> impl IntoView {
                                                     <span class="text-sm text-gray-400">{entry.duration_display}</span>
                                                 </div>
                                                 <div>
+                                                    <label class="sr-only" for=notes_input_id.clone()>
+                                                        {notes_label}
+                                                    </label>
                                                     <input
                                                         type="text"
+                                                        id=notes_input_id
                                                         placeholder="Add notes for this item..."
                                                         class="w-full rounded border border-white/20 bg-white/10 text-white placeholder-gray-400 px-2 py-1 text-sm focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
                                                         bind:value=entry_notes
@@ -124,9 +130,13 @@ pub fn SessionSummary() -> impl IntoView {
                                                                 } else {
                                                                     "w-9 h-9 rounded-full text-sm font-semibold bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all duration-150"
                                                                 };
+                                                                let aria_label = format!("Rate confidence {} out of 5", n);
+                                                                let aria_pressed = if is_selected { "true" } else { "false" };
                                                                 view! {
                                                                     <button
                                                                         class=btn_class
+                                                                        aria-label=aria_label
+                                                                        aria-pressed=aria_pressed
                                                                         on:click=move |_| {
                                                                             // Toggle: if same score is clicked, clear it
                                                                             let new_score = if current_score == Some(n) { None } else { Some(n) };

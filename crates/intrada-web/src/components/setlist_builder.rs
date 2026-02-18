@@ -89,19 +89,40 @@ pub fn SetlistBuilder() -> impl IntoView {
                 }}
             </Card>
 
+            // Error display (above buttons so it's visible without scrolling)
+            {move || {
+                let vm = view_model.get();
+                vm.error.map(|err| {
+                    view! {
+                        <p class="text-sm text-red-400">{err}</p>
+                    }
+                })
+            }}
+
             // Action buttons
             <div class="flex gap-3">
                 {
                     let core_start = core_actions.clone();
                     let core_cancel = core_actions.clone();
+                    let setlist_empty = Signal::derive(move || {
+                        let vm = view_model.get();
+                        match &vm.building_setlist {
+                            Some(setlist) => setlist.entries.is_empty(),
+                            None => true,
+                        }
+                    });
                     view! {
-                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                            let now = chrono::Utc::now();
-                            let event = Event::Session(SessionEvent::StartSession { now });
-                            let core_ref = core_start.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        })>
+                        <Button
+                            variant=ButtonVariant::Primary
+                            disabled=setlist_empty
+                            on_click=Callback::new(move |_| {
+                                let now = chrono::Utc::now();
+                                let event = Event::Session(SessionEvent::StartSession { now });
+                                let core_ref = core_start.borrow();
+                                let effects = core_ref.process_event(event);
+                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                            })
+                        >
                             "Start Session"
                         </Button>
                         <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
@@ -115,16 +136,6 @@ pub fn SetlistBuilder() -> impl IntoView {
                     }
                 }
             </div>
-
-            // Error display
-            {move || {
-                let vm = view_model.get();
-                vm.error.map(|err| {
-                    view! {
-                        <p class="text-sm text-red-400">{err}</p>
-                    }
-                })
-            }}
 
             // Library items to add
             <Card>
