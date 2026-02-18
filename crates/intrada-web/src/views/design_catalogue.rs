@@ -7,7 +7,7 @@ use intrada_core::LibraryItemView;
 
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, FieldLabel, FormFieldError, LibraryItemCard, LineChart,
-    PageHeading, StatCard, TextField, TextArea, TypeBadge, TypeTabs,
+    PageHeading, StatCard, TextArea, TextField, TypeBadge, TypeTabs,
 };
 use intrada_web::types::ItemType;
 

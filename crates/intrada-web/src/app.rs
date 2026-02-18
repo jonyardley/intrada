@@ -10,12 +10,12 @@ use send_wrapper::SendWrapper;
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
+#[cfg(debug_assertions)]
+use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
     NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
 };
-#[cfg(debug_assertions)]
-use crate::views::DesignCatalogue;
 use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
