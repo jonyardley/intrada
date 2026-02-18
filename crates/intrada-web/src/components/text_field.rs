@@ -31,7 +31,7 @@ pub fn TextField(
             <input
                 id=id
                 type=input_type
-                class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                class="input-base"
                 placeholder=placeholder.unwrap_or("")
                 bind:value=value
                 required=required

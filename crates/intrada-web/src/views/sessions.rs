@@ -163,7 +163,7 @@ fn SessionRow(
                                 </div>
                             </div>
                             // Entry details with scores
-                            <div class="border-t border-white/10 pt-2 space-y-1.5">
+                            <div class="mt-1 pt-2 space-y-1.5">
                                 {entries.into_iter().map(|entry| {
                                     let status_label = match entry.status.as_str() {
                                         "completed" => "✓",

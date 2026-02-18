@@ -1,5 +1,7 @@
 pub mod add_form;
 pub mod analytics;
+#[cfg(debug_assertions)]
+pub mod design_catalogue;
 pub mod detail;
 pub mod edit_form;
 pub mod library_list;
@@ -11,6 +13,8 @@ pub mod sessions;
 
 pub use add_form::AddLibraryItemForm;
 pub use analytics::AnalyticsPage;
+#[cfg(debug_assertions)]
+pub use design_catalogue::DesignCatalogue;
 pub use detail::DetailView;
 pub use edit_form::EditLibraryItemForm;
 pub use library_list::LibraryListView;

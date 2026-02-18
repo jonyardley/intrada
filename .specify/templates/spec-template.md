@@ -100,6 +100,54 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+## Design *(include if feature has UI)*
+
+<!--
+  ACTION REQUIRED: Include this section when the feature has a user-facing UI.
+  Remove entirely if the feature is backend-only or has no visual component.
+  Reference the design system documentation at specs/design-system.md.
+-->
+
+### Existing Components Used
+
+<!--
+  List which existing UI components from the design system this feature reuses.
+  Reference the component inventory in specs/design-system.md.
+-->
+
+- [Component name] — [how it's used in this feature]
+- [Component name] — [how it's used in this feature]
+
+### New Components Needed
+
+<!--
+  Describe any new UI components this feature requires.
+  Focus on WHAT the component displays and HOW users interact with it,
+  not implementation details.
+-->
+
+- **[Component name]**: [What it displays, what interactions it supports]
+
+### Wireframe / Layout Description
+
+<!--
+  Describe the visual layout of new screens or UI changes.
+  Include links to Figma/design files if available.
+  Otherwise, describe the layout in enough detail for a developer to build it.
+-->
+
+[Layout description or Figma link]
+
+### Responsive Behaviour
+
+<!--
+  Describe how the feature adapts between mobile and desktop.
+  Intrada uses a single breakpoint: mobile (<640px) and desktop (≥640px).
+-->
+
+- **Mobile**: [layout/behaviour on small screens]
+- **Desktop**: [layout/behaviour on larger screens]
+
 ## Success Criteria *(mandatory)*
 
 <!--

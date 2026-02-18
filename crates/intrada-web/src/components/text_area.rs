@@ -30,7 +30,7 @@ pub fn TextArea(
             <textarea
                 id=id
                 rows=rows_str
-                class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                class="input-base"
                 bind:value=value
                 aria-describedby=error_id.clone()
                 aria-invalid=move || if has_error() { "true" } else { "false" }
