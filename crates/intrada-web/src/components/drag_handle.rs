@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use wasm_bindgen::JsCast;
 use web_sys::PointerEvent;
 
 /// A six-dot grip icon used as the drag handle for reorderable list entries.
@@ -25,6 +26,15 @@ pub fn DragHandle(
             class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-gray-500 hover:text-gray-300 select-none"
             style="touch-action: none; user-select: none; -webkit-user-select: none;"
             on:pointerdown=move |ev: PointerEvent| {
+                ev.prevent_default();
+                // Set pointer capture on the button (currentTarget), not the SVG
+                // child that may be the actual ev.target(). This ensures all
+                // subsequent pointer events fire on this element reliably.
+                if let Some(ct) = ev.current_target() {
+                    if let Ok(el) = ct.dyn_into::<web_sys::HtmlElement>() {
+                        let _ = el.set_pointer_capture(ev.pointer_id());
+                    }
+                }
                 on_pointer_down.run((entry_id_down.clone(), index, ev));
             }
             on:contextmenu=move |ev: leptos::ev::MouseEvent| {
@@ -32,13 +42,15 @@ pub fn DragHandle(
                 ev.prevent_default();
             }
         >
-            // Six-dot grip SVG icon
+            // Six-dot grip SVG icon — pointer-events:none so button always
+            // receives the pointerdown, not the SVG or its circle children.
             <svg
                 width="16"
                 height="16"
                 viewBox="0 0 16 16"
                 fill="currentColor"
                 aria-hidden="true"
+                style="pointer-events: none;"
             >
                 <circle cx="5" cy="3" r="1.5" />
                 <circle cx="11" cy="3" r="1.5" />

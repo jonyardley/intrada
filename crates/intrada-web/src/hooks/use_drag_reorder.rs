@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use web_sys::{Element, HtmlElement, PointerEvent};
+use web_sys::{Element, PointerEvent};
 
 /// Transient state for an in-progress drag operation.
 #[derive(Clone, Debug)]
@@ -101,11 +101,14 @@ pub fn use_drag_reorder(
                         s.committed = true;
                     }
 
-                    // Compute hover index from container children bounding rects
+                    // Compute hover index from container children bounding rects.
+                    // Pass the source_index so we can adjust for the "gap" left by
+                    // the dragged item (avoids off-by-one when dragging downward).
                     let new_hover = compute_hover_index(
                         &container_ref,
                         s.current_y,
                         item_count.get_untracked(),
+                        s.source_index,
                     );
                     s.hover_index = new_hover;
                 });
@@ -166,13 +169,8 @@ pub fn use_drag_reorder(
     // --- Pointer down (called from DragHandle via Callback) ---
     let on_pointer_down = Callback::new(
         move |(entry_id, source_index, ev): (String, usize, PointerEvent)| {
-            // Set pointer capture on the target element so we keep receiving events
-            if let Some(target) = ev.target() {
-                if let Ok(el) = target.dyn_into::<HtmlElement>() {
-                    let _ = el.set_pointer_capture(ev.pointer_id());
-                }
-            }
-
+            // Pointer capture is set by DragHandle on its button element (currentTarget).
+            // We just record the drag state here.
             drag_state.set(Some(DragState {
                 dragged_entry_id: entry_id,
                 pointer_id: ev.pointer_id(),
@@ -198,10 +196,16 @@ pub fn use_drag_reorder(
 /// We look at each child row's bounding rect midpoint. The hover index is the position
 /// where the dragged item would be inserted (i.e., the first row whose midpoint is below
 /// the pointer's Y).
+///
+/// The `source_index` parameter is used to handle the off-by-one issue when dragging
+/// downward: because the dragged item will be *removed* from its source position before
+/// being inserted, all indices after source shift up by one. We adjust so the returned
+/// hover_index is the final insertion position in the *post-removal* list.
 fn compute_hover_index(
     container_ref: &NodeRef<leptos::html::Div>,
     pointer_y: f64,
     count: usize,
+    source_index: usize,
 ) -> usize {
     if count == 0 {
         return 0;
@@ -238,14 +242,25 @@ fn compute_hover_index(
         return 0;
     }
 
-    // Find insertion point: hover index is the position before the first item
+    // Find the visual insertion point: the position before the first item
     // whose midpoint is below the pointer.
+    let mut visual_index = midpoints.len(); // default: after all items
     for (i, (_idx, mid)) in midpoints.iter().enumerate() {
         if pointer_y < *mid {
-            return i;
+            visual_index = i;
+            break;
         }
     }
 
-    // Pointer is below all items — insert at end
-    midpoints.len()
+    // Adjust for the "gap" left by the dragged item.
+    // When the source item is removed, items after it shift up by one.
+    // If the visual target is *after* the source, we need to subtract one
+    // to get the correct insertion index in the post-removal list.
+    // If visual_index == source_index or source_index + 1, it's a no-op
+    // (dropping the item back roughly where it was).
+    if visual_index > source_index {
+        visual_index.saturating_sub(1)
+    } else {
+        visual_index
+    }
 }
