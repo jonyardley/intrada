@@ -31,10 +31,13 @@ async fn main() {
     let state = AppState::new(db, allowed_origin);
     let router = routes::api_router(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080")
-        .await
-        .expect("Failed to bind to port 8080");
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+    let addr = format!("0.0.0.0:{port}");
 
-    tracing::info!("Server listening on 0.0.0.0:8080");
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to bind to {addr}"));
+
+    tracing::info!("Server listening on {addr}");
     axum::serve(listener, router).await.expect("Server failed");
 }

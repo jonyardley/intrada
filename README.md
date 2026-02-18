@@ -21,11 +21,43 @@ Intrada follows the Crux pure-core pattern: the core (`intrada-core`) contains a
 ## Prerequisites
 
 - Rust stable (2021 edition, 1.75+)
-- [Trunk](https://trunkrs.dev/) (for building and serving the web app)
+- [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
+- [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
 
-## Getting started
+## Quick start
 
-All commands should be run from the project root (`intrada/`).
+```bash
+# 1. Set up environment
+cp .env.example .env
+# Edit .env with your Turso credentials
+
+# 2. Start both API and web dev servers
+just dev
+# → API on :3001, web on :8080 (proxies /api/* to API)
+
+# 3. Open http://localhost:8080
+```
+
+## Available commands
+
+Run `just` to see all commands. Key ones:
+
+```bash
+just dev        # Start API + web dev servers concurrently
+just dev-api    # Start only the API server
+just dev-web    # Start only the Trunk dev server
+just test       # Run all tests
+just lint       # Run clippy
+just fmt        # Format code
+just check      # Run test + clippy + format check
+just seed       # Seed development data (API must be running)
+just build      # Build WASM for production/E2E
+just e2e        # Build + run Playwright E2E tests
+```
+
+## Getting started (manual)
+
+If you prefer not to use `just`, all commands should be run from the project root:
 
 ```bash
 # Build all crates
@@ -41,11 +73,8 @@ cargo clippy
 ### Web app (local development)
 
 ```bash
-# Install trunk if you haven't already
-cargo install trunk
-
-# Serve the web app with hot reload
 trunk serve --config crates/intrada-web/Trunk.toml
+# → http://localhost:8080 (proxies /api/* to localhost:3001)
 ```
 
 ### API server (requires Turso credentials)
@@ -54,6 +83,7 @@ trunk serve --config crates/intrada-web/Trunk.toml
 export TURSO_DATABASE_URL="libsql://intrada-<your-org>.turso.io"
 export TURSO_AUTH_TOKEN="<your-token>"
 export ALLOWED_ORIGIN="http://localhost:8080"
+export PORT=3001
 
 cargo run -p intrada-api
 ```
@@ -66,7 +96,8 @@ To populate the API with realistic sample data (8 pieces, 5 exercises, ~25 pract
 
 ```bash
 # Requires: curl, jq
-bash scripts/seed-dev-data.sh
+just seed
+# or: bash scripts/seed-dev-data.sh
 ```
 
 This creates a realistic dataset with score progression, practice streaks, varied session lengths, and mixed completion statuses — useful for seeing how the library, session history, and analytics dashboard look with real data.

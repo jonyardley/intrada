@@ -11,6 +11,7 @@ primary_region = 'lhr'
 
 [env]
   RUST_LOG = 'info'
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080

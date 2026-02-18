@@ -2,7 +2,7 @@
 # seed-dev-data.sh — Populate the intrada API with realistic music practice data.
 #
 # Usage:
-#   bash scripts/seed-dev-data.sh              # seed into localhost:8080
+#   bash scripts/seed-dev-data.sh              # seed into localhost:3001 (API)
 #   bash scripts/seed-dev-data.sh --live       # seed into production (Fly.io)
 #   bash scripts/seed-dev-data.sh --clean      # delete all data first, then seed
 #   API_URL=https://... bash scripts/seed-dev-data.sh   # custom API URL
@@ -29,7 +29,7 @@ if [ "$LIVE" = true ]; then
   echo "   Press Enter to continue or Ctrl+C to abort..."
   read -r
 else
-  API_URL="${API_URL:-http://localhost:8080}"
+  API_URL="${API_URL:-http://localhost:3001}"
 fi
 
 # Check dependencies
