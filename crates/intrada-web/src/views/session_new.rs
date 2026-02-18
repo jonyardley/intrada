@@ -41,8 +41,13 @@ pub fn SessionNewView() -> impl IntoView {
                 );
             }
             "idle" => {
-                // If building was cancelled, go back to sessions
-                // But don't navigate on initial mount — only if we were building
+                navigate(
+                    "/sessions",
+                    NavigateOptions {
+                        replace: true,
+                        ..Default::default()
+                    },
+                );
             }
             _ => {}
         }
