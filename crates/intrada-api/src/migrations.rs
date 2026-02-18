@@ -70,6 +70,30 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0006_add_score_to_setlist_entries",
         "ALTER TABLE setlist_entries ADD COLUMN score INTEGER;",
     ),
+    (
+        "0007_create_routines",
+        "CREATE TABLE IF NOT EXISTS routines (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0008_create_routine_entries",
+        "CREATE TABLE IF NOT EXISTS routine_entries (
+            id TEXT PRIMARY KEY NOT NULL,
+            routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+            item_id TEXT NOT NULL,
+            item_title TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            position INTEGER NOT NULL
+        );",
+    ),
+    (
+        "0009_index_routine_entries_routine_id",
+        "CREATE INDEX IF NOT EXISTS idx_routine_entries_routine_id ON routine_entries(routine_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

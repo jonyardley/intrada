@@ -7,7 +7,8 @@ use gloo_net::http::Request;
 use serde::Serialize;
 
 use intrada_core::{
-    CreateExercise, CreatePiece, Exercise, Piece, PracticeSession, UpdateExercise, UpdatePiece,
+    CreateExercise, CreatePiece, Exercise, Piece, PracticeSession, Routine, UpdateExercise,
+    UpdatePiece,
 };
 
 /// Compile-time API base URL with fallback to production.
@@ -174,6 +175,68 @@ pub async fn create_session(session: &PracticeSession) -> Result<PracticeSession
 /// Delete a practice session from the server.
 pub async fn delete_session(id: &str) -> Result<(), ApiError> {
     delete(&format!("/api/sessions/{id}")).await
+}
+
+// ---------------------------------------------------------------------------
+// Routine Operations
+// ---------------------------------------------------------------------------
+
+/// Request body for creating a routine via the API.
+#[derive(serde::Serialize)]
+pub struct CreateRoutineApiRequest {
+    pub name: String,
+    pub entries: Vec<CreateRoutineEntryApiRequest>,
+}
+
+/// Entry within a create/update routine API request.
+#[derive(serde::Serialize)]
+pub struct CreateRoutineEntryApiRequest {
+    pub item_id: String,
+    pub item_title: String,
+    pub item_type: String,
+}
+
+/// Request body for updating a routine via the API.
+#[derive(serde::Serialize)]
+pub struct UpdateRoutineApiRequest {
+    pub name: String,
+    pub entries: Vec<CreateRoutineEntryApiRequest>,
+}
+
+/// Fetch all routines from the API.
+pub async fn fetch_routines() -> Result<Vec<Routine>, ApiError> {
+    let response = Request::get(&endpoint("/api/routines"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if !response.ok() {
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(0, msg));
+    }
+
+    response
+        .json::<Vec<Routine>>()
+        .await
+        .map_err(|e| ApiError::Deserialize(e.to_string()))
+}
+
+/// Create a new routine on the server.
+pub async fn create_routine(routine: &CreateRoutineApiRequest) -> Result<Routine, ApiError> {
+    post_json("/api/routines", routine).await
+}
+
+/// Update an existing routine on the server.
+pub async fn update_routine(
+    id: &str,
+    routine: &UpdateRoutineApiRequest,
+) -> Result<Routine, ApiError> {
+    put_json(&format!("/api/routines/{id}"), routine).await
+}
+
+/// Delete a routine from the server.
+pub async fn delete_routine(id: &str) -> Result<(), ApiError> {
+    delete(&format!("/api/routines/{id}")).await
 }
 
 // ---------------------------------------------------------------------------
