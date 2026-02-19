@@ -144,12 +144,15 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
     })
 }
 
-pub async fn list_sessions(conn: &Connection) -> Result<Vec<PracticeSession>, ApiError> {
+pub async fn list_sessions(
+    conn: &Connection,
+    user_id: &str,
+) -> Result<Vec<PracticeSession>, ApiError> {
     let mut rows = conn
         .query(
             "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status
-             FROM sessions ORDER BY started_at DESC",
-            (),
+             FROM sessions WHERE user_id = ?1 ORDER BY started_at DESC",
+            libsql::params![user_id],
         )
         .await?;
 
@@ -166,12 +169,16 @@ pub async fn list_sessions(conn: &Connection) -> Result<Vec<PracticeSession>, Ap
     Ok(sessions)
 }
 
-pub async fn get_session(conn: &Connection, id: &str) -> Result<Option<PracticeSession>, ApiError> {
+pub async fn get_session(
+    conn: &Connection,
+    id: &str,
+    user_id: &str,
+) -> Result<Option<PracticeSession>, ApiError> {
     let mut rows = conn
         .query(
             "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status
-             FROM sessions WHERE id = ?1",
-            libsql::params![id],
+             FROM sessions WHERE id = ?1 AND user_id = ?2",
+            libsql::params![id, user_id],
         )
         .await?;
 
@@ -191,6 +198,7 @@ pub async fn get_session(conn: &Connection, id: &str) -> Result<Option<PracticeS
 
 pub async fn insert_session(
     conn: &Connection,
+    user_id: &str,
     input: &SaveSessionRequest,
 ) -> Result<PracticeSession, ApiError> {
     let id = ulid::Ulid::new().to_string();
@@ -205,15 +213,16 @@ pub async fn insert_session(
     let result: Result<PracticeSession, ApiError> = async {
         // Insert session row
         conn.execute(
-            "INSERT INTO sessions (id, session_notes, started_at, completed_at, total_duration_secs, completion_status)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO sessions (id, session_notes, started_at, completed_at, total_duration_secs, completion_status, user_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             libsql::params![
                 id.as_str(),
                 input.session_notes.as_deref(),
                 started_at_str.as_str(),
                 completed_at_str.as_str(),
                 input.total_duration_secs as i64,
-                completion_status_str
+                completion_status_str,
+                user_id
             ],
         )
         .await?;
@@ -278,10 +287,13 @@ pub async fn insert_session(
     }
 }
 
-pub async fn delete_session(conn: &Connection, id: &str) -> Result<bool, ApiError> {
+pub async fn delete_session(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
     // setlist_entries will be cascade-deleted due to ON DELETE CASCADE
     let rows_affected = conn
-        .execute("DELETE FROM sessions WHERE id = ?1", libsql::params![id])
+        .execute(
+            "DELETE FROM sessions WHERE id = ?1 AND user_id = ?2",
+            libsql::params![id, user_id],
+        )
         .await?;
 
     Ok(rows_affected > 0)

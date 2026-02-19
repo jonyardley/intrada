@@ -18,7 +18,7 @@ pub fn api_router(state: AppState) -> Router {
                 .expect("Invalid ALLOWED_ORIGIN value"),
         )
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE]);
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     Router::new()
         .nest("/api", api_routes())

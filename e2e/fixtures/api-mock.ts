@@ -29,6 +29,54 @@ export interface MockStore {
   routines: Routine[];
 }
 
+/**
+ * Inject a Clerk auth mock before the page loads.
+ *
+ * Stubs `window.__intrada_auth` so the WASM auth gate sees a signed-in user
+ * without needing the real Clerk SDK. Also blocks the Clerk CDN script and
+ * stubs `window.Clerk` to prevent the real SDK from interfering.
+ */
+async function setupClerkMock(page: Page) {
+  // Block the Clerk CDN script — prevents the real SDK from loading
+  await page.route("**/cdn.jsdelivr.net/npm/@clerk/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/javascript", body: "// blocked" })
+  );
+
+  // Stub window.__intrada_auth and window.Clerk before the page loads
+  await page.addInitScript(() => {
+    const listeners: (() => void)[] = [];
+    (window as any).__intrada_auth = {
+      _clerk: null,
+      _ready: true,
+      init(_key: string) {
+        // no-op in tests
+      },
+      isSignedIn() {
+        return true;
+      },
+      async getToken() {
+        return "fake-test-token";
+      },
+      getUserId() {
+        return "test-user-001";
+      },
+      async signOut() {
+        // no-op in tests
+      },
+      async signInWithGoogle() {
+        // no-op in tests
+      },
+      addListener(callback: () => void) {
+        listeners.push(callback);
+      },
+    };
+    // Stub window.Clerk constructor so the onload handler doesn't fail
+    (window as any).Clerk = class {
+      async load() {}
+    };
+  });
+}
+
 async function setupApiMock(page: Page, store: MockStore) {
   await page.route(`${API_BASE}/api/**`, async (route) => {
     const request = route.request();
@@ -277,6 +325,7 @@ export const test = base.extend<{ mockApi: MockStore }>({
         sessions: [],
         routines: createSeedRoutines(),
       };
+      await setupClerkMock(page);
       await setupApiMock(page, store);
       await use(store);
     },

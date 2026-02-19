@@ -7,6 +7,7 @@ use intrada_core::domain::item::Item;
 use intrada_core::domain::types::{CreateItem, UpdateItem};
 use intrada_core::validation;
 
+use crate::auth::AuthUser;
 use crate::db;
 use crate::error::ApiError;
 use crate::state::AppState;
@@ -17,18 +18,22 @@ pub fn router() -> Router<AppState> {
         .route("/{id}", get(get_item).put(update_item).delete(delete_item))
 }
 
-async fn list_items(State(state): State<AppState>) -> Result<Json<Vec<Item>>, ApiError> {
+async fn list_items(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<Item>>, ApiError> {
     let conn = state.db.connect()?;
-    let items = db::items::list_items(&conn).await?;
+    let items = db::items::list_items(&conn, &user_id).await?;
     Ok(Json(items))
 }
 
 async fn get_item(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Item>, ApiError> {
     let conn = state.db.connect()?;
-    let item = db::items::get_item(&conn, &id)
+    let item = db::items::get_item(&conn, &id, &user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
     Ok(Json(item))
@@ -36,22 +41,24 @@ async fn get_item(
 
 async fn create_item(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Json(input): Json<CreateItem>,
 ) -> Result<(StatusCode, Json<Item>), ApiError> {
     validation::validate_create_item(&input)?;
     let conn = state.db.connect()?;
-    let item = db::items::insert_item(&conn, &input).await?;
+    let item = db::items::insert_item(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(item)))
 }
 
 async fn update_item(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
     Json(input): Json<UpdateItem>,
 ) -> Result<Json<Item>, ApiError> {
     validation::validate_update_item(&input)?;
     let conn = state.db.connect()?;
-    let item = db::items::update_item(&conn, &id, &input)
+    let item = db::items::update_item(&conn, &id, &user_id, &input)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
     Ok(Json(item))
@@ -59,10 +66,11 @@ async fn update_item(
 
 async fn delete_item(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.db.connect()?;
-    let deleted = db::items::delete_item(&conn, &id).await?;
+    let deleted = db::items::delete_item(&conn, &id, &user_id).await?;
     if deleted {
         Ok(Json(serde_json::json!({ "message": "Item deleted" })))
     } else {

@@ -4,6 +4,7 @@ use intrada_core::error::LibraryError;
 
 #[derive(Debug)]
 pub enum ApiError {
+    Unauthorized(String),
     Validation(String),
     NotFound(String),
     Internal(String),
@@ -12,6 +13,7 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
+            ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             ApiError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
             ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             ApiError::Internal(msg) => {

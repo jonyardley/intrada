@@ -2,6 +2,8 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
 
+use intrada_web::clerk_bindings;
+
 /// Application header with name, tagline, and navigation.
 ///
 /// Nav links highlight the active section using the same colour
@@ -92,6 +94,17 @@ pub fn AppHeader() -> impl IntoView {
                     >
                         "Analytics"
                     </A>
+                    <button
+                        on:click=move |_| {
+                            leptos::task::spawn_local(async move {
+                                clerk_bindings::sign_out().await;
+                            });
+                        }
+                        class="text-sm font-medium text-gray-400 hover:text-white motion-safe:transition-colors ml-2"
+                        aria-label="Sign out"
+                    >
+                        "Sign out"
+                    </button>
                 </nav>
             </div>
         </header>
