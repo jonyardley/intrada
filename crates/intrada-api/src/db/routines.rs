@@ -296,14 +296,7 @@ pub async fn update_routine(
 }
 
 pub async fn delete_routine(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
-    // Explicitly delete entries first — SQLite only enforces ON DELETE CASCADE
-    // when PRAGMA foreign_keys = ON, which is off by default.
-    conn.execute(
-        "DELETE FROM routine_entries WHERE routine_id = ?1",
-        libsql::params![id],
-    )
-    .await?;
-
+    // Verify ownership first — only delete entries if the routine belongs to this user.
     let rows_affected = conn
         .execute(
             "DELETE FROM routines WHERE id = ?1 AND user_id = ?2",
@@ -311,5 +304,18 @@ pub async fn delete_routine(conn: &Connection, id: &str, user_id: &str) -> Resul
         )
         .await?;
 
-    Ok(rows_affected > 0)
+    if rows_affected == 0 {
+        return Ok(false);
+    }
+
+    // Now safe to delete entries — we confirmed ownership above.
+    // SQLite only enforces ON DELETE CASCADE when PRAGMA foreign_keys = ON,
+    // which is off by default, so we delete explicitly.
+    conn.execute(
+        "DELETE FROM routine_entries WHERE routine_id = ?1",
+        libsql::params![id],
+    )
+    .await?;
+
+    Ok(true)
 }

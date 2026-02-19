@@ -49,6 +49,10 @@ impl FromRequestParts<AppState> for AuthUser {
 
         let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
         validation.set_issuer(&[&auth_config.issuer]);
+        // Clerk tokens include an `aud` claim but we don't validate a specific
+        // audience. jsonwebtoken v9 defaults validate_aud = true, which would
+        // reject all tokens unless an audience is configured.
+        validation.validate_aud = false;
 
         for key in auth_config.decoding_keys.iter() {
             if let Ok(data) = decode::<Claims>(token, key, &validation) {
