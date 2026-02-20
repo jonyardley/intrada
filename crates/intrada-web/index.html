@@ -12,17 +12,22 @@
       if (!window.__intrada_auth) window.__intrada_auth = {
         _clerk: null,
         _ready: false,
+        _initFailed: false,
         async init(publishableKey) {
           if (!publishableKey || this._ready) return;
           try {
             const Clerk = window.Clerk;
-            if (!Clerk) return;
+            if (!Clerk) { this._initFailed = true; return; }
             this._clerk = new Clerk(publishableKey);
             await this._clerk.load();
             this._ready = true;
           } catch (e) {
             console.error("Clerk init failed:", e);
+            this._initFailed = true;
           }
+        },
+        initFailed() {
+          return this._initFailed;
         },
         isSignedIn() {
           if (!this._ready || !this._clerk) return false;

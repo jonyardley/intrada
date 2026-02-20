@@ -18,6 +18,12 @@ use wasm_bindgen::prelude::*;
         }
         return false;
     }
+    export function js_init_failed() {
+        if (window.__intrada_auth && window.__intrada_auth.initFailed) {
+            return window.__intrada_auth.initFailed();
+        }
+        return false;
+    }
     export async function js_get_token() {
         if (window.__intrada_auth) {
             return await window.__intrada_auth.getToken();
@@ -51,6 +57,7 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     fn js_init_clerk(key: &str);
     fn js_is_signed_in() -> bool;
+    fn js_init_failed() -> bool;
     async fn js_get_token() -> JsValue;
     fn js_get_user_id() -> JsValue;
     async fn js_sign_out();
@@ -69,6 +76,12 @@ pub fn init_clerk() {
 /// Check whether the current user is signed in.
 pub fn is_signed_in() -> bool {
     js_is_signed_in()
+}
+
+/// Check whether Clerk initialization failed (bad key, wrong domain, network error).
+/// When true, the app should bypass the auth gate.
+pub fn init_failed() -> bool {
+    js_init_failed()
 }
 
 /// Get the current JWT token for API requests. Returns `None` if not signed in.
