@@ -29,15 +29,26 @@
                 document.head.appendChild(s);
               });
             }
-            // After the SDK auto-inits, window.Clerk is the ready instance
+            // After the SDK script loads it auto-initializes using
+            // __clerk_publishable_key and sets window.Clerk to the
+            // loaded instance. Use it directly.
             const clerk = window.Clerk;
             if (!clerk) { this._initFailed = true; return; }
-            // If Clerk auto-initialized, it may already be loaded;
-            // if not (constructor form), call load().
+            // The auto-init may still be loading; wait for it.
             if (typeof clerk.load === 'function' && !clerk.loaded) {
               await clerk.load();
             }
             this._clerk = clerk;
+            // Handle SSO/OAuth callback if we landed on /sso-callback
+            if (window.location.pathname === '/sso-callback') {
+              try {
+                await clerk.handleRedirectCallback({
+                  redirectUrl: window.location.origin + "/",
+                });
+              } catch (cbErr) {
+                console.error("SSO callback handling failed:", cbErr);
+              }
+            }
             this._ready = true;
           } catch (e) {
             console.error("Clerk init failed:", e);
@@ -70,11 +81,19 @@
         },
         async signInWithGoogle() {
           if (!this._ready || !this._clerk) return;
-          await this._clerk.authenticateWithRedirect({
-            strategy: "oauth_google",
-            redirectUrl: window.location.origin + "/",
-            redirectUrlComplete: window.location.origin + "/",
-          });
+          // authenticateWithRedirect lives on the SignIn resource,
+          // accessed via clerk.client.signIn (Clerk JS v5 API).
+          const signIn = this._clerk.client?.signIn;
+          if (signIn && typeof signIn.authenticateWithRedirect === 'function') {
+            await signIn.authenticateWithRedirect({
+              strategy: "oauth_google",
+              redirectUrl: window.location.origin + "/sso-callback",
+              redirectUrlComplete: window.location.origin + "/",
+            });
+          } else {
+            // Fallback: use Clerk's built-in redirect helper
+            await this._clerk.redirectToSignIn();
+          }
         },
         addListener(callback) {
           if (!this._ready || !this._clerk) return;
