@@ -139,7 +139,7 @@ jobs:
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt]
+    needs: [test, clippy, fmt, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
