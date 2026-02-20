@@ -87,25 +87,7 @@ async fn auth_header_value() -> Option<String> {
 
 /// Fetch all items from the API.
 pub async fn fetch_items() -> Result<Vec<Item>, ApiError> {
-    let mut req = Request::get(&endpoint("/api/items"));
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
-    }
-    let response = req
-        .send()
-        .await
-        .map_err(|e| ApiError::Network(e.to_string()))?;
-
-    if !response.ok() {
-        let status = response.status();
-        let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(status, msg));
-    }
-
-    response
-        .json::<Vec<Item>>()
-        .await
-        .map_err(|e| ApiError::Deserialize(e.to_string()))
+    get_json("/api/items").await
 }
 
 /// Create a new item on the server.
@@ -129,25 +111,7 @@ pub async fn delete_item(id: &str) -> Result<(), ApiError> {
 
 /// Fetch all completed practice sessions from the API.
 pub async fn fetch_sessions() -> Result<Vec<PracticeSession>, ApiError> {
-    let mut req = Request::get(&endpoint("/api/sessions"));
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
-    }
-    let response = req
-        .send()
-        .await
-        .map_err(|e| ApiError::Network(e.to_string()))?;
-
-    if !response.ok() {
-        let status = response.status();
-        let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(status, msg));
-    }
-
-    response
-        .json::<Vec<PracticeSession>>()
-        .await
-        .map_err(|e| ApiError::Deserialize(e.to_string()))
+    get_json("/api/sessions").await
 }
 
 /// Save a completed practice session to the server.
@@ -188,25 +152,7 @@ pub struct UpdateRoutineApiRequest {
 
 /// Fetch all routines from the API.
 pub async fn fetch_routines() -> Result<Vec<Routine>, ApiError> {
-    let mut req = Request::get(&endpoint("/api/routines"));
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
-    }
-    let response = req
-        .send()
-        .await
-        .map_err(|e| ApiError::Network(e.to_string()))?;
-
-    if !response.ok() {
-        let status = response.status();
-        let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(status, msg));
-    }
-
-    response
-        .json::<Vec<Routine>>()
-        .await
-        .map_err(|e| ApiError::Deserialize(e.to_string()))
+    get_json("/api/routines").await
 }
 
 /// Create a new routine on the server.
@@ -228,17 +174,72 @@ pub async fn delete_routine(id: &str) -> Result<(), ApiError> {
 }
 
 // ---------------------------------------------------------------------------
-// Generic HTTP helpers
+// Generic HTTP helpers (with 401 retry)
 // ---------------------------------------------------------------------------
 
+/// GET an endpoint and deserialise the JSON response.
+/// Retries once with a fresh auth token on 401.
+async fn get_json<R: serde::de::DeserializeOwned>(path: &str) -> Result<R, ApiError> {
+    let url = endpoint(path);
+    let auth = auth_header_value().await;
+
+    let mut req = Request::get(&url);
+    if let Some(ref auth) = auth {
+        req = req.header("Authorization", auth);
+    }
+    let response = req
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    // Retry once with fresh token on 401
+    if response.status() == 401 {
+        if let Some(fresh_auth) = auth_header_value().await {
+            let retry_response = Request::get(&url)
+                .header("Authorization", &fresh_auth)
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))?;
+
+            if !retry_response.ok() {
+                let status = retry_response.status();
+                let msg = parse_error_body(retry_response).await;
+                return Err(ApiError::Server(status, msg));
+            }
+
+            return retry_response
+                .json::<R>()
+                .await
+                .map_err(|e| ApiError::Deserialize(e.to_string()));
+        }
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(401, msg));
+    }
+
+    if !response.ok() {
+        let status = response.status();
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(status, msg));
+    }
+
+    response
+        .json::<R>()
+        .await
+        .map_err(|e| ApiError::Deserialize(e.to_string()))
+}
+
 /// POST JSON body to an endpoint and deserialise the 201 response.
+/// Retries once with a fresh auth token on 401.
 async fn post_json<B: Serialize, R: serde::de::DeserializeOwned>(
     path: &str,
     body: &B,
 ) -> Result<R, ApiError> {
-    let mut req = Request::post(&endpoint(path)).header("Content-Type", "application/json");
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
+    let url = endpoint(path);
+    let auth = auth_header_value().await;
+
+    let mut req = Request::post(&url).header("Content-Type", "application/json");
+    if let Some(ref auth) = auth {
+        req = req.header("Authorization", auth);
     }
     let response = req
         .json(body)
@@ -246,6 +247,33 @@ async fn post_json<B: Serialize, R: serde::de::DeserializeOwned>(
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    // Retry once with fresh token on 401
+    if response.status() == 401 {
+        if let Some(fresh_auth) = auth_header_value().await {
+            let retry_response = Request::post(&url)
+                .header("Content-Type", "application/json")
+                .header("Authorization", &fresh_auth)
+                .json(body)
+                .map_err(|e| ApiError::Deserialize(e.to_string()))?
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))?;
+
+            if !retry_response.ok() {
+                let status = retry_response.status();
+                let msg = parse_error_body(retry_response).await;
+                return Err(ApiError::Server(status, msg));
+            }
+
+            return retry_response
+                .json::<R>()
+                .await
+                .map_err(|e| ApiError::Deserialize(e.to_string()));
+        }
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(401, msg));
+    }
 
     if !response.ok() {
         let status = response.status();
@@ -260,13 +288,17 @@ async fn post_json<B: Serialize, R: serde::de::DeserializeOwned>(
 }
 
 /// PUT JSON body to an endpoint and deserialise the 200 response.
+/// Retries once with a fresh auth token on 401.
 async fn put_json<B: Serialize, R: serde::de::DeserializeOwned>(
     path: &str,
     body: &B,
 ) -> Result<R, ApiError> {
-    let mut req = Request::put(&endpoint(path)).header("Content-Type", "application/json");
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
+    let url = endpoint(path);
+    let auth = auth_header_value().await;
+
+    let mut req = Request::put(&url).header("Content-Type", "application/json");
+    if let Some(ref auth) = auth {
+        req = req.header("Authorization", auth);
     }
     let response = req
         .json(body)
@@ -274,6 +306,33 @@ async fn put_json<B: Serialize, R: serde::de::DeserializeOwned>(
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    // Retry once with fresh token on 401
+    if response.status() == 401 {
+        if let Some(fresh_auth) = auth_header_value().await {
+            let retry_response = Request::put(&url)
+                .header("Content-Type", "application/json")
+                .header("Authorization", &fresh_auth)
+                .json(body)
+                .map_err(|e| ApiError::Deserialize(e.to_string()))?
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))?;
+
+            if !retry_response.ok() {
+                let status = retry_response.status();
+                let msg = parse_error_body(retry_response).await;
+                return Err(ApiError::Server(status, msg));
+            }
+
+            return retry_response
+                .json::<R>()
+                .await
+                .map_err(|e| ApiError::Deserialize(e.to_string()));
+        }
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(401, msg));
+    }
 
     if !response.ok() {
         let status = response.status();
@@ -288,15 +347,40 @@ async fn put_json<B: Serialize, R: serde::de::DeserializeOwned>(
 }
 
 /// DELETE an endpoint. Expects 200 OK with no body needed.
+/// Retries once with a fresh auth token on 401.
 async fn delete(path: &str) -> Result<(), ApiError> {
-    let mut req = Request::delete(&endpoint(path));
-    if let Some(auth) = auth_header_value().await {
-        req = req.header("Authorization", &auth);
+    let url = endpoint(path);
+    let auth = auth_header_value().await;
+
+    let mut req = Request::delete(&url);
+    if let Some(ref auth) = auth {
+        req = req.header("Authorization", auth);
     }
     let response = req
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    // Retry once with fresh token on 401
+    if response.status() == 401 {
+        if let Some(fresh_auth) = auth_header_value().await {
+            let retry_response = Request::delete(&url)
+                .header("Authorization", &fresh_auth)
+                .send()
+                .await
+                .map_err(|e| ApiError::Network(e.to_string()))?;
+
+            if !retry_response.ok() {
+                let status = retry_response.status();
+                let msg = parse_error_body(retry_response).await;
+                return Err(ApiError::Server(status, msg));
+            }
+
+            return Ok(());
+        }
+        let msg = parse_error_body(response).await;
+        return Err(ApiError::Server(401, msg));
+    }
 
     if !response.ok() {
         let status = response.status();

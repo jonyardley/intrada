@@ -38,7 +38,7 @@ async fn main() {
             tracing::info!("Loaded {} JWKS key(s)", keys.len());
             Some(auth::AuthConfig {
                 issuer: issuer_url,
-                decoding_keys: std::sync::Arc::new(keys),
+                decoding_keys: std::sync::Arc::new(tokio::sync::RwLock::new(keys)),
             })
         }
         Err(_) => {
@@ -46,6 +46,18 @@ async fn main() {
             None
         }
     };
+
+    // Spawn background JWKS refresh task (every 60 minutes)
+    if let Some(ref config) = auth_config {
+        let config = config.clone();
+        tokio::spawn(async move {
+            let interval = std::time::Duration::from_secs(60 * 60);
+            loop {
+                tokio::time::sleep(interval).await;
+                config.refresh_jwks().await;
+            }
+        });
+    }
 
     let state = AppState::new(db, allowed_origin, auth_config);
     let router = routes::api_router(state);
