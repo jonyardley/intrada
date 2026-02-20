@@ -94,17 +94,19 @@ pub fn AppHeader() -> impl IntoView {
                     >
                         "Analytics"
                     </A>
-                    <button
-                        on:click=move |_| {
-                            leptos::task::spawn_local(async move {
-                                clerk_bindings::sign_out().await;
-                            });
-                        }
-                        class="text-sm font-medium text-gray-400 hover:text-white motion-safe:transition-colors ml-2"
-                        aria-label="Sign out"
-                    >
-                        "Sign out"
-                    </button>
+                    <Show when=move || clerk_bindings::is_signed_in()>
+                        <button
+                            on:click=move |_| {
+                                leptos::task::spawn_local(async move {
+                                    clerk_bindings::sign_out().await;
+                                });
+                            }
+                            class="text-sm font-medium text-gray-400 hover:text-white motion-safe:transition-colors ml-2"
+                            aria-label="Sign out"
+                        >
+                            "Sign out"
+                        </button>
+                    </Show>
                 </nav>
             </div>
         </header>
