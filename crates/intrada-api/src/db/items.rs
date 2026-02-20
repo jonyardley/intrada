@@ -71,11 +71,13 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
 const SELECT_COLUMNS: &str =
     "id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
 
-pub async fn list_items(conn: &Connection) -> Result<Vec<Item>, ApiError> {
+pub async fn list_items(conn: &Connection, user_id: &str) -> Result<Vec<Item>, ApiError> {
     let mut rows = conn
         .query(
-            &format!("SELECT {SELECT_COLUMNS} FROM items ORDER BY created_at DESC"),
-            (),
+            &format!(
+                "SELECT {SELECT_COLUMNS} FROM items WHERE user_id = ?1 ORDER BY created_at DESC"
+            ),
+            libsql::params![user_id],
         )
         .await?;
 
@@ -90,11 +92,15 @@ pub async fn list_items(conn: &Connection) -> Result<Vec<Item>, ApiError> {
     Ok(items)
 }
 
-pub async fn get_item(conn: &Connection, id: &str) -> Result<Option<Item>, ApiError> {
+pub async fn get_item(
+    conn: &Connection,
+    id: &str,
+    user_id: &str,
+) -> Result<Option<Item>, ApiError> {
     let mut rows = conn
         .query(
-            &format!("SELECT {SELECT_COLUMNS} FROM items WHERE id = ?1"),
-            libsql::params![id],
+            &format!("SELECT {SELECT_COLUMNS} FROM items WHERE id = ?1 AND user_id = ?2"),
+            libsql::params![id, user_id],
         )
         .await?;
 
@@ -108,7 +114,11 @@ pub async fn get_item(conn: &Connection, id: &str) -> Result<Option<Item>, ApiEr
     }
 }
 
-pub async fn insert_item(conn: &Connection, input: &CreateItem) -> Result<Item, ApiError> {
+pub async fn insert_item(
+    conn: &Connection,
+    user_id: &str,
+    input: &CreateItem,
+) -> Result<Item, ApiError> {
     let id = ulid::Ulid::new().to_string();
     let now = Utc::now();
     let now_str = now.to_rfc3339();
@@ -122,8 +132,8 @@ pub async fn insert_item(conn: &Connection, input: &CreateItem) -> Result<Item, 
     let tags_json = tags_to_json(&input.tags);
 
     conn.execute(
-        "INSERT INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        "INSERT INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at, user_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         libsql::params![
             id.as_str(),
             kind_str.as_str(),
@@ -136,7 +146,8 @@ pub async fn insert_item(conn: &Connection, input: &CreateItem) -> Result<Item, 
             input.notes.as_deref(),
             tags_json.as_str(),
             now_str.as_str(),
-            now_str.as_str()
+            now_str.as_str(),
+            user_id
         ],
     )
     .await?;
@@ -159,9 +170,10 @@ pub async fn insert_item(conn: &Connection, input: &CreateItem) -> Result<Item, 
 pub async fn update_item(
     conn: &Connection,
     id: &str,
+    user_id: &str,
     input: &UpdateItem,
 ) -> Result<Option<Item>, ApiError> {
-    let current = match get_item(conn, id).await? {
+    let current = match get_item(conn, id, user_id).await? {
         Some(i) => i,
         None => return Ok(None),
     };
@@ -205,7 +217,7 @@ pub async fn update_item(
     let tags_json = tags_to_json(tags);
 
     conn.execute(
-        "UPDATE items SET title = ?1, composer = ?2, category = ?3, key_signature = ?4, tempo_marking = ?5, tempo_bpm = ?6, notes = ?7, tags = ?8, updated_at = ?9 WHERE id = ?10",
+        "UPDATE items SET title = ?1, composer = ?2, category = ?3, key_signature = ?4, tempo_marking = ?5, tempo_bpm = ?6, notes = ?7, tags = ?8, updated_at = ?9 WHERE id = ?10 AND user_id = ?11",
         libsql::params![
             title.as_str(),
             composer,
@@ -216,7 +228,8 @@ pub async fn update_item(
             notes,
             tags_json.as_str(),
             now_str.as_str(),
-            id
+            id,
+            user_id
         ],
     )
     .await?;
@@ -236,9 +249,12 @@ pub async fn update_item(
     }))
 }
 
-pub async fn delete_item(conn: &Connection, id: &str) -> Result<bool, ApiError> {
+pub async fn delete_item(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
     let rows_affected = conn
-        .execute("DELETE FROM items WHERE id = ?1", libsql::params![id])
+        .execute(
+            "DELETE FROM items WHERE id = ?1 AND user_id = ?2",
+            libsql::params![id, user_id],
+        )
         .await?;
 
     Ok(rows_affected > 0)

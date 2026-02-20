@@ -89,11 +89,11 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
     })
 }
 
-pub async fn list_routines(conn: &Connection) -> Result<Vec<Routine>, ApiError> {
+pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, name, created_at, updated_at FROM routines ORDER BY created_at ASC",
-            (),
+            "SELECT id, name, created_at, updated_at FROM routines WHERE user_id = ?1 ORDER BY created_at ASC",
+            libsql::params![user_id],
         )
         .await?;
 
@@ -110,11 +110,15 @@ pub async fn list_routines(conn: &Connection) -> Result<Vec<Routine>, ApiError> 
     Ok(routines)
 }
 
-pub async fn get_routine(conn: &Connection, id: &str) -> Result<Option<Routine>, ApiError> {
+pub async fn get_routine(
+    conn: &Connection,
+    id: &str,
+    user_id: &str,
+) -> Result<Option<Routine>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, name, created_at, updated_at FROM routines WHERE id = ?1",
-            libsql::params![id],
+            "SELECT id, name, created_at, updated_at FROM routines WHERE id = ?1 AND user_id = ?2",
+            libsql::params![id, user_id],
         )
         .await?;
 
@@ -134,6 +138,7 @@ pub async fn get_routine(conn: &Connection, id: &str) -> Result<Option<Routine>,
 
 pub async fn insert_routine(
     conn: &Connection,
+    user_id: &str,
     input: &CreateRoutineRequest,
 ) -> Result<Routine, ApiError> {
     let id = ulid::Ulid::new().to_string();
@@ -147,13 +152,14 @@ pub async fn insert_routine(
     let result: Result<Routine, ApiError> = async {
         // Insert routine row
         conn.execute(
-            "INSERT INTO routines (id, name, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO routines (id, name, created_at, updated_at, user_id)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             libsql::params![
                 id.as_str(),
                 input.name.as_str(),
                 created_at_str.as_str(),
-                updated_at_str.as_str()
+                updated_at_str.as_str(),
+                user_id
             ],
         )
         .await?;
@@ -210,10 +216,11 @@ pub async fn insert_routine(
 pub async fn update_routine(
     conn: &Connection,
     id: &str,
+    user_id: &str,
     input: &UpdateRoutineRequest,
 ) -> Result<Option<Routine>, ApiError> {
     // Check if routine exists
-    let existing = get_routine(conn, id).await?;
+    let existing = get_routine(conn, id, user_id).await?;
     let existing = match existing {
         Some(r) => r,
         None => return Ok(None),
@@ -227,8 +234,8 @@ pub async fn update_routine(
     let result: Result<Routine, ApiError> = async {
         // Update routine name and updated_at
         conn.execute(
-            "UPDATE routines SET name = ?1, updated_at = ?2 WHERE id = ?3",
-            libsql::params![input.name.as_str(), updated_at_str.as_str(), id],
+            "UPDATE routines SET name = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4",
+            libsql::params![input.name.as_str(), updated_at_str.as_str(), id, user_id],
         )
         .await?;
 
@@ -288,18 +295,27 @@ pub async fn update_routine(
     }
 }
 
-pub async fn delete_routine(conn: &Connection, id: &str) -> Result<bool, ApiError> {
-    // Explicitly delete entries first — SQLite only enforces ON DELETE CASCADE
-    // when PRAGMA foreign_keys = ON, which is off by default.
+pub async fn delete_routine(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
+    // Verify ownership first — only delete entries if the routine belongs to this user.
+    let rows_affected = conn
+        .execute(
+            "DELETE FROM routines WHERE id = ?1 AND user_id = ?2",
+            libsql::params![id, user_id],
+        )
+        .await?;
+
+    if rows_affected == 0 {
+        return Ok(false);
+    }
+
+    // Now safe to delete entries — we confirmed ownership above.
+    // SQLite only enforces ON DELETE CASCADE when PRAGMA foreign_keys = ON,
+    // which is off by default, so we delete explicitly.
     conn.execute(
         "DELETE FROM routine_entries WHERE routine_id = ?1",
         libsql::params![id],
     )
     .await?;
 
-    let rows_affected = conn
-        .execute("DELETE FROM routines WHERE id = ?1", libsql::params![id])
-        .await?;
-
-    Ok(rows_affected > 0)
+    Ok(true)
 }

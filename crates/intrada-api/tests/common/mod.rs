@@ -26,7 +26,7 @@ pub async fn setup_test_app() -> Router {
         .await
         .expect("Failed to run migrations");
 
-    let state = AppState::new(db, "http://localhost:3000".to_string());
+    let state = AppState::new(db, "http://localhost:3000".to_string(), None);
     routes::api_router(state)
 }
 

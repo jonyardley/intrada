@@ -119,6 +119,30 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0012_migrate_exercises_to_items",
         "INSERT OR IGNORE INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at) SELECT id, 'exercise', title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at FROM exercises;",
     ),
+    (
+        "0013_add_user_id_to_items",
+        "ALTER TABLE items ADD COLUMN user_id TEXT NOT NULL DEFAULT '';",
+    ),
+    (
+        "0014_add_user_id_to_sessions",
+        "ALTER TABLE sessions ADD COLUMN user_id TEXT NOT NULL DEFAULT '';",
+    ),
+    (
+        "0015_add_user_id_to_routines",
+        "ALTER TABLE routines ADD COLUMN user_id TEXT NOT NULL DEFAULT '';",
+    ),
+    (
+        "0016_index_items_user_id",
+        "CREATE INDEX IF NOT EXISTS idx_items_user_id ON items(user_id);",
+    ),
+    (
+        "0017_index_sessions_user_id",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);",
+    ),
+    (
+        "0018_index_routines_user_id",
+        "CREATE INDEX IF NOT EXISTS idx_routines_user_id ON routines(user_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

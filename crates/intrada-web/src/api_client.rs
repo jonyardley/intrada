@@ -8,6 +8,8 @@ use serde::Serialize;
 
 use intrada_core::{CreateItem, Item, PracticeSession, Routine, UpdateItem};
 
+use crate::clerk_bindings;
+
 /// Compile-time API base URL with fallback to production.
 const API_BASE_URL: &str = match option_env!("INTRADA_API_URL") {
     Some(url) => url,
@@ -39,6 +41,7 @@ impl ApiError {
             }
             ApiError::Server(status, msg) => match status {
                 400 => msg.clone(),
+                401 => "Your session has expired. Please sign in again.".to_string(),
                 404 => "The requested item was not found.".to_string(),
                 _ => "The server encountered an error. Please try again.".to_string(),
             },
@@ -72,20 +75,31 @@ async fn parse_error_body(response: gloo_net::http::Response) -> String {
     }
 }
 
+/// Get the current auth token (if available) for request headers.
+async fn auth_header_value() -> Option<String> {
+    let token = clerk_bindings::get_auth_token().await?;
+    Some(format!("Bearer {token}"))
+}
+
 // ---------------------------------------------------------------------------
 // Library Operations
 // ---------------------------------------------------------------------------
 
 /// Fetch all items from the API.
 pub async fn fetch_items() -> Result<Vec<Item>, ApiError> {
-    let response = Request::get(&endpoint("/api/items"))
+    let mut req = Request::get(&endpoint("/api/items"));
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
 
     if !response.ok() {
+        let status = response.status();
         let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(0, msg));
+        return Err(ApiError::Server(status, msg));
     }
 
     response
@@ -115,14 +129,19 @@ pub async fn delete_item(id: &str) -> Result<(), ApiError> {
 
 /// Fetch all completed practice sessions from the API.
 pub async fn fetch_sessions() -> Result<Vec<PracticeSession>, ApiError> {
-    let response = Request::get(&endpoint("/api/sessions"))
+    let mut req = Request::get(&endpoint("/api/sessions"));
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
 
     if !response.ok() {
+        let status = response.status();
         let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(0, msg));
+        return Err(ApiError::Server(status, msg));
     }
 
     response
@@ -169,14 +188,19 @@ pub struct UpdateRoutineApiRequest {
 
 /// Fetch all routines from the API.
 pub async fn fetch_routines() -> Result<Vec<Routine>, ApiError> {
-    let response = Request::get(&endpoint("/api/routines"))
+    let mut req = Request::get(&endpoint("/api/routines"));
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;
 
     if !response.ok() {
+        let status = response.status();
         let msg = parse_error_body(response).await;
-        return Err(ApiError::Server(0, msg));
+        return Err(ApiError::Server(status, msg));
     }
 
     response
@@ -212,8 +236,11 @@ async fn post_json<B: Serialize, R: serde::de::DeserializeOwned>(
     path: &str,
     body: &B,
 ) -> Result<R, ApiError> {
-    let response = Request::post(&endpoint(path))
-        .header("Content-Type", "application/json")
+    let mut req = Request::post(&endpoint(path)).header("Content-Type", "application/json");
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .json(body)
         .map_err(|e| ApiError::Deserialize(e.to_string()))?
         .send()
@@ -237,8 +264,11 @@ async fn put_json<B: Serialize, R: serde::de::DeserializeOwned>(
     path: &str,
     body: &B,
 ) -> Result<R, ApiError> {
-    let response = Request::put(&endpoint(path))
-        .header("Content-Type", "application/json")
+    let mut req = Request::put(&endpoint(path)).header("Content-Type", "application/json");
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .json(body)
         .map_err(|e| ApiError::Deserialize(e.to_string()))?
         .send()
@@ -259,7 +289,11 @@ async fn put_json<B: Serialize, R: serde::de::DeserializeOwned>(
 
 /// DELETE an endpoint. Expects 200 OK with no body needed.
 async fn delete(path: &str) -> Result<(), ApiError> {
-    let response = Request::delete(&endpoint(path))
+    let mut req = Request::delete(&endpoint(path));
+    if let Some(auth) = auth_header_value().await {
+        req = req.header("Authorization", &auth);
+    }
+    let response = req
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;

@@ -1,3 +1,4 @@
+use intrada_api::auth;
 use intrada_api::migrations;
 use intrada_api::routes;
 use intrada_api::state::AppState;
@@ -28,7 +29,25 @@ async fn main() {
         .await
         .expect("Failed to run migrations");
 
-    let state = AppState::new(db, allowed_origin);
+    let auth_config = match std::env::var("CLERK_ISSUER_URL") {
+        Ok(issuer_url) => {
+            tracing::info!("Fetching JWKS from {issuer_url}...");
+            let keys = auth::fetch_jwks(&issuer_url)
+                .await
+                .expect("Failed to fetch JWKS");
+            tracing::info!("Loaded {} JWKS key(s)", keys.len());
+            Some(auth::AuthConfig {
+                issuer: issuer_url,
+                decoding_keys: std::sync::Arc::new(keys),
+            })
+        }
+        Err(_) => {
+            tracing::warn!("CLERK_ISSUER_URL not set — auth disabled (all requests pass through)");
+            None
+        }
+    };
+
+    let state = AppState::new(db, allowed_origin, auth_config);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

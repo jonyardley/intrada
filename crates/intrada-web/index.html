@@ -6,6 +6,69 @@
     <title>Intrada</title>
     <link data-trunk rel="rust" data-wasm-opt="z" href="Cargo.toml" />
     <link data-trunk rel="css" href="tailwind-output.css" />
+    <script>
+      // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
+      window.__intrada_auth = {
+        _clerk: null,
+        _ready: false,
+        async init(publishableKey) {
+          if (!publishableKey || this._ready) return;
+          try {
+            const Clerk = window.Clerk;
+            if (!Clerk) return;
+            this._clerk = new Clerk(publishableKey);
+            await this._clerk.load();
+            this._ready = true;
+          } catch (e) {
+            console.error("Clerk init failed:", e);
+          }
+        },
+        isSignedIn() {
+          if (!this._ready || !this._clerk) return false;
+          return !!this._clerk.user;
+        },
+        async getToken() {
+          if (!this._ready || !this._clerk || !this._clerk.session) return null;
+          try {
+            return await this._clerk.session.getToken();
+          } catch (e) {
+            console.error("getToken failed:", e);
+            return null;
+          }
+        },
+        getUserId() {
+          if (!this._ready || !this._clerk || !this._clerk.user) return null;
+          return this._clerk.user.id;
+        },
+        async signOut() {
+          if (!this._ready || !this._clerk) return;
+          await this._clerk.signOut();
+        },
+        async signInWithGoogle() {
+          if (!this._ready || !this._clerk) return;
+          await this._clerk.authenticateWithRedirect({
+            strategy: "oauth_google",
+            redirectUrl: window.location.origin + "/",
+            redirectUrlComplete: window.location.origin + "/",
+          });
+        },
+        addListener(callback) {
+          if (!this._ready || !this._clerk) return;
+          this._clerk.addListener(callback);
+        },
+      };
+    </script>
+    <script
+      async
+      crossorigin="anonymous"
+      data-clerk-publishable-key=""
+      src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+      onload="
+        if (window.__intrada_clerk_key) {
+          window.__intrada_auth.init(window.__intrada_clerk_key);
+        }
+      "
+    ></script>
   </head>
   <body>
     <noscript>

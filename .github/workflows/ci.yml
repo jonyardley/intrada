@@ -55,6 +55,7 @@ jobs:
         working-directory: crates/intrada-web
         env:
           INTRADA_API_URL: https://intrada-api.fly.dev
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: trunk build --release
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4

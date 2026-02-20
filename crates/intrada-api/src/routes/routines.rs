@@ -6,6 +6,7 @@ use axum::{Json, Router};
 use intrada_core::domain::routine::Routine;
 use intrada_core::validation;
 
+use crate::auth::AuthUser;
 use crate::db;
 use crate::db::routines::{CreateRoutineEntry, CreateRoutineRequest, UpdateRoutineRequest};
 use crate::error::ApiError;
@@ -44,18 +45,22 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-async fn list_routines(State(state): State<AppState>) -> Result<Json<Vec<Routine>>, ApiError> {
+async fn list_routines(
+    State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
+) -> Result<Json<Vec<Routine>>, ApiError> {
     let conn = state.db.connect()?;
-    let routines = db::routines::list_routines(&conn).await?;
+    let routines = db::routines::list_routines(&conn, &user_id).await?;
     Ok(Json(routines))
 }
 
 async fn get_routine(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Routine>, ApiError> {
     let conn = state.db.connect()?;
-    let routine = db::routines::get_routine(&conn, &id)
+    let routine = db::routines::get_routine(&conn, &id, &user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Routine not found: {id}")))?;
     Ok(Json(routine))
@@ -63,6 +68,7 @@ async fn get_routine(
 
 async fn create_routine(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Json(input): Json<CreateRoutineRequest>,
 ) -> Result<(StatusCode, Json<Routine>), ApiError> {
     // Validate routine name
@@ -79,12 +85,13 @@ async fn create_routine(
     validate_entries(&input.entries)?;
 
     let conn = state.db.connect()?;
-    let routine = db::routines::insert_routine(&conn, &input).await?;
+    let routine = db::routines::insert_routine(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(routine)))
 }
 
 async fn update_routine(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
     Json(input): Json<UpdateRoutineRequest>,
 ) -> Result<Json<Routine>, ApiError> {
@@ -102,7 +109,7 @@ async fn update_routine(
     validate_entries(&input.entries)?;
 
     let conn = state.db.connect()?;
-    let routine = db::routines::update_routine(&conn, &id, &input)
+    let routine = db::routines::update_routine(&conn, &id, &user_id, &input)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Routine not found: {id}")))?;
     Ok(Json(routine))
@@ -110,10 +117,11 @@ async fn update_routine(
 
 async fn delete_routine(
     State(state): State<AppState>,
+    AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.db.connect()?;
-    let deleted = db::routines::delete_routine(&conn, &id).await?;
+    let deleted = db::routines::delete_routine(&conn, &id, &user_id).await?;
     if deleted {
         Ok(Json(serde_json::json!({ "message": "Routine deleted" })))
     } else {
