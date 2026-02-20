@@ -8,7 +8,8 @@
     <link data-trunk rel="css" href="tailwind-output.css" />
     <script>
       // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
-      window.__intrada_auth = {
+      // Skip if already defined (E2E tests inject a mock via addInitScript)
+      if (!window.__intrada_auth) window.__intrada_auth = {
         _clerk: null,
         _ready: false,
         async init(publishableKey) {
