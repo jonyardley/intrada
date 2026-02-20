@@ -24,9 +24,10 @@ use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
 pub fn App() -> impl IntoView {
-    // Auth state signal — drives the auth gate
+    // Auth state signals — drive the auth gate
     let is_authenticated = RwSignal::new(false);
     let auth_loading = RwSignal::new(true);
+    let auth_error = RwSignal::new(false);
 
     // Initialize Clerk
     clerk_bindings::init_clerk();
@@ -55,8 +56,8 @@ pub fn App() -> impl IntoView {
                 }
                 if clerk_bindings::init_failed() {
                     // Clerk failed to init (bad key, wrong domain, etc.)
-                    // Bypass auth so the app is still usable.
-                    is_authenticated.set(true);
+                    // Show sign-in screen with error message.
+                    auth_error.set(true);
                     auth_loading.set(false);
                     return;
                 }
@@ -88,7 +89,7 @@ pub fn App() -> impl IntoView {
                     view! {
                         <Show
                             when=move || is_authenticated.get()
-                            fallback=move || view! { <SignInScreen /> }
+                            fallback=move || view! { <SignInScreen auth_error=auth_error /> }
                         >
                             <AuthenticatedApp />
                         </Show>
@@ -204,7 +205,7 @@ fn AuthLoadingScreen() -> impl IntoView {
 
 /// Sign-in screen shown when user is not authenticated.
 #[component]
-fn SignInScreen() -> impl IntoView {
+fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
     let signing_in = RwSignal::new(false);
 
     let on_sign_in = move |_| {
@@ -221,9 +222,15 @@ fn SignInScreen() -> impl IntoView {
                 <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">"Intrada"</h1>
                 <p class="text-gray-400 mb-8">"Your music practice companion"</p>
 
+                <Show when=move || auth_error.get()>
+                    <p class="text-red-400 text-sm mb-4">
+                        "Sign-in is temporarily unavailable. Please try again later."
+                    </p>
+                </Show>
+
                 <button
                     on:click=on_sign_in
-                    disabled=move || signing_in.get()
+                    disabled=move || signing_in.get() || auth_error.get()
                     class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl
                            bg-white/10 hover:bg-white/15 border border-white/20
                            text-white font-medium transition-all duration-200
