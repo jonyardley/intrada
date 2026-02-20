@@ -55,36 +55,17 @@ impl FromRequestParts<AppState> for AuthUser {
         // reject all tokens unless an audience is configured.
         validation.validate_aud = false;
 
-        let mut last_err = None;
         for key in auth_config.decoding_keys.iter() {
-            // Wrap decode in catch_unwind to guard against panics in
-            // the underlying crypto library when processing malformed tokens.
-            let token_owned = token.to_owned();
-            let key_clone = key.clone();
-            let validation_clone = validation.clone();
-            let result = std::panic::catch_unwind(move || {
-                decode::<Claims>(&token_owned, &key_clone, &validation_clone)
-            });
-            match result {
-                Ok(Ok(data)) => return Ok(AuthUser(data.claims.sub)),
-                Ok(Err(e)) => {
-                    tracing::debug!("JWT decode error with key: {e}");
-                    last_err = Some(format!("{e}"));
-                    continue;
-                }
-                Err(_) => {
-                    tracing::warn!("JWT decode panicked — treating as invalid token");
-                    last_err = Some("decode panicked".to_string());
+            match decode::<Claims>(token, key, &validation) {
+                Ok(data) => return Ok(AuthUser(data.claims.sub)),
+                Err(e) => {
+                    tracing::debug!("JWT decode error: {e}");
                     continue;
                 }
             }
         }
 
-        let detail = last_err.unwrap_or_else(|| "no keys available".to_string());
-        tracing::warn!("All JWT keys failed. Last error: {detail}");
-        Err(ApiError::Unauthorized(format!(
-            "JWT validation failed: {detail}"
-        )))
+        Err(ApiError::Unauthorized("Unauthorized".to_string()))
     }
 }
 
