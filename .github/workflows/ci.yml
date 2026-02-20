@@ -93,7 +93,7 @@ jobs:
         with:
           node-version: 20
       - name: Download web-dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: web-dist
@@ -128,7 +128,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Download web-dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: web-dist
           path: crates/intrada-web/dist
