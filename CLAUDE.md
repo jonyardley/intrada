@@ -1,61 +1,98 @@
 # intrada Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-02-15
+> **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
+> significant feature lands. Last reviewed: 2026-02-20.
 
-## Active Technologies
-- Rust stable (currently 1.89.0, project minimum 1.75+, 2021 edition) + GitHub Actions, `dtolnay/rust-toolchain@stable`, `Swatinem/rust-cache@v2` (002-ci-cd)
-- Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, crux_core 0.17.0-rc2 (workspace), tailwindcss v4 (standalone CLI), trunk 0.21.x, console_error_panic_hook, wasm-bindgen, ulid, chrono, send_wrapper 0.6, getrandom 0.3 (008-url-routing)
-- localStorage (web: `intrada:library` key, `intrada:sessions` key) (011-json-persistence, 012-practice-sessions)
-- Rust stable (1.75+, 2021 edition) + TypeScript (Playwright E2E tests) + `wasm-bindgen-test` 0.3 (WASM tests), Playwright (E2E tests), existing workspace deps (crux_core, leptos, web-sys) (013-web-testing)
-- Workspace dependencies: crux_core 0.17.0-rc2, serde 1, serde_json 1, ulid 1, chrono 0.4, thiserror 1 (014-remove-cli)
-- Rust stable (1.75+, 2021 edition) + crux_core 0.17.0-rc2 (workspace), leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (Storage+Window), wasm-bindgen, serde/serde_json 1, ulid 1, chrono 0.4, send_wrapper 0.6 (015-rework-sessions)
-- localStorage (web: `intrada:sessions` key for completed sessions, `intrada:session-in-progress` key for crash recovery) (015-rework-sessions)
-- Rust stable (1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, Tailwind CSS v4 (standalone CLI v4.1.18), trunk 0.21.x (016-glassmorphism-responsive)
-- N/A (no storage changes — visual only) (016-glassmorphism-responsive)
-- GitHub Actions YAML (no Rust code changes) + GitHub Actions (checkout@v4, upload-artifact@v4, download-artifact@v4, rust-toolchain, rust-cache@v2, trunk-action, wrangler-action@v3) (019-improve-cicd)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75, axum 0.8 requires 1.78+) + axum 0.8, libsql 0.9 (remote feature), libsql_migration 0.2.2 (content feature), tower-http 0.6 (cors), tokio 1, serde/serde_json 1, ulid 1, chrono 0.4, thiserror 1, tracing 0.1 (020-api-server)
-- Turso (managed libsql/SQLite) via HTTP protocol — `libsql` crate with `remote` feature (020-api-server)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), crux_core 0.17.0-rc2, gloo-net 0.6 (NEW), wasm-bindgen-futures 0.4 (NEW), serde/serde_json 1 (021-api-sync)
-- REST API (Turso/libsql via intrada-api) for pieces, exercises, sessions; localStorage for session-in-progress crash recovery only (021-api-sync)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4 (022-session-scoring)
-- Turso (managed libsql/SQLite) via REST API; localStorage for session-in-progress crash recovery only (022-session-scoring)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), chrono 0.4, serde 1 (023-analytics-dashboard)
-- N/A (read-only — computed from existing session data, no new persistence) (023-analytics-dashboard)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (DOM events), wasm-bindgen (024-form-autocomplete)
-- N/A (no new storage; reads from existing ViewModel populated by API) (024-form-autocomplete)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), leptos_router 0.8.x, axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4 (025-reusable-routines)
-- Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys 0.3 (extended features), wasm-bindgen 0.2 (026-drag-drop-builder)
-- N/A (no storage changes — UI interaction only) (026-drag-drop-builder)
+## Project Overview
+
+intrada is a music practice companion app. Users sign in with Google (via Clerk),
+manage a library of pieces and exercises, run timed practice sessions with scoring,
+build reusable routines, and view analytics.
 
 ## Project Structure
 
 ```text
 crates/
-  intrada-core/   # Pure Crux core (no I/O)
-  intrada-web/    # Web shell (Leptos CSR + WASM)
-  intrada-api/    # REST API server (Axum + Turso)
+  intrada-core/   # Pure Crux core — business logic, no I/O, no side effects
+  intrada-web/    # Web shell — Leptos 0.8 CSR + WASM, Clerk auth UI
+  intrada-api/    # REST API — Axum 0.8 + Turso (libsql), JWT validation
 e2e/              # Playwright E2E tests
 specs/            # SpecKit design artifacts
 ```
 
+## Tech Stack
+
+- **Language**: Rust stable (1.89.0 in CI; workspace MSRV 1.75+, intrada-api requires 1.78+ for axum 0.8)
+- **Core**: crux_core 0.17.0-rc2, serde 1, ulid 1, chrono 0.4, thiserror 1
+- **API**: axum 0.8, tokio 1, libsql 0.9 (remote), tower-http 0.6 (CORS), reqwest 0.12, jsonwebtoken 10 (rust_crypto feature), tracing 0.1
+- **Web**: leptos 0.8.x (CSR), leptos_router 0.8.x, gloo-net 0.6, web-sys 0.3, wasm-bindgen 0.2, send_wrapper 0.6, Tailwind CSS v4 (standalone CLI), trunk 0.21.x
+- **Auth**: Clerk (managed auth, Google OAuth only), @clerk/clerk-js v5 (loaded via CDN)
+- **Database**: Turso (managed libsql/SQLite) via HTTP protocol
+- **Testing**: cargo test (unit/integration), wasm-bindgen-test 0.3, Playwright (E2E)
+- **CI/CD**: GitHub Actions, deploy to Cloudflare Workers (web) + Fly.io (API)
+
+## Authentication
+
+- **Provider**: Clerk with Google OAuth sign-in
+- **API auth**: JWT (RS256) validated against Clerk JWKS (`/.well-known/jwks.json`)
+- **Key refresh**: Background tokio task refreshes JWKS keys every 60 minutes
+- **User isolation**: All DB queries scope by `user_id` from JWT `sub` claim
+- **Auth disabled mode**: When `CLERK_ISSUER_URL` is unset, `AuthUser("")` is returned — all data shares an empty user_id. This is for local dev/test only.
+- **Frontend 401 retry**: API client retries once with a fresh Clerk token on 401
+
+Key files: `intrada-api/src/auth.rs`, `intrada-web/src/clerk_bindings.rs`, `intrada-web/src/api_client.rs`
+
+## Environment Variables
+
+### API server (intrada-api)
+- `TURSO_DATABASE_URL` — required, Turso database URL
+- `TURSO_AUTH_TOKEN` — required, Turso auth token
+- `CLERK_ISSUER_URL` — required in production (e.g. `https://clerk.myintrada.com`), omit to disable auth
+- `ALLOWED_ORIGIN` — CORS origin (default: `http://localhost:8080`)
+- `PORT` — server port (default: `3001`)
+- `RUST_LOG` — tracing filter (default: `info`)
+
+### Web build (intrada-web, compile-time)
+- `CLERK_PUBLISHABLE_KEY` — Clerk publishable key, baked into WASM at build time
+- `INTRADA_API_URL` — API base URL (default: `https://intrada-api.fly.dev`)
+
+## Storage
+
+- **All persistent data** (items, sessions, routines) is stored via the REST API in Turso
+- **localStorage** is used ONLY for `intrada:session-in-progress` crash recovery
+- No other localStorage keys are used — the old `intrada:library` and `intrada:sessions` keys were removed when the API was introduced
+
 ## Commands
 
 ```bash
-cargo fmt --check  # must pass before commit — CI enforces this
-cargo test
-cargo clippy
+cargo fmt --check          # must pass before commit — CI enforces this
+cargo test                 # run all workspace tests
+cargo clippy               # lint check
+cargo test -p intrada-api  # API tests only (includes auth tests)
 ```
+
+## Architecture Patterns
+
+- **Crux core/shell split**: `intrada-core` contains zero I/O. All side effects are represented as enum variants and executed by the web shell. The core must compile on any Rust target without WASM dependencies.
+- **Effect enum**: Currently named `StorageEffect` (historical misnomer — it carries all side effects, not just storage)
+- **API client**: `api_client.rs` has generic helpers (`get_json`, `post_json`, `put_json`, `delete`) with built-in 401 retry
+- **Validation**: `intrada-core/src/validation.rs` is the single source of truth for all validation constants and rules
+- **Database**: Positional column indexing (`row.get(0)`, etc.) with a `SELECT_COLUMNS` const to keep column order in one place
+- **Migrations**: Sequential numbered migrations in `intrada-api/src/migrations.rs`, each must be a single SQL statement
 
 ## Code Style
 
-Rust stable (1.75+, 2021 edition): Follow standard conventions
+- Rust stable, 2021 edition
+- Follow standard Rust conventions
+- `cargo fmt` and `cargo clippy -- -D warnings` must pass
+- No `unwrap()` without justification
 
-## Recent Changes
-- 026-drag-drop-builder: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys 0.3 (extended features), wasm-bindgen 0.2
-- 025-reusable-routines: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), leptos_router 0.8.x, axum 0.8, libsql 0.9, serde 1, ulid 1, chrono 0.4
-- 024-form-autocomplete: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + leptos 0.8.x (CSR), leptos_router 0.8.x, web-sys (DOM events), wasm-bindgen
-- 023-analytics-dashboard: Added Rust stable (1.89.0 in CI; workspace MSRV 1.75+, 2021 edition) + crux_core 0.17.0-rc2, leptos 0.8.x (CSR), chrono 0.4, serde 1
+## Known Tech Debt
 
+- `StorageEffect` should be renamed to `AppEffect` or `SideEffect`
+- Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
+- Legacy `pieces` and `exercises` tables from early migrations still exist in the schema
+- `dependabot.yml` needs `package-ecosystem` set to `"cargo"`
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
