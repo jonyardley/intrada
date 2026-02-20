@@ -36,6 +36,16 @@ pub fn App() -> impl IntoView {
         leptos::task::spawn_local(async move {
             // Give Clerk a moment to initialize, then check status
             // We poll a few times since Clerk loads async from CDN
+            let has_key = option_env!("CLERK_PUBLISHABLE_KEY")
+                .map(|k| !k.is_empty())
+                .unwrap_or(false);
+            if !has_key {
+                // No Clerk key — skip auth gate entirely (dev mode)
+                is_authenticated.set(true);
+                auth_loading.set(false);
+                return;
+            }
+
             for _ in 0..50 {
                 gloo_timers::future::TimeoutFuture::new(100).await;
                 if clerk_bindings::is_signed_in() {
@@ -43,13 +53,9 @@ pub fn App() -> impl IntoView {
                     auth_loading.set(false);
                     return;
                 }
-                // Check if Clerk is at least loaded (even if not signed in)
-                // by seeing if get_user_id returns something vs auth helper being ready
-                let has_key = option_env!("CLERK_PUBLISHABLE_KEY")
-                    .map(|k| !k.is_empty())
-                    .unwrap_or(false);
-                if !has_key {
-                    // No Clerk key — skip auth gate entirely (dev mode)
+                if clerk_bindings::init_failed() {
+                    // Clerk failed to init (bad key, wrong domain, etc.)
+                    // Bypass auth so the app is still usable.
                     is_authenticated.set(true);
                     auth_loading.set(false);
                     return;
