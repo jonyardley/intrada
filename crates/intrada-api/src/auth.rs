@@ -4,6 +4,7 @@ use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::Deserialize;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::error::ApiError;
 use crate::state::AppState;
@@ -11,7 +12,7 @@ use crate::state::AppState;
 #[derive(Clone)]
 pub struct AuthConfig {
     pub issuer: String,
-    pub decoding_keys: Arc<Vec<DecodingKey>>,
+    pub decoding_keys: Arc<RwLock<Vec<DecodingKey>>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,7 +56,8 @@ impl FromRequestParts<AppState> for AuthUser {
         // reject all tokens unless an audience is configured.
         validation.validate_aud = false;
 
-        for key in auth_config.decoding_keys.iter() {
+        let keys = auth_config.decoding_keys.read().await;
+        for key in keys.iter() {
             match decode::<Claims>(token, key, &validation) {
                 Ok(data) => return Ok(AuthUser(data.claims.sub)),
                 Err(e) => {
@@ -69,12 +71,32 @@ impl FromRequestParts<AppState> for AuthUser {
     }
 }
 
+impl AuthConfig {
+    /// Re-fetch JWKS keys from the issuer and replace the cached keys.
+    /// On failure, the existing keys are kept.
+    pub async fn refresh_jwks(&self) {
+        match fetch_jwks(&self.issuer).await {
+            Ok(new_keys) => {
+                let count = new_keys.len();
+                let mut keys = self.decoding_keys.write().await;
+                *keys = new_keys;
+                tracing::info!("JWKS refreshed: {count} key(s) loaded");
+            }
+            Err(e) => {
+                tracing::warn!("JWKS refresh failed (keeping existing keys): {e}");
+            }
+        }
+    }
+}
+
 /// Fetch JWKS from the Clerk issuer URL and return decoding keys.
 ///
 /// Uses `jsonwebtoken::jwk::JwkSet` to deserialize the full JWK objects
 /// and `DecodingKey::from_jwk()` to properly construct keys with all
 /// metadata (kty, alg, use, kid, n, e).
-pub async fn fetch_jwks(issuer_url: &str) -> Result<Vec<DecodingKey>, Box<dyn std::error::Error>> {
+pub async fn fetch_jwks(
+    issuer_url: &str,
+) -> Result<Vec<DecodingKey>, Box<dyn std::error::Error + Send + Sync>> {
     let jwks_url = format!("{}/.well-known/jwks.json", issuer_url.trim_end_matches('/'));
     let jwk_set: JwkSet = reqwest::get(&jwks_url).await?.json().await?;
 
