@@ -1771,7 +1771,7 @@ dependencies = [
  "jsonwebtoken",
  "libsql",
  "libsql_migration",
- "rand 0.8.5",
+ "rand 0.9.2",
  "reqwest",
  "rsa",
  "serde",
