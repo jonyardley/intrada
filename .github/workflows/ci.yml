@@ -51,6 +51,8 @@ jobs:
           curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
           mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+      - name: Force rebuild when env vars change
+        run: touch crates/intrada-web/src/clerk_bindings.rs
       - name: Build WASM (release)
         working-directory: crates/intrada-web
         env:
