@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-02-20T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="User Journey" id="user-journey">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="intrada — User Journey Map" style="text;html=1;fontSize=24;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#1e1b4b;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== AUTHENTICATION FLOW ==================== -->
+        <mxCell id="auth-group" value="Authentication" style="swimlane;startSize=30;fillColor=#e8d5e3;strokeColor=#9673a6;fontStyle=1;fontSize=14;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="460" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="User visits&#xa;myintrada.com" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=11;" vertex="1" parent="auth-group">
+          <mxGeometry x="30" y="50" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="loading" value="Loading Screen&#xa;&#xa;Polls for Clerk.js&#xa;(up to 5 seconds)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;" vertex="1" parent="auth-group">
+          <mxGeometry x="30" y="140" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="auth-check" value="Signed in?" style="rhombus;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" vertex="1" parent="auth-group">
+          <mxGeometry x="185" y="130" width="100" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="signin" value="Sign-In Screen&#xa;&#xa;&quot;Sign in with Google&quot;&#xa;via Clerk OAuth" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;" vertex="1" parent="auth-group">
+          <mxGeometry x="320" y="60" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="authed" value="Authenticated&#xa;App Shell" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="auth-group">
+          <mxGeometry x="320" y="170" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="start" target="loading" parent="auth-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="loading" target="auth-check" parent="auth-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="No" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;fontStyle=1;fontColor=#b85450;" edge="1" source="auth-check" target="signin" parent="auth-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;fontSize=10;fontStyle=1;fontColor=#82b366;" edge="1" source="auth-check" target="authed" parent="auth-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="Google OAuth" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;" edge="1" source="signin" target="authed" parent="auth-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== LIBRARY FLOW ==================== -->
+        <mxCell id="lib-group" value="Library" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="460" height="360" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lib-list" value="Library List (/)&#xa;&#xa;• Item grid (pieces &amp; exercises)&#xa;• Count badge&#xa;• Latest confidence scores&#xa;• Filter by type/key/tags/text" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-group">
+          <mxGeometry x="20" y="50" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lib-add" value="Add Item (/library/new)&#xa;&#xa;• Type tabs: Piece / Exercise&#xa;• Title, Composer, Category&#xa;• Key, Tempo, BPM, Notes&#xa;• Tag chips with autocomplete" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-group">
+          <mxGeometry x="260" y="50" width="180" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lib-detail" value="Item Detail (/library/:id)&#xa;&#xa;• All fields + timestamps&#xa;• Practice summary (if practised)&#xa;• Session count, total minutes&#xa;• Score history (date, X/5)" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-group">
+          <mxGeometry x="20" y="200" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lib-edit" value="Edit Item&#xa;(/library/:id/edit)&#xa;&#xa;• Same form as Add&#xa;• Pre-populated fields" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-group">
+          <mxGeometry x="260" y="200" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="le1" value="Add Item" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="lib-list" target="lib-add" parent="lib-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="le2" value="Click card" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="lib-list" target="lib-detail" parent="lib-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="le3" value="Edit" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="lib-detail" target="lib-edit" parent="lib-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="le4" value="Save" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="lib-add" target="lib-list" parent="lib-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="240" y="105" />
+              <mxPoint x="240" y="40" />
+              <mxPoint x="120" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="le5" value="Save" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;" edge="1" source="lib-edit" target="lib-detail" parent="lib-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== SESSION FLOW ==================== -->
+        <mxCell id="sess-group" value="Practice Sessions" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="540" y="80" width="520" height="670" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sess-list" value="Sessions List (/sessions)&#xa;&#xa;• Session cards (newest first)&#xa;• Duration, item count&#xa;• &quot;Ended Early&quot; badge&#xa;• Per-entry scores &amp; notes&#xa;• Delete with confirmation" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="sess-group">
+          <mxGeometry x="20" y="50" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sess-build" value="Setlist Builder (/sessions/new)&#xa;&#xa;• Drag-and-drop entry ordering&#xa;• Add items from library list&#xa;• Load from saved routine&#xa;• Save setlist as new routine&#xa;• Up/Down/Remove controls" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="sess-group">
+          <mxGeometry x="280" y="50" width="210" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sess-active" value="Active Session (/sessions/active)&#xa;&#xa;• Current item card (N of M)&#xa;• Live countdown timer (MM:SS)&#xa;• &quot;Next Item&quot; / &quot;Skip&quot; buttons&#xa;• &quot;End Early&quot; danger button&#xa;• Completed items list below&#xa;• Crash recovery via localStorage" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="sess-group">
+          <mxGeometry x="150" y="240" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sess-summary" value="Session Summary (/sessions/summary)&#xa;&#xa;• Total duration + &quot;Ended Early&quot; badge&#xa;• Per-entry: status, duration, notes&#xa;• Confidence score buttons (1-5)&#xa;  per completed entry&#xa;• Session notes textarea&#xa;• Save as Routine option&#xa;• Save / Discard buttons" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="sess-group">
+          <mxGeometry x="130" y="440" width="260" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="se1" value="New Session" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="sess-list" target="sess-build" parent="sess-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se2" value="Start Session&#xa;(auto-navigate)" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=1;fontColor=#82b366;" edge="1" source="sess-build" target="sess-active" parent="sess-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se3" value="All items done /&#xa;End Early&#xa;(auto-navigate)" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=1;fontColor=#82b366;" edge="1" source="sess-active" target="sess-summary" parent="sess-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="se4" value="Save / Discard&#xa;(auto-navigate)" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=1;fontColor=#82b366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="sess-summary" target="sess-list" parent="sess-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="520" />
+              <mxPoint x="60" y="110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="se5" value="Cancel" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;exitX=0;exitY=0;exitDx=0;exitDy=0;" edge="1" source="sess-build" target="sess-list" parent="sess-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="40" />
+              <mxPoint x="120" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- State machine labels -->
+        <mxCell id="sm-idle" value="IDLE" style="text;fontSize=9;fontStyle=1;fontColor=#82b366;fillColor=none;strokeColor=none;" vertex="1" parent="sess-group">
+          <mxGeometry x="20" y="175" width="40" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sm-building" value="BUILDING" style="text;fontSize=9;fontStyle=1;fontColor=#d6b656;fillColor=none;strokeColor=none;" vertex="1" parent="sess-group">
+          <mxGeometry x="350" y="175" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sm-active" value="ACTIVE" style="text;fontSize=9;fontStyle=1;fontColor=#b85450;fillColor=none;strokeColor=none;" vertex="1" parent="sess-group">
+          <mxGeometry x="370" y="300" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sm-summary" value="SUMMARY" style="text;fontSize=9;fontStyle=1;fontColor=#9673a6;fillColor=none;strokeColor=none;" vertex="1" parent="sess-group">
+          <mxGeometry x="390" y="510" width="60" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== ROUTINES FLOW ==================== -->
+        <mxCell id="rtn-group" value="Routines" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="460" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rtn-list" value="Routines List (/routines)&#xa;&#xa;• Saved setlist templates&#xa;• Name, entry count, item list&#xa;• Edit / Delete per routine" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="rtn-group">
+          <mxGeometry x="20" y="50" width="190" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rtn-edit" value="Edit Routine (/routines/:id/edit)&#xa;&#xa;• Name field&#xa;• Drag-and-drop entry reorder&#xa;• Add items from library&#xa;• Remove entries" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="rtn-group">
+          <mxGeometry x="250" y="50" width="190" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rtn-note" value="Routines can also be created&#xa;from the Setlist Builder or&#xa;Session Summary screens" style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#7c6f64;align=center;" vertex="1" parent="rtn-group">
+          <mxGeometry x="80" y="190" width="220" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="re1" value="Edit" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="rtn-list" target="rtn-edit" parent="rtn-group">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="re2" value="Save" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="rtn-edit" target="rtn-list" parent="rtn-group">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="345" y="170" />
+              <mxPoint x="115" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ==================== ANALYTICS FLOW ==================== -->
+        <mxCell id="ana-group" value="Analytics" style="swimlane;startSize=30;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;rounded=1;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="390" width="460" height="360" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ana-dash" value="Analytics Dashboard (/analytics)&#xa;&#xa;Overview Stats (3 cards):&#xa;• This Week — total practice time&#xa;• Sessions — count this week&#xa;• Streak — consecutive practice days" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ana-group">
+          <mxGeometry x="20" y="50" width="210" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ana-chart" value="Practice History (28 days)&#xa;&#xa;• Line chart of daily minutes&#xa;• 28 data points" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ana-group">
+          <mxGeometry x="250" y="50" width="190" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ana-top" value="Most Practised&#xa;&#xa;• Top 10 items by time&#xa;• Session count per item" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ana-group">
+          <mxGeometry x="20" y="200" width="210" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ana-scores" value="Score Trends&#xa;&#xa;• Top 5 scored items&#xa;• Coloured dot history (1-5)&#xa;• Latest score highlighted" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ana-group">
+          <mxGeometry x="250" y="200" width="190" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ana-note" value="Read-only — computed from&#xa;session data on every render.&#xa;No additional API calls." style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#7c6f64;align=center;" vertex="1" parent="ana-group">
+          <mxGeometry x="120" y="300" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CROSS-FLOW CONNECTIONS ==================== -->
+
+        <!-- Auth -> Library -->
+        <mxCell id="x1" value="Home" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=1;strokeColor=#82b366;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" source="authed" target="lib-list" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="370" />
+              <mxPoint x="160" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Routines <-> Sessions (load routine into builder) -->
+        <mxCell id="x2" value="Load routine&#xa;into builder" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;strokeColor=#d6b656;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.3;entryDx=0;entryDy=0;" edge="1" source="rtn-list" target="sess-build" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="230" />
+              <mxPoint x="1080" y="166" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Sessions -> Routines (save as routine) -->
+        <mxCell id="x3" value="Save as&#xa;routine" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;strokeColor=#9673a6;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.7;entryDx=0;entryDy=0;" edge="1" source="sess-build" target="rtn-list" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1090" y="199" />
+              <mxPoint x="1090" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Navigation bar label -->
+        <mxCell id="nav-label" value="Bottom Tab Bar (mobile) / Header Nav (desktop):  Library  |  Sessions  |  Routines  |  Analytics" style="text;fontSize=11;fontStyle=1;align=center;fillColor=#f5f5f5;strokeColor=#666666;rounded=1;spacingLeft=10;spacingRight=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="340" y="790" width="920" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-title" value="Legend" style="text;fontSize=11;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="60" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-solid" value="— User action" style="text;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="810" width="100" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-dashed" value="- - Auto-navigate / return" style="text;fontSize=9;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="826" width="150" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-states" value="Session states: IDLE → BUILDING → ACTIVE → SUMMARY → IDLE" style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="842" width="320" height="16" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
