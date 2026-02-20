@@ -16,6 +16,17 @@
         async init(publishableKey) {
           if (!publishableKey || this._ready) return;
           try {
+            // Dynamically load Clerk SDK to prevent auto-init
+            if (!window.Clerk) {
+              await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+                s.crossOrigin = 'anonymous';
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
             const Clerk = window.Clerk;
             if (!Clerk) { this._initFailed = true; return; }
             this._clerk = new Clerk(publishableKey);
@@ -64,16 +75,6 @@
         },
       };
     </script>
-    <script
-      async
-      crossorigin="anonymous"
-      src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
-      onload="
-        if (window.__intrada_clerk_key) {
-          window.__intrada_auth.init(window.__intrada_clerk_key);
-        }
-      "
-    ></script>
   </head>
   <body>
     <noscript>

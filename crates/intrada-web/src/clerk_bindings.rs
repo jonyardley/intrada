@@ -8,7 +8,6 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(inline_js = "
     export function js_init_clerk(key) {
         if (window.__intrada_auth) {
-            window.__intrada_clerk_key = key;
             window.__intrada_auth.init(key);
         }
     }
