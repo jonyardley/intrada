@@ -1,5 +1,6 @@
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
+use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -50,10 +51,11 @@ impl FromRequestParts<AppState> for AuthUser {
         let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
         validation.set_issuer(&[&auth_config.issuer]);
         // Clerk tokens include an `aud` claim but we don't validate a specific
-        // audience. jsonwebtoken v9 defaults validate_aud = true, which would
+        // audience. jsonwebtoken v10 defaults validate_aud = true, which would
         // reject all tokens unless an audience is configured.
         validation.validate_aud = false;
 
+        let mut last_err = None;
         for key in auth_config.decoding_keys.iter() {
             // Wrap decode in catch_unwind to guard against panics in
             // the underlying crypto library when processing malformed tokens.
@@ -65,42 +67,52 @@ impl FromRequestParts<AppState> for AuthUser {
             });
             match result {
                 Ok(Ok(data)) => return Ok(AuthUser(data.claims.sub)),
-                Ok(Err(_)) => continue,
+                Ok(Err(e)) => {
+                    tracing::debug!("JWT decode error with key: {e}");
+                    last_err = Some(format!("{e}"));
+                    continue;
+                }
                 Err(_) => {
                     tracing::warn!("JWT decode panicked — treating as invalid token");
+                    last_err = Some("decode panicked".to_string());
                     continue;
                 }
             }
         }
 
+        if let Some(err) = last_err {
+            tracing::warn!("All JWT keys failed. Last error: {err}");
+        }
         Err(ApiError::Unauthorized("Unauthorized".to_string()))
     }
 }
 
-#[derive(Deserialize)]
-struct JwksResponse {
-    keys: Vec<JwkKey>,
-}
-
-#[derive(Deserialize)]
-struct JwkKey {
-    n: String,
-    e: String,
-}
-
 /// Fetch JWKS from the Clerk issuer URL and return decoding keys.
+///
+/// Uses `jsonwebtoken::jwk::JwkSet` to deserialize the full JWK objects
+/// and `DecodingKey::from_jwk()` to properly construct keys with all
+/// metadata (kty, alg, use, kid, n, e).
 pub async fn fetch_jwks(issuer_url: &str) -> Result<Vec<DecodingKey>, Box<dyn std::error::Error>> {
     let jwks_url = format!("{}/.well-known/jwks.json", issuer_url.trim_end_matches('/'));
-    let resp: JwksResponse = reqwest::get(&jwks_url).await?.json().await?;
+    let jwk_set: JwkSet = reqwest::get(&jwks_url).await?.json().await?;
 
-    let keys: Vec<DecodingKey> = resp
-        .keys
-        .iter()
-        .filter_map(|k| DecodingKey::from_rsa_components(&k.n, &k.e).ok())
-        .collect();
+    tracing::info!("JWKS contains {} key(s)", jwk_set.keys.len());
+
+    let mut keys = Vec::new();
+    for jwk in &jwk_set.keys {
+        match DecodingKey::from_jwk(jwk) {
+            Ok(key) => {
+                tracing::info!("Loaded JWK key successfully");
+                keys.push(key);
+            }
+            Err(e) => {
+                tracing::warn!("Skipping JWK key: {e}");
+            }
+        }
+    }
 
     if keys.is_empty() {
-        return Err("No valid RSA keys found in JWKS".into());
+        return Err("No valid keys found in JWKS".into());
     }
 
     Ok(keys)
