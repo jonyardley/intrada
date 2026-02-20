@@ -55,8 +55,21 @@ impl FromRequestParts<AppState> for AuthUser {
         validation.validate_aud = false;
 
         for key in auth_config.decoding_keys.iter() {
-            if let Ok(data) = decode::<Claims>(token, key, &validation) {
-                return Ok(AuthUser(data.claims.sub));
+            // Wrap decode in catch_unwind to guard against panics in
+            // the underlying crypto library when processing malformed tokens.
+            let token_owned = token.to_owned();
+            let key_clone = key.clone();
+            let validation_clone = validation.clone();
+            let result = std::panic::catch_unwind(move || {
+                decode::<Claims>(&token_owned, &key_clone, &validation_clone)
+            });
+            match result {
+                Ok(Ok(data)) => return Ok(AuthUser(data.claims.sub)),
+                Ok(Err(_)) => continue,
+                Err(_) => {
+                    tracing::warn!("JWT decode panicked — treating as invalid token");
+                    continue;
+                }
             }
         }
 
