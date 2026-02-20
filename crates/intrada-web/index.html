@@ -16,7 +16,9 @@
         async init(publishableKey) {
           if (!publishableKey || this._ready) return;
           try {
-            // Dynamically load Clerk SDK to prevent auto-init
+            // Set the key globally BEFORE loading the SDK so its
+            // auto-init picks it up instead of throwing "Missing publishableKey".
+            window.__clerk_publishable_key = publishableKey;
             if (!window.Clerk) {
               await new Promise((resolve, reject) => {
                 const s = document.createElement('script');
@@ -27,10 +29,15 @@
                 document.head.appendChild(s);
               });
             }
-            const Clerk = window.Clerk;
-            if (!Clerk) { this._initFailed = true; return; }
-            this._clerk = new Clerk(publishableKey);
-            await this._clerk.load();
+            // After the SDK auto-inits, window.Clerk is the ready instance
+            const clerk = window.Clerk;
+            if (!clerk) { this._initFailed = true; return; }
+            // If Clerk auto-initialized, it may already be loaded;
+            // if not (constructor form), call load().
+            if (typeof clerk.load === 'function' && !clerk.loaded) {
+              await clerk.load();
+            }
+            this._clerk = clerk;
             this._ready = true;
           } catch (e) {
             console.error("Clerk init failed:", e);
