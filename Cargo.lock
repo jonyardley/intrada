@@ -1776,7 +1776,7 @@ dependencies = [
  "rsa",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tokio",
  "tower 0.5.3",
  "tower-http 0.6.8",
@@ -1793,7 +1793,7 @@ dependencies = [
  "crux_core",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "ulid",
 ]
 
