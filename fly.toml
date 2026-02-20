@@ -12,6 +12,7 @@ primary_region = 'lhr'
 [env]
   RUST_LOG = 'info'
   PORT = '8080'
+  CLERK_ISSUER_URL = 'https://clerk.myintrada.com'
 
 [http_service]
   internal_port = 8080
