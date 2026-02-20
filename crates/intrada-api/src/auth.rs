@@ -80,10 +80,11 @@ impl FromRequestParts<AppState> for AuthUser {
             }
         }
 
-        if let Some(err) = last_err {
-            tracing::warn!("All JWT keys failed. Last error: {err}");
-        }
-        Err(ApiError::Unauthorized("Unauthorized".to_string()))
+        let detail = last_err.unwrap_or_else(|| "no keys available".to_string());
+        tracing::warn!("All JWT keys failed. Last error: {detail}");
+        Err(ApiError::Unauthorized(format!(
+            "JWT validation failed: {detail}"
+        )))
     }
 }
 
