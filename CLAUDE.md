@@ -129,8 +129,6 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 |-----------------|-------------------------------------------|
 | `PageHeading`   | Top-level page title (serif heading font) |
 | `Card`          | Glassmorphism container                   |
-| `CardTitle`     | Card subsection heading                   |
-| `SectionTitle`  | Larger section heading inside a card      |
 | `StatCard`      | Metric display (title + value + subtitle) |
 | `FieldLabel`    | `<dt>` label for definition lists         |
 | `TextField`     | Form input with label + hint + error      |

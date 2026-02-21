@@ -3,7 +3,7 @@ use leptos_router::components::A;
 
 use intrada_core::ViewModel;
 
-use crate::components::{LibraryItemCard, PageHeading};
+use crate::components::LibraryItemCard;
 use intrada_web::types::IsLoading;
 
 #[component]
