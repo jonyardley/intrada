@@ -413,9 +413,10 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             entry.rep_target = target;
-            // Clear count/reached when changing target in building phase
+            // Clear all rep state when changing target in building phase
             entry.rep_count = None;
             entry.rep_target_reached = None;
+            entry.rep_history = None;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -585,20 +586,21 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
+            // If this was the last item, transition to Summary
+            // (transition_to_summary handles duration, status, and freeze)
+            if active.current_index >= active.entries.len() - 1 {
+                let summary = transition_to_summary(active, now, CompletionStatus::Completed);
+                model.session_status = SessionStatus::Summary(summary);
+                model.last_error = None;
+                return crux_core::render::render();
+            }
+
             let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
 
             if let Some(entry) = active.entries.get_mut(active.current_index) {
                 entry.duration_secs = elapsed;
                 entry.status = EntryStatus::Completed;
                 freeze_rep_state(entry);
-            }
-
-            // If this was the last item, transition to Summary
-            if active.current_index >= active.entries.len() - 1 {
-                let summary = transition_to_summary(active, now, CompletionStatus::Completed);
-                model.session_status = SessionStatus::Summary(summary);
-                model.last_error = None;
-                return crux_core::render::render();
             }
 
             active.current_index += 1;

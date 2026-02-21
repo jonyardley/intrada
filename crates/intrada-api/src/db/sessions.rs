@@ -281,7 +281,9 @@ pub async fn insert_session(
             let rep_history_json: Option<String> = entry
                 .rep_history
                 .as_ref()
-                .map(|h| serde_json::to_string(h).unwrap_or_default());
+                .map(serde_json::to_string)
+                .transpose()
+                .map_err(|e| ApiError::Internal(format!("Failed to serialise rep_history: {e}")))?;
             conn.execute(
                 "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
