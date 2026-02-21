@@ -57,7 +57,7 @@ pub fn SetlistEntryRow(
             </span>
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-white truncate">{entry.item_title}</span>
+                    <span class="text-sm font-medium text-primary truncate">{entry.item_title}</span>
                     <TypeBadge item_type=entry.item_type />
                 </div>
                 {if !entry.duration_display.is_empty() && entry.duration_display != "0s" {

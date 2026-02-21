@@ -166,7 +166,7 @@ pub fn Autocomplete(
             <input
                 id=id
                 type="text"
-                class="w-full rounded-lg border border-border-input bg-surface-input px-3 py-2.5 text-sm text-white placeholder-muted focus:border-accent-focus focus:ring-1 focus:ring-accent-focus"
+                class="w-full rounded-lg border border-border-input bg-surface-input px-3 py-2.5 text-sm text-primary placeholder-muted focus:border-accent-focus focus:ring-1 focus:ring-accent-focus"
                 placeholder=placeholder.unwrap_or("")
                 prop:value=move || value.get()
                 on:input=move |ev| {

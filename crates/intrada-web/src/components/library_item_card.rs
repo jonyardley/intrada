@@ -24,8 +24,8 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
     let href = format!("/library/{id}");
 
     view! {
-        <li class="bg-surface-fallback supports-backdrop:bg-surface-secondary rounded-xl border border-border-default hover:bg-surface-primary motion-safe:transition-colors">
-            <A href=href attr:class="block p-5">
+        <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
+            <A href=href attr:class="block p-card sm:p-card-comfortable">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         // Identity cluster: title + composer tightly grouped (audit #12)

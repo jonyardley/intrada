@@ -130,7 +130,7 @@ fn SessionRow(
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                        <span class="text-sm font-medium text-white">
+                                        <span class="text-sm font-medium text-primary">
                                             {total_duration}
                                         </span>
                                         <span class="text-xs text-muted">

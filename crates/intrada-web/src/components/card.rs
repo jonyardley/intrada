@@ -7,7 +7,7 @@ use leptos::prelude::*;
 #[component]
 pub fn Card(children: Children) -> impl IntoView {
     view! {
-        <div class="glass-card p-4 sm:p-6">
+        <div class="glass-card p-card sm:p-card-comfortable">
             {children()}
         </div>
     }

@@ -145,7 +145,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                             <span class="text-xs text-faint w-5 text-right shrink-0">
                                                 {format!("{}.", i + 1)}
                                             </span>
-                                            <span class="text-sm text-white truncate">
+                                            <span class="text-sm text-primary truncate">
                                                 {item.item_title.clone()}
                                             </span>
                                             <span class="text-xs text-faint shrink-0">
@@ -185,7 +185,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                 view! {
                                     <li class="py-1.5 border-b border-border-default/50 last:border-0">
                                         <div class="flex items-center justify-between mb-1">
-                                            <span class="text-sm text-white truncate">
+                                            <span class="text-sm text-primary truncate">
                                                 {trend.item_title.clone()}
                                             </span>
                                             <span class="text-sm font-medium text-accent-text">
