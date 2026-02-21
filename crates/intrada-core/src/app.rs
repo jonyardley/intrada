@@ -36,12 +36,12 @@ pub enum Event {
 /// Side effects the core requests from shells.
 pub enum Effect {
     Render(Request<RenderOperation>),
-    Storage(Box<Request<StorageEffect>>),
+    App(Box<Request<AppEffect>>),
 }
 
-/// Storage operations handled by the shell.
+/// Side-effect operations handled by the shell (HTTP API calls, localStorage).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum StorageEffect {
+pub enum AppEffect {
     LoadAll,
     SaveItem(Item),
     UpdateItem(Item),
@@ -56,7 +56,7 @@ pub enum StorageEffect {
     DeleteRoutine { id: String },
 }
 
-impl Operation for StorageEffect {
+impl Operation for AppEffect {
     type Output = ();
 }
 
@@ -68,9 +68,9 @@ impl From<Request<RenderOperation>> for Effect {
     }
 }
 
-impl From<Request<StorageEffect>> for Effect {
-    fn from(request: Request<StorageEffect>) -> Self {
-        Effect::Storage(Box::new(request))
+impl From<Request<AppEffect>> for Effect {
+    fn from(request: Request<AppEffect>) -> Self {
+        Effect::App(Box::new(request))
     }
 }
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::types::{CreateItem, Tempo, UpdateItem};
-use crate::app::{Effect, Event, StorageEffect};
+use crate::app::{AppEffect, Effect, Event};
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
@@ -77,7 +77,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
+                Command::notify_shell(AppEffect::SaveItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -118,7 +118,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
+                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -132,7 +132,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteItem { id }).into(),
+                Command::notify_shell(AppEffect::DeleteItem { id }).into(),
                 crux_core::render::render(),
             ])
         }
@@ -158,7 +158,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
+                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -176,7 +176,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(StorageEffect::UpdateItem(item)).into(),
+                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
                 crux_core::render::render(),
             ])
         }

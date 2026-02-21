@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Effect, Event, StorageEffect};
+use crate::app::{AppEffect, Effect, Event};
 use crate::domain::session::{EntryStatus, SessionStatus, SetlistEntry};
 use crate::model::Model;
 use crate::validation;
@@ -103,7 +103,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SaveRoutine(routine)).into(),
+                Command::notify_shell(AppEffect::SaveRoutine(routine)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -155,7 +155,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SaveRoutine(routine)).into(),
+                Command::notify_shell(AppEffect::SaveRoutine(routine)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -209,7 +209,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeleteRoutine { id }).into(),
+                Command::notify_shell(AppEffect::DeleteRoutine { id }).into(),
                 crux_core::render::render(),
             ])
         }
@@ -249,7 +249,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::UpdateRoutine(updated)).into(),
+                Command::notify_shell(AppEffect::UpdateRoutine(updated)).into(),
                 crux_core::render::render(),
             ])
         }
