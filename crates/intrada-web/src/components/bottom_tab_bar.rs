@@ -42,9 +42,9 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/"
                     attr:class=move || {
                         if is_library_active() {
-                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center"
                         } else {
-                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
                         }
                     }
                     attr:aria-current=move || if is_library_active() { Some("page") } else { None }
@@ -67,9 +67,9 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/sessions"
                     attr:class=move || {
                         if is_sessions_active() {
-                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center"
                         } else {
-                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
                         }
                     }
                     attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
@@ -96,9 +96,9 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/routines"
                     attr:class=move || {
                         if is_routines_active() {
-                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center"
                         } else {
-                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
                         }
                     }
                     attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
@@ -125,9 +125,9 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/analytics"
                     attr:class=move || {
                         if is_analytics_active() {
-                            "flex flex-col items-center gap-0.5 text-indigo-300 min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center"
                         } else {
-                            "flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-300 motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
                         }
                     }
                     attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }

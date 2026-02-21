@@ -23,6 +23,7 @@ pub mod stat_card;
 pub mod tag_input;
 pub mod text_area;
 pub mod text_field;
+pub mod toast;
 pub mod type_badge;
 pub mod type_tabs;
 
@@ -51,5 +52,6 @@ pub use stat_card::StatCard;
 pub use tag_input::TagInput;
 pub use text_area::TextArea;
 pub use text_field::TextField;
+pub use toast::{Toast, ToastVariant};
 pub use type_badge::TypeBadge;
 pub use type_tabs::TypeTabs;

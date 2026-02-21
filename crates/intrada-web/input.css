@@ -13,30 +13,69 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── Surface colours (backgrounds) ── */
-  --color-surface-primary: oklch(100% 0 0 / 10%);       /* white/10 — glass cards */
+  /* ── Surface colours (backgrounds) ──
+     Tiers increase in lightness: secondary < primary < hover.
+     Minimum 6% gap between adjacent tiers for fast visual parsing
+     during practice sessions (audit #5). */
+  --color-surface-primary: oklch(100% 0 0 / 12%);       /* white/12 — glass cards */
   --color-surface-secondary: oklch(100% 0 0 / 5%);      /* white/5  — subtle cards, skeletons */
   --color-surface-chrome: oklch(15.6% 0.011 261.692 / 60%); /* gray-900/60 — header, tab bar */
   --color-surface-fallback: oklch(25.7% 0.09 281.288 / 80%); /* indigo-950/80 — no-blur fallback */
-  --color-surface-hover: oklch(100% 0 0 / 20%);         /* white/20 — hover states */
+  --color-surface-hover: oklch(100% 0 0 / 22%);         /* white/22 — hover states */
   --color-surface-input: oklch(100% 0 0 / 10%);         /* white/10 — form inputs */
 
-  /* ── Accent colours (indigo) ── */
-  --color-accent: oklch(51.1% 0.262 276.966);           /* indigo-600 — primary buttons, active tabs */
-  --color-accent-hover: oklch(58.5% 0.233 277.117);     /* indigo-500 — button hover */
-  --color-accent-text: oklch(78.5% 0.115 274.713);      /* indigo-300 — active nav, links */
-  --color-accent-focus: oklch(67.3% 0.182 276.935);     /* indigo-400 — focus rings */
+  /* ── Accent colours (warm indigo) ──
+     Shifted toward blue-violet with reduced chroma for a warmer,
+     less "digital" feel (audit #1). */
+  --color-accent: oklch(50.5% 0.24 274);                /* warm indigo — primary buttons, active tabs */
+  --color-accent-hover: oklch(58% 0.22 274);            /* lighter warm indigo — button hover */
+  --color-accent-text: oklch(78% 0.11 274);             /* warm indigo-300 — active nav, links */
+  --color-accent-focus: oklch(66% 0.17 274);            /* warm indigo-400 — focus rings */
 
-  /* ── Danger colours (red) ── */
-  --color-danger: oklch(57.7% 0.245 27.325);            /* red-600 — danger buttons */
-  --color-danger-hover: oklch(63.7% 0.237 25.331);      /* red-500 — danger hover */
-  --color-danger-text: oklch(70.4% 0.191 22.216);       /* red-400 — danger text, outlines */
-  --color-danger-surface: oklch(63.7% 0.237 25.331 / 10%); /* red-500/10 — danger backgrounds */
+  /* ── Warm accent colours (gold/amber) ──
+     Secondary accent for achievements, milestones, streaks.
+     Maps to the visual vocabulary musicians recognise: gold foil,
+     brass keys, amber stage light (audit #2). */
+  --color-warm-accent: oklch(70% 0.12 78);              /* muted gold — achievements, streaks */
+  --color-warm-accent-hover: oklch(76% 0.10 78);        /* lighter gold — hover */
+  --color-warm-accent-text: oklch(84% 0.08 80);         /* gold text on dark backgrounds */
+  --color-warm-accent-surface: oklch(70% 0.12 78 / 12%); /* subtle gold background */
+
+  /* ── Success colours (warm green) ──
+     For progress, mastery, and positive feedback. Distinct from
+     the exercise badge colour (audit #3). */
+  --color-success: oklch(62% 0.16 158);                 /* warm teal-green — positive actions */
+  --color-success-hover: oklch(68% 0.14 158);           /* lighter green — hover */
+  --color-success-text: oklch(79% 0.12 160);            /* green text on dark backgrounds */
+  --color-success-surface: oklch(62% 0.16 158 / 10%);   /* subtle green background */
+
+  /* ── Warning colours (amber) ──
+     More orange than warm accent. For alerts that need attention
+     but aren't errors (audit #18). */
+  --color-warning: oklch(74% 0.14 62);                  /* amber — "heads up" */
+  --color-warning-text: oklch(83% 0.11 65);             /* amber text */
+  --color-warning-surface: oklch(74% 0.14 62 / 10%);    /* subtle amber background */
+
+  /* ── Info colours (blue) ──
+     Neutral informational tone, distinct from accent indigo
+     (audit #18). */
+  --color-info: oklch(62% 0.14 238);                    /* clear blue — informational */
+  --color-info-text: oklch(79% 0.11 240);               /* blue text */
+  --color-info-surface: oklch(62% 0.14 238 / 10%);      /* subtle blue background */
+
+  /* ── Danger colours (coral) ──
+     Softened from pure red to warm coral. Says "heads up" not
+     "you failed" — kinder in ADHD-inclusive practice context
+     (audit #4). */
+  --color-danger: oklch(63% 0.17 18);                   /* warm coral — danger actions */
+  --color-danger-hover: oklch(69% 0.15 18);             /* lighter coral — hover */
+  --color-danger-text: oklch(77% 0.13 16);              /* coral text on dark backgrounds */
+  --color-danger-surface: oklch(63% 0.17 18 / 10%);     /* subtle coral background */
 
   /* ── Border colours ── */
   --color-border-default: oklch(100% 0 0 / 10%);        /* white/10 — separators, list borders */
   --color-border-card: oklch(100% 0 0 / 15%);           /* white/15 — card borders (slightly visible) */
-  --color-border-input: oklch(100% 0 0 / 12%);          /* white/12 — form input borders (subtle against glass cards) */
+  --color-border-input: oklch(100% 0 0 / 12%);          /* white/12 — form input borders */
 
   /* ── Text colours ── */
   --color-text-primary: oklch(100% 0 0);                 /* white — headings, titles */
@@ -45,19 +84,31 @@
   --color-text-muted: oklch(70.4% 0.04 256.788);        /* gray-400 — hints, metadata */
   --color-text-faint: oklch(55.4% 0.046 257.417);       /* gray-500 — footer, timestamps */
 
-  /* ── Badge colours ── */
-  --color-badge-piece-bg: oklch(60.6% 0.25 292.717 / 20%);   /* violet-500/20 */
-  --color-badge-piece-text: oklch(81.1% 0.111 293.571);       /* violet-300 */
-  --color-badge-exercise-bg: oklch(69.6% 0.17 162.48 / 20%);  /* emerald-500/20 */
-  --color-badge-exercise-text: oklch(84.5% 0.143 164.978);    /* emerald-300 */
+  /* ── Badge colours ──
+     Rebalanced for equal visual weight between type badges.
+     Piece uses accent-derived tones, exercise uses warm-accent-derived
+     tones (audit #16). */
+  --color-badge-piece-bg: oklch(50.5% 0.24 274 / 18%);  /* accent indigo/18 */
+  --color-badge-piece-text: oklch(78% 0.11 274);         /* accent text */
+  --color-badge-exercise-bg: oklch(70% 0.12 78 / 18%);   /* warm gold/18 */
+  --color-badge-exercise-text: oklch(84% 0.08 80);        /* warm gold text */
 
-  /* ── Chart colours (used as var() in SVG attributes) ── */
-  --color-chart-line: oklch(67.3% 0.182 276.935);       /* indigo-400 */
-  --color-chart-area: oklch(67.3% 0.182 276.935 / 15%); /* indigo-400/15 */
+  /* ── Progress colours (audit #8) ── */
+  --color-progress-track: oklch(100% 0 0 / 6%);         /* subtle track background */
+  --color-progress-fill: oklch(50.5% 0.24 274);         /* accent — in-progress fill */
+  --color-progress-complete: oklch(62% 0.16 158);        /* success — completed fill */
+
+  /* ── Chart colours (used as var() in SVG attributes) ──
+     Extended with secondary series and bar colours for multi-series
+     charts (audit #20). */
+  --color-chart-line: oklch(66% 0.17 274);              /* warm indigo-400 */
+  --color-chart-area: oklch(66% 0.17 274 / 15%);        /* warm indigo-400/15 */
   --color-chart-point-stroke: oklch(25.7% 0.09 281.288); /* indigo-950 */
   --color-chart-grid: oklch(100% 0 0 / 10%);            /* white/10 */
   --color-chart-grid-mid: oklch(100% 0 0 / 5%);         /* white/5 */
   --color-chart-label: oklch(70.4% 0.04 256.788 / 70%); /* gray-400/70 */
+  --color-chart-secondary: oklch(70% 0.12 78 / 80%);    /* warm gold — second series */
+  --color-chart-bar: oklch(50.5% 0.24 274 / 40%);       /* accent/40 — bar fills */
 
   /* ── Radius tokens ── */
   --radius-card: var(--radius-xl);
@@ -65,6 +116,30 @@
   --radius-input: var(--radius-lg);
   --radius-badge: var(--radius-md);
   --radius-pill: 9999px;
+
+  /* ── Spacing tokens (audit #7) ──
+     Semantic spacing scale for component padding and gaps.
+     Maps to the 4px base grid: 4, 8, 12, 16, 24, 32, 48, 64. */
+  --spacing-card-compact: 0.75rem;     /* 12px — stat cards, small elements */
+  --spacing-card: 1rem;                /* 16px — standard card padding */
+  --spacing-card-comfortable: 1.5rem;  /* 24px — sm breakpoint card padding */
+  --spacing-section: 3rem;             /* 48px — between catalogue sections */
+  --spacing-section-lg: 4rem;          /* 64px — major section breaks */
+
+  /* ── Typography ──
+     Heading font: Source Serif 4 — a clean transitional serif that
+     signals "music space" without sacrificing readability (audit #9). */
+  --font-heading: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+
+  /* ── Semantic text colour aliases ──
+     Use these instead of raw gray-N colours. They map to the
+     --color-text-* tokens above and give Tailwind classes like
+     `text-primary`, `text-secondary`, etc. */
+  --color-primary: var(--color-text-primary);       /* white — headings, titles, emphasis */
+  --color-secondary: var(--color-text-secondary);   /* gray-300 — body text */
+  --color-label: var(--color-text-label);           /* gray-200 — form labels */
+  --color-muted: var(--color-text-muted);           /* gray-400 — hints, captions */
+  --color-faint: var(--color-text-faint);           /* gray-500 — timestamps, metadata */
 }
 
 
@@ -94,6 +169,21 @@
   border: 1px solid var(--color-border-card);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-lg);
+
+  @supports (backdrop-filter: blur(1px)) {
+    background-color: var(--color-surface-primary);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Active glass card — indicates "currently practicing this item."
+   Bright accent border with subtle glow, distinct from hover
+   (audit #14). */
+@utility glass-card-active {
+  background-color: var(--color-surface-fallback);
+  border: 2px solid var(--color-accent-focus);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg), 0 0 12px oklch(66% 0.17 274 / 20%);
 
   @supports (backdrop-filter: blur(1px)) {
     background-color: var(--color-surface-primary);
@@ -134,9 +224,127 @@
   }
 }
 
+/* Form input error state — coral border + ring for invalid fields
+   (audit #19). */
+@utility input-error {
+  border-color: var(--color-danger-text);
+  &:focus {
+    border-color: var(--color-danger-text);
+    box-shadow: 0 0 0 1px var(--color-danger-text);
+  }
+}
+
+/* Form input success state — green border + ring for validated fields
+   (audit #19). */
+@utility input-success {
+  border-color: var(--color-success-text);
+  &:focus {
+    border-color: var(--color-success-text);
+    box-shadow: 0 0 0 1px var(--color-success-text);
+  }
+}
+
 /* Safe area bottom padding (iOS notch / home indicator) */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Typography Utilities
+   ═══════════════════════════════════════════════════════════════════════
+   Composite text styles for recurring patterns. Components should
+   prefer these utilities over ad-hoc Tailwind class strings.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Card / subsection heading — e.g. "Practice History", "Most Practised". */
+@utility card-title {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  font-weight: 600; /* font-semibold */
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem; /* mb-3 */
+}
+
+/* Section heading — e.g. "Library", "Add from Library".
+   Larger than card-title, for top of a card or section. */
+@utility section-title {
+  font-size: 1.125rem; /* text-lg */
+  line-height: 1.75rem;
+  font-weight: 600; /* font-semibold */
+  color: var(--color-text-primary);
+  margin-bottom: 1rem; /* mb-4 */
+}
+
+/* Data field label — uppercase tracking, used in definition lists
+   and stat card titles. */
+@utility field-label {
+  font-size: 0.75rem; /* text-xs */
+  line-height: 1rem;
+  font-weight: 500; /* font-medium */
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em; /* tracking-wider */
+}
+
+/* Form label — block label above inputs. */
+@utility form-label {
+  display: block;
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  font-weight: 500; /* font-medium */
+  color: var(--color-text-label);
+  margin-bottom: 0.25rem; /* mb-1 */
+}
+
+/* Hint text — helper text below form fields. */
+@utility hint-text {
+  font-size: 0.75rem; /* text-xs */
+  line-height: 1rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem; /* mb-1 */
+}
+
+/* Empty state text — centred muted message for no-data states. */
+@utility empty-text {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding-top: 1rem; /* py-4 */
+  padding-bottom: 1rem;
+}
+
+/* Action link — small clickable text (Edit, Delete, etc.) */
+@utility action-link {
+  font-size: 0.75rem; /* text-xs */
+  font-weight: 500; /* font-medium */
+  @media (prefers-reduced-motion: no-preference) {
+    transition: color 150ms ease;
+  }
+}
+
+/* CTA button style — primary call-to-action as a link (New Session, Add Item). */
+@utility cta-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-button);
+  background-color: var(--color-accent);
+  padding: 0.625rem 1rem; /* py-2.5 px-4 */
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+  min-height: 44px;
+
+  &:hover {
+    background-color: var(--color-accent-hover);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 150ms ease;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -147,7 +355,7 @@
    Transitions are wrapped in motion-safe to honour prefers-reduced-motion (FR-011). */
 @utility drop-indicator {
   width: 100%;
-  background-color: var(--color-accent-focus);     /* indigo-400 */
+  background-color: var(--color-accent-focus);
   border-radius: 1px;
   @media (prefers-reduced-motion: no-preference) {
     transition: opacity 150ms ease, height 150ms ease;
@@ -160,4 +368,18 @@
   @media (prefers-reduced-motion: no-preference) {
     transition: opacity 150ms ease;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Metronome Loading Animation (audit #17)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes metronome-tick {
+  0%, 100% { transform: rotate(-18deg); }
+  50% { transform: rotate(18deg); }
+}
+
+@utility metronome-loading {
+  animation: metronome-tick 1s ease-in-out infinite;
+  transform-origin: bottom center;
 }

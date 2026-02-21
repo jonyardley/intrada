@@ -42,13 +42,13 @@ pub fn SessionSummary() -> impl IntoView {
                             // Summary header
                             <Card>
                                 <div class="text-center space-y-2">
-                                    <h2 class="text-2xl font-bold text-white">"Session Complete!"</h2>
-                                    <p class="text-lg text-gray-300">
+                                    <h2 class="text-2xl font-bold text-primary">"Session Complete!"</h2>
+                                    <p class="text-lg text-secondary">
                                         {format!("Total: {}", total_duration)}
                                     </p>
                                     {if completion_status == "ended_early" {
                                         Some(view! {
-                                            <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
+                                            <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
                                                 "Ended Early"
                                             </span>
                                         })
@@ -60,7 +60,7 @@ pub fn SessionSummary() -> impl IntoView {
 
                             // Entries breakdown
                             <Card>
-                                <h3 class="text-lg font-semibold text-white mb-3">"Items Practiced"</h3>
+                                <h3 class="section-title">"Items Practiced"</h3>
                                 <div class="space-y-3">
                                     {entries.into_iter().map(|entry| {
                                         let entry_id = entry.id.clone();
@@ -78,19 +78,19 @@ pub fn SessionSummary() -> impl IntoView {
                                             _ => "—",
                                         };
                                         let status_color = match entry.status.as_str() {
-                                            "completed" => "text-green-400",
-                                            "skipped" => "text-amber-400",
-                                            _ => "text-gray-500",
+                                            "completed" => "text-success-text",
+                                            "skipped" => "text-warning-text",
+                                            _ => "text-faint",
                                         };
                                         view! {
-                                            <div class="rounded-lg bg-white/5 p-3 space-y-2">
+                                            <div class="rounded-lg bg-surface-secondary p-3 space-y-2">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
                                                         <span class={format!("text-sm font-medium {}", status_color)}>{status_label}</span>
-                                                        <span class="text-sm font-medium text-white">{entry.item_title}</span>
-                                                        <span class="text-xs text-gray-500">{entry.item_type}</span>
+                                                        <span class="text-sm font-medium text-primary">{entry.item_title}</span>
+                                                        <span class="text-xs text-faint">{entry.item_type}</span>
                                                     </div>
-                                                    <span class="text-sm text-gray-400">{entry.duration_display}</span>
+                                                    <span class="text-sm text-muted">{entry.duration_display}</span>
                                                 </div>
                                                 <div>
                                                     <label class="sr-only" for=notes_input_id.clone()>
@@ -121,7 +121,7 @@ pub fn SessionSummary() -> impl IntoView {
                                                     let core_score_btns = core_score_inner.clone();
                                                     Some(view! {
                                                         <div class="flex items-center gap-2">
-                                                            <span class="text-xs text-gray-400 mr-1">"Confidence:"</span>
+                                                            <span class="text-xs text-muted mr-1">"Confidence:"</span>
                                                             {(1u8..=5).map(|n| {
                                                                 let entry_id_n = entry_id_score.clone();
                                                                 let core_n = core_score_btns.clone();
@@ -167,7 +167,7 @@ pub fn SessionSummary() -> impl IntoView {
 
                             // Session notes
                             <Card>
-                                <h3 class="text-lg font-semibold text-white mb-3">"Session Notes"</h3>
+                                <h3 class="section-title">"Session Notes"</h3>
                                 <textarea
                                     rows="3"
                                     placeholder="How did this session go?"
@@ -223,7 +223,7 @@ pub fn SessionSummary() -> impl IntoView {
                                 let vm = view_model.get();
                                 vm.error.map(|err| {
                                     view! {
-                                        <p class="text-sm text-red-400">{err}</p>
+                                        <p class="text-sm text-danger-text">{err}</p>
                                     }
                                 })
                             }}
@@ -231,7 +231,7 @@ pub fn SessionSummary() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-gray-400 text-center py-8">"No session summary available."</p>
+                            <p class="text-sm text-muted text-center py-8">"No session summary available."</p>
                         }.into_any()
                     }
                 }

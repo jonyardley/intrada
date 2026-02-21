@@ -26,7 +26,7 @@ pub fn RoutineLoader() -> impl IntoView {
                 let core_load = core.clone();
                 Some(view! {
                     <Card>
-                        <h3 class="text-lg font-semibold text-white mb-4">"Saved Routines"</h3>
+                        <h3 class="section-title">"Saved Routines"</h3>
                         <div class="space-y-2">
                             {vm.routines.iter().map(|routine| {
                                 let routine_id = routine.id.clone();
@@ -34,15 +34,15 @@ pub fn RoutineLoader() -> impl IntoView {
                                 let entry_count = routine.entry_count;
                                 let core_l = core_load.clone();
                                 view! {
-                                    <div class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10">
+                                    <div class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover">
                                         <div class="flex items-center gap-2">
-                                            <span class="text-sm text-white font-medium">{name}</span>
-                                            <span class="inline-flex items-center rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
+                                            <span class="text-sm text-primary font-medium">{name}</span>
+                                            <span class="inline-flex items-center rounded-full bg-badge-piece-bg px-2 py-0.5 text-xs font-medium text-accent-text">
                                                 {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
                                             </span>
                                         </div>
                                         <button
-                                            class="text-xs font-medium text-indigo-300 hover:text-indigo-200 px-2 py-1 rounded hover:bg-white/5 motion-safe:transition-colors motion-safe:duration-150"
+                                            class="text-xs font-medium text-accent-text hover:text-accent-hover px-2 py-1 rounded hover:bg-surface-secondary motion-safe:transition-colors motion-safe:duration-150"
                                             on:click=move |_| {
                                                 let event = Event::Routine(RoutineEvent::LoadRoutineIntoSetlist {
                                                     routine_id: routine_id.clone(),

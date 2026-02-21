@@ -23,7 +23,7 @@ pub fn DragHandle(
             type="button"
             role="button"
             aria-label="Drag to reorder"
-            class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-gray-500 hover:text-gray-300 select-none"
+            class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-faint hover:text-secondary select-none"
             style="touch-action: none; user-select: none; -webkit-user-select: none;"
             on:pointerdown=move |ev: PointerEvent| {
                 ev.prevent_default();

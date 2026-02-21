@@ -16,7 +16,7 @@ pub fn FormFieldError(
             let eid = String::from(&*error_id);
             errors.get().get(field).cloned().map(|msg| {
                 view! {
-                    <p id=eid class="mt-1 text-sm text-red-400" role="alert">{msg}</p>
+                    <p id=eid class="mt-1 text-sm text-danger-text" role="alert">{msg}</p>
                 }
             })
         }}

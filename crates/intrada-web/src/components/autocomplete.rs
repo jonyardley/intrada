@@ -166,7 +166,7 @@ pub fn Autocomplete(
             <input
                 id=id
                 type="text"
-                class="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400"
+                class="w-full rounded-lg border border-border-input bg-surface-input px-3 py-2.5 text-sm text-primary placeholder-muted focus:border-accent-focus focus:ring-1 focus:ring-accent-focus"
                 placeholder=placeholder.unwrap_or("")
                 prop:value=move || value.get()
                 on:input=move |ev| {
@@ -190,7 +190,7 @@ pub fn Autocomplete(
                 <ul
                     id=listbox_id_clone.clone()
                     role="listbox"
-                    class="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-gray-800/90 backdrop-blur-sm border border-white/10 rounded-lg shadow-lg"
+                    class="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-gray-800/90 backdrop-blur-sm border border-border-default rounded-lg shadow-lg"
                 >
                     {move || {
                         filtered.get().into_iter().enumerate().map(|(idx, item)| {
@@ -204,9 +204,9 @@ pub fn Autocomplete(
                                     aria-selected=move || if is_highlighted() { "true" } else { "false" }
                                     class=move || {
                                         if is_highlighted() {
-                                            "px-3 py-2 text-sm text-gray-200 cursor-pointer bg-indigo-600/50"
+                                            "px-3 py-2 text-sm text-label cursor-pointer bg-accent/50"
                                         } else {
-                                            "px-3 py-2 text-sm text-gray-200 cursor-pointer hover:bg-white/10"
+                                            "px-3 py-2 text-sm text-label cursor-pointer hover:bg-surface-primary"
                                         }
                                     }
                                     on:mousedown=move |ev| {
@@ -258,7 +258,7 @@ pub fn AutocompleteTextField(
 
     view! {
         <div>
-            <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
+            <label class="form-label" for=id>
                 {label}
             </label>
             <div

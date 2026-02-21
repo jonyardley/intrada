@@ -34,7 +34,7 @@ pub fn RoutineSaveForm(
                 let try_save_btn = try_save;
                 view! {
                     <Card>
-                        <h4 class="text-sm font-semibold text-white mb-3">"Save as Routine"</h4>
+                        <h4 class="card-title">"Save as Routine"</h4>
                         <div class="space-y-3">
                             <div>
                                 <label class="sr-only" for="routine-name">"Routine name"</label>
@@ -52,7 +52,7 @@ pub fn RoutineSaveForm(
                                 />
                             </div>
                             {move || error.get().map(|msg| view! {
-                                <p class="text-xs text-red-400">{msg}</p>
+                                <p class="text-xs text-danger-text">{msg}</p>
                             })}
                             <div class="flex gap-2">
                                 <Button
@@ -80,7 +80,7 @@ pub fn RoutineSaveForm(
             } else {
                 view! {
                     <button
-                        class="w-full rounded-lg border border-dashed border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-indigo-300 hover:bg-white/10 hover:border-indigo-400/40 motion-safe:transition-colors motion-safe:duration-150"
+                        class="w-full rounded-lg border border-dashed border-border-default bg-surface-secondary px-4 py-3 text-sm font-medium text-accent-text hover:bg-surface-hover hover:border-accent-focus/40 motion-safe:transition-colors motion-safe:duration-150"
                         on:click=move |_| expanded.set(true)
                     >
                         "Save as Routine"

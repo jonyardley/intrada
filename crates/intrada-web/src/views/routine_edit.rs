@@ -35,8 +35,8 @@ pub fn RoutineEditView() -> impl IntoView {
     let Some(routine) = routine else {
         return view! {
             <div class="text-center py-8">
-                <p class="text-gray-300 mb-4">"Routine not found."</p>
-                <A href="/routines" attr:class="text-indigo-300 hover:text-indigo-200 font-medium">
+                <p class="text-secondary mb-4">"Routine not found."</p>
+                <A href="/routines" attr:class="text-accent-text hover:text-accent-hover font-medium">
                     "\u{2190} Back to Routines"
                 </A>
             </div>
@@ -129,7 +129,7 @@ pub fn RoutineEditView() -> impl IntoView {
                         }
                     }>
                         <div>
-                            <label for="routine-name" class="block text-sm font-medium text-gray-300 mb-1">"Routine Name"</label>
+                            <label for="routine-name" class="form-label">"Routine Name"</label>
                             <input
                                 id="routine-name"
                                 type="text"
@@ -139,17 +139,17 @@ pub fn RoutineEditView() -> impl IntoView {
                             />
                         </div>
                         {move || name_error.get().map(|msg| view! {
-                            <p class="text-xs text-red-400">{msg}</p>
+                            <p class="text-xs text-danger-text">{msg}</p>
                         })}
 
                         // Current entries with drag handle + reorder/remove (T021, T022)
                         <div>
-                            <h4 class="text-sm font-medium text-gray-300 mb-2">"Entries"</h4>
+                            <h4 class="text-sm font-medium text-secondary mb-2">"Entries"</h4>
                             {move || {
                                 let current = entries.get();
                                 if current.is_empty() {
                                     view! {
-                                        <p class="text-sm text-gray-400 text-center py-4">"No entries. Add items from your library below."</p>
+                                        <p class="text-sm text-muted text-center py-4">"No entries. Add items from your library below."</p>
                                     }.into_any()
                                 } else {
                                     let len = current.len();
@@ -182,9 +182,9 @@ pub fn RoutineEditView() -> impl IntoView {
                                                     <div
                                                         class=move || {
                                                             if is_dragging_this.get() {
-                                                                "flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 drag-active ring-2 ring-indigo-400"
+                                                                "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 drag-active ring-2 ring-accent-focus"
                                                             } else {
-                                                                "flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+                                                                "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2"
                                                             }
                                                         }
                                                         data-entry-index=idx.to_string()
@@ -196,9 +196,9 @@ pub fn RoutineEditView() -> impl IntoView {
                                                                 index=idx
                                                                 on_pointer_down=on_drag_pointer_down
                                                             />
-                                                            <span class="text-xs text-gray-500 w-5 text-center">{idx + 1}</span>
-                                                            <span class="text-sm text-white">{entry.item_title}</span>
-                                                            <span class="text-xs text-gray-500">{entry.item_type}</span>
+                                                            <span class="text-xs text-faint w-5 text-center">{idx + 1}</span>
+                                                            <span class="text-sm text-primary">{entry.item_title}</span>
+                                                            <span class="text-xs text-faint">{entry.item_type}</span>
                                                         </div>
                                                         <div class="flex items-center gap-1">
                                                             // Up/down arrow buttons always visible (FR-012)
@@ -206,7 +206,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                                                 Some(view! {
                                                                     <button
                                                                         type="button"
-                                                                        class="text-xs text-gray-400 hover:text-white p-1"
+                                                                        class="text-xs text-muted hover:text-white p-1"
                                                                         title="Move up"
                                                                         on:click=move |_| {
                                                                             entries.update(|e| {
@@ -228,7 +228,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                                                 Some(view! {
                                                                     <button
                                                                         type="button"
-                                                                        class="text-xs text-gray-400 hover:text-white p-1"
+                                                                        class="text-xs text-muted hover:text-white p-1"
                                                                         title="Move down"
                                                                         on:click=move |_| {
                                                                             entries.update(|e| {
@@ -248,7 +248,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                                             }}
                                                             <button
                                                                 type="button"
-                                                                class="text-xs text-red-400 hover:text-red-300 p-1"
+                                                                class="text-xs text-danger-text hover:text-danger-hover p-1"
                                                                 title="Remove"
                                                                 on:click=move |_| {
                                                                     entries.update(|e| {
@@ -294,12 +294,12 @@ pub fn RoutineEditView() -> impl IntoView {
 
                 // Add from Library (T014: whole row is clickable)
                 <Card>
-                    <h3 class="text-lg font-semibold text-white mb-4">"Add from Library"</h3>
+                    <h3 class="section-title">"Add from Library"</h3>
                     {move || {
                         let vm = view_model.get();
                         if vm.items.is_empty() {
                             view! {
-                                <p class="text-sm text-gray-400">"No library items available."</p>
+                                <p class="text-sm text-muted">"No library items available."</p>
                             }.into_any()
                         } else {
                             view! {
@@ -312,7 +312,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                         let type_for_entry = item.item_type.clone();
                                         view! {
                                             <div
-                                                class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10 cursor-pointer"
+                                                class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
                                                 on:click=move |_| {
                                                     let new_entry = RoutineEntryView {
                                                         id: ulid::Ulid::new().to_string(),
@@ -325,10 +325,10 @@ pub fn RoutineEditView() -> impl IntoView {
                                                 }
                                             >
                                                 <div class="flex items-center gap-2">
-                                                    <span class="text-sm text-white">{title}</span>
-                                                    <span class="text-xs text-gray-500">{item_type}</span>
+                                                    <span class="text-sm text-primary">{title}</span>
+                                                    <span class="text-xs text-faint">{item_type}</span>
                                                 </div>
-                                                <span class="text-xs font-medium text-indigo-300">
+                                                <span class="text-xs font-medium text-accent-text">
                                                     "+ Add"
                                                 </span>
                                             </div>

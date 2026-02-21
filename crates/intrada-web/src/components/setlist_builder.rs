@@ -53,7 +53,7 @@ pub fn SetlistBuilder() -> impl IntoView {
         <div class="space-y-6">
             // Current setlist
             <Card>
-                <h3 class="text-lg font-semibold text-white mb-4">"Your Setlist"</h3>
+                <h3 class="section-title">"Your Setlist"</h3>
                 {move || {
                     let vm = view_model.get();
                     match vm.building_setlist {
@@ -138,7 +138,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                         }
                         _ => {
                             view! {
-                                <p class="text-sm text-gray-400 text-center py-4">
+                                <p class="text-sm text-muted text-center py-4">
                                     "No items added yet. Select items from your library below."
                                 </p>
                             }.into_any()
@@ -152,7 +152,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                 let vm = view_model.get();
                 vm.error.map(|err| {
                     view! {
-                        <p class="text-sm text-red-400">{err}</p>
+                        <p class="text-sm text-danger-text">{err}</p>
                     }
                 })
             }}
@@ -219,12 +219,12 @@ pub fn SetlistBuilder() -> impl IntoView {
 
             // Library items to add (T013: whole row is clickable)
             <Card>
-                <h3 class="text-lg font-semibold text-white mb-4">"Library Items"</h3>
+                <h3 class="section-title">"Library Items"</h3>
                 {move || {
                     let vm = view_model.get();
                     if vm.items.is_empty() {
                         view! {
-                            <p class="text-sm text-gray-400">"No library items available."</p>
+                            <p class="text-sm text-muted">"No library items available."</p>
                         }.into_any()
                     } else {
                         let core_add = core_library.clone();
@@ -237,7 +237,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                     let core_a = core_add.clone();
                                     view! {
                                         <div
-                                            class="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 hover:bg-white/10 cursor-pointer"
+                                            class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
                                             on:click=move |_| {
                                                 let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
                                                 let core_ref = core_a.borrow();
@@ -246,10 +246,10 @@ pub fn SetlistBuilder() -> impl IntoView {
                                             }
                                         >
                                             <div class="flex items-center gap-2">
-                                                <span class="text-sm text-white">{title}</span>
-                                                <span class="text-xs text-gray-500">{item_type}</span>
+                                                <span class="text-sm text-primary">{title}</span>
+                                                <span class="text-xs text-faint">{item_type}</span>
                                             </div>
-                                            <span class="text-xs font-medium text-indigo-300">
+                                            <span class="text-xs font-medium text-accent-text">
                                                 "+ Add"
                                             </span>
                                         </div>

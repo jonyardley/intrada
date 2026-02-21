@@ -7,7 +7,7 @@ use intrada_web::clerk_bindings;
 /// Application header with name, tagline, and navigation.
 ///
 /// Nav links highlight the active section using the same colour
-/// (`text-indigo-300`) as the mobile bottom tab bar.
+/// (`text-accent-text`) as the mobile bottom tab bar.
 #[component]
 pub fn AppHeader() -> impl IntoView {
     let location = use_location();
@@ -37,18 +37,18 @@ pub fn AppHeader() -> impl IntoView {
             <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
                 <div>
                     <A href="/" attr:class="no-underline">
-                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">"Intrada"</h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>
                     </A>
-                    <p class="text-sm text-gray-400 mt-0.5">"Your music practice companion"</p>
+                    <p class="text-sm text-muted mt-0.5">"Your music practice companion"</p>
                 </div>
                 <nav class="hidden sm:flex items-center gap-4">
                     <A
                         href="/"
                         attr:class=move || {
                             if is_library_active() {
-                                "text-sm font-medium text-indigo-300 motion-safe:transition-colors"
+                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-gray-300 hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_library_active() { Some("page") } else { None }
@@ -59,9 +59,9 @@ pub fn AppHeader() -> impl IntoView {
                         href="/sessions"
                         attr:class=move || {
                             if is_sessions_active() {
-                                "text-sm font-medium text-indigo-300 motion-safe:transition-colors"
+                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-gray-300 hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
@@ -72,9 +72,9 @@ pub fn AppHeader() -> impl IntoView {
                         href="/routines"
                         attr:class=move || {
                             if is_routines_active() {
-                                "text-sm font-medium text-indigo-300 motion-safe:transition-colors"
+                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-gray-300 hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
@@ -85,9 +85,9 @@ pub fn AppHeader() -> impl IntoView {
                         href="/analytics"
                         attr:class=move || {
                             if is_analytics_active() {
-                                "text-sm font-medium text-indigo-300 motion-safe:transition-colors"
+                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-gray-300 hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
@@ -101,7 +101,7 @@ pub fn AppHeader() -> impl IntoView {
                                     clerk_bindings::sign_out().await;
                                 });
                             }
-                            class="text-sm font-medium text-gray-400 hover:text-white motion-safe:transition-colors ml-2"
+                            class="text-sm font-medium text-muted hover:text-white motion-safe:transition-colors ml-2"
                             aria-label="Sign out"
                         >
                             "Sign out"

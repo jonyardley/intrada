@@ -197,7 +197,7 @@ fn AuthLoadingScreen() -> impl IntoView {
         <div class="relative z-0 min-h-screen text-white flex items-center justify-center">
             <div class="text-center">
                 <h1 class="text-3xl font-bold tracking-tight mb-2">"Intrada"</h1>
-                <p class="text-gray-400">"Loading..."</p>
+                <p class="text-muted">"Loading..."</p>
             </div>
         </div>
     }
@@ -220,10 +220,10 @@ fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
         <div class="relative z-0 min-h-screen text-white flex items-center justify-center px-4">
             <div class="glass-chrome rounded-2xl p-8 sm:p-12 max-w-sm w-full text-center">
                 <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">"Intrada"</h1>
-                <p class="text-gray-400 mb-8">"Your music practice companion"</p>
+                <p class="text-muted mb-8">"Your music practice companion"</p>
 
                 <Show when=move || auth_error.get()>
-                    <p class="text-red-400 text-sm mb-4">
+                    <p class="text-danger-text text-sm mb-4">
                         "Sign-in is temporarily unavailable. Please try again later."
                     </p>
                 </Show>
@@ -232,7 +232,7 @@ fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
                     on:click=on_sign_in
                     disabled=move || signing_in.get() || auth_error.get()
                     class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl
-                           bg-white/10 hover:bg-white/15 border border-white/20
+                           bg-surface-secondary hover:bg-surface-hover border border-border-default
                            text-white font-medium transition-all duration-200
                            disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Sign in with Google"

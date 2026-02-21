@@ -33,8 +33,8 @@ pub fn DetailView() -> impl IntoView {
         // Item not found — show message with link back to list
         return view! {
             <div class="text-center py-8">
-                <p class="text-gray-300 mb-4">"Item not found."</p>
-                <A href="/" attr:class="text-indigo-300 hover:text-indigo-200 font-medium">
+                <p class="text-secondary mb-4">"Item not found."</p>
+                <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
                     "← Back to Library"
                 </A>
             </div>
@@ -74,8 +74,8 @@ pub fn DetailView() -> impl IntoView {
                     let core_del = core.clone();
                     let navigate_del = navigate.clone();
                     Some(view! {
-                        <div class="rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
-                            <p class="text-sm text-red-300 mb-3">
+                        <div class="rounded-lg bg-danger-surface border border-danger/20 p-4" role="alert">
+                            <p class="text-sm text-danger-text mb-3">
                                 "Are you sure you want to delete this item? This action cannot be undone."
                             </p>
                             <div class="flex gap-3">
@@ -107,10 +107,10 @@ pub fn DetailView() -> impl IntoView {
                 // Header: title + type badge
                 <div class="flex items-start justify-between gap-3 mb-6">
                     <div>
-                        <h2 class="text-2xl font-bold text-white">{title}</h2>
+                        <h2 class="text-2xl font-bold text-primary">{title}</h2>
                         {if !subtitle.is_empty() {
                             Some(view! {
-                                <p class="text-lg text-gray-400 mt-1">{subtitle.clone()}</p>
+                                <p class="text-lg text-muted mt-1">{subtitle.clone()}</p>
                             })
                         } else {
                             None
@@ -125,7 +125,7 @@ pub fn DetailView() -> impl IntoView {
                         view! {
                             <div>
                                 <FieldLabel text="Category" />
-                                <dd class="mt-1 text-sm text-gray-300">{cat}</dd>
+                                <dd class="mt-1 text-sm text-secondary">{cat}</dd>
                             </div>
                         }
                     })}
@@ -133,7 +133,7 @@ pub fn DetailView() -> impl IntoView {
                         view! {
                             <div>
                                 <FieldLabel text="Key" />
-                                <dd class="mt-1 text-sm text-gray-300">{k}</dd>
+                                <dd class="mt-1 text-sm text-secondary">{k}</dd>
                             </div>
                         }
                     })}
@@ -141,7 +141,7 @@ pub fn DetailView() -> impl IntoView {
                         view! {
                             <div>
                                 <FieldLabel text="Tempo" />
-                                <dd class="mt-1 text-sm text-gray-300">{t}</dd>
+                                <dd class="mt-1 text-sm text-secondary">{t}</dd>
                             </div>
                         }
                     })}
@@ -152,7 +152,7 @@ pub fn DetailView() -> impl IntoView {
                     view! {
                         <div class="mb-6">
                             <FieldLabel text="Notes" />
-                            <dd class="text-sm text-gray-300 whitespace-pre-wrap">{n}</dd>
+                            <dd class="text-sm text-secondary whitespace-pre-wrap">{n}</dd>
                         </div>
                     }
                 })}
@@ -165,7 +165,7 @@ pub fn DetailView() -> impl IntoView {
                             <dd class="flex flex-wrap gap-1.5">
                                 {tags.into_iter().map(|tag| {
                                     view! {
-                                        <span class="inline-flex items-center rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-gray-400">
+                                        <span class="inline-flex items-center rounded-full border border-border-default px-2.5 py-0.5 text-xs text-muted">
                                             {tag}
                                         </span>
                                     }
@@ -178,7 +178,7 @@ pub fn DetailView() -> impl IntoView {
                 }}
 
                 // Timestamps
-                <div class="mt-2 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-500">
+                <div class="mt-2 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-faint">
                     <div>
                         <span class="font-medium">"Created: "</span>{created_at}
                     </div>
@@ -196,8 +196,8 @@ pub fn DetailView() -> impl IntoView {
                         <div class="space-y-4">
                             // Practice stats
                             <div>
-                                <h3 class="text-sm font-semibold text-white mb-1">"Practice Summary"</h3>
-                                <p class="text-sm text-gray-300">
+                                <h3 class="text-sm font-semibold text-primary mb-1">"Practice Summary"</h3>
+                                <p class="text-sm text-secondary">
                                     {format!(
                                         "{} session{}, {} min total",
                                         p.session_count,
@@ -211,8 +211,8 @@ pub fn DetailView() -> impl IntoView {
                             {p.latest_score.map(|score| {
                                 view! {
                                     <div class="flex items-center gap-3">
-                                        <span class="text-sm text-gray-400">"Current confidence:"</span>
-                                        <span class="text-2xl font-bold text-indigo-300">
+                                        <span class="text-sm text-muted">"Current confidence:"</span>
+                                        <span class="text-2xl font-bold text-accent-text">
                                             {format!("{}/5", score)}
                                         </span>
                                     </div>
@@ -224,15 +224,15 @@ pub fn DetailView() -> impl IntoView {
                                 let history = p.score_history;
                                 view! {
                                     <div>
-                                        <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">"Score History"</h4>
+                                        <h4 class="field-label mb-2">"Score History"</h4>
                                         <div class="space-y-1.5">
                                             {history.into_iter().map(|entry| {
                                                 // Format date for display (extract date portion from RFC3339)
                                                 let display_date = entry.session_date.split('T').next().unwrap_or(&entry.session_date).to_string();
                                                 view! {
                                                     <div class="flex items-center justify-between text-sm">
-                                                        <span class="text-gray-400">{display_date}</span>
-                                                        <span class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-400/20 ring-inset">
+                                                        <span class="text-muted">{display_date}</span>
+                                                        <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
                                                             {format!("{}/5", entry.score)}
                                                         </span>
                                                     </div>
@@ -243,7 +243,7 @@ pub fn DetailView() -> impl IntoView {
                                 }.into_any()
                             } else {
                                 view! {
-                                    <p class="text-xs text-gray-500">"No confidence scores recorded yet"</p>
+                                    <p class="text-xs text-faint">"No confidence scores recorded yet"</p>
                                 }.into_any()
                             }}
                         </div>
@@ -253,7 +253,7 @@ pub fn DetailView() -> impl IntoView {
 
             // Action buttons (FR-009, FR-011)
             <div class="flex flex-col sm:flex-row gap-3">
-                <A href=edit_href attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
+                <A href=edit_href attr:class="cta-link">
                     "Edit"
                 </A>
                 <Button

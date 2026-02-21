@@ -22,7 +22,7 @@ pub fn SessionsListView() -> impl IntoView {
                 if is_loading.get() {
                     return view! {
                         <div class="flex justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-2 border-indigo-400 border-t-transparent"></div>
+                            <div class="animate-spin rounded-full h-8 w-8 border-2 border-accent-focus border-t-transparent"></div>
                         </div>
                     }.into_any();
                 }
@@ -32,10 +32,10 @@ pub fn SessionsListView() -> impl IntoView {
                 if vm.sessions.is_empty() {
                     view! {
                         <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
-                            <p class="text-gray-400">"No practice sessions recorded yet."</p>
-                            <p class="text-sm text-gray-500 mt-2">"Start a practice session to begin tracking your progress."</p>
+                            <p class="text-muted">"No practice sessions recorded yet."</p>
+                            <p class="text-sm text-faint mt-2">"Start a practice session to begin tracking your progress."</p>
                             <div class="mt-6">
-                                <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
+                                <A href="/sessions/new" attr:class="cta-link">
                                     "New Session"
                                 </A>
                             </div>
@@ -45,7 +45,7 @@ pub fn SessionsListView() -> impl IntoView {
                     let core = core.clone();
                     view! {
                         <div class="mb-4">
-                            <A href="/sessions/new" attr:class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 motion-safe:transition-colors min-h-[44px]">
+                            <A href="/sessions/new" attr:class="cta-link">
                                 "New Session"
                             </A>
                         </div>
@@ -60,7 +60,7 @@ pub fn SessionsListView() -> impl IntoView {
                                 }
                             }).collect::<Vec<_>>()}
                         </div>
-                        <p class="text-sm text-gray-400 mt-4">
+                        <p class="text-sm text-muted mt-4">
                             {format!("{} session{}", vm.sessions.len(), if vm.sessions.len() == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
@@ -97,7 +97,7 @@ fn SessionRow(
                     let id_del = id_for_delete.clone();
                     view! {
                         <div>
-                            <p class="text-sm text-red-300 mb-3">"Delete this session? This cannot be undone."</p>
+                            <p class="text-sm text-danger-text mb-3">"Delete this session? This cannot be undone."</p>
                             <div class="flex gap-2">
                                 <Button
                                     variant=ButtonVariant::Danger
@@ -130,32 +130,32 @@ fn SessionRow(
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                        <span class="text-sm font-medium text-white">
+                                        <span class="text-sm font-medium text-primary">
                                             {total_duration}
                                         </span>
-                                        <span class="text-xs text-gray-400">
+                                        <span class="text-xs text-muted">
                                             {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
                                         </span>
                                         {if completion_status == "ended_early" {
                                             Some(view! {
-                                                <span class="inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-amber-400/20 ring-inset">
+                                                <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
                                                     "Ended Early"
                                                 </span>
                                             })
                                         } else {
                                             None
                                         }}
-                                        <span class="text-xs text-gray-500">{started_at}</span>
+                                        <span class="text-xs text-faint">{started_at}</span>
                                     </div>
                                     {session_notes.map(|n| {
                                         view! {
-                                            <p class="text-sm text-gray-300 mt-1">{n}</p>
+                                            <p class="text-sm text-secondary mt-1">{n}</p>
                                         }
                                     })}
                                 </div>
                                 <div class="flex gap-2 sm:ml-4">
                                     <button
-                                        class="text-xs text-red-400 hover:text-red-300 font-medium"
+                                        class="text-xs text-danger-text hover:text-danger-hover font-medium"
                                         on:click=move |_| { confirm_delete.set(true); }
                                     >
                                         "Delete"
@@ -171,21 +171,21 @@ fn SessionRow(
                                         _ => "—",
                                     };
                                     let status_color = match entry.status.as_str() {
-                                        "completed" => "text-green-400",
-                                        "skipped" => "text-amber-400",
-                                        _ => "text-gray-500",
+                                        "completed" => "text-success-text",
+                                        "skipped" => "text-warning-text",
+                                        _ => "text-faint",
                                     };
                                     view! {
                                         <div class="flex items-center justify-between text-xs">
                                             <div class="flex items-center gap-2 min-w-0">
                                                 <span class={format!("font-medium {}", status_color)}>{status_label}</span>
-                                                <span class="text-white truncate">{entry.item_title}</span>
-                                                <span class="text-gray-500 shrink-0">{entry.duration_display}</span>
+                                                <span class="text-primary truncate">{entry.item_title}</span>
+                                                <span class="text-faint shrink-0">{entry.duration_display}</span>
                                             </div>
                                             <div class="flex items-center gap-2 shrink-0 ml-2">
                                                 {entry.score.map(|s| {
                                                     view! {
-                                                        <span class="inline-flex items-center rounded-md bg-indigo-500/20 px-1.5 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-400/20 ring-inset">
+                                                        <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
                                                             {format!("{}/5", s)}
                                                         </span>
                                                     }
@@ -193,7 +193,7 @@ fn SessionRow(
                                                 {entry.notes.map(|n| {
                                                     let title = n.clone();
                                                     view! {
-                                                        <span class="text-gray-400 truncate max-w-[120px]" title={title}>{n}</span>
+                                                        <span class="text-muted truncate max-w-[120px]" title={title}>{n}</span>
                                                     }
                                                 })}
                                             </div>

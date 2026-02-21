@@ -87,6 +87,75 @@ cargo test -p intrada-api  # API tests only (includes auth tests)
 - `cargo fmt` and `cargo clippy -- -D warnings` must pass
 - No `unwrap()` without justification
 
+## Design System (Components-First)
+
+All visual styling flows from the design token system defined in `intrada-web/input.css`.
+Before writing any new UI code, check whether an existing token, utility, or component
+already covers the pattern. If not, **create the abstraction first**, then use it.
+
+### Colour tokens — never use raw Tailwind grays or named colours
+
+| Token class     | Use for                              | Replaces           |
+|-----------------|--------------------------------------|---------------------|
+| `text-primary`  | Headings, titles, emphasis           | `text-white`        |
+| `text-secondary`| Body text, descriptions              | `text-gray-300`     |
+| `text-label`    | Form labels                          | `text-gray-200`     |
+| `text-muted`    | Hints, captions, metadata            | `text-gray-400`     |
+| `text-faint`    | Timestamps, very subtle text         | `text-gray-500`     |
+| `text-accent-text` | Active nav, links, accent text    | `text-indigo-300`   |
+| `text-danger-text`  | Error messages, delete actions   | `text-red-400`      |
+| `text-success-text` | Positive status indicators       | `text-green-400`    |
+| `text-warning-text` | Warning labels                   | `text-amber-400`    |
+| `bg-surface-secondary` | Card backgrounds, skeletons   | `bg-white/5`        |
+| `bg-surface-hover`  | Hover states                      | `bg-white/10`       |
+| `border-border-default` | Separators, list borders       | `border-white/10`   |
+
+### Typography utilities — prefer these over ad-hoc class strings
+
+| Utility class    | Pattern                                         | Use for                          |
+|------------------|-------------------------------------------------|----------------------------------|
+| `card-title`     | `text-sm font-semibold text-secondary mb-3`     | Card subsection headings         |
+| `section-title`  | `text-lg font-semibold text-primary mb-4`       | Section headings inside cards    |
+| `field-label`    | `text-xs font-medium text-muted uppercase`      | Data labels, stat card titles    |
+| `form-label`     | `block text-sm font-medium text-label mb-1`     | Form field labels                |
+| `hint-text`      | `text-xs text-muted mb-1`                       | Helper text below fields         |
+| `empty-text`     | `text-sm text-muted text-center py-4`           | No-data empty states             |
+| `cta-link`       | Accent button as `<A>` link                     | "New Session", "Add Item" CTAs   |
+| `action-link`    | `text-xs font-medium` + transition              | Edit/Delete text links           |
+
+### Leptos components — reuse before creating new markup
+
+| Component       | Purpose                                   |
+|-----------------|-------------------------------------------|
+| `PageHeading`   | Top-level page title (serif heading font) |
+| `Card`          | Glassmorphism container                   |
+| `StatCard`      | Metric display (title + value + subtitle) |
+| `FieldLabel`    | `<dt>` label for definition lists         |
+| `TextField`     | Form input with label + hint + error      |
+| `TextArea`      | Form textarea with label + hint + error   |
+| `Button`        | All clickable actions (Primary/Secondary/Danger/etc.) |
+| `BackLink`      | Back-navigation link with arrow           |
+| `TypeBadge`     | Piece/Exercise type pill                  |
+| `Toast`         | Notification banner                       |
+| `ErrorBanner`   | Persistent error display                  |
+
+### Rules for new UI work
+
+1. **Tokens first**: Every rendered colour MUST trace to a named token in `input.css`.
+   Never use raw Tailwind colour classes (`text-gray-400`, `bg-red-500`, `text-indigo-300`).
+2. **Utilities second**: If a styling pattern appears in 2+ places, create a `@utility`
+   in `input.css` and document it in the table above.
+3. **Components third**: If a pattern includes markup + logic, create a Leptos component
+   in `components/` and re-export it from `components/mod.rs`.
+4. **Design catalogue**: After creating any new component or utility, add a showcase
+   entry to `views/design_catalogue.rs` so the full system is visible in one place.
+5. **Spacing**: Use the spacing tokens (`p-card`, `p-card-compact`, `p-card-comfortable`,
+   `space-y-6` for sections, `space-y-3`/`space-y-4` within cards, `gap-3` for grids).
+6. **Font**: Use `font-heading` on page-level headings only. All other text uses the
+   default system sans-serif.
+
+Key files: `intrada-web/input.css` (tokens + utilities), `intrada-web/src/components/` (Leptos components), `views/design_catalogue.rs` (visual reference)
+
 ## Known Tech Debt
 
 - `StorageEffect` should be renamed to `AppEffect` or `SideEffect`

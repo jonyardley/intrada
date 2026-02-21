@@ -97,12 +97,12 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US2: Practice History Chart ──────────────────────
             <Card>
-                <h3 class="text-sm font-semibold text-gray-300 mb-3">"Practice History (28 days)"</h3>
+                <h3 class="card-title">"Practice History (28 days)"</h3>
                 {if daily_totals.iter().all(|d| d.minutes == 0) {
                     view! {
-                        <p class="text-sm text-gray-400 text-center py-8">
+                        <p class="text-sm text-muted text-center py-8">
                             "No practice data for the past 28 days. "
-                            <A href="/sessions/new" attr:class="text-indigo-400 hover:text-indigo-300 underline">
+                            <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
                                 "Start a session"
                             </A>
                             " to see your progress here."
@@ -117,12 +117,12 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US3: Most Practised Items ────────────────────────
             <Card>
-                <h3 class="text-sm font-semibold text-gray-300 mb-3">"Most Practised"</h3>
+                <h3 class="card-title">"Most Practised"</h3>
                 {if top_items.is_empty() {
                     view! {
-                        <p class="text-sm text-gray-400 text-center py-4">
+                        <p class="text-sm text-muted text-center py-4">
                             "No practice data yet. "
-                            <A href="/sessions/new" attr:class="text-indigo-400 hover:text-indigo-300 underline">
+                            <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
                                 "Start a session"
                             </A>
                             " to track your most practised items."
@@ -140,23 +140,23 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                     format!("{}m", mins)
                                 };
                                 view! {
-                                    <li class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                                    <li class="flex items-center justify-between py-1.5 border-b border-border-default/50 last:border-0">
                                         <div class="flex items-center gap-2 min-w-0">
-                                            <span class="text-xs text-gray-500 w-5 text-right shrink-0">
+                                            <span class="text-xs text-faint w-5 text-right shrink-0">
                                                 {format!("{}.", i + 1)}
                                             </span>
-                                            <span class="text-sm text-white truncate">
+                                            <span class="text-sm text-primary truncate">
                                                 {item.item_title.clone()}
                                             </span>
-                                            <span class="text-xs text-gray-500 shrink-0">
+                                            <span class="text-xs text-faint shrink-0">
                                                 {item.item_type.clone()}
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0 ml-2">
-                                            <span class="text-xs text-gray-400">
+                                            <span class="text-xs text-muted">
                                                 {format!("{} sessions", item.session_count)}
                                             </span>
-                                            <span class="text-sm font-medium text-indigo-300">
+                                            <span class="text-sm font-medium text-accent-text">
                                                 {time}
                                             </span>
                                         </div>
@@ -170,10 +170,10 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US4: Score Trends ────────────────────────────────
             <Card>
-                <h3 class="text-sm font-semibold text-gray-300 mb-3">"Score Trends"</h3>
+                <h3 class="card-title">"Score Trends"</h3>
                 {if score_trends.is_empty() {
                     view! {
-                        <p class="text-sm text-gray-400 text-center py-4">
+                        <p class="text-sm text-muted text-center py-4">
                             "No scored items yet. During a practice session, rate your confidence "
                             "on items (1\u{2013}5) to see your progress over time."
                         </p>
@@ -183,12 +183,12 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                         <ul class="space-y-3">
                             {score_trends.into_iter().map(|trend| {
                                 view! {
-                                    <li class="py-1.5 border-b border-white/5 last:border-0">
+                                    <li class="py-1.5 border-b border-border-default/50 last:border-0">
                                         <div class="flex items-center justify-between mb-1">
-                                            <span class="text-sm text-white truncate">
+                                            <span class="text-sm text-primary truncate">
                                                 {trend.item_title.clone()}
                                             </span>
-                                            <span class="text-sm font-medium text-indigo-300">
+                                            <span class="text-sm font-medium text-accent-text">
                                                 {format!("{}/5", trend.latest_score)}
                                             </span>
                                         </div>
@@ -204,11 +204,11 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                                     _ => "w-2 h-2",
                                                 };
                                                 let color = match point.score {
-                                                    1 => "bg-red-400/60",
-                                                    2 => "bg-orange-400/60",
-                                                    3 => "bg-yellow-400/60",
-                                                    4 => "bg-green-400/60",
-                                                    5 => "bg-emerald-400/80",
+                                                    1 => "bg-danger/60",
+                                                    2 => "bg-warning/40",
+                                                    3 => "bg-warning/60",
+                                                    4 => "bg-success/60",
+                                                    5 => "bg-success/80",
                                                     _ => "bg-gray-400/40",
                                                 };
                                                 view! {
@@ -239,15 +239,15 @@ fn SkeletonDashboard() -> impl IntoView {
         <div class="space-y-6 animate-pulse">
             // Stat card skeletons
             <div class="grid grid-cols-3 gap-3">
-                <div class="bg-white/5 rounded-xl h-24"></div>
-                <div class="bg-white/5 rounded-xl h-24"></div>
-                <div class="bg-white/5 rounded-xl h-24"></div>
+                <div class="bg-surface-secondary rounded-xl h-24"></div>
+                <div class="bg-surface-secondary rounded-xl h-24"></div>
+                <div class="bg-surface-secondary rounded-xl h-24"></div>
             </div>
             // Chart skeleton
-            <div class="bg-white/5 rounded-xl h-52"></div>
+            <div class="bg-surface-secondary rounded-xl h-52"></div>
             // List skeletons
-            <div class="bg-white/5 rounded-xl h-48"></div>
-            <div class="bg-white/5 rounded-xl h-36"></div>
+            <div class="bg-surface-secondary rounded-xl h-48"></div>
+            <div class="bg-surface-secondary rounded-xl h-36"></div>
         </div>
     }
 }
@@ -267,17 +267,17 @@ fn ErrorState(#[prop(into)] message: String) -> impl IntoView {
         <div class="text-center py-16">
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-16 w-16 mx-auto text-red-400/60 mb-4"
+                class="h-16 w-16 mx-auto text-danger/60 mb-4"
                 viewBox="0 0 20 20"
                 fill="currentColor"
             >
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
             </svg>
-            <h3 class="text-lg font-semibold text-gray-300 mb-2">"Something went wrong"</h3>
-            <p class="text-sm text-gray-400 mb-6 max-w-sm mx-auto">{message}</p>
+            <h3 class="text-lg font-semibold text-secondary mb-2">"Something went wrong"</h3>
+            <p class="text-sm text-muted mb-6 max-w-sm mx-auto">{message}</p>
             <button
                 on:click=on_retry
-                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg motion-safe:transition-colors"
+                class="cta-link"
             >
                 "Retry"
             </button>
@@ -293,19 +293,19 @@ fn EmptyState() -> impl IntoView {
             // Chart icon
             <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-16 w-16 mx-auto text-gray-600 mb-4"
+                class="h-16 w-16 mx-auto text-faint mb-4"
                 viewBox="0 0 20 20"
                 fill="currentColor"
             >
                 <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
             </svg>
-            <h3 class="text-lg font-semibold text-gray-300 mb-2">"No practice data yet"</h3>
-            <p class="text-sm text-gray-400 mb-6 max-w-sm mx-auto">
+            <h3 class="text-lg font-semibold text-secondary mb-2">"No practice data yet"</h3>
+            <p class="text-sm text-muted mb-6 max-w-sm mx-auto">
                 "Complete practice sessions to see your analytics. Track your progress, streaks, and most practised items."
             </p>
             <A
                 href="/sessions/new"
-                attr:class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg motion-safe:transition-colors"
+                attr:class="cta-link"
             >
                 "Start a Session"
             </A>
