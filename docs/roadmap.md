@@ -1,25 +1,11 @@
-# intrada — Revised Product Roadmap
+# intrada — Product Roadmap
 
-*Draft for review — 2026-02-21*
+*Updated 2026-02-21*
 
-This roadmap replaces the four-phase structure in VISION.md with six smaller, more
-realistic phases. Each phase delivers a complete, valuable product — not a stepping
-stone. The changes are driven by a critical review of the user journey from product,
-teacher, and student perspectives.
-
-**Key changes from the original roadmap:**
-
-1. The original Phase 2 ("Intelligence") was overloaded — it contained the SRS engine,
-   interleaved scheduling, one-tap start, mastery decay, difficulty balancing, goals,
-   encouragement, and rest awareness. That's been split across Phases 3 and 4.
-2. Practice quality improvements (focus mode, rep counter, visual timer) move earlier —
-   they enhance the *existing* session system without needing the scheduling engine.
-3. Tempo-building is promoted to a first-class practice flow, not just a data field.
-4. A first-time user onboarding flow is added (it was completely absent).
-5. "Free practice" and "deep dive" modes are added to prevent the app feeling like it
-   *only* supports structured interleaved practice.
-6. The streak counter is reworked to comeback framing immediately, not deferred to Phase 3.
-7. Scoring captures tempo alongside mastery rating.
+Everything in intrada serves one of three activities a musician does around their
+instrument. This roadmap is organised around those three pillars, not delivery
+phases. Each pillar advances independently — a musician benefits from progress in
+any of them without waiting for the others.
 
 ---
 
@@ -27,330 +13,176 @@ teacher, and student perspectives.
 
 | Area | Status |
 |------|--------|
-| Auth (Clerk/Google, JWT, JWKS refresh, 401 retry) | ✅ Complete |
-| Library CRUD (piece + exercise, tags, key, tempo, notes) | ✅ Complete |
-| Sessions (build → active → summary, timer, crash recovery) | ✅ Complete |
-| Routines (full CRUD, load into builder, save from summary) | ✅ Complete |
-| Analytics (weekly stats, streak, 28-day chart, top items, score trends) | ✅ Complete |
-| Scoring (1-5 per item) and per-item/session notes | ✅ Complete |
-| Search/filter infrastructure in core (ListQuery) | ✅ Backend only (no UI) |
+| Auth (Clerk/Google, JWT, JWKS refresh, 401 retry) | Done |
+| Library CRUD (piece + exercise, tags, key, tempo, notes) | Done |
+| Sessions (build, active, summary, timer, crash recovery) | Done |
+| Routines (full CRUD, load into builder, save from summary) | Done |
+| Analytics (weekly stats, streak, 28-day chart, top items, score trends) | Done |
+| Scoring (1-5 per item) and per-item/session notes | Done |
+| Search/filter infrastructure in core (ListQuery) | Backend only (no UI) |
+| Design system (tokens, typography utilities, component library) | Done |
+| Drag-and-drop session builder | Done |
+| Composer + tag autocomplete | Done |
+| E2E test suite (Playwright, 30 tests) | Done |
 
 ---
 
-## Phase 1: Practice Quality (4 weeks)
+## Three Pillars
 
-**Theme: "Make every session count"**
+### Plan — "Decide what to practise"
 
-Enhance the existing session experience. No new scheduling intelligence — just make
-the act of practising meaningfully better with what we already have.
+Before the instrument comes out. Building sessions, organising the library, setting
+goals, and eventually letting the app decide for you.
 
-### Features
+#### Now (next 4 weeks)
 
-- **Focus mode** — strip the UI to essentials during active practice. Current item +
-  timer only. Navigation and library hidden but accessible via swipe/tap.
-- **Visual progress timer** — replace the numeric countdown with a progress ring/bar.
-  Show both per-item and total session elapsed. Gentle chime at suggested transition.
-- **Repetition counter** — optional per-item tool. Tap ✓ to increment, ✗ to decrement
-  (never below 0). Configurable target (3–10, default 5). When reached, auto-prompt
-  transition to next item.
-- **Lightweight micro-cycle** — before each item, a quick-tap focus selector (accuracy /
-  evenness / dynamics / tempo / custom). After each item, a 1–5 rating tap + optional
-  short note. **Not** a mandatory reflection essay — one tap is the minimum interaction.
-- **Light path for maintenance items** — items at mastery ≥ 4 get a streamlined flow:
-  focus mode → timer → quick rating → auto-transition. No goal prompt or extended
-  reflection. Configurable threshold.
-- **Search/filter UI** — expose the existing ListQuery infrastructure as a search bar +
-  filter chips on the library list. The backend is already built.
-- **Rework streak → comeback framing** — replace the current streak counter in analytics
-  with "X of the last 7 days" language. Celebrate returns, never shame gaps. This
-  aligns the existing analytics with the vision's inclusive design principles.
-- **Scoring captures tempo** — when rating an item, optionally record the tempo achieved
-  alongside the 1–5 mastery score. This is essential for tracking progress on items
-  where mastery is tempo-dependent.
+| # | Feature | Size |
+|---|---------|------|
+| 47 | **Intentional practice micro-cycle** — set a focus goal before each item, reflect after. Lightweight: one tap minimum, notes optional. Completes the goal-practise-reflect loop. | S |
+| 93 | **Holistic practice loop** — parent issue unifying library, sessions, routines and goals into a coherent flow. | — |
 
-### Delivers
+#### Next (4-12 weeks)
 
-A meaningfully better practice experience using the existing library and session system.
-Musicians feel the difference immediately — the app respects their time and attention
-during practice, not just before and after.
+| # | Feature | Size |
+|---|---------|------|
+| 50 | **Section/passage management** — break pieces into practisable sections with independent mastery scores and tempo targets. | L |
+| 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL |
+| 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
+| 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
+| 60 | **Basic goal setting** — session frequency, practice time, item mastery, and milestone goals. Progress computed from session data. | L |
+| 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
 
-### Dependencies
+#### Later (12+ weeks)
 
-None — all features enhance the existing system.
+| # | Feature | Size |
+|---|---------|------|
+| 55 | **Spaced repetition engine** — modified SM-2 algorithm for optimal review intervals based on mastery scores and time since last practice. | XL |
+| 56 | **Interleaved setlist generator** — mixed-type sessions with configurable interleaving intensity. | L |
+| 57 | **One-tap session start** — open the app, tap Start, play. Zero other decisions. | L |
+| 58 | **Mastery decay model** — scores decrease over time without review, creating natural scheduling urgency. | M |
+| 42 | **Links to IMSLP** — link pieces to free sheet music on IMSLP. | S |
+| 43 | **Open-source exercise library** — built-in scales, arpeggios, Hanon, Czerny etc. | L |
+| 71 | **AI setlist generation** — goal-driven practice plans ("I have a gig in 3 weeks — build me a plan"). | L |
+| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. | L |
+| 100 | **Personalisation** — user preferences and customisation. | — |
 
 ---
 
-## Phase 2: Library Depth (4 weeks)
+### Practice — "Play with intention"
 
-**Theme: "A library that understands music"**
+Instrument is out. Timer running. The app stays out of the way and supports
+focus, not admin.
 
-Make the library genuinely useful for structured music study. This phase is prerequisite
-for the scheduling engine — the scheduler needs richer data to make intelligent decisions.
+#### Now (next 4 weeks)
 
-### Features
+| # | Feature | Size |
+|---|---------|------|
+| 48 | **Focus mode** — strip the UI to essentials during active practice. Current item + timer only. Navigation hidden but accessible. | M |
+| 49 | **Repetition counter** — optional per-item counter tracking consecutive correct repetitions toward a configurable target. | M |
+| 52 | **Tempo tracking** — log achieved tempo per item per session, working toward a target BPM. | M |
 
-- **Key-aware exercise generation** — mark an exercise as "all 12 keys" and auto-generate
-  12 sub-items. Each tracks mastery independently. Parent exercise shows aggregate view.
-  Musician sees one library item but can drill into per-key progress.
-- **Section/passage management** — break pieces into practisable sections. Each section
-  has its own mastery score and tempo target. The scheduler (Phase 3) can surface
-  specific sections rather than whole pieces.
-- **Expanded item types** — add Licks/Vocabulary and Technique as first-class types
-  alongside Piece and Exercise. Each type can have type-specific metadata.
-- **Effort/difficulty tags** — per-item difficulty level and effort rating. These feed
-  the session difficulty balancer in Phase 3.
-- **Lesson capture flow** — "What did your teacher assign this week?" A quick-add
-  interface optimised for translating lesson notes into library items. Available from
-  onboarding and as a recurring entry point.
-- **First-time user onboarding** — guided flow for empty libraries: "How do you
-  practise?" → lesson capture or quick-add wizard → first session prompt. Addresses
-  the Day 1 cold-start problem.
-- **Free practice mode** — a timer-only mode that logs time without requiring items,
-  scores, or structure. Legitimises unstructured practice time. Logged in analytics
-  as "free practice" so it counts toward consistency.
+#### Next (4-12 weeks)
 
-### Delivers
+| # | Feature | Size |
+|---|---------|------|
+| 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S |
+| 61 | **Encouragement messaging** — data-tied, process-focused messages. "Your Db mastery went from 2 to 4 over three weeks." Configurable frequency, tone, delivery. | M |
+| 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S |
+| 79 | **Calendar view** — calendar-based view of practice sessions. | M |
 
-The library becomes genuinely useful for structured music study. Jazz students can track
-all 12 keys. Classical students can break sonatas into sections. The cold-start problem
-is solved.
+#### Later (12+ weeks)
 
-### Dependencies
-
-Phase 1 (scoring captures tempo — needed for section-level tempo targets).
+| # | Feature | Size |
+|---|---------|------|
+| 69 | **Audio recording & playback** — record a run-through, play it back, compare to weeks ago. | L |
+| 70 | **Customisable encouragement preferences** — frequency, tone, delivery controls. Respects neurodiversity. | M |
 
 ---
 
-## Phase 3: Scheduling Intelligence (6 weeks)
+### Track — "See the process working"
 
-**Theme: "Practise what matters most"**
+After the session. Analytics, insights, visualisation. Evidence that the practice
+is actually working.
 
-The signature feature. This is the largest phase because the SRS engine, interleaved
-generator, and session planning all need to ship together to deliver the one-tap start
-experience.
+#### Next (4-12 weeks)
 
-### Features
+| # | Feature | Size |
+|---|---------|------|
+| 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L |
+| 65 | **Practice consistency calendar** — comeback framing: "4 of the last 7 days." Celebrate returns, never shame gaps. | M |
+| 67 | **Milestone goals & progress dashboard** — percentage completion for active goals. | M |
+| 68 | **Weekly practice summary** — comparison to prior week, shown on next app open. | M |
 
-- **Mastery decay model** — scores decrease over time if items aren't reviewed. Rate of
-  decay is configurable. Creates natural urgency in the scheduling algorithm.
-- **Spaced repetition engine** — modified SM-2 algorithm. Intervals based on mastery
-  scores + time since last practice. High-effort items get shorter intervals (informed
-  by Donovan & Radosevich's finding that task complexity moderates the spacing effect).
-  Parameters should be tuneable and validated against real user data over time.
-- **Interleaved setlist generator** — create mixed-type practice sessions. Session begins
-  with more similar items and increases variety as the session progresses (Mathias &
-  Goldman, 2025). Configurable interleaving intensity: gentle mixing → full interleave.
-- **Tempo-building practice flow** — a first-class sub-loop within any practice item.
-  Set current tempo + target tempo. Play → judge (solid?) → bump or hold → repeat.
-  Iterative tempo-building is how musicians actually work — it's a session within a
-  session. Metronome integration (built-in or external — **open question**).
-- **One-tap session start** — the landing screen shows today's algorithmically generated
-  session with a prominent Start button. Musician picks a duration, taps Start, and plays.
-  Zero other decisions.
-- **Short session options** — 10, 15, 20, 30, 45, 60 minutes prominently offered.
-  Framing: short sessions are legitimate and effective.
-- **Difficulty balancing** — front-load demanding work when focus is fresh. No back-to-back
-  high-effort items. Taper toward lighter review material.
-- **Deep dive mode** — pick ONE item, open-ended time, intensive work. The interleaved
-  approach is the default, but sometimes a musician needs to shed. This respects that
-  interleaving isn't always the right answer.
-- **Transition prompts** — gentle cues between items. Preview of what's coming next.
-  Optional 30-second micro-break. Reduces "what do I do now?" cognitive load.
+#### Later (12+ weeks)
 
-### Delivers
-
-Open app → tap Start → get a personalised, science-backed practice session. The tempo
-loop makes practice feel like real musicianship, not admin. Deep dive mode prevents the
-app from feeling prescriptive.
-
-### Dependencies
-
-Phase 2 (key-aware exercises, sections, effort tags — the scheduler needs this richer
-data to make good decisions).
+| # | Feature | Size |
+|---|---------|------|
+| 64 | **Circle of fifths widget** — interactive key coverage visualisation showing mastery per key. | L |
+| 66 | **Tempo progress charts** — tempo increase over time toward target BPM per item. | M |
+| 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L |
+| 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M |
+| 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L |
+| 75 | **Teacher integration** — shared goals, suggested items, progress visibility (with permission). | L |
 
 ---
 
-## Phase 4: Goals & Encouragement (4 weeks)
+## Cross-Cutting Concerns
 
-**Theme: "See the process working"**
+These don't belong to a single pillar — they support all three.
 
-Add the motivational layer. Goals give direction; encouragement provides evidence that
-the direction is working.
-
-### Features
-
-- **Goal framework** — three tiers:
-  - Session goals: "Focus on left hand today" (set at session start)
-  - Weekly goals: "Practice 5 days this week" (set from goals screen)
-  - Milestone goals: "All keys to mastery 4 by March" (linked to specific items)
-- **Goal-aligned scheduling** — items tagged for active goals get a priority boost in
-  the scheduling algorithm. Active goals influence session composition.
-- **Encouragement messages** — data-tied, process-focused. "Your Db mastery went from
-  2 to 4 over three weeks — that's the spacing effect at work." Not empty praise.
-  Tied to observable improvements in the data.
-- **Rest & recovery awareness** — flag when practice volume significantly exceeds
-  historical average. "Your body and brain need recovery time to consolidate what
-  you've learned."
-- **Time vs planned comparison** — post-session summary shows planned duration vs actual.
-  Helps musicians calibrate their internal time sense. Particularly valuable for
-  musicians with ADHD-related time blindness.
-- **Quick close option** — save scores captured during practice, skip the detailed
-  summary. Respects that after 45 minutes of practice, some musicians just want to stop.
-
-### Delivers
-
-Musicians can set goals and see evidence that their practice is working. The
-encouragement is specific, data-grounded, and tied to the scheduling methodology —
-reinforcing trust in the process.
-
-### Dependencies
-
-Phase 3 (scheduling engine — goal-aligned scheduling needs the SRS engine).
+| # | Feature | Horizon | Labels |
+|---|---------|---------|--------|
+| 99 | **Review use of Crux** — evaluate the core/shell architecture | Now | — |
+| 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
 
 ---
 
-## Phase 5: Visualisation & Insights (6 weeks)
+## Delivery Model
 
-**Theme: "Trust the evidence"**
+### Labels
 
-The full visualisation suite. These features transform raw practice data into actionable
-insight and motivational fuel.
+| Label | Purpose |
+|-------|---------|
+| `pillar:plan` | Decide what to practise |
+| `pillar:practice` | Play with intention |
+| `pillar:track` | See the process working |
+| `horizon:now` | Next 4 weeks |
+| `horizon:next` | 4-12 weeks |
+| `horizon:later` | 12+ weeks / future |
+| `architecture` | Technical debt, infrastructure |
+| `ux` | User experience (cross-cutting) |
+| `accessibility` | Neurodiversity and accessibility (cross-cutting) |
 
-### Features
+### Project board
 
-- **Mastery timeline charts** — per-item and aggregate line charts showing mastery
-  improvement over weeks and months.
-- **Key coverage heatmap** — circle-of-fifths view showing mastery level per key for any
-  exercise. Immediately reveals weak keys.
-- **Consistency calendar** — comeback framing: "4 of the last 7 days — great spacing for
-  retention." Not streak-focused. Celebrate returns after gaps.
-- **Tempo progress charts** — showing tempo increase over time toward target BPM per item.
-- **Goal progress dashboard** — percentage completion for active goals.
-- **Weekly summary with insights** — comparison to prior week. Shown on next app open
-  or via notification.
-- **Encouragement configuration** — frequency (every item / session / weekly / off),
-  tone (data-focused / warm / minimal), delivery (inline / summary / notification).
-  Respects that not all musicians want the same encouragement.
-- **Audio recording & playback** — record a run-through, play it back, rate it. Compare
-  to a recording from weeks ago. Provides an objective anchor for subjective mastery
-  ratings. (**Open question:** browser audio API viability on mobile.)
+Backlog > Ready > In Progress > In Review > Done
 
-### Delivers
+The board columns are workflow states, not categories. Use the pillar and horizon
+labels to filter and slice the board.
 
-A musician can look at their dashboard and see concrete evidence of progress. Weak spots
-are visible. The sense of competence (SDT) is actively reinforced. The app becomes a
-motivational engine, not just a tracking tool.
+### Prioritisation
 
-### Dependencies
-
-Phase 4 (goals — the goal dashboard needs the goal framework).
-
----
-
-## Phase 6: Collaboration & Intelligence (6+ weeks)
-
-**Theme: "A practice partner who knows you"**
-
-AI-powered features and teacher collaboration. These leverage all the data accumulated
-in earlier phases.
-
-### Features
-
-- **Teacher integration (basic)** — teacher shares routines, suggests items for student's
-  library, sets target tempos or milestone goals, views progress dashboards (with
-  permission). Musician retains full control. This is a *collaboration* feature, not an
-  AI feature.
-- **Import/export** — share routines with other musicians. Import items from external
-  sources.
-- **AI setlist generation** — "I have a gig playing 8 standards in 3 weeks — build me a
-  practice plan."
-- **Pattern recognition** — identify systematic weaknesses (e.g. flat keys, left hand
-  passages) from accumulated practice data.
-- **Adaptive difficulty** — auto-adjust scheduling aggressiveness based on progress
-  patterns over time.
-- **Adaptive interleaving** — AI adjusts mixing intensity based on how the musician
-  responds to different levels of contextual interference.
-- **AI session review** — post-session analysis with rebalancing suggestions.
-- **Goal coaching** — help set realistic goals and break them into actionable daily
-  practice plans.
-
-### Delivers
-
-Intrada becomes a knowledgeable practice partner — one that understands the musician's
-history, patterns, and goals.
-
-### Dependencies
-
-Phase 5 (visualisations — the AI needs the data patterns that the visualisations reveal).
-
----
-
-## Timeline Summary
-
-| Phase | Theme | Duration | Cumulative |
-|-------|-------|----------|------------|
-| 1. Practice Quality | Make every session count | 4 weeks | 4 weeks |
-| 2. Library Depth | A library that understands music | 4 weeks | 8 weeks |
-| 3. Scheduling Intelligence | Practise what matters most | 6 weeks | 14 weeks |
-| 4. Goals & Encouragement | See the process working | 4 weeks | 18 weeks |
-| 5. Visualisation & Insights | Trust the evidence | 6 weeks | 24 weeks |
-| 6. Collaboration & Intelligence | A practice partner who knows you | 6+ weeks | 30+ weeks |
-
-Total: ~30 weeks vs the original 24. More realistic given the additions (onboarding,
-tempo-building flow, free practice mode, deep dive mode, lesson capture).
+Each pillar advances independently. "What's the most important Plan feature?"
+is a better question than "What phase are we in?" Within each pillar, the
+Priority field (P0/P1/P2) ranks items.
 
 ---
 
 ## Open Questions
 
-These need decisions before or during implementation:
+1. **Metronome: built-in or external?** The tempo-building loop needs a metronome.
+   Building one is non-trivial (accurate timing in WASM). Decision point: before
+   tempo tracking (#52) ships.
 
-1. **Metronome: built-in or external?** The tempo-building loop (Phase 3) needs a
-   metronome. Building one is non-trivial (accurate timing in WASM). Alternative:
-   design the flow to work alongside an external metronome app.
+2. **Offline-first architecture.** Currently API-dependent. What syncs? When?
+   Gets harder to retrofit the longer we wait.
 
-2. **Offline-first architecture.** Vision Principle 6 says "offline-first." The current
-   architecture is API-dependent. What syncs? What doesn't? When does sync happen? This
-   is an architectural decision that gets harder to retrofit the longer we wait.
+3. **iOS native vs web-first.** Web shell is fine for Plan and Track pillars.
+   For Practice (audio recording, metronome), native APIs would be significantly
+   better. Decision point: before audio recording (#69).
 
-3. **iOS native vs web-first.** The vision doc raises this question. For Phases 1–3,
-   the web shell is fine. For the tempo loop and audio recording (Phases 3 and 5),
-   native APIs would be significantly better. Decision point: before Phase 3.
+4. **Scoring + tempo coupling.** Should every mastery rating require a tempo?
+   Or is tempo optional (only for items with tempo targets)?
 
-4. **Audio recording viability.** Browser MediaRecorder API works on desktop but is
-   inconsistent on mobile Safari. If audio recording is important, this pushes toward
-   native.
-
-5. **Teacher integration timing.** Currently Phase 6. Basic sharing (routines, item
-   suggestions) could come earlier without AI. Consider splitting: basic teacher
-   features in Phase 4, AI-powered teacher features in Phase 6.
-
-6. **Scoring + tempo coupling.** Should every mastery rating require a tempo? Or is
-   tempo optional (only relevant for items with tempo targets)? The student critique
-   suggests mastery is tempo-dependent, but not all items have tempo targets.
-
----
-
-## Critique Integration Log
-
-Changes made based on the product/teacher/student review:
-
-| # | Critique | Resolution |
-|---|----------|------------|
-| 1 | Feature inventory, not journey | Added onboarding lane, emotional annotations, open questions |
-| 2 | First-time user invisible | Added Day 1 onboarding flow with empty-library handling |
-| 3 | No lesson → practice bridge | Added lesson capture as onboarding and recurring flow |
-| 4 | Phase 2 overloaded | Split into Phases 3 + 4; moved practice quality to Phase 1 |
-| 5 | Goals incoherent across diagram | Gave goals their own lane with set → link → track → achieve |
-| 6 | Tempo work absent | Tempo-building loop is first-class in Phase 3 practice flow |
-| 7 | No deep dive mode | Added alongside interleaved as a session type |
-| 8 | Micro-cycle too rigid | Added light path for maintenance items |
-| 9 | Sections need more depth | Sections get own mastery + tempo; schedulable independently |
-| 10 | Teacher integration too late | Noted as open question; basic sharing could move to Phase 4 |
-| 11 | Reflection is homework | Quick close option; rating is 1 tap, notes are optional |
-| 12 | Scoring too coarse (no tempo) | Scoring now captures tempo alongside mastery |
-| 13 | No free practice mode | Added: timer only, no structure, counts toward consistency |
-| 14 | Streak counter contradicts comeback | Rework streak → comeback in Phase 1, not deferred |
-| 15 | Offline absent | Flagged as cross-cutting principle + open question |
-| 16 | Too linear / not messy enough | Added cross-flow connections, lesson capture as re-entry |
-| 17 | No import/share | Added to Phase 6 (teacher integration) |
+5. **Teacher integration timing.** Currently horizon:later. Basic sharing
+   (routines, item suggestions) could come earlier without AI.

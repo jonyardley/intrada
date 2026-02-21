@@ -9,6 +9,14 @@ intrada is a music practice companion app. Users sign in with Google (via Clerk)
 manage a library of pieces and exercises, run timed practice sessions with scoring,
 build reusable routines, and view analytics.
 
+The product is organised around three activity pillars:
+- **Plan** — decide what to practise (library, routines, goals, scheduling)
+- **Practice** — play with intention (focus mode, timers, scoring, in-session UX)
+- **Track** — see the process working (analytics, visualisation, insights)
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the current roadmap and
+[`VISION.md`](VISION.md) for the research foundation.
+
 ## Project Structure
 
 ```text
@@ -16,6 +24,7 @@ crates/
   intrada-core/   # Pure Crux core — business logic, no I/O, no side effects
   intrada-web/    # Web shell — Leptos 0.8 CSR + WASM, Clerk auth UI
   intrada-api/    # REST API — Axum 0.8 + Turso (libsql), JWT validation
+docs/             # Product roadmap (single source of truth for what's next)
 e2e/              # Playwright E2E tests
 specs/            # SpecKit design artifacts
 ```
@@ -155,6 +164,42 @@ already covers the pattern. If not, **create the abstraction first**, then use i
    default system sans-serif.
 
 Key files: `intrada-web/input.css` (tokens + utilities), `intrada-web/src/components/` (Leptos components), `views/design_catalogue.rs` (visual reference)
+
+## Roadmap Alignment
+
+Every piece of work should connect back to the product vision. Before starting
+and after finishing, check alignment with the source-of-truth documents.
+
+### Before starting work
+
+1. **Identify the roadmap item.** Find the issue number in [`docs/roadmap.md`](docs/roadmap.md).
+   If the work doesn't map to an existing item, pause and discuss whether it should.
+2. **Check the pillar.** Know which pillar (Plan / Practice / Track) and horizon
+   (Now / Next / Later) the work belongs to. Prefer `horizon:now` items over others.
+3. **Check the project board.** The issue should be in Ready or In Progress on the
+   [GitHub project board](https://github.com/users/jonyardley/projects/2). If it's
+   still in Backlog, move it to Ready before starting.
+
+### After completing work
+
+1. **Update the roadmap.** If a feature is done, move it to "What's Built Today" in
+   `docs/roadmap.md` and close the GitHub issue.
+2. **Update CLAUDE.md.** If the work changes architecture, adds components, or
+   introduces new patterns, update the relevant section of this file.
+3. **Check for stale items.** Glance at the project board — are there issues that
+   are now done, duplicated, or no longer relevant? Flag them.
+
+### Periodic review (every 2 weeks)
+
+These documents should stay in sync. When any one changes, check the others:
+
+| Document | What to check |
+|----------|---------------|
+| [`docs/roadmap.md`](docs/roadmap.md) | Horizons still accurate? Closed issues removed? New work captured? |
+| [`VISION.md`](VISION.md) | Still reflects current product direction? No stale phase references? |
+| [`CLAUDE.md`](CLAUDE.md) | Tech stack, components, and patterns up to date? |
+| [`docs/user-journey-to-be.drawio`](docs/user-journey-to-be.drawio) | Feature colours match pillar model? New features added? |
+| [GitHub project board](https://github.com/users/jonyardley/projects/2) | Board status matches horizon labels? Priorities set? |
 
 ## Known Tech Debt
 

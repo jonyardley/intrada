@@ -75,11 +75,13 @@ Save both values — you'll need them for Fly.io secrets and local development.
 
 ### Database schema
 
-Migrations run automatically on server startup. Three tables are created:
+Migrations run automatically on server startup. Key tables:
 
-- `pieces` — music pieces (title, composer, key, tempo, tags)
-- `exercises` — practice exercises (title, composer, category, key, tempo, tags)
+- `items` — unified library items (pieces and exercises, with kind, title, composer, category, key, tempo, tags)
 - `sessions` + `setlist_entries` — completed practice sessions with their entries
+- `routines` + `routine_entries` — reusable practice routines
+
+> **Note:** Legacy `pieces` and `exercises` tables still exist from early migrations but are no longer used.
 
 ## 3. Fly.io (API Server)
 
@@ -225,13 +227,13 @@ curl http://localhost:3001/api/health
 # Health check (via Trunk proxy)
 curl http://localhost:8080/api/health
 
-# Create a piece
-curl -X POST http://localhost:3001/api/pieces \
+# Create an item
+curl -X POST http://localhost:3001/api/items \
   -H "Content-Type: application/json" \
-  -d '{"title":"Clair de Lune","composer":"Debussy","tags":[]}'
+  -d '{"kind":"piece","title":"Clair de Lune","composer":"Debussy","tags":[]}'
 
-# List pieces
-curl http://localhost:3001/api/pieces
+# List items
+curl http://localhost:3001/api/items
 ```
 
 ### Seed data
