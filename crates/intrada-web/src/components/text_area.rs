@@ -21,11 +21,11 @@ pub fn TextArea(
 
     view! {
         <div>
-            <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
+            <label class="form-label" for=id>
                 {label}
             </label>
             {hint.map(|h| view! {
-                <p class="text-xs text-gray-400 mb-1">{h}</p>
+                <p class="hint-text">{h}</p>
             })}
             <textarea
                 id=id

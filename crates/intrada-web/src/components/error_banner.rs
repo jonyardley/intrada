@@ -7,6 +7,8 @@ use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Global dismissible error banner that reads `ViewModel.error` and shows
 /// a styled error message with a dismiss button.
+///
+/// Uses the danger semantic colour tokens (audit #4).
 #[component]
 pub fn ErrorBanner() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -19,13 +21,13 @@ pub fn ErrorBanner() -> impl IntoView {
             view_model.get().error.map(|err| {
                 let core = core.clone();
                 view! {
-                    <div class="mb-6 rounded-lg bg-red-500/10 border border-red-400/20 p-4" role="alert">
+                    <div class="mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
                         <div class="flex items-start justify-between gap-3">
-                            <p class="text-sm text-red-300">
+                            <p class="text-sm text-danger-text">
                                 <span class="font-medium">"Error: "</span>{err}
                             </p>
                             <button
-                                class="shrink-0 text-red-400 hover:text-red-300 text-xs font-medium"
+                                class="shrink-0 text-danger-text hover:text-danger-hover text-xs font-medium"
                                 on:click=move |_| {
                                     let core_ref = core.borrow();
                                     let effects = core_ref.process_event(Event::ClearError);

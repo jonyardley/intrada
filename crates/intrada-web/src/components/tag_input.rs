@@ -66,21 +66,21 @@ pub fn TagInput(
 
     view! {
         <div>
-            <label class="block text-sm font-medium text-gray-200 mb-1" for=id>
+            <label class="form-label" for=id>
                 "Tags"
             </label>
-            <div class="w-full rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-indigo-400 focus-within:ring-1 focus-within:ring-indigo-400">
+            <div class="w-full rounded-lg border border-border-input bg-surface-input px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-accent-focus focus-within:ring-1 focus-within:ring-accent-focus">
                 // Render tag chips
                 {move || {
                     tags.get().into_iter().map(|tag| {
                         let tag_display = tag.clone();
                         let tag_label = tag.clone();
                         view! {
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600/30 text-indigo-200 text-xs">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/30 text-accent-text text-xs">
                                 {tag_display}
                                 <button
                                     type="button"
-                                    class="text-indigo-300 hover:text-white focus:outline-none"
+                                    class="text-accent-text hover:text-white focus:outline-none"
                                     aria-label=format!("Remove tag {tag_label}")
                                     on:click={
                                         let tag_val = tag.clone();

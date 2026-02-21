@@ -34,9 +34,9 @@ pub fn SetlistEntryRow(
         <div
             class=move || {
                 if is_dragging_this.get() {
-                    "flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3 drag-active ring-2 ring-indigo-400"
+                    "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3 drag-active ring-2 ring-accent-focus"
                 } else {
-                    "flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3"
+                    "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3"
                 }
             }
             data-entry-index=index.to_string()
@@ -52,7 +52,7 @@ pub fn SetlistEntryRow(
                 }
             })}
 
-            <span class="text-sm font-mono text-gray-500 w-6 text-right">
+            <span class="text-sm font-mono text-faint w-6 text-right">
                 {entry.position + 1}
             </span>
             <div class="flex-1 min-w-0">
@@ -62,7 +62,7 @@ pub fn SetlistEntryRow(
                 </div>
                 {if !entry.duration_display.is_empty() && entry.duration_display != "0s" {
                     Some(view! {
-                        <span class="text-xs text-gray-400">{entry.duration_display}</span>
+                        <span class="text-xs text-muted">{entry.duration_display}</span>
                     })
                 } else {
                     None
@@ -75,7 +75,7 @@ pub fn SetlistEntryRow(
                             let id = entry_id_up.clone();
                             view! {
                                 <button
-                                    class="p-1 text-gray-500 hover:text-gray-300"
+                                    class="p-1 text-faint hover:text-secondary"
                                     title="Move up"
                                     on:click=move |_| cb.run(id.clone())
                                 >
@@ -87,7 +87,7 @@ pub fn SetlistEntryRow(
                             let id = entry_id_down.clone();
                             view! {
                                 <button
-                                    class="p-1 text-gray-500 hover:text-gray-300"
+                                    class="p-1 text-faint hover:text-secondary"
                                     title="Move down"
                                     on:click=move |_| cb.run(id.clone())
                                 >
@@ -99,7 +99,7 @@ pub fn SetlistEntryRow(
                             let id = entry_id.clone();
                             view! {
                                 <button
-                                    class="p-1 text-red-400 hover:text-red-300"
+                                    class="p-1 text-danger-text hover:text-danger-hover"
                                     title="Remove"
                                     on:click=move |_| cb.run(id.clone())
                                 >

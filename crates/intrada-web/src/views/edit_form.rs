@@ -37,8 +37,8 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let Some(item) = item else {
         return view! {
             <div class="text-center py-8">
-                <p class="text-gray-300 mb-4">"Item not found."</p>
-                <A href="/" attr:class="text-indigo-300 hover:text-indigo-200 font-medium">
+                <p class="text-secondary mb-4">"Item not found."</p>
+                <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
                     "← Back to Library"
                 </A>
             </div>

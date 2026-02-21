@@ -6,6 +6,7 @@ use leptos::prelude::*;
 pub enum ButtonVariant {
     Primary,
     Secondary,
+    Success,
     Danger,
     DangerOutline,
 }
@@ -13,10 +14,11 @@ pub enum ButtonVariant {
 impl ButtonVariant {
     fn classes(self) -> &'static str {
         match self {
-            Self::Primary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 motion-safe:transition-colors min-h-[44px]",
-            Self::Secondary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-white/10 px-3.5 py-2.5 text-sm font-medium text-gray-200 border border-white/20 hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40 motion-safe:transition-colors min-h-[44px]",
-            Self::Danger => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3.5 py-2.5 text-sm font-medium text-white hover:bg-red-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 motion-safe:transition-colors min-h-[44px]",
-            Self::DangerOutline => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-500/10 px-3.5 py-2.5 text-sm font-medium text-red-400 border border-red-400/30 hover:bg-red-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 motion-safe:transition-colors min-h-[44px]",
+            Self::Primary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors min-h-[44px]",
+            Self::Secondary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-surface-secondary px-3.5 py-2.5 text-sm font-medium text-label border border-border-default hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors min-h-[44px]",
+            Self::Success => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-success-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-text motion-safe:transition-colors min-h-[44px]",
+            Self::Danger => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-danger px-3.5 py-2.5 text-sm font-medium text-white hover:bg-danger-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-text motion-safe:transition-colors min-h-[44px]",
+            Self::DangerOutline => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-danger-surface px-3.5 py-2.5 text-sm font-medium text-danger-text border border-danger-text/30 hover:bg-danger-surface hover:brightness-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-text motion-safe:transition-colors min-h-[44px]",
         }
     }
 }

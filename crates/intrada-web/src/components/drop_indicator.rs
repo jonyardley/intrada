@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 /// A horizontal line that indicates where a dragged item will be dropped.
 ///
-/// Renders a 2px `bg-indigo-400` horizontal line. Uses `motion-safe:` transitions
+/// Renders a 2px accent-coloured horizontal line. Uses `motion-safe:` transitions
 /// for `prefers-reduced-motion` compliance (FR-011). Hidden when `visible` is false.
 ///
 /// IMPORTANT: The indicator always occupies the same layout space (h-0.5 my-0.5)
