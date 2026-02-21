@@ -2,7 +2,7 @@
 
 **Your Intentional Practice Companion**
 
-*Product Vision, Research Foundation & Roadmap — February 2026*
+*Product Vision & Research Foundation — February 2026*
 
 ---
 
@@ -187,7 +187,7 @@ When a musician starts practising an item, Intrada prompts them to set a micro-g
 
 This micro-cycle of goal → practice → reflect mirrors the deliberate practice feedback loop. It's lightweight enough to not feel burdensome, but structured enough to prevent mindless repetition. The qualitative value of focused, goal-directed practice is well-supported even where quantitative claims about practice hours have been moderated (Macnamara & Maitra, 2019).
 
-**Note:** This micro-cycle is introduced from Phase 1, not Phase 2, to establish the intentional practice habit from day one. Research on habit formation suggests that early interaction patterns tend to persist — if musicians learn to use Intrada without intentional practice prompts, adding them later may feel like friction rather than enhancement.
+**Note:** This micro-cycle is introduced early to establish the intentional practice habit from day one. Research on habit formation suggests that early interaction patterns tend to persist — if musicians learn to use Intrada without intentional practice prompts, adding them later may feel like friction rather than enhancement.
 
 #### Focus Mode
 
@@ -235,7 +235,7 @@ Visualisations serve two purposes: they provide actionable insight (where are th
 - **Tempo progress chart** — showing tempo increase over time toward target BPM
 - **Goal progress dashboard** — percentage completion toward active goals
 
-**Basic encouragement messaging** (comparing current ratings to recent history) is available from Phase 2, before the full visualisation suite. Simple messages like "Your Db mastery went from 2 to 4 over the last three weeks" require only comparison of existing data, not charts or dashboards, and provide the competence feedback that sustains motivation early on.
+**Basic encouragement messaging** (comparing current ratings to recent history) can be delivered before the full visualisation suite. Simple messages like "Your Db mastery went from 2 to 4 over the last three weeks" require only comparison of existing data, not charts or dashboards, and provide the competence feedback that sustains motivation early on.
 
 ### 4.6 Goals & Encouragement
 
@@ -290,85 +290,16 @@ Understanding existing solutions helps position Intrada's unique contribution.
 
 ## 6. Product Roadmap
 
-The roadmap is organised into four phases, each delivering a complete, useful product while building toward the full vision. Each phase is designed so that the app is valuable at that stage — not just a stepping stone to the next.
+The detailed roadmap lives in [`docs/roadmap.md`](docs/roadmap.md) and is the single
+source of truth for what's built, what's next, and what's planned.
 
-### Phase 1: Foundation (Weeks 1–6)
+The roadmap is organised around three activity pillars — **Plan** (decide what to
+practise), **Practice** (play with intention), and **Track** (see the process working).
+Each pillar advances independently; a musician benefits from progress in any of them
+without waiting for the others. Within each pillar, features are placed on a rolling
+horizon: **Now** (next 4 weeks), **Next** (4–12 weeks), and **Later** (12+ weeks).
 
-**Theme: "A library that understands music"**
-
-Build the core data model, library management, and the intentional practice habit from day one.
-
-- Library CRUD: add, edit, archive pieces, exercises, licks, technique items
-- Tagging and categorisation (instrument, genre, difficulty, effort level, custom tags)
-- Key-aware exercise generation: mark an exercise as "all keys" and auto-generate 12 sub-items
-- Section/passage management for pieces
-- Basic practice session logging with mastery self-rating (1–5) and notes
-- Tempo tracking per item
-- Practice timer with visual progress indication
-- Intentional practice micro-cycle: goal-setting prompt before each item, reflection prompt after
-- Warm-up routines: save reusable sequences of items as templates
-- Focus mode: minimal UI during active practice (current item, timer, rating only)
-- Repetition counter: optional per-item tool tracking consecutive correct attempts toward a configurable target (default 5)
-- Full-text search across practice notes
-- Dyslexia-friendly typography and sensory-considerate visual defaults
-
-**Milestone:** A musician can manage their practice library with per-key tracking, log practice sessions with meaningful metrics, and establish the intentional practice habit of goal → practise → reflect. Already more useful than a notebook.
-
-### Phase 2: Intelligence (Weeks 7–12)
-
-**Theme: "Practise what matters most"**
-
-Add the scheduling intelligence that makes Intrada genuinely different, with a zero-friction default path.
-
-- Spaced repetition engine: calculate optimal review intervals based on mastery scores and time elapsed
-- Interleaved practice setlist generator: create mixed-type practice sessions
-- Interleaving intensity preference: user controls mixing aggressiveness (gentle → full interleave)
-- Difficulty-aware scheduling: balance effort across sessions, front-loading demanding work
-- One-tap session start: open app → see today's session → tap "Start" → play
-- Session planning: input available time, get a structured practice plan
-- Short session options prominently offered (10, 15, 20, 30 minutes)
-- Mastery decay model: scores decrease over time if items are not reviewed
-- Gentle transition prompts between items with preview of what's next
-- Basic goal setting (session and weekly goals)
-- Basic competence-reinforcing messages using existing data (e.g. "Your Db major was 2 last week, now it's 3")
-- Rest & recovery awareness: flag unusually high practice volumes
-
-**Milestone:** A musician opens Intrada, taps "Start," and gets a personalised, science-backed practice session with zero setup decisions. They set micro-goals and reflect. The app is now a genuine practice companion.
-
-### Phase 3: Visibility (Weeks 13–18)
-
-**Theme: "See the process working"**
-
-Add the visualisation and encouragement layer that sustains motivation.
-
-- Mastery timeline charts (per item and aggregate)
-- Key coverage heatmap (circle of fifths visualisation)
-- Practice consistency calendar with comeback framing (not streak-focused)
-- Tempo progress charts
-- Goal progress dashboard with milestone goals
-- Customisable encouragement messaging (frequency, tone, delivery preferences)
-- Weekly practice summary with insights
-- Audio recording & playback for self-assessment
-- Estimated vs. actual time tracking summary to help calibrate time perception
-
-**Milestone:** A musician can look at their Intrada dashboard and see concrete evidence of progress. Weak spots are visible. The sense of competence (SDT) is actively reinforced. Musicians returning after a gap are welcomed back, not shamed.
-
-### Phase 4: Intelligence & AI (Weeks 19–24+)
-
-**Theme: "A practice partner who knows you"**
-
-Layer in AI-powered features that leverage all the data collected in earlier phases.
-
-- AI practice setlist generation: "I have a gig playing these 8 standards in 3 weeks — build me a plan"
-- Pattern recognition: identify systematic weaknesses (e.g. flat keys, left hand passages)
-- AI session review: post-session analysis with rebalancing suggestions
-- Technique and theory guidance: contextual explanations and exercise suggestions
-- Adaptive difficulty: automatically adjust scheduling aggressiveness based on progress patterns
-- Adaptive interleaving: AI adjusts mixing intensity based on user response patterns
-- Goal coaching: help set realistic goals and break them into actionable practice plans
-- Teacher integration: shared goals, suggested library items, progress visibility with permission
-
-**Milestone:** Intrada becomes a knowledgeable practice partner — one that understands the musician's history, patterns, and goals, and provides genuinely useful guidance.
+See the roadmap for current status, feature list, and prioritisation model.
 
 ---
 

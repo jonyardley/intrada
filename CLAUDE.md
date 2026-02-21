@@ -9,6 +9,14 @@ intrada is a music practice companion app. Users sign in with Google (via Clerk)
 manage a library of pieces and exercises, run timed practice sessions with scoring,
 build reusable routines, and view analytics.
 
+The product is organised around three activity pillars:
+- **Plan** — decide what to practise (library, routines, goals, scheduling)
+- **Practice** — play with intention (focus mode, timers, scoring, in-session UX)
+- **Track** — see the process working (analytics, visualisation, insights)
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the current roadmap and
+[`VISION.md`](VISION.md) for the research foundation.
+
 ## Project Structure
 
 ```text
@@ -16,6 +24,7 @@ crates/
   intrada-core/   # Pure Crux core — business logic, no I/O, no side effects
   intrada-web/    # Web shell — Leptos 0.8 CSR + WASM, Clerk auth UI
   intrada-api/    # REST API — Axum 0.8 + Turso (libsql), JWT validation
+docs/             # Product roadmap (single source of truth for what's next)
 e2e/              # Playwright E2E tests
 specs/            # SpecKit design artifacts
 ```

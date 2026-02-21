@@ -1,6 +1,8 @@
 # Intrada
 
-A music practice library manager built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Track the pieces and exercises you're working on, log practice sessions, tag items, and search your library.
+An intentional practice companion for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Organise your music library, run timed practice sessions with scoring, build reusable routines, and track your progress.
+
+Intrada is organised around three activity pillars: **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working). See [`docs/roadmap.md`](docs/roadmap.md) for the full roadmap and [`VISION.md`](VISION.md) for the research foundation.
 
 ## Architecture
 
@@ -124,9 +126,10 @@ crates/
       validation.rs   # Input validation rules and shared constants
       error.rs        # Error types
       domain/
-        piece.rs      # Piece event handlers
-        exercise.rs   # Exercise event handlers
-        types.rs      # Domain types (Piece, Exercise, Tempo, etc.)
+        item.rs       # Library item event handlers (pieces + exercises)
+        session.rs    # Practice session event handlers
+        routine.rs    # Routine event handlers
+        types.rs      # Domain types (Item, Tempo, etc.)
   intrada-web/        # Web shell (Leptos CSR + WASM)
     src/
       lib.rs          # Library crate root (shared modules)
@@ -144,7 +147,7 @@ crates/
   intrada-api/        # REST API server (Axum + Turso)
     src/
       main.rs         # Server entry point (Axum + CORS + migrations)
-      routes/         # HTTP handlers (pieces, exercises, sessions, health)
+      routes/         # HTTP handlers (items, sessions, routines, health)
       db/             # Database layer (libsql CRUD operations)
       migrations.rs   # Auto-run schema setup
       error.rs        # API error types → HTTP responses
@@ -159,9 +162,19 @@ specs/                # SpecKit design artifacts
 
 ## Data storage
 
-- **API server**: Pieces, exercises, and completed sessions are stored in Turso (managed SQLite) via the REST API. Migrations run automatically on server startup.
+- **API server**: Items (pieces and exercises), sessions, and routines are stored in Turso (managed SQLite) via the REST API. Migrations run automatically on server startup.
 - **Browser (localStorage)**: Only used for crash recovery of in-progress sessions (`intrada:session-in-progress` key). All other data flows through the API.
 - **IDs**: ULIDs generated server-side.
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [`CLAUDE.md`](CLAUDE.md) | Development guidelines, tech stack, architecture, design system |
+| [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars, horizons, issue tracker) — **single source of truth for what's next** |
+| [`VISION.md`](VISION.md) | Product vision, research foundation, feature detail |
+| [`SETUP.md`](SETUP.md) | Deployment & configuration (Cloudflare, Fly.io, Turso, CI/CD) |
+| [`specs/design-system.md`](specs/design-system.md) | Design token reference and visual language |
 
 ## CI/CD
 
