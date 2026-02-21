@@ -115,10 +115,10 @@ pub fn SessionSummary() -> impl IntoView {
                                                     } else {
                                                         format!("Reps: {} / {}", count, target)
                                                     };
-                                                    // Show attempt count when attempts differ from target
+                                                    // Show attempt count when history is non-empty
                                                     let attempt_suffix = entry.rep_history.as_ref().and_then(|history| {
                                                         let attempts = history.len();
-                                                        if attempts > 0 && attempts != target as usize {
+                                                        if attempts > 0 {
                                                             Some(format!(" · {} attempts", attempts))
                                                         } else {
                                                             None

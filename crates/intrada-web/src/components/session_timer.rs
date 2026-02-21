@@ -77,9 +77,12 @@ pub fn SessionTimer() -> impl IntoView {
                         let rep_count = active.current_rep_count;
                         let rep_target_reached = active.current_rep_target_reached;
                         let has_rep_state = rep_target.is_some();
-                        // Auto-show counter when entry has rep state from building phase
+                        // Auto-show counter when entry has rep state from building phase;
+                        // auto-hide when navigating to an item without rep state.
                         if has_rep_state && !rep_counter_visible.get_untracked() {
                             rep_counter_visible.set(true);
+                        } else if !has_rep_state && rep_counter_visible.get_untracked() {
+                            rep_counter_visible.set(false);
                         }
                         let show_counter = rep_counter_visible.get_untracked() || has_rep_state;
 

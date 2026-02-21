@@ -9,6 +9,7 @@ pub const MAX_TITLE: usize = 500;
 pub const MAX_COMPOSER: usize = 200;
 pub const MAX_CATEGORY: usize = 100;
 pub const MAX_NOTES: usize = 5000;
+pub const MAX_INTENTION: usize = 500;
 pub const MAX_TAG: usize = 100;
 pub const MAX_TEMPO_MARKING: usize = 100;
 pub const MIN_BPM: u16 = 1;
@@ -18,6 +19,7 @@ pub const MAX_SCORE: u8 = 5;
 pub const DEFAULT_REP_TARGET: u8 = 5;
 pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
+pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_ROUTINE_NAME: usize = 200;
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
@@ -182,10 +184,10 @@ pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
 
 pub fn validate_intention(intention: &Option<String>) -> Result<(), LibraryError> {
     if let Some(ref text) = intention {
-        if text.len() > MAX_NOTES {
+        if text.len() > MAX_INTENTION {
             return Err(LibraryError::Validation {
                 field: "intention".to_string(),
-                message: format!("Intention must not exceed {MAX_NOTES} characters"),
+                message: format!("Intention must not exceed {MAX_INTENTION} characters"),
             });
         }
     }

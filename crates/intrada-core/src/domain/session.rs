@@ -767,9 +767,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entry.rep_target_reached = Some(true);
             }
 
-            // Append to rep history
+            // Append to rep history (capped at MAX_REP_HISTORY)
             if let Some(ref mut history) = entry.rep_history {
-                history.push(RepAction::Success);
+                if history.len() < crate::validation::MAX_REP_HISTORY {
+                    history.push(RepAction::Success);
+                }
             }
 
             model.last_error = None;
@@ -799,9 +801,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             entry.rep_count = Some(count.saturating_sub(1));
 
-            // Append to rep history
+            // Append to rep history (capped at MAX_REP_HISTORY)
             if let Some(ref mut history) = entry.rep_history {
-                history.push(RepAction::Missed);
+                if history.len() < crate::validation::MAX_REP_HISTORY {
+                    history.push(RepAction::Missed);
+                }
             }
 
             model.last_error = None;
@@ -2165,7 +2169,7 @@ mod tests {
         let mut model = model_with_library();
         update(&mut model, Event::Session(SessionEvent::StartBuilding));
 
-        let long_text = "a".repeat(5001);
+        let long_text = "a".repeat(501);
         update(
             &mut model,
             Event::Session(SessionEvent::SetSessionIntention {
