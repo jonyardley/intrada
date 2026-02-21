@@ -48,7 +48,6 @@ goals, and eventually letting the app decide for you.
 | 50 | **Section/passage management** — break pieces into practisable sections with independent mastery scores and tempo targets. | L |
 | 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL |
 | 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
-| 51 | **Warm-up routines** — reusable sequences of practice items, loadable into any session. Reduces daily decision-making. | M |
 | 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
 | 60 | **Basic goal setting** — session frequency, practice time, item mastery, and milestone goals. Progress computed from session data. | L |
 | 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
@@ -133,7 +132,6 @@ These don't belong to a single pillar — they support all three.
 
 | # | Feature | Horizon | Labels |
 |---|---------|---------|--------|
-| 78 | **User authentication** — already built (Clerk/Google), ongoing maintenance | Now | enhancement |
 | 99 | **Review use of Crux** — evaluate the core/shell architecture | Now | — |
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
 
