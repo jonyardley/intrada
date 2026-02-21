@@ -1,8 +1,9 @@
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
+use std::future::Future;
 use wasm_bindgen_futures::spawn_local;
 
-use intrada_core::{Effect, Event, Intrada, Routine, StorageEffect, ViewModel};
+use intrada_core::{AppEffect, Effect, Event, Intrada, Routine, ViewModel};
 
 use crate::api_client;
 use crate::types::{IsLoading, IsSubmitting, SharedCore};
@@ -135,9 +136,9 @@ pub fn process_effects(
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
-            Effect::Storage(boxed_request) => match &boxed_request.operation {
+            Effect::App(boxed_request) => match &boxed_request.operation {
                 // ---- Load operations: spawn async HTTP fetch ----
-                StorageEffect::LoadAll => {
+                AppEffect::LoadAll => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
@@ -161,7 +162,7 @@ pub fn process_effects(
                     });
                 }
 
-                StorageEffect::LoadSessions => {
+                AppEffect::LoadSessions => {
                     let core = leptos::prelude::expect_context::<SharedCore>();
                     let vm = *view_model;
                     let loading = *is_loading;
@@ -187,11 +188,7 @@ pub fn process_effects(
                 }
 
                 // ---- Library write operations ----
-                StorageEffect::SaveItem(item) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::SaveItem(item) => {
                     let create = intrada_core::CreateItem {
                         title: item.title.clone(),
                         kind: item.kind.clone(),
@@ -202,23 +199,16 @@ pub fn process_effects(
                         notes: item.notes.clone(),
                         tags: item.tags.clone(),
                     };
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::create_item(&create).await {
-                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_library(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::create_item(&create).await },
+                        RefreshKind::Library,
+                    );
                 }
 
-                StorageEffect::UpdateItem(item) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::UpdateItem(item) => {
                     let item_id = item.id.clone();
                     let update = intrada_core::UpdateItem {
                         title: Some(item.title.clone()),
@@ -229,142 +219,136 @@ pub fn process_effects(
                         notes: Some(item.notes.clone()),
                         tags: Some(item.tags.clone()),
                     };
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::update_item(&item_id, &update).await {
-                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_library(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::update_item(&item_id, &update).await },
+                        RefreshKind::Library,
+                    );
                 }
 
-                StorageEffect::DeleteItem { id } => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::DeleteItem { id } => {
                     let item_id = id.clone();
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::delete_item(&item_id).await {
-                            Ok(_) => refresh_library(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_library(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::delete_item(&item_id).await },
+                        RefreshKind::Library,
+                    );
                 }
 
                 // ---- Session write operations ----
-                StorageEffect::SavePracticeSession(session) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::SavePracticeSession(session) => {
                     let session_data = session.clone();
                     // Clear in-progress from localStorage immediately (FR-008)
                     clear_session_in_progress();
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::create_session(&session_data).await {
-                            Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_sessions(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::create_session(&session_data).await },
+                        RefreshKind::Sessions,
+                    );
                 }
 
-                StorageEffect::DeletePracticeSession { id } => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::DeletePracticeSession { id } => {
                     let session_id = id.clone();
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::delete_session(&session_id).await {
-                            Ok(_) => refresh_sessions(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_sessions(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::delete_session(&session_id).await },
+                        RefreshKind::Sessions,
+                    );
                 }
 
                 // ---- Session-in-progress: localStorage only (FR-008) ----
-                StorageEffect::SaveSessionInProgress(session) => {
+                AppEffect::SaveSessionInProgress(session) => {
                     save_session_in_progress(session);
                 }
-                StorageEffect::ClearSessionInProgress => {
+                AppEffect::ClearSessionInProgress => {
                     clear_session_in_progress();
                 }
 
                 // ---- Routine operations ----
-                StorageEffect::SaveRoutine(routine) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::SaveRoutine(routine) => {
                     let create = build_create_routine_request(routine);
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::create_routine(&create).await {
-                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_routines(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::create_routine(&create).await },
+                        RefreshKind::Routines,
+                    );
                 }
 
-                StorageEffect::UpdateRoutine(routine) => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::UpdateRoutine(routine) => {
                     let routine_id = routine.id.clone();
                     let update = build_update_routine_request(routine);
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::update_routine(&routine_id, &update).await {
-                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_routines(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::update_routine(&routine_id, &update).await },
+                        RefreshKind::Routines,
+                    );
                 }
 
-                StorageEffect::DeleteRoutine { id } => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
+                AppEffect::DeleteRoutine { id } => {
                     let routine_id = id.clone();
-                    submitting.set(true);
-                    spawn_local(async move {
-                        match api_client::delete_routine(&routine_id).await {
-                            Ok(_) => refresh_routines(core, vm, loading, submitting).await,
-                            Err(e) => {
-                                report_error(&core, &vm, &loading, &submitting, e);
-                                refresh_routines(core, vm, loading, submitting).await;
-                            }
-                        }
-                    });
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::delete_routine(&routine_id).await },
+                        RefreshKind::Routines,
+                    );
                 }
             },
         }
     }
     view_model.set(core.view());
+}
+
+/// Which data to re-fetch from the API after a write operation.
+#[derive(Clone, Copy)]
+enum RefreshKind {
+    Library,
+    Sessions,
+    Routines,
+}
+
+/// Spawn a mutating API call followed by a data refresh.
+///
+/// Encapsulates the "refresh-after-mutate" pattern used by all write operations:
+/// set submitting → run API call → report error (if any) → re-fetch from API.
+fn spawn_mutate<T, Fut>(
+    view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
+    api_call: Fut,
+    kind: RefreshKind,
+) where
+    T: 'static,
+    Fut: Future<Output = Result<T, api_client::ApiError>> + 'static,
+{
+    let core = leptos::prelude::expect_context::<SharedCore>();
+    let vm = *view_model;
+    let loading = *is_loading;
+    let submitting = *is_submitting;
+    submitting.set(true);
+    spawn_local(async move {
+        if let Err(e) = api_call.await {
+            report_error(&core, &vm, &loading, &submitting, e);
+        }
+        match kind {
+            RefreshKind::Library => refresh_library(core, vm, loading, submitting).await,
+            RefreshKind::Sessions => refresh_sessions(core, vm, loading, submitting).await,
+            RefreshKind::Routines => refresh_routines(core, vm, loading, submitting).await,
+        }
+    });
 }
 
 /// Refresh library data from API after a mutation (refresh-after-mutate pattern).
@@ -479,16 +463,14 @@ fn report_error(
 #[cfg(test)]
 mod tests {
     use crux_core::Core;
-    use intrada_core::{
-        CreateItem, Effect, Event, Intrada, Item, ItemEvent, ItemKind, StorageEffect,
-    };
+    use intrada_core::{AppEffect, CreateItem, Effect, Event, Intrada, Item, ItemEvent, ItemKind};
 
     /// Extract storage effects from a Vec<Effect>, skipping Render effects.
-    fn storage_effects(effects: Vec<Effect>) -> Vec<StorageEffect> {
+    fn storage_effects(effects: Vec<Effect>) -> Vec<AppEffect> {
         effects
             .into_iter()
             .filter_map(|e| match e {
-                Effect::Storage(boxed_req) => Some(boxed_req.operation.clone()),
+                Effect::App(boxed_req) => Some(boxed_req.operation.clone()),
                 Effect::Render(_) => None,
             })
             .collect()
@@ -537,7 +519,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::SaveItem(i) if i.title == "Moonlight Sonata")),
+                .any(|e| matches!(e, AppEffect::SaveItem(i) if i.title == "Moonlight Sonata")),
             "Expected SaveItem effect, got: {storage:?}"
         );
     }
@@ -563,7 +545,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::SaveItem(i) if i.title == "C Major Scale")),
+                .any(|e| matches!(e, AppEffect::SaveItem(i) if i.title == "C Major Scale")),
             "Expected SaveItem effect, got: {storage:?}"
         );
     }
@@ -580,7 +562,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::DeleteItem { id } if id == &item_id)),
+                .any(|e| matches!(e, AppEffect::DeleteItem { id } if id == &item_id)),
             "Expected DeleteItem effect, got: {storage:?}"
         );
     }
@@ -611,7 +593,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::SaveSessionInProgress(_))),
+                .any(|e| matches!(e, AppEffect::SaveSessionInProgress(_))),
             "Expected SaveSessionInProgress effect, got: {storage:?}"
         );
     }
@@ -634,7 +616,7 @@ mod tests {
             core.process_event(Event::Session(SessionEvent::SaveSession { now: save_now }));
         let storage = storage_effects(effects);
         let session_id = storage.iter().find_map(|e| match e {
-            StorageEffect::SavePracticeSession(s) => Some(s.id.clone()),
+            AppEffect::SavePracticeSession(s) => Some(s.id.clone()),
             _ => None,
         });
         assert!(session_id.is_some(), "Expected SavePracticeSession effect");
@@ -646,7 +628,7 @@ mod tests {
         assert!(
             storage
                 .iter()
-                .any(|e| matches!(e, StorageEffect::DeletePracticeSession { .. })),
+                .any(|e| matches!(e, AppEffect::DeletePracticeSession { .. })),
             "Expected DeletePracticeSession effect, got: {storage:?}"
         );
     }

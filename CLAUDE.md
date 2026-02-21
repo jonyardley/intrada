@@ -83,11 +83,28 @@ cargo test -p intrada-api  # API tests only (includes auth tests)
 ## Architecture Patterns
 
 - **Crux core/shell split**: `intrada-core` contains zero I/O. All side effects are represented as enum variants and executed by the web shell. The core must compile on any Rust target without WASM dependencies.
-- **Effect enum**: Currently named `StorageEffect` (historical misnomer — it carries all side effects, not just storage)
+- **Effect enum**: `AppEffect` carries all side-effect requests (HTTP API calls, localStorage). The shell processes each variant in `core_bridge.rs`.
 - **API client**: `api_client.rs` has generic helpers (`get_json`, `post_json`, `put_json`, `delete`) with built-in 401 retry
 - **Validation**: `intrada-core/src/validation.rs` is the single source of truth for all validation constants and rules
 - **Database**: Positional column indexing (`row.get(0)`, etc.) with a `SELECT_COLUMNS` const to keep column order in one place
 - **Migrations**: Sequential numbered migrations in `intrada-api/src/migrations.rs`, each must be a single SQL statement
+- **Refresh-after-mutate**: Every write operation (create/update/delete) is followed by a full re-fetch from the API via `spawn_mutate()`. This keeps the Crux model as the single source of truth without client-side merge logic.
+
+### State boundary
+
+State is split between two systems. This is intentional — Crux owns *what the user has*,
+Leptos owns *what the user is doing right now*.
+
+| State kind | Where it lives | Examples |
+|------------|---------------|----------|
+| Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, active session progress, analytics |
+| UI interaction | Leptos signals | Form field values, loading/submitting flags, timer ticks, drag state, tab selection |
+| Crash recovery | localStorage | `intrada:session-in-progress` (single key, FR-008) |
+
+**Rules:**
+- Domain state must flow through `Event` → `Model` → `ViewModel`. Never store domain data in Leptos signals.
+- UI state that has no meaning outside the current view stays in Leptos signals. Don't inflate the Crux model with ephemeral UI concerns.
+- The `ViewModel` is the read-only projection that views consume. Views never mutate it directly.
 
 ## Code Style
 
@@ -203,7 +220,6 @@ These documents should stay in sync. When any one changes, check the others:
 
 ## Known Tech Debt
 
-- `StorageEffect` should be renamed to `AppEffect` or `SideEffect`
 - Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
 - Legacy `pieces` and `exercises` tables from early migrations still exist in the schema
 - `dependabot.yml` needs `package-ecosystem` set to `"cargo"`

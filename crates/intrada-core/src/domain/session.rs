@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Effect, Event, StorageEffect};
+use crate::app::{AppEffect, Effect, Event};
 use crate::domain::item::{Item, ItemKind};
 use crate::error::LibraryError;
 use crate::model::Model;
@@ -340,7 +340,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
+                Command::notify_shell(AppEffect::SaveItem(item)).into(),
                 crux_core::render::render(),
             ])
         }
@@ -412,7 +412,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 session_started_at: now,
             };
 
-            let save_effect = StorageEffect::SaveSessionInProgress(active.clone());
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             model.session_status = SessionStatus::Active(active);
             model.last_error = None;
 
@@ -458,7 +458,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active.current_item_started_at = now;
             model.last_error = None;
 
-            let save_effect = StorageEffect::SaveSessionInProgress(active.clone());
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
                 Command::notify_shell(save_effect).into(),
                 crux_core::render::render(),
@@ -495,7 +495,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active.current_item_started_at = now;
             model.last_error = None;
 
-            let save_effect = StorageEffect::SaveSessionInProgress(active.clone());
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
                 Command::notify_shell(save_effect).into(),
                 crux_core::render::render(),
@@ -522,7 +522,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active.entries.push(entry);
             model.last_error = None;
 
-            let save_effect = StorageEffect::SaveSessionInProgress(active.clone());
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
                 Command::notify_shell(save_effect).into(),
                 crux_core::render::render(),
@@ -561,9 +561,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             active.entries.push(entry);
             model.last_error = None;
 
-            let save_effect_session = StorageEffect::SaveSessionInProgress(active.clone());
+            let save_effect_session = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
-                Command::notify_shell(StorageEffect::SaveItem(item)).into(),
+                Command::notify_shell(AppEffect::SaveItem(item)).into(),
                 Command::notify_shell(save_effect_session).into(),
                 crux_core::render::render(),
             ])
@@ -683,8 +683,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::SavePracticeSession(practice_session)).into(),
-                Command::notify_shell(StorageEffect::ClearSessionInProgress).into(),
+                Command::notify_shell(AppEffect::SavePracticeSession(practice_session)).into(),
+                Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
                 crux_core::render::render(),
             ])
         }
@@ -699,7 +699,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::ClearSessionInProgress).into(),
+                Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
                 crux_core::render::render(),
             ])
         }
@@ -730,7 +730,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(StorageEffect::DeletePracticeSession { id }).into(),
+                Command::notify_shell(AppEffect::DeletePracticeSession { id }).into(),
                 crux_core::render::render(),
             ])
         }

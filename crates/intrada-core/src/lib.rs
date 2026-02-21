@@ -5,7 +5,7 @@ pub mod error;
 pub mod model;
 pub mod validation;
 
-pub use app::{Effect, Event, Intrada, StorageEffect};
+pub use app::{AppEffect, Effect, Event, Intrada};
 pub use domain::item::{Item, ItemEvent, ItemKind};
 pub use domain::routine::{Routine, RoutineEntry, RoutineEvent};
 pub use domain::session::{
