@@ -1,0 +1,617 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-02-21T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
+  <diagram name="To-Be User Journey" id="to-be-journey">
+    <mxGraphModel dx="3200" dy="3200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3200" pageHeight="3200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============================================================ -->
+        <!-- TITLE & LEGEND                                               -->
+        <!-- ============================================================ -->
+        <mxCell id="title" value="intrada — To-Be User Journey" style="text;html=1;fontSize=28;fontStyle=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#1e1b4b;" vertex="1" parent="1">
+          <mxGeometry x="900" y="15" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Revised 2026-02-21 — incorporates product, teacher &amp; student critique" style="text;html=1;fontSize=12;fontStyle=2;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="850" y="50" width="600" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Legend box -->
+        <mxCell id="legend-box" value="" style="rounded=1;fillColor=#f9fafb;strokeColor=#d1d5db;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="15" width="700" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="leg-title" value="PHASE" style="text;fontSize=10;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="50" y="19" width="45" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="50" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1t" value="Built" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="68" y="41" width="35" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="110" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2t" value="P1: Practice Quality" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="128" y="41" width="105" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="240" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3t" value="P2: Library Depth" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="258" y="41" width="95" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" value="" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="360" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4t" value="P3: Scheduling" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="378" y="41" width="85" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg5" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="470" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg5t" value="P4: Goals" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="488" y="41" width="55" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg6" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;" vertex="1" parent="1">
+          <mxGeometry x="550" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg6t" value="P5: Visibility" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="568" y="41" width="65" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="lg7" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="640" y="42" width="14" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg7t" value="P6: AI" style="text;fontSize=9;fillColor=none;strokeColor=none;fontColor=#374151;" vertex="1" parent="1">
+          <mxGeometry x="658" y="41" width="35" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- Emotion key -->
+        <mxCell id="leg-emo" value="💡= insight moment  ⚡= friction risk  💪= motivation boost  😌= relief" style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#6b7280;" vertex="1" parent="1">
+          <mxGeometry x="110" y="19" width="420" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 1: FIRST VISIT & ONBOARDING                             -->
+        <!-- ============================================================ -->
+        <mxCell id="onboard-lane" value="1. First Visit (Day 1 — empty library)" style="swimlane;startSize=26;fillColor=#fef3c7;strokeColor=#d97706;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="2400" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="first-visit" value="First visit&#xa;myintrada.com" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="20" y="45" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="auth" value="Sign in&#xa;(Google / Clerk)" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="155" y="45" width="120" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="empty-lib" value="⚡ Empty Library&#xa;&#xa;No items, no sessions,&#xa;no data for scheduling.&#xa;This is the critical moment." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;fontStyle=0;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="310" y="35" width="190" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="onboard-choice" value="How do you&#xa;practise?" style="rhombus;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontStyle=1;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="540" y="40" width="120" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lesson-capture" value="📝 Lesson Capture&#xa;&#xa;&quot;What did your teacher&#xa;assign this week?&quot;&#xa;Quick-add items from&#xa;lesson notes." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="700" y="35" width="180" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="quick-add" value="Quick Add Wizard&#xa;&#xa;&quot;Add 3-5 things you're&#xa;working on right now.&quot;&#xa;Minimal fields, fast." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="700" y="150" width="180" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="first-session" value="💡 First Session Prompt&#xa;&#xa;&quot;You've added 4 items.&#xa;Ready for your first session?&quot;&#xa;→ straight to builder" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;fontStyle=0;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="920" y="35" width="190" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="emo-first" value="😌 &quot;That was easy.&#xa;I can see this working.&quot;" style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#059669;" vertex="1" parent="onboard-lane">
+          <mxGeometry x="1130" y="50" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Onboarding edges -->
+        <mxCell id="ob1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="first-visit" target="auth" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ob2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="auth" target="empty-lib" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ob3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="empty-lib" target="onboard-choice" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ob4" value="Has teacher" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="onboard-choice" target="lesson-capture" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ob5" value="Self-directed" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" source="onboard-choice" target="quick-add" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ob6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="lesson-capture" target="first-session" parent="onboard-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 2: DAILY ENTRY (returning user)                          -->
+        <!-- ============================================================ -->
+        <mxCell id="entry-lane" value="2. Daily Entry (returning user)" style="swimlane;startSize=26;fillColor=#f3f4f6;strokeColor=#9ca3af;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="2400" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="open-app" value="Open App" style="ellipse;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" vertex="1" parent="entry-lane">
+          <mxGeometry x="20" y="55" width="90" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="landing" value="Home Screen&#xa;&#xa;💪 Welcome back message.&#xa;Today's suggested session&#xa;ready to go." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="entry-lane">
+          <mxGeometry x="150" y="35" width="180" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="one-tap" value="🎯 ONE-TAP START&#xa;&#xa;Algorithm picks items from&#xa;SRS + interleaving. You choose&#xa;duration. Zero other decisions.&#xa;THE default path." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;fontStyle=0;" vertex="1" parent="entry-lane">
+          <mxGeometry x="380" y="30" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="short-opts" value="⏱ Duration picker&#xa;10 / 15 / 20 / 30 / 45 / 60 min&#xa;&quot;Short sessions = real progress&quot;" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="entry-lane">
+          <mxGeometry x="380" y="145" width="200" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="custom-build" value="Build Custom&#xa;Session" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;" vertex="1" parent="entry-lane">
+          <mxGeometry x="630" y="40" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="load-routine" value="Load Routine" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;" vertex="1" parent="entry-lane">
+          <mxGeometry x="630" y="90" width="120" height="35" as="geometry" />
+        </mxCell>
+
+        <mxCell id="free-practice" value="🎵 Free Practice&#xa;&#xa;Timer only. No structure.&#xa;Just play. Time is logged&#xa;but no items/scores required.&#xa;Legitimises unstructured time." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="entry-lane">
+          <mxGeometry x="630" y="130" width="190" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="deep-dive" value="🔬 Deep Dive&#xa;&#xa;Pick ONE item. Extended time.&#xa;Intensive work. For shedding,&#xa;not interleaving." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="entry-lane">
+          <mxGeometry x="860" y="40" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lesson-entry" value="📝 Lesson Capture&#xa;(returning flow too)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;whiteSpace=wrap;" vertex="1" parent="entry-lane">
+          <mxGeometry x="860" y="145" width="150" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Entry edges -->
+        <mxCell id="en1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="open-app" target="landing" parent="entry-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en2" value="Start" style="edgeStyle=orthogonalEdgeStyle;fontStyle=1;fontColor=#d79b00;fontSize=9;" edge="1" source="landing" target="one-tap" parent="entry-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="en3" value="OR" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;fontColor=#9ca3af;" edge="1" source="landing" target="custom-build" parent="entry-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 3: LIBRARY & ORGANISATION                                -->
+        <!-- ============================================================ -->
+        <mxCell id="lib-lane" value="3. Library &amp; Organisation" style="swimlane;startSize=26;fillColor=#f3f4f6;strokeColor=#9ca3af;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="2400" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lib-crud" value="Library CRUD&#xa;&#xa;• Pieces, Exercises&#xa;• Title, Composer, Key&#xa;• Tempo, BPM, Notes, Tags&#xa;• Type/key/tag filtering" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="20" y="35" width="170" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="item-types" value="Expanded Types&#xa;&#xa;• Pieces (with sections)&#xa;• Exercises&#xa;• Licks / Vocabulary&#xa;• Technique goals" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="210" y="35" width="155" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="key-aware" value="🎹 Key-Aware Exercises&#xa;&#xa;Mark as &quot;all 12 keys&quot; →&#xa;auto-generates sub-items.&#xa;Each key tracks mastery&#xa;independently." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="385" y="35" width="180" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sections" value="Sections / Passages&#xa;&#xa;Break pieces into&#xa;practisable chunks.&#xa;Each section can have&#xa;own tempo target + mastery." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="585" y="35" width="175" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="search-ui" value="🔍 Search / Filter UI&#xa;&#xa;Search items + practice&#xa;notes. Filter by type,&#xa;key, tags, category." style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="780" y="35" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="effort-tags" value="Effort / Difficulty&#xa;&#xa;Per-item difficulty level&#xa;+ effort rating. Feeds&#xa;session balancing." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="960" y="35" width="155" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="routines" value="Warm-Up Routines&#xa;&#xa;Saved sequences.&#xa;Load, save, edit.&#xa;Reduces daily decisions." style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="1135" y="35" width="155" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="import-share" value="Import / Share&#xa;&#xa;Teacher shares routine.&#xa;Import items from&#xa;external source." style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="lib-lane">
+          <mxGeometry x="1310" y="35" width="150" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 4: THE PRACTICE SESSION                                  -->
+        <!-- This is the core — showing multiple paths through practice   -->
+        <!-- ============================================================ -->
+        <mxCell id="practice-lane" value="4. During Practice" style="swimlane;startSize=26;fillColor=#f3f4f6;strokeColor=#9ca3af;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="2400" height="380" as="geometry" />
+        </mxCell>
+
+        <!-- Full micro-cycle label -->
+        <mxCell id="full-label" value="FULL MICRO-CYCLE — for items being actively learned" style="text;fontSize=10;fontStyle=3;fillColor=none;strokeColor=none;fontColor=#1e1b4b;" vertex="1" parent="practice-lane">
+          <mxGeometry x="20" y="32" width="350" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-prompt" value="🎯 Set Focus&#xa;&#xa;Quick tap from presets:&#xa;Accuracy / Evenness /&#xa;Dynamics / Tempo / Custom&#xa;(1 tap, not a form)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="20" y="55" width="170" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="focus-mode" value="🔇 Focus Mode&#xa;&#xa;Item name + timer ONLY.&#xa;No nav, no badges.&#xa;Full UI accessible via&#xa;swipe/tap but hidden." style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="220" y="55" width="170" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="timer-visual" value="⏱ Visual Timer&#xa;&#xa;Progress ring (not digits).&#xa;Per-item + session elapsed.&#xa;Gentle chime at transition." style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="420" y="55" width="165" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tempo-loop" value="🎹 Tempo Work&#xa;&#xa;Current: ♩=80  Target: ♩=120&#xa;Play → judge → bump/hold.&#xa;Iterative tempo-building is&#xa;a session within a session.&#xa;Metronome integrated." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;fontStyle=0;" vertex="1" parent="practice-lane">
+          <mxGeometry x="615" y="55" width="190" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rep-counter" value="🔢 Rep Counter&#xa;(optional)&#xa;&#xa;✓ = increment&#xa;✗ = decrement (≥0)&#xa;Target: 3-10 (default 5)&#xa;Done → auto-transition" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="835" y="55" width="165" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="transition" value="Transition Prompt&#xa;&#xa;Preview next item.&#xa;Optional 30s micro-break.&#xa;Variety increases through&#xa;the session." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1030" y="55" width="170" height="105" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rate-item" value="Rate &amp; Note&#xa;&#xa;1-5 tap + tempo achieved.&#xa;Optional quick note.&#xa;(NOT mandatory essay)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1230" y="55" width="165" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Full cycle arrows -->
+        <mxCell id="fc1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="goal-prompt" target="focus-mode" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="focus-mode" target="timer-visual" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;strokeWidth=2;" edge="1" source="timer-visual" target="tempo-loop" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="tempo-loop" target="rep-counter" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc5" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;strokeWidth=2;" edge="1" source="rep-counter" target="transition" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc6" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" source="transition" target="rate-item" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Loop back -->
+        <mxCell id="fc-loop" value="Next item → repeat" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;dashed=1;fontSize=9;fontStyle=1;fontColor=#82b366;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="rate-item" target="goal-prompt" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1313" y="185" />
+              <mxPoint x="105" y="185" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- LIGHT path -->
+        <mxCell id="light-label" value="LIGHT PATH — for review/maintenance items (mastery ≥ 4)" style="text;fontSize=10;fontStyle=3;fillColor=none;strokeColor=none;fontColor=#6b7280;" vertex="1" parent="practice-lane">
+          <mxGeometry x="20" y="205" width="380" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="light-play" value="Focus Mode&#xa;+ Timer" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="20" y="230" width="110" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="light-rate" value="Quick 1-5 tap&#xa;(no note required)" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="170" y="230" width="130" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="light-next" value="Auto-transition&#xa;to next item" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="340" y="230" width="120" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lt1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" source="light-play" target="light-rate" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lt2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" source="light-rate" target="light-next" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="light-note" value="⚡ Key insight: maintenance items shouldn't carry full ceremony.&#xa;Musician controls which path via a &quot;quick review&quot; toggle or auto-detect from mastery level." style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#6b7280;align=left;" vertex="1" parent="practice-lane">
+          <mxGeometry x="20" y="280" width="550" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- DEEP DIVE path -->
+        <mxCell id="dd-label" value="DEEP DIVE — single item, extended time" style="text;fontSize=10;fontStyle=3;fillColor=none;strokeColor=none;fontColor=#6b7280;" vertex="1" parent="practice-lane">
+          <mxGeometry x="620" y="205" width="280" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dd-focus" value="Focus Mode on&#xa;ONE item. Open-ended&#xa;time. Tempo loop.&#xa;Rep counter available." style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="practice-lane">
+          <mxGeometry x="620" y="230" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dd-note" value="💡 For shedding a difficult passage. Respects that sometimes&#xa;interleaving is wrong — deep work on one thing is what's needed." style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#6b7280;align=left;" vertex="1" parent="practice-lane">
+          <mxGeometry x="620" y="310" width="420" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- TEMPO LOOP detail -->
+        <mxCell id="tempo-detail" value="The Tempo Loop (inside any practice item)" style="text;fontSize=10;fontStyle=3;fillColor=none;strokeColor=none;fontColor=#6b7280;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1100" y="205" width="300" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tempo-set" value="Set current +&#xa;target tempo" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1100" y="230" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tempo-play" value="Play at&#xa;current" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1220" y="230" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="tempo-judge" value="Solid?" style="rhombus;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;fontStyle=1;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1320" y="225" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="tempo-bump" value="Bump&#xa;+5 BPM" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;whiteSpace=wrap;" vertex="1" parent="practice-lane">
+          <mxGeometry x="1410" y="230" width="70" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tt1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;" edge="1" source="tempo-set" target="tempo-play" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tt2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;" edge="1" source="tempo-play" target="tempo-judge" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tt3" value="Yes" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;fontSize=8;fontColor=#059669;" edge="1" source="tempo-judge" target="tempo-bump" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tt4" value="No → stay" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;fontSize=8;dashed=1;fontColor=#b85450;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="tempo-judge" target="tempo-play" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1355" y="295" />
+              <mxPoint x="1260" y="295" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="tt5" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="tempo-bump" target="tempo-play" parent="practice-lane">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1445" y="310" />
+              <mxPoint x="1260" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 5: POST-SESSION                                          -->
+        <!-- ============================================================ -->
+        <mxCell id="post-lane" value="5. Post-Session" style="swimlane;startSize=26;fillColor=#f3f4f6;strokeColor=#9ca3af;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1150" width="2400" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="summary" value="Session Summary&#xa;&#xa;• Per-item scores (1-5)&#xa;• Per-item notes&#xa;• Session notes&#xa;• Save as routine" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="20" y="35" width="170" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="quick-close" value="⚡ Quick Close option&#xa;&#xa;Save scores from practice.&#xa;Skip detailed reflection.&#xa;&quot;I just want to stop.&quot;" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="215" y="35" width="170" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="time-compare" value="⏱ Time vs Planned&#xa;&#xa;Planned 30 min → Actual 38 min&#xa;💡 Calibrates time sense.&#xa;ADHD time blindness support." style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="410" y="35" width="190" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="encourage" value="💬 Encouragement&#xa;&#xa;Data-tied, process-focused.&#xa;&quot;Your Db mastery: 2 → 4&#xa;over three weeks.&quot;&#xa;NOT empty praise." style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="625" y="35" width="180" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-checkin" value="Goal Check-In&#xa;&#xa;Session goal: achieved?&#xa;Weekly goal: progress.&#xa;Milestone: % complete." style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="830" y="35" width="165" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="recording" value="🎙 Record &amp; Compare&#xa;&#xa;Record → playback → rate.&#xa;Compare to last month.&#xa;Objective mastery anchor." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="1020" y="35" width="170" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ai-review" value="🤖 AI Review&#xa;&#xa;&quot;You spent 40% on pieces,&#xa;10% on weakest keys.&#xa;Rebalance tomorrow?&quot;" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="post-lane">
+          <mxGeometry x="1215" y="35" width="175" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="emo-post" value="💪 &quot;I can see I'm improving.&#xa;The data proves it.&quot;" style="text;fontSize=9;fontStyle=2;fillColor=none;strokeColor=none;fontColor=#059669;" vertex="1" parent="post-lane">
+          <mxGeometry x="625" y="155" width="200" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 6: GOALS (own lane — coherent journey)                   -->
+        <!-- ============================================================ -->
+        <mxCell id="goals-lane" value="6. Goals (set → track → achieve)" style="swimlane;startSize=26;fillColor=#f5f3ff;strokeColor=#9673a6;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1370" width="2400" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-set" value="SET a goal&#xa;&#xa;Session: &quot;Focus on LH&quot;&#xa;Weekly: &quot;Practice 5 days&quot;&#xa;Milestone: &quot;All keys to 4&#xa;by March&quot;" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="20" y="35" width="170" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-link" value="LINK to items&#xa;&#xa;Tag items as relevant&#xa;to active goals.&#xa;Scheduling boosts&#xa;these items." style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="215" y="35" width="155" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-track" value="TRACK progress&#xa;&#xa;Dashboard: % complete.&#xa;Post-session check-in.&#xa;Weekly summary." style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="395" y="35" width="155" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-achieve" value="💪 ACHIEVE&#xa;&#xa;Celebration moment.&#xa;Evidence of growth.&#xa;Set next goal." style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="575" y="35" width="145" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rest-aware" value="Rest Awareness&#xa;&#xa;&quot;Big week — your body&#xa;needs recovery to&#xa;consolidate learning.&quot;" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="745" y="35" width="165" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ai-coaching" value="🤖 AI Goal Coaching&#xa;&#xa;Realistic goal setting.&#xa;Break into daily plans.&#xa;Technique guidance." style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="goals-lane">
+          <mxGeometry x="935" y="35" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gg1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="goal-set" target="goal-link" parent="goals-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gg2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="goal-link" target="goal-track" parent="goals-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gg3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="goal-track" target="goal-achieve" parent="goals-lane">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 7: PROGRESS VISUALISATION                                -->
+        <!-- ============================================================ -->
+        <mxCell id="viz-lane" value="7. Progress &amp; Visualisation" style="swimlane;startSize=26;fillColor=#f3f4f6;strokeColor=#9ca3af;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1560" width="2400" height="190" as="geometry" />
+        </mxCell>
+
+        <mxCell id="analytics-exist" value="Current Analytics&#xa;&#xa;• Weekly time + sessions&#xa;• 28-day line chart&#xa;• Top items by time&#xa;• Score trends" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="20" y="35" width="160" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="comeback-cal" value="📅 Consistency Calendar&#xa;&#xa;Comeback framing:&#xa;&quot;4 of the last 7 days&quot;&#xa;NOT a streak counter.&#xa;⚡ Rework existing streak!" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="205" y="35" width="185" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mastery-tl" value="📈 Mastery Timeline&#xa;&#xa;Per-item + aggregate.&#xa;Weeks and months." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="415" y="35" width="155" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="key-heat" value="🎵 Key Heatmap&#xa;&#xa;Circle of fifths.&#xa;Per-key mastery.&#xa;Reveals weak keys." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="595" y="35" width="150" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tempo-chart" value="🎹 Tempo Progress&#xa;&#xa;Tempo vs time toward&#xa;target BPM per item." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="770" y="35" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="goal-dash" value="🎯 Goal Dashboard&#xa;&#xa;% progress per goal.&#xa;Process messaging." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="945" y="35" width="150" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="weekly-report" value="📊 Weekly Summary&#xa;&#xa;Insights + comparison&#xa;to prior week.&#xa;Shown on next open." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="1120" y="35" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="enc-config" value="⚙ Encouragement Config&#xa;&#xa;Frequency / Tone / Delivery&#xa;all user-controlled." style="rounded=1;fillColor=#d5e8d4;strokeColor=#67ab9f;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="viz-lane">
+          <mxGeometry x="1305" y="35" width="175" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ROW 8: COLLABORATION & AI                                    -->
+        <!-- ============================================================ -->
+        <mxCell id="ai-lane" value="8. Collaboration &amp; AI" style="swimlane;startSize=26;fillColor=#fef2f2;strokeColor=#b85450;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1770" width="2400" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="teacher-basic" value="👩‍🏫 Teacher (basic)&#xa;&#xa;Share routines.&#xa;Suggest items.&#xa;Set target tempos.&#xa;View progress (with permission)." style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ai-lane">
+          <mxGeometry x="20" y="35" width="185" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ai-setlist" value="🤖 AI Setlists&#xa;&#xa;&quot;8 standards, gig in 3 weeks&#xa;— build me a practice plan.&quot;" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ai-lane">
+          <mxGeometry x="230" y="35" width="185" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ai-patterns" value="Pattern Recognition&#xa;&#xa;&quot;You struggle with keys&#xa;that have 4+ flats.&quot;" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ai-lane">
+          <mxGeometry x="440" y="35" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ai-adaptive" value="Adaptive Intelligence&#xa;&#xa;Auto-adjust scheduling,&#xa;interleaving intensity,&#xa;difficulty over time." style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;whiteSpace=wrap;align=left;spacingLeft=8;" vertex="1" parent="ai-lane">
+          <mxGeometry x="635" y="35" width="175" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- CROSS-CUTTING: INCLUSIVE DESIGN + OFFLINE                    -->
+        <!-- ============================================================ -->
+        <mxCell id="xcut-lane" value="Cross-Cutting Principles" style="swimlane;startSize=26;fillColor=#f0fdf4;strokeColor=#82b366;fontStyle=1;fontSize=13;rounded=1;arcSize=6;swimlaneLine=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1970" width="2400" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="xc1" value="Reduce Decisions&#xa;to Start" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="20" y="35" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc2" value="Externalise&#xa;Time" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="155" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc3" value="Comeback &gt;&#xa;Streak" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="270" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc4" value="Sensory&#xa;Sensitivity" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="385" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc5" value="Accessible&#xa;Typography" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="500" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc6" value="Predictable&#xa;Navigation" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="615" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc7" value="Configurable&#xa;Feedback" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;whiteSpace=wrap;align=center;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="730" y="35" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="xc8" value="⚡ Offline-First&#xa;(Vision Principle 6)" style="rounded=1;fillColor=#fef3c7;strokeColor=#d97706;fontSize=9;whiteSpace=wrap;align=center;fontStyle=1;" vertex="1" parent="xcut-lane">
+          <mxGeometry x="855" y="35" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- CROSS-FLOW CONNECTIONS (between lanes)                       -->
+        <!-- ============================================================ -->
+
+        <!-- SRS powers one-tap start -->
+        <mxCell id="xf-srs" value="" style="edgeStyle=orthogonalEdgeStyle;dashed=1;strokeColor=#d79b00;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="750" as="sourcePoint" />
+            <mxPoint x="530" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Practice lane → Post session -->
+        <mxCell id="xf-post" value="Session ends →" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;fontStyle=1;strokeColor=#82b366;fontColor=#82b366;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1395" y="955" as="sourcePoint" />
+            <mxPoint x="1395" y="1150" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1500" y="955" />
+              <mxPoint x="1500" y="1130" />
+              <mxPoint x="110" y="1130" />
+              <mxPoint x="110" y="1150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Post session data → Visualisation -->
+        <mxCell id="xf-viz" value="Data →" style="edgeStyle=orthogonalEdgeStyle;fontSize=8;dashed=1;strokeColor=#67ab9f;fontColor=#67ab9f;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="1350" as="sourcePoint" />
+            <mxPoint x="110" y="1560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Goals feed scheduling -->
+        <mxCell id="xf-goals" value="Goal-aligned&#xa;scheduling" style="edgeStyle=orthogonalEdgeStyle;fontSize=8;dashed=1;strokeColor=#9673a6;fontColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="1370" as="sourcePoint" />
+            <mxPoint x="300" y="750" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="300" y="1370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- OPEN QUESTIONS BOX                                           -->
+        <!-- ============================================================ -->
+        <mxCell id="questions-box" value="" style="rounded=1;fillColor=#fef3c7;strokeColor=#d97706;arcSize=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2090" width="1100" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="q-title" value="⚡ OPEN QUESTIONS" style="text;fontSize=12;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#92400e;" vertex="1" parent="1">
+          <mxGeometry x="55" y="2095" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="q-items" value="1. Metronome: built-in or integrate with external?  2. Offline-first: what syncs and what doesn't?  3. iOS native vs web-first for Phase 3+?&#xa;4. Audio recording: browser API viable on mobile?  5. Teacher integration: basic sharing in Phase 4 or Phase 6?  6. Scoring: should mastery always capture tempo alongside rating?" style="text;fontSize=10;fillColor=none;strokeColor=none;fontColor=#92400e;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="55" y="2118" width="1060" height="60" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
