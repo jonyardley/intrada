@@ -192,6 +192,10 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
                     status: EntryStatus::NotAttempted,
                     notes: None,
                     score: None,
+                    intention: None,
+                    rep_target: None,
+                    rep_count: None,
+                    rep_target_reached: None,
                 });
             }
 
@@ -265,7 +269,10 @@ mod tests {
 
     fn model_with_building(entries: Vec<SetlistEntry>) -> Model {
         Model {
-            session_status: SessionStatus::Building(BuildingSession { entries }),
+            session_status: SessionStatus::Building(BuildingSession {
+                entries,
+                session_intention: None,
+            }),
             ..Default::default()
         }
     }
@@ -282,6 +289,10 @@ mod tests {
                 status: EntryStatus::NotAttempted,
                 notes: None,
                 score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             },
             SetlistEntry {
                 id: "entry-2".to_string(),
@@ -293,6 +304,10 @@ mod tests {
                 status: EntryStatus::NotAttempted,
                 notes: None,
                 score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             },
         ]
     }
@@ -454,6 +469,7 @@ mod tests {
                 session_started_at: Utc::now(),
                 session_ended_at: Utc::now(),
                 session_notes: None,
+                session_intention: None,
                 completion_status: CompletionStatus::Completed,
             }),
             ..Default::default()
@@ -499,6 +515,10 @@ mod tests {
             status: EntryStatus::NotAttempted,
             notes: None,
             score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
         }]);
         model.routines.push(routine);
 

@@ -51,6 +51,7 @@ async fn save_session(
     for entry in &input.entries {
         validation::validate_entry_notes(&entry.notes)?;
         validation::validate_score(&entry.score)?;
+        validation::validate_rep_target(&entry.rep_target)?;
     }
 
     // Validate setlist is not empty — need to convert to SetlistEntry slice

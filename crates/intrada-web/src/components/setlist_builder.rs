@@ -22,6 +22,7 @@ pub fn SetlistBuilder() -> impl IntoView {
     let core_library = core.clone();
     let core_routine_save = core.clone();
     let core_drag = core.clone();
+    let core_session_intention = core.clone();
 
     // --- Drag-and-drop setup ---
     let setlist_container_ref = NodeRef::<leptos::html::Div>::new();
@@ -49,8 +50,36 @@ pub fn SetlistBuilder() -> impl IntoView {
     let drag_hover_index = drag.hover_index;
     let on_drag_pointer_down = drag.on_pointer_down;
 
+    // Session intention signal — local UI state, dispatches to core on change
+    let session_intention_value = RwSignal::new(String::new());
+
     view! {
         <div class="space-y-6">
+            // Session-level intention
+            <Card>
+                <div>
+                    <label class="form-label" for="session-intention">
+                        "Session Intention"
+                    </label>
+                    <p class="hint-text">"Optional — set a focus for your practice session"</p>
+                    <input
+                        id="session-intention"
+                        type="text"
+                        class="input-base"
+                        placeholder="What will you focus on today?"
+                        bind:value=session_intention_value
+                        on:input=move |_| {
+                            let value = session_intention_value.get();
+                            let intention = if value.is_empty() { None } else { Some(value) };
+                            let event = Event::Session(SessionEvent::SetSessionIntention { intention });
+                            let core_ref = core_session_intention.borrow();
+                            let effects = core_ref.process_event(event);
+                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        }
+                    />
+                </div>
+            </Card>
+
             // Current setlist
             <Card>
                 <h3 class="section-title">"Your Setlist"</h3>
@@ -63,12 +92,16 @@ pub fn SetlistBuilder() -> impl IntoView {
                             let core_down = core.clone();
                             let entries = setlist.entries.clone();
                             let entry_count = entries.len();
+                            let core_entry_intention = core.clone();
+                            let core_rep_target = core.clone();
                             view! {
                                 <div node_ref=setlist_container_ref aria-roledescription="sortable">
                                     {entries.into_iter().enumerate().map(|(idx, entry)| {
                                         let core_r = core_remove.clone();
                                         let core_u = core_up.clone();
                                         let core_d = core_down.clone();
+                                        let core_ei = core_entry_intention.clone();
+                                        let core_rt = core_rep_target.clone();
                                         let on_remove = Callback::new(move |entry_id: String| {
                                             let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
                                             let core_ref = core_r.borrow();
@@ -115,6 +148,21 @@ pub fn SetlistBuilder() -> impl IntoView {
                                             is_last && drag_hover_index.get() == Some(entry_count)
                                         });
 
+                                        // Per-entry intention signal
+                                        let entry_intention_id = entry.id.clone();
+                                        let entry_intention_value = RwSignal::new(
+                                            entry.intention.clone().unwrap_or_default()
+                                        );
+
+                                        // Per-entry rep target state
+                                        let entry_rep_target_id = entry.id.clone();
+                                        let entry_rep_target_id_clear = entry.id.clone();
+                                        let has_rep_target = entry.rep_target.is_some();
+                                        let current_rep_target = entry.rep_target.unwrap_or(intrada_core::validation::DEFAULT_REP_TARGET);
+                                        let rep_target_value = RwSignal::new(current_rep_target.to_string());
+                                        let core_rt_enable = core_rt.clone();
+                                        let core_rt_clear = core_rt.clone();
+
                                         view! {
                                             <DropIndicator visible=drop_before_visible />
                                             <SetlistEntryRow
@@ -126,6 +174,90 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                 on_drag_pointer_down=Some(on_drag_pointer_down)
                                                 index=idx
                                             />
+                                            <div class="ml-9 mb-2 space-y-1">
+                                                <input
+                                                    type="text"
+                                                    class="input-base text-xs"
+                                                    placeholder="What will you focus on?"
+                                                    bind:value=entry_intention_value
+                                                    on:input=move |_| {
+                                                        let value = entry_intention_value.get();
+                                                        let intention = if value.is_empty() { None } else { Some(value) };
+                                                        let event = Event::Session(SessionEvent::SetEntryIntention {
+                                                            entry_id: entry_intention_id.clone(),
+                                                            intention,
+                                                        });
+                                                        let core_ref = core_ei.borrow();
+                                                        let effects = core_ref.process_event(event);
+                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                    }
+                                                />
+                                                // Rep target control
+                                                {if has_rep_target {
+                                                    view! {
+                                                        <div class="flex items-center gap-2">
+                                                            <label class="text-xs text-muted">"Rep target:"</label>
+                                                            <select
+                                                                class="input-base text-xs w-16 py-1"
+                                                                on:change=move |ev| {
+                                                                    let value = leptos::prelude::event_target_value(&ev);
+                                                                    rep_target_value.set(value.clone());
+                                                                    if let Ok(target) = value.parse::<u8>() {
+                                                                        let event = Event::Session(SessionEvent::SetRepTarget {
+                                                                            entry_id: entry_rep_target_id.clone(),
+                                                                            target: Some(target),
+                                                                        });
+                                                                        let core_ref = core_rt_enable.borrow();
+                                                                        let effects = core_ref.process_event(event);
+                                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                    }
+                                                                }
+                                                            >
+                                                                {(intrada_core::validation::MIN_REP_TARGET..=intrada_core::validation::MAX_REP_TARGET)
+                                                                    .map(|n| {
+                                                                        let selected = n == current_rep_target;
+                                                                        view! {
+                                                                            <option value=n.to_string() selected=selected>{n.to_string()}</option>
+                                                                        }
+                                                                    })
+                                                                    .collect::<Vec<_>>()}
+                                                            </select>
+                                                            <button
+                                                                class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
+                                                                title="Remove rep target"
+                                                                on:click=move |_| {
+                                                                    let event = Event::Session(SessionEvent::SetRepTarget {
+                                                                        entry_id: entry_rep_target_id_clear.clone(),
+                                                                        target: None,
+                                                                    });
+                                                                    let core_ref = core_rt_clear.borrow();
+                                                                    let effects = core_ref.process_event(event);
+                                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                }
+                                                            >
+                                                                "✕"
+                                                            </button>
+                                                        </div>
+                                                    }.into_any()
+                                                } else {
+                                                    view! {
+                                                        <button
+                                                            class="text-xs text-muted hover:text-accent-text motion-safe:transition-colors"
+                                                            on:click=move |_| {
+                                                                let event = Event::Session(SessionEvent::SetRepTarget {
+                                                                    entry_id: entry_rep_target_id.clone(),
+                                                                    target: Some(intrada_core::validation::DEFAULT_REP_TARGET),
+                                                                });
+                                                                let core_ref = core_rt_enable.borrow();
+                                                                let effects = core_ref.process_event(event);
+                                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                            }
+                                                        >
+                                                            "Add rep target"
+                                                        </button>
+                                                    }.into_any()
+                                                }}
+                                            </div>
                                             {if is_last {
                                                 Some(view! { <DropIndicator visible=drop_after_visible /> })
                                             } else {

@@ -177,6 +177,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         status: "completed".to_string(),
         notes: None,
         score: Some(4),
+        intention: None,
+        rep_target: None,
+        rep_count: None,
+        rep_target_reached: None,
     };
     let entry_display = SetlistEntryView {
         id: "entry-2".to_string(),
@@ -188,6 +192,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         status: "pending".to_string(),
         notes: None,
         score: None,
+        intention: None,
+        rep_target: None,
+        rep_count: None,
+        rep_target_reached: None,
     };
     let entry_drag = SetlistEntryView {
         id: "entry-3".to_string(),
@@ -199,6 +207,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         status: "pending".to_string(),
         notes: None,
         score: None,
+        intention: None,
+        rep_target: None,
+        rep_count: None,
+        rep_target_reached: None,
     };
 
     view! {

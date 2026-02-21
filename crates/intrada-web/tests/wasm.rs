@@ -50,10 +50,15 @@ fn test_session_in_progress_round_trip() {
             status: EntryStatus::NotAttempted,
             notes: None,
             score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
         }],
         current_index: 0,
         session_started_at: now,
         current_item_started_at: now,
+        session_intention: None,
     };
 
     let json = serde_json::to_string(&session).unwrap();

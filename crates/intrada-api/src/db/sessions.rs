@@ -17,6 +17,8 @@ pub struct SaveSessionRequest {
     pub completed_at: DateTime<Utc>,
     pub total_duration_secs: u64,
     pub completion_status: CompletionStatus,
+    #[serde(default)]
+    pub session_intention: Option<String>,
 }
 
 /// Entry within a SaveSessionRequest.
@@ -32,6 +34,14 @@ pub struct SaveSessionEntry {
     pub notes: Option<String>,
     #[serde(default)]
     pub score: Option<u8>,
+    #[serde(default)]
+    pub intention: Option<String>,
+    #[serde(default)]
+    pub rep_target: Option<u8>,
+    #[serde(default)]
+    pub rep_count: Option<u8>,
+    #[serde(default)]
+    pub rep_target_reached: Option<bool>,
 }
 
 fn completion_status_to_str(status: &CompletionStatus) -> &'static str {
@@ -80,6 +90,14 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let notes: Option<String> = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
     let score_raw: Option<i64> = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
     let score = score_raw.map(|s| s as u8);
+    let intention: Option<String> = row.get(10).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target_raw: Option<i64> = row.get(11).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target = rep_target_raw.map(|v| v as u8);
+    let rep_count_raw: Option<i64> = row.get(12).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_count = rep_count_raw.map(|v| v as u8);
+    let rep_target_reached_raw: Option<i64> =
+        row.get(13).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target_reached = rep_target_reached_raw.map(|v| v != 0);
 
     Ok(SetlistEntry {
         id,
@@ -91,6 +109,10 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         status: entry_status_from_str(&status_str)?,
         notes,
         score,
+        intention,
+        rep_target,
+        rep_count,
+        rep_target_reached,
     })
 }
 
@@ -98,7 +120,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score
+            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached
              FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC",
             libsql::params![session_id],
         )
@@ -125,6 +147,8 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
     let total_duration_secs: i64 = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
     let completion_status_str: String =
         row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let session_intention: Option<String> =
+        row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
 
     let started_at: DateTime<Utc> = started_at_str
         .parse()
@@ -141,6 +165,7 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
         completed_at,
         total_duration_secs: total_duration_secs as u64,
         completion_status: completion_status_from_str(&completion_status_str)?,
+        session_intention,
     })
 }
 
@@ -150,7 +175,7 @@ pub async fn list_sessions(
 ) -> Result<Vec<PracticeSession>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status
+            "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status, session_intention
              FROM sessions WHERE user_id = ?1 ORDER BY started_at DESC",
             libsql::params![user_id],
         )
@@ -176,7 +201,7 @@ pub async fn get_session(
 ) -> Result<Option<PracticeSession>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status
+            "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status, session_intention
              FROM sessions WHERE id = ?1 AND user_id = ?2",
             libsql::params![id, user_id],
         )
@@ -213,8 +238,8 @@ pub async fn insert_session(
     let result: Result<PracticeSession, ApiError> = async {
         // Insert session row
         conn.execute(
-            "INSERT INTO sessions (id, session_notes, started_at, completed_at, total_duration_secs, completion_status, user_id)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO sessions (id, session_notes, started_at, completed_at, total_duration_secs, completion_status, user_id, session_intention)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             libsql::params![
                 id.as_str(),
                 input.session_notes.as_deref(),
@@ -222,7 +247,8 @@ pub async fn insert_session(
                 completed_at_str.as_str(),
                 input.total_duration_secs as i64,
                 completion_status_str,
-                user_id
+                user_id,
+                input.session_intention.as_deref()
             ],
         )
         .await?;
@@ -232,9 +258,13 @@ pub async fn insert_session(
         for entry in &input.entries {
             let status_str = entry_status_to_str(&entry.status);
             let score_val: Option<i64> = entry.score.map(|s| s as i64);
+            let rep_target_val: Option<i64> = entry.rep_target.map(|v| v as i64);
+            let rep_count_val: Option<i64> = entry.rep_count.map(|v| v as i64);
+            let rep_target_reached_val: Option<i64> =
+                entry.rep_target_reached.map(|v| if v { 1 } else { 0 });
             conn.execute(
-                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 libsql::params![
                     entry.id.as_str(),
                     id.as_str(),
@@ -245,7 +275,11 @@ pub async fn insert_session(
                     entry.duration_secs as i64,
                     status_str,
                     entry.notes.as_deref(),
-                    score_val
+                    score_val,
+                    entry.intention.as_deref(),
+                    rep_target_val,
+                    rep_count_val,
+                    rep_target_reached_val
                 ],
             )
             .await?;
@@ -260,6 +294,10 @@ pub async fn insert_session(
                 status: entry.status.clone(),
                 notes: entry.notes.clone(),
                 score: entry.score,
+                intention: entry.intention.clone(),
+                rep_target: entry.rep_target,
+                rep_count: entry.rep_count,
+                rep_target_reached: entry.rep_target_reached,
             });
         }
 
@@ -271,6 +309,7 @@ pub async fn insert_session(
             completed_at: input.completed_at,
             total_duration_secs: input.total_duration_secs,
             completion_status: input.completion_status.clone(),
+            session_intention: input.session_intention.clone(),
         })
     }
     .await;
