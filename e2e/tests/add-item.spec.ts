@@ -4,8 +4,10 @@ test.describe("add library item", () => {
   test("add a piece with all fields", async ({ page }) => {
     await page.goto("/");
 
-    // Navigate to add form
-    await page.getByRole("link", { name: "Add Item" }).click();
+    // Navigate to add form — use .first() because the library page has an
+    // "Add Item" CTA in the header and a second one in the empty state;
+    // Playwright's strict mode rejects ambiguous matches.
+    await page.getByRole("link", { name: "Add Item" }).first().click();
 
     // Piece tab should be active by default
     await expect(page.getByRole("tab", { name: "Piece" })).toHaveAttribute(

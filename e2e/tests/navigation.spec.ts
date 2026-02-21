@@ -45,7 +45,7 @@ test.describe("navigation", () => {
   test("add item page is reachable and has cancel link", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByRole("link", { name: "Add Item" }).click();
+    await page.getByRole("link", { name: "Add Item" }).first().click();
     await expect(
       page.getByRole("heading", { name: "Add Library Item" })
     ).toBeVisible();
