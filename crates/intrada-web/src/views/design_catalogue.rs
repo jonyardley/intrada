@@ -22,6 +22,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let type_tab_active = RwSignal::new(ItemType::Piece);
     let sample_text = RwSignal::new(String::new());
+    let sample_text_hint = RwSignal::new(String::new());
+    let sample_text_required = RwSignal::new(String::new());
+    let sample_text_error = RwSignal::new(String::new());
     let sample_text_filled = RwSignal::new("Clair de Lune".to_string());
     let sample_area = RwSignal::new(String::new());
     let sample_area_filled = RwSignal::new(
@@ -239,6 +242,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#autocomplete" class="text-indigo-300 hover:text-white">"Autocomplete"</a></li>
                             <li><a href="#tag-input" class="text-indigo-300 hover:text-white">"Tag Input"</a></li>
                             <li><a href="#field-label" class="text-indigo-300 hover:text-white">"Field Label"</a></li>
+                            <li><a href="#form-field-error" class="text-indigo-300 hover:text-white">"Form Field Error"</a></li>
                             <li><a href="#navigation" class="text-indigo-300 hover:text-white">"Navigation"</a></li>
                             <li><a href="#line-chart" class="text-indigo-300 hover:text-white">"Line Chart"</a></li>
                             <li><a href="#setlist-entry" class="text-indigo-300 hover:text-white">"Setlist Entry"</a></li>
@@ -483,7 +487,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             // ── Library Item Cards ────────────────────────────────────
             <section id="library-item-card">
                 <h3 class="text-lg font-semibold text-white mb-4">"Library Item Card"</h3>
-                <div class="space-y-3">
+                <ul class="space-y-3">
                     <p class="text-xs font-medium text-gray-400 uppercase">"Full metadata (piece)"</p>
                     <LibraryItemCard item=sample_piece />
 
@@ -495,7 +499,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
                     <p class="text-xs font-medium text-gray-400 uppercase mt-6">"Long title + many tags"</p>
                     <LibraryItemCard item=sample_long_title />
-                </div>
+                </ul>
             </section>
 
             // ══════════════════════════════════════════════════════════
@@ -616,7 +620,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <TextField
                             id="demo-text-hint"
                             label="With hint text"
-                            value=sample_text
+                            value=sample_text_hint
                             field_name="subtitle"
                             errors=empty_errors
                             placeholder="e.g. Claude Debussy"
@@ -625,7 +629,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <TextField
                             id="demo-text-required"
                             label="Required field"
-                            value=sample_text
+                            value=sample_text_required
                             field_name="title_req"
                             errors=empty_errors
                             required=true
@@ -634,7 +638,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <TextField
                             id="demo-text-error"
                             label="With validation error"
-                            value=sample_text
+                            value=sample_text_error
                             field_name="title"
                             errors=sample_errors
                             required=true
@@ -736,7 +740,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             // ── Form Field Error (standalone) ─────────────────────────
-            <section>
+            <section id="form-field-error">
                 <h3 class="text-lg font-semibold text-white mb-4">"Form Field Error"</h3>
                 <Card>
                     <FormFieldError field="title" errors=sample_errors />
