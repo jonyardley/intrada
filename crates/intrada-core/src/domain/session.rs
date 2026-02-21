@@ -733,16 +733,18 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Only act if counter is active and target not yet reached
-            if let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) {
-                if entry.rep_target_reached == Some(true) {
-                    return crux_core::render::render();
-                }
-                let new_count = (count + 1).min(target);
-                entry.rep_count = Some(new_count);
-                if new_count >= target {
-                    entry.rep_target_reached = Some(true);
-                }
+            // No-op if counter is not active or target already reached
+            let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) else {
+                return crux_core::render::render();
+            };
+            if entry.rep_target_reached == Some(true) {
+                return crux_core::render::render();
+            }
+
+            let new_count = (count + 1).min(target);
+            entry.rep_count = Some(new_count);
+            if new_count >= target {
+                entry.rep_target_reached = Some(true);
             }
 
             model.last_error = None;
@@ -762,13 +764,15 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Only act if counter is active and target not yet reached
-            if let (Some(_target), Some(count)) = (entry.rep_target, entry.rep_count) {
-                if entry.rep_target_reached == Some(true) {
-                    return crux_core::render::render();
-                }
-                entry.rep_count = Some(count.saturating_sub(1));
+            // No-op if counter is not active or target already reached
+            let (Some(_target), Some(count)) = (entry.rep_target, entry.rep_count) else {
+                return crux_core::render::render();
+            };
+            if entry.rep_target_reached == Some(true) {
+                return crux_core::render::render();
             }
+
+            entry.rep_count = Some(count.saturating_sub(1));
 
             model.last_error = None;
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
@@ -2368,13 +2372,11 @@ mod tests {
         );
 
         // Set rep target on first entry during building
-        let entry_id = if let SessionStatus::Building(ref mut b) = model.session_status {
+        if let SessionStatus::Building(ref mut b) = model.session_status {
             b.entries[0].rep_target = Some(target);
-            b.entries[0].id.clone()
         } else {
             panic!("Expected Building state");
-        };
-        let _ = entry_id;
+        }
 
         update(
             &mut model,
@@ -2687,6 +2689,38 @@ mod tests {
             assert_eq!(a.entries[0].rep_target_reached, Some(true));
         } else {
             panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_frozen_on_end_session_early() {
+        let (mut model, now) = model_with_active_session_and_rep(5);
+
+        // Increment rep count twice on item 1
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // End session early (item 2 is never reached)
+        let t1 = now + chrono::Duration::seconds(30);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::EndSessionEarly { now: t1 }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            // Item 1: rep state frozen — 2/5, not reached
+            assert_eq!(s.entries[0].rep_target, Some(5));
+            assert_eq!(s.entries[0].rep_count, Some(2));
+            assert_eq!(s.entries[0].rep_target_reached, Some(false));
+            assert_eq!(s.entries[0].status, EntryStatus::Completed);
+
+            // Item 2: no rep target set, marked not_attempted
+            assert_eq!(s.entries[1].rep_target, None);
+            assert_eq!(s.entries[1].rep_count, None);
+            assert_eq!(s.entries[1].rep_target_reached, None);
+            assert_eq!(s.entries[1].status, EntryStatus::NotAttempted);
+        } else {
+            panic!("Expected Summary state");
         }
     }
 

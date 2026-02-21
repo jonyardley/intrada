@@ -109,62 +109,98 @@ pub fn SessionTimer() -> impl IntoView {
                                 let target = rep_target.unwrap_or(0);
                                 let count = rep_count.unwrap_or(0);
                                 let reached = rep_target_reached.unwrap_or(false);
+                                let progress_pct = if target > 0 {
+                                    ((count as f64 / target as f64) * 100.0).min(100.0)
+                                } else {
+                                    0.0
+                                };
 
                                 view! {
                                     <Card>
-                                        <div class="text-center space-y-3">
+                                        <div class="space-y-4">
+                                            // Counter display + progress bar
+                                            <div class="text-center space-y-2">
+                                                <p class="text-xs text-muted uppercase tracking-wider">"Consecutive Reps"</p>
+                                                {if reached {
+                                                    view! {
+                                                        <p class="text-4xl font-mono font-bold text-warm-accent-text">
+                                                            {format!("{} / {}", count, target)}
+                                                        </p>
+                                                    }.into_any()
+                                                } else {
+                                                    view! {
+                                                        <p class="text-4xl font-mono font-bold text-primary">
+                                                            {format!("{} / {}", count, target)}
+                                                        </p>
+                                                    }.into_any()
+                                                }}
+                                                // Progress bar
+                                                <div class="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
+                                                    <div
+                                                        class={if reached {
+                                                            "h-full rounded-full bg-warm-accent motion-safe:transition-all motion-safe:duration-300"
+                                                        } else {
+                                                            "h-full rounded-full bg-success motion-safe:transition-all motion-safe:duration-300"
+                                                        }}
+                                                        style=format!("width: {}%", progress_pct)
+                                                    />
+                                                </div>
+                                            </div>
+
                                             {if reached {
                                                 // Achievement state — target reached
                                                 view! {
-                                                    <div class="space-y-2">
-                                                        <p class="text-xs text-muted uppercase tracking-wider">"Reps"</p>
-                                                        <p class="text-3xl font-mono font-bold text-warm-accent-text">
-                                                            {format!("{} / {}", count, target)}
-                                                        </p>
-                                                        <p class="text-sm font-medium text-warm-accent-text">"Target reached!"</p>
+                                                    <div class="text-center space-y-2">
+                                                        <p class="text-lg font-semibold text-warm-accent-text">"Target reached!"</p>
+                                                        <p class="text-sm text-muted">"Move on when ready"</p>
                                                     </div>
                                                 }.into_any()
                                             } else {
-                                                // Active counting state
+                                                // Active counting — large tap buttons
                                                 view! {
-                                                    <div class="space-y-3">
-                                                        <p class="text-xs text-muted uppercase tracking-wider">"Reps"</p>
-                                                        <p class="text-3xl font-mono font-bold text-primary">
-                                                            {format!("{} / {}", count, target)}
-                                                        </p>
-                                                        <div class="flex gap-3 justify-center">
-                                                            <Button variant=ButtonVariant::Success on_click=Callback::new(move |_| {
+                                                    <div class="grid grid-cols-2 gap-3">
+                                                        <button
+                                                            class="flex flex-col items-center justify-center gap-1 rounded-xl bg-success px-4 py-5 text-white shadow-sm hover:bg-success-hover active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-text motion-safe:transition-all min-h-[72px]"
+                                                            on:click=move |_| {
                                                                 let event = Event::Session(SessionEvent::RepGotIt);
                                                                 let core_ref = core_got_it.borrow();
                                                                 let effects = core_ref.process_event(event);
                                                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                            })>
-                                                                "Got it"
-                                                            </Button>
-                                                            <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                                            }
+                                                        >
+                                                            <span class="text-2xl leading-none">"✓"</span>
+                                                            <span class="text-sm font-semibold">"Got it"</span>
+                                                        </button>
+                                                        <button
+                                                            class="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface-secondary px-4 py-5 text-secondary border border-border-default hover:bg-surface-hover active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-all min-h-[72px]"
+                                                            on:click=move |_| {
                                                                 let event = Event::Session(SessionEvent::RepMissed);
                                                                 let core_ref = core_missed.borrow();
                                                                 let effects = core_ref.process_event(event);
                                                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                            })>
-                                                                "Missed"
-                                                            </Button>
-                                                        </div>
+                                                            }
+                                                        >
+                                                            <span class="text-2xl leading-none">"✗"</span>
+                                                            <span class="text-sm font-semibold">"Missed"</span>
+                                                        </button>
                                                     </div>
                                                 }.into_any()
                                             }}
+
                                             // Disable link
-                                            <button
-                                                class="text-xs text-muted hover:text-secondary motion-safe:transition-colors"
-                                                on:click=move |_| {
-                                                    let event = Event::Session(SessionEvent::DisableRepCounter);
-                                                    let core_ref = core_disable_rep.borrow();
-                                                    let effects = core_ref.process_event(event);
-                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                }
-                                            >
-                                                "Disable counter"
-                                            </button>
+                                            <div class="text-center">
+                                                <button
+                                                    class="text-xs text-muted hover:text-secondary motion-safe:transition-colors"
+                                                    on:click=move |_| {
+                                                        let event = Event::Session(SessionEvent::DisableRepCounter);
+                                                        let core_ref = core_disable_rep.borrow();
+                                                        let effects = core_ref.process_event(event);
+                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                    }
+                                                >
+                                                    "Disable counter"
+                                                </button>
+                                            </div>
                                         </div>
                                     </Card>
                                 }.into_any()
