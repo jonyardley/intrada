@@ -54,6 +54,7 @@ fn test_session_in_progress_round_trip() {
             rep_target: None,
             rep_count: None,
             rep_target_reached: None,
+            rep_history: None,
         }],
         current_index: 0,
         session_started_at: now,

@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use crate::app::{AppEffect, Effect, Event};
 use crate::domain::item::{Item, ItemKind};
@@ -30,6 +31,20 @@ pub enum CompletionStatus {
     EndedEarly,
 }
 
+/// A single action in the rep history sequence.
+///
+/// Values are deltas: `1` = count + 1 (success), `-1` = count − 1 (missed).
+/// Enables analytics: sum for net progress, running total for sparkline charts,
+/// count of `-1`s for total misses, longest streak of `1`s for best run.
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy, PartialEq)]
+#[repr(i8)]
+pub enum RepAction {
+    /// Failed rep — count decremented.
+    Missed = -1,
+    /// Successful rep — count incremented.
+    Success = 1,
+}
+
 // ── Domain Types ───────────────────────────────────────────────────────
 
 /// An individual item within a session's setlist.
@@ -53,6 +68,8 @@ pub struct SetlistEntry {
     pub rep_count: Option<u8>,
     #[serde(default)]
     pub rep_target_reached: Option<bool>,
+    #[serde(default)]
+    pub rep_history: Option<Vec<RepAction>>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -175,10 +192,9 @@ pub enum SessionEvent {
     RepGotIt,
     /// Decrement rep count on current entry (floor 0).
     RepMissed,
-    /// Enable rep counter on current entry (sets default target if none).
-    EnableRepCounter,
-    /// Disable rep counter on current entry (clears all rep fields).
-    DisableRepCounter,
+    /// Initialise rep counter on current entry. Only sets defaults when
+    /// no prior rep state exists; otherwise preserves existing state.
+    InitRepCounter,
 
     // === Summary Phase ===
     UpdateEntryNotes {
@@ -250,6 +266,7 @@ fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usiz
         rep_target: None,
         rep_count: None,
         rep_target_reached: None,
+        rep_history: None,
     }
 }
 
@@ -528,6 +545,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 if entry.rep_target.is_some() {
                     entry.rep_count = Some(0);
                     entry.rep_target_reached = Some(false);
+                    entry.rep_history = Some(vec![]);
                 }
             }
 
@@ -747,6 +765,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entry.rep_target_reached = Some(true);
             }
 
+            // Append to rep history
+            if let Some(ref mut history) = entry.rep_history {
+                history.push(RepAction::Success);
+            }
+
             model.last_error = None;
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
@@ -774,6 +797,11 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             entry.rep_count = Some(count.saturating_sub(1));
 
+            // Append to rep history
+            if let Some(ref mut history) = entry.rep_history {
+                history.push(RepAction::Missed);
+            }
+
             model.last_error = None;
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
@@ -782,7 +810,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             ])
         }
 
-        SessionEvent::EnableRepCounter => {
+        SessionEvent::InitRepCounter => {
             let SessionStatus::Active(ref mut active) = model.session_status else {
                 return crux_core::render::render();
             };
@@ -791,33 +819,14 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Set default target if none exists
+            // Only initialise defaults when no prior rep state exists.
+            // If rep state already exists (e.g. after hide/show), preserve it.
             if entry.rep_target.is_none() {
                 entry.rep_target = Some(validation::DEFAULT_REP_TARGET);
+                entry.rep_count = Some(0);
+                entry.rep_target_reached = Some(false);
+                entry.rep_history = Some(vec![]);
             }
-            entry.rep_count = Some(0);
-            entry.rep_target_reached = Some(false);
-
-            model.last_error = None;
-            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-            Command::all([
-                Command::notify_shell(save_effect).into(),
-                crux_core::render::render(),
-            ])
-        }
-
-        SessionEvent::DisableRepCounter => {
-            let SessionStatus::Active(ref mut active) = model.session_status else {
-                return crux_core::render::render();
-            };
-
-            let Some(entry) = active.entries.get_mut(active.current_index) else {
-                return crux_core::render::render();
-            };
-
-            entry.rep_target = None;
-            entry.rep_count = None;
-            entry.rep_target_reached = None;
 
             model.last_error = None;
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
@@ -2518,7 +2527,7 @@ mod tests {
             assert_eq!(a.entries[0].rep_target, None);
         }
 
-        update(&mut model, Event::Session(SessionEvent::EnableRepCounter));
+        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
 
         if let SessionStatus::Active(ref a) = model.session_status {
             assert_eq!(a.entries[0].rep_target, Some(5)); // DEFAULT_REP_TARGET
@@ -2530,37 +2539,23 @@ mod tests {
     }
 
     #[test]
-    fn test_enable_rep_counter_preserves_existing_target() {
+    fn test_init_rep_counter_preserves_existing_state() {
         let (mut model, _now) = model_with_active_session_and_rep(7);
 
-        // Disable then re-enable — should use default since target was cleared
-        update(&mut model, Event::Session(SessionEvent::DisableRepCounter));
-        update(&mut model, Event::Session(SessionEvent::EnableRepCounter));
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(5)); // default after disable+enable
-            assert_eq!(a.entries[0].rep_count, Some(0));
-            assert_eq!(a.entries[0].rep_target_reached, Some(false));
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_disable_rep_counter_clears_all_fields() {
-        let (mut model, _now) = model_with_active_session_and_rep(5);
-
-        // Got-it a few times
+        // Record some progress
         update(&mut model, Event::Session(SessionEvent::RepGotIt));
         update(&mut model, Event::Session(SessionEvent::RepGotIt));
 
-        // Disable
-        update(&mut model, Event::Session(SessionEvent::DisableRepCounter));
+        // Re-init should preserve existing state (target, count, history)
+        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
 
         if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, None);
-            assert_eq!(a.entries[0].rep_count, None);
-            assert_eq!(a.entries[0].rep_target_reached, None);
+            assert_eq!(a.entries[0].rep_target, Some(7)); // preserved original target
+            assert_eq!(a.entries[0].rep_count, Some(2)); // preserved count
+            assert_eq!(
+                a.entries[0].rep_history,
+                Some(vec![RepAction::Success, RepAction::Success])
+            ); // preserved history
         } else {
             panic!("Expected Active state");
         }
@@ -2907,6 +2902,158 @@ mod tests {
             assert_eq!(a.entries[0].rep_target, Some(5)); // unchanged
         } else {
             panic!("Expected Active state");
+        }
+    }
+
+    // --- Rep History Tests (US1) ---
+
+    #[test]
+    fn test_rep_history_initialised_on_start_session() {
+        let (model, _now) = model_with_active_session_and_rep(5);
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // Entry with rep_target should have rep_history initialised
+            assert_eq!(a.entries[0].rep_history, Some(vec![]));
+            // Entry without rep_target should have no history
+            assert_eq!(a.entries[1].rep_history, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_appended_on_got_it() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(
+                a.entries[0].rep_history,
+                Some(vec![RepAction::Success, RepAction::Success])
+            );
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_appended_on_missed() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepMissed));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(
+                a.entries[0].rep_history,
+                Some(vec![RepAction::Success, RepAction::Missed])
+            );
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_frozen_on_next_item() {
+        let (mut model, start) = model_with_active_session_and_rep(5);
+
+        // Record some actions
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepMissed));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // Move to next item
+        let next_time = start + chrono::Duration::seconds(60);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: next_time }),
+        );
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // First entry's history should be frozen with the recorded actions
+            assert_eq!(
+                a.entries[0].rep_history,
+                Some(vec![
+                    RepAction::Success,
+                    RepAction::Missed,
+                    RepAction::Success
+                ])
+            );
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_none_without_counter() {
+        let (model, _now) = model_with_active_session_and_rep(5);
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // Second entry has no rep target, so no history
+            assert_eq!(a.entries[1].rep_target, None);
+            assert_eq!(a.entries[1].rep_history, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_initialised_on_enable_counter() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        // Start session WITHOUT rep target set during building
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+
+        // Init counter mid-session
+        update(&mut model, Event::Session(SessionEvent::InitRepCounter));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_history, Some(vec![]));
+            assert!(a.entries[0].rep_target.is_some());
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_history_persisted_through_save() {
+        let (mut model, start) = model_with_active_session_and_rep(3);
+
+        // Hit got it 3 times to reach target
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // Finish session
+        let end_time = start + chrono::Duration::seconds(120);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: end_time }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(
+                s.entries[0].rep_history,
+                Some(vec![
+                    RepAction::Success,
+                    RepAction::Success,
+                    RepAction::Success
+                ])
+            );
+        } else {
+            panic!("Expected Summary state");
         }
     }
 }

@@ -4,8 +4,8 @@ use crate::analytics::AnalyticsView;
 use crate::domain::item::Item;
 use crate::domain::routine::Routine;
 use crate::domain::session::{
-    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionStatus, SetlistEntry,
-    SummarySession,
+    ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
+    SetlistEntry, SummarySession,
 };
 use crate::domain::ListQuery;
 
@@ -116,6 +116,7 @@ pub struct SetlistEntryView {
     pub rep_target: Option<u8>,
     pub rep_count: Option<u8>,
     pub rep_target_reached: Option<bool>,
+    pub rep_history: Option<Vec<RepAction>>,
 }
 
 /// View for the in-progress active session.
@@ -131,6 +132,7 @@ pub struct ActiveSessionView {
     pub current_rep_target: Option<u8>,
     pub current_rep_count: Option<u8>,
     pub current_rep_target_reached: Option<bool>,
+    pub current_rep_history: Option<Vec<RepAction>>,
 }
 
 /// View for the building phase setlist.
@@ -173,6 +175,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         rep_target: entry.rep_target,
         rep_count: entry.rep_count,
         rep_target_reached: entry.rep_target_reached,
+        rep_history: entry.rep_history.clone(),
     }
 }
 
@@ -193,6 +196,7 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
         current_rep_target: current.rep_target,
         current_rep_count: current.rep_count,
         current_rep_target_reached: current.rep_target_reached,
+        current_rep_history: current.rep_history.clone(),
     }
 }
 

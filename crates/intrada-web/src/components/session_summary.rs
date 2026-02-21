@@ -115,8 +115,22 @@ pub fn SessionSummary() -> impl IntoView {
                                                     } else {
                                                         format!("Reps: {} / {}", count, target)
                                                     };
+                                                    // Show attempt count when attempts differ from target
+                                                    let attempt_suffix = entry.rep_history.as_ref().and_then(|history| {
+                                                        let attempts = history.len();
+                                                        if attempts > 0 && attempts != target as usize {
+                                                            Some(format!(" · {} attempts", attempts))
+                                                        } else {
+                                                            None
+                                                        }
+                                                    });
                                                     view! {
-                                                        <p class={format!("text-xs font-mono {}", color)}>{label}</p>
+                                                        <p class={format!("text-xs font-mono {}", color)}>
+                                                            {label}
+                                                            {attempt_suffix.map(|suffix| view! {
+                                                                <span class="text-muted">{suffix}</span>
+                                                            })}
+                                                        </p>
                                                     }
                                                 })}
                                                 <div>

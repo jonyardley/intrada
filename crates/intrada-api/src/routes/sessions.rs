@@ -66,10 +66,13 @@ async fn save_session(
                 }
             }
         } else {
-            // If no target, count and reached must also be absent
-            if entry.rep_count.is_some() || entry.rep_target_reached.is_some() {
+            // If no target, count, reached, and history must also be absent
+            if entry.rep_count.is_some()
+                || entry.rep_target_reached.is_some()
+                || entry.rep_history.is_some()
+            {
                 return Err(ApiError::Validation(
-                    "rep_count and rep_target_reached require rep_target".to_string(),
+                    "rep_count, rep_target_reached, and rep_history require rep_target".to_string(),
                 ));
             }
         }

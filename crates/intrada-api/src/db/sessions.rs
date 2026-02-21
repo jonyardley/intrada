@@ -2,7 +2,9 @@ use chrono::{DateTime, Utc};
 use libsql::Connection;
 use serde::{Deserialize, Serialize};
 
-use intrada_core::domain::session::{CompletionStatus, EntryStatus, PracticeSession, SetlistEntry};
+use intrada_core::domain::session::{
+    CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
+};
 
 use crate::error::ApiError;
 
@@ -42,6 +44,8 @@ pub struct SaveSessionEntry {
     pub rep_count: Option<u8>,
     #[serde(default)]
     pub rep_target_reached: Option<bool>,
+    #[serde(default)]
+    pub rep_history: Option<Vec<RepAction>>,
 }
 
 fn completion_status_to_str(status: &CompletionStatus) -> &'static str {
@@ -99,6 +103,17 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         row.get(13).map_err(|e| ApiError::Internal(e.to_string()))?;
     let rep_target_reached = rep_target_reached_raw.map(|v| v != 0);
 
+    // rep_history at column index 14 (JSON TEXT, nullable)
+    let rep_history_raw: Option<String> =
+        row.get(14).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_history = match rep_history_raw {
+        Some(json_str) => Some(
+            serde_json::from_str(&json_str)
+                .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?,
+        ),
+        None => None,
+    };
+
     Ok(SetlistEntry {
         id,
         item_id,
@@ -113,6 +128,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         rep_target,
         rep_count,
         rep_target_reached,
+        rep_history,
     })
 }
 
@@ -120,7 +136,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached
+            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history
              FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC",
             libsql::params![session_id],
         )
@@ -262,9 +278,13 @@ pub async fn insert_session(
             let rep_count_val: Option<i64> = entry.rep_count.map(|v| v as i64);
             let rep_target_reached_val: Option<i64> =
                 entry.rep_target_reached.map(|v| if v { 1 } else { 0 });
+            let rep_history_json: Option<String> = entry
+                .rep_history
+                .as_ref()
+                .map(|h| serde_json::to_string(h).unwrap_or_default());
             conn.execute(
-                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
                 libsql::params![
                     entry.id.as_str(),
                     id.as_str(),
@@ -279,7 +299,8 @@ pub async fn insert_session(
                     entry.intention.as_deref(),
                     rep_target_val,
                     rep_count_val,
-                    rep_target_reached_val
+                    rep_target_reached_val,
+                    rep_history_json.as_deref()
                 ],
             )
             .await?;
@@ -298,6 +319,7 @@ pub async fn insert_session(
                 rep_target: entry.rep_target,
                 rep_count: entry.rep_count,
                 rep_target_reached: entry.rep_target_reached,
+                rep_history: entry.rep_history.clone(),
             });
         }
 
