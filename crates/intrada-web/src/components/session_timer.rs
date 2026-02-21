@@ -150,39 +150,28 @@ pub fn SessionTimer() -> impl IntoView {
                                             {if reached {
                                                 // Achievement state — target reached
                                                 view! {
-                                                    <div class="text-center space-y-2">
-                                                        <p class="text-lg font-semibold text-warm-accent-text">"Target reached!"</p>
-                                                        <p class="text-sm text-muted">"Move on when ready"</p>
-                                                    </div>
+                                                    <p class="text-sm font-semibold text-warm-accent-text text-center">"Target reached!"</p>
                                                 }.into_any()
                                             } else {
-                                                // Active counting — large tap buttons
+                                                // Active counting buttons
                                                 view! {
-                                                    <div class="grid grid-cols-2 gap-3">
-                                                        <button
-                                                            class="flex flex-col items-center justify-center gap-1 rounded-xl bg-success px-4 py-5 text-white shadow-sm hover:bg-success-hover active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-text motion-safe:transition-all min-h-[72px]"
-                                                            on:click=move |_| {
-                                                                let event = Event::Session(SessionEvent::RepGotIt);
-                                                                let core_ref = core_got_it.borrow();
-                                                                let effects = core_ref.process_event(event);
-                                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                            }
-                                                        >
-                                                            <span class="text-2xl leading-none">"✓"</span>
-                                                            <span class="text-sm font-semibold">"Got it"</span>
-                                                        </button>
-                                                        <button
-                                                            class="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface-secondary px-4 py-5 text-secondary border border-border-default hover:bg-surface-hover active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-all min-h-[72px]"
-                                                            on:click=move |_| {
-                                                                let event = Event::Session(SessionEvent::RepMissed);
-                                                                let core_ref = core_missed.borrow();
-                                                                let effects = core_ref.process_event(event);
-                                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                            }
-                                                        >
-                                                            <span class="text-2xl leading-none">"✗"</span>
-                                                            <span class="text-sm font-semibold">"Missed"</span>
-                                                        </button>
+                                                    <div class="flex gap-3 justify-center">
+                                                        <Button variant=ButtonVariant::Success on_click=Callback::new(move |_| {
+                                                            let event = Event::Session(SessionEvent::RepGotIt);
+                                                            let core_ref = core_got_it.borrow();
+                                                            let effects = core_ref.process_event(event);
+                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                        })>
+                                                            "Got it"
+                                                        </Button>
+                                                        <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                                            let event = Event::Session(SessionEvent::RepMissed);
+                                                            let core_ref = core_missed.borrow();
+                                                            let effects = core_ref.process_event(event);
+                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                        })>
+                                                            "Missed"
+                                                        </Button>
                                                     </div>
                                                 }.into_any()
                                             }}
@@ -205,20 +194,17 @@ pub fn SessionTimer() -> impl IntoView {
                                     </Card>
                                 }.into_any()
                             } else {
-                                // No rep counter — show enable link
+                                // No rep counter — show enable button
                                 view! {
                                     <div class="text-center">
-                                        <button
-                                            class="text-xs text-muted hover:text-accent-text motion-safe:transition-colors"
-                                            on:click=move |_| {
-                                                let event = Event::Session(SessionEvent::EnableRepCounter);
-                                                let core_ref = core_enable_rep.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            }
-                                        >
-                                            "Enable rep counter"
-                                        </button>
+                                        <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                            let event = Event::Session(SessionEvent::EnableRepCounter);
+                                            let core_ref = core_enable_rep.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                        })>
+                                            "Rep Counter"
+                                        </Button>
                                     </div>
                                 }.into_any()
                             }}
