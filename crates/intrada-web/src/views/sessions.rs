@@ -86,6 +86,7 @@ fn SessionRow(
     let total_duration = session.total_duration_display.clone();
     let completion_status = session.completion_status.clone();
     let session_notes = session.notes.clone();
+    let session_intention = session.session_intention.clone();
     let entry_count = session.entries.len();
     let entries = session.entries.clone();
 
@@ -124,6 +125,7 @@ fn SessionRow(
                     let total_duration = total_duration.clone();
                     let completion_status = completion_status.clone();
                     let session_notes = session_notes.clone();
+                    let session_intention = session_intention.clone();
                     let entries = entries.clone();
                     view! {
                         <div class="space-y-3">
@@ -147,6 +149,11 @@ fn SessionRow(
                                         }}
                                         <span class="text-xs text-faint">{started_at}</span>
                                     </div>
+                                    {session_intention.map(|intention| {
+                                        view! {
+                                            <p class="text-xs text-muted italic mt-1">{intention}</p>
+                                        }
+                                    })}
                                     {session_notes.map(|n| {
                                         view! {
                                             <p class="text-sm text-secondary mt-1">{n}</p>
@@ -175,28 +182,52 @@ fn SessionRow(
                                         "skipped" => "text-warning-text",
                                         _ => "text-faint",
                                     };
+                                    let entry_intention = entry.intention.clone();
+                                    let entry_rep_target = entry.rep_target;
+                                    let entry_rep_count = entry.rep_count;
+                                    let entry_rep_reached = entry.rep_target_reached.unwrap_or(false);
                                     view! {
-                                        <div class="flex items-center justify-between text-xs">
-                                            <div class="flex items-center gap-2 min-w-0">
-                                                <span class={format!("font-medium {}", status_color)}>{status_label}</span>
-                                                <span class="text-primary truncate">{entry.item_title}</span>
-                                                <span class="text-faint shrink-0">{entry.duration_display}</span>
+                                        <div class="text-xs">
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <span class={format!("font-medium {}", status_color)}>{status_label}</span>
+                                                    <span class="text-primary truncate">{entry.item_title}</span>
+                                                    <span class="text-faint shrink-0">{entry.duration_display}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2 shrink-0 ml-2">
+                                                    {entry_rep_target.map(|target| {
+                                                        let count = entry_rep_count.unwrap_or(0);
+                                                        let (color, bg) = if entry_rep_reached {
+                                                            ("text-warm-accent-text", "bg-warm-accent-surface")
+                                                        } else {
+                                                            ("text-muted", "bg-surface-secondary")
+                                                        };
+                                                        view! {
+                                                            <span class={format!("inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-mono {} {}", color, bg)}>
+                                                                {format!("{}/{}", count, target)}
+                                                            </span>
+                                                        }
+                                                    })}
+                                                    {entry.score.map(|s| {
+                                                        view! {
+                                                            <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
+                                                                {format!("{}/5", s)}
+                                                            </span>
+                                                        }
+                                                    })}
+                                                    {entry.notes.map(|n| {
+                                                        let title = n.clone();
+                                                        view! {
+                                                            <span class="text-muted truncate max-w-[120px]" title={title}>{n}</span>
+                                                        }
+                                                    })}
+                                                </div>
                                             </div>
-                                            <div class="flex items-center gap-2 shrink-0 ml-2">
-                                                {entry.score.map(|s| {
-                                                    view! {
-                                                        <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
-                                                            {format!("{}/5", s)}
-                                                        </span>
-                                                    }
-                                                })}
-                                                {entry.notes.map(|n| {
-                                                    let title = n.clone();
-                                                    view! {
-                                                        <span class="text-muted truncate max-w-[120px]" title={title}>{n}</span>
-                                                    }
-                                                })}
-                                            </div>
+                                            {entry_intention.map(|intention| {
+                                                view! {
+                                                    <p class="text-muted italic ml-5 mt-0.5">{intention}</p>
+                                                }
+                                            })}
                                         </div>
                                     }
                                 }).collect::<Vec<_>>()}

@@ -36,6 +36,7 @@ pub fn SessionSummary() -> impl IntoView {
                         let core_session_notes = core_session_notes_outer.clone();
                         let total_duration = summary.total_duration_display.clone();
                         let completion_status = summary.completion_status.clone();
+                        let session_intention = summary.session_intention.clone();
                         let entries = summary.entries.clone();
 
                         view! {
@@ -55,6 +56,9 @@ pub fn SessionSummary() -> impl IntoView {
                                     } else {
                                         None
                                     }}
+                                    {session_intention.map(|intention| view! {
+                                        <p class="text-sm text-secondary italic">{intention}</p>
+                                    })}
                                 </div>
                             </Card>
 
@@ -70,6 +74,10 @@ pub fn SessionSummary() -> impl IntoView {
                                         let core_score_inner = core_score.clone();
                                         let is_completed = entry.status == "completed";
                                         let current_score = entry.score;
+                                        let entry_intention = entry.intention.clone();
+                                        let entry_rep_target = entry.rep_target;
+                                        let entry_rep_count = entry.rep_count;
+                                        let entry_rep_reached = entry.rep_target_reached.unwrap_or(false);
                                         let notes_label = format!("Notes for {}", entry.item_title);
                                         let notes_input_id = format!("entry-notes-{}", entry.id);
                                         let status_label = match entry.status.as_str() {
@@ -92,6 +100,25 @@ pub fn SessionSummary() -> impl IntoView {
                                                     </div>
                                                     <span class="text-sm text-muted">{entry.duration_display}</span>
                                                 </div>
+                                                {entry_intention.map(|intention| view! {
+                                                    <p class="text-xs text-muted italic">{intention}</p>
+                                                })}
+                                                {entry_rep_target.map(|target| {
+                                                    let count = entry_rep_count.unwrap_or(0);
+                                                    let color = if entry_rep_reached {
+                                                        "text-warm-accent-text"
+                                                    } else {
+                                                        "text-muted"
+                                                    };
+                                                    let label = if entry_rep_reached {
+                                                        format!("Reps: {} / {} ✓", count, target)
+                                                    } else {
+                                                        format!("Reps: {} / {}", count, target)
+                                                    };
+                                                    view! {
+                                                        <p class={format!("text-xs font-mono {}", color)}>{label}</p>
+                                                    }
+                                                })}
                                                 <div>
                                                     <label class="sr-only" for=notes_input_id.clone()>
                                                         {notes_label}

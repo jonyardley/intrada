@@ -97,6 +97,7 @@ pub struct PracticeSessionView {
     pub completion_status: String,
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
+    pub session_intention: Option<String>,
 }
 
 /// A single entry within a session view.
@@ -111,6 +112,10 @@ pub struct SetlistEntryView {
     pub status: String,
     pub notes: Option<String>,
     pub score: Option<u8>,
+    pub intention: Option<String>,
+    pub rep_target: Option<u8>,
+    pub rep_count: Option<u8>,
+    pub rep_target_reached: Option<bool>,
 }
 
 /// View for the in-progress active session.
@@ -122,6 +127,10 @@ pub struct ActiveSessionView {
     pub total_items: usize,
     pub started_at: String,
     pub entries: Vec<SetlistEntryView>,
+    pub session_intention: Option<String>,
+    pub current_rep_target: Option<u8>,
+    pub current_rep_count: Option<u8>,
+    pub current_rep_target_reached: Option<bool>,
 }
 
 /// View for the building phase setlist.
@@ -129,6 +138,7 @@ pub struct ActiveSessionView {
 pub struct BuildingSetlistView {
     pub entries: Vec<SetlistEntryView>,
     pub item_count: usize,
+    pub session_intention: Option<String>,
 }
 
 /// View for the end-of-session summary.
@@ -138,6 +148,7 @@ pub struct SummaryView {
     pub completion_status: String,
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
+    pub session_intention: Option<String>,
 }
 
 // ── View helpers ──────────────────────────────────────────────────────
@@ -158,6 +169,10 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         },
         notes: entry.notes.clone(),
         score: entry.score,
+        intention: entry.intention.clone(),
+        rep_target: entry.rep_target,
+        rep_count: entry.rep_count,
+        rep_target_reached: entry.rep_target_reached,
     }
 }
 
@@ -174,6 +189,10 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
         entries: active.entries.iter().map(entry_to_view).collect(),
+        session_intention: active.session_intention.clone(),
+        current_rep_target: current.rep_target,
+        current_rep_count: current.rep_count,
+        current_rep_target_reached: current.rep_target_reached,
     }
 }
 
@@ -188,6 +207,7 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
         },
         notes: summary.session_notes.clone(),
         entries: summary.entries.iter().map(entry_to_view).collect(),
+        session_intention: summary.session_intention.clone(),
     }
 }
 
@@ -206,5 +226,6 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         },
         notes: session.session_notes.clone(),
         entries: session.entries.iter().map(entry_to_view).collect(),
+        session_intention: session.session_intention.clone(),
     }
 }

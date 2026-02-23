@@ -15,6 +15,9 @@ pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
 pub const MIN_SCORE: u8 = 1;
 pub const MAX_SCORE: u8 = 5;
+pub const DEFAULT_REP_TARGET: u8 = 5;
+pub const MIN_REP_TARGET: u8 = 3;
+pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_ROUTINE_NAME: usize = 200;
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
@@ -177,12 +180,38 @@ pub fn validate_tags(tags: &[String]) -> Result<(), LibraryError> {
     Ok(())
 }
 
+pub fn validate_intention(intention: &Option<String>) -> Result<(), LibraryError> {
+    if let Some(ref text) = intention {
+        if text.len() > MAX_NOTES {
+            return Err(LibraryError::Validation {
+                field: "intention".to_string(),
+                message: format!("Intention must not exceed {MAX_NOTES} characters"),
+            });
+        }
+    }
+    Ok(())
+}
+
 pub fn validate_score(score: &Option<u8>) -> Result<(), LibraryError> {
     if let Some(s) = score {
         if !(MIN_SCORE..=MAX_SCORE).contains(s) {
             return Err(LibraryError::Validation {
                 field: "score".to_string(),
                 message: format!("Score must be between {MIN_SCORE} and {MAX_SCORE}"),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_rep_target(rep_target: &Option<u8>) -> Result<(), LibraryError> {
+    if let Some(t) = rep_target {
+        if !(MIN_REP_TARGET..=MAX_REP_TARGET).contains(t) {
+            return Err(LibraryError::Validation {
+                field: "rep_target".to_string(),
+                message: format!(
+                    "Rep target must be between {MIN_REP_TARGET} and {MAX_REP_TARGET}"
+                ),
             });
         }
     }

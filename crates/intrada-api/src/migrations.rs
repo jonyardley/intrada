@@ -143,6 +143,26 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0018_index_routines_user_id",
         "CREATE INDEX IF NOT EXISTS idx_routines_user_id ON routines(user_id);",
     ),
+    (
+        "0019_add_intention_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN intention TEXT;",
+    ),
+    (
+        "0020_add_session_intention_to_sessions",
+        "ALTER TABLE sessions ADD COLUMN session_intention TEXT;",
+    ),
+    (
+        "0021_add_rep_target_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN rep_target INTEGER;",
+    ),
+    (
+        "0022_add_rep_count_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN rep_count INTEGER;",
+    ),
+    (
+        "0023_add_rep_target_reached_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN rep_target_reached INTEGER;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

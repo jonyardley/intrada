@@ -173,6 +173,7 @@ impl App for Intrada {
                     Some(BuildingSetlistView {
                         entries,
                         item_count,
+                        session_intention: building.session_intention.clone(),
                     }),
                     None,
                 )
@@ -878,6 +879,7 @@ mod tests {
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
@@ -889,6 +891,10 @@ mod tests {
                     status: EntryStatus::Completed,
                     notes: None,
                     score: None,
+                    intention: None,
+                    rep_target: None,
+                    rep_count: None,
+                    rep_target_reached: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -900,6 +906,10 @@ mod tests {
                     status: EntryStatus::Completed,
                     notes: None,
                     score: None,
+                    intention: None,
+                    rep_target: None,
+                    rep_count: None,
+                    rep_target_reached: None,
                 },
             ],
         });
@@ -956,6 +966,7 @@ mod tests {
             total_duration_secs: 3600,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -966,6 +977,10 @@ mod tests {
                 status: EntryStatus::Completed,
                 notes: None,
                 score: Some(3),
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             }],
         });
 
@@ -977,6 +992,7 @@ mod tests {
             total_duration_secs: 1800,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries: vec![SetlistEntry {
                 id: "e2".to_string(),
                 item_id: "p1".to_string(),
@@ -987,6 +1003,10 @@ mod tests {
                 status: EntryStatus::Completed,
                 notes: None,
                 score: Some(5),
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             }],
         });
 
@@ -1037,6 +1057,7 @@ mod tests {
             total_duration_secs: 1800,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -1047,6 +1068,10 @@ mod tests {
                 status: EntryStatus::Completed,
                 notes: None,
                 score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             }],
         });
 
@@ -1090,6 +1115,7 @@ mod tests {
             total_duration_secs: 3600,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
@@ -1101,6 +1127,10 @@ mod tests {
                     status: EntryStatus::Completed,
                     notes: None,
                     score: Some(2),
+                    intention: None,
+                    rep_target: None,
+                    rep_count: None,
+                    rep_target_reached: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -1112,6 +1142,10 @@ mod tests {
                     status: EntryStatus::Completed,
                     notes: None,
                     score: Some(4),
+                    intention: None,
+                    rep_target: None,
+                    rep_count: None,
+                    rep_target_reached: None,
                 },
             ],
         });
@@ -1161,6 +1195,7 @@ mod tests {
             total_duration_secs: 600,
             completion_status: CompletionStatus::EndedEarly,
             session_notes: None,
+            session_intention: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -1171,6 +1206,10 @@ mod tests {
                 status: EntryStatus::Skipped,
                 notes: None,
                 score: None, // Skipped entries never have scores
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
             }],
         });
 

@@ -44,13 +44,35 @@ async fn save_session(
     AuthUser(user_id): AuthUser,
     Json(input): Json<SaveSessionRequest>,
 ) -> Result<(StatusCode, Json<PracticeSession>), ApiError> {
-    // Validate session notes
+    // Validate session-level fields
     validation::validate_session_notes(&input.session_notes)?;
+    validation::validate_intention(&input.session_intention)?;
 
-    // Validate each entry's notes and score
+    // Validate each entry's notes, score, intention, and rep fields
     for entry in &input.entries {
         validation::validate_entry_notes(&entry.notes)?;
         validation::validate_score(&entry.score)?;
+        validation::validate_intention(&entry.intention)?;
+        validation::validate_rep_target(&entry.rep_target)?;
+
+        // Rep count consistency: count must be <= target, and both must be
+        // present/absent together with rep_target as the gating field.
+        if let Some(target) = entry.rep_target {
+            if let Some(count) = entry.rep_count {
+                if count > target {
+                    return Err(ApiError::Validation(format!(
+                        "rep_count ({count}) cannot exceed rep_target ({target})"
+                    )));
+                }
+            }
+        } else {
+            // If no target, count and reached must also be absent
+            if entry.rep_count.is_some() || entry.rep_target_reached.is_some() {
+                return Err(ApiError::Validation(
+                    "rep_count and rep_target_reached require rep_target".to_string(),
+                ));
+            }
+        }
     }
 
     // Validate setlist is not empty — need to convert to SetlistEntry slice

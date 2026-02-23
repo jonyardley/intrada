@@ -45,6 +45,14 @@ pub struct SetlistEntry {
     pub notes: Option<String>,
     #[serde(default)]
     pub score: Option<u8>,
+    #[serde(default)]
+    pub intention: Option<String>,
+    #[serde(default)]
+    pub rep_target: Option<u8>,
+    #[serde(default)]
+    pub rep_count: Option<u8>,
+    #[serde(default)]
+    pub rep_target_reached: Option<bool>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -53,6 +61,8 @@ pub struct PracticeSession {
     pub id: String,
     pub entries: Vec<SetlistEntry>,
     pub session_notes: Option<String>,
+    #[serde(default)]
+    pub session_intention: Option<String>,
     pub started_at: DateTime<Utc>,
     pub completed_at: DateTime<Utc>,
     pub total_duration_secs: u64,
@@ -65,6 +75,7 @@ pub struct PracticeSession {
 #[derive(Debug, Clone)]
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
+    pub session_intention: Option<String>,
 }
 
 /// State during active practice (Active phase).
@@ -76,6 +87,8 @@ pub struct ActiveSession {
     pub current_index: usize,
     pub current_item_started_at: DateTime<Utc>,
     pub session_started_at: DateTime<Utc>,
+    #[serde(default)]
+    pub session_intention: Option<String>,
 }
 
 /// State during post-session review (Summary phase).
@@ -86,6 +99,7 @@ pub struct SummarySession {
     pub session_started_at: DateTime<Utc>,
     pub session_ended_at: DateTime<Utc>,
     pub session_notes: Option<String>,
+    pub session_intention: Option<String>,
     pub completion_status: CompletionStatus,
 }
 
@@ -105,6 +119,19 @@ pub enum SessionStatus {
 pub enum SessionEvent {
     // === Building Phase ===
     StartBuilding,
+    SetSessionIntention {
+        intention: Option<String>,
+    },
+    SetEntryIntention {
+        entry_id: String,
+        intention: Option<String>,
+    },
+    /// Set or clear the rep target for an entry during building phase.
+    /// `None` disables the counter; `Some(n)` enables it with target `n`.
+    SetRepTarget {
+        entry_id: String,
+        target: Option<u8>,
+    },
     AddToSetlist {
         item_id: String,
     },
@@ -144,6 +171,14 @@ pub enum SessionEvent {
     EndSessionEarly {
         now: DateTime<Utc>,
     },
+    /// Increment rep count on current entry (capped at target).
+    RepGotIt,
+    /// Decrement rep count on current entry (floor 0).
+    RepMissed,
+    /// Enable rep counter on current entry (sets default target if none).
+    EnableRepCounter,
+    /// Disable rep counter on current entry (clears all rep fields).
+    DisableRepCounter,
 
     // === Summary Phase ===
     UpdateEntryNotes {
@@ -211,6 +246,10 @@ fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usiz
         status: EntryStatus::NotAttempted,
         notes: None,
         score: None,
+        intention: None,
+        rep_target: None,
+        rep_count: None,
+        rep_target_reached: None,
     }
 }
 
@@ -239,6 +278,13 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     }
 }
 
+/// Freeze rep state on an entry: set `rep_target_reached` based on whether count >= target.
+fn freeze_rep_state(entry: &mut SetlistEntry) {
+    if let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) {
+        entry.rep_target_reached = Some(count >= target);
+    }
+}
+
 /// Transition from Active to Summary, computing final duration for the current item.
 fn transition_to_summary(
     active: &mut ActiveSession,
@@ -250,6 +296,7 @@ fn transition_to_summary(
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = elapsed;
         entry.status = EntryStatus::Completed;
+        freeze_rep_state(entry);
     }
 
     // Mark remaining items as NotAttempted if ending early
@@ -266,6 +313,7 @@ fn transition_to_summary(
         session_started_at: active.session_started_at,
         session_ended_at: now,
         session_notes: None,
+        session_intention: active.session_intention.clone(),
         completion_status,
     }
 }
@@ -280,7 +328,77 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 model.last_error = Some("A session is already in progress".to_string());
                 return crux_core::render::render();
             }
-            model.session_status = SessionStatus::Building(BuildingSession { entries: vec![] });
+            model.session_status = SessionStatus::Building(BuildingSession {
+                entries: vec![],
+                session_intention: None,
+            });
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetSessionIntention { intention } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                // No-op when not in Building state
+                return crux_core::render::render();
+            };
+
+            if let Err(e) = validation::validate_intention(&intention) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            building.session_intention = intention;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetEntryIntention {
+            entry_id,
+            intention,
+        } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                // No-op when not in Building state
+                return crux_core::render::render();
+            };
+
+            if let Err(e) = validation::validate_intention(&intention) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            entry.intention = intention;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetRepTarget { entry_id, target } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                // No-op when not in Building state
+                return crux_core::render::render();
+            };
+
+            // Validate target if provided
+            if let Some(t) = target {
+                if let Err(e) = validation::validate_rep_target(&Some(t)) {
+                    model.last_error = Some(e.to_string());
+                    return crux_core::render::render();
+                }
+            }
+
+            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            entry.rep_target = target;
+            // Clear count/reached when changing target in building phase
+            entry.rep_count = None;
+            entry.rep_target_reached = None;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -404,12 +522,22 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
+            let mut entries = building.entries.clone();
+            // Initialize rep counter state for entries with a rep_target set
+            for entry in &mut entries {
+                if entry.rep_target.is_some() {
+                    entry.rep_count = Some(0);
+                    entry.rep_target_reached = Some(false);
+                }
+            }
+
             let active = ActiveSession {
                 id: ulid::Ulid::new().to_string(),
-                entries: building.entries.clone(),
+                entries,
                 current_index: 0,
                 current_item_started_at: now,
                 session_started_at: now,
+                session_intention: building.session_intention.clone(),
             };
 
             let save_effect = AppEffect::SaveSessionInProgress(active.clone());
@@ -444,6 +572,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             if let Some(entry) = active.entries.get_mut(active.current_index) {
                 entry.duration_secs = elapsed;
                 entry.status = EntryStatus::Completed;
+                freeze_rep_state(entry);
             }
 
             // If this was the last item, transition to Summary
@@ -474,6 +603,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             if let Some(entry) = active.entries.get_mut(active.current_index) {
                 entry.duration_secs = 0;
                 entry.status = EntryStatus::Skipped;
+                freeze_rep_state(entry);
             }
 
             // If this was the last item, transition to Summary
@@ -484,6 +614,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                     session_started_at: active.session_started_at,
                     session_ended_at: now,
                     session_notes: None,
+                    session_intention: active.session_intention.clone(),
                     completion_status: CompletionStatus::Completed,
                 };
                 model.session_status = SessionStatus::Summary(summary);
@@ -593,6 +724,109 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
+        SessionEvent::RepGotIt => {
+            let SessionStatus::Active(ref mut active) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            let Some(entry) = active.entries.get_mut(active.current_index) else {
+                return crux_core::render::render();
+            };
+
+            // No-op if counter is not active or target already reached
+            let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) else {
+                return crux_core::render::render();
+            };
+            if entry.rep_target_reached == Some(true) {
+                return crux_core::render::render();
+            }
+
+            let new_count = (count + 1).min(target);
+            entry.rep_count = Some(new_count);
+            if new_count >= target {
+                entry.rep_target_reached = Some(true);
+            }
+
+            model.last_error = None;
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            Command::all([
+                Command::notify_shell(save_effect).into(),
+                crux_core::render::render(),
+            ])
+        }
+
+        SessionEvent::RepMissed => {
+            let SessionStatus::Active(ref mut active) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            let Some(entry) = active.entries.get_mut(active.current_index) else {
+                return crux_core::render::render();
+            };
+
+            // No-op if counter is not active or target already reached
+            let (Some(_target), Some(count)) = (entry.rep_target, entry.rep_count) else {
+                return crux_core::render::render();
+            };
+            if entry.rep_target_reached == Some(true) {
+                return crux_core::render::render();
+            }
+
+            entry.rep_count = Some(count.saturating_sub(1));
+
+            model.last_error = None;
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            Command::all([
+                Command::notify_shell(save_effect).into(),
+                crux_core::render::render(),
+            ])
+        }
+
+        SessionEvent::EnableRepCounter => {
+            let SessionStatus::Active(ref mut active) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            let Some(entry) = active.entries.get_mut(active.current_index) else {
+                return crux_core::render::render();
+            };
+
+            // Set default target if none exists
+            if entry.rep_target.is_none() {
+                entry.rep_target = Some(validation::DEFAULT_REP_TARGET);
+            }
+            entry.rep_count = Some(0);
+            entry.rep_target_reached = Some(false);
+
+            model.last_error = None;
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            Command::all([
+                Command::notify_shell(save_effect).into(),
+                crux_core::render::render(),
+            ])
+        }
+
+        SessionEvent::DisableRepCounter => {
+            let SessionStatus::Active(ref mut active) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            let Some(entry) = active.entries.get_mut(active.current_index) else {
+                return crux_core::render::render();
+            };
+
+            entry.rep_target = None;
+            entry.rep_count = None;
+            entry.rep_target_reached = None;
+
+            model.last_error = None;
+            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
+            Command::all([
+                Command::notify_shell(save_effect).into(),
+                crux_core::render::render(),
+            ])
+        }
+
         // ── Summary Phase ──────────────────────────────────────────
         SessionEvent::UpdateEntryScore { entry_id, score } => {
             let SessionStatus::Summary(ref mut summary) = model.session_status else {
@@ -672,6 +906,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 id: summary.id.clone(),
                 entries: summary.entries.clone(),
                 session_notes: summary.session_notes.clone(),
+                session_intention: summary.session_intention.clone(),
                 started_at: summary.session_started_at,
                 completed_at: now,
                 total_duration_secs,
@@ -1333,6 +1568,7 @@ mod tests {
             current_index: 0,
             current_item_started_at: now,
             session_started_at: now,
+            session_intention: None,
         };
 
         update(
@@ -1360,6 +1596,7 @@ mod tests {
             current_index: 0,
             current_item_started_at: now,
             session_started_at: now,
+            session_intention: None,
         };
 
         update(
@@ -1853,5 +2090,823 @@ mod tests {
         );
 
         assert!(model.last_error.is_some());
+    }
+
+    // --- Intention Tests ---
+
+    #[test]
+    fn test_set_session_intention() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some("Focus on dynamics".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.session_intention, Some("Focus on dynamics".to_string()));
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_entry_intention() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: Some("Work on left hand".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(
+                b.entries[0].intention,
+                Some("Work on left hand".to_string())
+            );
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_intention_too_long() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+
+        let long_text = "a".repeat(5001);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some(long_text),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.session_intention, None);
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_intention_threaded_to_active() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        // Set session intention
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some("Session goal".to_string()),
+            }),
+        );
+
+        // Set entry intention
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: Some("Entry goal".to_string()),
+            }),
+        );
+
+        // Start session
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.session_intention, Some("Session goal".to_string()));
+            assert_eq!(a.entries[0].intention, Some("Entry goal".to_string()));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_intention_threaded_to_summary() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some("Summary test".to_string()),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: Some("Entry summary test".to_string()),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+
+        let t1 = now + chrono::Duration::seconds(30);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t1 }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.session_intention, Some("Summary test".to_string()));
+            assert_eq!(
+                s.entries[0].intention,
+                Some("Entry summary test".to_string())
+            );
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_intention_persisted_in_save() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some("Save test".to_string()),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryIntention {
+                entry_id,
+                intention: Some("Entry save test".to_string()),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+
+        let t1 = now + chrono::Duration::seconds(30);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t1 }),
+        );
+
+        let t2 = t1 + chrono::Duration::seconds(5);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: t2 }),
+        );
+
+        assert_eq!(model.sessions.len(), 1);
+        assert_eq!(
+            model.sessions[0].session_intention,
+            Some("Save test".to_string())
+        );
+        assert_eq!(
+            model.sessions[0].entries[0].intention,
+            Some("Entry save test".to_string())
+        );
+    }
+
+    #[test]
+    fn test_set_intention_outside_building() {
+        let (mut model, _start) = model_with_active_session(2);
+
+        // In Active state, try to set session intention — should be no-op
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetSessionIntention {
+                intention: Some("Should not stick".to_string()),
+            }),
+        );
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.session_intention, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    // --- Rep Counter Tests ---
+
+    /// Helper: create an active session with a rep target on the first item.
+    fn model_with_active_session_and_rep(target: u8) -> (Model, DateTime<Utc>) {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-2".to_string(),
+            }),
+        );
+
+        // Set rep target on first entry during building
+        if let SessionStatus::Building(ref mut b) = model.session_status {
+            b.entries[0].rep_target = Some(target);
+        } else {
+            panic!("Expected Building state");
+        }
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        (model, now)
+    }
+
+    #[test]
+    fn test_rep_initialized_on_start_session() {
+        let (model, _now) = model_with_active_session_and_rep(5);
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // First entry has rep target → initialized
+            assert_eq!(a.entries[0].rep_target, Some(5));
+            assert_eq!(a.entries[0].rep_count, Some(0));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+            // Second entry has no rep target → not initialized
+            assert_eq!(a.entries[1].rep_target, None);
+            assert_eq!(a.entries[1].rep_count, None);
+            assert_eq!(a.entries[1].rep_target_reached, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_got_it_increments() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(3));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_got_it_reaches_target() {
+        let (mut model, _now) = model_with_active_session_and_rep(3);
+
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(3));
+            assert_eq!(a.entries[0].rep_target_reached, Some(true));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_got_it_frozen_after_target_reached() {
+        let (mut model, _now) = model_with_active_session_and_rep(3);
+
+        // Reach target
+        for _ in 0..3 {
+            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        }
+
+        // Additional got-it should not increase count
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(3));
+            assert_eq!(a.entries[0].rep_target_reached, Some(true));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_missed_decrements() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        // Got-it 3 times
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // Miss once
+        update(&mut model, Event::Session(SessionEvent::RepMissed));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(2));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_missed_floor_zero() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        // Miss with count at 0
+        update(&mut model, Event::Session(SessionEvent::RepMissed));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(0));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_missed_frozen_after_target_reached() {
+        let (mut model, _now) = model_with_active_session_and_rep(3);
+
+        // Reach target
+        for _ in 0..3 {
+            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        }
+
+        // Miss should not decrement after target reached
+        update(&mut model, Event::Session(SessionEvent::RepMissed));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(3));
+            assert_eq!(a.entries[0].rep_target_reached, Some(true));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_enable_rep_counter_sets_default_target() {
+        let (mut model, _now) = model_with_active_session(2);
+
+        // Current entry has no rep target
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, None);
+        }
+
+        update(&mut model, Event::Session(SessionEvent::EnableRepCounter));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, Some(5)); // DEFAULT_REP_TARGET
+            assert_eq!(a.entries[0].rep_count, Some(0));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_enable_rep_counter_preserves_existing_target() {
+        let (mut model, _now) = model_with_active_session_and_rep(7);
+
+        // Disable then re-enable — should use default since target was cleared
+        update(&mut model, Event::Session(SessionEvent::DisableRepCounter));
+        update(&mut model, Event::Session(SessionEvent::EnableRepCounter));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, Some(5)); // default after disable+enable
+            assert_eq!(a.entries[0].rep_count, Some(0));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_disable_rep_counter_clears_all_fields() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        // Got-it a few times
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // Disable
+        update(&mut model, Event::Session(SessionEvent::DisableRepCounter));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, None);
+            assert_eq!(a.entries[0].rep_count, None);
+            assert_eq!(a.entries[0].rep_target_reached, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_frozen_on_next_item() {
+        let (mut model, start) = model_with_active_session_and_rep(5);
+
+        // Got-it 3 times (partial progress)
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        let now = start + chrono::Duration::seconds(30);
+        update(&mut model, Event::Session(SessionEvent::NextItem { now }));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // First entry frozen: 3/5, target not reached
+            assert_eq!(a.entries[0].rep_count, Some(3));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+            // Now on second item
+            assert_eq!(a.current_index, 1);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_frozen_on_skip_item() {
+        let (mut model, start) = model_with_active_session_and_rep(5);
+
+        // Got-it once
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        let now = start + chrono::Duration::seconds(10);
+        update(&mut model, Event::Session(SessionEvent::SkipItem { now }));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            // First entry frozen: 1/5, target not reached
+            assert_eq!(a.entries[0].rep_count, Some(1));
+            assert_eq!(a.entries[0].rep_target_reached, Some(false));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_in_summary_after_finish() {
+        let (mut model, start) = model_with_active_session_and_rep(3);
+
+        // Reach target
+        for _ in 0..3 {
+            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        }
+
+        let now = start + chrono::Duration::seconds(60);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].rep_target, Some(3));
+            assert_eq!(s.entries[0].rep_count, Some(3));
+            assert_eq!(s.entries[0].rep_target_reached, Some(true));
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_persisted_through_save() {
+        let (mut model, start) = model_with_active_session_and_rep(3);
+
+        // Reach target
+        for _ in 0..3 {
+            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        }
+
+        let t1 = start + chrono::Duration::seconds(60);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t1 }),
+        );
+
+        let t2 = t1 + chrono::Duration::seconds(5);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: t2 }),
+        );
+
+        assert_eq!(model.sessions.len(), 1);
+        assert_eq!(model.sessions[0].entries[0].rep_target, Some(3));
+        assert_eq!(model.sessions[0].entries[0].rep_count, Some(3));
+        assert_eq!(model.sessions[0].entries[0].rep_target_reached, Some(true));
+    }
+
+    #[test]
+    fn test_rep_no_counter_entry_unaffected() {
+        let (mut model, _now) = model_with_active_session(2);
+
+        // RepGotIt on entry without counter — no-op
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, None);
+            assert_eq!(a.entries[0].rep_count, None);
+            assert_eq!(a.entries[0].rep_target_reached, None);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_got_it_capped_at_target() {
+        let (mut model, _now) = model_with_active_session_and_rep(3);
+
+        // Try to go beyond target
+        for _ in 0..10 {
+            update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        }
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_count, Some(3)); // capped at target
+            assert_eq!(a.entries[0].rep_target_reached, Some(true));
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_rep_state_frozen_on_end_session_early() {
+        let (mut model, now) = model_with_active_session_and_rep(5);
+
+        // Increment rep count twice on item 1
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+        update(&mut model, Event::Session(SessionEvent::RepGotIt));
+
+        // End session early (item 2 is never reached)
+        let t1 = now + chrono::Duration::seconds(30);
+        update(
+            &mut model,
+            Event::Session(SessionEvent::EndSessionEarly { now: t1 }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            // Item 1: rep state frozen — 2/5, not reached
+            assert_eq!(s.entries[0].rep_target, Some(5));
+            assert_eq!(s.entries[0].rep_count, Some(2));
+            assert_eq!(s.entries[0].rep_target_reached, Some(false));
+            assert_eq!(s.entries[0].status, EntryStatus::Completed);
+
+            // Item 2: no rep target set, marked not_attempted
+            assert_eq!(s.entries[1].rep_target, None);
+            assert_eq!(s.entries[1].rep_count, None);
+            assert_eq!(s.entries[1].rep_target_reached, None);
+            assert_eq!(s.entries[1].status, EntryStatus::NotAttempted);
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    // ── SetRepTarget (Building phase) tests ──────────────────────────
+
+    #[test]
+    fn test_set_rep_target_in_building() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id: entry_id.clone(),
+                target: Some(7),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].rep_target, Some(7));
+            assert_eq!(b.entries[0].rep_count, None);
+            assert_eq!(b.entries[0].rep_target_reached, None);
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_rep_target_clear() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        // Set target first
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id: entry_id.clone(),
+                target: Some(5),
+            }),
+        );
+
+        // Then clear it
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id,
+                target: None,
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].rep_target, None);
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_rep_target_invalid_value() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        // Target below minimum (3)
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id: entry_id.clone(),
+                target: Some(1),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].rep_target, None); // unchanged
+        } else {
+            panic!("Expected Building state");
+        }
+
+        // Target above maximum (10)
+        model.last_error = None;
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id,
+                target: Some(15),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn test_set_rep_target_flows_to_active() {
+        let mut model = model_with_library();
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id,
+                target: Some(8),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, Some(8));
+            assert_eq!(a.entries[0].rep_count, Some(0)); // initialized
+            assert_eq!(a.entries[0].rep_target_reached, Some(false)); // initialized
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_set_rep_target_no_op_outside_building() {
+        let (mut model, _now) = model_with_active_session_and_rep(5);
+
+        // SetRepTarget should no-op in Active state
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetRepTarget {
+                entry_id: "whatever".to_string(),
+                target: Some(10),
+            }),
+        );
+
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].rep_target, Some(5)); // unchanged
+        } else {
+            panic!("Expected Active state");
+        }
     }
 }

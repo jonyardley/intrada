@@ -293,6 +293,7 @@ mod tests {
             total_duration_secs: total_secs,
             completion_status: CompletionStatus::Completed,
             session_notes: None,
+            session_intention: None,
             entries,
         }
     }
@@ -315,6 +316,10 @@ mod tests {
             status: EntryStatus::Completed,
             notes: None,
             score,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
         }
     }
 
@@ -729,6 +734,7 @@ mod tests {
             total_duration_secs: 600,
             completion_status: CompletionStatus::EndedEarly,
             session_notes: None,
+            session_intention: None,
             entries: vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
         }];
 
