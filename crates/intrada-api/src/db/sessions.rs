@@ -46,6 +46,8 @@ pub struct SaveSessionEntry {
     pub rep_target_reached: Option<bool>,
     #[serde(default)]
     pub rep_history: Option<Vec<RepAction>>,
+    #[serde(default)]
+    pub planned_duration_secs: Option<u32>,
 }
 
 fn completion_status_to_str(status: &CompletionStatus) -> &'static str {
@@ -113,6 +115,9 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         ),
         None => None,
     };
+    let planned_duration_secs_raw: Option<i64> =
+        row.get(15).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let planned_duration_secs = planned_duration_secs_raw.map(|v| v as u32);
 
     Ok(SetlistEntry {
         id,
@@ -129,6 +134,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         rep_count,
         rep_target_reached,
         rep_history,
+        planned_duration_secs,
     })
 }
 
@@ -136,7 +142,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history
+            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs
              FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC",
             libsql::params![session_id],
         )
@@ -284,9 +290,11 @@ pub async fn insert_session(
                 .map(serde_json::to_string)
                 .transpose()
                 .map_err(|e| ApiError::Internal(format!("Failed to serialise rep_history: {e}")))?;
+            let planned_duration_secs_val: Option<i64> =
+                entry.planned_duration_secs.map(|v| v as i64);
             conn.execute(
-                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
                 libsql::params![
                     entry.id.as_str(),
                     id.as_str(),
@@ -302,7 +310,8 @@ pub async fn insert_session(
                     rep_target_val,
                     rep_count_val,
                     rep_target_reached_val,
-                    rep_history_json.as_deref()
+                    rep_history_json.as_deref(),
+                    planned_duration_secs_val
                 ],
             )
             .await?;
@@ -322,6 +331,7 @@ pub async fn insert_session(
                 rep_count: entry.rep_count,
                 rep_target_reached: entry.rep_target_reached,
                 rep_history: entry.rep_history.clone(),
+                planned_duration_secs: entry.planned_duration_secs,
             });
         }
 
