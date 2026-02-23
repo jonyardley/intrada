@@ -320,6 +320,7 @@ mod tests {
             rep_target: None,
             rep_count: None,
             rep_target_reached: None,
+            rep_history: None,
         }
     }
 

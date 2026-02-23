@@ -181,6 +181,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_target: None,
         rep_count: None,
         rep_target_reached: None,
+        rep_history: None,
     };
     let entry_display = SetlistEntryView {
         id: "entry-2".to_string(),
@@ -196,6 +197,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_target: None,
         rep_count: None,
         rep_target_reached: None,
+        rep_history: None,
     };
     let entry_drag = SetlistEntryView {
         id: "entry-3".to_string(),
@@ -211,6 +213,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_target: None,
         rep_count: None,
         rep_target_reached: None,
+        rep_history: None,
     };
 
     view! {

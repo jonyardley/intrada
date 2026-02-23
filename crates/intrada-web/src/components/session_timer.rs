@@ -18,6 +18,8 @@ pub fn SessionTimer() -> impl IntoView {
 
     let elapsed_secs = RwSignal::new(0u32);
     let interval_id: RwSignal<Option<i32>> = RwSignal::new(None);
+    // UI-only visibility signal for the rep counter (does not affect domain state)
+    let rep_counter_visible = RwSignal::new(false);
 
     // Start the display timer
     {
@@ -55,8 +57,7 @@ pub fn SessionTimer() -> impl IntoView {
                         let core_end = core.clone();
                         let core_got_it = core.clone();
                         let core_missed = core.clone();
-                        let core_enable_rep = core.clone();
-                        let core_disable_rep = core.clone();
+                        let core_init_rep = core.clone();
                         let current_title = active.current_item_title.clone();
                         let current_type = active.current_item_type.clone();
                         let position = active.current_position;
@@ -75,7 +76,15 @@ pub fn SessionTimer() -> impl IntoView {
                         let rep_target = active.current_rep_target;
                         let rep_count = active.current_rep_count;
                         let rep_target_reached = active.current_rep_target_reached;
-                        let has_rep_counter = rep_target.is_some();
+                        let has_rep_state = rep_target.is_some();
+                        // Auto-show counter when entry has rep state from building phase;
+                        // auto-hide when navigating to an item without rep state.
+                        if has_rep_state && !rep_counter_visible.get_untracked() {
+                            rep_counter_visible.set(true);
+                        } else if !has_rep_state && rep_counter_visible.get_untracked() {
+                            rep_counter_visible.set(false);
+                        }
+                        let show_counter = rep_counter_visible.get_untracked() || has_rep_state;
 
                         view! {
                             // Session intention (above the current item card)
@@ -105,7 +114,7 @@ pub fn SessionTimer() -> impl IntoView {
                             </Card>
 
                             // Rep counter section
-                            {if has_rep_counter {
+                            {if show_counter {
                                 let target = rep_target.unwrap_or(0);
                                 let count = rep_count.unwrap_or(0);
                                 let reached = rep_target_reached.unwrap_or(false);
@@ -176,34 +185,35 @@ pub fn SessionTimer() -> impl IntoView {
                                                 }.into_any()
                                             }}
 
-                                            // Disable link
+                                            // Hide counter link (UI-only toggle, preserves rep state)
                                             <div class="text-center">
                                                 <button
                                                     class="text-xs text-muted hover:text-secondary motion-safe:transition-colors"
                                                     on:click=move |_| {
-                                                        let event = Event::Session(SessionEvent::DisableRepCounter);
-                                                        let core_ref = core_disable_rep.borrow();
-                                                        let effects = core_ref.process_event(event);
-                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                        rep_counter_visible.set(false);
                                                     }
                                                 >
-                                                    "Disable counter"
+                                                    "Hide counter"
                                                 </button>
                                             </div>
                                         </div>
                                     </Card>
                                 }.into_any()
                             } else {
-                                // No rep counter — show enable button
+                                // Counter hidden — show enable/show button
                                 view! {
                                     <div class="text-center">
                                         <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                            let event = Event::Session(SessionEvent::EnableRepCounter);
-                                            let core_ref = core_enable_rep.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            rep_counter_visible.set(true);
+                                            // Only dispatch InitRepCounter when no rep state exists yet
+                                            if !has_rep_state {
+                                                let event = Event::Session(SessionEvent::InitRepCounter);
+                                                let core_ref = core_init_rep.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            }
                                         })>
-                                            "Rep Counter"
+                                            "🔄 Rep Counter"
                                         </Button>
                                     </div>
                                 }.into_any()
