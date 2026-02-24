@@ -21,6 +21,8 @@ pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_ROUTINE_NAME: usize = 200;
+pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
+pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     if input.title.is_empty() {
@@ -213,6 +215,20 @@ pub fn validate_rep_target(rep_target: &Option<u8>) -> Result<(), LibraryError> 
                 field: "rep_target".to_string(),
                 message: format!(
                     "Rep target must be between {MIN_REP_TARGET} and {MAX_REP_TARGET}"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_planned_duration(planned_duration_secs: &Option<u32>) -> Result<(), LibraryError> {
+    if let Some(d) = planned_duration_secs {
+        if !(MIN_PLANNED_DURATION_SECS..=MAX_PLANNED_DURATION_SECS).contains(d) {
+            return Err(LibraryError::Validation {
+                field: "planned_duration_secs".to_string(),
+                message: format!(
+                    "Planned duration must be between {MIN_PLANNED_DURATION_SECS} and {MAX_PLANNED_DURATION_SECS} seconds"
                 ),
             });
         }

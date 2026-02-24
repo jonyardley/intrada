@@ -54,6 +54,7 @@ async fn save_session(
         validation::validate_score(&entry.score)?;
         validation::validate_intention(&entry.intention)?;
         validation::validate_rep_target(&entry.rep_target)?;
+        validation::validate_planned_duration(&entry.planned_duration_secs)?;
 
         // Rep count consistency: count must be <= target, and both must be
         // present/absent together with rep_target as the gating field.

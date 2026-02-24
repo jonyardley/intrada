@@ -70,6 +70,8 @@ pub struct SetlistEntry {
     pub rep_target_reached: Option<bool>,
     #[serde(default)]
     pub rep_history: Option<Vec<RepAction>>,
+    #[serde(default)]
+    pub planned_duration_secs: Option<u32>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -149,6 +151,12 @@ pub enum SessionEvent {
         entry_id: String,
         target: Option<u8>,
     },
+    /// Set or clear the planned duration for an entry during building phase.
+    /// `None` clears the planned duration; `Some(secs)` sets it (range: 60–3600).
+    SetEntryDuration {
+        entry_id: String,
+        duration_secs: Option<u32>,
+    },
     AddToSetlist {
         item_id: String,
     },
@@ -188,6 +196,10 @@ pub enum SessionEvent {
     EndSessionEarly {
         now: DateTime<Utc>,
     },
+    /// Abandon an active session without saving — goes directly to Idle.
+    /// Used when the user wants to discard an in-progress session from the
+    /// new-session page (e.g. after crash recovery leaves a stale session).
+    AbandonSession,
     /// Increment rep count on current entry (capped at target).
     RepGotIt,
     /// Decrement rep count on current entry (floor 0).
@@ -267,6 +279,7 @@ fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usiz
         rep_count: None,
         rep_target_reached: None,
         rep_history: None,
+        planned_duration_secs: None,
     }
 }
 
@@ -417,6 +430,31 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry.rep_count = None;
             entry.rep_target_reached = None;
             entry.rep_history = None;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetEntryDuration {
+            entry_id,
+            duration_secs,
+        } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                // No-op when not in Building state
+                return crux_core::render::render();
+            };
+
+            // Validate duration if provided
+            if let Err(e) = validation::validate_planned_duration(&duration_secs) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            entry.planned_duration_secs = duration_secs;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -742,6 +780,21 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.session_status = SessionStatus::Summary(summary);
             model.last_error = None;
             crux_core::render::render()
+        }
+
+        SessionEvent::AbandonSession => {
+            if !matches!(model.session_status, SessionStatus::Active(_)) {
+                model.last_error = Some("No active session to abandon".to_string());
+                return crux_core::render::render();
+            }
+
+            model.session_status = SessionStatus::Idle;
+            model.last_error = None;
+
+            Command::all([
+                Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
+                crux_core::render::render(),
+            ])
         }
 
         SessionEvent::RepGotIt => {
@@ -1568,6 +1621,28 @@ mod tests {
         assert!(model.last_error.is_none());
         assert!(matches!(model.session_status, SessionStatus::Idle));
         assert!(model.sessions.is_empty());
+    }
+
+    #[test]
+    fn test_abandon_session_from_active() {
+        let (mut model, _) = model_with_active_session(2);
+
+        update(&mut model, Event::Session(SessionEvent::AbandonSession));
+
+        assert!(model.last_error.is_none());
+        assert!(matches!(model.session_status, SessionStatus::Idle));
+    }
+
+    #[test]
+    fn test_abandon_session_not_active() {
+        let mut model = model_with_library();
+
+        update(&mut model, Event::Session(SessionEvent::AbandonSession));
+
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("No active session to abandon")
+        );
     }
 
     // --- Recovery Tests ---

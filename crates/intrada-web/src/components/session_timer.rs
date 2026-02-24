@@ -4,7 +4,10 @@ use wasm_bindgen::JsCast;
 
 use intrada_core::{Event, SessionEvent, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card, SetlistEntryRow, TypeBadge};
+use crate::app::FocusMode;
+use crate::components::{
+    Button, ButtonVariant, Card, ProgressRing, SetlistEntryRow, TransitionPrompt, TypeBadge,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -15,11 +18,14 @@ pub fn SessionTimer() -> impl IntoView {
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
+    let focus_mode = expect_context::<FocusMode>();
 
     let elapsed_secs = RwSignal::new(0u32);
     let interval_id: RwSignal<Option<i32>> = RwSignal::new(None);
     // UI-only visibility signal for the rep counter (does not affect domain state)
     let rep_counter_visible = RwSignal::new(false);
+    // Tracks whether the current item's planned duration has elapsed (drives TransitionPrompt)
+    let duration_elapsed = RwSignal::new(false);
 
     // Start the display timer
     {
@@ -72,6 +78,10 @@ pub fn SessionTimer() -> impl IntoView {
                             .cloned()
                             .collect();
 
+                        // Planned duration for the current item (drives ProgressRing + TransitionPrompt)
+                        let planned_duration = active.current_planned_duration_secs;
+                        let next_item_title = active.next_item_title.clone();
+
                         // Rep counter state for the current item
                         let rep_target = active.current_rep_target;
                         let rep_count = active.current_rep_count;
@@ -86,11 +96,17 @@ pub fn SessionTimer() -> impl IntoView {
                         }
                         let show_counter = rep_counter_visible.get_untracked() || has_rep_state;
 
+                        let in_focus = focus_mode.get();
+
                         view! {
-                            // Session intention (above the current item card)
-                            {session_intention.map(|intention| view! {
-                                <p class="text-sm text-secondary text-center italic">{intention}</p>
-                            })}
+                            // Session intention (above the current item card) — hidden in focus mode
+                            {if !in_focus {
+                                session_intention.map(|intention| view! {
+                                    <p class="text-sm text-secondary text-center italic">{intention}</p>
+                                })
+                            } else {
+                                None
+                            }}
 
                             // Current item card
                             <Card>
@@ -99,17 +115,34 @@ pub fn SessionTimer() -> impl IntoView {
                                         {format!("Item {} of {}", position + 1, total)}
                                     </p>
                                     <h2 class="text-2xl font-bold text-primary">{current_title}</h2>
-                                    // Entry-level intention (below the item title)
-                                    {current_entry_intention.map(|intention| view! {
-                                        <p class="text-sm text-muted">{intention}</p>
-                                    })}
+                                    // Entry-level intention (below the item title) — hidden in focus mode
+                                    {if !in_focus {
+                                        current_entry_intention.map(|intention| view! {
+                                            <p class="text-sm text-muted">{intention}</p>
+                                        })
+                                    } else {
+                                        None
+                                    }}
                                     <TypeBadge item_type=current_type />
-                                    <p class="text-4xl sm:text-6xl font-mono font-bold text-primary mt-4">
-                                        {move || {
-                                            let secs = elapsed_secs.get();
-                                            format!("{:02}:{:02}", secs / 60, secs % 60)
-                                        }}
-                                    </p>
+                                    // Timer: progress ring when planned duration exists, digital only otherwise
+                                    {match planned_duration {
+                                        Some(planned_secs) => view! {
+                                            <div class="mt-4">
+                                                <ProgressRing
+                                                    elapsed_secs=elapsed_secs
+                                                    planned_duration_secs=planned_secs
+                                                />
+                                            </div>
+                                        }.into_any(),
+                                        None => view! {
+                                            <p class="text-4xl sm:text-6xl font-mono font-bold text-primary mt-4">
+                                                {move || {
+                                                    let secs = elapsed_secs.get();
+                                                    format!("{:02}:{:02}", secs / 60, secs % 60)
+                                                }}
+                                            </p>
+                                        }.into_any(),
+                                    }}
                                 </div>
                             </Card>
 
@@ -219,6 +252,22 @@ pub fn SessionTimer() -> impl IntoView {
                                 }.into_any()
                             }}
 
+                            // Transition prompt — shown when planned duration has elapsed
+                            {move || {
+                                if let Some(planned) = planned_duration {
+                                    let elapsed = elapsed_secs.get();
+                                    if elapsed >= planned {
+                                        if !duration_elapsed.get_untracked() {
+                                            duration_elapsed.set(true);
+                                        }
+                                        return Some(view! {
+                                            <TransitionPrompt next_item_title=next_item_title.clone() />
+                                        });
+                                    }
+                                }
+                                None
+                            }}
+
                             // Controls
                             <div class="flex flex-wrap gap-3 justify-center">
                                 {if is_last {
@@ -230,6 +279,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
+                                            duration_elapsed.set(false);
                                         })>
                                             "Finish Session"
                                         </Button>
@@ -243,6 +293,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
+                                            duration_elapsed.set(false);
                                         })>
                                             "Next Item"
                                         </Button>
@@ -270,8 +321,37 @@ pub fn SessionTimer() -> impl IntoView {
                                 </Button>
                             </div>
 
-                            // Completed items
-                            {if !completed_entries.is_empty() {
+                            // Focus mode toggle — reveals/hides nav, intentions, completed items
+                            <div class="text-center">
+                                <button
+                                    class="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary motion-safe:transition-colors"
+                                    on:click=move |_| {
+                                        focus_mode.set(!focus_mode.get_untracked());
+                                    }
+                                    aria-label=move || if in_focus { "Show more details" } else { "Return to focused view" }
+                                >
+                                    {if in_focus {
+                                        view! {
+                                            // Down chevron — "show more"
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                            <span>"Show more"</span>
+                                        }.into_any()
+                                    } else {
+                                        view! {
+                                            // Up chevron — "focus"
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                                            </svg>
+                                            <span>"Focus"</span>
+                                        }.into_any()
+                                    }}
+                                </button>
+                            </div>
+
+                            // Completed items — hidden in focus mode
+                            {if !in_focus && !completed_entries.is_empty() {
                                 Some(view! {
                                     <div class="mt-4">
                                         <h4 class="card-title">"Completed"</h4>

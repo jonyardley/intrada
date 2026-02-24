@@ -117,6 +117,8 @@ pub struct SetlistEntryView {
     pub rep_count: Option<u8>,
     pub rep_target_reached: Option<bool>,
     pub rep_history: Option<Vec<RepAction>>,
+    pub planned_duration_secs: Option<u32>,
+    pub planned_duration_display: Option<String>,
 }
 
 /// View for the in-progress active session.
@@ -133,6 +135,8 @@ pub struct ActiveSessionView {
     pub current_rep_count: Option<u8>,
     pub current_rep_target_reached: Option<bool>,
     pub current_rep_history: Option<Vec<RepAction>>,
+    pub current_planned_duration_secs: Option<u32>,
+    pub next_item_title: Option<String>,
 }
 
 /// View for the building phase setlist.
@@ -176,6 +180,15 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         rep_count: entry.rep_count,
         rep_target_reached: entry.rep_target_reached,
         rep_history: entry.rep_history.clone(),
+        planned_duration_secs: entry.planned_duration_secs,
+        planned_duration_display: entry.planned_duration_secs.map(|secs| {
+            let mins = secs / 60;
+            if secs % 60 == 0 {
+                format!("{mins} min")
+            } else {
+                crate::domain::session::format_duration_display(secs as u64)
+            }
+        }),
     }
 }
 
@@ -197,6 +210,11 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
         current_rep_count: current.rep_count,
         current_rep_target_reached: current.rep_target_reached,
         current_rep_history: current.rep_history.clone(),
+        current_planned_duration_secs: current.planned_duration_secs,
+        next_item_title: active
+            .entries
+            .get(safe_index + 1)
+            .map(|e| e.item_title.clone()),
     }
 }
 

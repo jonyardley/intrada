@@ -22,6 +22,9 @@ use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
+/// App-level signal for focus mode — when true, navigation and non-essential UI are hidden.
+pub type FocusMode = RwSignal<bool>;
+
 #[component]
 pub fn App() -> impl IntoView {
     // Auth state signals — drive the auth gate
@@ -110,11 +113,14 @@ fn AuthenticatedApp() -> impl IntoView {
     let is_loading: IsLoading = RwSignal::new(false);
     let is_submitting: IsSubmitting = RwSignal::new(false);
 
+    let focus_mode: FocusMode = RwSignal::new(false);
+
     // Provide context BEFORE init so process_effects can use expect_context
     provide_context(core.clone());
     provide_context(view_model);
     provide_context(is_loading);
     provide_context(is_submitting);
+    provide_context(focus_mode);
 
     // Initialize: fetch data from API and recover any in-progress session
     {
@@ -132,11 +138,20 @@ fn AuthenticatedApp() -> impl IntoView {
 
     view! {
         <div class="relative z-0 min-h-screen text-white">
-            // Header
-            <AppHeader />
+            // Header — hidden in focus mode
+            <Show when=move || !focus_mode.get()>
+                <AppHeader />
+            </Show>
 
             // Main content — routed by URL
-            <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10" role="main">
+            <main
+                class=move || if focus_mode.get() {
+                    "focus-mode-container"
+                } else {
+                    "max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10"
+                }
+                role="main"
+            >
                 // Global error banner
                 <ErrorBanner />
 
@@ -181,11 +196,15 @@ fn AuthenticatedApp() -> impl IntoView {
                 </Routes>
             </main>
 
-            // Footer
-            <AppFooter />
+            // Footer — hidden in focus mode
+            <Show when=move || !focus_mode.get()>
+                <AppFooter />
+            </Show>
 
-            // Mobile bottom tab bar (hidden on sm: and wider)
-            <BottomTabBar />
+            // Mobile bottom tab bar (hidden on sm: and wider) — hidden in focus mode
+            <Show when=move || !focus_mode.get()>
+                <BottomTabBar />
+            </Show>
         </div>
     }
 }

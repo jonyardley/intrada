@@ -321,6 +321,7 @@ mod tests {
             rep_count: None,
             rep_target_reached: None,
             rep_history: None,
+            planned_duration_secs: None,
         }
     }
 

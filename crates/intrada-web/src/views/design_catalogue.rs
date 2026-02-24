@@ -7,9 +7,9 @@ use intrada_core::{LibraryItemView, SetlistEntryView};
 
 use crate::components::{
     Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DropIndicator,
-    FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading, RoutineSaveForm,
-    SetlistEntryRow, StatCard, TagInput, TextArea, TextField, Toast, ToastVariant, TypeBadge,
-    TypeTabs,
+    FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading, ProgressRing,
+    RoutineSaveForm, SetlistEntryRow, StatCard, TagInput, TextArea, TextField, Toast, ToastVariant,
+    TransitionPrompt, TypeBadge, TypeTabs,
 };
 use intrada_web::types::ItemType;
 
@@ -182,6 +182,8 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_count: None,
         rep_target_reached: None,
         rep_history: None,
+        planned_duration_secs: None,
+        planned_duration_display: None,
     };
     let entry_display = SetlistEntryView {
         id: "entry-2".to_string(),
@@ -198,6 +200,8 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_count: None,
         rep_target_reached: None,
         rep_history: None,
+        planned_duration_secs: None,
+        planned_duration_display: None,
     };
     let entry_drag = SetlistEntryView {
         id: "entry-3".to_string(),
@@ -214,6 +218,8 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_count: None,
         rep_target_reached: None,
         rep_history: None,
+        planned_duration_secs: None,
+        planned_duration_display: None,
     };
 
     view! {
@@ -745,6 +751,48 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <div class="h-2 rounded-full bg-progress-track">
                                 <div class="h-full rounded-full bg-progress-fill" style="width: 0%"></div>
                             </div>
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Progress Ring ────────────────────────────────────────
+            <section id="progress-ring">
+                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Progress Ring"</h3>
+                <Card>
+                    <p class="text-xs text-gray-500 mb-4">"SVG circular progress indicator for timed practice items. Ring fills clockwise; digital timer centred inside. Changes to completion colour when elapsed exceeds planned."</p>
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"In progress (~40%)"</p>
+                            <ProgressRing
+                                elapsed_secs=RwSignal::new(120u32)
+                                planned_duration_secs=300u32
+                            />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Complete (elapsed exceeds planned)"</p>
+                            <ProgressRing
+                                elapsed_secs=RwSignal::new(330u32)
+                                planned_duration_secs=300u32
+                            />
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Transition Prompt ────────────────────────────────────
+            <section id="transition-prompt">
+                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Transition Prompt"</h3>
+                <Card>
+                    <p class="text-xs text-gray-500 mb-4">"Non-blocking prompt shown when an item\u{2019}s planned duration elapses. Shows next item or session completion message."</p>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With next item"</p>
+                            <TransitionPrompt next_item_title=Some("Clair de Lune".to_string()) />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Last item (session complete)"</p>
+                            <TransitionPrompt next_item_title=None />
                         </div>
                     </div>
                 </Card>

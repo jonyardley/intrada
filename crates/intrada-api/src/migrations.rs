@@ -167,6 +167,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0024_add_rep_history_to_setlist_entries",
         "ALTER TABLE setlist_entries ADD COLUMN rep_history TEXT;",
     ),
+    (
+        "0025_add_planned_duration_secs_to_setlist_entries",
+        "ALTER TABLE setlist_entries ADD COLUMN planned_duration_secs INTEGER;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
