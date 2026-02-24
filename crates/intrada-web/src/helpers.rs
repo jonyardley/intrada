@@ -263,6 +263,7 @@ mod tests {
             created_at: String::new(),
             updated_at: String::new(),
             practice: None,
+            latest_achieved_tempo: None,
         }
     }
 

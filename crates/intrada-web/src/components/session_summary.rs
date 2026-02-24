@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
 use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
+use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{Button, ButtonVariant, Card, RoutineSaveForm};
 use intrada_web::core_bridge::process_effects;
@@ -20,6 +21,7 @@ pub fn SessionSummary() -> impl IntoView {
     let core_discard = core.clone();
     let core_entries = core.clone();
     let core_score = core.clone();
+    let core_tempo = core.clone();
     let core_routine_save = core.clone();
     let core_session_notes_outer = core;
 
@@ -33,6 +35,7 @@ pub fn SessionSummary() -> impl IntoView {
                         let core_discard = core_discard.clone();
                         let core_entries = core_entries.clone();
                         let core_score = core_score.clone();
+                        let core_tempo = core_tempo.clone();
                         let core_session_notes = core_session_notes_outer.clone();
                         let total_duration = summary.total_duration_display.clone();
                         let completion_status = summary.completion_status.clone();
@@ -69,9 +72,15 @@ pub fn SessionSummary() -> impl IntoView {
                                     {entries.into_iter().map(|entry| {
                                         let entry_id = entry.id.clone();
                                         let entry_id_for_score = entry.id.clone();
+                                        let entry_id_for_tempo = entry.id.clone();
                                         let entry_notes = RwSignal::new(entry.notes.clone().unwrap_or_default());
+                                        let entry_tempo_str = RwSignal::new(
+                                            entry.achieved_tempo.map(|t| t.to_string()).unwrap_or_default()
+                                        );
+                                        let tempo_error = RwSignal::new(Option::<String>::None);
                                         let core_notes = core_entries.clone();
                                         let core_score_inner = core_score.clone();
+                                        let core_tempo_inner = core_tempo.clone();
                                         let is_completed = entry.status == "completed";
                                         let current_score = entry.score;
                                         let entry_intention = entry.intention.clone();
@@ -195,6 +204,53 @@ pub fn SessionSummary() -> impl IntoView {
                                                                     </button>
                                                                 }
                                                             }).collect::<Vec<_>>()}
+                                                        </div>
+                                                    })
+                                                } else {
+                                                    None
+                                                }}
+                                                // Achieved tempo input — only for completed entries
+                                                {if is_completed {
+                                                    let entry_id_tempo = entry_id_for_tempo.clone();
+                                                    let tempo_input_id = format!("achieved-tempo-{}", entry_id_tempo);
+                                                    Some(view! {
+                                                        <div>
+                                                            <label class="text-xs text-muted" for=tempo_input_id.clone()>
+                                                                "Achieved tempo (BPM)"
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                id=tempo_input_id
+                                                                placeholder="1\u{2013}500"
+                                                                class="input-base mt-1"
+                                                                bind:value=entry_tempo_str
+                                                                on:blur=move |_| {
+                                                                    let val = entry_tempo_str.get_untracked();
+                                                                    // Validate client-side
+                                                                    if let Some(err) = validate_achieved_tempo_input(&val) {
+                                                                        tempo_error.set(Some(err));
+                                                                        return;
+                                                                    }
+                                                                    tempo_error.set(None);
+                                                                    let tempo = if val.trim().is_empty() {
+                                                                        None
+                                                                    } else {
+                                                                        val.trim().parse::<u16>().ok()
+                                                                    };
+                                                                    let event = Event::Session(SessionEvent::UpdateEntryTempo {
+                                                                        entry_id: entry_id_tempo.clone(),
+                                                                        tempo,
+                                                                    });
+                                                                    let core_ref = core_tempo_inner.borrow();
+                                                                    let effects = core_ref.process_event(event);
+                                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                }
+                                                            />
+                                                            {move || {
+                                                                tempo_error.get().map(|err| view! {
+                                                                    <p class="text-xs text-danger-text mt-1">{err}</p>
+                                                                })
+                                                            }}
                                                         </div>
                                                     })
                                                 } else {

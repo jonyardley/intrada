@@ -23,6 +23,8 @@ pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_ROUTINE_NAME: usize = 200;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
+pub const MIN_ACHIEVED_TEMPO: u16 = 1;
+pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
     if input.title.is_empty() {
@@ -229,6 +231,20 @@ pub fn validate_planned_duration(planned_duration_secs: &Option<u32>) -> Result<
                 field: "planned_duration_secs".to_string(),
                 message: format!(
                     "Planned duration must be between {MIN_PLANNED_DURATION_SECS} and {MAX_PLANNED_DURATION_SECS} seconds"
+                ),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_achieved_tempo(tempo: &Option<u16>) -> Result<(), LibraryError> {
+    if let Some(t) = tempo {
+        if !(MIN_ACHIEVED_TEMPO..=MAX_ACHIEVED_TEMPO).contains(t) {
+            return Err(LibraryError::Validation {
+                field: "achieved_tempo".to_string(),
+                message: format!(
+                    "Achieved tempo must be between {MIN_ACHIEVED_TEMPO} and {MAX_ACHIEVED_TEMPO} BPM"
                 ),
             });
         }
@@ -1088,6 +1104,52 @@ mod tests {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "tags");
                 assert_eq!(message, "Each tag must be between 1 and 100 characters");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- validate_achieved_tempo tests ---
+
+    #[test]
+    fn test_achieved_tempo_none() {
+        assert!(validate_achieved_tempo(&None).is_ok());
+    }
+
+    #[test]
+    fn test_achieved_tempo_valid() {
+        assert!(validate_achieved_tempo(&Some(120)).is_ok());
+    }
+
+    #[test]
+    fn test_achieved_tempo_at_min() {
+        assert!(validate_achieved_tempo(&Some(1)).is_ok());
+    }
+
+    #[test]
+    fn test_achieved_tempo_at_max() {
+        assert!(validate_achieved_tempo(&Some(500)).is_ok());
+    }
+
+    #[test]
+    fn test_achieved_tempo_zero() {
+        let err = validate_achieved_tempo(&Some(0)).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "achieved_tempo");
+                assert_eq!(message, "Achieved tempo must be between 1 and 500 BPM");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_achieved_tempo_above_max() {
+        let err = validate_achieved_tempo(&Some(501)).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "achieved_tempo");
+                assert_eq!(message, "Achieved tempo must be between 1 and 500 BPM");
             }
             _ => panic!("Expected Validation error"),
         }

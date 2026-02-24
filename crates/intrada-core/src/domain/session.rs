@@ -72,6 +72,8 @@ pub struct SetlistEntry {
     pub rep_history: Option<Vec<RepAction>>,
     #[serde(default)]
     pub planned_duration_secs: Option<u32>,
+    #[serde(default)]
+    pub achieved_tempo: Option<u16>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -217,6 +219,10 @@ pub enum SessionEvent {
         entry_id: String,
         score: Option<u8>,
     },
+    UpdateEntryTempo {
+        entry_id: String,
+        tempo: Option<u16>,
+    },
     UpdateSessionNotes {
         notes: Option<String>,
     },
@@ -280,6 +286,7 @@ fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usiz
         rep_target_reached: None,
         rep_history: None,
         planned_duration_secs: None,
+        achieved_tempo: None,
     }
 }
 
@@ -921,6 +928,33 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             entry.score = score;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::UpdateEntryTempo { entry_id, tempo } => {
+            let SessionStatus::Summary(ref mut summary) = model.session_status else {
+                // Silent no-op if not in summary state
+                return crux_core::render::render();
+            };
+
+            // Validate tempo range if present
+            if let Err(_e) = validation::validate_achieved_tempo(&tempo) {
+                // Silent no-op for out-of-range tempo
+                return crux_core::render::render();
+            }
+
+            let Some(entry) = summary.entries.iter_mut().find(|e| e.id == entry_id) else {
+                // Silent no-op if entry not found
+                return crux_core::render::render();
+            };
+
+            // Only allow tempo on completed entries
+            if entry.status != EntryStatus::Completed {
+                return crux_core::render::render();
+            }
+
+            entry.achieved_tempo = tempo;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -2086,6 +2120,150 @@ mod tests {
 
         if let SessionStatus::Summary(ref s) = model.session_status {
             assert_eq!(s.entries[0].score, Some(5));
+        }
+    }
+
+    // --- UpdateEntryTempo Tests ---
+
+    #[test]
+    fn test_update_entry_tempo_on_completed_entry() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, Some(120));
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_none_clears() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Set tempo to 120
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(120),
+            }),
+        );
+
+        // Clear tempo by setting to None
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: None,
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_rejected_on_skipped() {
+        // Build a summary with a skipped entry: skip item 1, complete item 2
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(10);
+        let t2 = t1 + chrono::Duration::seconds(30);
+
+        // Skip first item
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem { now: t1 }),
+        );
+        // Finish session (completes second item, transitions to summary)
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        // Find the skipped entry
+        let skipped_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries
+                .iter()
+                .find(|e| e.status == EntryStatus::Skipped)
+                .expect("Should have a skipped entry")
+                .id
+                .clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Try to set tempo on the skipped entry — should be a no-op
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: skipped_entry_id.clone(),
+                tempo: Some(100),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            let skipped = s.entries.iter().find(|e| e.id == skipped_entry_id).unwrap();
+            assert_eq!(skipped.achieved_tempo, None);
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_rejected_out_of_range() {
+        let mut model = model_with_summary();
+
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+
+        // Tempo 0 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(0),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
+        }
+
+        // Tempo 501 — out of range
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: entry_id.clone(),
+                tempo: Some(501),
+            }),
+        );
+
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[0].achieved_tempo, None);
         }
     }
 

@@ -51,6 +51,8 @@ pub struct SaveSessionEntry {
     pub rep_history: Option<Vec<RepAction>>,
     #[serde(default)]
     pub planned_duration_secs: Option<u32>,
+    #[serde(default)]
+    pub achieved_tempo: Option<u16>,
 }
 
 fn completion_status_to_str(status: &CompletionStatus) -> &'static str {
@@ -88,7 +90,7 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
 }
 
 /// Column list for setlist_entries SELECTs.
-const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs";
+const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo";
 
 /// Parse an entry row into a SetlistEntry (columns 0–14 matching [`ENTRY_COLUMNS`]).
 fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
@@ -115,6 +117,8 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     };
     let planned_duration_secs_raw: Option<i64> = col!(row, 14)?;
     let planned_duration_secs = planned_duration_secs_raw.map(|v| v as u32);
+    let achieved_tempo_raw: Option<i64> = col!(row, 15)?;
+    let achieved_tempo = achieved_tempo_raw.map(|v| v as u16);
 
     Ok(SetlistEntry {
         id,
@@ -132,6 +136,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         rep_target_reached: rep_target_reached.map(|v| v != 0),
         rep_history,
         planned_duration_secs,
+        achieved_tempo,
     })
 }
 
@@ -237,7 +242,7 @@ pub async fn list_sessions(
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
         let entry = row_to_entry(&row)?;
-        let session_id: String = col!(row, 15)?;
+        let session_id: String = col!(row, 16)?;
         entries_by_session
             .entry(session_id)
             .or_default()
@@ -329,9 +334,10 @@ pub async fn insert_session(
                 .map_err(|e| ApiError::Internal(format!("Failed to serialise rep_history: {e}")))?;
             let planned_duration_secs_val: Option<i64> =
                 entry.planned_duration_secs.map(|v| v as i64);
+            let achieved_tempo_val: Option<i64> = entry.achieved_tempo.map(|v| v as i64);
             conn.execute(
-                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                "INSERT INTO setlist_entries (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
                 libsql::params![
                     entry.id.as_str(),
                     id.as_str(),
@@ -348,7 +354,8 @@ pub async fn insert_session(
                     rep_count_val,
                     rep_target_reached_val,
                     rep_history_json.as_deref(),
-                    planned_duration_secs_val
+                    planned_duration_secs_val,
+                    achieved_tempo_val
                 ],
             )
             .await?;
@@ -369,6 +376,7 @@ pub async fn insert_session(
                 rep_target_reached: entry.rep_target_reached,
                 rep_history: entry.rep_history.clone(),
                 planned_duration_secs: entry.planned_duration_secs,
+                achieved_tempo: entry.achieved_tempo,
             });
         }
 

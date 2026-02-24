@@ -322,6 +322,7 @@ mod tests {
             rep_target_reached: None,
             rep_history: None,
             planned_duration_secs: None,
+            achieved_tempo: None,
         }
     }
 

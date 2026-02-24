@@ -198,6 +198,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
                     rep_target_reached: None,
                     rep_history: None,
                     planned_duration_secs: None,
+                    achieved_tempo: None,
                 });
             }
 
@@ -297,6 +298,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             },
             SetlistEntry {
                 id: "entry-2".to_string(),
@@ -314,6 +316,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             },
         ]
     }
@@ -527,6 +530,7 @@ mod tests {
             rep_target_reached: None,
             rep_history: None,
             planned_duration_secs: None,
+            achieved_tempo: None,
         }]);
         model.routines.push(routine);
 

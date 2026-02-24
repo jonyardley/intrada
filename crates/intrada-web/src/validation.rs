@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use intrada_core::{
-    MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE, MIN_BPM,
+    MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING,
+    MAX_TITLE, MIN_ACHIEVED_TEMPO, MIN_BPM,
 };
 
 use crate::helpers::parse_tags;
@@ -120,6 +121,22 @@ pub fn validate_library_form(item_type: ItemType, data: &FormData<'_>) -> HashMa
     }
 
     errors
+}
+
+/// Validate an achieved-tempo input string from the session summary UI.
+/// Returns `Some(error_message)` if invalid, `None` if valid.
+/// An empty/blank value is valid (user hasn't entered anything).
+pub fn validate_achieved_tempo_input(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    match trimmed.parse::<u16>() {
+        Ok(v) if (MIN_ACHIEVED_TEMPO..=MAX_ACHIEVED_TEMPO).contains(&v) => None,
+        _ => Some(format!(
+            "Tempo must be between {MIN_ACHIEVED_TEMPO} and {MAX_ACHIEVED_TEMPO}"
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -276,5 +293,32 @@ mod tests {
         };
         let errors = validate_library_form(ItemType::Piece, &data);
         assert!(errors.contains_key("tags"));
+    }
+
+    // --- validate_achieved_tempo_input tests ---
+
+    #[test]
+    fn test_achieved_tempo_empty_is_valid() {
+        assert!(validate_achieved_tempo_input("").is_none());
+        assert!(validate_achieved_tempo_input("  ").is_none());
+    }
+
+    #[test]
+    fn test_achieved_tempo_valid_range() {
+        assert!(validate_achieved_tempo_input("1").is_none());
+        assert!(validate_achieved_tempo_input("120").is_none());
+        assert!(validate_achieved_tempo_input("500").is_none());
+    }
+
+    #[test]
+    fn test_achieved_tempo_out_of_range() {
+        assert!(validate_achieved_tempo_input("0").is_some());
+        assert!(validate_achieved_tempo_input("501").is_some());
+    }
+
+    #[test]
+    fn test_achieved_tempo_non_numeric() {
+        assert!(validate_achieved_tempo_input("fast").is_some());
+        assert!(validate_achieved_tempo_input("-1").is_some());
     }
 }
