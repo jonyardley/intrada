@@ -185,28 +185,136 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
     })
 }
 
+/// Parse an entry from a LEFT JOIN row where entry columns start at `offset`.
+/// Returns `None` when the entry id column is NULL (session has no entries).
+fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<SetlistEntry>, ApiError> {
+    // Entry id is at `offset`; if NULL this session has no entries for this row
+    let entry_id: Option<String> = row
+        .get(offset)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let entry_id = match entry_id {
+        Some(id) => id,
+        None => return Ok(None),
+    };
+
+    // skip session_id (offset + 1)
+    let item_id: String = row
+        .get(offset + 2)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let item_title: String = row
+        .get(offset + 3)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let item_type: String = row
+        .get(offset + 4)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let position: i64 = row
+        .get(offset + 5)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let duration_secs: i64 = row
+        .get(offset + 6)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let status_str: String = row
+        .get(offset + 7)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let notes: Option<String> = row
+        .get(offset + 8)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let score_raw: Option<i64> = row
+        .get(offset + 9)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let score = score_raw.map(|s| s as u8);
+    let intention: Option<String> = row
+        .get(offset + 10)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target_raw: Option<i64> = row
+        .get(offset + 11)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target = rep_target_raw.map(|v| v as u8);
+    let rep_count_raw: Option<i64> = row
+        .get(offset + 12)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_count = rep_count_raw.map(|v| v as u8);
+    let rep_target_reached_raw: Option<i64> = row
+        .get(offset + 13)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_target_reached = rep_target_reached_raw.map(|v| v != 0);
+    let rep_history_raw: Option<String> = row
+        .get(offset + 14)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let rep_history = match rep_history_raw {
+        Some(json_str) => Some(
+            serde_json::from_str(&json_str)
+                .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?,
+        ),
+        None => None,
+    };
+
+    Ok(Some(SetlistEntry {
+        id: entry_id,
+        item_id,
+        item_title,
+        item_type,
+        position: position as usize,
+        duration_secs: duration_secs as u64,
+        status: entry_status_from_str(&status_str)?,
+        notes,
+        score,
+        intention,
+        rep_target,
+        rep_count,
+        rep_target_reached,
+        rep_history,
+    }))
+}
+
 pub async fn list_sessions(
     conn: &Connection,
     user_id: &str,
 ) -> Result<Vec<PracticeSession>, ApiError> {
+    // Single query with LEFT JOIN replaces N+1 (1 session query + N entry queries).
+    // Session columns: indices 0-6, Entry columns: indices 7-21
     let mut rows = conn
         .query(
-            "SELECT id, session_notes, started_at, completed_at, total_duration_secs, completion_status, session_intention
-             FROM sessions WHERE user_id = ?1 ORDER BY started_at DESC",
+            "SELECT s.id, s.session_notes, s.started_at, s.completed_at,
+                    s.total_duration_secs, s.completion_status, s.session_intention,
+                    e.id, e.session_id, e.item_id, e.item_title, e.item_type,
+                    e.position, e.duration_secs, e.status, e.notes, e.score,
+                    e.intention, e.rep_target, e.rep_count, e.rep_target_reached,
+                    e.rep_history
+             FROM sessions s
+             LEFT JOIN setlist_entries e ON s.id = e.session_id
+             WHERE s.user_id = ?1
+             ORDER BY s.started_at DESC, e.position ASC",
             libsql::params![user_id],
         )
         .await?;
 
-    let mut sessions = Vec::new();
+    // Group joined rows by session id, preserving order
+    let mut sessions: Vec<PracticeSession> = Vec::new();
+    let mut last_session_id: Option<String> = None;
+
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let mut session = row_to_session_without_entries(&row)?;
-        session.entries = fetch_entries(conn, &session.id).await?;
-        sessions.push(session);
+        let session_id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
+
+        // If this is a new session, parse the session columns and push
+        if last_session_id.as_ref() != Some(&session_id) {
+            let session = row_to_session_without_entries(&row)?;
+            sessions.push(session);
+            last_session_id = Some(session_id);
+        }
+
+        // Parse entry columns (offset 7) — None when LEFT JOIN produces NULLs
+        if let Some(entry) = joined_row_to_entry(&row, 7)? {
+            if let Some(current) = sessions.last_mut() {
+                current.entries.push(entry);
+            }
+        }
     }
+
     Ok(sessions)
 }
 

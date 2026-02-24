@@ -89,24 +89,81 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
     })
 }
 
+/// Parse an entry from a LEFT JOIN row where entry columns start at `offset`.
+/// Returns `None` when the entry id column is NULL (routine has no entries).
+fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<RoutineEntry>, ApiError> {
+    let entry_id: Option<String> = row
+        .get(offset)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let entry_id = match entry_id {
+        Some(id) => id,
+        None => return Ok(None),
+    };
+
+    // skip routine_id (offset + 1)
+    let item_id: String = row
+        .get(offset + 2)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let item_title: String = row
+        .get(offset + 3)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let item_type: String = row
+        .get(offset + 4)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    let position: i64 = row
+        .get(offset + 5)
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+
+    Ok(Some(RoutineEntry {
+        id: entry_id,
+        item_id,
+        item_title,
+        item_type,
+        position: position as usize,
+    }))
+}
+
 pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
+    // Single query with LEFT JOIN replaces N+1 (1 routine query + N entry queries).
+    // Routine columns: indices 0-3, Entry columns: indices 4-9
     let mut rows = conn
         .query(
-            "SELECT id, name, created_at, updated_at FROM routines WHERE user_id = ?1 ORDER BY created_at ASC",
+            "SELECT r.id, r.name, r.created_at, r.updated_at,
+                    e.id, e.routine_id, e.item_id, e.item_title, e.item_type, e.position
+             FROM routines r
+             LEFT JOIN routine_entries e ON r.id = e.routine_id
+             WHERE r.user_id = ?1
+             ORDER BY r.created_at ASC, e.position ASC",
             libsql::params![user_id],
         )
         .await?;
 
-    let mut routines = Vec::new();
+    // Group joined rows by routine id, preserving order
+    let mut routines: Vec<Routine> = Vec::new();
+    let mut last_routine_id: Option<String> = None;
+
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let mut routine = row_to_routine_without_entries(&row)?;
-        routine.entries = fetch_entries(conn, &routine.id).await?;
-        routines.push(routine);
+        let routine_id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
+
+        // If this is a new routine, parse the routine columns and push
+        if last_routine_id.as_ref() != Some(&routine_id) {
+            let routine = row_to_routine_without_entries(&row)?;
+            routines.push(routine);
+            last_routine_id = Some(routine_id);
+        }
+
+        // Parse entry columns (offset 4) — None when LEFT JOIN produces NULLs
+        if let Some(entry) = joined_row_to_entry(&row, 4)? {
+            if let Some(current) = routines.last_mut() {
+                current.entries.push(entry);
+            }
+        }
     }
+
     Ok(routines)
 }
 
