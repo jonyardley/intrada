@@ -6,7 +6,10 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::{Event, ItemEvent, ViewModel};
 
-use crate::components::{BackLink, Button, ButtonVariant, Card, FieldLabel, TypeBadge};
+use crate::components::{
+    parse_target_bpm, BackLink, Button, ButtonVariant, Card, FieldLabel, TempoProgressChart,
+    TypeBadge,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -251,32 +254,17 @@ pub fn DetailView() -> impl IntoView {
                                 }.into_any()
                             }}
 
-                            // Tempo history (US2)
+                            // Tempo progress chart (#66)
                             {if has_tempo_history {
-                                let tempo_history = p.tempo_history;
+                                let target = parse_target_bpm(&target_tempo);
                                 view! {
                                     <div>
-                                        <h4 class="field-label mb-2">"Tempo History"</h4>
-                                        {target_tempo.map(|t| {
-                                            view! {
-                                                <p class="text-xs text-muted mb-2">
-                                                    {format!("Target: {}", t)}
-                                                </p>
-                                            }
-                                        })}
-                                        <div class="space-y-1.5">
-                                            {tempo_history.into_iter().map(|entry| {
-                                                let display_date = entry.session_date.split('T').next().unwrap_or(&entry.session_date).to_string();
-                                                view! {
-                                                    <div class="flex items-center justify-between text-sm">
-                                                        <span class="text-muted">{display_date}</span>
-                                                        <span class="inline-flex items-center rounded-md bg-surface-secondary px-1.5 py-0.5 text-xs font-medium text-muted">
-                                                            {format!("\u{266A} {} BPM", entry.tempo)}
-                                                        </span>
-                                                    </div>
-                                                }
-                                            }).collect::<Vec<_>>()}
-                                        </div>
+                                        <h4 class="field-label mb-2">"Tempo Progress"</h4>
+                                        <TempoProgressChart
+                                            entries=p.tempo_history
+                                            target_bpm=target
+                                            latest_tempo=p.latest_tempo
+                                        />
                                     </div>
                                 }.into_any()
                             } else {

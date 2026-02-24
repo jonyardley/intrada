@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
-use intrada_core::{LibraryItemView, SetlistEntryView};
+use intrada_core::{LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
     Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DropIndicator,
     FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading, ProgressRing,
-    RoutineSaveForm, SetlistEntryRow, StatCard, TagInput, TextArea, TextField, Toast, ToastVariant,
-    TransitionPrompt, TypeBadge, TypeTabs,
+    RoutineSaveForm, SetlistEntryRow, StatCard, TagInput, TempoProgressChart, TextArea, TextField,
+    Toast, ToastVariant, TransitionPrompt, TypeBadge, TypeTabs,
 };
 use intrada_web::types::ItemType;
 
@@ -134,6 +134,52 @@ pub fn DesignCatalogue() -> impl IntoView {
             },
         })
         .collect();
+
+    // Tempo progress chart sample data — upward trend toward 120 BPM target
+    let tempo_entries: Vec<TempoHistoryEntry> = vec![
+        TempoHistoryEntry {
+            session_date: "2026-01-05T10:00:00Z".to_string(),
+            tempo: 60,
+            session_id: "s1".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-01-12T10:00:00Z".to_string(),
+            tempo: 68,
+            session_id: "s2".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-01-19T10:00:00Z".to_string(),
+            tempo: 72,
+            session_id: "s3".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-01-26T10:00:00Z".to_string(),
+            tempo: 78,
+            session_id: "s4".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-02-02T10:00:00Z".to_string(),
+            tempo: 85,
+            session_id: "s5".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-02-09T10:00:00Z".to_string(),
+            tempo: 82,
+            session_id: "s6".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-02-16T10:00:00Z".to_string(),
+            tempo: 90,
+            session_id: "s7".to_string(),
+        },
+        TempoHistoryEntry {
+            session_date: "2026-02-23T10:00:00Z".to_string(),
+            tempo: 95,
+            session_id: "s8".to_string(),
+        },
+    ];
+    let tempo_target: Option<u16> = Some(120);
+    let tempo_latest: Option<u16> = Some(95);
 
     // Autocomplete sample data
     let autocomplete_value = RwSignal::new(String::new());
@@ -277,6 +323,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#field-label" class="text-accent-text hover:text-white">"Field Label"</a></li>
                             <li><a href="#form-field-error" class="text-accent-text hover:text-white">"Form Field Error"</a></li>
                             <li><a href="#line-chart" class="text-accent-text hover:text-white">"Line Chart"</a></li>
+                            <li><a href="#tempo-chart" class="text-accent-text hover:text-white">"Tempo Progress Chart"</a></li>
                         </ul>
                     </div>
                     <div>
@@ -1008,6 +1055,52 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <p class="text-xs text-gray-500 mb-3">"Uses tokenised chart colours: chart-line, chart-area, chart-grid, chart-label."</p>
                     <LineChart data=chart_data />
+                </Card>
+            </section>
+
+            // ── Tempo Progress Chart ──────────────────────────────────
+            <section id="tempo-chart">
+                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Tempo Progress Chart"</h3>
+                <Card>
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-xs text-gray-500 mb-3">"SVG line chart for tempo data with target reference line, progress percentage, and tooltips. Uses chart-line, chart-secondary (target), chart-grid, chart-label tokens."</p>
+                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"With target + progress (8 data points, target 120 BPM)"</p>
+                            <TempoProgressChart
+                                entries=tempo_entries.clone()
+                                target_bpm=tempo_target
+                                latest_tempo=tempo_latest
+                            />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Without target (no reference line or progress)"</p>
+                            <TempoProgressChart
+                                entries=tempo_entries.clone()
+                                target_bpm=None
+                                latest_tempo=tempo_latest
+                            />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Single data point"</p>
+                            <TempoProgressChart
+                                entries=vec![TempoHistoryEntry {
+                                    session_date: "2026-02-23T10:00:00Z".to_string(),
+                                    tempo: 80,
+                                    session_id: "s1".to_string(),
+                                }]
+                                target_bpm=Some(120)
+                                latest_tempo=Some(80)
+                            />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Empty state (no data)"</p>
+                            <TempoProgressChart
+                                entries=vec![]
+                                target_bpm=Some(120)
+                                latest_tempo=None
+                            />
+                        </div>
+                    </div>
                 </Card>
             </section>
 
