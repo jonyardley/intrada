@@ -3,6 +3,7 @@ use leptos::prelude::{RwSignal, Set};
 use std::future::Future;
 use wasm_bindgen_futures::spawn_local;
 
+use intrada_core::domain::goal::{Goal, GoalStatus};
 use intrada_core::{AppEffect, Effect, Event, Intrada, Routine, ViewModel};
 
 use crate::api_client;
@@ -110,6 +111,28 @@ pub fn fetch_initial_data(
                 Ok(routines) => {
                     let core_ref = core.borrow();
                     let effects = core_ref.process_event(Event::RoutinesLoaded { routines });
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+                Err(e) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                }
+            }
+        });
+    }
+
+    // Fetch goals
+    {
+        let core = leptos::prelude::expect_context::<SharedCore>();
+        let vm = *view_model;
+        let loading = *is_loading;
+        let submitting = *is_submitting;
+        spawn_local(async move {
+            match api_client::fetch_goals().await {
+                Ok(goals) => {
+                    let core_ref = core.borrow();
+                    let effects = core_ref.process_event(Event::GoalsLoaded { goals });
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
                 Err(e) => {
@@ -306,6 +329,69 @@ pub fn process_effects(
                         RefreshKind::Routines,
                     );
                 }
+
+                // ---- Goal operations ----
+                AppEffect::SaveGoal(goal) => {
+                    let create = intrada_core::domain::types::CreateGoal {
+                        title: goal.title.clone(),
+                        kind: goal.kind.clone(),
+                        deadline: goal.deadline,
+                    };
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::create_goal(&create).await },
+                        RefreshKind::Goals,
+                    );
+                }
+
+                AppEffect::UpdateGoal(goal) => {
+                    let goal_id = goal.id.clone();
+                    let update = build_update_goal_request(goal);
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::update_goal(&goal_id, &update).await },
+                        RefreshKind::Goals,
+                    );
+                }
+
+                AppEffect::DeleteGoal { id } => {
+                    let goal_id = id.clone();
+                    spawn_mutate(
+                        view_model,
+                        is_loading,
+                        is_submitting,
+                        async move { api_client::delete_goal(&goal_id).await },
+                        RefreshKind::Goals,
+                    );
+                }
+
+                AppEffect::LoadGoals => {
+                    let core = leptos::prelude::expect_context::<SharedCore>();
+                    let vm = *view_model;
+                    let loading = *is_loading;
+                    let submitting = *is_submitting;
+                    spawn_local(async move {
+                        loading.set(true);
+                        match api_client::fetch_goals().await {
+                            Ok(goals) => {
+                                let core_ref = core.borrow();
+                                let effects = core_ref.process_event(Event::GoalsLoaded { goals });
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
+                            Err(e) => {
+                                let core_ref = core.borrow();
+                                let effects =
+                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
+                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                            }
+                        }
+                        loading.set(false);
+                    });
+                }
             },
         }
     }
@@ -318,6 +404,7 @@ enum RefreshKind {
     Library,
     Sessions,
     Routines,
+    Goals,
 }
 
 /// Spawn a mutating API call followed by a data refresh.
@@ -347,6 +434,7 @@ fn spawn_mutate<T, Fut>(
             RefreshKind::Library => refresh_library(core, vm, loading, submitting).await,
             RefreshKind::Sessions => refresh_sessions(core, vm, loading, submitting).await,
             RefreshKind::Routines => refresh_routines(core, vm, loading, submitting).await,
+            RefreshKind::Goals => refresh_goals(core, vm, loading, submitting).await,
         }
     });
 }
@@ -412,6 +500,44 @@ async fn refresh_routines(
     }
 
     is_submitting.set(false);
+}
+
+/// Refresh goals data from API after a mutation.
+async fn refresh_goals(
+    core: SharedCore,
+    view_model: RwSignal<ViewModel>,
+    is_loading: IsLoading,
+    is_submitting: IsSubmitting,
+) {
+    match api_client::fetch_goals().await {
+        Ok(goals) => {
+            let core_ref = core.borrow();
+            let effects = core_ref.process_event(Event::GoalsLoaded { goals });
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        }
+        Err(e) => {
+            report_error(&core, &view_model, &is_loading, &is_submitting, e);
+        }
+    }
+
+    is_submitting.set(false);
+}
+
+/// Build an UpdateGoalApiRequest from a domain Goal.
+///
+/// Converts the core Goal (with typed GoalStatus enum) into the API's string-based
+/// update DTO that includes title, status, and deadline.
+fn build_update_goal_request(goal: &Goal) -> api_client::UpdateGoalApiRequest {
+    let status_str = match goal.status {
+        GoalStatus::Active => "active",
+        GoalStatus::Completed => "completed",
+        GoalStatus::Archived => "archived",
+    };
+    api_client::UpdateGoalApiRequest {
+        title: Some(goal.title.clone()),
+        status: Some(status_str.to_string()),
+        deadline: Some(goal.deadline),
+    }
 }
 
 /// Build a CreateRoutineApiRequest from a domain Routine.

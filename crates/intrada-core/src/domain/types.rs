@@ -66,6 +66,7 @@ pub struct UpdateItem {
     pub tags: Option<Vec<String>>,
 }
 
+use super::goal::GoalKind;
 use super::session::PracticeSession;
 
 /// Top-level serialisation unit for `sessions.json` / `intrada:sessions`.
@@ -73,6 +74,22 @@ use super::session::PracticeSession;
 pub struct SessionsData {
     #[serde(default)]
     pub sessions: Vec<PracticeSession>,
+}
+
+/// Input for creating a new goal.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct CreateGoal {
+    pub title: String,
+    pub kind: GoalKind,
+    pub deadline: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// PATCH-style update for a goal. `Option<Option<T>>` fields use three-state
+/// semantics: `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct UpdateGoal {
+    pub title: Option<String>,
+    pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
 }
 
 /// Filters for listing/searching library items.

@@ -27,6 +27,8 @@ any of them without waiting for the others.
 | Intentional practice micro-cycle (#47) — session + per-item intentions | Done |
 | Focus mode (#48) — minimal UI during active practice | Done |
 | Repetition counter (#49) — consecutive correct attempts per item | Done |
+| Tempo tracking (#52) — log achieved tempo per item, progress charts (#66) | Done |
+| Basic goal setting (#60) — frequency, time, mastery, milestone goals with progress | Done |
 
 ---
 
@@ -51,7 +53,6 @@ goals, and eventually letting the app decide for you.
 | 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL |
 | 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
 | 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
-| 60 | **Basic goal setting** — session frequency, practice time, item mastery, and milestone goals. Progress computed from session data. | L |
 | 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
 
 #### Later (12+ weeks)
@@ -74,12 +75,6 @@ goals, and eventually letting the app decide for you.
 
 Instrument is out. Timer running. The app stays out of the way and supports
 focus, not admin.
-
-#### Now (next 4 weeks)
-
-| # | Feature | Size |
-|---|---------|------|
-| 52 | **Tempo tracking** — log achieved tempo per item per session, working toward a target BPM. | M |
 
 #### Next (4-12 weeks)
 
@@ -118,7 +113,6 @@ is actually working.
 | # | Feature | Size |
 |---|---------|------|
 | 64 | **Circle of fifths widget** — interactive key coverage visualisation showing mastery per key. | L |
-| 66 | **Tempo progress charts** — tempo increase over time toward target BPM per item. | M |
 | 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L |
 | 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M |
 | 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L |
@@ -132,7 +126,6 @@ These don't belong to a single pillar — they support all three.
 
 | # | Feature | Horizon | Labels |
 |---|---------|---------|--------|
-| 99 | **Review use of Crux** — evaluate the core/shell architecture | Now | — |
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
 
 ---

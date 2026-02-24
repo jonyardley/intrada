@@ -4,6 +4,7 @@ use crux_core::{App, Command, Request};
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
+use crate::domain::goal::{handle_goal_event, Goal, GoalEvent, GoalKind, GoalStatus};
 use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
@@ -12,7 +13,8 @@ use crate::domain::session::{
 use crate::domain::types::ListQuery;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, ViewModel,
+    BuildingSetlistView, GoalProgress, GoalView, ItemPracticeSummary, LibraryItemView, Model,
+    ViewModel,
 };
 
 /// Root Crux application for the music practice library.
@@ -25,9 +27,11 @@ pub enum Event {
     Item(ItemEvent),
     Session(SessionEvent),
     Routine(RoutineEvent),
+    Goal(GoalEvent),
     DataLoaded { items: Vec<Item> },
     SessionsLoaded { sessions: Vec<PracticeSession> },
     RoutinesLoaded { routines: Vec<Routine> },
+    GoalsLoaded { goals: Vec<Goal> },
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
@@ -54,6 +58,10 @@ pub enum AppEffect {
     SaveRoutine(Routine),
     UpdateRoutine(Routine),
     DeleteRoutine { id: String },
+    SaveGoal(Goal),
+    UpdateGoal(Goal),
+    DeleteGoal { id: String },
+    LoadGoals,
 }
 
 impl Operation for AppEffect {
@@ -89,6 +97,7 @@ impl App for Intrada {
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Routine(routine_event) => handle_routine_event(routine_event, model),
+            Event::Goal(goal_event) => handle_goal_event(goal_event, model),
             Event::DataLoaded { items } => {
                 model.items = items;
                 model.last_error = None;
@@ -101,6 +110,11 @@ impl App for Intrada {
             }
             Event::RoutinesLoaded { routines } => {
                 model.routines = routines;
+                crux_core::render::render()
+            }
+            Event::GoalsLoaded { goals } => {
+                model.goals = goals;
+                model.last_error = None;
                 crux_core::render::render()
             }
             Event::LoadFailed(msg) => {
@@ -231,6 +245,56 @@ impl App for Intrada {
             })
             .collect();
 
+        // Build goal views with computed progress
+        let today = chrono::Utc::now();
+        let goal_progress_map = compute_goal_progress(
+            &model.goals,
+            &model.sessions,
+            &model.practice_summaries,
+            today,
+        );
+
+        let goals: Vec<GoalView> = model
+            .goals
+            .iter()
+            .map(|g| {
+                let (kind_label, kind_type) = goal_kind_label(&g.kind);
+                let (item_id, item_title) = match &g.kind {
+                    GoalKind::ItemMastery { item_id, .. } => {
+                        let title = model
+                            .items
+                            .iter()
+                            .find(|i| i.id == *item_id)
+                            .map(|i| i.title.clone());
+                        (Some(item_id.clone()), title)
+                    }
+                    _ => (None, None),
+                };
+                let progress = if g.status == GoalStatus::Active {
+                    goal_progress_map.get(&g.id).cloned()
+                } else {
+                    None
+                };
+                GoalView {
+                    id: g.id.clone(),
+                    title: g.title.clone(),
+                    kind_label,
+                    kind_type,
+                    status: match g.status {
+                        GoalStatus::Active => "active".to_string(),
+                        GoalStatus::Completed => "completed".to_string(),
+                        GoalStatus::Archived => "archived".to_string(),
+                    },
+                    progress,
+                    deadline: g.deadline.map(|d| d.to_rfc3339()),
+                    created_at: g.created_at.to_rfc3339(),
+                    completed_at: g.completed_at.map(|d| d.to_rfc3339()),
+                    item_id,
+                    item_title,
+                }
+            })
+            .collect();
+
         ViewModel {
             items,
             sessions,
@@ -241,6 +305,7 @@ impl App for Intrada {
             error: model.last_error.clone(),
             analytics,
             routines,
+            goals,
         }
     }
 }
@@ -307,6 +372,194 @@ pub(crate) fn build_practice_summaries(
             },
         )
         .collect()
+}
+
+/// Compute progress for all active goals. Pure function — `now` param for testability.
+///
+/// - **SessionFrequency**: count distinct days with sessions in current ISO week
+/// - **PracticeTime**: sum session durations in current ISO week (minutes)
+/// - **ItemMastery**: latest_score from practice_summaries
+/// - **Milestone**: 0% unless completed (handled in view builder)
+pub(crate) fn compute_goal_progress(
+    goals: &[Goal],
+    sessions: &[PracticeSession],
+    practice_summaries: &std::collections::HashMap<String, ItemPracticeSummary>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> std::collections::HashMap<String, GoalProgress> {
+    use chrono::{Datelike, NaiveDate};
+    use std::collections::{HashMap, HashSet};
+
+    let today = now.date_naive();
+
+    // Pre-compute ISO week boundaries (Monday 00:00 .. Sunday 23:59)
+    let iso_week = today.iso_week();
+    let week_start =
+        NaiveDate::from_isoywd_opt(iso_week.year(), iso_week.week(), chrono::Weekday::Mon)
+            .expect("valid ISO week start");
+    let week_end = week_start + chrono::Duration::days(7);
+
+    // Collect per-week session data (only compute once for all goals)
+    let mut week_days: HashSet<NaiveDate> = HashSet::new();
+    let mut week_minutes: u64 = 0;
+
+    for session in sessions {
+        let session_date = session.started_at.date_naive();
+        if session_date >= week_start && session_date < week_end {
+            week_days.insert(session_date);
+            week_minutes += session.total_duration_secs / 60;
+        }
+    }
+
+    let mut progress_map: HashMap<String, GoalProgress> = HashMap::new();
+
+    for goal in goals {
+        if goal.status != GoalStatus::Active {
+            continue;
+        }
+
+        let progress = match &goal.kind {
+            GoalKind::SessionFrequency {
+                target_days_per_week,
+            } => {
+                let current = week_days.len() as f64;
+                let target = *target_days_per_week as f64;
+                let pct = (current / target * 100.0).min(100.0);
+                let days = week_days.len();
+                let display_text = if days == 0 {
+                    "Start your first session this week!".to_string()
+                } else {
+                    format!(
+                        "{days} of {target_days_per_week} days — {}",
+                        frequency_encouragement(pct)
+                    )
+                };
+                GoalProgress {
+                    current_value: current,
+                    target_value: target,
+                    percentage: pct,
+                    display_text,
+                }
+            }
+            GoalKind::PracticeTime {
+                target_minutes_per_week,
+            } => {
+                let current = week_minutes as f64;
+                let target = *target_minutes_per_week as f64;
+                let pct = (current / target * 100.0).min(100.0);
+                let display_text = if week_minutes == 0 {
+                    "Start your first session this week!".to_string()
+                } else {
+                    format!(
+                        "{week_minutes} of {target_minutes_per_week} min — {}",
+                        time_encouragement(pct)
+                    )
+                };
+                GoalProgress {
+                    current_value: current,
+                    target_value: target,
+                    percentage: pct,
+                    display_text,
+                }
+            }
+            GoalKind::ItemMastery {
+                item_id,
+                target_score,
+            } => {
+                let current_score = practice_summaries
+                    .get(item_id)
+                    .and_then(|s| s.latest_score)
+                    .unwrap_or(0);
+                let current = current_score as f64;
+                let target = *target_score as f64;
+                let pct = (current / target * 100.0).min(100.0);
+                let display_text = if current_score == 0 {
+                    "No score recorded yet — practise this item to start tracking".to_string()
+                } else {
+                    format!(
+                        "Score {current_score} of {target_score} — {}",
+                        mastery_encouragement(pct)
+                    )
+                };
+                GoalProgress {
+                    current_value: current,
+                    target_value: target,
+                    percentage: pct,
+                    display_text,
+                }
+            }
+            GoalKind::Milestone { .. } => GoalProgress {
+                current_value: 0.0,
+                target_value: 1.0,
+                percentage: 0.0,
+                display_text: "In progress — mark complete when ready".to_string(),
+            },
+        };
+
+        progress_map.insert(goal.id.clone(), progress);
+    }
+
+    progress_map
+}
+
+/// Build a human-readable label and machine type discriminant for a GoalKind.
+fn goal_kind_label(kind: &GoalKind) -> (String, String) {
+    match kind {
+        GoalKind::SessionFrequency {
+            target_days_per_week,
+        } => (
+            format!("Practise {target_days_per_week} days per week"),
+            "session_frequency".to_string(),
+        ),
+        GoalKind::PracticeTime {
+            target_minutes_per_week,
+        } => (
+            format!("Practise {target_minutes_per_week} minutes per week"),
+            "practice_time".to_string(),
+        ),
+        GoalKind::ItemMastery { target_score, .. } => (
+            format!("Reach score {target_score}"),
+            "item_mastery".to_string(),
+        ),
+        GoalKind::Milestone { .. } => ("Milestone".to_string(), "milestone".to_string()),
+    }
+}
+
+// ── Positive, process-focused encouragement text ─────────────────────
+
+fn frequency_encouragement(pct: f64) -> &'static str {
+    if pct >= 100.0 {
+        "target reached! 🎯"
+    } else if pct >= 60.0 {
+        "great spacing for retention"
+    } else if pct >= 30.0 {
+        "building momentum"
+    } else {
+        "every session counts"
+    }
+}
+
+fn time_encouragement(pct: f64) -> &'static str {
+    if pct >= 100.0 {
+        "target reached! 🎯"
+    } else if pct >= 60.0 {
+        "well on track"
+    } else if pct >= 30.0 {
+        "solid progress"
+    } else {
+        "every minute adds up"
+    }
+}
+
+fn mastery_encouragement(pct: f64) -> &'static str {
+    if pct >= 100.0 {
+        "target reached! 🎯"
+    } else if pct >= 75.0 {
+        "nearly there"
+    } else if pct >= 50.0 {
+        "steady improvement"
+    } else {
+        "building foundations"
+    }
 }
 
 fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
@@ -1380,5 +1633,663 @@ mod tests {
             bpm: Some(132),
         };
         assert_eq!(tempo.format_display(), "Allegro (132 BPM)");
+    }
+
+    // ── Goal event handler tests (T010) ──────────────────────────────
+
+    fn make_test_goal(id: &str, kind: GoalKind, status: GoalStatus) -> Goal {
+        let now = chrono::Utc::now();
+        Goal {
+            id: id.to_string(),
+            title: format!("Goal {id}"),
+            kind,
+            status,
+            deadline: None,
+            created_at: now,
+            updated_at: now,
+            completed_at: None,
+        }
+    }
+
+    #[test]
+    fn test_goal_add_creates_goal() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Add(crate::domain::types::CreateGoal {
+                title: "Practise 5 days per week".to_string(),
+                kind: GoalKind::SessionFrequency {
+                    target_days_per_week: 5,
+                },
+                deadline: None,
+            })),
+            &mut model,
+        );
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals.len(), 1);
+        assert_eq!(model.goals[0].title, "Practise 5 days per week");
+        assert_eq!(model.goals[0].status, GoalStatus::Active);
+        assert!(model.goals[0].completed_at.is_none());
+    }
+
+    #[test]
+    fn test_goal_add_validation_error() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Add(crate::domain::types::CreateGoal {
+                title: "".to_string(),
+                kind: GoalKind::SessionFrequency {
+                    target_days_per_week: 5,
+                },
+                deadline: None,
+            })),
+            &mut model,
+        );
+        assert!(model.last_error.is_some());
+        assert_eq!(model.goals.len(), 0);
+    }
+
+    #[test]
+    fn test_goal_complete_active_goal() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Active,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Complete {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals[0].status, GoalStatus::Completed);
+        assert!(model.goals[0].completed_at.is_some());
+    }
+
+    #[test]
+    fn test_goal_complete_archived_goal_rejected() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Archived,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Complete {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.goals[0].status, GoalStatus::Archived);
+    }
+
+    #[test]
+    fn test_goal_archive_active_goal() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Active,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Archive {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals[0].status, GoalStatus::Archived);
+    }
+
+    #[test]
+    fn test_goal_archive_completed_goal_rejected() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let mut goal = make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Completed,
+        );
+        goal.completed_at = Some(chrono::Utc::now());
+        model.goals.push(goal);
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Archive {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.goals[0].status, GoalStatus::Completed);
+    }
+
+    #[test]
+    fn test_goal_reactivate_archived_goal() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Archived,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Reactivate {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals[0].status, GoalStatus::Active);
+    }
+
+    #[test]
+    fn test_goal_reactivate_active_goal_rejected() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Active,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Reactivate {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.goals[0].status, GoalStatus::Active);
+    }
+
+    #[test]
+    fn test_goal_delete() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Active,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Delete {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals.len(), 0);
+    }
+
+    #[test]
+    fn test_goal_delete_not_found() {
+        let app = Intrada;
+        let mut model = Model::default();
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Delete {
+                id: "nonexistent".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn test_goal_update_title() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        ));
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Update {
+                id: "g1".to_string(),
+                input: crate::domain::types::UpdateGoal {
+                    title: Some("Updated title".to_string()),
+                    ..Default::default()
+                },
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.goals[0].title, "Updated title");
+    }
+
+    #[test]
+    fn test_goals_loaded_populates_model() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let goals = vec![
+            make_test_goal(
+                "g1",
+                GoalKind::SessionFrequency {
+                    target_days_per_week: 5,
+                },
+                GoalStatus::Active,
+            ),
+            make_test_goal(
+                "g2",
+                GoalKind::Milestone {
+                    description: "Learn Bach".to_string(),
+                },
+                GoalStatus::Active,
+            ),
+        ];
+
+        let _cmd = app.update(Event::GoalsLoaded { goals }, &mut model);
+
+        assert_eq!(model.goals.len(), 2);
+    }
+
+    // ── Goal view tests ──────────────────────────────────────────────
+
+    #[test]
+    fn test_view_goals_in_viewmodel() {
+        let app = Intrada;
+        let mut model = Model::default();
+        model.goals.push(make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        ));
+        model.goals.push(make_test_goal(
+            "g2",
+            GoalKind::Milestone {
+                description: "Learn Bach".to_string(),
+            },
+            GoalStatus::Completed,
+        ));
+
+        let vm = app.view(&model);
+
+        assert_eq!(vm.goals.len(), 2);
+        let g1 = vm.goals.iter().find(|g| g.id == "g1").unwrap();
+        assert_eq!(g1.kind_type, "session_frequency");
+        assert_eq!(g1.status, "active");
+        assert!(g1.progress.is_some()); // Active goals get progress
+
+        let g2 = vm.goals.iter().find(|g| g.id == "g2").unwrap();
+        assert_eq!(g2.kind_type, "milestone");
+        assert_eq!(g2.status, "completed");
+        assert!(g2.progress.is_none()); // Completed goals don't get progress
+    }
+
+    // ── compute_goal_progress tests (T011) ───────────────────────────
+
+    fn make_session_at(
+        id: &str,
+        started_at: chrono::DateTime<chrono::Utc>,
+        duration_secs: u64,
+    ) -> PracticeSession {
+        use crate::domain::session::CompletionStatus;
+        PracticeSession {
+            id: id.to_string(),
+            started_at,
+            completed_at: started_at + chrono::Duration::seconds(duration_secs as i64),
+            total_duration_secs: duration_secs,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            entries: vec![],
+        }
+    }
+
+    /// Helper: create a DateTime<Utc> from a NaiveDate at noon UTC.
+    fn date_to_utc(date: chrono::NaiveDate) -> chrono::DateTime<chrono::Utc> {
+        date.and_hms_opt(12, 0, 0).unwrap().and_utc()
+    }
+
+    #[test]
+    fn test_progress_frequency_no_sessions() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result = compute_goal_progress(&goals, &[], &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 0.0);
+        assert_eq!(p.target_value, 5.0);
+        assert_eq!(p.percentage, 0.0);
+        assert!(p.display_text.contains("Start your first session"));
+    }
+
+    #[test]
+    fn test_progress_frequency_partial_sessions() {
+        use chrono::{Datelike, NaiveDate};
+
+        // Pick a Wednesday to ensure it's mid-week
+        let today = NaiveDate::from_ymd_opt(2026, 2, 25).unwrap(); // Wednesday
+        let now = date_to_utc(today);
+
+        // Sessions on Monday and Tuesday of same week
+        let iso = today.iso_week();
+        let monday =
+            NaiveDate::from_isoywd_opt(iso.year(), iso.week(), chrono::Weekday::Mon).unwrap();
+        let tuesday = monday + chrono::Duration::days(1);
+
+        let sessions = vec![
+            make_session_at("s1", date_to_utc(monday), 1800),
+            make_session_at("s2", date_to_utc(tuesday), 2400),
+        ];
+
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result =
+            compute_goal_progress(&goals, &sessions, &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 2.0);
+        assert_eq!(p.target_value, 5.0);
+        assert!((p.percentage - 40.0).abs() < 0.01);
+        assert!(p.display_text.contains("2 of 5 days"));
+    }
+
+    #[test]
+    fn test_progress_frequency_target_reached() {
+        use chrono::{Datelike, NaiveDate};
+
+        let today = NaiveDate::from_ymd_opt(2026, 2, 27).unwrap(); // Friday
+        let now = date_to_utc(today);
+
+        let iso = today.iso_week();
+        let monday =
+            NaiveDate::from_isoywd_opt(iso.year(), iso.week(), chrono::Weekday::Mon).unwrap();
+
+        // Sessions every day Mon-Fri (5 days, target is 5)
+        let sessions: Vec<PracticeSession> = (0..5)
+            .map(|i| {
+                let day = monday + chrono::Duration::days(i);
+                make_session_at(&format!("s{i}"), date_to_utc(day), 1800)
+            })
+            .collect();
+
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result =
+            compute_goal_progress(&goals, &sessions, &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.percentage, 100.0);
+        assert!(p.display_text.contains("target reached"));
+    }
+
+    #[test]
+    fn test_progress_frequency_capped_at_100() {
+        use chrono::{Datelike, NaiveDate};
+
+        let today = NaiveDate::from_ymd_opt(2026, 2, 28).unwrap(); // Saturday
+        let now = date_to_utc(today);
+
+        let iso = today.iso_week();
+        let monday =
+            NaiveDate::from_isoywd_opt(iso.year(), iso.week(), chrono::Weekday::Mon).unwrap();
+
+        // Sessions every day Mon-Sat (6 days, target is 3)
+        let sessions: Vec<PracticeSession> = (0..6)
+            .map(|i| {
+                let day = monday + chrono::Duration::days(i);
+                make_session_at(&format!("s{i}"), date_to_utc(day), 1800)
+            })
+            .collect();
+
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 3,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result =
+            compute_goal_progress(&goals, &sessions, &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.percentage, 100.0); // Capped, not 200%
+    }
+
+    #[test]
+    fn test_progress_frequency_last_week_excluded() {
+        use chrono::NaiveDate;
+
+        let today = NaiveDate::from_ymd_opt(2026, 2, 25).unwrap(); // Wednesday
+        let now = date_to_utc(today);
+
+        // Session from last week (should not count)
+        let last_week = today - chrono::Duration::days(7);
+        let sessions = vec![make_session_at("s1", date_to_utc(last_week), 3600)];
+
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result =
+            compute_goal_progress(&goals, &sessions, &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 0.0);
+        assert!(p.display_text.contains("Start your first session"));
+    }
+
+    #[test]
+    fn test_progress_time_partial() {
+        use chrono::{Datelike, NaiveDate};
+
+        let today = NaiveDate::from_ymd_opt(2026, 2, 25).unwrap();
+        let now = date_to_utc(today);
+
+        let iso = today.iso_week();
+        let monday =
+            NaiveDate::from_isoywd_opt(iso.year(), iso.week(), chrono::Weekday::Mon).unwrap();
+
+        // 45 min on Monday + 30 min on Tuesday = 75 min total
+        let sessions = vec![
+            make_session_at("s1", date_to_utc(monday), 2700), // 45 min
+            make_session_at("s2", date_to_utc(monday + chrono::Duration::days(1)), 1800), // 30 min
+        ];
+
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::PracticeTime {
+                target_minutes_per_week: 120,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result =
+            compute_goal_progress(&goals, &sessions, &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 75.0);
+        assert_eq!(p.target_value, 120.0);
+        assert!(p.display_text.contains("75 of 120 min"));
+    }
+
+    #[test]
+    fn test_progress_time_no_sessions() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::PracticeTime {
+                target_minutes_per_week: 120,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result = compute_goal_progress(&goals, &[], &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 0.0);
+        assert!(p.display_text.contains("Start your first session"));
+    }
+
+    #[test]
+    fn test_progress_mastery_with_score() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::ItemMastery {
+                item_id: "item-1".to_string(),
+                target_score: 4,
+            },
+            GoalStatus::Active,
+        )];
+
+        let mut summaries = std::collections::HashMap::new();
+        summaries.insert(
+            "item-1".to_string(),
+            ItemPracticeSummary {
+                session_count: 3,
+                total_minutes: 90,
+                latest_score: Some(3),
+                score_history: vec![],
+                latest_tempo: None,
+                tempo_history: vec![],
+            },
+        );
+
+        let result = compute_goal_progress(&goals, &[], &summaries, now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 3.0);
+        assert_eq!(p.target_value, 4.0);
+        assert!((p.percentage - 75.0).abs() < 0.01);
+        assert!(p.display_text.contains("Score 3 of 4"));
+    }
+
+    #[test]
+    fn test_progress_mastery_no_score() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::ItemMastery {
+                item_id: "item-1".to_string(),
+                target_score: 4,
+            },
+            GoalStatus::Active,
+        )];
+
+        let result = compute_goal_progress(&goals, &[], &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.current_value, 0.0);
+        assert_eq!(p.percentage, 0.0);
+        assert!(p.display_text.contains("No score recorded"));
+    }
+
+    #[test]
+    fn test_progress_milestone_active() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::Milestone {
+                description: "Memorise first movement".to_string(),
+            },
+            GoalStatus::Active,
+        )];
+
+        let result = compute_goal_progress(&goals, &[], &std::collections::HashMap::new(), now);
+
+        let p = result.get("g1").unwrap();
+        assert_eq!(p.percentage, 0.0);
+        assert!(p.display_text.contains("In progress"));
+    }
+
+    #[test]
+    fn test_progress_completed_goal_excluded() {
+        let now = chrono::Utc::now();
+        let mut goal = make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Completed,
+        );
+        goal.completed_at = Some(now);
+
+        let result = compute_goal_progress(&[goal], &[], &std::collections::HashMap::new(), now);
+
+        // Completed goals should not have progress computed
+        assert!(!result.contains_key("g1"));
+    }
+
+    #[test]
+    fn test_progress_archived_goal_excluded() {
+        let now = chrono::Utc::now();
+        let goals = vec![make_test_goal(
+            "g1",
+            GoalKind::SessionFrequency {
+                target_days_per_week: 5,
+            },
+            GoalStatus::Archived,
+        )];
+
+        let result = compute_goal_progress(&goals, &[], &std::collections::HashMap::new(), now);
+
+        assert!(!result.contains_key("g1"));
     }
 }
