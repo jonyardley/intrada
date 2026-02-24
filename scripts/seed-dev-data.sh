@@ -302,7 +302,7 @@ create_session() {
 }
 
 # Helper: build an entry JSON object
-# Usage: entry <item_id> <item_title> <item_type> <position> <duration_secs> <status> <score_or_null>
+# Usage: entry <item_id> <item_title> <item_type> <position> <duration_secs> <status> <score_or_null> [achieved_tempo_or_null]
 entry() {
   local eid
   eid=$(next_entry_id)
@@ -310,21 +310,25 @@ entry() {
   if [ "$7" != "null" ]; then
     score_json="$7"
   fi
-  printf '{"id":"%s","item_id":"%s","item_title":"%s","item_type":"%s","position":%d,"duration_secs":%d,"status":"%s","notes":null,"score":%s}' \
-    "$eid" "$1" "$2" "$3" "$4" "$5" "$6" "$score_json"
+  local tempo_json="null"
+  if [ "${8:-null}" != "null" ]; then
+    tempo_json="$8"
+  fi
+  printf '{"id":"%s","item_id":"%s","item_title":"%s","item_type":"%s","position":%d,"duration_secs":%d,"status":"%s","notes":null,"score":%s,"achieved_tempo":%s}' \
+    "$eid" "$1" "$2" "$3" "$4" "$5" "$6" "$score_json" "$tempo_json"
 }
 
 # ── Day -35: First session (35 days ago) ─────────────────
 create_session "2026-01-13" "18:00" 45 "Completed" "First session back after break" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 72),
   $(entry "$E2_ID" "C Major Scale — 2 octaves" "exercise" 1 300 "Completed" "null"),
-  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 2 1200 "Completed" 2),
+  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 2 1200 "Completed" 2 55),
   $(entry "$P2_ID" "Moonlight Sonata, Mvt. 1" "piece" 3 600 "Completed" 2)
 ]"
 
 # ── Day -33 ──────────────────────────────────────────────
 create_session "2026-01-15" "17:30" 60 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 74),
   $(entry "$E4_ID" "Arpeggios — Major keys" "exercise" 1 600 "Completed" "null"),
   $(entry "$P1_ID" "Clair de Lune" "piece" 2 1200 "Completed" 2),
   $(entry "$P3_ID" "Nocturne Op. 9 No. 2" "piece" 3 1200 "Completed" 2)
@@ -339,9 +343,9 @@ create_session "2026-01-17" "18:00" 30 "EndedEarly" "Had to stop early — hand 
 
 # ── Day -29 ──────────────────────────────────────────────
 create_session "2026-01-19" "10:00" 75 "Completed" "Weekend morning practice — good focus" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 76),
   $(entry "$E3_ID" "Chromatic Scale — hands together" "exercise" 1 600 "Completed" "null"),
-  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 600 "Completed" "null"),
+  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 600 "Completed" "null" 80),
   $(entry "$P1_ID" "Clair de Lune" "piece" 3 1500 "Completed" 3),
   $(entry "$P2_ID" "Moonlight Sonata, Mvt. 1" "piece" 4 1200 "Completed" 3)
 ]"
@@ -355,17 +359,17 @@ create_session "2026-01-21" "18:30" 40 "Completed" "null" "[
 
 # ── Day -25 ──────────────────────────────────────────────
 create_session "2026-01-23" "19:00" 50 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 78),
   $(entry "$E4_ID" "Arpeggios — Major keys" "exercise" 1 600 "Completed" "null"),
-  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 2 900 "Completed" 3),
+  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 2 900 "Completed" 3 60),
   $(entry "$P7_ID" "Arabesque No. 1" "piece" 3 900 "Completed" 2)
 ]"
 
 # ── Day -23: Two sessions (streak start) ─────────────────
 create_session "2026-01-25" "09:30" 35 "Completed" "Morning technique" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 80),
   $(entry "$E3_ID" "Chromatic Scale — hands together" "exercise" 1 600 "Completed" "null"),
-  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 900 "Completed" "null")
+  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 900 "Completed" "null" 85)
 ]"
 
 create_session "2026-01-25" "18:00" 55 "Completed" "Evening repertoire" "[
@@ -384,10 +388,10 @@ create_session "2026-01-26" "18:00" 45 "Completed" "null" "[
 
 # ── Day -21 (streak continues) ───────────────────────────
 create_session "2026-01-27" "17:00" 60 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 82),
   $(entry "$P7_ID" "Arabesque No. 1" "piece" 1 1200 "Completed" 3),
   $(entry "$P1_ID" "Clair de Lune" "piece" 2 1200 "Completed" 3),
-  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 600 "Completed" 4)
+  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 600 "Completed" 4 64)
 ]"
 
 # ── Day -20 (streak = 4 days) ────────────────────────────
@@ -400,7 +404,7 @@ create_session "2026-01-28" "18:30" 30 "EndedEarly" "Short session, tired" "[
 
 # ── Day -17 ──────────────────────────────────────────────
 create_session "2026-01-31" "18:00" 55 "Completed" "Back after 2-day break" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 84),
   $(entry "$E2_ID" "C Major Scale — 2 octaves" "exercise" 1 300 "Completed" "null"),
   $(entry "$P8_ID" "Ballade No. 1 in G Minor" "piece" 2 1200 "Completed" 2),
   $(entry "$P2_ID" "Moonlight Sonata, Mvt. 1" "piece" 3 1200 "Completed" 4)
@@ -408,9 +412,9 @@ create_session "2026-01-31" "18:00" 55 "Completed" "Back after 2-day break" "[
 
 # ── Day -15 ──────────────────────────────────────────────
 create_session "2026-02-02" "10:00" 90 "Completed" "Long weekend session — really productive" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 86),
   $(entry "$E3_ID" "Chromatic Scale — hands together" "exercise" 1 600 "Completed" "null"),
-  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 600 "Completed" "null"),
+  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 2 600 "Completed" "null" 92),
   $(entry "$P1_ID" "Clair de Lune" "piece" 3 1500 "Completed" 4),
   $(entry "$P8_ID" "Ballade No. 1 in G Minor" "piece" 4 2100 "Completed" 3)
 ]"
@@ -425,16 +429,16 @@ create_session "2026-02-04" "18:30" 40 "Completed" "null" "[
 
 # ── Day -11 ──────────────────────────────────────────────
 create_session "2026-02-06" "17:00" 50 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 88),
   $(entry "$E4_ID" "Arpeggios — Major keys" "exercise" 1 600 "Completed" "null"),
   $(entry "$P3_ID" "Nocturne Op. 9 No. 2" "piece" 2 900 "Completed" 4),
-  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 900 "Completed" 4)
+  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 900 "Completed" 4 68)
 ]"
 
 # ── Day -9 ───────────────────────────────────────────────
 create_session "2026-02-08" "11:00" 65 "Completed" "null" "[
   $(entry "$E3_ID" "Chromatic Scale — hands together" "exercise" 0 600 "Completed" "null"),
-  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 1 600 "Completed" "null"),
+  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 1 600 "Completed" "null" 98),
   $(entry "$P1_ID" "Clair de Lune" "piece" 2 1200 "Completed" 4),
   $(entry "$P2_ID" "Moonlight Sonata, Mvt. 1" "piece" 3 1200 "Completed" 4),
   $(entry "$P8_ID" "Ballade No. 1 in G Minor" "piece" 4 300 "Completed" 3)
@@ -442,7 +446,7 @@ create_session "2026-02-08" "11:00" 65 "Completed" "null" "[
 
 # ── Day -7 (one week ago, streak start) ──────────────────
 create_session "2026-02-10" "18:00" 45 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 90),
   $(entry "$P3_ID" "Nocturne Op. 9 No. 2" "piece" 1 1200 "Completed" 4),
   $(entry "$P6_ID" "Rêverie" "piece" 2 900 "Completed" 4)
 ]"
@@ -457,7 +461,7 @@ create_session "2026-02-11" "17:30" 55 "Completed" "null" "[
 
 # ── Day -5 ───────────────────────────────────────────────
 create_session "2026-02-12" "18:00" 35 "EndedEarly" "Had to leave early" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 92),
   $(entry "$P1_ID" "Clair de Lune" "piece" 1 1200 "Completed" 4),
   $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 2 300 "Skipped" "null")
 ]"
@@ -471,8 +475,8 @@ create_session "2026-02-13" "18:30" 50 "Completed" "null" "[
 
 # ── Day -3 ───────────────────────────────────────────────
 create_session "2026-02-14" "10:00" 70 "Completed" "Valentine's Day practice — playing for someone special" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
-  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 1 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 94),
+  $(entry "$E5_ID" "Czerny Op. 299 No. 1" "exercise" 1 600 "Completed" "null" 105),
   $(entry "$P1_ID" "Clair de Lune" "piece" 2 1500 "Completed" 5),
   $(entry "$P3_ID" "Nocturne Op. 9 No. 2" "piece" 3 1200 "Completed" 5),
   $(entry "$P6_ID" "Rêverie" "piece" 4 300 "Completed" 4)
@@ -487,16 +491,16 @@ create_session "2026-02-15" "18:00" 40 "Completed" "null" "[
 
 # ── Day -1 (yesterday) ──────────────────────────────────
 create_session "2026-02-16" "17:00" 60 "Completed" "null" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 96),
   $(entry "$E4_ID" "Arpeggios — Major keys" "exercise" 1 600 "Completed" "null"),
   $(entry "$P2_ID" "Moonlight Sonata, Mvt. 1" "piece" 2 1200 "Completed" 5),
-  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 900 "Completed" 5),
+  $(entry "$P5_ID" "Prelude in C Major, BWV 846" "piece" 3 900 "Completed" 5 74),
   $(entry "$P8_ID" "Ballade No. 1 in G Minor" "piece" 4 300 "Completed" 3)
 ]"
 
 # ── Day 0 (today) ───────────────────────────────────────
 create_session "2026-02-17" "09:00" 45 "Completed" "Morning practice before work" "[
-  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null"),
+  $(entry "$E1_ID" "Hanon No. 1" "exercise" 0 600 "Completed" "null" 98),
   $(entry "$E3_ID" "Chromatic Scale — hands together" "exercise" 1 600 "Completed" "null"),
   $(entry "$P1_ID" "Clair de Lune" "piece" 2 1200 "Completed" 5),
   $(entry "$P3_ID" "Nocturne Op. 9 No. 2" "piece" 3 300 "Completed" 5)
@@ -518,4 +522,9 @@ echo "    • 8-day current streak (Feb 10–17)"
 echo "    • Score progression: most items 2→5"
 echo "    • Weekly total: ~5 sessions this week"
 echo "    • Busiest day: Feb 14 (70 min)"
+echo ""
+echo "  Tempo progress (for tempo charts):"
+echo "    • Hanon No. 1:    72→98 BPM over 14 sessions (target 108)"
+echo "    • Czerny Op. 299: 80→105 BPM over 5 sessions (target 132)"
+echo "    • Prelude BWV 846: 55→74 BPM over 6 sessions (target 80)"
 echo "═══════════════════════════════════════════════"
