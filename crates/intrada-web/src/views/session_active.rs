@@ -4,6 +4,7 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::ViewModel;
 
+use crate::app::FocusMode;
 use crate::components::{PageHeading, SessionTimer};
 use intrada_web::types::SharedCore;
 
@@ -12,7 +13,14 @@ use intrada_web::types::SharedCore;
 pub fn SessionActiveView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let _core = expect_context::<SharedCore>();
+    let focus_mode = expect_context::<FocusMode>();
     let navigate = use_navigate();
+
+    // Enter focus mode on mount, exit on unmount
+    focus_mode.set(true);
+    on_cleanup(move || {
+        focus_mode.set(false);
+    });
 
     // Redirect if no active session
     {
@@ -56,7 +64,9 @@ pub fn SessionActiveView() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Practice Session" />
+            <Show when=move || !focus_mode.get()>
+                <PageHeading text="Practice Session" />
+            </Show>
             <SessionTimer />
         </div>
     }

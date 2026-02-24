@@ -371,6 +371,74 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Focus Mode Layout
+   ═══════════════════════════════════════════════════════════════════════
+   Vertically centred content container with generous whitespace.
+   Used during active practice sessions to strip the UI to essentials.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@utility focus-mode-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Progress Ring
+   ═══════════════════════════════════════════════════════════════════════
+   SVG-based circular progress indicator used during active practice.
+   Ring fills clockwise as elapsed time approaches planned duration.
+   Digital timer (MM:SS) is centred inside via absolute positioning.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Wrapper — positions the SVG and timer overlay relative to each other. */
+@utility progress-ring-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14rem;   /* 224px — fits mobile with padding */
+  height: 14rem;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (min-width: 640px) {
+    width: 18rem;  /* 288px — larger on desktop */
+    height: 18rem;
+  }
+}
+
+/* SVG element fills the wrapper. */
+@utility progress-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Animated progress circle — smooth 1s transition per tick.
+   Respects prefers-reduced-motion. */
+@utility progress-ring-circle {
+  @media (prefers-reduced-motion: no-preference) {
+    transition: stroke-dashoffset 1s linear, stroke 300ms ease;
+  }
+}
+
+/* Overlay container for the digital timer inside the ring. */
+@utility progress-ring-timer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Metronome Loading Animation (audit #17)
    ═══════════════════════════════════════════════════════════════════════ */
 

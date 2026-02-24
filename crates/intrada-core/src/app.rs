@@ -896,6 +896,7 @@ mod tests {
                     rep_count: None,
                     rep_target_reached: None,
                     rep_history: None,
+                    planned_duration_secs: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -912,6 +913,7 @@ mod tests {
                     rep_count: None,
                     rep_target_reached: None,
                     rep_history: None,
+                    planned_duration_secs: None,
                 },
             ],
         });
@@ -984,6 +986,7 @@ mod tests {
                 rep_count: None,
                 rep_target_reached: None,
                 rep_history: None,
+                planned_duration_secs: None,
             }],
         });
 
@@ -1011,6 +1014,7 @@ mod tests {
                 rep_count: None,
                 rep_target_reached: None,
                 rep_history: None,
+                planned_duration_secs: None,
             }],
         });
 
@@ -1077,6 +1081,7 @@ mod tests {
                 rep_count: None,
                 rep_target_reached: None,
                 rep_history: None,
+                planned_duration_secs: None,
             }],
         });
 
@@ -1137,6 +1142,7 @@ mod tests {
                     rep_count: None,
                     rep_target_reached: None,
                     rep_history: None,
+                    planned_duration_secs: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -1153,6 +1159,7 @@ mod tests {
                     rep_count: None,
                     rep_target_reached: None,
                     rep_history: None,
+                    planned_duration_secs: None,
                 },
             ],
         });
@@ -1218,6 +1225,7 @@ mod tests {
                 rep_count: None,
                 rep_target_reached: None,
                 rep_history: None,
+                planned_duration_secs: None,
             }],
         });
 

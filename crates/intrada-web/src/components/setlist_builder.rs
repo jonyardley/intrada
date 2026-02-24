@@ -94,6 +94,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                             let entry_count = entries.len();
                             let core_entry_intention = core.clone();
                             let core_rep_target = core.clone();
+                            let core_duration = core.clone();
                             view! {
                                 <div node_ref=setlist_container_ref aria-roledescription="sortable">
                                     {entries.into_iter().enumerate().map(|(idx, entry)| {
@@ -102,6 +103,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                         let core_d = core_down.clone();
                                         let core_ei = core_entry_intention.clone();
                                         let core_rt = core_rep_target.clone();
+                                        let core_dur = core_duration.clone();
                                         let on_remove = Callback::new(move |entry_id: String| {
                                             let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
                                             let core_ref = core_r.borrow();
@@ -163,6 +165,15 @@ pub fn SetlistBuilder() -> impl IntoView {
                                         let core_rt_enable = core_rt.clone();
                                         let core_rt_clear = core_rt.clone();
 
+                                        // Per-entry planned duration state
+                                        let entry_duration_id = entry.id.clone();
+                                        let entry_duration_id_clear = entry.id.clone();
+                                        let has_planned_duration = entry.planned_duration_secs.is_some();
+                                        let current_duration_mins = entry.planned_duration_secs.map(|s| s / 60).unwrap_or(5);
+                                        let duration_value = RwSignal::new(current_duration_mins.to_string());
+                                        let core_dur_set = core_dur.clone();
+                                        let core_dur_clear = core_dur.clone();
+
                                         view! {
                                             <DropIndicator visible=drop_before_visible />
                                             <SetlistEntryRow
@@ -174,7 +185,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                 on_drag_pointer_down=Some(on_drag_pointer_down)
                                                 index=idx
                                             />
-                                            <div class="ml-9 mb-2 space-y-1">
+                                            <div class="ml-9 mb-3 space-y-2">
                                                 <input
                                                     type="text"
                                                     class="input-base text-xs"
@@ -192,71 +203,141 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                     }
                                                 />
-                                                // Rep target control
-                                                {if has_rep_target {
-                                                    view! {
-                                                        <div class="flex items-center gap-2">
-                                                            <label class="text-xs text-muted">"Rep target:"</label>
-                                                            <select
-                                                                class="input-base text-xs w-16 py-1"
-                                                                on:change=move |ev| {
-                                                                    let value = leptos::prelude::event_target_value(&ev);
-                                                                    rep_target_value.set(value.clone());
-                                                                    if let Ok(target) = value.parse::<u8>() {
+                                                // Entry options: rep target + duration controls
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    // Rep target control
+                                                    {if has_rep_target {
+                                                        view! {
+                                                            <div class="flex items-center gap-1.5 rounded-lg bg-surface-secondary px-2.5 py-1.5">
+                                                                <span class="text-xs text-muted">"Reps:"</span>
+                                                                <select
+                                                                    class="input-base text-xs w-14 py-0.5 px-1"
+                                                                    on:change=move |ev| {
+                                                                        let value = leptos::prelude::event_target_value(&ev);
+                                                                        rep_target_value.set(value.clone());
+                                                                        if let Ok(target) = value.parse::<u8>() {
+                                                                            let event = Event::Session(SessionEvent::SetRepTarget {
+                                                                                entry_id: entry_rep_target_id.clone(),
+                                                                                target: Some(target),
+                                                                            });
+                                                                            let core_ref = core_rt_enable.borrow();
+                                                                            let effects = core_ref.process_event(event);
+                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                        }
+                                                                    }
+                                                                >
+                                                                    {(intrada_core::validation::MIN_REP_TARGET..=intrada_core::validation::MAX_REP_TARGET)
+                                                                        .map(|n| {
+                                                                            let selected = n == current_rep_target;
+                                                                            view! {
+                                                                                <option value=n.to_string() selected=selected>{n.to_string()}</option>
+                                                                            }
+                                                                        })
+                                                                        .collect::<Vec<_>>()}
+                                                                </select>
+                                                                <button
+                                                                    class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
+                                                                    title="Remove rep target"
+                                                                    on:click=move |_| {
                                                                         let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                            entry_id: entry_rep_target_id.clone(),
-                                                                            target: Some(target),
+                                                                            entry_id: entry_rep_target_id_clear.clone(),
+                                                                            target: None,
                                                                         });
-                                                                        let core_ref = core_rt_enable.borrow();
+                                                                        let core_ref = core_rt_clear.borrow();
                                                                         let effects = core_ref.process_event(event);
                                                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                                     }
-                                                                }
-                                                            >
-                                                                {(intrada_core::validation::MIN_REP_TARGET..=intrada_core::validation::MAX_REP_TARGET)
-                                                                    .map(|n| {
-                                                                        let selected = n == current_rep_target;
-                                                                        view! {
-                                                                            <option value=n.to_string() selected=selected>{n.to_string()}</option>
-                                                                        }
-                                                                    })
-                                                                    .collect::<Vec<_>>()}
-                                                            </select>
+                                                                >
+                                                                    "✕"
+                                                                </button>
+                                                            </div>
+                                                        }.into_any()
+                                                    } else {
+                                                        view! {
                                                             <button
-                                                                class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
-                                                                title="Remove rep target"
+                                                                class="rounded-lg border border-border-default px-2.5 py-1.5 text-xs text-muted hover:text-accent-text hover:border-accent-text/30 motion-safe:transition-colors"
                                                                 on:click=move |_| {
                                                                     let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                        entry_id: entry_rep_target_id_clear.clone(),
-                                                                        target: None,
+                                                                        entry_id: entry_rep_target_id.clone(),
+                                                                        target: Some(intrada_core::validation::DEFAULT_REP_TARGET),
                                                                     });
-                                                                    let core_ref = core_rt_clear.borrow();
+                                                                    let core_ref = core_rt_enable.borrow();
                                                                     let effects = core_ref.process_event(event);
                                                                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                                 }
                                                             >
-                                                                "✕"
+                                                                "+ Reps"
                                                             </button>
-                                                        </div>
-                                                    }.into_any()
-                                                } else {
-                                                    view! {
-                                                        <button
-                                                            class="text-xs text-muted hover:text-accent-text motion-safe:transition-colors"
-                                                            on:click=move |_| {
-                                                                let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                    entry_id: entry_rep_target_id.clone(),
-                                                                    target: Some(intrada_core::validation::DEFAULT_REP_TARGET),
-                                                                });
-                                                                let core_ref = core_rt_enable.borrow();
-                                                                let effects = core_ref.process_event(event);
-                                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                            }
-                                                        >
-                                                            "Add rep target"
-                                                        </button>
-                                                    }.into_any()
-                                                }}
+                                                        }.into_any()
+                                                    }}
+                                                    // Planned duration control
+                                                    {if has_planned_duration {
+                                                        view! {
+                                                            <div class="flex items-center gap-1.5 rounded-lg bg-surface-secondary px-2.5 py-1.5">
+                                                                <span class="text-xs text-muted">"Duration:"</span>
+                                                                <select
+                                                                    class="input-base text-xs w-18 py-0.5 px-1"
+                                                                    on:change=move |ev| {
+                                                                        let value = leptos::prelude::event_target_value(&ev);
+                                                                        duration_value.set(value.clone());
+                                                                        if let Ok(mins) = value.parse::<u32>() {
+                                                                            let secs = mins * 60;
+                                                                            let event = Event::Session(SessionEvent::SetEntryDuration {
+                                                                                entry_id: entry_duration_id.clone(),
+                                                                                duration_secs: Some(secs),
+                                                                            });
+                                                                            let core_ref = core_dur_set.borrow();
+                                                                            let effects = core_ref.process_event(event);
+                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                        }
+                                                                    }
+                                                                >
+                                                                    {(1u32..=60)
+                                                                        .map(|n| {
+                                                                            let selected = n == current_duration_mins;
+                                                                            let label = format!("{n} min");
+                                                                            view! {
+                                                                                <option value=n.to_string() selected=selected>{label}</option>
+                                                                            }
+                                                                        })
+                                                                        .collect::<Vec<_>>()}
+                                                                </select>
+                                                                <button
+                                                                    class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
+                                                                    title="Remove planned duration"
+                                                                    on:click=move |_| {
+                                                                        let event = Event::Session(SessionEvent::SetEntryDuration {
+                                                                            entry_id: entry_duration_id_clear.clone(),
+                                                                            duration_secs: None,
+                                                                        });
+                                                                        let core_ref = core_dur_clear.borrow();
+                                                                        let effects = core_ref.process_event(event);
+                                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                    }
+                                                                >
+                                                                    "✕"
+                                                                </button>
+                                                            </div>
+                                                        }.into_any()
+                                                    } else {
+                                                        view! {
+                                                            <button
+                                                                class="rounded-lg border border-border-default px-2.5 py-1.5 text-xs text-muted hover:text-accent-text hover:border-accent-text/30 motion-safe:transition-colors"
+                                                                on:click=move |_| {
+                                                                    let event = Event::Session(SessionEvent::SetEntryDuration {
+                                                                        entry_id: entry_duration_id.clone(),
+                                                                        duration_secs: Some(5 * 60),
+                                                                    });
+                                                                    let core_ref = core_dur_set.borrow();
+                                                                    let effects = core_ref.process_event(event);
+                                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                                }
+                                                            >
+                                                                "+ Duration"
+                                                            </button>
+                                                        }.into_any()
+                                                    }}
+                                                </div>
                                             </div>
                                             {if is_last {
                                                 Some(view! { <DropIndicator visible=drop_after_visible /> })
