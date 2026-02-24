@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use intrada_core::domain::routine::{Routine, RoutineEntry};
 
+use super::col;
 use crate::error::ApiError;
 
 /// Request body for creating a new routine.
@@ -28,13 +29,20 @@ pub struct UpdateRoutineRequest {
     pub entries: Vec<CreateRoutineEntry>,
 }
 
-fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    // skip routine_id (index 1)
-    let item_id: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_title: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_type: String = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let position: i64 = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
+/// Column list for routine_entries (excludes routine_id — not needed in parsed output).
+const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
+
+/// Parse entry columns starting at `offset` into a RoutineEntry.
+///
+/// Expects 5 sequential columns (see [`ENTRY_COLUMNS`]):
+///   offset+0  id, offset+1  item_id, offset+2  item_title,
+///   offset+3  item_type, offset+4  position
+fn parse_entry_cols(row: &libsql::Row, offset: i32) -> Result<RoutineEntry, ApiError> {
+    let id: String = col!(row, offset)?;
+    let item_id: String = col!(row, offset + 1)?;
+    let item_title: String = col!(row, offset + 2)?;
+    let item_type: String = col!(row, offset + 3)?;
+    let position: i64 = col!(row, offset + 4)?;
 
     Ok(RoutineEntry {
         id,
@@ -45,12 +53,18 @@ fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     })
 }
 
+/// Parse an entry row into a RoutineEntry (standalone SELECT, offset 0).
+fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
+    parse_entry_cols(row, 0)
+}
+
 /// Fetch entries for a routine, ordered by position.
 async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<RoutineEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, routine_id, item_id, item_title, item_type, position
-             FROM routine_entries WHERE routine_id = ?1 ORDER BY position ASC",
+            &format!(
+                "SELECT {ENTRY_COLUMNS} FROM routine_entries WHERE routine_id = ?1 ORDER BY position ASC"
+            ),
             libsql::params![routine_id],
         )
         .await?;
@@ -67,11 +81,13 @@ async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<Routin
 }
 
 /// Parse a routine row (without entries) into a partial Routine.
+///
+/// Expects columns: id, name, created_at, updated_at
 fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let name: String = row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let created_at_str: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let updated_at_str: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let id: String = col!(row, 0)?;
+    let name: String = col!(row, 1)?;
+    let created_at_str: String = col!(row, 2)?;
+    let updated_at_str: String = col!(row, 3)?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
@@ -92,44 +108,20 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
 /// Parse an entry from a LEFT JOIN row where entry columns start at `offset`.
 /// Returns `None` when the entry id column is NULL (routine has no entries).
 fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<RoutineEntry>, ApiError> {
-    let entry_id: Option<String> = row
-        .get(offset)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let entry_id = match entry_id {
-        Some(id) => id,
-        None => return Ok(None),
-    };
-
-    // skip routine_id (offset + 1)
-    let item_id: String = row
-        .get(offset + 2)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_title: String = row
-        .get(offset + 3)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_type: String = row
-        .get(offset + 4)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let position: i64 = row
-        .get(offset + 5)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-
-    Ok(Some(RoutineEntry {
-        id: entry_id,
-        item_id,
-        item_title,
-        item_type,
-        position: position as usize,
-    }))
+    let entry_id: Option<String> = col!(row, offset)?;
+    if entry_id.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(parse_entry_cols(row, offset)?))
 }
 
 pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
     // Single query with LEFT JOIN replaces N+1 (1 routine query + N entry queries).
-    // Routine columns: indices 0-3, Entry columns: indices 4-9
+    // Routine columns: indices 0-3, Entry columns: indices 4-8
     let mut rows = conn
         .query(
             "SELECT r.id, r.name, r.created_at, r.updated_at,
-                    e.id, e.routine_id, e.item_id, e.item_title, e.item_type, e.position
+                    e.id, e.item_id, e.item_title, e.item_type, e.position
              FROM routines r
              LEFT JOIN routine_entries e ON r.id = e.routine_id
              WHERE r.user_id = ?1
@@ -147,7 +139,7 @@ pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routi
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let routine_id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
+        let routine_id: String = col!(row, 0)?;
 
         // If this is a new routine, parse the routine columns and push
         if last_routine_id.as_ref() != Some(&routine_id) {

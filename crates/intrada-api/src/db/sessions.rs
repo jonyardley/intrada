@@ -6,6 +6,7 @@ use intrada_core::domain::session::{
     CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
 };
 
+use super::col;
 use crate::error::ApiError;
 
 /// Request body for saving a new practice session.
@@ -82,30 +83,40 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
+/// Parse an entry row into a SetlistEntry.
+///
+/// Expects columns in this order (no session_id):
+///   id, item_id, item_title, item_type, position, duration_secs, status,
+///   notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history
 fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    // skip session_id (index 1)
-    let item_id: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_title: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_type: String = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let position: i64 = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let duration_secs: i64 = row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let status_str: String = row.get(7).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let notes: Option<String> = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let score_raw: Option<i64> = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let score = score_raw.map(|s| s as u8);
-    let intention: Option<String> = row.get(10).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target_raw: Option<i64> = row.get(11).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target = rep_target_raw.map(|v| v as u8);
-    let rep_count_raw: Option<i64> = row.get(12).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_count = rep_count_raw.map(|v| v as u8);
-    let rep_target_reached_raw: Option<i64> =
-        row.get(13).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target_reached = rep_target_reached_raw.map(|v| v != 0);
+    parse_entry_cols(row, 0)
+}
 
-    // rep_history at column index 14 (JSON TEXT, nullable)
-    let rep_history_raw: Option<String> =
-        row.get(14).map_err(|e| ApiError::Internal(e.to_string()))?;
+/// Column list for setlist_entries (excludes session_id — not needed in parsed output).
+const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history";
+
+/// Parse entry columns starting at `offset` into a SetlistEntry.
+///
+/// Expects 14 sequential columns (see [`ENTRY_COLUMNS`]):
+///   offset+0  id, offset+1  item_id, offset+2  item_title, offset+3  item_type,
+///   offset+4  position, offset+5  duration_secs, offset+6  status, offset+7  notes,
+///   offset+8  score, offset+9  intention, offset+10 rep_target, offset+11 rep_count,
+///   offset+12 rep_target_reached, offset+13 rep_history
+fn parse_entry_cols(row: &libsql::Row, offset: i32) -> Result<SetlistEntry, ApiError> {
+    let id: String = col!(row, offset)?;
+    let item_id: String = col!(row, offset + 1)?;
+    let item_title: String = col!(row, offset + 2)?;
+    let item_type: String = col!(row, offset + 3)?;
+    let position: i64 = col!(row, offset + 4)?;
+    let duration_secs: i64 = col!(row, offset + 5)?;
+    let status_str: String = col!(row, offset + 6)?;
+    let notes: Option<String> = col!(row, offset + 7)?;
+    let score: Option<i64> = col!(row, offset + 8)?;
+    let intention: Option<String> = col!(row, offset + 9)?;
+    let rep_target: Option<i64> = col!(row, offset + 10)?;
+    let rep_count: Option<i64> = col!(row, offset + 11)?;
+    let rep_target_reached: Option<i64> = col!(row, offset + 12)?;
+    let rep_history_raw: Option<String> = col!(row, offset + 13)?;
     let rep_history = match rep_history_raw {
         Some(json_str) => Some(
             serde_json::from_str(&json_str)
@@ -123,11 +134,11 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         duration_secs: duration_secs as u64,
         status: entry_status_from_str(&status_str)?,
         notes,
-        score,
+        score: score.map(|s| s as u8),
         intention,
-        rep_target,
-        rep_count,
-        rep_target_reached,
+        rep_target: rep_target.map(|v| v as u8),
+        rep_count: rep_count.map(|v| v as u8),
+        rep_target_reached: rep_target_reached.map(|v| v != 0),
         rep_history,
     })
 }
@@ -136,8 +147,9 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<SetlistEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history
-             FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC",
+            &format!(
+                "SELECT {ENTRY_COLUMNS} FROM setlist_entries WHERE session_id = ?1 ORDER BY position ASC"
+            ),
             libsql::params![session_id],
         )
         .await?;
@@ -154,17 +166,17 @@ async fn fetch_entries(conn: &Connection, session_id: &str) -> Result<Vec<Setlis
 }
 
 /// Parse a session row (without entries) into partial PracticeSession fields.
+///
+/// Expects columns: id, session_notes, started_at, completed_at,
+///   total_duration_secs, completion_status, session_intention
 fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let session_notes: Option<String> =
-        row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let started_at_str: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let completed_at_str: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let total_duration_secs: i64 = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let completion_status_str: String =
-        row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let session_intention: Option<String> =
-        row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let id: String = col!(row, 0)?;
+    let session_notes: Option<String> = col!(row, 1)?;
+    let started_at_str: String = col!(row, 2)?;
+    let completed_at_str: String = col!(row, 3)?;
+    let total_duration_secs: i64 = col!(row, 4)?;
+    let completion_status_str: String = col!(row, 5)?;
+    let session_intention: Option<String> = col!(row, 6)?;
 
     let started_at: DateTime<Utc> = started_at_str
         .parse()
@@ -188,83 +200,11 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
 /// Parse an entry from a LEFT JOIN row where entry columns start at `offset`.
 /// Returns `None` when the entry id column is NULL (session has no entries).
 fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<SetlistEntry>, ApiError> {
-    // Entry id is at `offset`; if NULL this session has no entries for this row
-    let entry_id: Option<String> = row
-        .get(offset)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let entry_id = match entry_id {
-        Some(id) => id,
-        None => return Ok(None),
-    };
-
-    // skip session_id (offset + 1)
-    let item_id: String = row
-        .get(offset + 2)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_title: String = row
-        .get(offset + 3)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_type: String = row
-        .get(offset + 4)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let position: i64 = row
-        .get(offset + 5)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let duration_secs: i64 = row
-        .get(offset + 6)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let status_str: String = row
-        .get(offset + 7)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let notes: Option<String> = row
-        .get(offset + 8)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let score_raw: Option<i64> = row
-        .get(offset + 9)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let score = score_raw.map(|s| s as u8);
-    let intention: Option<String> = row
-        .get(offset + 10)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target_raw: Option<i64> = row
-        .get(offset + 11)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target = rep_target_raw.map(|v| v as u8);
-    let rep_count_raw: Option<i64> = row
-        .get(offset + 12)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_count = rep_count_raw.map(|v| v as u8);
-    let rep_target_reached_raw: Option<i64> = row
-        .get(offset + 13)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_target_reached = rep_target_reached_raw.map(|v| v != 0);
-    let rep_history_raw: Option<String> = row
-        .get(offset + 14)
-        .map_err(|e| ApiError::Internal(e.to_string()))?;
-    let rep_history = match rep_history_raw {
-        Some(json_str) => Some(
-            serde_json::from_str(&json_str)
-                .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?,
-        ),
-        None => None,
-    };
-
-    Ok(Some(SetlistEntry {
-        id: entry_id,
-        item_id,
-        item_title,
-        item_type,
-        position: position as usize,
-        duration_secs: duration_secs as u64,
-        status: entry_status_from_str(&status_str)?,
-        notes,
-        score,
-        intention,
-        rep_target,
-        rep_count,
-        rep_target_reached,
-        rep_history,
-    }))
+    let entry_id: Option<String> = col!(row, offset)?;
+    if entry_id.is_none() {
+        return Ok(None);
+    }
+    Ok(Some(parse_entry_cols(row, offset)?))
 }
 
 pub async fn list_sessions(
@@ -272,15 +212,14 @@ pub async fn list_sessions(
     user_id: &str,
 ) -> Result<Vec<PracticeSession>, ApiError> {
     // Single query with LEFT JOIN replaces N+1 (1 session query + N entry queries).
-    // Session columns: indices 0-6, Entry columns: indices 7-21
+    // Session columns: indices 0-6, Entry columns: indices 7-20
     let mut rows = conn
         .query(
             "SELECT s.id, s.session_notes, s.started_at, s.completed_at,
                     s.total_duration_secs, s.completion_status, s.session_intention,
-                    e.id, e.session_id, e.item_id, e.item_title, e.item_type,
-                    e.position, e.duration_secs, e.status, e.notes, e.score,
-                    e.intention, e.rep_target, e.rep_count, e.rep_target_reached,
-                    e.rep_history
+                    e.id, e.item_id, e.item_title, e.item_type, e.position,
+                    e.duration_secs, e.status, e.notes, e.score, e.intention,
+                    e.rep_target, e.rep_count, e.rep_target_reached, e.rep_history
              FROM sessions s
              LEFT JOIN setlist_entries e ON s.id = e.session_id
              WHERE s.user_id = ?1
@@ -298,7 +237,7 @@ pub async fn list_sessions(
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let session_id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
+        let session_id: String = col!(row, 0)?;
 
         // If this is a new session, parse the session columns and push
         if last_session_id.as_ref() != Some(&session_id) {
