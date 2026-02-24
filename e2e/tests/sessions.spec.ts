@@ -37,9 +37,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Start Session" }).click();
 
     // Should be on the active session page with the timer
-    await expect(
-      page.getByRole("heading", { name: "Practice Session" })
-    ).toBeVisible();
+    // (Focus mode hides the "Practice Session" heading, so check item indicator instead)
     await expect(page.getByText("Item 1 of 1")).toBeVisible();
 
     // Finish the session (single item = "Finish Session" button)

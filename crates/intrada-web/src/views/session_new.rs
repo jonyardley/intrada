@@ -28,9 +28,13 @@ pub fn SessionNewView() -> impl IntoView {
 
     // Dispatch StartBuilding on mount — but only from idle state.
     // If an active session exists we leave it alone and show recovery UI.
+    // Note: ViewModel::default() has session_status "" (empty string) which
+    // occurs when navigating directly to this page before async data loads.
+    // The underlying Model defaults to SessionStatus::Idle, so both "" and
+    // "idle" are safe to treat as idle here.
     {
         let vm = view_model.get_untracked();
-        if vm.session_status == "idle" {
+        if vm.session_status == "idle" || vm.session_status.is_empty() {
             let core_ref = core.borrow();
             let effects = core_ref.process_event(Event::Session(SessionEvent::StartBuilding));
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
