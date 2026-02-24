@@ -71,30 +71,24 @@ if [ "$CLEAN" = true ]; then
   done
   echo "  Deleted sessions"
 
-  # Delete all pieces
-  piece_ids=$(curl -sf "${API_URL}/api/pieces" | jq -r '.[].id')
-  for id in $piece_ids; do
-    curl -sf -X DELETE "${API_URL}/api/pieces/${id}" > /dev/null 2>&1 || true
+  # Delete all items (pieces + exercises)
+  item_ids=$(curl -sf "${API_URL}/api/items" | jq -r '.[].id')
+  for id in $item_ids; do
+    curl -sf -X DELETE "${API_URL}/api/items/${id}" > /dev/null 2>&1 || true
   done
-  echo "  Deleted pieces"
-
-  # Delete all exercises
-  exercise_ids=$(curl -sf "${API_URL}/api/exercises" | jq -r '.[].id')
-  for id in $exercise_ids; do
-    curl -sf -X DELETE "${API_URL}/api/exercises/${id}" > /dev/null 2>&1 || true
-  done
-  echo "  Deleted exercises"
+  echo "  Deleted items"
 
   echo "  Done ✓"
   echo ""
 fi
 
-# ── Create Pieces ───────────────────────────────────────────────────
+# ── Create Items (Pieces) ──────────────────────────────────────────
 
 echo "Creating 8 pieces..."
 
-P1_ID=$(post "/api/pieces" '{
+P1_ID=$(post "/api/items" '{
   "title": "Clair de Lune",
+  "kind": "piece",
   "composer": "Claude Debussy",
   "key": "Db Major",
   "tempo": { "marking": "Andante très expressif", "bpm": 66 },
@@ -103,8 +97,9 @@ P1_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Clair de Lune ($P1_ID)"
 
-P2_ID=$(post "/api/pieces" '{
+P2_ID=$(post "/api/items" '{
   "title": "Moonlight Sonata, Mvt. 1",
+  "kind": "piece",
   "composer": "Ludwig van Beethoven",
   "key": "C# Minor",
   "tempo": { "marking": "Adagio sostenuto", "bpm": 56 },
@@ -113,8 +108,9 @@ P2_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Moonlight Sonata ($P2_ID)"
 
-P3_ID=$(post "/api/pieces" '{
+P3_ID=$(post "/api/items" '{
   "title": "Nocturne Op. 9 No. 2",
+  "kind": "piece",
   "composer": "Frédéric Chopin",
   "key": "Eb Major",
   "tempo": { "marking": "Andante", "bpm": 69 },
@@ -123,8 +119,9 @@ P3_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Nocturne Op. 9 No. 2 ($P3_ID)"
 
-P4_ID=$(post "/api/pieces" '{
+P4_ID=$(post "/api/items" '{
   "title": "Gymnopédie No. 1",
+  "kind": "piece",
   "composer": "Erik Satie",
   "key": "D Major",
   "tempo": { "marking": "Lent et douloureux", "bpm": 72 },
@@ -133,8 +130,9 @@ P4_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Gymnopédie No. 1 ($P4_ID)"
 
-P5_ID=$(post "/api/pieces" '{
+P5_ID=$(post "/api/items" '{
   "title": "Prelude in C Major, BWV 846",
+  "kind": "piece",
   "composer": "Johann Sebastian Bach",
   "key": "C Major",
   "tempo": { "marking": "Moderato", "bpm": 80 },
@@ -143,8 +141,9 @@ P5_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Prelude in C Major ($P5_ID)"
 
-P6_ID=$(post "/api/pieces" '{
+P6_ID=$(post "/api/items" '{
   "title": "Rêverie",
+  "kind": "piece",
   "composer": "Claude Debussy",
   "key": "F Major",
   "tempo": { "marking": "Andantino", "bpm": 72 },
@@ -153,8 +152,9 @@ P6_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Rêverie ($P6_ID)"
 
-P7_ID=$(post "/api/pieces" '{
+P7_ID=$(post "/api/items" '{
   "title": "Arabesque No. 1",
+  "kind": "piece",
   "composer": "Claude Debussy",
   "key": "E Major",
   "tempo": { "marking": "Andantino con moto", "bpm": 96 },
@@ -163,8 +163,9 @@ P7_ID=$(post "/api/pieces" '{
 }' | extract_id)
 echo "  Arabesque No. 1 ($P7_ID)"
 
-P8_ID=$(post "/api/pieces" '{
+P8_ID=$(post "/api/items" '{
   "title": "Ballade No. 1 in G Minor",
+  "kind": "piece",
   "composer": "Frédéric Chopin",
   "key": "G Minor",
   "tempo": { "marking": "Largo", "bpm": 66 },
@@ -176,12 +177,13 @@ echo "  Ballade No. 1 ($P8_ID)"
 echo "  Done ✓"
 echo ""
 
-# ── Create Exercises ────────────────────────────────────────────────
+# ── Create Items (Exercises) ───────────────────────────────────────
 
 echo "Creating 5 exercises..."
 
-E1_ID=$(post "/api/exercises" '{
+E1_ID=$(post "/api/items" '{
   "title": "Hanon No. 1",
+  "kind": "exercise",
   "composer": "Charles-Louis Hanon",
   "category": "Technique",
   "key": "C Major",
@@ -191,8 +193,9 @@ E1_ID=$(post "/api/exercises" '{
 }' | extract_id)
 echo "  Hanon No. 1 ($E1_ID)"
 
-E2_ID=$(post "/api/exercises" '{
+E2_ID=$(post "/api/items" '{
   "title": "C Major Scale — 2 octaves",
+  "kind": "exercise",
   "composer": null,
   "category": "Scales",
   "key": "C Major",
@@ -202,8 +205,9 @@ E2_ID=$(post "/api/exercises" '{
 }' | extract_id)
 echo "  C Major Scale ($E2_ID)"
 
-E3_ID=$(post "/api/exercises" '{
+E3_ID=$(post "/api/items" '{
   "title": "Chromatic Scale — hands together",
+  "kind": "exercise",
   "composer": null,
   "category": "Scales",
   "key": null,
@@ -213,8 +217,9 @@ E3_ID=$(post "/api/exercises" '{
 }' | extract_id)
 echo "  Chromatic Scale ($E3_ID)"
 
-E4_ID=$(post "/api/exercises" '{
+E4_ID=$(post "/api/items" '{
   "title": "Arpeggios — Major keys",
+  "kind": "exercise",
   "composer": null,
   "category": "Arpeggios",
   "key": null,
@@ -224,8 +229,9 @@ E4_ID=$(post "/api/exercises" '{
 }' | extract_id)
 echo "  Arpeggios ($E4_ID)"
 
-E5_ID=$(post "/api/exercises" '{
+E5_ID=$(post "/api/items" '{
   "title": "Czerny Op. 299 No. 1",
+  "kind": "exercise",
   "composer": "Carl Czerny",
   "category": "Technique",
   "key": "C Major",
