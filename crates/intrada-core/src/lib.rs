@@ -17,7 +17,7 @@ pub use error::LibraryError;
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
     PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SetlistEntryView,
-    SummaryView, ViewModel,
+    SummaryView, TempoHistoryEntry, ViewModel,
 };
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_ROUTINE_NAME, MAX_TAG,
