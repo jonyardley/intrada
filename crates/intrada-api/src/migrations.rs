@@ -175,6 +175,29 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0026_add_achieved_tempo_to_setlist_entries",
         "ALTER TABLE setlist_entries ADD COLUMN achieved_tempo INTEGER;",
     ),
+    (
+        "0027_create_goals",
+        "CREATE TABLE IF NOT EXISTS goals (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL,
+            goal_type TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active',
+            target_days_per_week INTEGER,
+            target_minutes_per_week INTEGER,
+            item_id TEXT,
+            target_score INTEGER,
+            milestone_description TEXT,
+            deadline TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            completed_at TEXT
+        );",
+    ),
+    (
+        "0028_index_goals_user_id",
+        "CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

@@ -1,9 +1,10 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
 
+use intrada_core::model::GoalView;
 use intrada_core::ViewModel;
 
-use crate::components::LibraryItemCard;
+use crate::components::{Card, LibraryItemCard};
 use intrada_web::types::IsLoading;
 
 #[component]
@@ -12,6 +13,9 @@ pub fn LibraryListView() -> impl IntoView {
     let is_loading = expect_context::<IsLoading>();
     view! {
         <div class="space-y-6">
+            // Active goals summary (hidden when no active goals)
+            <ActiveGoalsSummary />
+
             // Hero section
             <section aria-labelledby="welcome-heading">
                 <h2 id="welcome-heading" class="text-2xl font-bold text-primary mb-3 font-heading">
@@ -87,5 +91,68 @@ pub fn LibraryListView() -> impl IntoView {
                 </div>
             </section>
         </div>
+    }
+}
+
+/// Compact active goals summary card — shown on the library home page when there are active goals.
+/// Displays up to 3 active goals with mini progress bars and a "View all goals" link.
+#[component]
+fn ActiveGoalsSummary() -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+
+    view! {
+        {move || {
+            let vm = view_model.get();
+            let active: Vec<GoalView> = vm
+                .goals
+                .iter()
+                .filter(|g| g.status == "active")
+                .take(3)
+                .cloned()
+                .collect();
+
+            if active.is_empty() {
+                return view! { <div></div> }.into_any();
+            }
+
+            let total_active = vm.goals.iter().filter(|g| g.status == "active").count();
+
+            view! {
+                <Card>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="card-title mb-0">"Active Goals"</h3>
+                            <A href="/goals" attr:class="text-xs text-accent-text hover:text-accent-hover font-medium">
+                                {if total_active > 3 {
+                                    format!("View all {total_active} goals")
+                                } else {
+                                    "View all goals".to_string()
+                                }}
+                            </A>
+                        </div>
+                        <ul class="space-y-2.5" role="list">
+                            {active.into_iter().map(|goal| {
+                                let pct = goal.progress.as_ref().map(|p| p.percentage.clamp(0.0, 100.0)).unwrap_or(0.0);
+                                let title = goal.title.clone();
+                                view! {
+                                    <li class="flex items-center gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm text-secondary truncate">{title}</p>
+                                            <div class="h-1.5 rounded-full bg-surface-secondary overflow-hidden mt-1">
+                                                <div
+                                                    class="h-full rounded-full bg-accent-focus transition-all duration-500"
+                                                    style=format!("width: {pct:.0}%")
+                                                />
+                                            </div>
+                                        </div>
+                                        <span class="text-xs text-muted flex-shrink-0">{format!("{pct:.0}%")}</span>
+                                    </li>
+                                }
+                            }).collect::<Vec<_>>()}
+                        </ul>
+                    </div>
+                </Card>
+            }.into_any()
+        }}
     }
 }

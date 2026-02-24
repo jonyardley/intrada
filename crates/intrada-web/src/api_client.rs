@@ -6,6 +6,8 @@
 use gloo_net::http::Request;
 use serde::Serialize;
 
+use intrada_core::domain::goal::Goal;
+use intrada_core::domain::types::CreateGoal;
 use intrada_core::{CreateItem, Item, PracticeSession, Routine, UpdateItem};
 
 use crate::clerk_bindings;
@@ -171,6 +173,44 @@ pub async fn update_routine(
 /// Delete a routine from the server.
 pub async fn delete_routine(id: &str) -> Result<(), ApiError> {
     delete(&format!("/api/routines/{id}")).await
+}
+
+// ---------------------------------------------------------------------------
+// Goal Operations
+// ---------------------------------------------------------------------------
+
+/// Request body for updating a goal via the API.
+///
+/// Mirrors the `ApiUpdateGoal` DTO on the server side. The core uses separate
+/// GoalEvents for status changes, but the REST API handles everything via PUT.
+#[derive(serde::Serialize)]
+pub struct UpdateGoalApiRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
+}
+
+/// Fetch all goals from the API.
+pub async fn fetch_goals() -> Result<Vec<Goal>, ApiError> {
+    get_json("/api/goals").await
+}
+
+/// Create a new goal on the server.
+pub async fn create_goal(goal: &CreateGoal) -> Result<Goal, ApiError> {
+    post_json("/api/goals", goal).await
+}
+
+/// Update an existing goal on the server.
+pub async fn update_goal(id: &str, update: &UpdateGoalApiRequest) -> Result<Goal, ApiError> {
+    put_json(&format!("/api/goals/{id}"), update).await
+}
+
+/// Delete a goal from the server.
+pub async fn delete_goal(id: &str) -> Result<(), ApiError> {
+    delete(&format!("/api/goals/{id}")).await
 }
 
 // ---------------------------------------------------------------------------

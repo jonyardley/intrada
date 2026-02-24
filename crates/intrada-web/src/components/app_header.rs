@@ -27,6 +27,11 @@ pub fn AppHeader() -> impl IntoView {
         path.starts_with("/routines")
     };
 
+    let is_goals_active = move || {
+        let path = location.pathname.get();
+        path.starts_with("/goals")
+    };
+
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
@@ -80,6 +85,19 @@ pub fn AppHeader() -> impl IntoView {
                         attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
                     >
                         "Routines"
+                    </A>
+                    <A
+                        href="/goals"
+                        attr:class=move || {
+                            if is_goals_active() {
+                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
+                            } else {
+                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                            }
+                        }
+                        attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
+                    >
+                        "Goals"
                     </A>
                     <A
                         href="/analytics"

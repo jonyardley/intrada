@@ -97,7 +97,7 @@ Leptos owns *what the user is doing right now*.
 
 | State kind | Where it lives | Examples |
 |------------|---------------|----------|
-| Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, active session progress, analytics |
+| Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, goals, active session progress, analytics |
 | UI interaction | Leptos signals | Form field values, loading/submitting flags, timer ticks, drag state, tab selection |
 | Crash recovery | localStorage | `intrada:session-in-progress` (single key, FR-008) |
 
@@ -196,6 +196,10 @@ and after finishing, check alignment with the source-of-truth documents.
 3. **Check the project board.** The issue should be in Ready or In Progress on the
    [GitHub project board](https://github.com/users/jonyardley/projects/2). If it's
    still in Backlog, move it to Ready before starting.
+4. **Run SpecKit.** Always use SpecKit for feature design before implementation.
+   Run `speckit.specify` to create the feature spec, then `speckit.plan` and
+   `speckit.tasks` to generate the implementation plan and task breakdown.
+   Specs live in `specs/{issue-number}-{slug}/`.
 
 ### After completing work
 
@@ -226,3 +230,12 @@ These documents should stay in sync. When any one changes, check the others:
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Active Technologies
+- Rust stable (1.89.0), 2021 edition + leptos 0.8.x (CSR), intrada-core (model types), Tailwind CSS v4 (151-tempo-progress-charts)
+- N/A — no new data storage; reads existing precomputed `ItemPracticeSummary` (151-tempo-progress-charts)
+- Rust stable (1.89.0), 2021 edition + crux_core 0.17.0-rc2, serde 1, chrono 0.4, ulid 1, axum 0.8, libsql 0.9, leptos 0.8.x (CSR), Tailwind CSS v4 (152-goal-setting)
+- Turso (managed libsql/SQLite) via HTTP protocol — new `goals` table with flat columns (152-goal-setting)
+
+## Recent Changes
+- 151-tempo-progress-charts: Added Rust stable (1.89.0), 2021 edition + leptos 0.8.x (CSR), intrada-core (model types), Tailwind CSS v4
