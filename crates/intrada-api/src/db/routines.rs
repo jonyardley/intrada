@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use libsql::Connection;
 use serde::{Deserialize, Serialize};
 
 use intrada_core::domain::routine::{Routine, RoutineEntry};
 
+use super::col;
 use crate::error::ApiError;
 
 /// Request body for creating a new routine.
@@ -28,13 +31,16 @@ pub struct UpdateRoutineRequest {
     pub entries: Vec<CreateRoutineEntry>,
 }
 
+/// Column list for routine_entries SELECTs.
+const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
+
+/// Parse an entry row into a RoutineEntry (columns 0–4 matching [`ENTRY_COLUMNS`]).
 fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    // skip routine_id (index 1)
-    let item_id: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_title: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let item_type: String = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let position: i64 = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let id: String = col!(row, 0)?;
+    let item_id: String = col!(row, 1)?;
+    let item_title: String = col!(row, 2)?;
+    let item_type: String = col!(row, 3)?;
+    let position: i64 = col!(row, 4)?;
 
     Ok(RoutineEntry {
         id,
@@ -49,8 +55,9 @@ fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
 async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<RoutineEntry>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT id, routine_id, item_id, item_title, item_type, position
-             FROM routine_entries WHERE routine_id = ?1 ORDER BY position ASC",
+            &format!(
+                "SELECT {ENTRY_COLUMNS} FROM routine_entries WHERE routine_id = ?1 ORDER BY position ASC"
+            ),
             libsql::params![routine_id],
         )
         .await?;
@@ -67,11 +74,13 @@ async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<Routin
 }
 
 /// Parse a routine row (without entries) into a partial Routine.
+///
+/// Expects columns: id, name, created_at, updated_at
 fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let name: String = row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let created_at_str: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let updated_at_str: String = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let id: String = col!(row, 0)?;
+    let name: String = col!(row, 1)?;
+    let created_at_str: String = col!(row, 2)?;
+    let updated_at_str: String = col!(row, 3)?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
@@ -90,23 +99,62 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
 }
 
 pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
+    // Query 1: all routines for this user.
     let mut rows = conn
         .query(
-            "SELECT id, name, created_at, updated_at FROM routines WHERE user_id = ?1 ORDER BY created_at ASC",
+            "SELECT id, name, created_at, updated_at
+             FROM routines WHERE user_id = ?1
+             ORDER BY created_at ASC",
             libsql::params![user_id],
         )
         .await?;
 
-    let mut routines = Vec::new();
+    let mut routines: Vec<Routine> = Vec::new();
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let mut routine = row_to_routine_without_entries(&row)?;
-        routine.entries = fetch_entries(conn, &routine.id).await?;
-        routines.push(routine);
+        routines.push(row_to_routine_without_entries(&row)?);
     }
+
+    if routines.is_empty() {
+        return Ok(routines);
+    }
+
+    // Query 2: all entries for those routines in one batch.
+    // routine_id is appended after ENTRY_COLUMNS so row_to_entry reads columns 0–4.
+    let mut entry_rows = conn
+        .query(
+            &format!(
+                "SELECT {ENTRY_COLUMNS}, routine_id FROM routine_entries
+                 WHERE routine_id IN (SELECT id FROM routines WHERE user_id = ?1)
+                 ORDER BY routine_id, position ASC"
+            ),
+            libsql::params![user_id],
+        )
+        .await?;
+
+    let mut entries_by_routine: HashMap<String, Vec<RoutineEntry>> = HashMap::new();
+    while let Some(row) = entry_rows
+        .next()
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?
+    {
+        let entry = row_to_entry(&row)?;
+        let routine_id: String = col!(row, 5)?;
+        entries_by_routine
+            .entry(routine_id)
+            .or_default()
+            .push(entry);
+    }
+
+    for routine in &mut routines {
+        if let Some(entries) = entries_by_routine.remove(&routine.id) {
+            routine.entries = entries;
+        }
+    }
+
     Ok(routines)
 }
 

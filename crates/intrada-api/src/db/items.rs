@@ -4,6 +4,7 @@ use libsql::Connection;
 use intrada_core::domain::item::{Item, ItemKind};
 use intrada_core::domain::types::{CreateItem, Tempo, UpdateItem};
 
+use super::col;
 use crate::error::ApiError;
 
 /// Helper: reconstruct Tempo from flattened columns.
@@ -32,19 +33,18 @@ fn parse_kind(s: &str) -> Result<ItemKind, ApiError> {
 
 /// Helper: parse a row from the items table into an Item.
 fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
-    let id: String = row.get(0).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let kind_str: String = row.get(1).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let title: String = row.get(2).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let composer: Option<String> = row.get(3).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let category: Option<String> = row.get(4).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let key: Option<String> = row.get(5).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let tempo_marking: Option<String> =
-        row.get(6).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let tempo_bpm: Option<i64> = row.get(7).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let notes: Option<String> = row.get(8).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let tags_json: String = row.get(9).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let created_at_str: String = row.get(10).map_err(|e| ApiError::Internal(e.to_string()))?;
-    let updated_at_str: String = row.get(11).map_err(|e| ApiError::Internal(e.to_string()))?;
+    let id: String = col!(row, 0)?;
+    let kind_str: String = col!(row, 1)?;
+    let title: String = col!(row, 2)?;
+    let composer: Option<String> = col!(row, 3)?;
+    let category: Option<String> = col!(row, 4)?;
+    let key: Option<String> = col!(row, 5)?;
+    let tempo_marking: Option<String> = col!(row, 6)?;
+    let tempo_bpm: Option<i64> = col!(row, 7)?;
+    let notes: Option<String> = col!(row, 8)?;
+    let tags_json: String = col!(row, 9)?;
+    let created_at_str: String = col!(row, 10)?;
+    let updated_at_str: String = col!(row, 11)?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
