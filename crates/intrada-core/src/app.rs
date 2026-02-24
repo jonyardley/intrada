@@ -131,6 +131,7 @@ impl App for Intrada {
                     .or_else(|| item.composer.clone())
                     .unwrap_or_default(),
             };
+            let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.to_string(),
@@ -148,6 +149,7 @@ impl App for Intrada {
                 created_at: item.created_at.to_rfc3339(),
                 updated_at: item.updated_at.to_rfc3339(),
                 practice,
+                latest_achieved_tempo,
             });
         }
 
@@ -250,16 +252,17 @@ impl App for Intrada {
 pub(crate) fn build_practice_summaries(
     sessions: &[PracticeSession],
 ) -> std::collections::HashMap<String, ItemPracticeSummary> {
-    use crate::model::ScoreHistoryEntry;
+    use crate::model::{ScoreHistoryEntry, TempoHistoryEntry};
     use std::collections::HashMap;
 
-    let mut acc: HashMap<String, (usize, u64, Vec<ScoreHistoryEntry>)> = HashMap::new();
+    let mut acc: HashMap<String, (usize, u64, Vec<ScoreHistoryEntry>, Vec<TempoHistoryEntry>)> =
+        HashMap::new();
 
     for session in sessions {
         for entry in &session.entries {
             let record = acc
                 .entry(entry.item_id.clone())
-                .or_insert_with(|| (0, 0, Vec::new()));
+                .or_insert_with(|| (0, 0, Vec::new(), Vec::new()));
             record.0 += 1;
             record.1 += entry.duration_secs;
 
@@ -270,14 +273,25 @@ pub(crate) fn build_practice_summaries(
                     session_id: session.id.clone(),
                 });
             }
+
+            if let Some(tempo) = entry.achieved_tempo {
+                record.3.push(TempoHistoryEntry {
+                    session_date: session.started_at.to_rfc3339(),
+                    tempo,
+                    session_id: session.id.clone(),
+                });
+            }
         }
     }
 
     acc.into_iter()
         .map(
-            |(item_id, (session_count, total_secs, mut score_history))| {
+            |(item_id, (session_count, total_secs, mut score_history, mut tempo_history))| {
                 score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
                 let latest_score = score_history.first().map(|e| e.score);
+
+                tempo_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
+                let latest_tempo = tempo_history.first().map(|e| e.tempo);
 
                 (
                     item_id,
@@ -286,6 +300,8 @@ pub(crate) fn build_practice_summaries(
                         total_minutes: (total_secs / 60) as u32,
                         latest_score,
                         score_history,
+                        latest_tempo,
+                        tempo_history,
                     },
                 )
             },
@@ -827,6 +843,7 @@ mod tests {
                         rep_target_reached: None,
                         rep_history: None,
                         planned_duration_secs: None,
+                        achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
                     }
                 })
                 .collect();
@@ -965,6 +982,7 @@ mod tests {
                     rep_target_reached: None,
                     rep_history: None,
                     planned_duration_secs: None,
+                    achieved_tempo: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -982,6 +1000,7 @@ mod tests {
                     rep_target_reached: None,
                     rep_history: None,
                     planned_duration_secs: None,
+                    achieved_tempo: None,
                 },
             ],
         });
@@ -991,7 +1010,7 @@ mod tests {
         let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let p2_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
 
-        // p1 has 2 entries totalling 45 minutes, no scores
+        // p1 has 2 entries totalling 45 minutes, no scores, no tempo
         assert_eq!(
             p1_view.practice,
             Some(ItemPracticeSummary {
@@ -999,6 +1018,8 @@ mod tests {
                 total_minutes: 45,
                 latest_score: None,
                 score_history: vec![],
+                latest_tempo: None,
+                tempo_history: vec![],
             })
         );
         // p2 has no entries
@@ -1056,6 +1077,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             }],
         });
 
@@ -1084,6 +1106,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             }],
         });
 
@@ -1152,6 +1175,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             }],
         });
 
@@ -1214,6 +1238,7 @@ mod tests {
                     rep_target_reached: None,
                     rep_history: None,
                     planned_duration_secs: None,
+                    achieved_tempo: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -1231,6 +1256,7 @@ mod tests {
                     rep_target_reached: None,
                     rep_history: None,
                     planned_duration_secs: None,
+                    achieved_tempo: None,
                 },
             ],
         });
@@ -1298,6 +1324,7 @@ mod tests {
                 rep_target_reached: None,
                 rep_history: None,
                 planned_duration_secs: None,
+                achieved_tempo: None,
             }],
         });
 

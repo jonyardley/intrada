@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-02-21*
+*Updated 2026-02-24*
 
 Everything in intrada serves one of three activities a musician does around their
 instrument. This roadmap is organised around those three pillars, not delivery
@@ -24,6 +24,9 @@ any of them without waiting for the others.
 | Drag-and-drop session builder | Done |
 | Composer + tag autocomplete | Done |
 | E2E test suite (Playwright, 30 tests) | Done |
+| Intentional practice micro-cycle (#47) — session + per-item intentions | Done |
+| Focus mode (#48) — minimal UI during active practice | Done |
+| Repetition counter (#49) — consecutive correct attempts per item | Done |
 
 ---
 
@@ -38,7 +41,6 @@ goals, and eventually letting the app decide for you.
 
 | # | Feature | Size |
 |---|---------|------|
-| 47 | **Intentional practice micro-cycle** — set a focus goal before each item, reflect after. Lightweight: one tap minimum, notes optional. Completes the goal-practise-reflect loop. | S |
 | 93 | **Holistic practice loop** — parent issue unifying library, sessions, routines and goals into a coherent flow. | — |
 
 #### Next (4-12 weeks)
@@ -77,8 +79,6 @@ focus, not admin.
 
 | # | Feature | Size |
 |---|---------|------|
-| 48 | **Focus mode** — strip the UI to essentials during active practice. Current item + timer only. Navigation hidden but accessible. | M |
-| 49 | **Repetition counter** — optional per-item counter tracking consecutive correct repetitions toward a configurable target. | M |
 | 52 | **Tempo tracking** — log achieved tempo per item per session, working toward a target BPM. | M |
 
 #### Next (4-12 weeks)

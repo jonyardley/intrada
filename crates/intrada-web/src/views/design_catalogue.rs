@@ -62,6 +62,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         created_at: "2025-01-15".to_string(),
         updated_at: "2025-02-01".to_string(),
         practice: None,
+        latest_achieved_tempo: None,
     };
 
     let sample_exercise = LibraryItemView {
@@ -77,6 +78,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         created_at: "2025-01-10".to_string(),
         updated_at: "2025-01-20".to_string(),
         practice: None,
+        latest_achieved_tempo: None,
     };
 
     let sample_minimal = LibraryItemView {
@@ -92,6 +94,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         created_at: "2025-03-01".to_string(),
         updated_at: "2025-03-01".to_string(),
         practice: None,
+        latest_achieved_tempo: None,
     };
 
     let sample_long_title = LibraryItemView {
@@ -114,6 +117,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         created_at: "2025-02-20".to_string(),
         updated_at: "2025-02-20".to_string(),
         practice: None,
+        latest_achieved_tempo: None,
     };
 
     let chart_data: Vec<DailyPracticeTotal> = (1..=28)
@@ -184,6 +188,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_history: None,
         planned_duration_secs: None,
         planned_duration_display: None,
+        achieved_tempo: None,
     };
     let entry_display = SetlistEntryView {
         id: "entry-2".to_string(),
@@ -202,6 +207,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_history: None,
         planned_duration_secs: None,
         planned_duration_display: None,
+        achieved_tempo: None,
     };
     let entry_drag = SetlistEntryView {
         id: "entry-3".to_string(),
@@ -220,6 +226,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         rep_history: None,
         planned_duration_secs: None,
         planned_duration_display: None,
+        achieved_tempo: None,
     };
 
     view! {

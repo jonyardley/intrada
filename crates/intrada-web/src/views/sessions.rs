@@ -186,6 +186,7 @@ fn SessionRow(
                                     let entry_rep_target = entry.rep_target;
                                     let entry_rep_count = entry.rep_count;
                                     let entry_rep_reached = entry.rep_target_reached.unwrap_or(false);
+                                    let entry_achieved_tempo = entry.achieved_tempo;
                                     view! {
                                         <div class="text-xs">
                                             <div class="flex items-center justify-between">
@@ -205,6 +206,13 @@ fn SessionRow(
                                                         view! {
                                                             <span class={format!("inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-mono {} {}", color, bg)}>
                                                                 {format!("{}/{}", count, target)}
+                                                            </span>
+                                                        }
+                                                    })}
+                                                    {entry_achieved_tempo.map(|tempo| {
+                                                        view! {
+                                                            <span class="inline-flex items-center rounded-md bg-surface-secondary px-1.5 py-0.5 text-xs font-medium text-muted">
+                                                                {format!("\u{266A} {} BPM", tempo)}
                                                             </span>
                                                         }
                                                     })}

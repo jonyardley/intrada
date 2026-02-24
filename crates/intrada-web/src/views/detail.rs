@@ -56,8 +56,10 @@ pub fn DetailView() -> impl IntoView {
         created_at,
         updated_at,
         practice,
+        latest_achieved_tempo: _,
     } = item;
 
+    let tempo_for_history = tempo.clone();
     let edit_href = format!("/library/{}/edit", item_id);
     let id_for_delete = item_id.clone();
     let type_for_badge = item_type;
@@ -191,6 +193,8 @@ pub fn DetailView() -> impl IntoView {
             // Practice summary (spacing between stacked cards)
             {practice.map(|p| {
                 let has_scores = !p.score_history.is_empty();
+                let has_tempo_history = !p.tempo_history.is_empty();
+                let target_tempo = tempo_for_history.clone();
                 view! {
                     <Card>
                         <div class="space-y-4">
@@ -245,6 +249,38 @@ pub fn DetailView() -> impl IntoView {
                                 view! {
                                     <p class="text-xs text-faint">"No confidence scores recorded yet"</p>
                                 }.into_any()
+                            }}
+
+                            // Tempo history (US2)
+                            {if has_tempo_history {
+                                let tempo_history = p.tempo_history;
+                                view! {
+                                    <div>
+                                        <h4 class="field-label mb-2">"Tempo History"</h4>
+                                        {target_tempo.map(|t| {
+                                            view! {
+                                                <p class="text-xs text-muted mb-2">
+                                                    {format!("Target: {}", t)}
+                                                </p>
+                                            }
+                                        })}
+                                        <div class="space-y-1.5">
+                                            {tempo_history.into_iter().map(|entry| {
+                                                let display_date = entry.session_date.split('T').next().unwrap_or(&entry.session_date).to_string();
+                                                view! {
+                                                    <div class="flex items-center justify-between text-sm">
+                                                        <span class="text-muted">{display_date}</span>
+                                                        <span class="inline-flex items-center rounded-md bg-surface-secondary px-1.5 py-0.5 text-xs font-medium text-muted">
+                                                            {format!("\u{266A} {} BPM", entry.tempo)}
+                                                        </span>
+                                                    </div>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    </div>
+                                }.into_any()
+                            } else {
+                                ().into_any()
                             }}
                         </div>
                     </Card>

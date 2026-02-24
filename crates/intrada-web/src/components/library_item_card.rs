@@ -15,13 +15,23 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
         key,
         tempo,
         tags,
+        latest_achieved_tempo,
         ..
     } = item;
 
     let has_subtitle = !subtitle.is_empty();
-    let has_key_or_tempo = key.is_some() || tempo.is_some();
+    let has_key_or_tempo = key.is_some() || tempo.is_some() || latest_achieved_tempo.is_some();
     let has_tags = !tags.is_empty();
     let href = format!("/library/{id}");
+
+    // Build combined tempo display: "♩ 108 / 120 BPM" (achieved / target),
+    // "♩ 108 BPM" (achieved only), or "♩ 120 BPM" (target only)
+    let tempo_display = match (latest_achieved_tempo, &tempo) {
+        (Some(achieved), Some(target)) => Some(format!("{achieved} / {target}")),
+        (Some(achieved), None) => Some(format!("{achieved} BPM")),
+        (None, Some(_)) => None, // handled by existing tempo.map below
+        (None, None) => None,
+    };
 
     view! {
         <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
@@ -48,13 +58,23 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
                                             </span>
                                         }
                                     })}
-                                    {tempo.map(|t| {
-                                        view! {
+                                    {if let Some(combined) = tempo_display {
+                                        // Achieved tempo exists — show combined display
+                                        Some(view! {
                                             <span class="flex items-center gap-1">
-                                                <span aria-hidden="true">"♩"</span>{t}
+                                                <span aria-hidden="true">"♩"</span>{combined}
                                             </span>
-                                        }
-                                    })}
+                                        })
+                                    } else {
+                                        // No achieved tempo — show target only (existing behaviour)
+                                        tempo.map(|t| {
+                                            view! {
+                                                <span class="flex items-center gap-1">
+                                                    <span aria-hidden="true">"♩"</span>{t}
+                                                </span>
+                                            }
+                                        })
+                                    }}
                                 </div>
                             })
                         } else {

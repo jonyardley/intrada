@@ -71,6 +71,7 @@ pub struct LibraryItemView {
     pub created_at: String,
     pub updated_at: String,
     pub practice: Option<ItemPracticeSummary>,
+    pub latest_achieved_tempo: Option<u16>,
 }
 
 /// Practice summary for a library item.
@@ -80,6 +81,8 @@ pub struct ItemPracticeSummary {
     pub total_minutes: u32,
     pub latest_score: Option<u8>,
     pub score_history: Vec<ScoreHistoryEntry>,
+    pub latest_tempo: Option<u16>,
+    pub tempo_history: Vec<TempoHistoryEntry>,
 }
 
 /// A single score data point for an item's progress history.
@@ -87,6 +90,14 @@ pub struct ItemPracticeSummary {
 pub struct ScoreHistoryEntry {
     pub session_date: String,
     pub score: u8,
+    pub session_id: String,
+}
+
+/// A single tempo data point for an item's tempo progress history.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct TempoHistoryEntry {
+    pub session_date: String,
+    pub tempo: u16,
     pub session_id: String,
 }
 
@@ -122,6 +133,7 @@ pub struct SetlistEntryView {
     pub rep_history: Option<Vec<RepAction>>,
     pub planned_duration_secs: Option<u32>,
     pub planned_duration_display: Option<String>,
+    pub achieved_tempo: Option<u16>,
 }
 
 /// View for the in-progress active session.
@@ -192,6 +204,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
                 crate::domain::session::format_duration_display(secs as u64)
             }
         }),
+        achieved_tempo: entry.achieved_tempo,
     }
 }
 
