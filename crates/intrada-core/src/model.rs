@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
@@ -18,6 +20,7 @@ pub struct Model {
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
     pub routines: Vec<Routine>,
+    pub practice_summaries: HashMap<String, ItemPracticeSummary>,
 }
 
 /// Serializable view state sent to shells for rendering.
