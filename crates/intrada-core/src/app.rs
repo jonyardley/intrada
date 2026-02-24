@@ -96,6 +96,7 @@ impl App for Intrada {
             }
             Event::SessionsLoaded { sessions } => {
                 model.sessions = sessions;
+                model.practice_summaries = build_practice_summaries(&model.sessions);
                 crux_core::render::render()
             }
             Event::RoutinesLoaded { routines } => {
@@ -121,7 +122,7 @@ impl App for Intrada {
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for item in &model.items {
-            let practice = compute_practice_summary(&model.sessions, &item.id);
+            let practice = model.practice_summaries.get(&item.id).cloned();
             let subtitle = match item.kind {
                 ItemKind::Piece => item.composer.clone().unwrap_or_default(),
                 ItemKind::Exercise => item
@@ -242,48 +243,54 @@ impl App for Intrada {
     }
 }
 
-fn compute_practice_summary(
+/// Build practice summaries for all items in a single pass over sessions.
+///
+/// Returns a map keyed by item_id. Called once when sessions change,
+/// replacing the old per-item O(M×E) scan that ran on every render.
+pub(crate) fn build_practice_summaries(
     sessions: &[PracticeSession],
-    item_id: &str,
-) -> Option<ItemPracticeSummary> {
+) -> std::collections::HashMap<String, ItemPracticeSummary> {
     use crate::model::ScoreHistoryEntry;
+    use std::collections::HashMap;
 
-    let mut session_count = 0usize;
-    let mut total_secs = 0u64;
-    let mut score_history: Vec<ScoreHistoryEntry> = Vec::new();
+    let mut acc: HashMap<String, (usize, u64, Vec<ScoreHistoryEntry>)> = HashMap::new();
 
     for session in sessions {
         for entry in &session.entries {
-            if entry.item_id == item_id {
-                session_count += 1;
-                total_secs += entry.duration_secs;
+            let record = acc
+                .entry(entry.item_id.clone())
+                .or_insert_with(|| (0, 0, Vec::new()));
+            record.0 += 1;
+            record.1 += entry.duration_secs;
 
-                if let Some(score) = entry.score {
-                    score_history.push(ScoreHistoryEntry {
-                        session_date: session.started_at.to_rfc3339(),
-                        score,
-                        session_id: session.id.clone(),
-                    });
-                }
+            if let Some(score) = entry.score {
+                record.2.push(ScoreHistoryEntry {
+                    session_date: session.started_at.to_rfc3339(),
+                    score,
+                    session_id: session.id.clone(),
+                });
             }
         }
     }
 
-    if session_count == 0 {
-        return None;
-    }
+    acc.into_iter()
+        .map(
+            |(item_id, (session_count, total_secs, mut score_history))| {
+                score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
+                let latest_score = score_history.first().map(|e| e.score);
 
-    // Sort by session date descending (most recent first)
-    score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
-
-    let latest_score = score_history.first().map(|e| e.score);
-
-    Some(ItemPracticeSummary {
-        session_count,
-        total_minutes: (total_secs / 60) as u32,
-        latest_score,
-        score_history,
-    })
+                (
+                    item_id,
+                    ItemPracticeSummary {
+                        session_count,
+                        total_minutes: (total_secs / 60) as u32,
+                        latest_score,
+                        score_history,
+                    },
+                )
+            },
+        )
+        .collect()
 }
 
 fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
@@ -781,7 +788,68 @@ mod tests {
             populate_time.as_millis()
         );
 
-        // Benchmark: view() with 10k items
+        // Populate 500 sessions with 5 entries each (2,500 entries total)
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
+        };
+        let start = std::time::Instant::now();
+        for s in 0..500u32 {
+            let entries: Vec<SetlistEntry> = (0..5u32)
+                .map(|e| {
+                    let item_idx = ((s * 5 + e) % 10_000) as usize;
+                    let (item_id, item_title, item_type) = if item_idx < 5000 {
+                        (
+                            format!("p{item_idx:05}"),
+                            format!("Piece {item_idx}"),
+                            "piece".to_string(),
+                        )
+                    } else {
+                        let idx = item_idx - 5000;
+                        (
+                            format!("e{idx:05}"),
+                            format!("Exercise {idx}"),
+                            "exercise".to_string(),
+                        )
+                    };
+                    SetlistEntry {
+                        id: format!("se{s:04}_{e}"),
+                        item_id,
+                        item_title,
+                        item_type,
+                        position: e as usize,
+                        duration_secs: 300,
+                        status: EntryStatus::Completed,
+                        notes: None,
+                        score: if e % 2 == 0 { Some(3) } else { None },
+                        intention: None,
+                        rep_target: None,
+                        rep_count: None,
+                        rep_target_reached: None,
+                        rep_history: None,
+                        planned_duration_secs: None,
+                    }
+                })
+                .collect();
+            model.sessions.push(PracticeSession {
+                id: format!("sess{s:04}"),
+                started_at: now - chrono::Duration::hours(s as i64 + 1),
+                completed_at: now - chrono::Duration::hours(s as i64),
+                total_duration_secs: 1500,
+                completion_status: CompletionStatus::Completed,
+                session_notes: None,
+                session_intention: None,
+                entries,
+            });
+        }
+        model.practice_summaries = build_practice_summaries(&model.sessions);
+        let session_populate_time = start.elapsed();
+        assert!(
+            session_populate_time.as_millis() < 200,
+            "Populating 500 sessions + cache took {}ms (target: <200ms)",
+            session_populate_time.as_millis()
+        );
+
+        // Benchmark: view() with 10k items + 500 sessions
         let start = std::time::Instant::now();
         let vm = app.view(&model);
         let view_time = start.elapsed();
@@ -917,6 +985,7 @@ mod tests {
                 },
             ],
         });
+        model.practice_summaries = build_practice_summaries(&model.sessions);
 
         let vm = app.view(&model);
         let p1_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
@@ -1018,6 +1087,7 @@ mod tests {
             }],
         });
 
+        model.practice_summaries = build_practice_summaries(&model.sessions);
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1085,6 +1155,7 @@ mod tests {
             }],
         });
 
+        model.practice_summaries = build_practice_summaries(&model.sessions);
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1164,6 +1235,7 @@ mod tests {
             ],
         });
 
+        model.practice_summaries = build_practice_summaries(&model.sessions);
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();
@@ -1229,6 +1301,7 @@ mod tests {
             }],
         });
 
+        model.practice_summaries = build_practice_summaries(&model.sessions);
         let vm = app.view(&model);
         let p1 = vm.items.iter().find(|i| i.id == "p1").unwrap();
         let practice = p1.practice.as_ref().unwrap();

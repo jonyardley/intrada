@@ -982,6 +982,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             model.sessions.push(practice_session.clone());
+            model.practice_summaries = crate::app::build_practice_summaries(&model.sessions);
             model.session_status = SessionStatus::Idle;
             model.last_error = None;
 
@@ -1030,6 +1031,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
+            model.practice_summaries = crate::app::build_practice_summaries(&model.sessions);
             model.last_error = None;
 
             Command::all([
