@@ -33,6 +33,11 @@ export interface SetlistEntry {
   duration_secs: number;
   status: "Completed" | "Skipped" | "NotAttempted";
   notes: string | null;
+  score?: number | null;
+  intention?: string | null;
+  rep_target?: number | null;
+  rep_count?: number | null;
+  planned_duration_secs?: number | null;
 }
 
 export interface PracticeSession {

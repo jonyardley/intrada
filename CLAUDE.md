@@ -236,6 +236,8 @@ These documents should stay in sync. When any one changes, check the others:
 - N/A — no new data storage; reads existing precomputed `ItemPracticeSummary` (151-tempo-progress-charts)
 - Rust stable (1.89.0), 2021 edition + crux_core 0.17.0-rc2, serde 1, chrono 0.4, ulid 1, axum 0.8, libsql 0.9, leptos 0.8.x (CSR), Tailwind CSS v4 (152-goal-setting)
 - Turso (managed libsql/SQLite) via HTTP protocol — new `goals` table with flat columns (152-goal-setting)
+- Rust stable (1.89.0), 2021 edition + crux_core 0.17.0-rc2, serde 1, chrono 0.4, leptos 0.8.x (CSR), Tailwind CSS v4 (153-weekly-practice-summary)
+- N/A — no new persistence; reads existing `PracticeSession` and `Item` data (153-weekly-practice-summary)
 
 ## Recent Changes
 - 151-tempo-progress-charts: Added Rust stable (1.89.0), 2021 edition + leptos 0.8.x (CSR), intrada-core (model types), Tailwind CSS v4
