@@ -120,6 +120,17 @@ export const STUB_ROUTINE: Routine = {
   updated_at: NOW,
 };
 
+export interface Goal {
+  id: string;
+  title: string;
+  kind: Record<string, unknown>;
+  status: "active" | "completed" | "archived";
+  deadline: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
 export function createSeedItems(): Item[] {
   return [structuredClone(STUB_PIECE), structuredClone(STUB_EXERCISE)];
 }
