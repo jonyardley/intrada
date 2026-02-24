@@ -133,7 +133,7 @@ pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routi
              FROM routines r
              LEFT JOIN routine_entries e ON r.id = e.routine_id
              WHERE r.user_id = ?1
-             ORDER BY r.created_at ASC, e.position ASC",
+             ORDER BY r.created_at ASC, r.id, e.position ASC",
             libsql::params![user_id],
         )
         .await?;

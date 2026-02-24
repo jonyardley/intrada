@@ -284,7 +284,7 @@ pub async fn list_sessions(
              FROM sessions s
              LEFT JOIN setlist_entries e ON s.id = e.session_id
              WHERE s.user_id = ?1
-             ORDER BY s.started_at DESC, e.position ASC",
+             ORDER BY s.started_at DESC, s.id, e.position ASC",
             libsql::params![user_id],
         )
         .await?;
