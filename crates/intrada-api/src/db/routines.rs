@@ -29,14 +29,10 @@ pub struct UpdateRoutineRequest {
     pub entries: Vec<CreateRoutineEntry>,
 }
 
-/// Column list for routine_entries (excludes routine_id — not needed in parsed output).
+/// Column list for routine_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
 
-/// Parse entry columns starting at `offset` into a RoutineEntry.
-///
-/// Expects 5 sequential columns (see [`ENTRY_COLUMNS`]):
-///   offset+0  id, offset+1  item_id, offset+2  item_title,
-///   offset+3  item_type, offset+4  position
+/// Parse 5 sequential entry columns (see [`ENTRY_COLUMNS`]) starting at `offset`.
 fn parse_entry_cols(row: &libsql::Row, offset: i32) -> Result<RoutineEntry, ApiError> {
     let id: String = col!(row, offset)?;
     let item_id: String = col!(row, offset + 1)?;
@@ -117,7 +113,6 @@ fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<RoutineE
 
 pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
     // Single query with LEFT JOIN replaces N+1 (1 routine query + N entry queries).
-    // Routine columns: indices 0-3, Entry columns: indices 4-8
     let mut rows = conn
         .query(
             "SELECT r.id, r.name, r.created_at, r.updated_at,
@@ -148,7 +143,6 @@ pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routi
             last_routine_id = Some(routine_id);
         }
 
-        // Parse entry columns (offset 4) — None when LEFT JOIN produces NULLs
         if let Some(entry) = joined_row_to_entry(&row, 4)? {
             if let Some(current) = routines.last_mut() {
                 current.entries.push(entry);

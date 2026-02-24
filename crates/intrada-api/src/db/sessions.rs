@@ -83,25 +83,15 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
-/// Parse an entry row into a SetlistEntry.
-///
-/// Expects columns in this order (no session_id):
-///   id, item_id, item_title, item_type, position, duration_secs, status,
-///   notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history
+/// Parse an entry row into a SetlistEntry (standalone SELECT, offset 0).
 fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     parse_entry_cols(row, 0)
 }
 
-/// Column list for setlist_entries (excludes session_id — not needed in parsed output).
+/// Column list for setlist_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history";
 
-/// Parse entry columns starting at `offset` into a SetlistEntry.
-///
-/// Expects 14 sequential columns (see [`ENTRY_COLUMNS`]):
-///   offset+0  id, offset+1  item_id, offset+2  item_title, offset+3  item_type,
-///   offset+4  position, offset+5  duration_secs, offset+6  status, offset+7  notes,
-///   offset+8  score, offset+9  intention, offset+10 rep_target, offset+11 rep_count,
-///   offset+12 rep_target_reached, offset+13 rep_history
+/// Parse 14 sequential entry columns (see [`ENTRY_COLUMNS`]) starting at `offset`.
 fn parse_entry_cols(row: &libsql::Row, offset: i32) -> Result<SetlistEntry, ApiError> {
     let id: String = col!(row, offset)?;
     let item_id: String = col!(row, offset + 1)?;
@@ -212,7 +202,6 @@ pub async fn list_sessions(
     user_id: &str,
 ) -> Result<Vec<PracticeSession>, ApiError> {
     // Single query with LEFT JOIN replaces N+1 (1 session query + N entry queries).
-    // Session columns: indices 0-6, Entry columns: indices 7-20
     let mut rows = conn
         .query(
             "SELECT s.id, s.session_notes, s.started_at, s.completed_at,
@@ -246,7 +235,6 @@ pub async fn list_sessions(
             last_session_id = Some(session_id);
         }
 
-        // Parse entry columns (offset 7) — None when LEFT JOIN produces NULLs
         if let Some(entry) = joined_row_to_entry(&row, 7)? {
             if let Some(current) = sessions.last_mut() {
                 current.entries.push(entry);
