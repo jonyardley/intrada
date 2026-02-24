@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use libsql::Connection;
 use serde::{Deserialize, Serialize};
@@ -83,30 +85,25 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
-/// Parse an entry row into a SetlistEntry (standalone SELECT, offset 0).
-fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
-    parse_entry_cols(row, 0)
-}
-
 /// Column list for setlist_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history";
 
-/// Parse 14 sequential entry columns (see [`ENTRY_COLUMNS`]) starting at `offset`.
-fn parse_entry_cols(row: &libsql::Row, offset: i32) -> Result<SetlistEntry, ApiError> {
-    let id: String = col!(row, offset)?;
-    let item_id: String = col!(row, offset + 1)?;
-    let item_title: String = col!(row, offset + 2)?;
-    let item_type: String = col!(row, offset + 3)?;
-    let position: i64 = col!(row, offset + 4)?;
-    let duration_secs: i64 = col!(row, offset + 5)?;
-    let status_str: String = col!(row, offset + 6)?;
-    let notes: Option<String> = col!(row, offset + 7)?;
-    let score: Option<i64> = col!(row, offset + 8)?;
-    let intention: Option<String> = col!(row, offset + 9)?;
-    let rep_target: Option<i64> = col!(row, offset + 10)?;
-    let rep_count: Option<i64> = col!(row, offset + 11)?;
-    let rep_target_reached: Option<i64> = col!(row, offset + 12)?;
-    let rep_history_raw: Option<String> = col!(row, offset + 13)?;
+/// Parse an entry row into a SetlistEntry (columns 0–13 matching [`ENTRY_COLUMNS`]).
+fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
+    let id: String = col!(row, 0)?;
+    let item_id: String = col!(row, 1)?;
+    let item_title: String = col!(row, 2)?;
+    let item_type: String = col!(row, 3)?;
+    let position: i64 = col!(row, 4)?;
+    let duration_secs: i64 = col!(row, 5)?;
+    let status_str: String = col!(row, 6)?;
+    let notes: Option<String> = col!(row, 7)?;
+    let score: Option<i64> = col!(row, 8)?;
+    let intention: Option<String> = col!(row, 9)?;
+    let rep_target: Option<i64> = col!(row, 10)?;
+    let rep_count: Option<i64> = col!(row, 11)?;
+    let rep_target_reached: Option<i64> = col!(row, 12)?;
+    let rep_history_raw: Option<String> = col!(row, 13)?;
     let rep_history = match rep_history_raw {
         Some(json_str) => Some(
             serde_json::from_str(&json_str)
@@ -187,58 +184,64 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
     })
 }
 
-/// Parse an entry from a LEFT JOIN row where entry columns start at `offset`.
-/// Returns `None` when the entry id column is NULL (session has no entries).
-fn joined_row_to_entry(row: &libsql::Row, offset: i32) -> Result<Option<SetlistEntry>, ApiError> {
-    let entry_id: Option<String> = col!(row, offset)?;
-    if entry_id.is_none() {
-        return Ok(None);
-    }
-    Ok(Some(parse_entry_cols(row, offset)?))
-}
-
 pub async fn list_sessions(
     conn: &Connection,
     user_id: &str,
 ) -> Result<Vec<PracticeSession>, ApiError> {
-    // Single query with LEFT JOIN replaces N+1 (1 session query + N entry queries).
+    // Query 1: all sessions for this user.
     let mut rows = conn
         .query(
-            "SELECT s.id, s.session_notes, s.started_at, s.completed_at,
-                    s.total_duration_secs, s.completion_status, s.session_intention,
-                    e.id, e.item_id, e.item_title, e.item_type, e.position,
-                    e.duration_secs, e.status, e.notes, e.score, e.intention,
-                    e.rep_target, e.rep_count, e.rep_target_reached, e.rep_history
-             FROM sessions s
-             LEFT JOIN setlist_entries e ON s.id = e.session_id
-             WHERE s.user_id = ?1
-             ORDER BY s.started_at DESC, s.id, e.position ASC",
+            "SELECT id, session_notes, started_at, completed_at,
+                    total_duration_secs, completion_status, session_intention
+             FROM sessions WHERE user_id = ?1
+             ORDER BY started_at DESC",
             libsql::params![user_id],
         )
         .await?;
 
-    // Group joined rows by session id, preserving order
     let mut sessions: Vec<PracticeSession> = Vec::new();
-    let mut last_session_id: Option<String> = None;
-
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        let session_id: String = col!(row, 0)?;
+        sessions.push(row_to_session_without_entries(&row)?);
+    }
 
-        // If this is a new session, parse the session columns and push
-        if last_session_id.as_ref() != Some(&session_id) {
-            let session = row_to_session_without_entries(&row)?;
-            sessions.push(session);
-            last_session_id = Some(session_id);
-        }
+    if sessions.is_empty() {
+        return Ok(sessions);
+    }
 
-        if let Some(entry) = joined_row_to_entry(&row, 7)? {
-            if let Some(current) = sessions.last_mut() {
-                current.entries.push(entry);
-            }
+    // Query 2: all entries for those sessions in one batch.
+    // session_id is appended after ENTRY_COLUMNS so row_to_entry reads columns 0–13.
+    let mut entry_rows = conn
+        .query(
+            &format!(
+                "SELECT {ENTRY_COLUMNS}, session_id FROM setlist_entries
+                 WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?1)
+                 ORDER BY session_id, position ASC"
+            ),
+            libsql::params![user_id],
+        )
+        .await?;
+
+    let mut entries_by_session: HashMap<String, Vec<SetlistEntry>> = HashMap::new();
+    while let Some(row) = entry_rows
+        .next()
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?
+    {
+        let entry = row_to_entry(&row)?;
+        let session_id: String = col!(row, 14)?;
+        entries_by_session
+            .entry(session_id)
+            .or_default()
+            .push(entry);
+    }
+
+    for session in &mut sessions {
+        if let Some(entries) = entries_by_session.remove(&session.id) {
+            session.entries = entries;
         }
     }
 
