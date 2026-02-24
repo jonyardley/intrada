@@ -1,4 +1,6 @@
-use intrada_core::analytics::AnalyticsView;
+use intrada_core::analytics::{
+    AnalyticsView, Direction, NeglectedItem, ScoreChange, WeeklySummary,
+};
 use intrada_core::ViewModel;
 use leptos::prelude::*;
 use leptos_router::components::A;
@@ -60,40 +62,31 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
         daily_totals,
         top_items,
         score_trends,
+        neglected_items,
+        score_changes,
     } = analytics;
 
-    // Format weekly time display
-    let hours = weekly.total_minutes / 60;
-    let mins = weekly.total_minutes % 60;
-    let time_display = if hours > 0 {
-        format!("{}h {}m", hours, mins)
-    } else {
-        format!("{}m", mins)
-    };
-
     let streak_display = format!("{}", streak.current_days);
-    let session_display = format!("{}", weekly.session_count);
 
     view! {
         <div class="space-y-6">
-            // ── US1: Overview Stats ──────────────────────────────
-            <div class="grid grid-cols-3 gap-3">
-                <StatCard
-                    title="This Week"
-                    value=time_display
-                    subtitle="practice time"
-                />
-                <StatCard
-                    title="Sessions"
-                    value=session_display
-                    subtitle="this week"
-                />
-                <StatCard
-                    title="Streak"
-                    value=streak_display
-                    subtitle="days"
-                />
-            </div>
+            // ── Streak stat card (single, no longer in 3-column grid) ──
+            <StatCard
+                title="Streak"
+                value=streak_display
+                subtitle="days"
+            />
+
+            // ── Weekly Summary Card ──────────────────────────────
+            <Card>
+                <h3 class="card-title">"This Week"</h3>
+                <WeekComparisonRow weekly=weekly.clone() />
+                // ── Neglected + Score Changes (2-col on desktop, stacked on mobile)
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <NeglectedItemsList items=neglected_items />
+                    <ScoreChangesList changes=score_changes />
+                </div>
+            </Card>
 
             // ── US2: Practice History Chart ──────────────────────
             <Card>
@@ -232,17 +225,176 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
     }
 }
 
+/// Renders 3 comparison metrics (time, sessions, items) in a grid.
+/// Each metric shows the current value, a directional arrow with comparison text,
+/// and a label. When `has_prev_week_data` is false, shows "no data last week".
+#[component]
+fn WeekComparisonRow(weekly: WeeklySummary) -> impl IntoView {
+    let hours = weekly.total_minutes / 60;
+    let mins = weekly.total_minutes % 60;
+    let time_display = if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else {
+        format!("{}m", mins)
+    };
+    let session_display = format!("{}", weekly.session_count);
+    let items_display = format!("{}", weekly.items_covered);
+
+    view! {
+        <div class="grid grid-cols-3 gap-3">
+            <ComparisonMetric
+                value=time_display
+                label="Practice Time"
+                direction=weekly.time_direction.clone()
+                prev_value=format_prev_time(weekly.prev_total_minutes)
+                has_prev=weekly.has_prev_week_data
+            />
+            <ComparisonMetric
+                value=session_display
+                label="Sessions"
+                direction=weekly.sessions_direction.clone()
+                prev_value=format!("{}", weekly.prev_session_count)
+                has_prev=weekly.has_prev_week_data
+            />
+            <ComparisonMetric
+                value=items_display
+                label="Items"
+                direction=weekly.items_direction.clone()
+                prev_value=format!("{}", weekly.prev_items_covered)
+                has_prev=weekly.has_prev_week_data
+            />
+        </div>
+    }
+}
+
+/// Single comparison metric: current value + direction arrow + label.
+#[component]
+fn ComparisonMetric(
+    #[prop(into)] value: String,
+    #[prop(into)] label: String,
+    direction: Direction,
+    #[prop(into)] prev_value: String,
+    has_prev: bool,
+) -> impl IntoView {
+    let (arrow, color) = match direction {
+        Direction::Up => ("\u{2191}", "text-success-text"), // ↑
+        Direction::Down => ("\u{2193}", "text-muted"),      // ↓
+        Direction::Same => ("\u{2192}", "text-muted"),      // →
+    };
+
+    view! {
+        <div class="text-center">
+            <div class="text-lg font-semibold text-primary">{value}</div>
+            <div class=format!("text-xs {color}")>
+                {if has_prev {
+                    format!("{arrow} from {prev_value}")
+                } else {
+                    "no data last week".to_string()
+                }}
+            </div>
+            <div class="field-label mt-1">{label}</div>
+        </div>
+    }
+}
+
+/// Renders up to 5 neglected items with "X days ago" or "never practised" labels.
+/// Hidden when the list is empty (FR-007).
+#[component]
+fn NeglectedItemsList(items: Vec<NeglectedItem>) -> impl IntoView {
+    view! {
+        {if items.is_empty() {
+            None
+        } else {
+            Some(view! {
+                <div>
+                    <h4 class="card-title">"Needs attention"</h4>
+                    <ul class="space-y-1.5">
+                        {items.into_iter().map(|item| {
+                            let subtitle = match item.days_since_practice {
+                                None => "never practised".to_string(),
+                                Some(days) => format!("{days} days ago"),
+                            };
+                            view! {
+                                <li class="flex items-center justify-between">
+                                    <span class="text-sm text-primary truncate">{item.item_title}</span>
+                                    <span class="text-xs text-muted shrink-0 ml-2">{subtitle}</span>
+                                </li>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </ul>
+                </div>
+            })
+        }}
+    }
+}
+
+/// Renders up to 5 score changes with "X → Y (+N)" or "new" labels.
+/// Neutral framing only — no words like "worse" or "declined" (FR-009).
+/// Hidden when empty (FR-007).
+#[component]
+fn ScoreChangesList(changes: Vec<ScoreChange>) -> impl IntoView {
+    view! {
+        {if changes.is_empty() {
+            None
+        } else {
+            Some(view! {
+                <div>
+                    <h4 class="card-title">"Improvements"</h4>
+                    <ul class="space-y-1.5">
+                        {changes.into_iter().map(|change| {
+                            let transition = if change.is_new {
+                                format!("{}/5", change.current_score)
+                            } else {
+                                format!(
+                                    "{} \u{2192} {}",
+                                    change.previous_score.unwrap_or(0),
+                                    change.current_score
+                                )
+                            };
+                            let delta_text = if change.is_new {
+                                "new".to_string()
+                            } else if change.delta > 0 {
+                                format!("(+{})", change.delta)
+                            } else {
+                                format!("({})", change.delta)
+                            };
+                            view! {
+                                <li class="flex items-center justify-between">
+                                    <span class="text-sm text-primary truncate">{change.item_title}</span>
+                                    <div class="flex items-center gap-2 shrink-0 ml-2">
+                                        <span class="text-sm text-secondary">{transition}</span>
+                                        <span class="text-sm text-accent-text">{delta_text}</span>
+                                    </div>
+                                </li>
+                            }
+                        }).collect::<Vec<_>>()}
+                    </ul>
+                </div>
+            })
+        }}
+    }
+}
+
+/// Format previous week's time display.
+fn format_prev_time(minutes: u32) -> String {
+    let hours = minutes / 60;
+    let mins = minutes % 60;
+    if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else {
+        format!("{}m", mins)
+    }
+}
+
 /// Skeleton loading state with animated placeholder cards.
 #[component]
 fn SkeletonDashboard() -> impl IntoView {
     view! {
         <div class="space-y-6 animate-pulse">
-            // Stat card skeletons
-            <div class="grid grid-cols-3 gap-3">
-                <div class="bg-surface-secondary rounded-xl h-24"></div>
-                <div class="bg-surface-secondary rounded-xl h-24"></div>
-                <div class="bg-surface-secondary rounded-xl h-24"></div>
-            </div>
+            // Streak stat card skeleton
+            <div class="bg-surface-secondary rounded-xl h-24"></div>
+            // Weekly summary card skeleton
+            <div class="bg-surface-secondary rounded-xl h-32"></div>
             // Chart skeleton
             <div class="bg-surface-secondary rounded-xl h-52"></div>
             // List skeletons

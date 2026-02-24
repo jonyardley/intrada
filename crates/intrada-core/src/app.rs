@@ -217,7 +217,7 @@ impl App for Intrada {
             None
         } else {
             let today = chrono::Utc::now().date_naive();
-            Some(compute_analytics(&model.sessions, today))
+            Some(compute_analytics(&model.sessions, &model.items, today))
         };
 
         // Build routine views
