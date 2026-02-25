@@ -110,7 +110,7 @@ pub fn App() -> impl IntoView {
 fn AuthenticatedApp() -> impl IntoView {
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
-    let is_loading: IsLoading = RwSignal::new(false);
+    let is_loading: IsLoading = RwSignal::new(true);
     let is_submitting: IsSubmitting = RwSignal::new(false);
 
     let focus_mode: FocusMode = RwSignal::new(false);
