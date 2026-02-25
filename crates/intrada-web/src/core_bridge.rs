@@ -1,6 +1,8 @@
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
+use std::cell::Cell;
 use std::future::Future;
+use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 
 use intrada_core::domain::goal::{Goal, GoalStatus};
@@ -45,23 +47,34 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
     serde_json::from_str(&json).ok()
 }
 
-/// Fetch library and session data from the API on app startup.
+/// Number of parallel API fetches launched by [`fetch_initial_data`].
+/// Keep in sync with the number of `spawn_local` blocks below.
+const INITIAL_FETCH_COUNT: u32 = 4;
+
+/// Fetch all data from the API on app startup.
 ///
-/// Spawns two async tasks (library + sessions) that call the API and
-/// dispatch the results into the Crux core.
+/// Spawns four parallel async tasks (items, sessions, routines, goals).
+/// A shared counter ensures `is_loading` stays true until ALL fetches
+/// complete — preventing the flickering that occurred when each fetch
+/// independently toggled the signal.
 pub fn fetch_initial_data(
     view_model: &RwSignal<ViewModel>,
     is_loading: &IsLoading,
     is_submitting: &IsSubmitting,
 ) {
+    // Track outstanding fetches. WASM is single-threaded so Rc<Cell> is safe.
+    // IMPORTANT: keep INITIAL_FETCH_COUNT in sync with the number of spawn_local blocks.
+    let remaining = Rc::new(Cell::new(INITIAL_FETCH_COUNT));
+    is_loading.set(true);
+
     // Fetch library data (items)
     {
         let core = leptos::prelude::expect_context::<SharedCore>();
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
+        let remaining = Rc::clone(&remaining);
         spawn_local(async move {
-            loading.set(true);
             match api_client::fetch_items().await {
                 Ok(items) => {
                     let core_ref = core.borrow();
@@ -74,7 +87,11 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
-            loading.set(false);
+            let n = remaining.get().saturating_sub(1);
+            remaining.set(n);
+            if n == 0 {
+                loading.set(false);
+            }
         });
     }
 
@@ -84,6 +101,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
+        let remaining = Rc::clone(&remaining);
         spawn_local(async move {
             match api_client::fetch_sessions().await {
                 Ok(sessions) => {
@@ -97,6 +115,11 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
+            let n = remaining.get().saturating_sub(1);
+            remaining.set(n);
+            if n == 0 {
+                loading.set(false);
+            }
         });
     }
 
@@ -106,6 +129,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
+        let remaining = Rc::clone(&remaining);
         spawn_local(async move {
             match api_client::fetch_routines().await {
                 Ok(routines) => {
@@ -119,6 +143,11 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
+            let n = remaining.get().saturating_sub(1);
+            remaining.set(n);
+            if n == 0 {
+                loading.set(false);
+            }
         });
     }
 
@@ -128,6 +157,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
+        let remaining = Rc::clone(&remaining);
         spawn_local(async move {
             match api_client::fetch_goals().await {
                 Ok(goals) => {
@@ -140,6 +170,11 @@ pub fn fetch_initial_data(
                     let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
+            }
+            let n = remaining.get().saturating_sub(1);
+            remaining.set(n);
+            if n == 0 {
+                loading.set(false);
             }
         });
     }
