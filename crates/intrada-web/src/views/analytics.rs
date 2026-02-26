@@ -5,7 +5,7 @@ use intrada_core::ViewModel;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use crate::components::{Card, LineChart, PageHeading, StatCard};
+use crate::components::{Card, LineChart, PageHeading, SkeletonBlock, StatCard};
 use intrada_web::core_bridge::fetch_initial_data;
 use intrada_web::types::{IsLoading, IsSubmitting};
 
@@ -392,14 +392,14 @@ fn SkeletonDashboard() -> impl IntoView {
     view! {
         <div class="space-y-6 animate-pulse">
             // Streak stat card skeleton
-            <div class="bg-surface-secondary rounded-xl h-24"></div>
+            <SkeletonBlock height="h-24" />
             // Weekly summary card skeleton
-            <div class="bg-surface-secondary rounded-xl h-32"></div>
+            <SkeletonBlock height="h-32" />
             // Chart skeleton
-            <div class="bg-surface-secondary rounded-xl h-52"></div>
+            <SkeletonBlock height="h-52" />
             // List skeletons
-            <div class="bg-surface-secondary rounded-xl h-48"></div>
-            <div class="bg-surface-secondary rounded-xl h-36"></div>
+            <SkeletonBlock height="h-48" />
+            <SkeletonBlock height="h-36" />
         </div>
     }
 }

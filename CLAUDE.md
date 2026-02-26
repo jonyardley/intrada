@@ -164,6 +164,10 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 | `TypeBadge`     | Piece/Exercise type pill                  |
 | `Toast`         | Notification banner                       |
 | `ErrorBanner`   | Persistent error display                  |
+| `SkeletonLine`  | Pulsing text-line placeholder             |
+| `SkeletonBlock` | Pulsing rectangular placeholder           |
+| `SkeletonItemCard` | Library item card skeleton             |
+| `SkeletonCardList` | Generic list page skeleton (sessions, routines, goals) |
 
 ### Rules for new UI work
 

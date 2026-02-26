@@ -4,7 +4,7 @@ use leptos_router::components::A;
 use intrada_core::model::GoalView;
 use intrada_core::ViewModel;
 
-use crate::components::{Card, LibraryItemCard};
+use crate::components::{Card, LibraryItemCard, SkeletonItemCard};
 use intrada_web::types::IsLoading;
 
 #[component]
@@ -57,9 +57,12 @@ pub fn LibraryListView() -> impl IntoView {
                     {move || {
                         if is_loading.get() {
                             view! {
-                                <div class="flex justify-center py-12">
-                                    <div class="animate-spin rounded-full h-8 w-8 border-2 border-accent-focus border-t-transparent"></div>
-                                </div>
+                                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <SkeletonItemCard />
+                                    <SkeletonItemCard />
+                                    <SkeletonItemCard />
+                                    <SkeletonItemCard />
+                                </ul>
                             }.into_any()
                         } else {
                             let vm = view_model.get();

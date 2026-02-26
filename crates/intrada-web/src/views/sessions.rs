@@ -3,7 +3,7 @@ use leptos_router::components::A;
 
 use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card, PageHeading};
+use crate::components::{Button, ButtonVariant, Card, PageHeading, SkeletonCardList};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -21,9 +21,7 @@ pub fn SessionsListView() -> impl IntoView {
             {move || {
                 if is_loading.get() {
                     return view! {
-                        <div class="flex justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-2 border-accent-focus border-t-transparent"></div>
-                        </div>
+                        <SkeletonCardList count=3 />
                     }.into_any();
                 }
 

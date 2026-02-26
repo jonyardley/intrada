@@ -8,8 +8,9 @@ use intrada_core::{LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 use crate::components::{
     Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DropIndicator,
     FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading, ProgressRing,
-    RoutineSaveForm, SetlistEntryRow, StatCard, TagInput, TempoProgressChart, TextArea, TextField,
-    Toast, ToastVariant, TransitionPrompt, TypeBadge, TypeTabs,
+    RoutineSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard,
+    SkeletonLine, StatCard, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
+    TransitionPrompt, TypeBadge, TypeTabs,
 };
 use intrada_web::types::ItemType;
 
@@ -334,6 +335,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#drag-drop" class="text-accent-text hover:text-white">"Drag & Drop"</a></li>
                             <li><a href="#routine-save" class="text-accent-text hover:text-white">"Routine Save Form"</a></li>
                             <li><a href="#loading" class="text-accent-text hover:text-white">"Loading States"</a></li>
+                            <li><a href="#skeletons" class="text-accent-text hover:text-white">"Skeletons"</a></li>
                             <li><a href="#shell" class="text-accent-text hover:text-white">"Shell Components"</a></li>
                             <li><a href="#accessibility" class="text-accent-text hover:text-white">"Accessibility"</a></li>
                         </ul>
@@ -1218,6 +1220,42 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 </div>
                                 <span class="text-sm text-gray-400">"Preparing session..."</span>
                             </div>
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Skeleton Components ──────────────────────────────────
+            <section id="skeletons">
+                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Skeleton Components"</h3>
+                <Card>
+                    <div class="space-y-8">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonLine"</p>
+                            <p class="text-xs text-faint mb-3">"Text placeholders at various widths."</p>
+                            <div class="space-y-2">
+                                <SkeletonLine />
+                                <SkeletonLine width="w-1/2" />
+                                <SkeletonLine width="w-1/4" height="h-3" />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonBlock"</p>
+                            <p class="text-xs text-faint mb-3">"Card/chart placeholder blocks."</p>
+                            <SkeletonBlock height="h-24" />
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonItemCard"</p>
+                            <p class="text-xs text-faint mb-3">"Matches LibraryItemCard layout."</p>
+                            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <SkeletonItemCard />
+                                <SkeletonItemCard />
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonCardList"</p>
+                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines, goals."</p>
+                            <SkeletonCardList count=3 />
                         </div>
                     </div>
                 </Card>
