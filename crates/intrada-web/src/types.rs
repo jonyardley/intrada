@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crux_core::Core;
-use leptos::prelude::{Get, RwSignal, Set};
+use leptos::prelude::{Get, GetUntracked, RwSignal, Set};
 use send_wrapper::SendWrapper;
 
 use intrada_core::Intrada;
@@ -25,6 +25,9 @@ impl IsLoading {
     pub fn get(&self) -> bool {
         self.0.get()
     }
+    pub fn get_untracked(&self) -> bool {
+        self.0.get_untracked()
+    }
     pub fn set(&self, val: bool) {
         self.0.set(val);
     }
@@ -43,6 +46,9 @@ impl IsSubmitting {
     }
     pub fn get(&self) -> bool {
         self.0.get()
+    }
+    pub fn get_untracked(&self) -> bool {
+        self.0.get_untracked()
     }
     pub fn set(&self, val: bool) {
         self.0.set(val);

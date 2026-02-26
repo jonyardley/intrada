@@ -1242,7 +1242,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonBlock"</p>
                             <p class="text-xs text-faint mb-3">"Card/chart placeholder blocks."</p>
-                            <SkeletonBlock height="h-24".to_string() />
+                            <SkeletonBlock height="h-24" />
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonItemCard"</p>

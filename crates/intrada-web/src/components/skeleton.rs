@@ -18,8 +18,8 @@ pub fn SkeletonLine(
 #[component]
 pub fn SkeletonBlock(
     /// Height as a Tailwind class, e.g. "h-24", "h-48"
-    #[prop(into)]
-    height: String,
+    #[prop(default = "h-24")]
+    height: &'static str,
 ) -> impl IntoView {
     let class = format!("{height} rounded-xl bg-surface-secondary animate-pulse");
     view! { <div class=class></div> }
@@ -53,7 +53,7 @@ pub fn SkeletonCardList(
 ) -> impl IntoView {
     let cards: Vec<_> = (0..count)
         .map(|_| {
-            view! { <div class="rounded-xl bg-surface-secondary h-28"></div> }
+            view! { <SkeletonBlock height="h-28" /> }
         })
         .collect();
 

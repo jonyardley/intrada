@@ -57,6 +57,12 @@ const INITIAL_FETCH_COUNT: u32 = 4;
 /// A shared counter ensures `is_loading` stays true until ALL fetches
 /// complete — preventing the flickering that occurred when each fetch
 /// independently toggled the signal.
+///
+/// **Note:** If this function is called again (e.g. via error retry) while
+/// the previous batch is still in-flight, the old batch's counter is orphaned
+/// and may set `is_loading = false` prematurely. This is acceptable for now
+/// because (a) the retry scenario is rare and (b) WASM is single-threaded
+/// so there is no data race — at worst the user sees a brief flicker.
 pub fn fetch_initial_data(
     view_model: &RwSignal<ViewModel>,
     is_loading: &IsLoading,
@@ -67,13 +73,26 @@ pub fn fetch_initial_data(
     let remaining = Rc::new(Cell::new(INITIAL_FETCH_COUNT));
     is_loading.set(true);
 
+    // Shared closure: decrement counter and clear loading when all fetches complete.
+    let mark_done = {
+        let remaining = Rc::clone(&remaining);
+        let loading = *is_loading;
+        Rc::new(move || {
+            let n = remaining.get().saturating_sub(1);
+            remaining.set(n);
+            if n == 0 {
+                loading.set(false);
+            }
+        })
+    };
+
     // Fetch library data (items)
     {
         let core = leptos::prelude::expect_context::<SharedCore>();
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
-        let remaining = Rc::clone(&remaining);
+        let done = Rc::clone(&mark_done);
         spawn_local(async move {
             match api_client::fetch_items().await {
                 Ok(items) => {
@@ -87,11 +106,7 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
-            let n = remaining.get().saturating_sub(1);
-            remaining.set(n);
-            if n == 0 {
-                loading.set(false);
-            }
+            done();
         });
     }
 
@@ -101,7 +116,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
-        let remaining = Rc::clone(&remaining);
+        let done = Rc::clone(&mark_done);
         spawn_local(async move {
             match api_client::fetch_sessions().await {
                 Ok(sessions) => {
@@ -115,11 +130,7 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
-            let n = remaining.get().saturating_sub(1);
-            remaining.set(n);
-            if n == 0 {
-                loading.set(false);
-            }
+            done();
         });
     }
 
@@ -129,7 +140,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
-        let remaining = Rc::clone(&remaining);
+        let done = Rc::clone(&mark_done);
         spawn_local(async move {
             match api_client::fetch_routines().await {
                 Ok(routines) => {
@@ -143,11 +154,7 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
-            let n = remaining.get().saturating_sub(1);
-            remaining.set(n);
-            if n == 0 {
-                loading.set(false);
-            }
+            done();
         });
     }
 
@@ -157,7 +164,7 @@ pub fn fetch_initial_data(
         let vm = *view_model;
         let loading = *is_loading;
         let submitting = *is_submitting;
-        let remaining = Rc::clone(&remaining);
+        let done = Rc::clone(&mark_done);
         spawn_local(async move {
             match api_client::fetch_goals().await {
                 Ok(goals) => {
@@ -171,11 +178,7 @@ pub fn fetch_initial_data(
                     process_effects(&core_ref, effects, &vm, &loading, &submitting);
                 }
             }
-            let n = remaining.get().saturating_sub(1);
-            remaining.set(n);
-            if n == 0 {
-                loading.set(false);
-            }
+            done();
         });
     }
 }
