@@ -21,9 +21,9 @@ pub fn TypeTabs(
         let is_active = active.get() == tab;
         let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-accent-focus focus:ring-offset-0";
         if is_active {
-            format!("{base} bg-accent text-white shadow-sm")
+            format!("{base} bg-accent text-primary shadow-sm")
         } else if is_interactive {
-            format!("{base} text-muted hover:text-white cursor-pointer")
+            format!("{base} text-muted hover:text-primary cursor-pointer")
         } else {
             // Display-only inactive
             format!("{base} text-faint cursor-default")

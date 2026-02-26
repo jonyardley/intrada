@@ -53,7 +53,7 @@ pub fn AppHeader() -> impl IntoView {
                             if is_library_active() {
                                 "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_library_active() { Some("page") } else { None }
@@ -66,7 +66,7 @@ pub fn AppHeader() -> impl IntoView {
                             if is_sessions_active() {
                                 "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
@@ -79,7 +79,7 @@ pub fn AppHeader() -> impl IntoView {
                             if is_routines_active() {
                                 "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
@@ -92,7 +92,7 @@ pub fn AppHeader() -> impl IntoView {
                             if is_goals_active() {
                                 "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
@@ -105,7 +105,7 @@ pub fn AppHeader() -> impl IntoView {
                             if is_analytics_active() {
                                 "text-sm font-medium text-accent-text motion-safe:transition-colors"
                             } else {
-                                "text-sm font-medium text-secondary hover:text-white motion-safe:transition-colors"
+                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
                             }
                         }
                         attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
@@ -119,7 +119,7 @@ pub fn AppHeader() -> impl IntoView {
                                     clerk_bindings::sign_out().await;
                                 });
                             }
-                            class="text-sm font-medium text-muted hover:text-white motion-safe:transition-colors ml-2"
+                            class="text-sm font-medium text-muted hover:text-primary motion-safe:transition-colors ml-2"
                             aria-label="Sign out"
                         >
                             "Sign out"

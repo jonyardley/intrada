@@ -152,7 +152,7 @@ fn AuthenticatedApp() -> impl IntoView {
     }
 
     view! {
-        <div class="relative z-0 min-h-screen text-white">
+        <div class="relative z-0 min-h-screen text-primary">
             // Header — hidden in focus mode
             <Show when=move || !focus_mode.get()>
                 <AppHeader />
@@ -234,7 +234,7 @@ fn AuthenticatedApp() -> impl IntoView {
 #[component]
 fn AuthLoadingScreen() -> impl IntoView {
     view! {
-        <div class="relative z-0 min-h-screen text-white flex items-center justify-center">
+        <div class="relative z-0 min-h-screen text-primary flex items-center justify-center">
             <div class="text-center">
                 <h1 class="text-3xl font-bold tracking-tight mb-2">"Intrada"</h1>
                 <p class="text-muted">"Loading..."</p>
@@ -257,7 +257,7 @@ fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
     };
 
     view! {
-        <div class="relative z-0 min-h-screen text-white flex items-center justify-center px-4">
+        <div class="relative z-0 min-h-screen text-primary flex items-center justify-center px-4">
             <div class="glass-chrome rounded-2xl p-8 sm:p-12 max-w-sm w-full text-center">
                 <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">"Intrada"</h1>
                 <p class="text-muted mb-8">"Your music practice companion"</p>
@@ -273,7 +273,7 @@ fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
                     disabled=move || signing_in.get() || auth_error.get()
                     class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl
                            bg-surface-secondary hover:bg-surface-hover border border-border-default
-                           text-white font-medium transition-all duration-200
+                           text-primary font-medium transition-all duration-200
                            disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Sign in with Google"
                 >

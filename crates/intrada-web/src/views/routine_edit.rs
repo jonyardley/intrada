@@ -206,7 +206,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                                                 Some(view! {
                                                                     <button
                                                                         type="button"
-                                                                        class="text-xs text-muted hover:text-white p-1"
+                                                                        class="text-xs text-muted hover:text-primary p-1"
                                                                         title="Move up"
                                                                         on:click=move |_| {
                                                                             entries.update(|e| {
@@ -228,7 +228,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                                                 Some(view! {
                                                                     <button
                                                                         type="button"
-                                                                        class="text-xs text-muted hover:text-white p-1"
+                                                                        class="text-xs text-muted hover:text-primary p-1"
                                                                         title="Move down"
                                                                         on:click=move |_| {
                                                                             entries.update(|e| {

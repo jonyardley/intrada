@@ -202,7 +202,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                                     3 => "bg-warning/60",
                                                     4 => "bg-success/60",
                                                     5 => "bg-success/80",
-                                                    _ => "bg-gray-400/40",
+                                                    _ => "bg-muted/40",
                                                 };
                                                 view! {
                                                     <div

@@ -177,9 +177,9 @@ pub fn SessionSummary() -> impl IntoView {
                                                                 let core_n = core_score_btns.clone();
                                                                 let is_selected = current_score == Some(n);
                                                                 let btn_class = if is_selected {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-accent text-white shadow-md motion-safe:transition-all motion-safe:duration-150"
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-accent text-primary shadow-md motion-safe:transition-all motion-safe:duration-150"
                                                                 } else {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-surface-primary text-white/60 hover:bg-surface-hover hover:text-white motion-safe:transition-all motion-safe:duration-150"
+                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-surface-primary text-primary/60 hover:bg-surface-hover hover:text-primary motion-safe:transition-all motion-safe:duration-150"
                                                                 };
                                                                 let aria_label = format!("Rate confidence {} out of 5", n);
                                                                 let aria_pressed = if is_selected { "true" } else { "false" };
