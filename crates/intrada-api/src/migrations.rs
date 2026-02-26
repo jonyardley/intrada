@@ -198,6 +198,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0028_index_goals_user_id",
         "CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);",
     ),
+    (
+        "0029_index_items_user_created",
+        "CREATE INDEX IF NOT EXISTS idx_items_user_created ON items(user_id, created_at DESC);",
+    ),
+    (
+        "0030_index_sessions_user_started",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_user_started ON sessions(user_id, started_at DESC);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
