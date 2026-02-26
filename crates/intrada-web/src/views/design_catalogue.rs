@@ -279,65 +279,65 @@ pub fn DesignCatalogue() -> impl IntoView {
     view! {
         <div class="space-y-section">
             <PageHeading text="Design System Catalogue" />
-            <p class="text-sm text-gray-400 -mt-4 mb-8">
+            <p class="text-sm text-muted -mt-4 mb-8">
                 "Dev-only reference of all UI components and design tokens. "
-                "See " <code class="text-xs bg-white/10 rounded px-1 py-0.5">"specs/design-system.md"</code> " for full documentation."
+                "See " <code class="text-xs bg-surface-input rounded px-1 py-0.5">"specs/design-system.md"</code> " for full documentation."
             </p>
 
             // ── Table of Contents ─────────────────────────────────────
             <nav class="glass-card p-4 sm:p-6" aria-label="Catalogue navigation">
-                <h3 class="text-sm font-semibold text-white mb-3">"Contents"</h3>
+                <h3 class="text-sm font-semibold text-primary mb-3">"Contents"</h3>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1">
                     <div>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-1">"Tokens"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-1">"Tokens"</p>
                         <ul class="space-y-0.5 text-sm">
-                            <li><a href="#colours" class="text-accent-text hover:text-white">"Colours"</a></li>
-                            <li><a href="#typography" class="text-accent-text hover:text-white">"Typography"</a></li>
-                            <li><a href="#spacing" class="text-accent-text hover:text-white">"Spacing"</a></li>
-                            <li><a href="#badges-tokens" class="text-accent-text hover:text-white">"Badge Colours"</a></li>
-                            <li><a href="#radii" class="text-accent-text hover:text-white">"Radii"</a></li>
-                            <li><a href="#utilities" class="text-accent-text hover:text-white">"Composite Utilities"</a></li>
+                            <li><a href="#colours" class="text-accent-text hover:text-primary">"Colours"</a></li>
+                            <li><a href="#typography" class="text-accent-text hover:text-primary">"Typography"</a></li>
+                            <li><a href="#spacing" class="text-accent-text hover:text-primary">"Spacing"</a></li>
+                            <li><a href="#badges-tokens" class="text-accent-text hover:text-primary">"Badge Colours"</a></li>
+                            <li><a href="#radii" class="text-accent-text hover:text-primary">"Radii"</a></li>
+                            <li><a href="#utilities" class="text-accent-text hover:text-primary">"Composite Utilities"</a></li>
                         </ul>
                     </div>
                     <div>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-1">"Components"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-1">"Components"</p>
                         <ul class="space-y-0.5 text-sm">
-                            <li><a href="#glass-card" class="text-accent-text hover:text-white">"Glass Card"</a></li>
-                            <li><a href="#stat-card" class="text-accent-text hover:text-white">"Stat Card"</a></li>
-                            <li><a href="#library-item-card" class="text-accent-text hover:text-white">"Library Item Card"</a></li>
-                            <li><a href="#buttons" class="text-accent-text hover:text-white">"Buttons"</a></li>
-                            <li><a href="#type-badge" class="text-accent-text hover:text-white">"Type Badge"</a></li>
-                            <li><a href="#type-tabs" class="text-accent-text hover:text-white">"Type Tabs"</a></li>
-                            <li><a href="#toast" class="text-accent-text hover:text-white">"Toast"</a></li>
-                            <li><a href="#error-banner" class="text-accent-text hover:text-white">"Error Banner"</a></li>
-                            <li><a href="#progress" class="text-accent-text hover:text-white">"Progress Bar"</a></li>
+                            <li><a href="#glass-card" class="text-accent-text hover:text-primary">"Glass Card"</a></li>
+                            <li><a href="#stat-card" class="text-accent-text hover:text-primary">"Stat Card"</a></li>
+                            <li><a href="#library-item-card" class="text-accent-text hover:text-primary">"Library Item Card"</a></li>
+                            <li><a href="#buttons" class="text-accent-text hover:text-primary">"Buttons"</a></li>
+                            <li><a href="#type-badge" class="text-accent-text hover:text-primary">"Type Badge"</a></li>
+                            <li><a href="#type-tabs" class="text-accent-text hover:text-primary">"Type Tabs"</a></li>
+                            <li><a href="#toast" class="text-accent-text hover:text-primary">"Toast"</a></li>
+                            <li><a href="#error-banner" class="text-accent-text hover:text-primary">"Error Banner"</a></li>
+                            <li><a href="#progress" class="text-accent-text hover:text-primary">"Progress Bar"</a></li>
                         </ul>
                     </div>
                     <div>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-1">"Forms & Data"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-1">"Forms & Data"</p>
                         <ul class="space-y-0.5 text-sm">
-                            <li><a href="#text-field" class="text-accent-text hover:text-white">"Text Field"</a></li>
-                            <li><a href="#text-area" class="text-accent-text hover:text-white">"Text Area"</a></li>
-                            <li><a href="#form-states" class="text-accent-text hover:text-white">"Form Validation States"</a></li>
-                            <li><a href="#autocomplete" class="text-accent-text hover:text-white">"Autocomplete"</a></li>
-                            <li><a href="#tag-input" class="text-accent-text hover:text-white">"Tag Input"</a></li>
-                            <li><a href="#field-label" class="text-accent-text hover:text-white">"Field Label"</a></li>
-                            <li><a href="#form-field-error" class="text-accent-text hover:text-white">"Form Field Error"</a></li>
-                            <li><a href="#line-chart" class="text-accent-text hover:text-white">"Line Chart"</a></li>
-                            <li><a href="#tempo-chart" class="text-accent-text hover:text-white">"Tempo Progress Chart"</a></li>
+                            <li><a href="#text-field" class="text-accent-text hover:text-primary">"Text Field"</a></li>
+                            <li><a href="#text-area" class="text-accent-text hover:text-primary">"Text Area"</a></li>
+                            <li><a href="#form-states" class="text-accent-text hover:text-primary">"Form Validation States"</a></li>
+                            <li><a href="#autocomplete" class="text-accent-text hover:text-primary">"Autocomplete"</a></li>
+                            <li><a href="#tag-input" class="text-accent-text hover:text-primary">"Tag Input"</a></li>
+                            <li><a href="#field-label" class="text-accent-text hover:text-primary">"Field Label"</a></li>
+                            <li><a href="#form-field-error" class="text-accent-text hover:text-primary">"Form Field Error"</a></li>
+                            <li><a href="#line-chart" class="text-accent-text hover:text-primary">"Line Chart"</a></li>
+                            <li><a href="#tempo-chart" class="text-accent-text hover:text-primary">"Tempo Progress Chart"</a></li>
                         </ul>
                     </div>
                     <div>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-1">"Session & Shell"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-1">"Session & Shell"</p>
                         <ul class="space-y-0.5 text-sm">
-                            <li><a href="#navigation" class="text-accent-text hover:text-white">"Navigation"</a></li>
-                            <li><a href="#setlist-entry" class="text-accent-text hover:text-white">"Setlist Entry"</a></li>
-                            <li><a href="#drag-drop" class="text-accent-text hover:text-white">"Drag & Drop"</a></li>
-                            <li><a href="#routine-save" class="text-accent-text hover:text-white">"Routine Save Form"</a></li>
-                            <li><a href="#loading" class="text-accent-text hover:text-white">"Loading States"</a></li>
-                            <li><a href="#skeletons" class="text-accent-text hover:text-white">"Skeletons"</a></li>
-                            <li><a href="#shell" class="text-accent-text hover:text-white">"Shell Components"</a></li>
-                            <li><a href="#accessibility" class="text-accent-text hover:text-white">"Accessibility"</a></li>
+                            <li><a href="#navigation" class="text-accent-text hover:text-primary">"Navigation"</a></li>
+                            <li><a href="#setlist-entry" class="text-accent-text hover:text-primary">"Setlist Entry"</a></li>
+                            <li><a href="#drag-drop" class="text-accent-text hover:text-primary">"Drag & Drop"</a></li>
+                            <li><a href="#routine-save" class="text-accent-text hover:text-primary">"Routine Save Form"</a></li>
+                            <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
+                            <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
+                            <li><a href="#shell" class="text-accent-text hover:text-primary">"Shell Components"</a></li>
+                            <li><a href="#accessibility" class="text-accent-text hover:text-primary">"Accessibility"</a></li>
                         </ul>
                     </div>
                 </div>
@@ -349,110 +349,110 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Colour Palette ────────────────────────────────────────
             <section id="colours">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Colour Palette"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Colour Palette"</h3>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     // Surfaces
                     <div class="space-y-2">
-                        <p class="text-xs font-medium text-gray-400 uppercase">"Surfaces"</p>
+                        <p class="text-xs font-medium text-muted uppercase">"Surfaces"</p>
                         <div class="h-12 rounded-lg bg-surface-primary border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-primary"</p>
+                        <p class="text-xs text-faint">"surface-primary"</p>
                         <div class="h-12 rounded-lg bg-surface-secondary border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-secondary"</p>
+                        <p class="text-xs text-faint">"surface-secondary"</p>
                         <div class="h-12 rounded-lg bg-surface-chrome border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-chrome"</p>
+                        <p class="text-xs text-faint">"surface-chrome"</p>
                         <div class="h-12 rounded-lg bg-surface-fallback border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-fallback"</p>
+                        <p class="text-xs text-faint">"surface-fallback"</p>
                         <div class="h-12 rounded-lg bg-surface-hover border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-hover"</p>
+                        <p class="text-xs text-faint">"surface-hover"</p>
                         <div class="h-12 rounded-lg bg-surface-input border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"surface-input"</p>
+                        <p class="text-xs text-faint">"surface-input"</p>
                     </div>
 
                     // Accent
                     <div class="space-y-2">
-                        <p class="text-xs font-medium text-gray-400 uppercase">"Accent"</p>
+                        <p class="text-xs font-medium text-muted uppercase">"Accent"</p>
                         <div class="h-12 rounded-lg bg-accent"></div>
-                        <p class="text-xs text-gray-500">"accent"</p>
+                        <p class="text-xs text-faint">"accent"</p>
                         <div class="h-12 rounded-lg bg-accent-hover"></div>
-                        <p class="text-xs text-gray-500">"accent-hover"</p>
+                        <p class="text-xs text-faint">"accent-hover"</p>
                         <div class="h-12 rounded-lg bg-accent-text"></div>
-                        <p class="text-xs text-gray-500">"accent-text"</p>
+                        <p class="text-xs text-faint">"accent-text"</p>
                         <div class="h-12 rounded-lg bg-accent-focus"></div>
-                        <p class="text-xs text-gray-500">"accent-focus"</p>
+                        <p class="text-xs text-faint">"accent-focus"</p>
 
-                        <p class="text-xs font-medium text-gray-400 uppercase pt-2">"Warm Accent"</p>
+                        <p class="text-xs font-medium text-muted uppercase pt-2">"Warm Accent"</p>
                         <div class="h-12 rounded-lg bg-warm-accent"></div>
-                        <p class="text-xs text-gray-500">"warm-accent"</p>
+                        <p class="text-xs text-faint">"warm-accent"</p>
                         <div class="h-12 rounded-lg bg-warm-accent-hover"></div>
-                        <p class="text-xs text-gray-500">"warm-accent-hover"</p>
+                        <p class="text-xs text-faint">"warm-accent-hover"</p>
                         <div class="h-12 rounded-lg bg-warm-accent-text"></div>
-                        <p class="text-xs text-gray-500">"warm-accent-text"</p>
+                        <p class="text-xs text-faint">"warm-accent-text"</p>
                         <div class="h-12 rounded-lg bg-warm-accent-surface border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"warm-accent-surface"</p>
+                        <p class="text-xs text-faint">"warm-accent-surface"</p>
                     </div>
 
                     // Semantic colours
                     <div class="space-y-2">
-                        <p class="text-xs font-medium text-gray-400 uppercase">"Success"</p>
+                        <p class="text-xs font-medium text-muted uppercase">"Success"</p>
                         <div class="h-12 rounded-lg bg-success"></div>
-                        <p class="text-xs text-gray-500">"success"</p>
+                        <p class="text-xs text-faint">"success"</p>
                         <div class="h-12 rounded-lg bg-success-hover"></div>
-                        <p class="text-xs text-gray-500">"success-hover"</p>
+                        <p class="text-xs text-faint">"success-hover"</p>
                         <div class="h-12 rounded-lg bg-success-text"></div>
-                        <p class="text-xs text-gray-500">"success-text"</p>
+                        <p class="text-xs text-faint">"success-text"</p>
                         <div class="h-12 rounded-lg bg-success-surface border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"success-surface"</p>
+                        <p class="text-xs text-faint">"success-surface"</p>
 
-                        <p class="text-xs font-medium text-gray-400 uppercase pt-2">"Warning"</p>
+                        <p class="text-xs font-medium text-muted uppercase pt-2">"Warning"</p>
                         <div class="h-12 rounded-lg bg-warning"></div>
-                        <p class="text-xs text-gray-500">"warning"</p>
+                        <p class="text-xs text-faint">"warning"</p>
                         <div class="h-12 rounded-lg bg-warning-text"></div>
-                        <p class="text-xs text-gray-500">"warning-text"</p>
+                        <p class="text-xs text-faint">"warning-text"</p>
                         <div class="h-12 rounded-lg bg-warning-surface border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"warning-surface"</p>
+                        <p class="text-xs text-faint">"warning-surface"</p>
 
-                        <p class="text-xs font-medium text-gray-400 uppercase pt-2">"Info"</p>
+                        <p class="text-xs font-medium text-muted uppercase pt-2">"Info"</p>
                         <div class="h-12 rounded-lg bg-info"></div>
-                        <p class="text-xs text-gray-500">"info"</p>
+                        <p class="text-xs text-faint">"info"</p>
                         <div class="h-12 rounded-lg bg-info-text"></div>
-                        <p class="text-xs text-gray-500">"info-text"</p>
+                        <p class="text-xs text-faint">"info-text"</p>
                         <div class="h-12 rounded-lg bg-info-surface border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"info-surface"</p>
+                        <p class="text-xs text-faint">"info-surface"</p>
                     </div>
 
                     // Danger + Borders + Progress
                     <div class="space-y-2">
-                        <p class="text-xs font-medium text-gray-400 uppercase">"Danger"</p>
+                        <p class="text-xs font-medium text-muted uppercase">"Danger"</p>
                         <div class="h-12 rounded-lg bg-danger"></div>
-                        <p class="text-xs text-gray-500">"danger (coral)"</p>
+                        <p class="text-xs text-faint">"danger (coral)"</p>
                         <div class="h-12 rounded-lg bg-danger-hover"></div>
-                        <p class="text-xs text-gray-500">"danger-hover"</p>
+                        <p class="text-xs text-faint">"danger-hover"</p>
                         <div class="h-12 rounded-lg bg-danger-text"></div>
-                        <p class="text-xs text-gray-500">"danger-text"</p>
+                        <p class="text-xs text-faint">"danger-text"</p>
                         <div class="h-12 rounded-lg bg-danger-surface border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"danger-surface"</p>
+                        <p class="text-xs text-faint">"danger-surface"</p>
 
-                        <p class="text-xs font-medium text-gray-400 uppercase pt-2">"Borders"</p>
+                        <p class="text-xs font-medium text-muted uppercase pt-2">"Borders"</p>
                         <div class="h-12 rounded-lg border-2 border-border-default"></div>
-                        <p class="text-xs text-gray-500">"border-default"</p>
+                        <p class="text-xs text-faint">"border-default"</p>
                         <div class="h-12 rounded-lg border-2 border-border-card"></div>
-                        <p class="text-xs text-gray-500">"border-card"</p>
+                        <p class="text-xs text-faint">"border-card"</p>
                         <div class="h-12 rounded-lg border-2 border-border-input"></div>
-                        <p class="text-xs text-gray-500">"border-input"</p>
+                        <p class="text-xs text-faint">"border-input"</p>
 
-                        <p class="text-xs font-medium text-gray-400 uppercase pt-2">"Progress"</p>
+                        <p class="text-xs font-medium text-muted uppercase pt-2">"Progress"</p>
                         <div class="h-12 rounded-lg bg-progress-track border border-border-card"></div>
-                        <p class="text-xs text-gray-500">"progress-track"</p>
+                        <p class="text-xs text-faint">"progress-track"</p>
                         <div class="h-12 rounded-lg bg-progress-fill"></div>
-                        <p class="text-xs text-gray-500">"progress-fill"</p>
+                        <p class="text-xs text-faint">"progress-fill"</p>
                         <div class="h-12 rounded-lg bg-progress-complete"></div>
-                        <p class="text-xs text-gray-500">"progress-complete"</p>
+                        <p class="text-xs text-faint">"progress-complete"</p>
                     </div>
                 </div>
 
                 // Text colour samples
                 <div class="mt-6 space-y-1">
-                    <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Text Colours"</p>
+                    <p class="text-xs font-medium text-muted uppercase mb-2">"Text Colours"</p>
                     <p class="text-text-primary">"text-primary — Headings and titles"</p>
                     <p class="text-text-secondary">"text-secondary — Body text"</p>
                     <p class="text-text-label">"text-label — Form labels"</p>
@@ -469,19 +469,19 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Typography ────────────────────────────────────────────
             <section id="typography">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Typography"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Typography"</h3>
                 <Card>
                     <div class="space-y-3">
-                        <h1 class="text-3xl font-bold text-white font-heading">"Heading 1 — 3xl bold serif"</h1>
-                        <h2 class="text-2xl font-bold text-white font-heading">"Heading 2 — 2xl bold serif"</h2>
-                        <h3 class="text-lg font-semibold text-white">"Heading 3 — lg semibold sans"</h3>
-                        <p class="text-base text-gray-300">"Body text — base / gray-300"</p>
-                        <p class="text-sm text-gray-400">"Small text — sm / gray-400"</p>
-                        <p class="text-xs text-gray-500">"Extra small — xs / gray-500"</p>
-                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">"Label style — xs medium uppercase tracking-wider"</p>
+                        <h1 class="text-3xl font-bold text-primary font-heading">"Heading 1 — 3xl bold serif"</h1>
+                        <h2 class="text-2xl font-bold text-primary font-heading">"Heading 2 — 2xl bold serif"</h2>
+                        <h3 class="text-lg font-semibold text-primary">"Heading 3 — lg semibold sans"</h3>
+                        <p class="text-base text-secondary">"Body text — base / gray-300"</p>
+                        <p class="text-sm text-muted">"Small text — sm / gray-400"</p>
+                        <p class="text-xs text-faint">"Extra small — xs / gray-500"</p>
+                        <p class="text-xs font-medium text-muted uppercase tracking-wider">"Label style — xs medium uppercase tracking-wider"</p>
                         <div class="pt-2 border-t border-border-default">
-                            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">"Time display — mono tabular (session timer, metronome)"</p>
-                            <p class="text-4xl sm:text-6xl font-mono text-white">"12:34"</p>
+                            <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">"Time display — mono tabular (session timer, metronome)"</p>
+                            <p class="text-4xl sm:text-6xl font-mono text-primary">"12:34"</p>
                         </div>
                     </div>
                 </Card>
@@ -489,34 +489,34 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Spacing Tokens ────────────────────────────────────────
             <section id="spacing">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Spacing Tokens"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Spacing Tokens"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Semantic spacing scale mapped to the 4px base grid. Use these for component padding and gaps."</p>
+                    <p class="text-xs text-faint mb-4">"Semantic spacing scale mapped to the 4px base grid. Use these for component padding and gaps."</p>
                     <div class="space-y-3">
                         <div class="flex items-center gap-3">
                             <div class="w-[0.75rem] h-4 bg-accent-focus rounded-sm shrink-0"></div>
-                            <code class="text-xs text-gray-400 w-40">"card-compact (12px)"</code>
-                            <span class="text-xs text-gray-500">"Stat cards, small elements"</span>
+                            <code class="text-xs text-muted w-40">"card-compact (12px)"</code>
+                            <span class="text-xs text-faint">"Stat cards, small elements"</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="w-[1rem] h-4 bg-accent-focus rounded-sm shrink-0"></div>
-                            <code class="text-xs text-gray-400 w-40">"card (16px)"</code>
-                            <span class="text-xs text-gray-500">"Standard card padding"</span>
+                            <code class="text-xs text-muted w-40">"card (16px)"</code>
+                            <span class="text-xs text-faint">"Standard card padding"</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="w-[1.5rem] h-4 bg-accent-focus rounded-sm shrink-0"></div>
-                            <code class="text-xs text-gray-400 w-40">"card-comfortable (24px)"</code>
-                            <span class="text-xs text-gray-500">"sm+ breakpoint card padding"</span>
+                            <code class="text-xs text-muted w-40">"card-comfortable (24px)"</code>
+                            <span class="text-xs text-faint">"sm+ breakpoint card padding"</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="w-[3rem] h-4 bg-accent-focus rounded-sm shrink-0"></div>
-                            <code class="text-xs text-gray-400 w-40">"section (48px)"</code>
-                            <span class="text-xs text-gray-500">"Between catalogue sections"</span>
+                            <code class="text-xs text-muted w-40">"section (48px)"</code>
+                            <span class="text-xs text-faint">"Between catalogue sections"</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="w-[4rem] h-4 bg-accent-focus rounded-sm shrink-0"></div>
-                            <code class="text-xs text-gray-400 w-40">"section-lg (64px)"</code>
-                            <span class="text-xs text-gray-500">"Major section breaks"</span>
+                            <code class="text-xs text-muted w-40">"section-lg (64px)"</code>
+                            <span class="text-xs text-faint">"Major section breaks"</span>
                         </div>
                     </div>
                 </Card>
@@ -524,29 +524,29 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Badge Colours ─────────────────────────────────────────
             <section id="badges-tokens">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Badge Colours"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Badge Colours"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Rebalanced for equal visual weight. Piece uses accent-derived tones, exercise uses warm-accent-derived tones."</p>
+                    <p class="text-xs text-faint mb-4">"Rebalanced for equal visual weight. Piece uses accent-derived tones, exercise uses warm-accent-derived tones."</p>
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div class="space-y-2 text-center">
                             <div class="h-12 rounded-lg bg-badge-piece-bg border border-border-card"></div>
-                            <p class="text-xs text-gray-500">"badge-piece-bg"</p>
+                            <p class="text-xs text-faint">"badge-piece-bg"</p>
                         </div>
                         <div class="space-y-2 text-center">
                             <div class="h-12 rounded-lg flex items-center justify-center">
                                 <span class="text-badge-piece-text font-medium">"Piece Text"</span>
                             </div>
-                            <p class="text-xs text-gray-500">"badge-piece-text"</p>
+                            <p class="text-xs text-faint">"badge-piece-text"</p>
                         </div>
                         <div class="space-y-2 text-center">
                             <div class="h-12 rounded-lg bg-badge-exercise-bg border border-border-card"></div>
-                            <p class="text-xs text-gray-500">"badge-exercise-bg"</p>
+                            <p class="text-xs text-faint">"badge-exercise-bg"</p>
                         </div>
                         <div class="space-y-2 text-center">
                             <div class="h-12 rounded-lg flex items-center justify-center">
                                 <span class="text-badge-exercise-text font-medium">"Exercise Text"</span>
                             </div>
-                            <p class="text-xs text-gray-500">"badge-exercise-text"</p>
+                            <p class="text-xs text-faint">"badge-exercise-text"</p>
                         </div>
                     </div>
                 </Card>
@@ -554,28 +554,28 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Radius Tokens ─────────────────────────────────────────
             <section id="radii">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Radius Tokens"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Radius Tokens"</h3>
                 <Card>
                     <div class="flex flex-wrap gap-6 items-end">
                         <div class="text-center space-y-2">
                             <div class="w-20 h-20 bg-surface-hover border border-border-card rounded-card"></div>
-                            <p class="text-xs text-gray-500">"radius-card"</p>
+                            <p class="text-xs text-faint">"radius-card"</p>
                         </div>
                         <div class="text-center space-y-2">
                             <div class="w-20 h-20 bg-surface-hover border border-border-card rounded-button"></div>
-                            <p class="text-xs text-gray-500">"radius-button"</p>
+                            <p class="text-xs text-faint">"radius-button"</p>
                         </div>
                         <div class="text-center space-y-2">
                             <div class="w-20 h-20 bg-surface-hover border border-border-card rounded-input"></div>
-                            <p class="text-xs text-gray-500">"radius-input"</p>
+                            <p class="text-xs text-faint">"radius-input"</p>
                         </div>
                         <div class="text-center space-y-2">
                             <div class="w-20 h-20 bg-surface-hover border border-border-card rounded-badge"></div>
-                            <p class="text-xs text-gray-500">"radius-badge"</p>
+                            <p class="text-xs text-faint">"radius-badge"</p>
                         </div>
                         <div class="text-center space-y-2">
                             <div class="w-20 h-20 bg-surface-hover border border-border-card rounded-pill"></div>
-                            <p class="text-xs text-gray-500">"radius-pill"</p>
+                            <p class="text-xs text-faint">"radius-pill"</p>
                         </div>
                     </div>
                 </Card>
@@ -583,28 +583,28 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Composite Utilities ───────────────────────────────────
             <section id="utilities">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Composite Utilities"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Composite Utilities"</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <div class="glass-card p-4">
-                            <p class="text-sm text-gray-300">"Content inside glass-card"</p>
+                            <p class="text-sm text-secondary">"Content inside glass-card"</p>
                         </div>
-                        <p class="text-xs text-gray-500 text-center">"glass-card"</p>
-                        <p class="text-xs text-gray-600 text-center">"Glassmorphism + fallback + border + shadow"</p>
+                        <p class="text-xs text-faint text-center">"glass-card"</p>
+                        <p class="text-xs text-faint text-center">"Glassmorphism + fallback + border + shadow"</p>
                     </div>
                     <div class="space-y-2">
                         <div class="glass-card-active p-4">
-                            <p class="text-sm text-gray-300">"Active card — currently practicing"</p>
+                            <p class="text-sm text-secondary">"Active card — currently practicing"</p>
                         </div>
-                        <p class="text-xs text-gray-500 text-center">"glass-card-active"</p>
-                        <p class="text-xs text-gray-600 text-center">"Accent border + glow for active practice item"</p>
+                        <p class="text-xs text-faint text-center">"glass-card-active"</p>
+                        <p class="text-xs text-faint text-center">"Accent border + glow for active practice item"</p>
                     </div>
                     <div class="space-y-2">
                         <div class="glass-chrome border border-border-default p-4">
-                            <p class="text-sm text-gray-300">"Content inside glass-chrome"</p>
+                            <p class="text-sm text-secondary">"Content inside glass-chrome"</p>
                         </div>
-                        <p class="text-xs text-gray-500 text-center">"glass-chrome"</p>
-                        <p class="text-xs text-gray-600 text-center">"Neutral chrome for nav bars"</p>
+                        <p class="text-xs text-faint text-center">"glass-chrome"</p>
+                        <p class="text-xs text-faint text-center">"Neutral chrome for nav bars"</p>
                     </div>
                     <div class="space-y-2">
                         <input
@@ -613,8 +613,8 @@ pub fn DesignCatalogue() -> impl IntoView {
                             placeholder="Content inside input-base"
                             readonly
                         />
-                        <p class="text-xs text-gray-500 text-center">"input-base"</p>
-                        <p class="text-xs text-gray-600 text-center">"Border + bg + focus ring + sizing"</p>
+                        <p class="text-xs text-faint text-center">"input-base"</p>
+                        <p class="text-xs text-faint text-center">"Border + bg + focus ring + sizing"</p>
                     </div>
                 </div>
             </section>
@@ -625,33 +625,33 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Glass Card ────────────────────────────────────────────
             <section id="glass-card">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Glass Card"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Glass Card"</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card>
-                        <p class="text-sm text-gray-300">"Default glass-card with standard padding."</p>
+                        <p class="text-sm text-secondary">"Default glass-card with standard padding."</p>
                     </Card>
                     <Card>
-                        <h3 class="text-lg font-semibold text-white mb-2">"With heading"</h3>
-                        <p class="text-sm text-gray-400">"Card content with heading and body text."</p>
+                        <h3 class="text-lg font-semibold text-primary mb-2">"With heading"</h3>
+                        <p class="text-sm text-muted">"Card content with heading and body text."</p>
                     </Card>
                     <Card>
-                        <h3 class="text-lg font-semibold text-white mb-3">"With divider"</h3>
+                        <h3 class="text-lg font-semibold text-primary mb-3">"With divider"</h3>
                         <div class="border-b border-border-default mb-3"></div>
-                        <p class="text-sm text-gray-300">"Content below a horizontal divider."</p>
+                        <p class="text-sm text-secondary">"Content below a horizontal divider."</p>
                         <div class="border-b border-border-default my-3"></div>
-                        <p class="text-xs text-gray-500">"Footer-style content in the card."</p>
+                        <p class="text-xs text-faint">"Footer-style content in the card."</p>
                     </Card>
                     <div class="glass-card-active p-4 sm:p-6">
-                        <h3 class="text-lg font-semibold text-white mb-2">"Active card"</h3>
-                        <p class="text-sm text-gray-400">"Currently practicing this item. Accent border + subtle glow."</p>
+                        <h3 class="text-lg font-semibold text-primary mb-2">"Active card"</h3>
+                        <p class="text-sm text-muted">"Currently practicing this item. Accent border + subtle glow."</p>
                     </div>
                 </div>
             </section>
 
             // ── Stat Cards ────────────────────────────────────────────
             <section id="stat-card">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Stat Card"</h3>
-                <p class="text-xs text-gray-500 mb-3">"Compact padding (12px) so the stat value dominates."</p>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Stat Card"</h3>
+                <p class="text-xs text-faint mb-3">"Compact padding (12px) so the stat value dominates."</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
@@ -662,19 +662,19 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Library Item Cards ────────────────────────────────────
             <section id="library-item-card">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Library Item Card"</h3>
-                <p class="text-xs text-gray-500 mb-3">"Content grouped semantically: [title + composer] — [key/tempo] — [tags]."</p>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Item Card"</h3>
+                <p class="text-xs text-faint mb-3">"Content grouped semantically: [title + composer] — [key/tempo] — [tags]."</p>
                 <ul class="space-y-3">
-                    <p class="text-xs font-medium text-gray-400 uppercase">"Full metadata (piece)"</p>
+                    <p class="text-xs font-medium text-muted uppercase">"Full metadata (piece)"</p>
                     <LibraryItemCard item=sample_piece />
 
-                    <p class="text-xs font-medium text-gray-400 uppercase mt-6">"Full metadata (exercise)"</p>
+                    <p class="text-xs font-medium text-muted uppercase mt-6">"Full metadata (exercise)"</p>
                     <LibraryItemCard item=sample_exercise />
 
-                    <p class="text-xs font-medium text-gray-400 uppercase mt-6">"Minimal (no subtitle, tags, key, or tempo)"</p>
+                    <p class="text-xs font-medium text-muted uppercase mt-6">"Minimal (no subtitle, tags, key, or tempo)"</p>
                     <LibraryItemCard item=sample_minimal />
 
-                    <p class="text-xs font-medium text-gray-400 uppercase mt-6">"Long title + many tags"</p>
+                    <p class="text-xs font-medium text-muted uppercase mt-6">"Long title + many tags"</p>
                     <LibraryItemCard item=sample_long_title />
                 </ul>
             </section>
@@ -685,11 +685,11 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Buttons ───────────────────────────────────────────────
             <section id="buttons">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Buttons"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Buttons"</h3>
                 <Card>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Normal"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Normal"</p>
                             <div class="flex flex-wrap gap-3">
                                 <Button variant=ButtonVariant::Primary>"Primary"</Button>
                                 <Button variant=ButtonVariant::Secondary>"Secondary"</Button>
@@ -699,7 +699,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Disabled"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Disabled"</p>
                             <div class="flex flex-wrap gap-3">
                                 <Button variant=ButtonVariant::Primary disabled=Signal::derive(|| true)>"Primary"</Button>
                                 <Button variant=ButtonVariant::Secondary disabled=Signal::derive(|| true)>"Secondary"</Button>
@@ -709,7 +709,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Loading"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Loading"</p>
                             <div class="flex flex-wrap gap-3">
                                 <Button variant=ButtonVariant::Primary loading=Signal::derive(|| true)>"Saving..."</Button>
                                 <Button variant=ButtonVariant::Success loading=Signal::derive(|| true)>"Completing..."</Button>
@@ -722,9 +722,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Type Badge ────────────────────────────────────────────
             <section id="type-badge">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Type Badge"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Type Badge"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-3">"Equal visual weight — accent-derived for Piece, warm-accent-derived for Exercise."</p>
+                    <p class="text-xs text-faint mb-3">"Equal visual weight — accent-derived for Piece, warm-accent-derived for Exercise."</p>
                     <div class="flex flex-wrap gap-3">
                         <TypeBadge item_type="piece".to_string() />
                         <TypeBadge item_type="exercise".to_string() />
@@ -735,22 +735,22 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Type Tabs ─────────────────────────────────────────────
             <section id="type-tabs">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Type Tabs"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Type Tabs"</h3>
                 <Card>
                     <div class="space-y-3">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Interactive"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Interactive"</p>
                             <TypeTabs
                                 active=Signal::derive(move || type_tab_active.get())
                                 on_change=Callback::new(move |t| type_tab_active.set(t))
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Display-only (Piece)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Display-only (Piece)"</p>
                             <TypeTabs active=Signal::derive(|| ItemType::Piece) />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Display-only (Exercise)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Display-only (Exercise)"</p>
                             <TypeTabs active=Signal::derive(|| ItemType::Exercise) />
                         </div>
                     </div>
@@ -759,7 +759,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Toast Notifications ──────────────────────────────────
             <section id="toast">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Toast Notifications"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Toast Notifications"</h3>
                 <div class="space-y-3">
                     <Toast variant=ToastVariant::Info>"Session auto-saved"</Toast>
                     <Toast variant=ToastVariant::Success>"5 correct in a row!"</Toast>
@@ -770,8 +770,8 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Error Banner ──────────────────────────────────────────
             <section id="error-banner">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Error Banner"</h3>
-                <p class="text-xs text-gray-500 mb-3">"Static preview — the real component reads from ViewModel context. Uses softened coral danger tokens."</p>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Error Banner"</h3>
+                <p class="text-xs text-faint mb-3">"Static preview — the real component reads from ViewModel context. Uses softened coral danger tokens."</p>
                 <div class="mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
                     <div class="flex items-start justify-between gap-3">
                         <p class="text-sm text-danger-text">
@@ -786,24 +786,24 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Progress Bar ──────────────────────────────────────────
             <section id="progress">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Progress Bar"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Progress Bar"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Tokenised progress colours: track, fill (in-progress), and complete."</p>
+                    <p class="text-xs text-faint mb-4">"Tokenised progress colours: track, fill (in-progress), and complete."</p>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"In progress (60%)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"In progress (60%)"</p>
                             <div class="h-2 rounded-full bg-progress-track">
                                 <div class="h-full rounded-full bg-progress-fill" style="width: 60%"></div>
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Complete (100%)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Complete (100%)"</p>
                             <div class="h-2 rounded-full bg-progress-track">
                                 <div class="h-full rounded-full bg-progress-complete" style="width: 100%"></div>
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Empty (0%)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Empty (0%)"</p>
                             <div class="h-2 rounded-full bg-progress-track">
                                 <div class="h-full rounded-full bg-progress-fill" style="width: 0%"></div>
                             </div>
@@ -814,9 +814,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Progress Ring ────────────────────────────────────────
             <section id="progress-ring">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Progress Ring"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Progress Ring"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"SVG circular progress indicator for timed practice items. Ring fills clockwise; digital timer centred inside. Changes to completion colour when elapsed exceeds planned."</p>
+                    <p class="text-xs text-faint mb-4">"SVG circular progress indicator for timed practice items. Ring fills clockwise; digital timer centred inside. Changes to completion colour when elapsed exceeds planned."</p>
                     <div class="space-y-6">
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"In progress (~40%)"</p>
@@ -838,9 +838,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Transition Prompt ────────────────────────────────────
             <section id="transition-prompt">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Transition Prompt"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Transition Prompt"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Non-blocking prompt shown when an item\u{2019}s planned duration elapses. Shows next item or session completion message."</p>
+                    <p class="text-xs text-faint mb-4">"Non-blocking prompt shown when an item\u{2019}s planned duration elapses. Shows next item or session completion message."</p>
                     <div class="space-y-4">
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With next item"</p>
@@ -860,7 +860,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Form Inputs ───────────────────────────────────────────
             <section id="text-field">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Text Field"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Text Field"</h3>
                 <Card>
                     <div class="space-y-4">
                         <TextField
@@ -909,7 +909,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             <section id="text-area">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Text Area"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Text Area"</h3>
                 <Card>
                     <div class="space-y-4">
                         <TextArea
@@ -940,9 +940,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Form Validation States ───────────────────────────────
             <section id="form-states">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Form Validation States"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Form Validation States"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Static preview of all input validation states. Connected via aria-describedby in real usage."</p>
+                    <p class="text-xs text-faint mb-4">"Static preview of all input validation states. Connected via aria-describedby in real usage."</p>
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-text-label mb-1">"Default"</label>
@@ -972,12 +972,12 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Autocomplete ──────────────────────────────────────────
             <section id="autocomplete">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Autocomplete"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Autocomplete"</h3>
                 <Card>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Standalone autocomplete"</p>
-                            <p class="text-xs text-gray-500 mb-2">"Type 2+ characters to see suggestions (try \"ba\" or \"ch\")"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Standalone autocomplete"</p>
+                            <p class="text-xs text-faint mb-2">"Type 2+ characters to see suggestions (try \"ba\" or \"ch\")"</p>
                             <Autocomplete
                                 id="demo-autocomplete"
                                 suggestions=composers
@@ -987,7 +987,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"AutocompleteTextField (with label + error)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"AutocompleteTextField (with label + error)"</p>
                             <AutocompleteTextField
                                 id="demo-autocomplete-field"
                                 label="Composer"
@@ -1004,9 +1004,9 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Tag Input ─────────────────────────────────────────────
             <section id="tag-input">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Tag Input"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Tag Input"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-3">"Pre-populated with sample tags. Type to add more, click × to remove."</p>
+                    <p class="text-xs text-faint mb-3">"Pre-populated with sample tags. Type to add more, click × to remove."</p>
                     <TagInput
                         id="demo-tags"
                         tags=sample_tags
@@ -1019,22 +1019,22 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Field Label ───────────────────────────────────────────
             <section id="field-label">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Field Label"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Field Label"</h3>
                 <Card>
                     <dl class="space-y-2">
                         <FieldLabel text="Key Signature" />
-                        <dd class="text-white">"Db Major"</dd>
+                        <dd class="text-primary">"Db Major"</dd>
                         <FieldLabel text="Tempo" />
-                        <dd class="text-white">"66 bpm"</dd>
+                        <dd class="text-primary">"66 bpm"</dd>
                         <FieldLabel text="Category" />
-                        <dd class="text-white">"Romantic"</dd>
+                        <dd class="text-primary">"Romantic"</dd>
                     </dl>
                 </Card>
             </section>
 
             // ── Form Field Error (standalone) ─────────────────────────
             <section id="form-field-error">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Form Field Error"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Form Field Error"</h3>
                 <Card>
                     <FormFieldError field="title" errors=sample_errors />
                 </Card>
@@ -1042,7 +1042,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Navigation ────────────────────────────────────────────
             <section id="navigation">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Navigation"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Navigation"</h3>
                 <Card>
                     <div class="space-y-3">
                         <BackLink label="Back to Library" href="/".to_string() />
@@ -1053,21 +1053,21 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Line Chart ────────────────────────────────────────────
             <section id="line-chart">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Line Chart"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Line Chart"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-3">"Uses tokenised chart colours: chart-line, chart-area, chart-grid, chart-label."</p>
+                    <p class="text-xs text-faint mb-3">"Uses tokenised chart colours: chart-line, chart-area, chart-grid, chart-label."</p>
                     <LineChart data=chart_data />
                 </Card>
             </section>
 
             // ── Tempo Progress Chart ──────────────────────────────────
             <section id="tempo-chart">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Tempo Progress Chart"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Tempo Progress Chart"</h3>
                 <Card>
                     <div class="space-y-6">
                         <div>
-                            <p class="text-xs text-gray-500 mb-3">"SVG line chart for tempo data with target reference line, progress percentage, and tooltips. Uses chart-line, chart-secondary (target), chart-grid, chart-label tokens."</p>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"With target + progress (8 data points, target 120 BPM)"</p>
+                            <p class="text-xs text-faint mb-3">"SVG line chart for tempo data with target reference line, progress percentage, and tooltips. Uses chart-line, chart-secondary (target), chart-grid, chart-label tokens."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With target + progress (8 data points, target 120 BPM)"</p>
                             <TempoProgressChart
                                 entries=tempo_entries.clone()
                                 target_bpm=tempo_target
@@ -1075,7 +1075,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Without target (no reference line or progress)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Without target (no reference line or progress)"</p>
                             <TempoProgressChart
                                 entries=tempo_entries.clone()
                                 target_bpm=None
@@ -1083,7 +1083,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Single data point"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Single data point"</p>
                             <TempoProgressChart
                                 entries=vec![TempoHistoryEntry {
                                     session_date: "2026-02-23T10:00:00Z".to_string(),
@@ -1095,7 +1095,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Empty state (no data)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Empty state (no data)"</p>
                             <TempoProgressChart
                                 entries=vec![]
                                 target_bpm=Some(120)
@@ -1112,11 +1112,11 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Setlist Entry Row ─────────────────────────────────────
             <section id="setlist-entry">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Setlist Entry Row"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Setlist Entry Row"</h3>
                 <Card>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"With controls (remove, move up/down)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With controls (remove, move up/down)"</p>
                             <SetlistEntryRow
                                 entry=entry_full
                                 on_remove=Some(Callback::new(|_: String| {}))
@@ -1126,14 +1126,14 @@ pub fn DesignCatalogue() -> impl IntoView {
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Display-only (no controls)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Display-only (no controls)"</p>
                             <SetlistEntryRow
                                 entry=entry_display
                                 show_controls=false
                             />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Drag-active state"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Drag-active state"</p>
                             <SetlistEntryRow
                                 entry=entry_drag
                                 show_controls=false
@@ -1146,14 +1146,14 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Drag Handle + Drop Indicator ──────────────────────────
             <section id="drag-drop">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Drag & Drop Primitives"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Drag & Drop Primitives"</h3>
                 <Card>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Drag Handle"</p>
-                            <p class="text-xs text-gray-500 mb-2">"Six-dot grip icon, 44×44px touch target. Used inside SetlistEntryRow."</p>
-                            <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
-                                <div class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-gray-500">
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Drag Handle"</p>
+                            <p class="text-xs text-faint mb-2">"Six-dot grip icon, 44×44px touch target. Used inside SetlistEntryRow."</p>
+                            <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
+                                <div class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-faint">
                                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                                         <circle cx="5" cy="3" r="1.5" />
                                         <circle cx="11" cy="3" r="1.5" />
@@ -1163,23 +1163,23 @@ pub fn DesignCatalogue() -> impl IntoView {
                                         <circle cx="11" cy="13" r="1.5" />
                                     </svg>
                                 </div>
-                                <span class="text-sm text-gray-300">"Drag me to reorder"</span>
+                                <span class="text-sm text-secondary">"Drag me to reorder"</span>
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Drop Indicator"</p>
-                            <p class="text-xs text-gray-500 mb-2">"Accent line between entries during drag. Always occupies layout space."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Drop Indicator"</p>
+                            <p class="text-xs text-faint mb-2">"Accent line between entries during drag. Always occupies layout space."</p>
                             <div class="space-y-2">
-                                <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
-                                    <span class="text-sm text-gray-300">"Entry above"</span>
+                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
+                                    <span class="text-sm text-secondary">"Entry above"</span>
                                 </div>
                                 <DropIndicator visible=Signal::derive(|| true) />
-                                <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
-                                    <span class="text-sm text-gray-300">"Entry below"</span>
+                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
+                                    <span class="text-sm text-secondary">"Entry below"</span>
                                 </div>
                                 <DropIndicator visible=Signal::derive(|| false) />
-                                <div class="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
-                                    <span class="text-sm text-gray-300">"No indicator visible here"</span>
+                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
+                                    <span class="text-sm text-secondary">"No indicator visible here"</span>
                                 </div>
                             </div>
                         </div>
@@ -1189,27 +1189,27 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Routine Save Form ─────────────────────────────────────
             <section id="routine-save">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Routine Save Form"</h3>
-                <p class="text-xs text-gray-500 mb-3">"Click the dashed button to expand the form. Interactive — try saving without a name."</p>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Routine Save Form"</h3>
+                <p class="text-xs text-faint mb-3">"Click the dashed button to expand the form. Interactive — try saving without a name."</p>
                 <RoutineSaveForm on_save=Callback::new(|_name: String| {}) />
             </section>
 
             // ── Loading States ────────────────────────────────────────
             <section id="loading">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Loading States"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Loading States"</h3>
                 <Card>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-3">"Generic spinner"</p>
-                            <p class="text-xs text-gray-500 mb-3">"For non-practice utility contexts."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"Generic spinner"</p>
+                            <p class="text-xs text-faint mb-3">"For non-practice utility contexts."</p>
                             <div class="flex items-center gap-3">
                                 <span class="animate-spin rounded-full h-6 w-6 border-2 border-accent-focus border-t-transparent"></span>
-                                <span class="text-sm text-gray-400">"Loading..."</span>
+                                <span class="text-sm text-muted">"Loading..."</span>
                             </div>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-3">"Metronome (practice context)"</p>
-                            <p class="text-xs text-gray-500 mb-3">"Musical loading for practice flows."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-3">"Metronome (practice context)"</p>
+                            <p class="text-xs text-faint mb-3">"Musical loading for practice flows."</p>
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 flex items-center justify-center">
                                     <svg width="24" height="32" viewBox="0 0 24 32" class="metronome-loading text-warm-accent-text">
@@ -1218,7 +1218,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                         <rect x="8" y="26" width="8" height="4" rx="1" fill="currentColor" opacity="0.5" />
                                     </svg>
                                 </div>
-                                <span class="text-sm text-gray-400">"Preparing session..."</span>
+                                <span class="text-sm text-muted">"Preparing session..."</span>
                             </div>
                         </div>
                     </div>
@@ -1227,7 +1227,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Skeleton Components ──────────────────────────────────
             <section id="skeletons">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Skeleton Components"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Skeleton Components"</h3>
                 <Card>
                     <div class="space-y-8">
                         <div>
@@ -1263,26 +1263,26 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Chart Empty/Loading States ────────────────────────────
             <section>
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Chart States"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Chart States"</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-3">"Empty state"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"Empty state"</p>
                         <div class="flex flex-col items-center justify-center py-8 text-center">
-                            <svg width="48" height="48" viewBox="0 0 48 48" class="text-gray-600 mb-3">
+                            <svg width="48" height="48" viewBox="0 0 48 48" class="text-faint mb-3">
                                 <rect x="6" y="32" width="6" height="8" rx="1" fill="currentColor" opacity="0.3" />
                                 <rect x="16" y="24" width="6" height="16" rx="1" fill="currentColor" opacity="0.3" />
                                 <rect x="26" y="28" width="6" height="12" rx="1" fill="currentColor" opacity="0.3" />
                                 <rect x="36" y="20" width="6" height="20" rx="1" fill="currentColor" opacity="0.3" />
                                 <line x1="4" y1="42" x2="44" y2="42" stroke="currentColor" stroke-width="1.5" opacity="0.3" />
                             </svg>
-                            <p class="text-sm text-gray-400">"Practice this week to see your progress here"</p>
+                            <p class="text-sm text-muted">"Practice this week to see your progress here"</p>
                         </div>
                     </Card>
                     <Card>
-                        <p class="text-xs font-medium text-gray-400 uppercase mb-3">"Loading state"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"Loading state"</p>
                         <div class="flex flex-col items-center justify-center py-8 text-center">
                             <div class="w-full h-32 rounded-lg bg-surface-secondary animate-pulse mb-3"></div>
-                            <span class="text-xs text-gray-500">"Loading practice data..."</span>
+                            <span class="text-xs text-faint">"Loading practice data..."</span>
                         </div>
                     </Card>
                 </div>
@@ -1290,22 +1290,22 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Shell Components ──────────────────────────────────────
             <section id="shell">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Shell Components"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Shell Components"</h3>
                 <Card>
                     <div class="space-y-4">
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"App Header"</p>
-                            <p class="text-xs text-gray-500">"Visible at the top of this page. Uses "<code class="bg-white/10 rounded px-1">"glass-chrome"</code>" utility, "<code class="bg-white/10 rounded px-1">"border-border-default"</code>" bottom border. Desktop-only nav links with "<code class="bg-white/10 rounded px-1">"text-accent-text"</code>" active state."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"App Header"</p>
+                            <p class="text-xs text-faint">"Visible at the top of this page. Uses "<code class="bg-surface-input rounded px-1">"glass-chrome"</code>" utility, "<code class="bg-surface-input rounded px-1">"border-border-default"</code>" bottom border. Desktop-only nav links with "<code class="bg-surface-input rounded px-1">"text-accent-text"</code>" active state."</p>
                         </div>
                         <div class="border-b border-border-default"></div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"Bottom Tab Bar"</p>
-                            <p class="text-xs text-gray-500">"Visible on mobile (below 640px). Fixed bottom, "<code class="bg-white/10 rounded px-1">"glass-chrome"</code>" + "<code class="bg-white/10 rounded px-1">"pb-safe"</code>" for iOS safe area. 4 tabs with SVG icons, 44px min touch target."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Bottom Tab Bar"</p>
+                            <p class="text-xs text-faint">"Visible on mobile (below 640px). Fixed bottom, "<code class="bg-surface-input rounded px-1">"glass-chrome"</code>" + "<code class="bg-surface-input rounded px-1">"pb-safe"</code>" for iOS safe area. 4 tabs with SVG icons, 44px min touch target."</p>
                         </div>
                         <div class="border-b border-border-default"></div>
                         <div>
-                            <p class="text-xs font-medium text-gray-400 uppercase mb-2">"App Footer"</p>
-                            <p class="text-xs text-gray-500">"Visible at the bottom of this page. "<code class="bg-white/10 rounded px-1">"border-white/10"</code>" top border, "<code class="bg-white/10 rounded px-1">"text-xs text-gray-500"</code>" centered attribution text."</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"App Footer"</p>
+                            <p class="text-xs text-faint">"Visible at the bottom of this page. "<code class="bg-surface-input rounded px-1">"border-white/10"</code>" top border, "<code class="bg-surface-input rounded px-1">"text-xs text-faint"</code>" centered attribution text."</p>
                         </div>
                     </div>
                 </Card>
@@ -1313,77 +1313,77 @@ pub fn DesignCatalogue() -> impl IntoView {
 
             // ── Accessibility ─────────────────────────────────────────
             <section id="accessibility">
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Accessibility — WCAG Contrast"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Accessibility — WCAG Contrast"</h3>
                 <Card>
-                    <p class="text-xs text-gray-500 mb-4">"Contrast ratios for text tokens against common surface backgrounds. WCAG AA requires 4.5:1 for normal text, 3:1 for large text."</p>
+                    <p class="text-xs text-faint mb-4">"Contrast ratios for text tokens against common surface backgrounds. WCAG AA requires 4.5:1 for normal text, 3:1 for large text."</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-xs">
                             <thead>
                                 <tr class="border-b border-border-default">
-                                    <th class="text-left py-2 pr-4 text-gray-400 font-medium">"Text Token"</th>
-                                    <th class="text-left py-2 pr-4 text-gray-400 font-medium">"On Background"</th>
-                                    <th class="text-left py-2 text-gray-400 font-medium">"Status"</th>
+                                    <th class="text-left py-2 pr-4 text-muted font-medium">"Text Token"</th>
+                                    <th class="text-left py-2 pr-4 text-muted font-medium">"On Background"</th>
+                                    <th class="text-left py-2 text-muted font-medium">"Status"</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-border-default">
                                 <tr>
                                     <td class="py-2 pr-4 text-text-primary">"text-primary (white)"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"gradient bg"</td>
+                                    <td class="py-2 pr-4 text-faint">"gradient bg"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-text-secondary">"text-secondary"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"gradient bg"</td>
+                                    <td class="py-2 pr-4 text-faint">"gradient bg"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-text-label">"text-label"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"surface-primary card"</td>
+                                    <td class="py-2 pr-4 text-faint">"surface-primary card"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-text-muted">"text-muted"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"gradient bg"</td>
+                                    <td class="py-2 pr-4 text-faint">"gradient bg"</td>
                                     <td class="py-2 text-warning-text">"AA Large only"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-text-faint">"text-faint"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"gradient bg"</td>
+                                    <td class="py-2 pr-4 text-faint">"gradient bg"</td>
                                     <td class="py-2 text-danger-text">"Below AA"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-accent-text">"accent-text"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"gradient bg"</td>
+                                    <td class="py-2 pr-4 text-faint">"gradient bg"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-danger-text">"danger-text"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"danger-surface"</td>
+                                    <td class="py-2 pr-4 text-faint">"danger-surface"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-success-text">"success-text"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"success-surface"</td>
+                                    <td class="py-2 pr-4 text-faint">"success-surface"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 pr-4 text-warning-text">"warning-text"</td>
-                                    <td class="py-2 pr-4 text-gray-500">"warning-surface"</td>
+                                    <td class="py-2 pr-4 text-faint">"warning-surface"</td>
                                     <td class="py-2 text-success-text">"AA Pass"</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <p class="text-xs text-gray-500 mt-4">"Note: text-faint is intentionally below AA — it is used only for decorative/tertiary info (timestamps, footer text) where readability impact is minimal. text-muted passes AA at large text sizes (18px+)."</p>
+                    <p class="text-xs text-faint mt-4">"Note: text-faint is intentionally below AA — it is used only for decorative/tertiary info (timestamps, footer text) where readability impact is minimal. text-muted passes AA at large text sizes (18px+)."</p>
                 </Card>
             </section>
 
             // ── Session Components (context-dependent) ────────────────
             <section>
-                <h3 class="text-lg font-semibold text-white mb-4 font-heading">"Session Components"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Session Components"</h3>
                 <Card>
-                    <p class="text-sm text-gray-400 mb-3">"These components require app context (ViewModel, Core) and cannot be rendered in isolation. They are composed from the primitives shown above."</p>
-                    <div class="space-y-2 text-sm text-gray-500">
+                    <p class="text-sm text-muted mb-3">"These components require app context (ViewModel, Core) and cannot be rendered in isolation. They are composed from the primitives shown above."</p>
+                    <div class="space-y-2 text-sm text-faint">
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
                             <span>"SessionTimer — Card + TypeBadge + SetlistEntryRow + Button (timer, next/finish/skip)"</span>

@@ -80,7 +80,7 @@ pub fn TagInput(
                                 {tag_display}
                                 <button
                                     type="button"
-                                    class="text-accent-text hover:text-white focus:outline-none"
+                                    class="text-accent-text hover:text-primary focus:outline-none"
                                     aria-label=format!("Remove tag {tag_label}")
                                     on:click={
                                         let tag_val = tag.clone();

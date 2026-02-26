@@ -14,10 +14,10 @@ pub enum ButtonVariant {
 impl ButtonVariant {
     fn classes(self) -> &'static str {
         match self {
-            Self::Primary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors min-h-[44px]",
+            Self::Primary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-accent px-3.5 py-2.5 text-sm font-medium text-primary shadow-sm hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors min-h-[44px]",
             Self::Secondary => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-surface-secondary px-3.5 py-2.5 text-sm font-medium text-label border border-border-default hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors min-h-[44px]",
-            Self::Success => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-3.5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-success-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-text motion-safe:transition-colors min-h-[44px]",
-            Self::Danger => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-danger px-3.5 py-2.5 text-sm font-medium text-white hover:bg-danger-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-text motion-safe:transition-colors min-h-[44px]",
+            Self::Success => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-success px-3.5 py-2.5 text-sm font-medium text-primary shadow-sm hover:bg-success-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-success-text motion-safe:transition-colors min-h-[44px]",
+            Self::Danger => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-danger px-3.5 py-2.5 text-sm font-medium text-primary hover:bg-danger-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-text motion-safe:transition-colors min-h-[44px]",
             Self::DangerOutline => "inline-flex items-center justify-center gap-1.5 rounded-lg bg-danger-surface px-3.5 py-2.5 text-sm font-medium text-danger-text border border-danger-text/30 hover:bg-danger-surface hover:brightness-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-text motion-safe:transition-colors min-h-[44px]",
         }
     }

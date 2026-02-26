@@ -190,7 +190,7 @@ pub fn Autocomplete(
                 <ul
                     id=listbox_id_clone.clone()
                     role="listbox"
-                    class="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-gray-800/90 backdrop-blur-sm border border-border-default rounded-lg shadow-lg"
+                    class="absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-surface-primary backdrop-blur-sm border border-border-default rounded-lg shadow-lg"
                 >
                     {move || {
                         filtered.get().into_iter().enumerate().map(|(idx, item)| {
