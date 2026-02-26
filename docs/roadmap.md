@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-02-24*
+*Updated 2026-02-25*
 
 Everything in intrada serves one of three activities a musician does around their
 instrument. This roadmap is organised around those three pillars, not delivery
@@ -17,7 +17,7 @@ any of them without waiting for the others.
 | Library CRUD (piece + exercise, tags, key, tempo, notes) | Done |
 | Sessions (build, active, summary, timer, crash recovery) | Done |
 | Routines (full CRUD, load into builder, save from summary) | Done |
-| Analytics (weekly stats, streak, 28-day chart, top items, score trends) | Done |
+| Analytics (weekly stats, streak, 28-day chart, top items, score trends, weekly summary) | Done |
 | Scoring (1-5 per item) and per-item/session notes | Done |
 | Search/filter infrastructure in core (ListQuery) | Backend only (no UI) |
 | Design system (tokens, typography utilities, component library) | Done |
@@ -29,6 +29,9 @@ any of them without waiting for the others.
 | Repetition counter (#49) — consecutive correct attempts per item | Done |
 | Tempo tracking (#52) — log achieved tempo per item, progress charts (#66) | Done |
 | Basic goal setting (#60) — frequency, time, mastery, milestone goals with progress | Done |
+| Weekly practice summary (#68) — week-over-week comparison, neglected items, score changes | Done |
+| Holistic practice loop (#93) — unified library, sessions, routines & goals flow | Done |
+| DB composite indexes (#146) and request timing middleware (#147) | Done |
 
 ---
 
@@ -38,12 +41,6 @@ any of them without waiting for the others.
 
 Before the instrument comes out. Building sessions, organising the library, setting
 goals, and eventually letting the app decide for you.
-
-#### Now (next 4 weeks)
-
-| # | Feature | Size |
-|---|---------|------|
-| 93 | **Holistic practice loop** — parent issue unifying library, sessions, routines and goals into a coherent flow. | — |
 
 #### Next (4-12 weeks)
 
@@ -105,8 +102,6 @@ is actually working.
 |---|---------|------|
 | 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L |
 | 65 | **Practice consistency calendar** — comeback framing: "4 of the last 7 days." Celebrate returns, never shame gaps. | M |
-| 67 | **Milestone goals & progress dashboard** — percentage completion for active goals. | M |
-| 68 | **Weekly practice summary** — comparison to prior week, shown on next app open. | M |
 
 #### Later (12+ weeks)
 
@@ -164,8 +159,8 @@ Priority field (P0/P1/P2) ranks items.
 ## Open Questions
 
 1. **Metronome: built-in or external?** The tempo-building loop needs a metronome.
-   Building one is non-trivial (accurate timing in WASM). Decision point: before
-   tempo tracking (#52) ships.
+   Building one is non-trivial (accurate timing in WASM). Tempo tracking (#52) has
+   shipped — a built-in metronome would complete the tempo practice workflow.
 
 2. **Offline-first architecture.** Currently API-dependent. What syncs? When?
    Gets harder to retrofit the longer we wait.
