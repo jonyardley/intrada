@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use crate::components::Card;
+use crate::components::{Card, Icon, IconName};
 
 #[component]
 pub fn NotFoundView() -> impl IntoView {
@@ -13,7 +13,8 @@ pub fn NotFoundView() -> impl IntoView {
                     "The page you're looking for doesn't exist or may have been moved."
                 </p>
                 <A href="/" attr:class="inline-flex items-center gap-2 text-accent-text hover:text-accent-hover font-medium">
-                    "← Back to Library"
+                    <Icon name=IconName::ArrowLeft class="w-4 h-4" />
+                    "Back to Library"
                 </A>
             </div>
         </Card>

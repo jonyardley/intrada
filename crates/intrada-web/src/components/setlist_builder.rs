@@ -3,7 +3,8 @@ use leptos::prelude::*;
 use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, Card, DropIndicator, RoutineLoader, RoutineSaveForm, SetlistEntryRow,
+    Button, ButtonVariant, Card, DropIndicator, Icon, IconName, RoutineLoader, RoutineSaveForm,
+    SetlistEntryRow,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::hooks::use_drag_reorder;
@@ -248,7 +249,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                                     }
                                                                 >
-                                                                    "✕"
+                                                                    <Icon name=IconName::X class="w-3.5 h-3.5" />
                                                                 </button>
                                                             </div>
                                                         }.into_any()
@@ -315,7 +316,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                                                     }
                                                                 >
-                                                                    "✕"
+                                                                    <Icon name=IconName::X class="w-3.5 h-3.5" />
                                                                 </button>
                                                             </div>
                                                         }.into_any()

@@ -5,7 +5,7 @@ use intrada_core::ViewModel;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use crate::components::{Card, LineChart, PageHeading, SkeletonBlock, StatCard};
+use crate::components::{Card, Icon, IconName, LineChart, PageHeading, SkeletonBlock, StatCard};
 use intrada_web::core_bridge::fetch_initial_data;
 use intrada_web::types::{IsLoading, IsSubmitting};
 
@@ -17,7 +17,7 @@ pub fn AnalyticsPage() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Analytics" />
+            <PageHeading text="Analytics" subtitle="See how your practice is shaping up with stats, trends, and insights." />
 
             {move || {
                 let loading = is_loading.get();
@@ -276,10 +276,15 @@ fn ComparisonMetric(
     #[prop(into)] prev_value: String,
     has_prev: bool,
 ) -> impl IntoView {
-    let (arrow, color) = match direction {
-        Direction::Up => ("\u{2191}", "text-success-text"), // ↑
-        Direction::Down => ("\u{2193}", "text-muted"),      // ↓
-        Direction::Same => ("\u{2192}", "text-muted"),      // →
+    let (icon, color) = match direction {
+        Direction::Up => (IconName::ArrowRight, "text-success-text"),
+        Direction::Down => (IconName::ArrowRight, "text-muted"),
+        Direction::Same => (IconName::ArrowRight, "text-muted"),
+    };
+    let rotate_class = match direction {
+        Direction::Up => "w-3 h-3 inline-block -rotate-45",
+        Direction::Down => "w-3 h-3 inline-block rotate-45",
+        Direction::Same => "w-3 h-3 inline-block",
     };
 
     view! {
@@ -287,9 +292,16 @@ fn ComparisonMetric(
             <div class="text-lg font-semibold text-primary">{value}</div>
             <div class=format!("text-xs {color}")>
                 {if has_prev {
-                    format!("{arrow} from {prev_value}")
+                    view! {
+                        <span class="inline-flex items-center gap-0.5">
+                            <Icon name=icon class=rotate_class />
+                            {format!("from {prev_value}")}
+                        </span>
+                    }.into_any()
                 } else {
-                    "no data last week".to_string()
+                    view! {
+                        <span>"no data last week"</span>
+                    }.into_any()
                 }}
             </div>
             <div class="field-label mt-1">{label}</div>

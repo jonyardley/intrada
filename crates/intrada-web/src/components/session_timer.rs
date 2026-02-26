@@ -6,7 +6,8 @@ use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
-    Button, ButtonVariant, Card, ProgressRing, SetlistEntryRow, TransitionPrompt, TypeBadge,
+    Button, ButtonVariant, Card, Icon, IconName, ProgressRing, SetlistEntryRow, TransitionPrompt,
+    TypeBadge,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -246,7 +247,10 @@ pub fn SessionTimer() -> impl IntoView {
                                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             }
                                         })>
-                                            "🔄 Rep Counter"
+                                            <span class="inline-flex items-center gap-1.5">
+                                                <Icon name=IconName::RotateCcw class="w-4 h-4" />
+                                                "Rep Counter"
+                                            </span>
                                         </Button>
                                     </div>
                                 }.into_any()

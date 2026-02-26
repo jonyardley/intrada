@@ -3,7 +3,7 @@ use web_sys::PointerEvent;
 
 use intrada_core::SetlistEntryView;
 
-use crate::components::{DragHandle, TypeBadge};
+use crate::components::{DragHandle, Icon, IconName, TypeBadge};
 
 /// A single entry in the setlist (building or active phase).
 #[component]
@@ -79,7 +79,7 @@ pub fn SetlistEntryRow(
                                     title="Move up"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    "↑"
+                                    <Icon name=IconName::ChevronUp class="w-4 h-4" />
                                 </button>
                             }
                         })}
@@ -91,7 +91,7 @@ pub fn SetlistEntryRow(
                                     title="Move down"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    "↓"
+                                    <Icon name=IconName::ChevronDown class="w-4 h-4" />
                                 </button>
                             }
                         })}
@@ -103,7 +103,7 @@ pub fn SetlistEntryRow(
                                     title="Remove"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    "✕"
+                                    <Icon name=IconName::X class="w-4 h-4" />
                                 </button>
                             }
                         })}

@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
 use intrada_web::validation::validate_achieved_tempo_input;
 
-use crate::components::{Button, ButtonVariant, Card, RoutineSaveForm};
+use crate::components::{Button, ButtonVariant, Card, Icon, IconName, RoutineSaveForm};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -89,21 +89,18 @@ pub fn SessionSummary() -> impl IntoView {
                                         let entry_rep_reached = entry.rep_target_reached.unwrap_or(false);
                                         let notes_label = format!("Notes for {}", entry.item_title);
                                         let notes_input_id = format!("entry-notes-{}", entry.id);
-                                        let status_label = match entry.status.as_str() {
-                                            "completed" => "✓",
-                                            "skipped" => "⊘",
-                                            _ => "—",
-                                        };
-                                        let status_color = match entry.status.as_str() {
-                                            "completed" => "text-success-text",
-                                            "skipped" => "text-warning-text",
-                                            _ => "text-faint",
+                                        let (status_icon, status_color) = match entry.status.as_str() {
+                                            "completed" => (IconName::Check, "text-success-text"),
+                                            "skipped" => (IconName::Ban, "text-warning-text"),
+                                            _ => (IconName::Minus, "text-faint"),
                                         };
                                         view! {
                                             <div class="rounded-lg bg-surface-secondary p-3 space-y-2">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
-                                                        <span class={format!("text-sm font-medium {}", status_color)}>{status_label}</span>
+                                                        <span class={format!("text-sm font-medium {}", status_color)}>
+                                                            <Icon name=status_icon class="w-4 h-4" />
+                                                        </span>
                                                         <span class="text-sm font-medium text-primary">{entry.item_title}</span>
                                                         <span class="text-xs text-faint">{entry.item_type}</span>
                                                     </div>

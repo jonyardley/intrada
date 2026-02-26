@@ -9,7 +9,9 @@ use intrada_core::domain::goal::{GoalEvent, GoalKind};
 use intrada_core::domain::types::CreateGoal;
 use intrada_core::{Event, ViewModel};
 
-use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading, TextField};
+use crate::components::{
+    BackLink, Button, ButtonVariant, Card, Icon, IconName, PageHeading, TextField,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -32,12 +34,12 @@ impl GoalType {
         }
     }
 
-    fn icon(&self) -> &'static str {
+    fn icon(&self) -> IconName {
         match self {
-            GoalType::Frequency => "\u{1F4C5}", // 📅
-            GoalType::Time => "\u{23F1}",       // ⏱
-            GoalType::Mastery => "\u{2B50}",    // ⭐
-            GoalType::Milestone => "\u{1F3AF}", // 🎯
+            GoalType::Frequency => IconName::Calendar,
+            GoalType::Time => IconName::Clock,
+            GoalType::Mastery => IconName::Star,
+            GoalType::Milestone => IconName::Target,
         }
     }
 
@@ -223,7 +225,7 @@ pub fn GoalFormView() -> impl IntoView {
                                                 errors.set(HashMap::new());
                                             }
                                         >
-                                            <span>{gt.icon()}</span>
+                                            <Icon name=gt.icon() class="w-4 h-4" />
                                             <span>{gt.label()}</span>
                                         </button>
                                     }
