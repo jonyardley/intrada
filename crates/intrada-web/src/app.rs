@@ -23,7 +23,22 @@ use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, pro
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// App-level signal for focus mode — when true, navigation and non-essential UI are hidden.
-pub type FocusMode = RwSignal<bool>;
+///
+/// Newtype wrapper so `provide_context` doesn't collide with other `RwSignal<bool>` contexts.
+#[derive(Clone, Copy)]
+pub struct FocusMode(pub RwSignal<bool>);
+
+impl FocusMode {
+    pub fn get(&self) -> bool {
+        self.0.get()
+    }
+    pub fn get_untracked(&self) -> bool {
+        self.0.get_untracked()
+    }
+    pub fn set(&self, val: bool) {
+        self.0.set(val);
+    }
+}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -110,10 +125,10 @@ pub fn App() -> impl IntoView {
 fn AuthenticatedApp() -> impl IntoView {
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
-    let is_loading: IsLoading = RwSignal::new(true);
-    let is_submitting: IsSubmitting = RwSignal::new(false);
+    let is_loading = IsLoading::new(true);
+    let is_submitting = IsSubmitting::new(false);
 
-    let focus_mode: FocusMode = RwSignal::new(false);
+    let focus_mode = FocusMode(RwSignal::new(false));
 
     // Provide context BEFORE init so process_effects can use expect_context
     provide_context(core.clone());
