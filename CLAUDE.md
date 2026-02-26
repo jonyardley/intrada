@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-02-20.
+> significant feature lands. Last reviewed: 2026-02-26.
 
 ## Project Overview
 
@@ -67,7 +67,7 @@ Key files: `intrada-api/src/auth.rs`, `intrada-web/src/clerk_bindings.rs`, `intr
 
 ## Storage
 
-- **All persistent data** (items, sessions, routines) is stored via the REST API in Turso
+- **All persistent data** (items, sessions, routines, goals) is stored via the REST API in Turso
 - **localStorage** is used ONLY for `intrada:session-in-progress` crash recovery
 - No other localStorage keys are used — the old `intrada:library` and `intrada:sessions` keys were removed when the API was introduced
 
@@ -162,12 +162,32 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 | `Button`        | All clickable actions (Primary/Secondary/Danger/etc.) |
 | `BackLink`      | Back-navigation link with arrow           |
 | `TypeBadge`     | Piece/Exercise type pill                  |
+| `TypeTabs`      | Piece/Exercise toggle switch              |
 | `Toast`         | Notification banner                       |
 | `ErrorBanner`   | Persistent error display                  |
+| `FormFieldError`| Inline validation error display           |
+| `Autocomplete`  | Dropdown suggestions for text inputs      |
+| `TagInput`      | Chip-based multi-tag input with autocomplete |
 | `SkeletonLine`  | Pulsing text-line placeholder             |
 | `SkeletonBlock` | Pulsing rectangular placeholder           |
 | `SkeletonItemCard` | Library item card skeleton             |
 | `SkeletonCardList` | Generic list page skeleton (sessions, routines, goals) |
+| `LineChart`     | SVG line chart for analytics              |
+| `TempoProgressChart` | Tempo progress visualization         |
+| `ProgressRing`  | Circular progress indicator for goals     |
+| `LibraryItemCard` | Library item display card               |
+| `SessionTimer`  | Active session countdown timer            |
+| `SessionSummary`| End-of-session review with scoring        |
+| `SetlistBuilder`| Drag-and-drop session item picker         |
+| `SetlistEntryRow`| Single entry row in session builder      |
+| `TransitionPrompt`| Focus-mode item transition overlay      |
+| `DragHandle`    | Drag grip for reorderable lists           |
+| `DropIndicator` | Visual drop target for drag-and-drop      |
+| `RoutineLoader` | Load routine into session builder         |
+| `RoutineSaveForm`| Save current session as routine          |
+| `AppHeader`     | Top navigation bar with nav links         |
+| `AppFooter`     | Bottom footer (desktop)                   |
+| `BottomTabBar`  | Mobile bottom navigation tabs             |
 
 ### Rules for new UI work
 
@@ -230,18 +250,7 @@ These documents should stay in sync. When any one changes, check the others:
 
 - Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
 - Legacy `pieces` and `exercises` tables from early migrations still exist in the schema
-- `dependabot.yml` needs `package-ecosystem` set to `"cargo"`
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
 
-## Active Technologies
-- Rust stable (1.89.0), 2021 edition + leptos 0.8.x (CSR), intrada-core (model types), Tailwind CSS v4 (151-tempo-progress-charts)
-- N/A — no new data storage; reads existing precomputed `ItemPracticeSummary` (151-tempo-progress-charts)
-- Rust stable (1.89.0), 2021 edition + crux_core 0.17.0-rc2, serde 1, chrono 0.4, ulid 1, axum 0.8, libsql 0.9, leptos 0.8.x (CSR), Tailwind CSS v4 (152-goal-setting)
-- Turso (managed libsql/SQLite) via HTTP protocol — new `goals` table with flat columns (152-goal-setting)
-- Rust stable (1.89.0), 2021 edition + crux_core 0.17.0-rc2, serde 1, chrono 0.4, leptos 0.8.x (CSR), Tailwind CSS v4 (153-weekly-practice-summary)
-- N/A — no new persistence; reads existing `PracticeSession` and `Item` data (153-weekly-practice-summary)
-
-## Recent Changes
-- 151-tempo-progress-charts: Added Rust stable (1.89.0), 2021 edition + leptos 0.8.x (CSR), intrada-core (model types), Tailwind CSS v4

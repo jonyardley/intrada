@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-02-25*
+*Updated 2026-02-26*
 
 Everything in intrada serves one of three activities a musician does around their
 instrument. This roadmap is organised around those three pillars, not delivery
@@ -32,6 +32,8 @@ any of them without waiting for the others.
 | Weekly practice summary (#68) — week-over-week comparison, neglected items, score changes | Done |
 | Holistic practice loop (#93) — unified library, sessions, routines & goals flow | Done |
 | DB composite indexes (#146) and request timing middleware (#147) | Done |
+| Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
+| Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
 
 ---
 
