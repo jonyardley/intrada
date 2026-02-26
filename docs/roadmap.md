@@ -52,6 +52,7 @@ goals, and eventually letting the app decide for you.
 | 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL |
 | 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
 | 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
+| 142 | **Session time budgeting** — declare available time, allocate across items automatically or manually. | M |
 | 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
 
 #### Later (12+ weeks)
@@ -83,6 +84,7 @@ focus, not admin.
 | 61 | **Encouragement messaging** — data-tied, process-focused messages. "Your Db mastery went from 2 to 4 over three weeks." Configurable frequency, tone, delivery. | M |
 | 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S |
 | 79 | **Calendar view** — calendar-based view of practice sessions. | M |
+| 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M |
 
 #### Later (12+ weeks)
 
@@ -124,6 +126,8 @@ These don't belong to a single pillar — they support all three.
 | # | Feature | Horizon | Labels |
 |---|---------|---------|--------|
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
+| 148 | **Use mutate response** — stop re-fetching all data after writes, use API response directly | Next | architecture |
+| 149 | **Pagination** — add limit/offset to list endpoints | Next | architecture |
 
 ---
 
