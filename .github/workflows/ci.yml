@@ -101,7 +101,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: e2e/package-lock.json
       - name: Download web-dist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: web-dist
           path: web-dist
@@ -143,7 +143,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Download web-dist artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: web-dist
           path: crates/intrada-web/dist
