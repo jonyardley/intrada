@@ -13,6 +13,8 @@ pub enum IconName {
     Calendar,
     Check,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     ChevronUp,
     Clock,
     Minus,
@@ -68,6 +70,14 @@ pub fn Icon(
         .into_any(),
         IconName::ChevronDown => view! {
             <path d="m6 9 6 6 6-6" />
+        }
+        .into_any(),
+        IconName::ChevronLeft => view! {
+            <path d="m15 18-6-6 6-6" />
+        }
+        .into_any(),
+        IconName::ChevronRight => view! {
+            <path d="m9 18 6-6-6-6" />
         }
         .into_any(),
         IconName::ChevronUp => view! {

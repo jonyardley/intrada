@@ -16,7 +16,7 @@ use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, GoalFormView,
     GoalsListView, LibraryListView, NotFoundView, RoutineEditView, RoutinesListView,
-    SessionActiveView, SessionNewView, SessionSummaryView, SessionsListView,
+    SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
@@ -186,6 +186,9 @@ fn AuthenticatedApp() -> impl IntoView {
                     } />
                     <Route path=path!("/sessions") view=move || view! {
                         <SessionsListView />
+                    } />
+                    <Route path=path!("/sessions/all") view=move || view! {
+                        <SessionsAllView />
                     } />
                     <Route path=path!("/sessions/new") view=move || view! {
                         <SessionNewView />
