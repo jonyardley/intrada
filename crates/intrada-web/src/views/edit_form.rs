@@ -9,8 +9,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemEvent, UpdateItem, ViewModel};
 
 use crate::components::{
-    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
-    TextField, TypeTabs,
+    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, SkeletonBlock,
+    SkeletonLine, TagInput, TextArea, TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tempo, parse_tempo_display, unique_composers, unique_tags};
@@ -27,25 +27,61 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
 
-    // Find item to pre-populate
+    // Find item to pre-populate — use get_untracked() since we only need
+    // the initial value for form fields. If data hasn't loaded yet, we show
+    // a loading state and re-check reactively.
     let item = view_model
         .get_untracked()
         .items
         .into_iter()
         .find(|i| i.id == id);
 
-    let Some(item) = item else {
+    // If item not found and still loading, show skeleton then re-check
+    if item.is_none() {
+        let id = id.clone();
         return view! {
-            <div class="text-center py-8">
-                <p class="text-secondary mb-4">"Item not found."</p>
-                <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
-                    "← Back to Library"
-                </A>
+            <div class="sm:max-w-2xl sm:mx-auto">
+                <BackLink label="Cancel" href="/".to_string() />
+                <PageHeading text="Edit Library Item" />
+                {move || {
+                    if is_loading.get() {
+                        view! {
+                            <Card>
+                                <div class="space-y-4 animate-pulse">
+                                    <SkeletonLine width="w-1/3" height="h-6" />
+                                    <SkeletonLine width="w-full" height="h-10" />
+                                    <SkeletonLine width="w-full" height="h-10" />
+                                    <SkeletonLine width="w-2/3" height="h-10" />
+                                    <SkeletonBlock height="h-24" />
+                                </div>
+                            </Card>
+                        }.into_any()
+                    } else {
+                        // Check if item appeared after loading completed
+                        let item_found = view_model.get().items.iter().any(|i| i.id == id);
+                        if item_found {
+                            // Data loaded — redirect to self to re-render with item data
+                            let url = format!("/library/{}/edit", id);
+                            let navigate = use_navigate();
+                            navigate(&url, NavigateOptions { replace: true, ..Default::default() });
+                            ().into_any()
+                        } else {
+                            view! {
+                                <div class="text-center py-8">
+                                    <p class="text-secondary mb-4">"Item not found."</p>
+                                    <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                                        "← Back to Library"
+                                    </A>
+                                </div>
+                            }.into_any()
+                        }
+                    }
+                }}
             </div>
-        }
-        .into_any();
-    };
+        }.into_any();
+    }
 
+    let item = item.expect("item confirmed Some above");
     let item_id = item.id.clone();
     let back_href = format!("/library/{}", item_id);
 

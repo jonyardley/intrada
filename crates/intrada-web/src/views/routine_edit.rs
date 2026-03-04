@@ -8,7 +8,8 @@ use intrada_core::validation::MAX_ROUTINE_NAME;
 use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
 
 use crate::components::{
-    BackLink, Button, ButtonVariant, Card, DragHandle, DropIndicator, PageHeading,
+    BackLink, Button, ButtonVariant, Card, DragHandle, DropIndicator, PageHeading, SkeletonBlock,
+    SkeletonLine,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::hooks::use_drag_reorder;
@@ -32,18 +33,49 @@ pub fn RoutineEditView() -> impl IntoView {
         .into_iter()
         .find(|r| r.id == id);
 
-    let Some(routine) = routine else {
+    // If routine not found and still loading, show skeleton then re-check
+    if routine.is_none() {
+        let id = id.clone();
         return view! {
-            <div class="text-center py-8">
-                <p class="text-secondary mb-4">"Routine not found."</p>
-                <A href="/routines" attr:class="text-accent-text hover:text-accent-hover font-medium">
-                    "\u{2190} Back to Routines"
-                </A>
+            <div class="sm:max-w-2xl sm:mx-auto">
+                <BackLink label="Back to Routines" href="/routines".to_string() />
+                <PageHeading text="Edit Routine" />
+                {move || {
+                    if is_loading.get() {
+                        view! {
+                            <Card>
+                                <div class="space-y-4 animate-pulse">
+                                    <SkeletonLine width="w-1/3" height="h-6" />
+                                    <SkeletonLine width="w-full" height="h-10" />
+                                    <SkeletonBlock height="h-32" />
+                                </div>
+                            </Card>
+                        }.into_any()
+                    } else {
+                        // Check if routine appeared after loading completed
+                        let found = view_model.get().routines.iter().any(|r| r.id == id);
+                        if found {
+                            let url = format!("/routines/{}/edit", id);
+                            let navigate = use_navigate();
+                            navigate(&url, NavigateOptions { replace: true, ..Default::default() });
+                            ().into_any()
+                        } else {
+                            view! {
+                                <div class="text-center py-8">
+                                    <p class="text-secondary mb-4">"Routine not found."</p>
+                                    <A href="/routines" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                                        "\u{2190} Back to Routines"
+                                    </A>
+                                </div>
+                            }.into_any()
+                        }
+                    }
+                }}
             </div>
-        }
-        .into_any();
-    };
+        }.into_any();
+    }
 
+    let routine = routine.expect("routine confirmed Some above");
     let routine_id = routine.id.clone();
     let name = RwSignal::new(routine.name.clone());
     let entries: RwSignal<Vec<RoutineEntryView>> = RwSignal::new(routine.entries.clone());
