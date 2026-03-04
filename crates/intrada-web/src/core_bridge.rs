@@ -197,7 +197,7 @@ pub fn process_effects(
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
-            Effect::App(boxed_request) => match &boxed_request.operation {
+            Effect::App(request) => match &request.operation {
                 // ---- Load operations: spawn async HTTP fetch ----
                 AppEffect::LoadAll => {
                     let core = leptos::prelude::expect_context::<SharedCore>();

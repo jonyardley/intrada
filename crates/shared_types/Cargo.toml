@@ -1,0 +1,11 @@
+[package]
+name = "shared_types"
+version = "0.1.0"
+edition = "2021"
+rust-version.workspace = true
+
+[build-dependencies]
+crux_core = { workspace = true, features = ["typegen"] }
+shared = { path = "../shared", features = ["typegen"] }
+anyhow = "1"
+chrono = { workspace = true }

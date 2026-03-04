@@ -22,3 +22,24 @@ e2e/node_modules/
 e2e/test-results/
 e2e/playwright-report/
 .claude/
+# iOS / Xcode
+ios/*.xcodeproj
+ios/Intrada.xcworkspace/
+*.xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+# Generated Swift types & bindings
+ios/Generated/
+# iOS universal simulator library
+target/universal-ios-sim/
+# Fastlane
+ios/fastlane/report.xml
+ios/fastlane/Preview.html
+ios/fastlane/screenshots/
+ios/fastlane/test_output/
+ios/fastlane/README.md
+ios/build/
+ios/DerivedData/
+ios/Gemfile.lock

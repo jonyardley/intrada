@@ -1,0 +1,137 @@
+name: Intrada
+options:
+  bundleIdPrefix: com.intrada
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.3"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+
+packages:
+  Clerk:
+    url: https://github.com/clerk/clerk-ios
+    from: "1.0.0"
+
+targets:
+  Intrada:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Intrada
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.intrada.app
+        INFOPLIST_GENERATION_CLASS: ""
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: "YES"
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+        ASSETCATALOG_COMPILER_APPICON_NAME: "AppIcon"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "AccentColor"
+        # Rust static library linking
+        OTHER_LDFLAGS:
+          - "-lshared"
+          - "-framework"
+          - "Security"
+          - "-framework"
+          - "SystemConfiguration"
+        LIBRARY_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/../target/aarch64-apple-ios/release"
+          - "$(SRCROOT)/../target/aarch64-apple-ios-sim/release"
+        HEADER_SEARCH_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Intrada/Generated/UniFFI"
+        SWIFT_INCLUDE_PATHS:
+          - "$(inherited)"
+          - "$(SRCROOT)/Intrada/Generated/UniFFI"
+        OTHER_SWIFT_FLAGS:
+          - "$(inherited)"
+          - "-Xcc"
+          - "-fmodule-map-file=$(SRCROOT)/Intrada/Generated/UniFFI/sharedFFI.modulemap"
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        ENABLE_PREVIEWS: "YES"
+        CODE_SIGN_STYLE: "Automatic"
+        DEVELOPMENT_TEAM: "9S5FG4LQAF"
+        # Only build arm64 for simulator (Rust lib is arm64 only)
+        EXCLUDED_ARCHS[sdk=iphonesimulator*]: "x86_64"
+      configs:
+        Debug:
+          LIBRARY_SEARCH_PATHS:
+            - "$(inherited)"
+            - "$(SRCROOT)/../target/aarch64-apple-ios/debug"
+            - "$(SRCROOT)/../target/aarch64-apple-ios-sim/debug"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+            - "DEBUG"
+          SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+          SWIFT_COMPILATION_MODE: "wholemodule"
+    dependencies:
+      - package: Clerk
+        product: ClerkKit
+    preBuildScripts:
+      - name: "Build Rust Library"
+        script: |
+          # Only rebuild if Rust sources changed
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            PROFILE_FLAG=""
+          else
+            PROFILE_FLAG="--release"
+          fi
+
+          # Determine target based on SDK
+          if [ "$PLATFORM_NAME" = "iphoneos" ]; then
+            RUST_TARGET="aarch64-apple-ios"
+          else
+            RUST_TARGET="aarch64-apple-ios-sim"
+          fi
+
+          echo "Building shared crate for $RUST_TARGET ($CONFIGURATION)..."
+          cd "$SRCROOT/.."
+          cargo build -p shared --features uniffi $PROFILE_FLAG --target "$RUST_TARGET" 2>&1
+
+          # Remove the .dylib so the linker uses the static .a library.
+          # Cargo builds both because crate-type includes "cdylib" (needed for WASM).
+          # If the .dylib is present, ld64 prefers it and embeds an absolute Mac path
+          # that doesn't exist on physical iOS devices, causing a dyld crash.
+          if [ "$CONFIGURATION" = "Debug" ]; then
+            PROFILE_DIR="debug"
+          else
+            PROFILE_DIR="release"
+          fi
+          rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.dylib"
+          rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/deps/libshared.dylib"
+
+          echo "Rust build complete for $RUST_TARGET (static lib only)"
+        basedOnDependencyAnalysis: false
+        showEnvVarsInLog: true
+
+  IntradaTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: IntradaTests
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.intrada.app.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Intrada.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Intrada"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: Intrada

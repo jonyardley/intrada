@@ -1,0 +1,174 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "crates/intrada-core/**"
+      - "crates/shared/**"
+      - "crates/shared_types/**"
+      - "ios/**"
+      - "scripts/build-ios.sh"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "crates/intrada-core/**"
+      - "crates/shared/**"
+      - "crates/shared_types/**"
+      - "ios/**"
+      - "scripts/build-ios.sh"
+      - ".github/workflows/ios.yml"
+
+env:
+  RUST_VERSION: "1.89.0"
+  XCODE_VERSION: "16.3"
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Build Rust static library for iOS simulator
+  # ─────────────────────────────────────────────
+  build-rust:
+    name: Build Rust (iOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "ios"
+          cache-on-failure: true
+
+      - name: Build shared crate for simulator
+        run: cargo build -p shared --features uniffi --release --target aarch64-apple-ios-sim
+
+      - name: Build shared crate for device
+        run: cargo build -p shared --features uniffi --release --target aarch64-apple-ios
+
+      - name: Upload simulator library
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-ios-sim-lib
+          path: target/aarch64-apple-ios-sim/release/libshared.a
+          retention-days: 1
+
+      - name: Upload device library
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-ios-device-lib
+          path: target/aarch64-apple-ios/release/libshared.a
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # Build iOS app (simulator — no code signing)
+  # ─────────────────────────────────────────────
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-15
+    needs: build-rust
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Download simulator Rust library
+        uses: actions/download-artifact@v8
+        with:
+          name: rust-ios-sim-lib
+          path: target/aarch64-apple-ios-sim/release/
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Resolve simulator destination
+        id: sim
+        run: |
+          # Pick the first available iPhone simulator for the installed iOS SDK
+          DEST=$(xcodebuild -showdestinations \
+            -project ios/Intrada.xcodeproj -scheme Intrada 2>/dev/null \
+            | grep "iPhone 16 Pro" | grep "iOS Simulator" | head -1 \
+            | sed 's/.*id:\([^,}]*\).*/\1/' | tr -d ' ')
+          if [ -z "$DEST" ]; then
+            # Fallback to generic simulator build
+            DEST="generic"
+            echo "destination=generic/platform=iOS Simulator" >> $GITHUB_OUTPUT
+          else
+            echo "destination=id=$DEST" >> $GITHUB_OUTPUT
+          fi
+          echo "Using simulator destination: $DEST"
+
+      - name: Build for simulator (no code signing)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Intrada.xcodeproj \
+            -scheme Intrada \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            | xcpretty --color
+
+  # ─────────────────────────────────────────────
+  # Deploy to TestFlight via Fastlane (main only)
+  # ─────────────────────────────────────────────
+  deploy-testflight:
+    name: Deploy to TestFlight
+    runs-on: macos-15
+    needs: [build-rust, build-ios]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Install Fastlane
+        run: |
+          cd ios
+          bundle install
+
+      - name: Download device Rust library
+        uses: actions/download-artifact@v8
+        with:
+          name: rust-ios-device-lib
+          path: target/aarch64-apple-ios/release/
+
+      - name: Download simulator Rust library
+        uses: actions/download-artifact@v8
+        with:
+          name: rust-ios-sim-lib
+          path: target/aarch64-apple-ios-sim/release/
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Run Fastlane beta
+        working-directory: ios
+        env:
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: bundle exec fastlane beta
