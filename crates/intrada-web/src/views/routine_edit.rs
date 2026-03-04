@@ -302,9 +302,16 @@ pub fn RoutineEditView() -> impl IntoView {
                                 <p class="text-sm text-muted">"No library items available."</p>
                             }.into_any()
                         } else {
+                            // Collect item IDs already in the routine to dim them
+                            let added_ids: std::collections::HashSet<String> = entries
+                                .get()
+                                .iter()
+                                .map(|e| e.item_id.clone())
+                                .collect();
                             view! {
                                 <div class="space-y-2">
                                     {vm.items.iter().map(|item| {
+                                        let already_added = added_ids.contains(&item.id);
                                         let title = item.title.clone();
                                         let item_type = item.item_type.clone();
                                         let id_for_entry = item.id.clone();
@@ -312,7 +319,11 @@ pub fn RoutineEditView() -> impl IntoView {
                                         let type_for_entry = item.item_type.clone();
                                         view! {
                                             <div
-                                                class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
+                                                class={if already_added {
+                                                    "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 opacity-50"
+                                                } else {
+                                                    "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
+                                                }}
                                                 on:click=move |_| {
                                                     let new_entry = RoutineEntryView {
                                                         id: ulid::Ulid::new().to_string(),
@@ -328,8 +339,12 @@ pub fn RoutineEditView() -> impl IntoView {
                                                     <span class="text-sm text-primary">{title}</span>
                                                     <span class="text-xs text-faint">{item_type}</span>
                                                 </div>
-                                                <span class="text-xs font-medium text-accent-text">
-                                                    "+ Add"
+                                                <span class={if already_added {
+                                                    "text-xs font-medium text-muted"
+                                                } else {
+                                                    "text-xs font-medium text-accent-text"
+                                                }}>
+                                                    {if already_added { "Added" } else { "+ Add" }}
                                                 </span>
                                             </div>
                                         }

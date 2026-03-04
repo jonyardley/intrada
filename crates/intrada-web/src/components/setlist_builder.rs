@@ -436,15 +436,27 @@ pub fn SetlistBuilder() -> impl IntoView {
                 <h3 class="section-title">"Library Items"</h3>
                 {move || {
                     let vm = view_model.get();
-                    if vm.items.is_empty() {
+                    // Collect item IDs already in the setlist so we can hide them
+                    let added_ids: std::collections::HashSet<&str> = vm
+                        .building_setlist
+                        .as_ref()
+                        .map(|s| s.entries.iter().map(|e| e.item_id.as_str()).collect())
+                        .unwrap_or_default();
+                    let available: Vec<_> = vm.items.iter().filter(|i| !added_ids.contains(i.id.as_str())).collect();
+                    if available.is_empty() {
+                        let msg = if vm.items.is_empty() {
+                            "No library items available."
+                        } else {
+                            "All library items have been added."
+                        };
                         view! {
-                            <p class="text-sm text-muted">"No library items available."</p>
+                            <p class="text-sm text-muted">{msg}</p>
                         }.into_any()
                     } else {
                         let core_add = core_library.clone();
                         view! {
                             <div class="space-y-2">
-                                {vm.items.iter().map(|item| {
+                                {available.into_iter().map(|item| {
                                     let item_id = item.id.clone();
                                     let title = item.title.clone();
                                     let item_type = item.item_type.clone();
