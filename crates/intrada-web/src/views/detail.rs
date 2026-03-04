@@ -11,6 +11,7 @@ use crate::components::{
     SkeletonLine, TempoProgressChart, TypeBadge,
 };
 use intrada_web::core_bridge::process_effects;
+use intrada_web::helpers::{format_date_short, format_datetime_short};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
@@ -170,10 +171,10 @@ pub fn DetailView() -> impl IntoView {
 
                             <div class="mt-2 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-faint">
                                 <div>
-                                    <span class="font-medium">"Created: "</span>{created_at}
+                                    <span class="font-medium">"Created: "</span>{format_datetime_short(&created_at)}
                                 </div>
                                 <div>
-                                    <span class="font-medium">"Updated: "</span>{updated_at}
+                                    <span class="font-medium">"Updated: "</span>{format_datetime_short(&updated_at)}
                                 </div>
                             </div>
                         </Card>
@@ -216,7 +217,7 @@ pub fn DetailView() -> impl IntoView {
                                                     <h4 class="field-label mb-2">"Score History"</h4>
                                                     <div class="space-y-1.5">
                                                         {history.into_iter().map(|entry| {
-                                                            let display_date = entry.session_date.split('T').next().unwrap_or(&entry.session_date).to_string();
+                                                            let display_date = format_date_short(&entry.session_date);
                                                             view! {
                                                                 <div class="flex items-center justify-between text-sm">
                                                                     <span class="text-muted">{display_date}</span>
