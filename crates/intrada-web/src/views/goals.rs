@@ -4,7 +4,9 @@ use leptos_router::components::A;
 use intrada_core::model::{GoalProgress, GoalView};
 use intrada_core::{Event, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card, PageHeading, SkeletonCardList};
+use crate::components::{
+    Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -17,9 +19,9 @@ pub fn GoalsListView() -> impl IntoView {
 
     view! {
         <div>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <PageHeading text="Goals" />
-                <A href="/goals/new" attr:class="cta-link">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+                <PageHeading text="Goals" subtitle="Set targets for your practice and track your progress toward them." />
+                <A href="/goals/new" attr:class="cta-link shrink-0">
                     "Set a Goal"
                 </A>
             </div>
@@ -38,7 +40,9 @@ pub fn GoalsListView() -> impl IntoView {
                 if active.is_empty() && completed.is_empty() {
                     view! {
                         <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
-                            <div class="mb-4 text-4xl">"\u{1F3AF}"</div>
+                            <div class="mb-4 text-muted">
+                                <Icon name=IconName::Target class="w-10 h-10 mx-auto" />
+                            </div>
                             <p class="text-secondary font-medium">"No goals yet"</p>
                             <p class="text-sm text-muted mt-2">"Set a goal to track your progress and stay motivated."</p>
                             <div class="mt-6">
@@ -100,13 +104,13 @@ pub fn GoalsListView() -> impl IntoView {
 }
 
 /// Icon for a goal type.
-fn goal_type_icon(kind_type: &str) -> &'static str {
+fn goal_type_icon(kind_type: &str) -> IconName {
     match kind_type {
-        "session_frequency" => "\u{1F4C5}", // 📅
-        "practice_time" => "\u{23F1}",      // ⏱
-        "item_mastery" => "\u{2B50}",       // ⭐
-        "milestone" => "\u{1F3AF}",         // 🎯
-        _ => "\u{1F3AF}",
+        "session_frequency" => IconName::Calendar,
+        "practice_time" => IconName::Clock,
+        "item_mastery" => IconName::Star,
+        "milestone" => IconName::Target,
+        _ => IconName::Target,
     }
 }
 
@@ -193,7 +197,9 @@ fn GoalCard(goal: GoalView) -> impl IntoView {
                         <div class="space-y-3">
                             // Header: icon + title + status badge
                             <div class="flex items-start gap-3">
-                                <span class="text-xl flex-shrink-0">{icon}</span>
+                                <span class="flex-shrink-0 text-accent-text">
+                                    <Icon name=icon class="w-5 h-5" />
+                                </span>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                                         <span class="text-sm font-medium text-primary">{title}</span>

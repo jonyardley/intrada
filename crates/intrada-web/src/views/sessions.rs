@@ -3,7 +3,9 @@ use leptos_router::components::A;
 
 use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
 
-use crate::components::{Button, ButtonVariant, Card, PageHeading, SkeletonCardList};
+use crate::components::{
+    Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -16,7 +18,12 @@ pub fn SessionsListView() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Practice Sessions" />
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+                <PageHeading text="Practice Sessions" subtitle="Review your practice history and track how your sessions build over time." />
+                <A href="/sessions/new" attr:class="cta-link shrink-0">
+                    "New Session"
+                </A>
+            </div>
 
             {move || {
                 if is_loading.get() {
@@ -32,21 +39,11 @@ pub fn SessionsListView() -> impl IntoView {
                         <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
                             <p class="text-muted">"No practice sessions recorded yet."</p>
                             <p class="text-sm text-faint mt-2">"Start a practice session to begin tracking your progress."</p>
-                            <div class="mt-6">
-                                <A href="/sessions/new" attr:class="cta-link">
-                                    "New Session"
-                                </A>
-                            </div>
                         </div>
                     }.into_any()
                 } else {
                     let core = core.clone();
                     view! {
-                        <div class="mb-4">
-                            <A href="/sessions/new" attr:class="cta-link">
-                                "New Session"
-                            </A>
-                        </div>
                         <div class="space-y-3">
                             {vm.sessions.iter().map(|session| {
                                 view! {
@@ -170,15 +167,10 @@ fn SessionRow(
                             // Entry details with scores
                             <div class="mt-1 pt-2 space-y-1.5">
                                 {entries.into_iter().map(|entry| {
-                                    let status_label = match entry.status.as_str() {
-                                        "completed" => "✓",
-                                        "skipped" => "⊘",
-                                        _ => "—",
-                                    };
-                                    let status_color = match entry.status.as_str() {
-                                        "completed" => "text-success-text",
-                                        "skipped" => "text-warning-text",
-                                        _ => "text-faint",
+                                    let (status_icon, status_color) = match entry.status.as_str() {
+                                        "completed" => (IconName::Check, "text-success-text"),
+                                        "skipped" => (IconName::Ban, "text-warning-text"),
+                                        _ => (IconName::Minus, "text-faint"),
                                     };
                                     let entry_intention = entry.intention.clone();
                                     let entry_rep_target = entry.rep_target;
@@ -189,7 +181,9 @@ fn SessionRow(
                                         <div class="text-xs">
                                             <div class="flex items-center justify-between">
                                                 <div class="flex items-center gap-2 min-w-0">
-                                                    <span class={format!("font-medium {}", status_color)}>{status_label}</span>
+                                                    <span class={format!("font-medium {}", status_color)}>
+                                                        <Icon name=status_icon class="w-3.5 h-3.5" />
+                                                    </span>
                                                     <span class="text-primary truncate">{entry.item_title}</span>
                                                     <span class="text-faint shrink-0">{entry.duration_display}</span>
                                                 </div>

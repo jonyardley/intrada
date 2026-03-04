@@ -44,7 +44,6 @@ pub fn AppHeader() -> impl IntoView {
                     <A href="/" attr:class="no-underline">
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>
                     </A>
-                    <p class="text-sm text-muted mt-0.5">"Your music practice companion"</p>
                 </div>
                 <nav class="hidden sm:flex items-center gap-4">
                     <A
