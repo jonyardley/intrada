@@ -7,13 +7,18 @@ test.describe("sessions page", () => {
     await expect(
       page.getByRole("heading", { name: "Practice Sessions" })
     ).toBeVisible();
-    await expect(
-      page.getByText("No practice sessions recorded yet.")
-    ).toBeVisible();
+
+    // Week strip is visible with day cells
+    await expect(page.getByText("No sessions on this day")).toBeVisible();
 
     // Should have a "New Session" link
     await expect(
       page.getByRole("link", { name: "New Session" })
+    ).toBeVisible();
+
+    // Should have a "Show all sessions" link
+    await expect(
+      page.getByRole("link", { name: "Show all sessions →" })
     ).toBeVisible();
   });
 
