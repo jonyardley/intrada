@@ -188,6 +188,8 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 | `AppHeader`     | Top navigation bar with nav links         |
 | `AppFooter`     | Bottom footer (desktop)                   |
 | `BottomTabBar`  | Mobile bottom navigation tabs             |
+| `WeekStrip`     | Weekly calendar strip navigator with swipe |
+| `DayCell`       | Single day cell in week strip (date + dot) |
 
 ### Rules for new UI work
 
@@ -254,3 +256,10 @@ These documents should stay in sync. When any one changes, check the others:
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
 
+
+## Active Technologies
+- Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events) (154-session-week-strip)
+- N/A — no new storage; reads existing `ViewModel.sessions` from Crux core (154-session-week-strip)
+
+## Recent Changes
+- 154-session-week-strip: Added Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events)

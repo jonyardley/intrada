@@ -14,6 +14,7 @@ pub mod session_active;
 pub mod session_new;
 pub mod session_summary;
 pub mod sessions;
+pub mod sessions_all;
 
 pub use add_form::AddLibraryItemForm;
 pub use analytics::AnalyticsPage;
@@ -31,3 +32,4 @@ pub use session_active::SessionActiveView;
 pub use session_new::SessionNewView;
 pub use session_summary::SessionSummaryView;
 pub use sessions::SessionsListView;
+pub use sessions_all::SessionsAllView;

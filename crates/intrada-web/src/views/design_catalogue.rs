@@ -1,16 +1,17 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use chrono::NaiveDate;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
-    Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DropIndicator,
-    FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading, ProgressRing,
-    RoutineSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard,
-    SkeletonLine, StatCard, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
-    TransitionPrompt, TypeBadge, TypeTabs,
+    Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DayCell,
+    DropIndicator, FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading,
+    ProgressRing, RoutineSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
+    SkeletonItemCard, SkeletonLine, StatCard, TagInput, TempoProgressChart, TextArea, TextField,
+    Toast, ToastVariant, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -336,6 +337,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#routine-save" class="text-accent-text hover:text-primary">"Routine Save Form"</a></li>
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
+                            <li><a href="#week-strip" class="text-accent-text hover:text-primary">"Week Strip"</a></li>
                             <li><a href="#shell" class="text-accent-text hover:text-primary">"Shell Components"</a></li>
                             <li><a href="#accessibility" class="text-accent-text hover:text-primary">"Accessibility"</a></li>
                         </ul>
@@ -1283,6 +1285,115 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div class="flex flex-col items-center justify-center py-8 text-center">
                             <div class="w-full h-32 rounded-lg bg-surface-secondary animate-pulse mb-3"></div>
                             <span class="text-xs text-faint">"Loading practice data..."</span>
+                        </div>
+                    </Card>
+                </div>
+            </section>
+
+            // ── Week Strip ───────────────────────────────────────────
+            <section id="week-strip">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Week Strip"</h3>
+                <div class="space-y-6">
+                    // Full WeekStrip with session dots on 3 days
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — with sessions on 3 days (selected: Wednesday)"</p>
+                        <WeekStrip
+                            week_start=NaiveDate::from_ymd_opt(2026, 3, 2).unwrap()
+                            selected_date=Some(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap())
+                            session_dates={
+                                let mut s = HashSet::new();
+                                s.insert(NaiveDate::from_ymd_opt(2026, 3, 2).unwrap());
+                                s.insert(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap());
+                                s.insert(NaiveDate::from_ymd_opt(2026, 3, 6).unwrap());
+                                s
+                            }
+                            on_day_click=Callback::new(|_| {})
+                            on_prev_week=Callback::new(|_| {})
+                            on_next_week=Callback::new(|_| {})
+                            on_today=Callback::new(|_| {})
+                            is_current_week=true
+                        />
+                    </Card>
+
+                    // Empty week — no sessions
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — empty week (no sessions, no selection)"</p>
+                        <WeekStrip
+                            week_start=NaiveDate::from_ymd_opt(2026, 2, 23).unwrap()
+                            selected_date=None
+                            session_dates=HashSet::new()
+                            on_day_click=Callback::new(|_| {})
+                            on_prev_week=Callback::new(|_| {})
+                            on_next_week=Callback::new(|_| {})
+                            on_today=Callback::new(|_| {})
+                            is_current_week=false
+                        />
+                    </Card>
+
+                    // Dual-month label (week spanning two months)
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — dual-month label (Feb – Mar 2026)"</p>
+                        <WeekStrip
+                            week_start=NaiveDate::from_ymd_opt(2026, 2, 23).unwrap()
+                            selected_date=Some(NaiveDate::from_ymd_opt(2026, 2, 25).unwrap())
+                            session_dates={
+                                let mut s = HashSet::new();
+                                s.insert(NaiveDate::from_ymd_opt(2026, 2, 24).unwrap());
+                                s.insert(NaiveDate::from_ymd_opt(2026, 3, 1).unwrap());
+                                s
+                            }
+                            on_day_click=Callback::new(|_| {})
+                            on_prev_week=Callback::new(|_| {})
+                            on_next_week=Callback::new(|_| {})
+                            on_today=Callback::new(|_| {})
+                            is_current_week=false
+                        />
+                    </Card>
+
+                    // Individual DayCell states
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"DayCell — individual states"</p>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <p class="text-xs text-faint mb-2">"Default"</p>
+                                <DayCell
+                                    date=NaiveDate::from_ymd_opt(2026, 3, 2).unwrap()
+                                    day_abbrev="M"
+                                    is_selected=false
+                                    has_sessions=false
+                                    on_click=Callback::new(|_| {})
+                                />
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-faint mb-2">"With session"</p>
+                                <DayCell
+                                    date=NaiveDate::from_ymd_opt(2026, 3, 3).unwrap()
+                                    day_abbrev="T"
+                                    is_selected=false
+                                    has_sessions=true
+                                    on_click=Callback::new(|_| {})
+                                />
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-faint mb-2">"Selected"</p>
+                                <DayCell
+                                    date=NaiveDate::from_ymd_opt(2026, 3, 4).unwrap()
+                                    day_abbrev="W"
+                                    is_selected=true
+                                    has_sessions=false
+                                    on_click=Callback::new(|_| {})
+                                />
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-faint mb-2">"Selected + session"</p>
+                                <DayCell
+                                    date=NaiveDate::from_ymd_opt(2026, 3, 5).unwrap()
+                                    day_abbrev="T"
+                                    is_selected=true
+                                    has_sessions=true
+                                    on_click=Callback::new(|_| {})
+                                />
+                            </div>
                         </div>
                     </Card>
                 </div>

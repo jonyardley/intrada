@@ -1,24 +1,95 @@
+use std::collections::HashSet;
+
+use chrono::NaiveDate;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
 use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList,
+    Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList, WeekStrip,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::helpers::format_datetime_short;
+use intrada_web::helpers::{
+    auto_select_day, format_time_short, get_week_start, group_sessions_by_date, sessions_for_week,
+};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// All-sessions list view showing every completed practice session.
+/// Sessions page with week strip navigator.
+///
+/// Replaces the flat session list with a weekly calendar strip showing
+/// Mon–Sun with dot indicators for days that have sessions. Tapping a day
+/// shows that day's session cards below.
 #[component]
 pub fn SessionsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
 
+    // Ephemeral UI state — week offset and selected date (Leptos signals per architecture rules)
+    let week_offset = RwSignal::new(0_i32);
+    let selected_date = RwSignal::new(None::<NaiveDate>);
+
+    // Today's date — computed once on mount
+    let today = chrono::Utc::now().date_naive();
+
+    // Derived: week start from offset
+    let week_start = Signal::derive(move || get_week_start(today, week_offset.get()));
+
+    // Derived: group all sessions by date
+    let grouped_sessions = Signal::derive(move || {
+        let vm = view_model.get();
+        group_sessions_by_date(&vm.sessions)
+    });
+
+    // Derived: which dates in the current week have sessions
+    let session_dates_in_week =
+        Signal::derive(move || sessions_for_week(&grouped_sessions.get(), week_start.get()));
+
+    // Auto-select effect: when selected_date is None (initial load or week change),
+    // pick the best day based on auto-select logic.
+    Effect::new(move || {
+        let ws = week_start.get();
+        let dates = session_dates_in_week.get();
+        if selected_date.get_untracked().is_none() {
+            let best = auto_select_day(ws, today, &dates);
+            selected_date.set(Some(best));
+        }
+    });
+
+    // Derived: sessions for the selected day, sorted chronologically
+    let day_sessions = Signal::derive(move || -> Vec<PracticeSessionView> {
+        let sel = selected_date.get();
+        let grouped = grouped_sessions.get();
+        match sel {
+            Some(date) => grouped.get(&date).cloned().unwrap_or_default(),
+            None => Vec::new(),
+        }
+    });
+
+    // Callbacks for WeekStrip
+    let on_day_click = Callback::new(move |date: NaiveDate| {
+        selected_date.set(Some(date));
+    });
+
+    let on_prev_week = Callback::new(move |()| {
+        week_offset.update(|o| *o -= 1);
+        selected_date.set(None); // triggers auto-select
+    });
+
+    let on_next_week = Callback::new(move |()| {
+        week_offset.update(|o| *o += 1);
+        selected_date.set(None); // triggers auto-select
+    });
+
+    let on_today = Callback::new(move |()| {
+        week_offset.set(0);
+        selected_date.set(Some(today));
+    });
+
     view! {
         <div>
+            // Page header with "New Session" CTA
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
                 <PageHeading text="Practice Sessions" subtitle="Review your practice history and track how your sessions build over time." />
                 <A href="/sessions/new" attr:class="cta-link shrink-0">
@@ -26,6 +97,29 @@ pub fn SessionsListView() -> impl IntoView {
                 </A>
             </div>
 
+            // Week strip navigator
+            <div class="mb-6">
+                {move || {
+                    let ws = week_start.get();
+                    let sel = selected_date.get();
+                    let dates: HashSet<NaiveDate> = session_dates_in_week.get();
+                    let is_current = week_offset.get() == 0;
+                    view! {
+                        <WeekStrip
+                            week_start=ws
+                            selected_date=sel
+                            session_dates=dates
+                            on_day_click=on_day_click
+                            on_prev_week=on_prev_week
+                            on_next_week=on_next_week
+                            on_today=on_today
+                            is_current_week=is_current
+                        />
+                    }
+                }}
+            </div>
+
+            // Session cards for selected day
             {move || {
                 if is_loading.get() {
                     return view! {
@@ -33,20 +127,18 @@ pub fn SessionsListView() -> impl IntoView {
                     }.into_any();
                 }
 
-                let vm = view_model.get();
+                let sessions = day_sessions.get();
 
-                if vm.sessions.is_empty() {
+                if sessions.is_empty() {
                     view! {
-                        <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
-                            <p class="text-muted">"No practice sessions recorded yet."</p>
-                            <p class="text-sm text-faint mt-2">"Start a practice session to begin tracking your progress."</p>
-                        </div>
+                        <p class="empty-text">"No sessions on this day"</p>
                     }.into_any()
                 } else {
                     let core = core.clone();
+                    let session_count = sessions.len();
                     view! {
                         <div class="space-y-3">
-                            {vm.sessions.iter().map(|session| {
+                            {sessions.into_iter().map(|session| {
                                 view! {
                                     <SessionRow
                                         session=session.clone()
@@ -57,18 +149,25 @@ pub fn SessionsListView() -> impl IntoView {
                             }).collect::<Vec<_>>()}
                         </div>
                         <p class="text-sm text-muted mt-4">
-                            {format!("{} session{}", vm.sessions.len(), if vm.sessions.len() == 1 { "" } else { "s" })}
+                            {format!("{} session{}", session_count, if session_count == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
                 }
             }}
+
+            // "Show all sessions" link
+            <div class="mt-6 text-center">
+                <A href="/sessions/all" attr:class="action-link text-muted hover:text-accent-text">
+                    "Show all sessions →"
+                </A>
+            </div>
         </div>
     }
 }
 
 /// A completed session row with summary info and delete action.
 #[component]
-fn SessionRow(
+pub(crate) fn SessionRow(
     session: PracticeSessionView,
     core: SharedCore,
     view_model: RwSignal<ViewModel>,
@@ -143,7 +242,7 @@ fn SessionRow(
                                         } else {
                                             None
                                         }}
-                                        <span class="text-xs text-faint">{format_datetime_short(&started_at)}</span>
+                                        <span class="text-xs text-faint">{format_time_short(&started_at)}</span>
                                     </div>
                                     {session_intention.map(|intention| {
                                         view! {
