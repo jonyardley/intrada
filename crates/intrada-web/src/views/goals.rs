@@ -8,6 +8,7 @@ use crate::components::{
     Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList,
 };
 use intrada_web::core_bridge::process_effects;
+use intrada_web::helpers::format_date_short;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Goals page — lists active goals with progress bars, plus completed/archived history.
@@ -327,12 +328,4 @@ fn GoalProgressBar(progress: GoalProgress) -> impl IntoView {
             <p class="text-xs text-secondary">{progress.display_text}</p>
         </div>
     }
-}
-
-/// Format an ISO date string to a short display format (e.g. "24 Feb 2026").
-fn format_date_short(iso: &str) -> String {
-    // Parse the ISO date and format nicely, fallback to raw string
-    chrono::DateTime::parse_from_rfc3339(iso)
-        .map(|dt| dt.format("%d %b %Y").to_string())
-        .unwrap_or_else(|_| iso.to_string())
 }

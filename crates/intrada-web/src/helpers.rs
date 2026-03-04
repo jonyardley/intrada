@@ -1,6 +1,21 @@
 use std::collections::HashSet;
 
+use chrono::DateTime;
 use intrada_core::{LibraryItemView, Tempo};
+
+/// Format an ISO 8601 / RFC 3339 date string to "d Mon YYYY" (e.g. "4 Mar 2026").
+pub fn format_date_short(iso: &str) -> String {
+    DateTime::parse_from_rfc3339(iso)
+        .map(|dt| dt.format("%-d %b %Y").to_string())
+        .unwrap_or_else(|_| iso.to_string())
+}
+
+/// Format an ISO 8601 / RFC 3339 datetime string to "d Mon YYYY, HH:MM" (e.g. "4 Mar 2026, 14:30").
+pub fn format_datetime_short(iso: &str) -> String {
+    DateTime::parse_from_rfc3339(iso)
+        .map(|dt| dt.format("%-d %b %Y, %H:%M").to_string())
+        .unwrap_or_else(|_| iso.to_string())
+}
 
 /// Parse comma-separated tags string into Vec<String>.
 /// Trims whitespace, filters empty entries.
@@ -392,5 +407,29 @@ mod tests {
         let exclude = vec!["CLASSICAL".to_string()];
         let result = filter_suggestions(&suggestions, "", &exclude, 8);
         assert_eq!(result, vec!["Jazz"]);
+    }
+
+    // format_date_short / format_datetime_short tests
+    #[test]
+    fn test_format_date_short_valid() {
+        assert_eq!(format_date_short("2026-03-04T14:30:00+00:00"), "4 Mar 2026");
+    }
+
+    #[test]
+    fn test_format_date_short_fallback() {
+        assert_eq!(format_date_short("not-a-date"), "not-a-date");
+    }
+
+    #[test]
+    fn test_format_datetime_short_valid() {
+        assert_eq!(
+            format_datetime_short("2026-03-04T14:30:00+00:00"),
+            "4 Mar 2026, 14:30"
+        );
+    }
+
+    #[test]
+    fn test_format_datetime_short_fallback() {
+        assert_eq!(format_datetime_short("nope"), "nope");
     }
 }

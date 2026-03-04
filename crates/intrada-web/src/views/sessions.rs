@@ -7,6 +7,7 @@ use crate::components::{
     Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList,
 };
 use intrada_web::core_bridge::process_effects;
+use intrada_web::helpers::format_datetime_short;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// All-sessions list view showing every completed practice session.
@@ -142,7 +143,7 @@ fn SessionRow(
                                         } else {
                                             None
                                         }}
-                                        <span class="text-xs text-faint">{started_at}</span>
+                                        <span class="text-xs text-faint">{format_datetime_short(&started_at)}</span>
                                     </div>
                                     {session_intention.map(|intention| {
                                         view! {
