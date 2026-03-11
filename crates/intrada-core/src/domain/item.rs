@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::types::{CreateItem, Tempo, UpdateItem};
-use crate::app::{AppEffect, Effect, Event};
+use crate::app::{Effect, Event};
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
@@ -82,7 +82,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::SaveItem(item)).into(),
+                crate::http::create_item(&model.api_base_url, &item),
                 crux_core::render::render(),
             ])
         }
@@ -123,7 +123,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
+                crate::http::update_item(&model.api_base_url, &item),
                 crux_core::render::render(),
             ])
         }
@@ -137,7 +137,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::DeleteItem { id }).into(),
+                crate::http::delete_item(&model.api_base_url, &id),
                 crux_core::render::render(),
             ])
         }
@@ -163,7 +163,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
+                crate::http::update_item(&model.api_base_url, &item),
                 crux_core::render::render(),
             ])
         }
@@ -181,7 +181,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let item = item.clone();
             Command::all([
-                Command::notify_shell(AppEffect::UpdateItem(item)).into(),
+                crate::http::update_item(&model.api_base_url, &item),
                 crux_core::render::render(),
             ])
         }

@@ -3,21 +3,29 @@
 // Swift shell effect processor for Intrada.
 // Port of crates/intrada-web/src/core_bridge.rs.
 //
-// Wraps CoreFfi (Rust FFI via BCS/bincode) and dispatches all AppEffect variants
-// to the API client, session storage, and view model updates.
+// Wraps CoreFfi (Rust FFI via BCS/bincode) and dispatches effects:
+//   - Render → read ViewModel from core
+//   - Http   → execute HTTP request via URLSession, resolve with HttpResult
+//   - App    → session crash recovery (save/clear in-progress session)
 //
 // The CoreFfi bridge uses the Request/Resolve pattern:
 //   1. update(eventBytes) → [Request] (each with id + effect)
-//   2. Shell processes each effect (Render → read view, App → execute side effect)
-//   3. Shell calls resolve(id, responseBytes) for App effects → more [Request]
+//   2. Shell processes each effect
+//   3. Shell calls resolve(id, responseBytes) → more [Request]
+//
+// HTTP-through-core: The Rust core owns all HTTP logic (URLs, bodies, parsing).
+// This shell is a dumb I/O pipe — it executes the HttpRequest the core provides
+// and sends back the raw HttpResponse. Auth headers and 401 retry are handled
+// here since they require platform-specific Clerk integration.
 
+import ClerkKit
 import Foundation
 import Observation
 
 /// The main effect processor for the Intrada iOS shell.
 ///
 /// Holds the Rust `CoreFfi` instance and publishes the `ViewModel` for SwiftUI.
-/// All state changes flow through: UI -> `update(Event)` -> Core -> effects -> API -> re-render.
+/// All state changes flow through: UI -> `update(Event)` -> Core -> effects -> shell I/O -> resolve -> re-render.
 @Observable
 @MainActor
 final class IntradaCore {
@@ -33,14 +41,14 @@ final class IntradaCore {
     // MARK: - Private State
 
     private let core: CoreFfi
-    private let api: APIClient
+    private let session: URLSession
 
     // MARK: - Init
 
-    init(api: APIClient = APIClient()) {
+    init() {
         let core = CoreFfi()
         self.core = core
-        self.api = api
+        self.session = URLSession.shared
 
         // Read initial ViewModel from the core (empty lists, default values)
         let data = core.view()
@@ -61,7 +69,7 @@ final class IntradaCore {
         do {
             eventBytes = try event.bincodeSerialize()
         } catch {
-            reportError("Failed to serialize event: \(error)")
+            print("[IntradaCore] Failed to serialize event: \(error)")
             return
         }
 
@@ -69,26 +77,19 @@ final class IntradaCore {
         processRequests(responseData)
     }
 
-    /// Load initial data from the API.
+    /// Initialise the core with the API base URL and start loading data.
     ///
-    /// Called once after sign-in. Fetches items, sessions, routines, and goals
-    /// in parallel, then sends the loaded data to the core.
-    func fetchInitialData() {
+    /// Called once after sign-in. Sends `StartApp` to the core which triggers
+    /// HTTP effects for fetching items, sessions, routines, and goals.
+    func startApp() {
         isLoading = true
+        update(.startApp(apiBaseUrl: Config.apiBaseURL))
 
+        // Restore any in-progress session from crash recovery
         Task {
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask { await self.fetchItems() }
-                group.addTask { await self.fetchSessions() }
-                group.addTask { await self.fetchRoutines() }
-                group.addTask { await self.fetchGoals() }
-            }
-
-            // Restore any in-progress session from crash recovery
             if let savedSession = SessionStorage.load() {
                 update(.session(.recoverSession(session: savedSession)))
             }
-
             isLoading = false
         }
     }
@@ -104,7 +105,7 @@ final class IntradaCore {
         do {
             requests = try [Request].bincodeDeserialize(input: bytes)
         } catch {
-            reportError("Failed to deserialize requests: \(error)")
+            print("[IntradaCore] Failed to deserialize requests: \(error)")
             return
         }
 
@@ -112,6 +113,8 @@ final class IntradaCore {
             switch request.effect {
             case .render:
                 refreshViewModel()
+            case .http(let httpRequest):
+                handleHttpEffect(httpRequest, requestId: request.id)
             case .app(let appEffect):
                 handleAppEffect(appEffect, requestId: request.id)
             }
@@ -124,183 +127,126 @@ final class IntradaCore {
         do {
             viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](data))
         } catch {
-            reportError("Failed to deserialize ViewModel: \(error)")
+            print("[IntradaCore] Failed to deserialize ViewModel: \(error)")
         }
     }
 
-    /// Tell the core an App effect has been resolved, then process any new requests.
-    private func resolveEffect(_ requestId: UInt32) {
-        let moreData = core.resolve(requestId, Data())
+    /// Tell the core an effect has been resolved, then process any new requests.
+    private func resolveEffect(_ requestId: UInt32, data: Data = Data()) {
+        let moreData = core.resolve(requestId, data)
         processRequests(moreData)
     }
 
-    // MARK: - AppEffect Dispatch
+    // MARK: - HTTP Effect Handler
 
-    // swiftlint:disable:next function_body_length cyclomatic_complexity
-    private func handleAppEffect(_ effect: AppEffect, requestId: UInt32) {
+    /// Execute an HTTP request from the core, adding auth and 401 retry.
+    ///
+    /// The core provides the full URL, method, headers, and body.
+    /// This shell adds the Clerk auth header and retries once on 401.
+    /// The raw response (status + headers + body) is serialised as `HttpResult`
+    /// and resolved back to the core.
+    private func handleHttpEffect(_ httpRequest: HttpRequest, requestId: UInt32) {
         Task {
-            switch effect {
-            case .loadAll:
-                await fetchAllData()
+            let result = await executeHttpWithRetry(httpRequest)
+            do {
+                let resultBytes = try result.bincodeSerialize()
+                resolveEffect(requestId, data: Data(resultBytes))
+            } catch {
+                print("[IntradaCore] Failed to serialize HttpResult: \(error)")
+            }
+        }
+    }
 
-            case .saveItem(let item):
-                await spawnMutate(.library) {
-                    try await self.api.postJSON("/api/items", body: item) as Item
-                }
+    /// Execute an HTTP request with automatic 401 retry.
+    ///
+    /// On 401, fetches a fresh Clerk JWT and retries once.
+    private func executeHttpWithRetry(_ httpRequest: HttpRequest) async -> HttpResult {
+        let firstResult = await executeHttp(httpRequest, freshToken: false)
 
-            case .updateItem(let item):
-                await spawnMutate(.library) {
-                    try await self.api.putJSON("/api/items/\(item.id)", body: item) as Item
-                }
+        // If we got a 401, retry once with a fresh token
+        if case .ok(let response) = firstResult, response.status == 401 {
+            return await executeHttp(httpRequest, freshToken: true)
+        }
 
-            case .deleteItem(let id):
-                await spawnMutate(.library) {
-                    try await self.api.delete("/api/items/\(id)")
-                }
+        return firstResult
+    }
 
-            case .loadSessions:
-                await fetchSessions()
+    /// Execute a single HTTP request via URLSession.
+    private func executeHttp(_ httpRequest: HttpRequest, freshToken: Bool) async -> HttpResult {
+        guard let url = URL(string: httpRequest.url) else {
+            return .err(.url("Invalid URL: \(httpRequest.url)"))
+        }
 
-            case .savePracticeSession(let session):
-                await spawnMutate(.sessions) {
-                    try await self.api.postJSON("/api/sessions", body: session) as PracticeSession
-                }
+        var request = URLRequest(url: url)
+        request.httpMethod = httpRequest.method
 
-            case .deletePracticeSession(let id):
-                await spawnMutate(.sessions) {
-                    try await self.api.delete("/api/sessions/\(id)")
-                }
+        // Copy headers from the core's request
+        for header in httpRequest.headers {
+            request.setValue(header.value, forHTTPHeaderField: header.name)
+        }
 
-            case .saveSessionInProgress(let session):
-                SessionStorage.save(session)
+        // Add auth header from Clerk
+        if let authHeader = await getAuthHeader(forceRefresh: freshToken) {
+            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        }
 
-            case .clearSessionInProgress:
-                SessionStorage.clear()
+        // Set body if non-empty
+        if !httpRequest.body.isEmpty {
+            request.httpBody = Data(httpRequest.body)
+        }
 
-            case .saveRoutine(let routine):
-                await spawnMutate(.routines) {
-                    try await self.api.postJSON("/api/routines", body: routine) as Routine
-                }
+        do {
+            let (data, response) = try await session.data(for: request)
 
-            case .updateRoutine(let routine):
-                await spawnMutate(.routines) {
-                    try await self.api.putJSON("/api/routines/\(routine.id)", body: routine) as Routine
-                }
-
-            case .deleteRoutine(let id):
-                await spawnMutate(.routines) {
-                    try await self.api.delete("/api/routines/\(id)")
-                }
-
-            case .saveGoal(let goal):
-                await spawnMutate(.goals) {
-                    try await self.api.postJSON("/api/goals", body: goal) as Goal
-                }
-
-            case .updateGoal(let goal):
-                await spawnMutate(.goals) {
-                    try await self.api.putJSON("/api/goals/\(goal.id)", body: goal) as Goal
-                }
-
-            case .deleteGoal(let id):
-                await spawnMutate(.goals) {
-                    try await self.api.delete("/api/goals/\(id)")
-                }
-
-            case .loadGoals:
-                await fetchGoals()
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return .err(.io("Invalid response type"))
             }
 
-            // Resolve the effect to notify the core it's complete.
-            // This may produce further requests (e.g., additional Render effects).
-            resolveEffect(requestId)
-        }
-    }
+            // Convert response headers to HttpHeader array
+            let responseHeaders: [HttpHeader] = httpResponse.allHeaderFields.compactMap { key, value in
+                guard let name = key as? String, let val = value as? String else { return nil }
+                return HttpHeader(name: name, value: val)
+            }
 
-    // MARK: - Refresh-After-Mutate
-
-    /// Which data to refresh after a mutation.
-    private enum RefreshKind {
-        case library
-        case sessions
-        case routines
-        case goals
-    }
-
-    /// Execute a mutation, then refresh the relevant data from the API.
-    ///
-    /// Mirrors the `spawn_mutate()` pattern from `core_bridge.rs`.
-    private func spawnMutate<T: Sendable>(_ kind: RefreshKind, action: @escaping @Sendable () async throws -> T) async {
-        do {
-            _ = try await action()
+            return .ok(HttpResponse(
+                status: UInt16(httpResponse.statusCode),
+                headers: responseHeaders,
+                body: [UInt8](data)
+            ))
+        } catch let error as URLError where error.code == .timedOut {
+            return .err(.timeout)
         } catch {
-            reportError("Mutation failed: \(error.localizedDescription)")
-            return
-        }
-
-        switch kind {
-        case .library:
-            await fetchItems()
-        case .sessions:
-            await fetchSessions()
-        case .routines:
-            await fetchRoutines()
-        case .goals:
-            await fetchGoals()
+            return .err(.io(error.localizedDescription))
         }
     }
 
-    // MARK: - Data Fetching
-
-    private func fetchAllData() async {
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask { await self.fetchItems() }
-            group.addTask { await self.fetchSessions() }
-            group.addTask { await self.fetchRoutines() }
-            group.addTask { await self.fetchGoals() }
+    /// Get a Bearer token from Clerk for API authorization.
+    @MainActor
+    private func getAuthHeader(forceRefresh: Bool) async -> String? {
+        guard let clerkSession = Clerk.shared.session else {
+            print("[IntradaCore] Warning: No Clerk session available")
+            return nil
         }
-    }
-
-    private func fetchItems() async {
         do {
-            let items = try await api.getItems()
-            update(.dataLoaded(items: items))
+            let token = try await clerkSession.getToken(.init(skipCache: forceRefresh))
+            return token.map { "Bearer \($0)" }
         } catch {
-            reportError("Failed to load items: \(error.localizedDescription)")
+            print("[IntradaCore] Warning: Failed to get auth token: \(error)")
+            return nil
         }
     }
 
-    private func fetchSessions() async {
-        do {
-            let sessions = try await api.getSessions()
-            update(.sessionsLoaded(sessions: sessions))
-        } catch {
-            reportError("Failed to load sessions: \(error.localizedDescription)")
+    // MARK: - AppEffect Dispatch (Session Crash Recovery Only)
+
+    private func handleAppEffect(_ effect: AppEffect, requestId: UInt32) {
+        switch effect {
+        case .saveSessionInProgress(let session):
+            SessionStorage.save(session)
+        case .clearSessionInProgress:
+            SessionStorage.clear()
         }
-    }
 
-    private func fetchRoutines() async {
-        do {
-            let routines = try await api.getRoutines()
-            update(.routinesLoaded(routines: routines))
-        } catch {
-            reportError("Failed to load routines: \(error.localizedDescription)")
-        }
-    }
-
-    private func fetchGoals() async {
-        do {
-            let goals = try await api.getGoals()
-            update(.goalsLoaded(goals: goals))
-        } catch {
-            reportError("Failed to load goals: \(error.localizedDescription)")
-        }
-    }
-
-    // MARK: - Error Reporting
-
-    private func reportError(_ message: String) {
-        print("[IntradaCore] \(message)")
-        update(.loadFailed(message))
+        // Resolve the effect to notify the core it's complete.
+        resolveEffect(requestId)
     }
 }

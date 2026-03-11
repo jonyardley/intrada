@@ -13,7 +13,7 @@ use std::sync::Mutex;
 use crux_core::Core;
 
 use intrada_core::app::{AppEffect, Effect, Intrada};
-use intrada_core::{Event, ViewModel};
+use intrada_core::{Event, HttpRequest, ViewModel};
 
 /// A JSON-serialisable representation of a single effect from the core.
 ///
@@ -24,7 +24,9 @@ use intrada_core::{Event, ViewModel};
 pub enum JsonEffect {
     /// Render effect — signals the shell to re-read the ViewModel.
     Render,
-    /// App effect — an operation the shell must execute (API call, storage, etc.).
+    /// HTTP effect — an HTTP request the shell must execute.
+    Http(HttpRequest),
+    /// App effect — an operation the shell must execute (localStorage, etc.).
     App(AppEffect),
 }
 
@@ -94,6 +96,7 @@ impl CoreJson {
             .into_iter()
             .map(|e| match e {
                 Effect::Render(_) => JsonEffect::Render,
+                Effect::Http(req) => JsonEffect::Http(req.operation),
                 Effect::App(req) => JsonEffect::App(req.operation),
             })
             .collect();

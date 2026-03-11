@@ -531,7 +531,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::SaveItem(item)).into(),
+                crate::http::create_item(&model.api_base_url, &item),
                 crux_core::render::render(),
             ])
         }
@@ -769,7 +769,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             let save_effect_session = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
-                Command::notify_shell(AppEffect::SaveItem(item)).into(),
+                crate::http::create_item(&model.api_base_url, &item),
                 Command::notify_shell(save_effect_session).into(),
                 crux_core::render::render(),
             ])
@@ -1031,7 +1031,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::SavePracticeSession(practice_session)).into(),
+                crate::http::create_session(&model.api_base_url, &practice_session),
                 Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
                 crux_core::render::render(),
             ])
@@ -1079,7 +1079,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::DeletePracticeSession { id }).into(),
+                crate::http::delete_session(&model.api_base_url, &id),
                 crux_core::render::render(),
             ])
         }
@@ -1138,6 +1138,7 @@ mod tests {
                     updated_at: now,
                 },
             ],
+            api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()
         }
     }

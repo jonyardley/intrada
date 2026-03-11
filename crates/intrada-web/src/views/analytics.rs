@@ -6,7 +6,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 
 use crate::components::{Card, Icon, IconName, LineChart, PageHeading, SkeletonBlock, StatCard};
-use intrada_web::core_bridge::fetch_initial_data;
+use intrada_web::core_bridge::init_core;
 use intrada_web::types::{IsLoading, IsSubmitting};
 
 /// Analytics dashboard page — shows practice insights and trends.
@@ -424,7 +424,7 @@ fn ErrorState(#[prop(into)] message: String) -> impl IntoView {
     let is_submitting = expect_context::<IsSubmitting>();
 
     let on_retry = move |_| {
-        fetch_initial_data(&view_model, &is_loading, &is_submitting);
+        init_core(&view_model, &is_loading, &is_submitting);
     };
 
     view! {

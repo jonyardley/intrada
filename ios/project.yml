@@ -48,9 +48,11 @@ targets:
           - "Security"
           - "-framework"
           - "SystemConfiguration"
-        LIBRARY_SEARCH_PATHS:
+        LIBRARY_SEARCH_PATHS[sdk=iphoneos*]:
           - "$(inherited)"
           - "$(SRCROOT)/../target/aarch64-apple-ios/release"
+        LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]:
+          - "$(inherited)"
           - "$(SRCROOT)/../target/aarch64-apple-ios-sim/release"
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
@@ -70,9 +72,11 @@ targets:
         EXCLUDED_ARCHS[sdk=iphonesimulator*]: "x86_64"
       configs:
         Debug:
-          LIBRARY_SEARCH_PATHS:
+          LIBRARY_SEARCH_PATHS[sdk=iphoneos*]:
             - "$(inherited)"
             - "$(SRCROOT)/../target/aarch64-apple-ios/debug"
+          LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]:
+            - "$(inherited)"
             - "$(SRCROOT)/../target/aarch64-apple-ios-sim/debug"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS:
             - "DEBUG"
@@ -110,12 +114,15 @@ targets:
             cargo build -p shared --features uniffi $PROFILE_FLAG --target "$RUST_TARGET" 2>&1
           fi
 
-          # Remove the .dylib so the linker uses the static .a library.
-          # Cargo builds both because crate-type includes "cdylib" (needed for WASM).
-          # If the .dylib is present, ld64 prefers it and embeds an absolute Mac path
-          # that doesn't exist on physical iOS devices, causing a dyld crash.
-          rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.dylib"
-          rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/deps/libshared.dylib"
+          # Remove ALL .dylib files from both iOS targets so the linker
+          # always picks the static .a library. Cargo builds both because
+          # crate-type includes "cdylib" (needed for WASM). If the .dylib is
+          # present, ld64 prefers it — and since LIBRARY_SEARCH_PATHS includes
+          # both target dirs, a leftover device dylib breaks simulator builds.
+          rm -f "$SRCROOT/../target/aarch64-apple-ios/$PROFILE_DIR/libshared.dylib"
+          rm -f "$SRCROOT/../target/aarch64-apple-ios/$PROFILE_DIR/deps/libshared.dylib"
+          rm -f "$SRCROOT/../target/aarch64-apple-ios-sim/$PROFILE_DIR/libshared.dylib"
+          rm -f "$SRCROOT/../target/aarch64-apple-ios-sim/$PROFILE_DIR/deps/libshared.dylib"
 
           echo "Rust build complete for $RUST_TARGET (static lib only)"
         basedOnDependencyAnalysis: false

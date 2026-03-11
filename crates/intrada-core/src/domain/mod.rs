@@ -12,5 +12,7 @@ pub use session::{
     SetlistEntry,
 };
 pub use types::{
-    CreateGoal, CreateItem, LibraryData, ListQuery, SessionsData, Tempo, UpdateGoal, UpdateItem,
+    CreateGoal, CreateItem, CreateRoutineEntryRequest, CreateRoutineRequest, LibraryData,
+    ListQuery, SessionsData, Tempo, UpdateGoal, UpdateGoalRequest, UpdateItem,
+    UpdateRoutineRequest,
 };

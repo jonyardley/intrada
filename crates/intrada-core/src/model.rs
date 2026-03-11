@@ -15,6 +15,8 @@ use crate::domain::ListQuery;
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
 pub struct Model {
+    /// Base URL for the REST API (set via `Event::StartApp`).
+    pub api_base_url: String,
     pub items: Vec<Item>,
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
@@ -23,6 +25,20 @@ pub struct Model {
     pub routines: Vec<Routine>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
     pub goals: Vec<Goal>,
+}
+
+#[cfg(test)]
+impl Model {
+    /// Create a test model with a valid API base URL.
+    ///
+    /// crux_http requires absolute URLs, so tests must use this instead of
+    /// `Model::default()` when the handler under test produces HTTP effects.
+    pub fn test_default() -> Self {
+        Self {
+            api_base_url: "http://localhost:3001".to_string(),
+            ..Default::default()
+        }
+    }
 }
 
 /// Serializable view state sent to shells for rendering.

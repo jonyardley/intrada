@@ -2,6 +2,7 @@ pub mod analytics;
 pub mod app;
 pub mod domain;
 pub mod error;
+pub mod http;
 pub mod model;
 pub mod validation;
 
@@ -14,6 +15,11 @@ pub use domain::session::{
 };
 pub use domain::types::{CreateItem, LibraryData, ListQuery, SessionsData, Tempo, UpdateItem};
 pub use error::LibraryError;
+
+// Re-export crux_http protocol types so shells can handle HTTP effects
+// without a direct crux_http dependency.
+pub use crux_http::protocol::{HttpHeader, HttpResponse, HttpResult};
+pub use crux_http::{HttpError, HttpRequest};
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
     PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SetlistEntryView,

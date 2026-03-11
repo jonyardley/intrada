@@ -1,11 +1,12 @@
 // The `#[effect]` macro generates an enum with large variant size differences
-// (Request<AppEffect> vs Request<RenderOperation>); we can't Box through the macro.
+// (Request<HttpRequest> vs Request<RenderOperation>); we can't Box through the macro.
 #![allow(clippy::large_enum_variant)]
 
 use crux_core::capability::Operation;
 use crux_core::macros::effect;
 use crux_core::render::RenderOperation;
 use crux_core::{App, Command};
+use crux_http::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
@@ -16,6 +17,7 @@ use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
 use crate::domain::types::ListQuery;
+use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, GoalProgress, GoalView, ItemPracticeSummary, LibraryItemView, Model,
@@ -31,14 +33,41 @@ pub struct Intrada;
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Event {
+    // ── Lifecycle ────────────────────────────────────────────────────
+    /// Shell provides the API base URL on startup.
+    /// Named `StartApp` (not `Init`) to avoid Swift keyword collision.
+    StartApp {
+        api_base_url: String,
+    },
+    /// Fetch all data from the API (items, sessions, routines, goals).
+    FetchAll,
+    /// Re-fetch a single resource kind after a mutation (refresh-after-mutate).
+    RefetchItems,
+    RefetchSessions,
+    RefetchRoutines,
+    RefetchGoals,
+
+    // ── Domain ──────────────────────────────────────────────────────
     Item(ItemEvent),
     Session(SessionEvent),
     Routine(RoutineEvent),
     Goal(GoalEvent),
-    DataLoaded { items: Vec<Item> },
-    SessionsLoaded { sessions: Vec<PracticeSession> },
-    RoutinesLoaded { routines: Vec<Routine> },
-    GoalsLoaded { goals: Vec<Goal> },
+
+    // ── Data loaded callbacks ───────────────────────────────────────
+    DataLoaded {
+        items: Vec<Item>,
+    },
+    SessionsLoaded {
+        sessions: Vec<PracticeSession>,
+    },
+    RoutinesLoaded {
+        routines: Vec<Routine>,
+    },
+    GoalsLoaded {
+        goals: Vec<Goal>,
+    },
+
+    // ── Error handling ──────────────────────────────────────────────
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
@@ -52,35 +81,32 @@ pub enum Event {
 /// - `impl crux_core::Effect` and `impl crux_core::EffectFFI`
 /// - `impl Export` for type generation (Swift/Kotlin/TypeScript types)
 ///
-/// Source variants hold **operation types** (e.g. `RenderOperation`);
+/// Source variants hold **operation types** (e.g. `RenderOperation`, `HttpRequest`);
 /// the macro wraps each in `Request<Op>` in the compiled enum.
+///
+/// HTTP API calls go through `Http` (crux_http). The shell executes the raw
+/// HTTP request and feeds the response back; all request construction and
+/// response parsing happens in the core (see `http.rs`).
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
+    Http(HttpRequest),
+    /// Shell-only side effects that are NOT HTTP (localStorage only).
     App(AppEffect),
 }
 
-/// Side-effect operations handled by the shell (HTTP API calls, localStorage).
+/// Non-HTTP side-effect operations handled by the shell.
+///
+/// After the crux_http migration, only localStorage crash-recovery operations
+/// remain here. All API calls now go through the `Http` effect variant.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum AppEffect {
-    LoadAll,
-    SaveItem(Item),
-    UpdateItem(Item),
-    DeleteItem { id: String },
-    LoadSessions,
-    SavePracticeSession(PracticeSession),
-    DeletePracticeSession { id: String },
+    /// Persist the active session to localStorage for crash recovery (FR-008).
     SaveSessionInProgress(ActiveSession),
+    /// Clear the active session from localStorage.
     ClearSessionInProgress,
-    SaveRoutine(Routine),
-    UpdateRoutine(Routine),
-    DeleteRoutine { id: String },
-    SaveGoal(Goal),
-    UpdateGoal(Goal),
-    DeleteGoal { id: String },
-    LoadGoals,
 }
 
 impl Operation for AppEffect {
@@ -102,10 +128,35 @@ impl App for Intrada {
         model: &mut Self::Model,
     ) -> Command<Self::Effect, Self::Event> {
         match event {
+            // ── Lifecycle ────────────────────────────────────────────
+            Event::StartApp { api_base_url } => {
+                model.api_base_url = api_base_url;
+                // Immediately fetch all data
+                Command::all([
+                    http::fetch_items(&model.api_base_url),
+                    http::fetch_sessions(&model.api_base_url),
+                    http::fetch_routines(&model.api_base_url),
+                    http::fetch_goals(&model.api_base_url),
+                ])
+            }
+            Event::FetchAll => Command::all([
+                http::fetch_items(&model.api_base_url),
+                http::fetch_sessions(&model.api_base_url),
+                http::fetch_routines(&model.api_base_url),
+                http::fetch_goals(&model.api_base_url),
+            ]),
+            Event::RefetchItems => http::fetch_items(&model.api_base_url),
+            Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
+            Event::RefetchRoutines => http::fetch_routines(&model.api_base_url),
+            Event::RefetchGoals => http::fetch_goals(&model.api_base_url),
+
+            // ── Domain handlers ──────────────────────────────────────
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Routine(routine_event) => handle_routine_event(routine_event, model),
             Event::Goal(goal_event) => handle_goal_event(goal_event, model),
+
+            // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
                 model.items = items;
                 model.last_error = None;
@@ -125,6 +176,8 @@ impl App for Intrada {
                 model.last_error = None;
                 crux_core::render::render()
             }
+
+            // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
                 model.last_error = Some(msg);
                 crux_core::render::render()
@@ -596,8 +649,8 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
             }
 
             // Filter by tags (all must match, case-insensitive)
-            if let Some(ref tags) = query.tags {
-                for tag in tags {
+            if !query.tags.is_empty() {
+                for tag in &query.tags {
                     let tag_lower = tag.to_lowercase();
                     if !item.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
                         return false;
@@ -639,7 +692,7 @@ mod tests {
     #[test]
     fn test_data_loaded_populates_model() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         let now = chrono::Utc::now();
         let items = vec![
@@ -695,7 +748,7 @@ mod tests {
     #[test]
     fn test_view_empty_model() {
         let app = Intrada;
-        let model = Model::default();
+        let model = Model::test_default();
         let vm = app.view(&model);
 
         assert!(vm.items.is_empty());
@@ -780,7 +833,7 @@ mod tests {
     #[test]
     fn test_set_query_filters_by_type() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
         model.items.push(Item {
@@ -835,7 +888,7 @@ mod tests {
     #[test]
     fn test_set_query_filters_by_text() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
         model.items.push(Item {
@@ -878,7 +931,7 @@ mod tests {
     #[test]
     fn test_set_query_filters_by_category() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
         model.items.push(Item {
@@ -921,7 +974,7 @@ mod tests {
     #[test]
     fn test_set_query_filters_by_tags() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
         model.items.push(Item {
@@ -952,7 +1005,7 @@ mod tests {
         });
 
         model.active_query = Some(ListQuery {
-            tags: Some(vec!["classical".to_string()]),
+            tags: vec!["classical".to_string()],
             ..Default::default()
         });
 
@@ -966,7 +1019,7 @@ mod tests {
     #[test]
     fn test_unicode_in_item_add() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         let _cmd = app.update(
             Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
@@ -1004,7 +1057,7 @@ mod tests {
     #[test]
     fn test_performance_10k_items() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
         // Populate 10,000 items (5k pieces + 5k exercises)
@@ -1184,7 +1237,7 @@ mod tests {
     fn test_view_practice_summary_with_setlist_sessions() {
         let app = Intrada;
         let now = chrono::Utc::now();
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         let p1 = Item {
             id: "p1".to_string(),
@@ -1293,7 +1346,7 @@ mod tests {
     fn test_score_history_multiple_sessions() {
         let app = Intrada;
         let now = chrono::Utc::now();
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         model.items.push(Item {
             id: "p1".to_string(),
@@ -1391,7 +1444,7 @@ mod tests {
     fn test_score_history_no_scored_sessions() {
         let app = Intrada;
         let now = chrono::Utc::now();
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         model.items.push(Item {
             id: "p1".to_string(),
@@ -1453,7 +1506,7 @@ mod tests {
     fn test_score_history_item_multiple_times_in_one_session() {
         let app = Intrada;
         let now = chrono::Utc::now();
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         model.items.push(Item {
             id: "p1".to_string(),
@@ -1540,7 +1593,7 @@ mod tests {
     fn test_score_history_skipped_entries_excluded() {
         let app = Intrada;
         let now = chrono::Utc::now();
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         model.items.push(Item {
             id: "p1".to_string(),
@@ -1601,7 +1654,7 @@ mod tests {
     #[test]
     fn test_view_empty_sessions() {
         let app = Intrada;
-        let model = Model::default();
+        let model = Model::test_default();
         let vm = app.view(&model);
         assert!(vm.sessions.is_empty());
     }
@@ -1662,7 +1715,7 @@ mod tests {
     #[test]
     fn test_goal_add_creates_goal() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let _cmd = app.update(
             Event::Goal(GoalEvent::Add(crate::domain::types::CreateGoal {
                 title: "Practise 5 days per week".to_string(),
@@ -1683,7 +1736,7 @@ mod tests {
     #[test]
     fn test_goal_add_validation_error() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let _cmd = app.update(
             Event::Goal(GoalEvent::Add(crate::domain::types::CreateGoal {
                 title: "".to_string(),
@@ -1701,7 +1754,7 @@ mod tests {
     #[test]
     fn test_goal_complete_active_goal() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1725,7 +1778,7 @@ mod tests {
     #[test]
     fn test_goal_complete_archived_goal_rejected() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1748,7 +1801,7 @@ mod tests {
     #[test]
     fn test_goal_archive_active_goal() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1771,7 +1824,7 @@ mod tests {
     #[test]
     fn test_goal_archive_completed_goal_rejected() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let mut goal = make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1796,7 +1849,7 @@ mod tests {
     #[test]
     fn test_goal_reactivate_archived_goal() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1819,7 +1872,7 @@ mod tests {
     #[test]
     fn test_goal_reactivate_active_goal_rejected() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1842,7 +1895,7 @@ mod tests {
     #[test]
     fn test_goal_delete() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1865,7 +1918,7 @@ mod tests {
     #[test]
     fn test_goal_delete_not_found() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         let _cmd = app.update(
             Event::Goal(GoalEvent::Delete {
@@ -1880,7 +1933,7 @@ mod tests {
     #[test]
     fn test_goal_update_title() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {
@@ -1907,7 +1960,7 @@ mod tests {
     #[test]
     fn test_goals_loaded_populates_model() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         let goals = vec![
             make_test_goal(
                 "g1",
@@ -1935,7 +1988,7 @@ mod tests {
     #[test]
     fn test_view_goals_in_viewmodel() {
         let app = Intrada;
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.goals.push(make_test_goal(
             "g1",
             GoalKind::SessionFrequency {

@@ -15,7 +15,6 @@
 		31722601D60C120B874356B2 /* Serializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156F3B63DE31CCC79124C0F6 /* Serializer.swift */; };
 		31BDC38F20E4518A8084417A /* BinaryDeserializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF835158A19CC0405ED3049C /* BinaryDeserializer.swift */; };
 		4C43B4417E17FFEB08666A79 /* SessionStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9C1027C16210275395BF1A /* SessionStorage.swift */; };
-		5A92A468891AFAEA4F56467D /* CodableExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC51FD2A3C50C75B5B16FD6F /* CodableExtensions.swift */; };
 		6E73568D2908B04BB7798FF3 /* Tuple5.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43B3DFD48A0DF8FCCBFDE /* Tuple5.swift */; };
 		6FB5F47EBDFA25BC63BFA15F /* Requests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B6661D1EF98782D3F848A9B /* Requests.swift */; };
 		70D6D2171C529D9AB3628575 /* Int128.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DDB22A97E5BF8FA28CE67A /* Int128.swift */; };
@@ -32,6 +31,7 @@
 		BD2F85018DB204B38C6BF740 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7887130402ADA05E0F3343C /* EmptyStateView.swift */; };
 		C9D2A4CF0B8AFA3EB912820D /* BincodeSerializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5625BFAB80EC1E7E17D19672 /* BincodeSerializer.swift */; };
 		D631DF875DDB3A39D1C6F8F0 /* Tuple4.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01F9BF415A10A56A361A93AE /* Tuple4.swift */; };
+		DD5F7D0819FE136538DC3424 /* TypeExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE08BD97198888E3BBEA352 /* TypeExtensions.swift */; };
 		E0F3169C12F8B4F671F29637 /* IntradaCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CC2CF99FF4E54220C0D8E1A /* IntradaCore.swift */; };
 		E8A5CDA9AE21D5D0C2A636FF /* BcsDeserializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7633C139D25A99689A62D1F2 /* BcsDeserializer.swift */; };
 		E8C9549368524EB237946F71 /* BincodeDeserializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CDC71C66136B46F98618D5 /* BincodeDeserializer.swift */; };
@@ -71,6 +71,7 @@
 		67B7B505E2DCD8E81B838EBF /* Deserializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deserializer.swift; sourceTree = "<group>"; };
 		73E5A4C25D59819009DAE2EB /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		7633C139D25A99689A62D1F2 /* BcsDeserializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BcsDeserializer.swift; sourceTree = "<group>"; };
+		7AE08BD97198888E3BBEA352 /* TypeExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypeExtensions.swift; sourceTree = "<group>"; };
 		83A37A40ED4819A50BFE69F4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8584ED83EA727956EC7DDA76 /* Indirect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Indirect.swift; sourceTree = "<group>"; };
 		8B6661D1EF98782D3F848A9B /* Requests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Requests.swift; sourceTree = "<group>"; };
@@ -80,7 +81,6 @@
 		BD57894032E6AF7AB9BCA905 /* shared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = shared.swift; sourceTree = "<group>"; };
 		BF835158A19CC0405ED3049C /* BinaryDeserializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDeserializer.swift; sourceTree = "<group>"; };
 		C27D428FB2043AC84082CC69 /* Slice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Slice.swift; sourceTree = "<group>"; };
-		CC51FD2A3C50C75B5B16FD6F /* CodableExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodableExtensions.swift; sourceTree = "<group>"; };
 		DB9DB23A07FF63500A62B522 /* IntradaTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = IntradaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EC6DDC00C4178DF1A6169D3C /* SharedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypes.swift; sourceTree = "<group>"; };
 		F09102383353EF9B3909644D /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
@@ -145,7 +145,6 @@
 				248BD59CF3B9A2EA9137C7C2 /* Serde */,
 				D08EE23D4780131DD45C5211 /* SharedTypes */,
 				9ECAA1B8D59AA111D2648A42 /* UniFFI */,
-				CC51FD2A3C50C75B5B16FD6F /* CodableExtensions.swift */,
 			);
 			path = Generated;
 			sourceTree = "<group>";
@@ -213,6 +212,7 @@
 			children = (
 				8B6661D1EF98782D3F848A9B /* Requests.swift */,
 				EC6DDC00C4178DF1A6169D3C /* SharedTypes.swift */,
+				7AE08BD97198888E3BBEA352 /* TypeExtensions.swift */,
 			);
 			path = SharedTypes;
 			sourceTree = "<group>";
@@ -352,7 +352,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Set build profile\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  PROFILE_FLAG=\"\"\n  PROFILE_DIR=\"debug\"\nelse\n  PROFILE_FLAG=\"--release\"\n  PROFILE_DIR=\"release\"\nfi\n\n# Determine target based on SDK\nif [ \"$PLATFORM_NAME\" = \"iphoneos\" ]; then\n  RUST_TARGET=\"aarch64-apple-ios\"\nelse\n  RUST_TARGET=\"aarch64-apple-ios-sim\"\nfi\nLIB_PATH=\"$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.a\"\nif [ -f \"$LIB_PATH\" ]; then\n  echo \"Rust library already exists at $LIB_PATH — skipping build\"\nelse\n  echo \"Building shared crate for $RUST_TARGET ($CONFIGURATION)...\"\n  cd \"$SRCROOT/..\"\n  cargo build -p shared --features uniffi $PROFILE_FLAG --target \"$RUST_TARGET\" 2>&1\nfi\n\n# Remove the .dylib so the linker uses the static .a library.\n# Cargo builds both because crate-type includes \"cdylib\" (needed for WASM).\n# If the .dylib is present, ld64 prefers it and embeds an absolute Mac path\n# that doesn't exist on physical iOS devices, causing a dyld crash.\nrm -f \"$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.dylib\"\nrm -f \"$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/deps/libshared.dylib\"\n\necho \"Rust build complete for $RUST_TARGET (static lib only)\"\n";
+			shellScript = "# Set build profile\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  PROFILE_FLAG=\"\"\n  PROFILE_DIR=\"debug\"\nelse\n  PROFILE_FLAG=\"--release\"\n  PROFILE_DIR=\"release\"\nfi\n\n# Determine target based on SDK\nif [ \"$PLATFORM_NAME\" = \"iphoneos\" ]; then\n  RUST_TARGET=\"aarch64-apple-ios\"\nelse\n  RUST_TARGET=\"aarch64-apple-ios-sim\"\nfi\nLIB_PATH=\"$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.a\"\nif [ -f \"$LIB_PATH\" ]; then\n  echo \"Rust library already exists at $LIB_PATH — skipping build\"\nelse\n  echo \"Building shared crate for $RUST_TARGET ($CONFIGURATION)...\"\n  cd \"$SRCROOT/..\"\n  cargo build -p shared --features uniffi $PROFILE_FLAG --target \"$RUST_TARGET\" 2>&1\nfi\n\n# Remove ALL .dylib files from both iOS targets so the linker\n# always picks the static .a library. Cargo builds both because\n# crate-type includes \"cdylib\" (needed for WASM). If the .dylib is\n# present, ld64 prefers it — and since LIBRARY_SEARCH_PATHS includes\n# both target dirs, a leftover device dylib breaks simulator builds.\nrm -f \"$SRCROOT/../target/aarch64-apple-ios/$PROFILE_DIR/libshared.dylib\"\nrm -f \"$SRCROOT/../target/aarch64-apple-ios/$PROFILE_DIR/deps/libshared.dylib\"\nrm -f \"$SRCROOT/../target/aarch64-apple-ios-sim/$PROFILE_DIR/libshared.dylib\"\nrm -f \"$SRCROOT/../target/aarch64-apple-ios-sim/$PROFILE_DIR/deps/libshared.dylib\"\n\necho \"Rust build complete for $RUST_TARGET (static lib only)\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -375,7 +375,6 @@
 				93818B7B2B6B5B9494674B64 /* BinarySerializer.swift in Sources */,
 				E8C9549368524EB237946F71 /* BincodeDeserializer.swift in Sources */,
 				C9D2A4CF0B8AFA3EB912820D /* BincodeSerializer.swift in Sources */,
-				5A92A468891AFAEA4F56467D /* CodableExtensions.swift in Sources */,
 				9E33AB2070496CFF7E1270C0 /* Config.swift in Sources */,
 				055DBF1AAA08038D6B3E5E8C /* Deserializer.swift in Sources */,
 				BD2F85018DB204B38C6BF740 /* EmptyStateView.swift in Sources */,
@@ -394,6 +393,7 @@
 				D631DF875DDB3A39D1C6F8F0 /* Tuple4.swift in Sources */,
 				6E73568D2908B04BB7798FF3 /* Tuple5.swift in Sources */,
 				8B04B76C5406BFA882790A4F /* Tuple6.swift in Sources */,
+				DD5F7D0819FE136538DC3424 /* TypeExtensions.swift in Sources */,
 				ADB40DD1E632CB88305F1B60 /* UInt128.swift in Sources */,
 				A5BF1534DB97EE7A619DF746 /* Unit.swift in Sources */,
 				1CDAB3B9B57822F08B54B1C0 /* shared.swift in Sources */,
@@ -495,9 +495,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/../target/aarch64-apple-ios/debug",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
 					"$(SRCROOT)/../target/aarch64-apple-ios-sim/debug",
 				);
 				MARKETING_VERSION = 1.0.0;
@@ -574,9 +577,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = (
 					"$(inherited)",
 					"$(SRCROOT)/../target/aarch64-apple-ios/release",
+				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
 					"$(SRCROOT)/../target/aarch64-apple-ios-sim/release",
 				);
 				MARKETING_VERSION = 1.0.0;
