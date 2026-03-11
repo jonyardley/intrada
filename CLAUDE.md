@@ -24,6 +24,7 @@ crates/
   intrada-core/   # Pure Crux core — business logic, no I/O, no side effects
   intrada-web/    # Web shell — Leptos 0.8 CSR + WASM, Clerk auth UI
   intrada-api/    # REST API — Axum 0.8 + Turso (libsql), JWT validation
+design/           # Pencil design system file (intrada.pen)
 docs/             # Product roadmap (single source of truth for what's next)
 e2e/              # Playwright E2E tests
 specs/            # SpecKit design artifacts
@@ -226,6 +227,10 @@ and after finishing, check alignment with the source-of-truth documents.
    Run `speckit.specify` to create the feature spec, then `speckit.plan` and
    `speckit.tasks` to generate the implementation plan and task breakdown.
    Specs live in `specs/{issue-number}-{slug}/`.
+5. **Design in Pencil (if UI work).** After `speckit.specify` and before
+   `speckit.plan`, mock new views or significant UI changes in
+   `design/intrada.pen`. See [Pencil Design Workflow](#pencil-design-workflow)
+   for when and how to use it.
 
 ### After completing work
 
@@ -233,7 +238,9 @@ and after finishing, check alignment with the source-of-truth documents.
    `docs/roadmap.md` and close the GitHub issue.
 2. **Update CLAUDE.md.** If the work changes architecture, adds components, or
    introduces new patterns, update the relevant section of this file.
-3. **Check for stale items.** Glance at the project board — are there issues that
+3. **Update Pencil.** If implementation diverged from the design, update the
+   Pencil file. Add any new components to the design system and catalogue.
+4. **Check for stale items.** Glance at the project board — are there issues that
    are now done, duplicated, or no longer relevant? Flag them.
 
 ### Periodic review (every 2 weeks)
@@ -245,8 +252,63 @@ These documents should stay in sync. When any one changes, check the others:
 | [`docs/roadmap.md`](docs/roadmap.md) | Horizons still accurate? Closed issues removed? New work captured? |
 | [`VISION.md`](VISION.md) | Still reflects current product direction? No stale phase references? |
 | [`CLAUDE.md`](CLAUDE.md) | Tech stack, components, and patterns up to date? |
+| [`design/intrada.pen`](design/intrada.pen) | Design system components match `input.css` tokens? Views match implemented UI? Catalogue up to date? |
 | [`docs/user-journey-to-be.drawio`](docs/user-journey-to-be.drawio) | Feature colours match pillar model? New features added? |
 | [GitHub project board](https://github.com/users/jonyardley/projects/2) | Board status matches horizon labels? Priorities set? |
+
+## Pencil Design Workflow
+
+`design/intrada.pen` is the single source of truth for visual design. It contains
+the full design system (reusable components), app views (desktop + mobile), and a
+Design Catalogue reference page.
+
+### When to use Pencil
+
+| Work type | Pencil needed? |
+|-----------|---------------|
+| New view or screen | **Yes** — design both desktop (1440px) and mobile (375px) before implementing |
+| Significant UI change to existing view | **Yes** — mock the change first |
+| New reusable component | **Yes** — add to design system + update catalogue frame |
+| Visual bug fix | Optional — screenshot to confirm intent |
+| Logic/API/backend changes | No |
+| Copy or text changes | No |
+
+### Where it fits in the SpecKit flow
+
+```text
+1. Identify roadmap item          (docs/roadmap.md)
+2. speckit.specify                → spec.md
+3. Design in Pencil (if UI work)  → new frames in design/intrada.pen
+4. speckit.plan                   → plan.md (reference Pencil frames)
+5. speckit.tasks                  → tasks.md
+6. Implement
+```
+
+### Design file rules
+
+1. **Single file.** All design work lives in `design/intrada.pen`. Don't create
+   separate files per feature.
+2. **Reuse components.** Always check the existing design system before creating
+   ad-hoc markup. If a pattern is used in 2+ places, make it a reusable component.
+3. **Desktop + Mobile.** New views need both a 1440px desktop frame and a 375px
+   mobile frame.
+4. **Naming.** Frames use the view name (e.g. "Library Desktop", "Add Item Mobile").
+5. **Design Catalogue.** New components and tokens must be added to the catalogue
+   frame so the full system is visible in one place.
+6. **Token alignment.** Colours in the Pencil file must match the token variables
+   defined in `intrada-web/input.css`. Never use raw hex values for design-system
+   colours — reference the Pencil variables.
+
+### Keeping design and code in sync
+
+- After implementation, update the Pencil file if the final UI diverged from the mockup
+- When adding a new Leptos component to `components/`, add the matching reusable
+  component in Pencil and a showcase entry in the catalogue frame
+- When updating tokens in `input.css`, update the corresponding Pencil variables
+- The Design Catalogue frame should mirror `views/design_catalogue.rs`
+
+Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
+(tokens), `intrada-web/src/views/design_catalogue.rs` (code catalogue)
 
 ## Known Tech Debt
 
