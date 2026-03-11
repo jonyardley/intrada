@@ -86,11 +86,13 @@ targets:
     preBuildScripts:
       - name: "Build Rust Library"
         script: |
-          # Only rebuild if Rust sources changed
+          # Set build profile
           if [ "$CONFIGURATION" = "Debug" ]; then
             PROFILE_FLAG=""
+            PROFILE_DIR="debug"
           else
             PROFILE_FLAG="--release"
+            PROFILE_DIR="release"
           fi
 
           # Determine target based on SDK
@@ -99,20 +101,19 @@ targets:
           else
             RUST_TARGET="aarch64-apple-ios-sim"
           fi
-
-          echo "Building shared crate for $RUST_TARGET ($CONFIGURATION)..."
-          cd "$SRCROOT/.."
-          cargo build -p shared --features uniffi $PROFILE_FLAG --target "$RUST_TARGET" 2>&1
+          LIB_PATH="$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.a"
+          if [ -f "$LIB_PATH" ]; then
+            echo "Rust library already exists at $LIB_PATH — skipping build"
+          else
+            echo "Building shared crate for $RUST_TARGET ($CONFIGURATION)..."
+            cd "$SRCROOT/.."
+            cargo build -p shared --features uniffi $PROFILE_FLAG --target "$RUST_TARGET" 2>&1
+          fi
 
           # Remove the .dylib so the linker uses the static .a library.
           # Cargo builds both because crate-type includes "cdylib" (needed for WASM).
           # If the .dylib is present, ld64 prefers it and embeds an absolute Mac path
           # that doesn't exist on physical iOS devices, causing a dyld crash.
-          if [ "$CONFIGURATION" = "Debug" ]; then
-            PROFILE_DIR="debug"
-          else
-            PROFILE_DIR="release"
-          fi
           rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/libshared.dylib"
           rm -f "$SRCROOT/../target/$RUST_TARGET/$PROFILE_DIR/deps/libshared.dylib"
 
