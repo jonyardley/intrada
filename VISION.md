@@ -16,6 +16,10 @@ Most practice is unstructured. Musicians repeat what feels comfortable, avoid wh
 
 But beneath the structural problem lies a deeper one: **music has one of the longest feedback loops of any skill.** A software developer writes code and sees whether it works in seconds. An athlete shoots a basket and the ball goes in or it doesn't. A musician practises a passage and… it sounds slightly better? Maybe? Improvement in music is often invisible for weeks or months — motor skills consolidate between sessions, not within them (Walker & Stickgold, 2004; Brashers-Krug, Shadmehr & Bizzi, 1996). You have to trust the process before you can see the results.
 
+There is a third layer to the problem: **the sheer volume of what *could* be practised is paralysing.** A pianist learning to improvise faces twelve keys, dozens of chord voicings per key, multiple scale types, ornaments, rhythmic patterns, harmonic substitutions — the material is effectively infinite. Without guidance, the obvious question is not "how do I practise?" but "what should I even be working on?" Even classically trained musicians crossing into improvisation often need a teacher not for technique instruction but simply to answer that question — to cut through the noise and identify what actually matters *right now*. Research on choice in learning contexts confirms the intuition: choice is only motivating when the learner has the competence and knowledge to choose meaningfully (Katz & Assor, 2007). When they don't — and by definition, learners at the boundary of their knowledge don't — excessive choice becomes a burden rather than a freedom (Schwartz, 2004; Iyengar & Lepper, 2000). The result is either paralysis (the musician sits down and doesn't know where to start) or scattershot practice (they try a bit of everything and master nothing).
+
+What musicians need is not more material — the internet has made that infinite — but a **critical path**: the minimum, well-sequenced set of things to practise that leads most efficiently to their specific goal. You don't need to practise scales in every key over two octaves to learn a specific piece. You need the keys, the passages, and the techniques that piece demands — and then to build outward from there. This is what good teachers do instinctively: they filter, sequence, and focus. It's also what self-taught musicians consistently lack (Duke, 2005; Hallam, 2001). In essence, the meta-skill that separates effective from ineffective practice is *learning how to learn* — and that meta-skill is precisely what teachers transmit and what self-directed musicians must somehow develop on their own.
+
 This delayed feedback is particularly devastating for musicians with ADHD, whose brains require frequent evidence of progress to sustain engagement (Barkley, 2015). But it affects every musician: the gap between effort and visible reward is where motivation dies. Research on why music students abandon their instruments points consistently to declining motivation and a lost sense of progress rather than a lack of talent or time (Hallam, 1998; Evans, 2015). Without external evidence that practice is working, "trust the process" becomes an empty mantra.
 
 > **Open question:** While the connection between delayed feedback and dropout is strongly supported by motivation research (SDT, self-efficacy theory), there is limited direct research measuring the *specific* feedback loop length in music learning versus other domains. The claim that music has "one of the longest" feedback loops is an informed inference from motor consolidation research and practitioner experience, not a directly measured comparison. This is a testable hypothesis that Intrada's own data could eventually contribute to answering.
@@ -24,7 +28,7 @@ This delayed feedback is particularly devastating for musicians with ADHD, whose
 
 **Intrada is an intentional practice companion that helps musicians practise smarter, see their progress, and trust the process — by making invisible progress visible.**
 
-Its core job is to **shrink the feedback loop**: to surface evidence of improvement that the musician cannot yet feel, and to do so frequently enough that the motivation to continue never starves. This is not a cosmetic feature layer on top of a practice tracker — it is the fundamental design intent that shapes every decision.
+Its core job is twofold: **shrink the feedback loop** by surfacing evidence of improvement that the musician cannot yet feel, and **illuminate the critical path** by guiding each musician toward the specific material that matters most for their goals right now. Together, these make progress both *visible* and *efficient* — the musician can see that practice is working, and trust that they are working on the right things.
 
 It sits at the intersection of three evidence-based principles: the science of learning (spaced repetition, interleaved practice, deliberate practice), the psychology of motivation (self-determination theory, growth mindset), and the practical realities of musical skill acquisition (technique across all keys, repertoire management, goal-directed study).
 
@@ -35,6 +39,7 @@ Intrada doesn't replace your teacher or your musicianship. It gives you the stru
 Where other apps track minutes or provide generic tools, Intrada offers something different:
 
 - **Shrink the feedback loop** — surface evidence of progress before the musician can feel it, turning weeks of invisible improvement into daily visible signals
+- **Illuminate the critical path** — guide musicians toward the specific material that matters for their goals, cutting through the noise of everything they *could* practise to focus on what they *should* practise right now
 - **Fine-grained metric-based progression** — track mastery at the level of individual keys, passages, and techniques, not just "time spent"
 - **Smart scheduling** — algorithmically surface what you need to practise based on spaced repetition and interleaved practice research
 - **Mindful and intentional practice** — encourage focus, reflection, and deliberate engagement rather than mindless repetition
@@ -219,6 +224,42 @@ Intrada cannot replicate all teacher functions — it cannot listen to a musicia
 
 > **Assumption:** The self-taught failure modes listed above are drawn from research on music students in educational contexts (typically school-age or conservatoire students). Whether adult self-directed learners — who form a significant portion of Intrada's target audience — exhibit the same patterns is assumed but not specifically validated. Adult learners may have better metacognitive abilities from other domains, or they may have different failure modes entirely.
 
+### 2.9 The Choice Overload Problem & Guided Learning
+
+Learning a musical instrument is one of the most daunting undertakings an adult can attempt. The amount of material is effectively infinite: twelve keys, multiple scale types, chord voicings, arpeggios, ornaments, rhythmic patterns, stylistic conventions, repertoire — and that's before considering that each musical tradition has its own vocabulary. The internet has made access to this material trivially easy, but access is not the same as curation. The self-taught musician faces what Schwartz (2004) calls the "paradox of choice" — more options don't lead to better decisions; they lead to worse ones, or no decision at all.
+
+#### Choice is only motivating when you know how to choose
+
+The relationship between choice and motivation is not linear. Patall, Cooper & Robinson (2008) found in a meta-analysis that providing choice generally enhances intrinsic motivation — but the effect diminishes or reverses when choices become too numerous or complex. Katz & Assor (2007) showed that choice is only motivating when learners have the competence and knowledge to make meaningful choices. When they don't, choice becomes a burden.
+
+This is directly relevant to music practice. A musician who has been playing for ten years knows instinctively that their Db major scale needs work, that they should practise their weak chord voicings before a gig, and that the bridge of their new piece needs isolated attention. A musician at the boundary of their knowledge — whether a beginner or an experienced player moving into a new style — has no basis for these decisions. They face a blank page and an infinite menu.
+
+#### The critical path problem
+
+In software engineering, the "critical path" is the minimum sequence of tasks that determines the total time to project completion. Music learning has an analogous structure: for any specific goal, there is a subset of material that matters most and a sequence in which it should be learned. You don't need to practise scales in every key over two octaves before you can learn a specific piece — you need the keys that piece uses, the techniques it demands, and the supporting exercises that build those specific skills.
+
+Good teachers identify this critical path instinctively. They look at where the student is, where they want to go, and draw the shortest line between the two — filtering out the 90% of possible material that, while valuable in the abstract, isn't relevant to the current goal. This is the *sequencing* function from Section 2.8, but viewed through the lens of what to *exclude* rather than what to include.
+
+Research on guided versus unguided learning strongly supports this filtering function. Kirschner, Sweller & Clark (2006) argued that minimal guidance during instruction does not work, particularly for novices, because unguided approaches impose excessive cognitive load — the learner spends cognitive resources on deciding what to do rather than actually doing it. Mayer (2004) reviewed decades of evidence and concluded that guided instruction consistently outperforms pure discovery learning. Alfieri et al. (2011) found in a meta-analysis that unassisted discovery rarely benefits learners, but *guided* discovery — with scaffolding, feedback, and structure — outperforms both unguided discovery and rote instruction.
+
+#### Learning how to learn
+
+The meta-skill that separates effective from ineffective practice is metacognition — the ability to monitor, evaluate, and direct one's own learning. Hallam (2001) studied how practice strategies develop with expertise and found that novices tend to play through entire pieces start-to-finish, while experts identify specific problem areas and deploy targeted strategies. The difference is not just skill — it's knowledge about *how to practise*.
+
+This metacognitive development is slow. McPherson & Renwick (2001) found in a longitudinal study that children's ability to self-regulate their practice — including choosing what to work on — develops gradually and is a major differentiator in outcomes. Williamon & Valentine (2000) showed that practice quality (including strategic decision-making about what to practise) is a stronger predictor of performance quality than practice quantity.
+
+The implication for Intrada is significant: the app should not just provide material and scheduling, but should actively teach musicians *how to learn*. Every intelligent scheduling decision the app makes is an implicit lesson in practice design. Over time, the musician should internalise these patterns — understanding why the app surfaces certain items, why it interleaves different material types, why it prioritises some keys over others — and develop their own metacognitive skills.
+
+> **Assumption:** The claim that Intrada can develop musicians' metacognitive skills through example (implicit modelling via scheduling decisions) is a design hypothesis, not an established finding. Explicit metacognitive instruction has strong research support (Hallam, 2001; McPherson & Zimmerman, 2002), but whether passive exposure to intelligent scheduling transfers metacognitive skills is untested. This is an area where user research could inform whether explicit "here's why I scheduled this" explanations accelerate learning.
+
+#### What this means for Intrada
+
+The choice overload problem reinforces three design principles:
+
+1. **Default to guidance.** The app should always have an answer to "what should I practise?" — not a menu of everything the musician *could* do, but a curated recommendation of what they *should* do right now, given their goals and current state. The one-tap session start (Section 4.2) is the primary expression of this principle.
+2. **Goal-driven filtering.** When a musician sets a goal ("learn this piece by March," "get comfortable improvising over ii-V-I progressions"), the library and scheduler should filter aggressively — surfacing only the material that serves that goal and deprioritising everything else. The musician can always explore beyond the recommendation, but the default path is focused.
+3. **Progressive disclosure.** The full breadth of what could be practised should be available but not presented up front. A musician starting a new exercise sees the keys they need now, not all twelve. As they master the immediate set, the app reveals the next layer. This mirrors the scaffolding approach (Wood, Bruner & Ross, 1976) — support is removed gradually as competence develops.
+
 ---
 
 ## 3. Product Pillars
@@ -282,6 +323,8 @@ A generated practice session includes warm-up items (drawn from saved routines o
 #### One-Tap Session Start
 
 The default interaction when opening Intrada is a ready-to-go session with a prominent "Start" button. No configuration required. The app has already decided what to practise based on the scheduling algorithm — the musician just has to begin. This directly addresses task initiation difficulty (Barkley, 2015) and reduces cognitive overhead for all users. The musician can always choose to modify the session, but the default path is zero-decision start.
+
+This is also the primary expression of the critical path principle (Section 2.9). The generated session is not a random selection from the library — it is a curated, goal-aware recommendation that answers the question every musician silently asks when they sit down: "what should I work on?" By absorbing the decision-making burden, the app eliminates the blank-page problem that derails practice before it begins (see Katz & Assor, 2007 on choice as burden for learners without domain knowledge to choose meaningfully).
 
 #### Short Session Support
 
@@ -385,6 +428,8 @@ A future AI layer could replicate the *structural* teacher functions identified 
 
 **Post-session synthesis:** After a session, the AI offers a brief review connecting today's work to the bigger picture — "You brought two more keys of this exercise above mastery level 3 this week. At this rate, you'll have all 12 above 3 within two weeks." This directly addresses the feedback loop problem by surfacing trajectory-level progress after every session.
 
+**Critical path generation:** This is the AI's most transformative function (see Section 2.9). When a musician sets a goal — "I want to improvise over jazz standards" or "I want to learn this Chopin nocturne" — the AI generates a critical path: the minimum, well-sequenced set of exercises, techniques, and sub-skills that leads most efficiently from where the musician is now to that goal. It answers the question that makes learning an instrument so daunting: *"Of all the things I could practise, what actually matters?"* The critical path is not a generic curriculum — it is derived from the musician's current mastery data, the specific demands of the goal, and the prerequisite relationships between skills. Catrambone (1998) showed that explicitly labelling subgoals in complex tasks significantly improves learning transfer; the AI makes these subgoals visible and concrete.
+
 **Adaptive scheduling:** The AI adapts interleaving intensity based on user response patterns, automatically adjusting mixing aggressiveness based on how the musician responds to different levels of contextual interference over time. It could also detect plateau patterns and suggest strategy changes — shifting from repetition-based to variation-based practice when progress stalls (informed by Duke, Simmons & Cash, 2009).
 
 > **Open question:** The extent to which AI-generated practice advice improves outcomes compared to algorithmically-generated schedules alone is unknown. There is growing evidence from adaptive learning platforms (Duolingo's Birdbrain model, Khan Academy's mastery-based pathways) that personalised sequencing improves retention, but these operate on declarative knowledge tasks, not complex motor-musical skills. Whether similar benefits transfer to music practice is a testable hypothesis but not an established finding.
@@ -430,6 +475,8 @@ Designing for neurodivergent musicians isn't a separate workstream — it's embe
 ### 7.1 Reduce Decisions to Start
 
 Every decision point between "I want to practise" and "I am practising" is an opportunity for any musician to stall — and for a musician with executive function challenges, it's a potential session-ending barrier. The default path through Intrada requires one decision: tap "Start." Everything else is optional.
+
+This principle extends beyond session initiation to the entire practice planning process. The choice overload research (Section 2.9) shows that having to decide *what* to practise — not just *when* — consumes cognitive resources that would be better spent on the practice itself (Katz & Assor, 2007; Kirschner, Sweller & Clark, 2006). The app absorbs this decision-making burden by maintaining a ready recommendation at all times, informed by the musician's goals, current state, and scheduling intelligence. The musician always *can* choose; they never *have to*.
 
 ### 7.2 Externalise Time
 
@@ -516,6 +563,8 @@ The spaced repetition engine should be adapted from SM-2 but with modifications 
 
 > **Reference validation note:** All references below have been verified as real published works to the best of current knowledge. Where a reference is secondary, unpublished, or has a date discrepancy between online-first and print publication, this is noted. Two references — Moss (1995) and the Mathias & Goldman year — carry specific caveats documented in the text where they are cited.
 
+Alfieri, L., Brooks, P. J., Aldrich, N. J., & Tenenbaum, H. R. (2011). Does discovery-based instruction enhance learning? *Journal of Educational Psychology*, 103(1), 1–18. https://doi.org/10.1037/a0021017
+
 Ambrose, S. A., Bridges, M. W., DiPietro, M., Lovett, M. C., & Norman, M. K. (2010). *How Learning Works: Seven Research-Based Principles for Smart Teaching*. San Francisco: Jossey-Bass. ISBN: 978-0-470-48410-4.
 
 Barkley, R. A. (2015). *Attention-Deficit Hyperactivity Disorder: A Handbook for Diagnosis and Treatment* (4th ed.). New York: Guilford Press.
@@ -527,6 +576,8 @@ Bonneville-Roussy, A., & Evans, P. (2024). The support of autonomy, motivation, 
 Brashers-Krug, T., Shadmehr, R., & Bizzi, E. (1996). Consolidation in human motor learning. *Nature*, 382, 252–255. https://doi.org/10.1038/382252a0
 
 Carter, C. E., & Grahn, J. A. (2016). Optimizing music learning: Exploring how blocked and interleaved practice schedules affect advanced performance. *Frontiers in Psychology*, 7, 1251. https://doi.org/10.3389/fpsyg.2016.01251
+
+Catrambone, R. (1998). The subgoal learning model: Creating better examples so that students can solve novel problems. *Journal of Experimental Psychology: General*, 127(4), 355–376. https://doi.org/10.1037/0096-3445.127.4.355
 
 Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. *Psychological Bulletin*, 132(3), 354–380. https://doi.org/10.1037/0033-2909.132.3.354
 
@@ -554,13 +605,27 @@ Hallam, S. (1998). The predictors of achievement and dropout in instrumental tui
 
 Hallam, S. (2001). The development of metacognition in musicians: Implications for education. *British Journal of Music Education*, 18(1), 27–39.
 
+Iyengar, S. S., & Lepper, M. R. (2000). When choice is demotivating: Can one desire too much of a good thing? *Journal of Personality and Social Psychology*, 79(6), 995–1006. https://doi.org/10.1037/0022-3514.79.6.995
+
+Katz, I., & Assor, A. (2007). When choice motivates and when it does not. *Educational Psychology Review*, 19(4), 429–442. https://doi.org/10.1007/s10648-006-9027-y
+
+Kirschner, P. A., Sweller, J., & Clark, R. E. (2006). Why minimal guidance during instruction does not work: An analysis of the failure of constructivist, discovery, problem-based, experiential, and inquiry-based teaching. *Educational Psychologist*, 41(2), 75–86. https://doi.org/10.1207/s15326985ep4102_1
+
 Macnamara, B. N., Hambrick, D. Z., & Oswald, F. L. (2014). Deliberate practice and performance in music, games, sports, education, and professions: A meta-analysis. *Psychological Science*, 25(8), 1608–1618. https://doi.org/10.1177/0956797614535810
 
 Macnamara, B. N., & Maitra, M. (2019). The role of deliberate practice in expert performance: Revisiting Ericsson, Krampe & Tesch-Römer (1993). *Royal Society Open Science*, 6(8), 190327. https://doi.org/10.1098/rsos.190327
 
+Mayer, R. E. (2004). Should there be a three-strikes rule against pure discovery learning? The case for guided methods of instruction. *American Psychologist*, 59(1), 14–19. https://doi.org/10.1037/0003-066X.59.1.14
+
 Mathias, T., & Goldman, A. (2025). How does increasing contextual interference in a musical practice session affect acquisition and retention? *Journal of Research in Music Education*. https://doi.org/10.1177/00224294231222801
 
+McPherson, G. E., & Renwick, J. M. (2001). A longitudinal study of self-regulation in children's musical practice. *Music Education Research*, 3(2), 169–186. https://doi.org/10.1080/14613800120089232
+
+McPherson, G. E., & Zimmerman, B. J. (2002). Self-regulation of musical learning: A social cognitive perspective. In R. Colwell & C. Richardson (Eds.), *The New Handbook of Research on Music Teaching and Learning* (pp. 327–347). Oxford: Oxford University Press.
+
 Moss, S. L. (1995). The distribution of practice effect: A review of the literature. Unpublished review, cited in Firth et al. (2023).
+
+Patall, E. A., Cooper, H., & Robinson, J. C. (2008). The effects of choice on intrinsic motivation and related outcomes: A meta-analysis of research findings. *Psychological Bulletin*, 134(2), 270–300. https://doi.org/10.1037/0033-2909.134.2.270
 
 O'Neill, S. A. (2002). The self-identity of young musicians. In R. A. R. MacDonald, D. J. Hargreaves, & D. Miell (Eds.), *Musical Identities* (pp. 79–96). Oxford University Press.
 
@@ -571,6 +636,8 @@ Puyjarinet, F., Bégel, V., Lopez, R., Dellacherie, D., & Dalla Bella, S. (2017)
 Raz, S. (2025). Enhancing cognitive abilities in young adults with ADHD through instrumental music training. *Psychological Research*, 89, 9. https://doi.org/10.1007/s00426-024-02048-2
 
 Renwick, J. M., & McPherson, G. E. (2002). Interest and choice: Student-selected repertoire and its effect on practising behaviour. *British Journal of Music Education*, 19(2), 173–188. https://doi.org/10.1017/S0265051702000256
+
+Schwartz, B. (2004). *The Paradox of Choice: Why More Is Less*. New York: Ecco/HarperCollins.
 
 Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. *American Psychologist*, 55(1), 68–78. https://doi.org/10.1037/0003-066X.55.1.68
 
@@ -592,7 +659,11 @@ Walker, M. P., & Stickgold, R. (2004). Sleep-dependent learning and memory conso
 
 Wellmann, M., & Skillicorn, A. T. (2024). Research-to-resource: Introducing retrieval practice in jazz pedagogy. *Journal of Research in Music Education*. https://doi.org/10.1177/87551233221146282
 
+Williamon, A., & Valentine, E. (2000). Quantity and quality of musical practice as predictors of performance quality. *British Journal of Psychology*, 91(3), 353–376. https://doi.org/10.1348/000712600161871
+
 Wilde, E. M., & Welch, G. F. (2022). Attention deficit hyperactivity disorder (ADHD) and musical behaviour: The significance of context. *Psychology of Music*, 50(6), 1903–1920.
+
+Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89–100. https://doi.org/10.1111/j.1469-7610.1976.tb00381.x
 
 Wilson, R. C., Shenhav, A., Straccia, M., & Cohen, J. D. (2019). The Eighty Five Percent Rule for optimal learning. *Nature Communications*, 10, 4646. https://doi.org/10.1038/s41467-019-12552-4
 
