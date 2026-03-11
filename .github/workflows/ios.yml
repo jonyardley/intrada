@@ -84,27 +84,27 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Download simulator Rust library
+      - name: Download device Rust library
         uses: actions/download-artifact@v8
         with:
-          name: rust-ios-sim-lib
-          path: target/aarch64-apple-ios-sim/release/
+          name: rust-ios-device-lib
+          path: target/aarch64-apple-ios/release/
 
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
 
-      - name: Build for simulator (no code signing)
+      - name: Build for device (no code signing)
         working-directory: ios
         run: |
           set -o pipefail
           xcodebuild build \
             -project Intrada.xcodeproj \
             -scheme Intrada \
-            -sdk iphonesimulator \
-            -arch arm64 \
+            -destination 'generic/platform=iOS' \
             -configuration Release \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
             COMPILER_INDEX_STORE_ENABLE=NO \
             | xcpretty --color
 
