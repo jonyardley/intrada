@@ -260,6 +260,49 @@ The choice overload problem reinforces three design principles:
 2. **Goal-driven filtering.** When a musician sets a goal ("learn this piece by March," "get comfortable improvising over ii-V-I progressions"), the library and scheduler should filter aggressively — surfacing only the material that serves that goal and deprioritising everything else. The musician can always explore beyond the recommendation, but the default path is focused.
 3. **Progressive disclosure.** The full breadth of what could be practised should be available but not presented up front. A musician starting a new exercise sees the keys they need now, not all twelve. As they master the immediate set, the app reveals the next layer. This mirrors the scaffolding approach (Wood, Bruner & Ross, 1976) — support is removed gradually as competence develops.
 
+### 2.10 Goal-Specific Pathways: From Aspiration to Curriculum
+
+The critical path principle (Section 2.9) identifies what musicians need — a focused, well-sequenced subset of material rather than the full universe of what could be practised. But the principle alone doesn't answer the most concrete and important question a musician can ask: **"I want to play *this* — how do I get there?"**
+
+"I want to play Claire de Lune — where do I even start?" "I want to improvise like Bill Evans — what do I actually need to learn?" These are not scheduling problems or motivation problems. They are curriculum design problems — and they are precisely what good teachers solve, often instinctively, in the first lesson after a student names their goal.
+
+#### Backward design: start with the destination
+
+Wiggins & McTighe (2005) formalised "backward design" in education: begin with the desired outcome, determine what evidence would demonstrate mastery, then design the learning experiences that lead there. This inverts the traditional approach of starting with available content and hoping it leads somewhere useful.
+
+Applied to music, backward design means: a pianist whose goal is to play Debussy's *Claire de Lune* doesn't need a generic piano curriculum. They need the specific skills that piece demands — reading fluency in Db major, control of soft dynamics, pedal technique for sustained resonance, independence of inner voices, rhythmic flexibility for rubato — and a sequence that builds those skills from wherever the musician currently stands. The pathway is goal-specific, not instrument-generic.
+
+#### Prerequisite hierarchies in music
+
+Musical skills form natural hierarchies where complex abilities depend on simpler foundations. Gagné (1985) described how instruction should ensure prerequisite skills are in place before higher-order skills are attempted. Gordon (2007) developed this into a detailed sequential framework specific to music — from aural discrimination through verbal association to symbolic association and composite synthesis — with each stage building on the last.
+
+Every target piece or skill can be decomposed into prerequisite chains. To improvise over jazz standards, a musician needs: functional harmony, voice leading, scale-chord relationships, rhythmic vocabulary, and the ear training to hear chord changes in real time — each of which has its own prerequisites. To play a Chopin nocturne, they need: reading fluency in the relevant keys, chord voicing technique, dynamic control at soft volumes, pedal management, and melodic projection above accompaniment texture. Each of these connects to specific, proven exercises and studies that generations of teachers have refined.
+
+Graded examination systems — ABRSM, the Royal Conservatory, Trinity College London — encode these hierarchies into structured syllabi. The Suzuki method (Suzuki, 1969) builds prerequisite chains directly into its carefully sequenced repertoire, with each piece introducing skills needed for the next. These systems have demonstrated the value of sequenced learning over more than a century of use. Their limitation is that they define a single generic path for all learners of an instrument, regardless of individual goals or starting points.
+
+#### Material within the zone of proximal development
+
+Vygotsky (1978) described the "zone of proximal development" (ZPD) — the gap between what a learner can do independently and what they can achieve with appropriate guidance. Material within this zone is optimally challenging: difficult enough to promote learning, approachable enough to avoid frustration. Lehmann, Sloboda & Woody (2007) apply this directly to music, arguing that effective skill acquisition requires material calibrated to the learner's current level.
+
+A well-designed pathway keeps every step within the musician's ZPD. Each exercise, study, or piece should build on mastered prerequisites and stretch toward the next milestone. This is what distinguishes a pathway from a reading list: it is sequenced for the individual learner, not ordered by publishing convention.
+
+#### Adaptive pathways through knowledge tracing
+
+Static curricula — even well-designed ones — cannot adapt to the individual. Two musicians with the same goal but different starting points, learning speeds, and strengths need different paths. Corbett & Anderson (1995) developed "knowledge tracing," a Bayesian model that estimates learner mastery of individual skills based on their response history. This approach underlies modern adaptive learning platforms and is directly applicable to music: by tracking mastery of individual skills (keys, techniques, reading fluency, chord progressions), the system can infer which prerequisites are met and which pathway steps need attention.
+
+The result is a pathway that adjusts as the musician progresses — skipping what they already know, spending more time where they struggle, and revealing new material only when the foundation is solid. This is progressive disclosure (Section 2.9) applied at the curriculum level.
+
+> **Assumption:** The claim that prerequisite relationships between musical skills can be reliably modelled and automatically sequenced is a design hypothesis. Music pedagogy involves significant tacit knowledge — experienced teachers make sequencing decisions based on intuitions about student readiness that may not reduce to measurable prerequisites. Initial pathways will likely need expert curation (informed by established pedagogical traditions), with adaptive personalisation layered on top as the system accumulates data. Teacher integration (Section 4.9) could provide invaluable input here.
+
+#### What this means for Intrada
+
+Guided pathways are the feature that turns Intrada from a practice *tracker* into a practice *companion*. They answer the question every self-directed musician asks: *"I want to do this — how do I get there?"*
+
+1. **Goal as entry point.** When a musician sets an aspiration — a target piece, a skill to develop, a style to explore — the app generates a pathway: a sequenced set of exercises, studies, and sub-skills that leads from where they are now to that goal.
+2. **Concrete, proven material.** Pathways recommend specific exercises and studies with established pedagogical value — the material a teacher would actually assign. Czerny studies for finger independence, Hanon for evenness, Aebersold patterns for jazz vocabulary, Bach chorales for voice leading. The app connects aspiration to actionable daily practice.
+3. **Visible progress through the pathway.** Each step has measurable criteria (mastery rating, tempo target, key coverage). The musician can see where they are in the journey — not just "am I practising?" but "am I getting closer to my goal?" This is the feedback loop principle (Section 1.1) applied at the curriculum level.
+4. **Adaptive pacing.** The pathway adjusts based on actual progress. A musician who masters a prerequisite quickly moves on; one who struggles stays until the foundation is solid. The app doesn't judge pace — it adapts to it.
+
 ---
 
 ## 3. Product Pillars
@@ -428,7 +471,15 @@ A future AI layer could replicate the *structural* teacher functions identified 
 
 **Post-session synthesis:** After a session, the AI offers a brief review connecting today's work to the bigger picture — "You brought two more keys of this exercise above mastery level 3 this week. At this rate, you'll have all 12 above 3 within two weeks." This directly addresses the feedback loop problem by surfacing trajectory-level progress after every session.
 
-**Critical path generation:** This is the AI's most transformative function (see Section 2.9). When a musician sets a goal — "I want to improvise over jazz standards" or "I want to learn this Chopin nocturne" — the AI generates a critical path: the minimum, well-sequenced set of exercises, techniques, and sub-skills that leads most efficiently from where the musician is now to that goal. It answers the question that makes learning an instrument so daunting: *"Of all the things I could practise, what actually matters?"* The critical path is not a generic curriculum — it is derived from the musician's current mastery data, the specific demands of the goal, and the prerequisite relationships between skills. Catrambone (1998) showed that explicitly labelling subgoals in complex tasks significantly improves learning transfer; the AI makes these subgoals visible and concrete.
+**Guided pathway generation:** This is the AI's most transformative function — the engine behind the guided pathways described in Section 2.10. When a musician sets a goal, the AI generates a complete, sequenced pathway from where they are now to where they want to be. This is not generic advice; it is a personalised curriculum built from the musician's mastery data, the specific demands of the goal, and the prerequisite relationships between skills (Gagné, 1985; Gordon, 2007).
+
+Consider two examples. A musician asks: *"I want to play Claire de Lune — how do I even start?"* The AI analyses the piece's demands (Db major fluency, wide chord voicings, pp/ppp dynamic control, pedal technique, inner-voice independence), compares these against the musician's current mastery data, identifies the gaps, and generates a pathway of specific exercises and studies — Czerny or Hanon exercises adapted to Db major, dynamic control drills, pedal exercises, and simplified arrangements of the opening bars — sequenced so each step builds on the last. The musician doesn't face a blank page; they face step one of a clear journey.
+
+A different musician asks: *"How do I learn to improvise like Bill Evans?"* The AI decomposes this into prerequisite skill chains — basic chord construction, rootless voicings, ii-V-I progressions in all keys, modal scale relationships, melodic phrasing patterns, transcription study of Evans recordings — and sequences them based on what the musician already knows. A pianist who can already voice major and minor seventh chords starts further along the path than one who is building chords for the first time.
+
+In both cases, the pathway uses backward design (Wiggins & McTighe, 2005): start with the destination, identify what mastery looks like, then work backward to the current starting point. Catrambone (1998) showed that explicitly labelling subgoals in complex tasks significantly improves learning transfer; the AI makes these subgoals visible and concrete, giving each step in the pathway a clear name and measurable criterion.
+
+The pathway adapts as the musician progresses. Knowledge tracing (Corbett & Anderson, 1995) estimates mastery of individual skills from practice data, allowing the system to skip prerequisites the musician has already met, linger on skills that need more work, and adjust pacing to keep material within the zone of proximal development (Vygotsky, 1978). Initial pathways will draw on expert-curated templates grounded in established pedagogical traditions; the AI personalises timing, sequencing, and emphasis based on individual data.
 
 **Adaptive scheduling:** The AI adapts interleaving intensity based on user response patterns, automatically adjusting mixing aggressiveness based on how the musician responds to different levels of contextual interference over time. It could also detect plateau patterns and suggest strategy changes — shifting from repetition-based to variation-based practice when progress stalls (informed by Duke, Simmons & Cash, 2009).
 
@@ -581,6 +632,8 @@ Catrambone, R. (1998). The subgoal learning model: Creating better examples so t
 
 Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. *Psychological Bulletin*, 132(3), 354–380. https://doi.org/10.1037/0033-2909.132.3.354
 
+Corbett, A. T., & Anderson, J. R. (1995). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction*, 4(4), 253–278. https://doi.org/10.1007/BF01099821
+
 Donovan, J. J., & Radosevich, D. J. (1999). A meta-analytic review of the distribution of practice effect: Now you see it, now you don't. *Journal of Applied Psychology*, 84(5), 795–805. https://doi.org/10.1037/0021-9010.84.5.795
 
 Driskell, J. E., Willis, R. P., & Copper, C. (1992). Effect of overlearning on retention. *Journal of Applied Psychology*, 77(5), 615–622. https://doi.org/10.1037/0021-9010.77.5.615
@@ -599,6 +652,10 @@ Evans, P. (2015). Self-determination theory: An approach to motivation in music 
 
 Evans, P., & Bonneville-Roussy, A. (2016). Self-determined motivation for practice in university music students. *Psychology of Music*, 44(5), 1095–1110. https://doi.org/10.1177/0305735615610926
 
+Gagné, R. M. (1985). *The Conditions of Learning and Theory of Instruction* (4th ed.). New York: Holt, Rinehart and Winston.
+
+Gordon, E. E. (2007). *Learning Sequences in Music: A Contemporary Music Learning Theory*. Chicago: GIA Publications.
+
 Grob, C. M., Biasutti, M., & Schacter, E. N. (2022). Musical improvisation and expression in individuals with ADHD. *Frontiers in Psychology*, 13, 895780.
 
 Hallam, S. (1998). The predictors of achievement and dropout in instrumental tuition. *Psychology of Music*, 26(2), 116–132. https://doi.org/10.1177/0305735698262002
@@ -611,13 +668,15 @@ Katz, I., & Assor, A. (2007). When choice motivates and when it does not. *Educa
 
 Kirschner, P. A., Sweller, J., & Clark, R. E. (2006). Why minimal guidance during instruction does not work: An analysis of the failure of constructivist, discovery, problem-based, experiential, and inquiry-based teaching. *Educational Psychologist*, 41(2), 75–86. https://doi.org/10.1207/s15326985ep4102_1
 
+Lehmann, A. C., Sloboda, J. A., & Woody, R. H. (2007). *Psychology for Musicians: Understanding and Acquiring the Skills*. Oxford: Oxford University Press.
+
 Macnamara, B. N., Hambrick, D. Z., & Oswald, F. L. (2014). Deliberate practice and performance in music, games, sports, education, and professions: A meta-analysis. *Psychological Science*, 25(8), 1608–1618. https://doi.org/10.1177/0956797614535810
 
 Macnamara, B. N., & Maitra, M. (2019). The role of deliberate practice in expert performance: Revisiting Ericsson, Krampe & Tesch-Römer (1993). *Royal Society Open Science*, 6(8), 190327. https://doi.org/10.1098/rsos.190327
 
-Mayer, R. E. (2004). Should there be a three-strikes rule against pure discovery learning? The case for guided methods of instruction. *American Psychologist*, 59(1), 14–19. https://doi.org/10.1037/0003-066X.59.1.14
-
 Mathias, T., & Goldman, A. (2025). How does increasing contextual interference in a musical practice session affect acquisition and retention? *Journal of Research in Music Education*. https://doi.org/10.1177/00224294231222801
+
+Mayer, R. E. (2004). Should there be a three-strikes rule against pure discovery learning? The case for guided methods of instruction. *American Psychologist*, 59(1), 14–19. https://doi.org/10.1037/0003-066X.59.1.14
 
 McPherson, G. E., & Renwick, J. M. (2001). A longitudinal study of self-regulation in children's musical practice. *Music Education Research*, 3(2), 169–186. https://doi.org/10.1080/14613800120089232
 
@@ -625,9 +684,9 @@ McPherson, G. E., & Zimmerman, B. J. (2002). Self-regulation of musical learning
 
 Moss, S. L. (1995). The distribution of practice effect: A review of the literature. Unpublished review, cited in Firth et al. (2023).
 
-Patall, E. A., Cooper, H., & Robinson, J. C. (2008). The effects of choice on intrinsic motivation and related outcomes: A meta-analysis of research findings. *Psychological Bulletin*, 134(2), 270–300. https://doi.org/10.1037/0033-2909.134.2.270
-
 O'Neill, S. A. (2002). The self-identity of young musicians. In R. A. R. MacDonald, D. J. Hargreaves, & D. Miell (Eds.), *Musical Identities* (pp. 79–96). Oxford University Press.
+
+Patall, E. A., Cooper, H., & Robinson, J. C. (2008). The effects of choice on intrinsic motivation and related outcomes: A meta-analysis of research findings. *Psychological Bulletin*, 134(2), 270–300. https://doi.org/10.1037/0033-2909.134.2.270
 
 Ptacek, R., Weissenberger, S., Braaten, E., Klicperova-Baker, M., Goetz, M., Raboch, J., & Stefano, G. B. (2019). Clinical implications of the perception of time in attention deficit hyperactivity disorder (ADHD): A review. *Medical Science Monitor*, 25, 3918–3924.
 
@@ -637,9 +696,9 @@ Raz, S. (2025). Enhancing cognitive abilities in young adults with ADHD through 
 
 Renwick, J. M., & McPherson, G. E. (2002). Interest and choice: Student-selected repertoire and its effect on practising behaviour. *British Journal of Music Education*, 19(2), 173–188. https://doi.org/10.1017/S0265051702000256
 
-Schwartz, B. (2004). *The Paradox of Choice: Why More Is Less*. New York: Ecco/HarperCollins.
-
 Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. *American Psychologist*, 55(1), 68–78. https://doi.org/10.1037/0003-066X.55.1.68
+
+Schwartz, B. (2004). *The Paradox of Choice: Why More Is Less*. New York: Ecco/HarperCollins.
 
 Serrallach, B., Groß, C., Christiner, M., Wildermuth, S., & Schneider, P. (2022). Musical performance in adolescents with ADHD, ADD and dyslexia — Behavioral and neurophysiological aspects. *Brain Sciences*, 12(2), 127.
 
@@ -653,19 +712,25 @@ Stambaugh, L. A. (2009). Effects of practice schedule on wind instrument perform
 
 Stambaugh, L. A., & Demorest, S. M. (2010). Effects of practice schedule on the acquisition and retention of wind instrument skills. *Journal of Research in Music Education*, 58(4), 357–367.
 
+Suzuki, S. (1969). *Nurtured by Love: A New Approach to Education*. New York: Exposition Press.
+
 Valenzuela, R., Codina, N., & Pestana, J. V. (2018). Self-determination theory applied to flow in conservatoire music practice: The roles of perceived autonomy and competence, and autonomous and controlled motivation. *Psychology of Music*, 46(1), 33–48. https://doi.org/10.1177/0305735617694502
+
+Vygotsky, L. S. (1978). *Mind in Society: The Development of Higher Psychological Processes*. Cambridge, MA: Harvard University Press.
 
 Walker, M. P., & Stickgold, R. (2004). Sleep-dependent learning and memory consolidation. *Neuron*, 44(1), 121–133. https://doi.org/10.1016/j.neuron.2004.08.031
 
 Wellmann, M., & Skillicorn, A. T. (2024). Research-to-resource: Introducing retrieval practice in jazz pedagogy. *Journal of Research in Music Education*. https://doi.org/10.1177/87551233221146282
 
-Williamon, A., & Valentine, E. (2000). Quantity and quality of musical practice as predictors of performance quality. *British Journal of Psychology*, 91(3), 353–376. https://doi.org/10.1348/000712600161871
+Wiggins, G., & McTighe, J. (2005). *Understanding by Design* (2nd ed.). Alexandria, VA: Association for Supervision and Curriculum Development (ASCD).
 
 Wilde, E. M., & Welch, G. F. (2022). Attention deficit hyperactivity disorder (ADHD) and musical behaviour: The significance of context. *Psychology of Music*, 50(6), 1903–1920.
 
-Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89–100. https://doi.org/10.1111/j.1469-7610.1976.tb00381.x
+Williamon, A., & Valentine, E. (2000). Quantity and quality of musical practice as predictors of performance quality. *British Journal of Psychology*, 91(3), 353–376. https://doi.org/10.1348/000712600161871
 
 Wilson, R. C., Shenhav, A., Straccia, M., & Cohen, J. D. (2019). The Eighty Five Percent Rule for optimal learning. *Nature Communications*, 10, 4646. https://doi.org/10.1038/s41467-019-12552-4
+
+Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89–100. https://doi.org/10.1111/j.1469-7610.1976.tb00381.x
 
 ---
 
