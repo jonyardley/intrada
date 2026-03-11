@@ -185,7 +185,10 @@ mod tests {
 
         // Every effect must have a "type" field
         for effect in &effects {
-            assert!(effect.get("type").is_some(), "Effect missing 'type' field: {effect}");
+            assert!(
+                effect.get("type").is_some(),
+                "Effect missing 'type' field: {effect}"
+            );
         }
     }
 }

@@ -1,3 +1,7 @@
+// The `#[effect]` macro generates an enum with large variant size differences
+// (Request<AppEffect> vs Request<RenderOperation>); we can't Box through the macro.
+#![allow(clippy::large_enum_variant)]
+
 use crux_core::capability::Operation;
 use crux_core::macros::effect;
 use crux_core::render::RenderOperation;

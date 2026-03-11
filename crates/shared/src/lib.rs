@@ -1,3 +1,7 @@
+// The crux `#[effect]` macro generates an enum with large variant size differences;
+// we can't Box through the macro so we suppress the lint.
+#![allow(clippy::large_enum_variant)]
+
 //! FFI bridge crate for Intrada.
 //!
 //! Wraps `intrada-core` with a `crux_core::Bridge` and exposes it

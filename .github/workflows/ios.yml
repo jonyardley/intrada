@@ -94,23 +94,6 @@ jobs:
         working-directory: ios
         run: xcodegen generate
 
-      - name: Resolve simulator destination
-        id: sim
-        run: |
-          # Pick the first available iPhone simulator for the installed iOS SDK
-          DEST=$(xcodebuild -showdestinations \
-            -project ios/Intrada.xcodeproj -scheme Intrada 2>/dev/null \
-            | grep "iPhone 16 Pro" | grep "iOS Simulator" | head -1 \
-            | sed 's/.*id:\([^,}]*\).*/\1/' | tr -d ' ')
-          if [ -z "$DEST" ]; then
-            # Fallback to generic simulator build
-            DEST="generic"
-            echo "destination=generic/platform=iOS Simulator" >> $GITHUB_OUTPUT
-          else
-            echo "destination=id=$DEST" >> $GITHUB_OUTPUT
-          fi
-          echo "Using simulator destination: $DEST"
-
       - name: Build for simulator (no code signing)
         working-directory: ios
         run: |
@@ -118,7 +101,8 @@ jobs:
           xcodebuild build \
             -project Intrada.xcodeproj \
             -scheme Intrada \
-            -destination "${{ steps.sim.outputs.destination }}" \
+            -sdk iphonesimulator \
+            -arch arm64 \
             -configuration Release \
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
