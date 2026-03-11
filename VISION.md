@@ -274,7 +274,7 @@ Applied to music, backward design means: a pianist whose goal is to play Debussy
 
 #### Prerequisite hierarchies in music
 
-Musical skills form natural hierarchies where complex abilities depend on simpler foundations. Gagné (1985) described how instruction should ensure prerequisite skills are in place before higher-order skills are attempted. Gordon (2007) developed this into a detailed sequential framework specific to music — from aural discrimination through verbal association to symbolic association and composite synthesis — with each stage building on the last.
+Musical skills form natural hierarchies where complex abilities depend on simpler foundations. Gagné (1985) described how instruction should ensure prerequisite skills are in place before higher-order skills are attempted. Gordon (2007) developed this into a detailed sequential framework specific to music — progressing through aural/oral skills, verbal association, partial synthesis, symbolic association, and composite synthesis — with each stage building on the last.
 
 Every target piece or skill can be decomposed into prerequisite chains. To improvise over jazz standards, a musician needs: functional harmony, voice leading, scale-chord relationships, rhythmic vocabulary, and the ear training to hear chord changes in real time — each of which has its own prerequisites. To play a Chopin nocturne, they need: reading fluency in the relevant keys, chord voicing technique, dynamic control at soft volumes, pedal management, and melodic projection above accompaniment texture. Each of these connects to specific, proven exercises and studies that generations of teachers have refined.
 
