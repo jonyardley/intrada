@@ -6,9 +6,10 @@
 use crate::clerk_bindings;
 
 /// Compile-time API base URL with fallback to production.
+/// Treats an empty `INTRADA_API_URL` the same as unset (uses the default).
 pub const API_BASE_URL: &str = match option_env!("INTRADA_API_URL") {
-    Some(url) => url,
-    None => "https://intrada-api.fly.dev",
+    Some(url) if !url.is_empty() => url,
+    _ => "https://intrada-api.fly.dev",
 };
 
 /// Get the current Clerk auth token formatted as a Bearer header value.
