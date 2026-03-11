@@ -22,7 +22,10 @@ on:
 
 env:
   RUST_VERSION: "1.89.0"
-  XCODE_VERSION: "16.3"
+  # Xcode 16.2 ships with the iOS 18.2 platform on macos-14 runners.
+  # macOS 15 (Sequoia) requires a separate multi-GB platform download for
+  # all Xcode versions, so we use macos-14 for the Xcode build step.
+  XCODE_VERSION: "16.2"
 
 concurrency:
   group: ios-${{ github.ref }}
@@ -30,7 +33,7 @@ concurrency:
 
 jobs:
   # ─────────────────────────────────────────────
-  # Build Rust static library for iOS simulator
+  # Build Rust static library for iOS targets
   # ─────────────────────────────────────────────
   build-rust:
     name: Build Rust (iOS)
@@ -69,17 +72,26 @@ jobs:
           retention-days: 1
 
   # ─────────────────────────────────────────────
-  # Build iOS app (simulator — no code signing)
+  # Build iOS app (device target, no code signing)
   # ─────────────────────────────────────────────
   build-ios:
     name: Build iOS App
-    runs-on: macos-15
+    runs-on: macos-14
     needs: build-rust
     steps:
       - uses: actions/checkout@v6
 
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/xcodegen
+            /opt/homebrew/Cellar/xcodegen
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -89,6 +101,14 @@ jobs:
         with:
           name: rust-ios-device-lib
           path: target/aarch64-apple-ios/release/
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: xcode-deriveddata-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**/*.swift') }}
+          restore-keys: |
+            xcode-deriveddata-${{ runner.os }}-${{ env.XCODE_VERSION }}-
 
       - name: Generate Xcode project
         working-directory: ios
@@ -113,7 +133,7 @@ jobs:
   # ─────────────────────────────────────────────
   deploy-testflight:
     name: Deploy to TestFlight
-    runs-on: macos-15
+    runs-on: macos-14
     needs: [build-rust, build-ios]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -122,12 +142,30 @@ jobs:
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
 
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/xcodegen
+            /opt/homebrew/Cellar/xcodegen
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Cache Ruby gems (Fastlane)
+        uses: actions/cache@v4
+        with:
+          path: ios/vendor/bundle
+          key: gems-${{ runner.os }}-${{ hashFiles('ios/Gemfile.lock') }}
+          restore-keys: |
+            gems-${{ runner.os }}-
 
       - name: Install Fastlane
         run: |
           cd ios
+          bundle config path vendor/bundle
           bundle install
 
       - name: Download device Rust library
