@@ -8,7 +8,7 @@ import Foundation
 /// Persists an in-progress practice session to UserDefaults for crash recovery.
 ///
 /// When the app restarts, the shell checks for a stored session and restores it
-/// via `Event.session(.restoreSession(...))` if one is found.
+/// via `Event.session(.recoverSession(...))` if one is found.
 enum SessionStorage {
 
     private static let key = "intrada:session-in-progress"

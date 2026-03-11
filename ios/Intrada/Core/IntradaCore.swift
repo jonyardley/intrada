@@ -90,7 +90,7 @@ final class IntradaCore {
 
             // Restore any in-progress session from crash recovery
             if let savedSession = SessionStorage.load() {
-                update(.session(.restoreSession(session: savedSession)))
+                update(.session(.recoverSession(session: savedSession)))
             }
 
             isLoading = false
@@ -227,7 +227,7 @@ final class IntradaCore {
     /// Execute a mutation, then refresh the relevant data from the API.
     ///
     /// Mirrors the `spawn_mutate()` pattern from `core_bridge.rs`.
-    private func spawnMutate<T>(_ kind: RefreshKind, action: @escaping () async throws -> T) async {
+    private func spawnMutate<T: Sendable>(_ kind: RefreshKind, action: @escaping @Sendable () async throws -> T) async {
         do {
             _ = try await action()
         } catch {

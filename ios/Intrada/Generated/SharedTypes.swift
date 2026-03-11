@@ -713,11 +713,11 @@ enum SessionEvent: Codable {
         case .decrementRep:
             var c = encoder.singleValueContainer()
             try c.encode("DecrementRep")
-        case .restoreSession(let session):
+        case .recoverSession(let session):
             var container = encoder.container(keyedBy: DynamicCodingKey.self)
             try container.encode(
-                RestoreSessionPayload(session: session),
-                forKey: DynamicCodingKey(stringValue: "RestoreSession")
+                RecoverSessionPayload(session: session),
+                forKey: DynamicCodingKey(stringValue: "RecoverSession")
             )
         case .setAchievedTempo(let entryId, let tempo):
             var container = encoder.container(keyedBy: DynamicCodingKey.self)
@@ -800,9 +800,9 @@ enum SessionEvent: Codable {
         case "SaveSession":
             let p = try container.decode(NowPayload.self, forKey: key)
             self = .saveSession(now: p.now)
-        case "RestoreSession":
-            let p = try container.decode(RestoreSessionPayload.self, forKey: key)
-            self = .restoreSession(session: p.session)
+        case "RecoverSession":
+            let p = try container.decode(RecoverSessionPayload.self, forKey: key)
+            self = .recoverSession(session: p.session)
         case "SetAchievedTempo":
             let p = try container.decode(SetAchievedTempoPayload.self, forKey: key)
             self = .setAchievedTempo(entryId: p.entryId, tempo: p.tempo)
@@ -894,7 +894,7 @@ private struct SetEntryNotesPayload: Codable {
     }
 }
 
-private struct RestoreSessionPayload: Codable {
+private struct RecoverSessionPayload: Codable {
     let session: ActiveSession
 }
 
