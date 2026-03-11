@@ -1,10 +1,12 @@
 // IntradaCore.swift
 //
 // Swift shell effect processor for Intrada.
-// Port of crates/intrada-web/src/core_bridge.rs (844 lines).
+// Port of crates/intrada-web/src/core_bridge.rs.
 //
 // Wraps CoreJson (Rust FFI via JSON) and dispatches all AppEffect variants
 // to the API client, session storage, and view model updates.
+//
+// Effect handling is added incrementally as features are implemented.
 
 import Foundation
 import Observation
@@ -12,7 +14,7 @@ import Observation
 /// The main effect processor for the Intrada iOS shell.
 ///
 /// Holds the Rust `CoreJson` instance and publishes the `ViewModel` for SwiftUI.
-/// All state changes flow through: UI → `update(Event)` → Core → effects → API → re-render.
+/// All state changes flow through: UI -> `update(Event)` -> Core -> effects -> API -> re-render.
 @Observable
 @MainActor
 final class IntradaCore {
@@ -144,17 +146,17 @@ final class IntradaCore {
 
             case .saveItem(let item):
                 await spawnMutate(.library) {
-                    try await self.api.createItem(item)
+                    try await self.api.postJSON("/api/items", body: item) as Item
                 }
 
             case .updateItem(let item):
                 await spawnMutate(.library) {
-                    try await self.api.updateItem(item)
+                    try await self.api.putJSON("/api/items/\(item.id)", body: item) as Item
                 }
 
             case .deleteItem(let id):
                 await spawnMutate(.library) {
-                    try await self.api.deleteItem(id: id)
+                    try await self.api.delete("/api/items/\(id)")
                 }
 
             case .loadSessions:
@@ -162,12 +164,12 @@ final class IntradaCore {
 
             case .savePracticeSession(let session):
                 await spawnMutate(.sessions) {
-                    try await self.api.createSession(session)
+                    try await self.api.postJSON("/api/sessions", body: session) as PracticeSession
                 }
 
             case .deletePracticeSession(let id):
                 await spawnMutate(.sessions) {
-                    try await self.api.deleteSession(id: id)
+                    try await self.api.delete("/api/sessions/\(id)")
                 }
 
             case .saveSessionInProgress(let session):
@@ -178,32 +180,32 @@ final class IntradaCore {
 
             case .saveRoutine(let routine):
                 await spawnMutate(.routines) {
-                    try await self.api.createRoutine(routine)
+                    try await self.api.postJSON("/api/routines", body: routine) as Routine
                 }
 
             case .updateRoutine(let routine):
                 await spawnMutate(.routines) {
-                    try await self.api.updateRoutine(routine)
+                    try await self.api.putJSON("/api/routines/\(routine.id)", body: routine) as Routine
                 }
 
             case .deleteRoutine(let id):
                 await spawnMutate(.routines) {
-                    try await self.api.deleteRoutine(id: id)
+                    try await self.api.delete("/api/routines/\(id)")
                 }
 
             case .saveGoal(let goal):
                 await spawnMutate(.goals) {
-                    try await self.api.createGoal(goal)
+                    try await self.api.postJSON("/api/goals", body: goal) as Goal
                 }
 
             case .updateGoal(let goal):
                 await spawnMutate(.goals) {
-                    try await self.api.updateGoal(goal)
+                    try await self.api.putJSON("/api/goals/\(goal.id)", body: goal) as Goal
                 }
 
             case .deleteGoal(let id):
                 await spawnMutate(.goals) {
-                    try await self.api.deleteGoal(id: id)
+                    try await self.api.delete("/api/goals/\(id)")
                 }
 
             case .loadGoals:

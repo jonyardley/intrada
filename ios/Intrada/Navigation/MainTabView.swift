@@ -2,8 +2,10 @@ import SwiftUI
 import ClerkKit
 
 /// Main tab-based navigation matching the web shell's bottom navigation.
+///
+/// Currently shows placeholder views for each tab. Features will be
+/// implemented incrementally.
 struct MainTabView: View {
-    @Environment(IntradaCore.self) private var core
     @Environment(Clerk.self) private var clerk
     @State private var selectedTab: Tab = .library
     @State private var showingSignOutConfirmation = false
@@ -31,7 +33,7 @@ struct MainTabView: View {
         TabView(selection: $selectedTab) {
             ForEach(Tab.allCases, id: \.self) { tab in
                 NavigationStack {
-                    tabContent(for: tab)
+                    PlaceholderView(tab: tab)
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 accountMenu
@@ -45,12 +47,6 @@ struct MainTabView: View {
             }
         }
         .tint(.indigo)
-        .onChange(of: core.viewModel.sessionStatus) { _, newValue in
-            // Auto-navigate to Practice tab when a session becomes active
-            if newValue == "active" || newValue == "summary" {
-                selectedTab = .practice
-            }
-        }
         .confirmationDialog(
             "Sign Out",
             isPresented: $showingSignOutConfirmation,
@@ -104,46 +100,31 @@ struct MainTabView: View {
             }
         }
     }
-
-    @ViewBuilder
-    private func tabContent(for tab: Tab) -> some View {
-        switch tab {
-        case .library:
-            LibraryListView()
-        case .practice:
-            PracticeTabRoot()
-        case .routines:
-            RoutinesListView()
-        case .goals:
-            GoalsListView()
-        case .analytics:
-            AnalyticsDashboardView()
-        }
-    }
 }
 
-// MARK: - Practice Tab Root
+// MARK: - Placeholder View
 
-/// Routes between session states: idle → new session, building → setlist builder,
-/// active → active practice, summary → session summary.
-struct PracticeTabRoot: View {
-    @Environment(IntradaCore.self) private var core
-
-    private var sessionStatus: String { core.viewModel.sessionStatus }
+/// Placeholder view shown for tabs that haven't been implemented yet.
+private struct PlaceholderView: View {
+    let tab: MainTabView.Tab
 
     var body: some View {
-        Group {
-            switch sessionStatus {
-            case "building":
-                NewSessionView()
-            case "active":
-                ActiveSessionView()
-            case "summary":
-                SessionSummaryView()
-            default:
-                // idle — show sessions list with "New Session" CTA
-                SessionsListView()
-            }
+        VStack(spacing: 16) {
+            Image(systemName: tab.icon)
+                .font(.system(size: 48))
+                .foregroundStyle(.tertiary)
+
+            Text(tab.rawValue)
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            Text("Coming soon")
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+        .navigationTitle(tab.rawValue)
     }
 }

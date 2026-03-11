@@ -611,7 +611,7 @@ enum SessionEvent: Codable {
     case discardSession
     case incrementRep
     case decrementRep
-    case restoreSession(session: ActiveSession)
+    case recoverSession(session: ActiveSession)
     case setAchievedTempo(entryId: String, tempo: UInt16?)
 
     // swiftlint:disable:next function_body_length cyclomatic_complexity
