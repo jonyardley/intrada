@@ -4,8 +4,14 @@ version = "0.1.0"
 edition = "2021"
 rust-version.workspace = true
 
+[features]
+typegen = ["crux_core/typegen", "crux_http/typegen"]
+facet_typegen = ["crux_core/facet_typegen", "crux_http/facet_typegen", "dep:facet"]
+
 [dependencies]
 crux_core = { workspace = true }
+crux_http = { workspace = true }
+facet = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ulid = { workspace = true }

@@ -19,7 +19,7 @@ use crate::views::{
     SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
 };
 use intrada_web::clerk_bindings;
-use intrada_web::core_bridge::{fetch_initial_data, load_session_in_progress, process_effects};
+use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// App-level signal for focus mode — when true, navigation and non-essential UI are hidden.
@@ -140,7 +140,7 @@ fn AuthenticatedApp() -> impl IntoView {
     // Initialize: fetch data from API and recover any in-progress session
     {
         // Spawn async HTTP fetches for library data and sessions
-        fetch_initial_data(&view_model, &is_loading, &is_submitting);
+        init_core(&view_model, &is_loading, &is_submitting);
 
         // Recover any in-progress session from localStorage (crash recovery — FR-008)
         if let Some(session) = load_session_in_progress() {

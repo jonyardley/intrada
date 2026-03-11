@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{AppEffect, Effect, Event};
+use crate::app::{Effect, Event};
 use crate::domain::session::{EntryStatus, SessionStatus, SetlistEntry};
 use crate::model::Model;
 use crate::validation;
@@ -11,6 +11,7 @@ use crate::validation;
 
 /// A named, reusable setlist template containing an ordered list of library item references.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Routine {
     pub id: String,
     pub name: String,
@@ -21,6 +22,7 @@ pub struct Routine {
 
 /// A single item within a routine, representing a library piece or exercise.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct RoutineEntry {
     pub id: String,
     pub item_id: String,
@@ -32,6 +34,8 @@ pub struct RoutineEntry {
 // ── Events ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum RoutineEvent {
     SaveBuildingAsRoutine {
         name: String,
@@ -103,7 +107,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::SaveRoutine(routine)).into(),
+                crate::http::create_routine(&model.api_base_url, &routine),
                 crux_core::render::render(),
             ])
         }
@@ -155,7 +159,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::SaveRoutine(routine)).into(),
+                crate::http::create_routine(&model.api_base_url, &routine),
                 crux_core::render::render(),
             ])
         }
@@ -216,7 +220,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::DeleteRoutine { id }).into(),
+                crate::http::delete_routine(&model.api_base_url, &id),
                 crux_core::render::render(),
             ])
         }
@@ -256,7 +260,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                Command::notify_shell(AppEffect::UpdateRoutine(updated)).into(),
+                crate::http::update_routine(&model.api_base_url, &updated),
                 crux_core::render::render(),
             ])
         }
@@ -272,6 +276,7 @@ mod tests {
 
     fn model_with_building(entries: Vec<SetlistEntry>) -> Model {
         Model {
+            api_base_url: "http://localhost:3001".to_string(),
             session_status: SessionStatus::Building(BuildingSession {
                 entries,
                 session_intention: None,
@@ -455,7 +460,7 @@ mod tests {
 
     #[test]
     fn save_building_wrong_status_fails() {
-        let mut model = Model::default(); // Idle status
+        let mut model = Model::test_default(); // Idle status
         let _cmd = handle_routine_event(
             RoutineEvent::SaveBuildingAsRoutine {
                 name: "Test".to_string(),
@@ -472,6 +477,7 @@ mod tests {
         use crate::domain::session::{CompletionStatus, SummarySession};
 
         let mut model = Model {
+            api_base_url: "http://localhost:3001".to_string(),
             session_status: SessionStatus::Summary(SummarySession {
                 id: "session-1".to_string(),
                 entries: sample_setlist_entries(),
@@ -499,7 +505,7 @@ mod tests {
 
     #[test]
     fn save_summary_wrong_status_fails() {
-        let mut model = Model::default(); // Idle status
+        let mut model = Model::test_default(); // Idle status
         let _cmd = handle_routine_event(
             RoutineEvent::SaveSummaryAsRoutine {
                 name: "Test".to_string(),
@@ -566,7 +572,7 @@ mod tests {
 
     #[test]
     fn load_routine_not_building_fails() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.routines.push(sample_routine());
 
         let _cmd = handle_routine_event(
@@ -594,7 +600,7 @@ mod tests {
 
     #[test]
     fn delete_routine_removes_from_model() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.routines.push(sample_routine());
         assert_eq!(model.routines.len(), 1);
 
@@ -611,7 +617,7 @@ mod tests {
 
     #[test]
     fn update_routine_changes_name_and_entries() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.routines.push(sample_routine());
 
         let new_entries = vec![RoutineEntry {
@@ -640,7 +646,7 @@ mod tests {
 
     #[test]
     fn update_routine_invalid_name_fails() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.routines.push(sample_routine());
 
         let _cmd = handle_routine_event(
@@ -665,7 +671,7 @@ mod tests {
 
     #[test]
     fn update_routine_empty_entries_fails() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
         model.routines.push(sample_routine());
 
         let _cmd = handle_routine_event(
@@ -684,7 +690,7 @@ mod tests {
 
     #[test]
     fn update_routine_not_found_fails() {
-        let mut model = Model::default();
+        let mut model = Model::test_default();
 
         let _cmd = handle_routine_event(
             RoutineEvent::UpdateRoutine {

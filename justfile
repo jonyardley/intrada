@@ -50,3 +50,101 @@ build:
 # Run E2E tests (builds WASM first)
 e2e: build
     cd e2e && npm install && npx playwright test --project=chromium
+
+# ─────────────────────────────────────────────
+# Type Generation
+# ─────────────────────────────────────────────
+
+# Regenerate Swift types from Rust core (run after changing intrada-core types)
+typegen:
+    cargo build -p shared_types
+    @echo "✓ Swift types generated: crates/shared_types/generated/swift/"
+
+# Check that generated Swift types are up to date (CI use)
+typegen-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Snapshot current generated output
+    BEFORE=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
+    # Regenerate
+    cargo build -p shared_types
+    # Compare
+    AFTER=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
+    if [ "$BEFORE" != "$AFTER" ]; then
+        echo "❌ Generated Swift types are out of date!"
+        echo "   Run 'just typegen' and commit the changes."
+        exit 1
+    fi
+    echo "✓ Generated Swift types are up to date."
+
+# ─────────────────────────────────────────────
+# iOS
+# ─────────────────────────────────────────────
+
+# Build Rust for iOS (device + simulator) and generate Swift types
+ios:
+    bash scripts/build-ios.sh
+
+# Build for device only
+ios-device:
+    bash scripts/build-ios.sh --device
+
+# Build for simulator only
+ios-sim:
+    bash scripts/build-ios.sh --sim
+
+# Generate Swift types only (no Rust cross-compilation)
+ios-types:
+    bash scripts/build-ios.sh --types
+
+# Debug build for simulator (faster iteration)
+ios-debug:
+    bash scripts/build-ios.sh --sim --debug
+
+# Regenerate Xcode project from project.yml
+ios-project:
+    cd ios && xcodegen generate
+
+# Full build + regenerate project + open Xcode
+ios-dev: ios ios-project
+    open ios/Intrada.xcodeproj
+
+# Build for simulator, regenerate project, and run in simulator
+ios-run: ios-sim ios-project
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'platform=iOS Simulator,name=iPhone 16' \
+        -configuration Debug \
+        | xcpretty --color 2>/dev/null || true
+    xcrun simctl boot "iPhone 16" 2>/dev/null || true
+    xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Intrada.app 2>/dev/null || \
+        echo "Note: Install from Xcode for first run"
+    xcrun simctl launch booted com.intrada.app 2>/dev/null || \
+        echo "Note: Launch from Xcode for first run"
+
+# Build for device without code signing (CI-style check)
+ios-check: ios-device ios-project
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'generic/platform=iOS' \
+        -configuration Release \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        | xcpretty --color 2>/dev/null || true
+
+# Clean iOS build artifacts
+ios-clean:
+    rm -rf ios/Intrada.xcodeproj
+    rm -rf ios/Intrada/Generated
+    rm -rf target/aarch64-apple-ios
+    rm -rf target/aarch64-apple-ios-sim
+    rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*

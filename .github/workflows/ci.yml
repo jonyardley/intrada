@@ -124,6 +124,30 @@ jobs:
           DIST_DIR: ${{ github.workspace }}/web-dist
         run: npx playwright test
 
+  typegen:
+    name: Typegen Freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "native"
+          save-if: "false"
+      - name: Check generated Swift types are up to date
+        run: |
+          BEFORE=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
+          cargo build -p shared_types
+          AFTER=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "❌ Generated Swift types are out of date!"
+            echo "   Run 'just typegen' and commit the changes."
+            exit 1
+          fi
+          echo "✓ Generated Swift types are up to date."
+
   fmt:
     name: Formatting
     runs-on: ubuntu-latest
@@ -138,7 +162,7 @@ jobs:
   deploy:
     name: Deploy to Cloudflare
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e]
+    needs: [test, clippy, fmt, typegen, wasm-build, wasm-test, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
@@ -156,7 +180,7 @@ jobs:
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt, e2e]
+    needs: [test, clippy, fmt, typegen, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6

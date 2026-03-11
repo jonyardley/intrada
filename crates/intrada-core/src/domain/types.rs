@@ -4,6 +4,7 @@ use super::item::{Item, ItemKind};
 
 /// Top-level serialisation unit for library data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryData {
     #[serde(default)]
     pub items: Vec<Item>,
@@ -11,6 +12,7 @@ pub struct LibraryData {
 
 /// Tempo representation with optional marking (e.g. "Allegro") and BPM.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Tempo {
     pub marking: Option<String>,
     pub bpm: Option<u16>,
@@ -40,6 +42,7 @@ impl Tempo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateItem {
     pub title: String,
     pub kind: ItemKind,
@@ -56,6 +59,7 @@ pub struct CreateItem {
 /// - `Some(None)` = clear the field
 /// - `Some(Some(v))` = set to new value
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
     pub title: Option<String>,
     pub composer: Option<Option<String>>,
@@ -66,11 +70,12 @@ pub struct UpdateItem {
     pub tags: Option<Vec<String>>,
 }
 
-use super::goal::GoalKind;
+use super::goal::{GoalKind, GoalStatus};
 use super::session::PracticeSession;
 
 /// Top-level serialisation unit for `sessions.json` / `intrada:sessions`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SessionsData {
     #[serde(default)]
     pub sessions: Vec<PracticeSession>,
@@ -78,6 +83,7 @@ pub struct SessionsData {
 
 /// Input for creating a new goal.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateGoal {
     pub title: String,
     pub kind: GoalKind,
@@ -87,19 +93,119 @@ pub struct CreateGoal {
 /// PATCH-style update for a goal. `Option<Option<T>>` fields use three-state
 /// semantics: `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateGoal {
     pub title: Option<String>,
     pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
 }
 
+// ── API request DTOs ─────────────────────────────────────────────────
+
+/// Request body for creating a routine via the REST API.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct CreateRoutineRequest {
+    pub name: String,
+    pub entries: Vec<CreateRoutineEntryRequest>,
+}
+
+/// Entry within a create/update routine API request.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct CreateRoutineEntryRequest {
+    pub item_id: String,
+    pub item_title: String,
+    pub item_type: String,
+}
+
+/// Request body for updating a routine via the REST API.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct UpdateRoutineRequest {
+    pub name: String,
+    pub entries: Vec<CreateRoutineEntryRequest>,
+}
+
+/// Request body for updating a goal via the REST API.
+///
+/// The core uses typed `GoalStatus` / `GoalEvent` discriminants, but the
+/// REST API expects a flat JSON object with a string `status` field.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct UpdateGoalRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
+}
+
+// ── Conversion helpers ──────────────────────────────────────────────
+
+impl CreateRoutineRequest {
+    /// Build from a domain `Routine`.
+    pub fn from_routine(routine: &super::routine::Routine) -> Self {
+        Self {
+            name: routine.name.clone(),
+            entries: routine
+                .entries
+                .iter()
+                .map(|e| CreateRoutineEntryRequest {
+                    item_id: e.item_id.clone(),
+                    item_title: e.item_title.clone(),
+                    item_type: e.item_type.clone(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl UpdateRoutineRequest {
+    /// Build from a domain `Routine`.
+    pub fn from_routine(routine: &super::routine::Routine) -> Self {
+        Self {
+            name: routine.name.clone(),
+            entries: routine
+                .entries
+                .iter()
+                .map(|e| CreateRoutineEntryRequest {
+                    item_id: e.item_id.clone(),
+                    item_title: e.item_title.clone(),
+                    item_type: e.item_type.clone(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl UpdateGoalRequest {
+    /// Build from a domain `Goal`, converting the typed status to a string.
+    pub fn from_goal(goal: &super::goal::Goal) -> Self {
+        let status_str = match goal.status {
+            GoalStatus::Active => "active",
+            GoalStatus::Completed => "completed",
+            GoalStatus::Archived => "archived",
+        };
+        Self {
+            title: Some(goal.title.clone()),
+            status: Some(status_str.to_string()),
+            deadline: Some(goal.deadline),
+        }
+    }
+}
+
 /// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ListQuery {
     pub text: Option<String>,
     pub item_type: Option<ItemKind>,
     pub key: Option<String>,
     pub category: Option<String>,
-    pub tags: Option<Vec<String>>,
+    /// Empty vec means "no filter". Avoids `Option<Vec<T>>` which
+    /// serde-reflection (used by Crux typegen) cannot handle.
+    pub tags: Vec<String>,
 }
 
 #[cfg(test)]

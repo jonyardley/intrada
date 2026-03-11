@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-02-26.
+> significant feature lands. Last reviewed: 2026-03-11.
 
 ## Project Overview
 
@@ -24,9 +24,12 @@ crates/
   intrada-core/   # Pure Crux core — business logic, no I/O, no side effects
   intrada-web/    # Web shell — Leptos 0.8 CSR + WASM, Clerk auth UI
   intrada-api/    # REST API — Axum 0.8 + Turso (libsql), JWT validation
+  shared/         # Rust FFI crate — UniFFI bindings + CoreFfi/CoreJson bridges
+  shared_types/   # Facet typegen — auto-generates Swift types with BCS serialization
 design/           # Pencil design system file (intrada.pen)
 docs/             # Product roadmap (single source of truth for what's next)
 e2e/              # Playwright E2E tests
+ios/              # iOS app — SwiftUI shell using CoreFfi (BCS bridge)
 specs/            # SpecKit design artifacts
 ```
 
@@ -79,17 +82,73 @@ cargo fmt --check          # must pass before commit — CI enforces this
 cargo test                 # run all workspace tests
 cargo clippy               # lint check
 cargo test -p intrada-api  # API tests only (includes auth tests)
+just typegen               # regenerate Swift types after changing intrada-core types
+just typegen-check         # verify generated types are up to date (CI use)
+just ios                   # cross-compile for iOS + generate types + UniFFI bindings
 ```
 
 ## Architecture Patterns
 
-- **Crux core/shell split**: `intrada-core` contains zero I/O. All side effects are represented as enum variants and executed by the web shell. The core must compile on any Rust target without WASM dependencies.
-- **Effect enum**: `AppEffect` carries all side-effect requests (HTTP API calls, localStorage). The shell processes each variant in `core_bridge.rs`.
-- **API client**: `api_client.rs` has generic helpers (`get_json`, `post_json`, `put_json`, `delete`) with built-in 401 retry
+### Crux capabilities pattern (IMPORTANT — follow this for all new work)
+
+The project follows the standard Crux architecture where the **core requests
+side-effects via capabilities** and **shells are dumb I/O executors**.
+
+```text
+User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Shell → I/O
+                                 ← Responses ←                        ← Shell ←
+```
+
+Key principles:
+1. **Core owns all logic.** HTTP requests are built inside the core using
+   `crux_http`. The core serializes request bodies (JSON via serde) and
+   deserializes response bodies. Shells never need to understand domain types
+   for API communication.
+2. **Shells are dumb pipes.** The iOS shell receives `HttpRequest` (URL, method,
+   headers, body bytes) and returns `HttpResponse` (status, body bytes). The web
+   shell does the same via `fetch`. Neither shell imports domain types for JSON.
+3. **All types auto-generated.** `facet` typegen generates all Swift/Kotlin/TS
+   types from Rust. There are **zero hand-maintained type definitions or Codable
+   conformances** in shell projects. If you need a new type, define it in Rust
+   with `derive(Facet)` and regenerate.
+4. **No hardcoded type names in scripts.** Build scripts must not contain
+   hardcoded enum Codable implementations or type-specific Swift code. Everything
+   flows from Rust type definitions via the typegen pipeline.
+
+### Other patterns
+
+- **Crux core/shell split**: `intrada-core` contains zero I/O. All side effects are represented as capability operations (Http, KeyValue, Render) and executed by shells. The core must compile on any Rust target without WASM dependencies.
+- **Effect enum**: Uses `crux_http::protocol::HttpRequest` for API calls and `KeyValue` for local storage. Shells process generic HTTP/storage operations.
 - **Validation**: `intrada-core/src/validation.rs` is the single source of truth for all validation constants and rules
 - **Database**: Positional column indexing (`row.get(0)`, etc.) with a `SELECT_COLUMNS` const to keep column order in one place
 - **Migrations**: Sequential numbered migrations in `intrada-api/src/migrations.rs`, each must be a single SQL statement
-- **Refresh-after-mutate**: Every write operation (create/update/delete) is followed by a full re-fetch from the API via `spawn_mutate()`. This keeps the Crux model as the single source of truth without client-side merge logic.
+- **Refresh-after-mutate**: Every write operation (create/update/delete) is followed by a full re-fetch from the API. This keeps the Crux model as the single source of truth without client-side merge logic.
+
+### Type generation (typegen)
+
+All Swift types are **auto-generated** from the Rust domain types — there are zero
+hand-written type definitions in the iOS project.
+
+**Pipeline**: `facet` derive macros → `shared_types/build.rs` → `crux_core::type_generation::facet::TypeRegistry` → Swift package with BCS serialization.
+
+**When to regenerate**: Run `just typegen` whenever you change structs/enums in
+`intrada-core` that derive `facet::Facet` (domain types, events, effects, view model).
+CI runs `just typegen-check` to enforce freshness.
+
+**Key files**:
+
+| File | Purpose |
+|------|---------|
+| `crates/shared_types/build.rs` | TypeRegistry that generates Swift from Rust types |
+| `crates/shared_types/generated/swift/` | Auto-generated Swift package (committed to repo) |
+| `ios/Intrada/Generated/SharedTypes/` | Copied by `build-ios.sh` (stripped of `import Serde`) |
+| `ios/Intrada/Generated/Serde/` | BCS serialization runtime |
+| `ios/Intrada/Generated/UniFFI/` | UniFFI bindings (`CoreFfi` class) |
+
+**Serialization**: BCS (bincode) is used for all Crux FFI traffic — Events, Effects,
+ViewModel, Request/Resolve. Auto-generated by typegen. JSON serialization for the
+REST API is handled **entirely in Rust** via `serde_json` inside `crux_http` — shells
+never perform JSON encoding/decoding of domain types.
 
 ### State boundary
 

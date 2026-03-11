@@ -1,12 +1,15 @@
+//! Bridge between the Crux core and the web shell.
+//!
+//! Processes effects returned by the core, executing HTTP requests via gloo-net
+//! and localStorage operations for crash recovery.
+
 use crux_core::Core;
 use leptos::prelude::{RwSignal, Set};
 use std::cell::Cell;
-use std::future::Future;
 use std::rc::Rc;
 use wasm_bindgen_futures::spawn_local;
 
-use intrada_core::domain::goal::{Goal, GoalStatus};
-use intrada_core::{AppEffect, Effect, Event, Intrada, Routine, ViewModel};
+use intrada_core::{AppEffect, Effect, Event, Intrada, ViewModel};
 
 use crate::api_client;
 use crate::types::{IsLoading, IsSubmitting, SharedCore};
@@ -47,148 +50,112 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
     serde_json::from_str(&json).ok()
 }
 
-/// Number of parallel API fetches launched by [`fetch_initial_data`].
-/// Keep in sync with the number of `spawn_local` blocks below.
-const INITIAL_FETCH_COUNT: u32 = 4;
+// ── Core initialisation ──────────────────────────────────────────────────
 
-/// Fetch all data from the API on app startup.
+/// Initialise the Crux core and fetch all data from the API.
 ///
-/// Spawns four parallel async tasks (items, sessions, routines, goals).
-/// A shared counter ensures `is_loading` stays true until ALL fetches
-/// complete — preventing the flickering that occurred when each fetch
-/// independently toggled the signal.
-///
-/// **Note:** If this function is called again (e.g. via error retry) while
-/// the previous batch is still in-flight, the old batch's counter is orphaned
-/// and may set `is_loading = false` prematurely. This is acceptable for now
-/// because (a) the retry scenario is rare and (b) WASM is single-threaded
-/// so there is no data race — at worst the user sees a brief flicker.
-pub fn fetch_initial_data(
+/// Sends `Event::StartApp` with the API base URL, which makes the core produce
+/// HTTP fetch effects for items, sessions, routines, and goals. A shared
+/// counter keeps `is_loading` true until ALL fetches complete.
+pub fn init_core(
     view_model: &RwSignal<ViewModel>,
     is_loading: &IsLoading,
     is_submitting: &IsSubmitting,
 ) {
-    // Track outstanding fetches. WASM is single-threaded so Rc<Cell> is safe.
-    // IMPORTANT: keep INITIAL_FETCH_COUNT in sync with the number of spawn_local blocks.
-    let remaining = Rc::new(Cell::new(INITIAL_FETCH_COUNT));
     is_loading.set(true);
 
-    // Shared closure: decrement counter and clear loading when all fetches complete.
-    let mark_done = {
-        let remaining = Rc::clone(&remaining);
-        let loading = *is_loading;
-        Rc::new(move || {
-            let n = remaining.get().saturating_sub(1);
-            remaining.set(n);
-            if n == 0 {
-                loading.set(false);
-            }
-        })
+    let core = leptos::prelude::expect_context::<SharedCore>();
+
+    // Send Init and capture effects, then drop the borrow so spawn_local
+    // closures can re-borrow later.
+    let effects = {
+        let core_ref = core.borrow();
+        let effects = core_ref.process_event(Event::StartApp {
+            api_base_url: api_client::API_BASE_URL.to_string(),
+        });
+        view_model.set(core_ref.view());
+        effects
     };
 
-    // Fetch library data (items)
-    {
-        let core = leptos::prelude::expect_context::<SharedCore>();
-        let vm = *view_model;
-        let loading = *is_loading;
-        let submitting = *is_submitting;
-        let done = Rc::clone(&mark_done);
-        spawn_local(async move {
-            match api_client::fetch_items().await {
-                Ok(items) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::DataLoaded { items });
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-                Err(e) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-            }
-            done();
-        });
+    // Count HTTP effects for the loading counter.
+    let http_count = effects
+        .iter()
+        .filter(|e| matches!(e, Effect::Http(_)))
+        .count() as u32;
+    if http_count == 0 {
+        is_loading.set(false);
+        return;
     }
 
-    // Fetch sessions
-    {
-        let core = leptos::prelude::expect_context::<SharedCore>();
-        let vm = *view_model;
-        let loading = *is_loading;
-        let submitting = *is_submitting;
-        let done = Rc::clone(&mark_done);
-        spawn_local(async move {
-            match api_client::fetch_sessions().await {
-                Ok(sessions) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-                Err(e) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-            }
-            done();
-        });
-    }
+    let remaining = Rc::new(Cell::new(http_count));
+    let loading_signal = *is_loading;
 
-    // Fetch routines
-    {
-        let core = leptos::prelude::expect_context::<SharedCore>();
-        let vm = *view_model;
-        let loading = *is_loading;
-        let submitting = *is_submitting;
-        let done = Rc::clone(&mark_done);
-        spawn_local(async move {
-            match api_client::fetch_routines().await {
-                Ok(routines) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::RoutinesLoaded { routines });
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-                Err(e) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
+    for effect in effects {
+        match effect {
+            Effect::Render(_) => {}
+            Effect::Http(mut request) => {
+                let core_handle = leptos::prelude::expect_context::<SharedCore>();
+                let vm = *view_model;
+                let loading = *is_loading;
+                let submitting = *is_submitting;
+                let remaining = Rc::clone(&remaining);
+                spawn_local(async move {
+                    let result = execute_http(&request.operation).await;
+                    let core_ref = core_handle.borrow();
+                    match core_ref.resolve(&mut request, result) {
+                        Ok(new_effects) => {
+                            process_effects_inner(new_effects, &vm, &loading, &submitting);
+                            vm.set(core_ref.view());
+                        }
+                        Err(e) => {
+                            web_sys::console::error_1(&format!("resolve error: {e:?}").into());
+                        }
+                    }
+                    let n = remaining.get().saturating_sub(1);
+                    remaining.set(n);
+                    if n == 0 {
+                        loading_signal.set(false);
+                    }
+                });
             }
-            done();
-        });
-    }
-
-    // Fetch goals
-    {
-        let core = leptos::prelude::expect_context::<SharedCore>();
-        let vm = *view_model;
-        let loading = *is_loading;
-        let submitting = *is_submitting;
-        let done = Rc::clone(&mark_done);
-        spawn_local(async move {
-            match api_client::fetch_goals().await {
-                Ok(goals) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::GoalsLoaded { goals });
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
-                Err(e) => {
-                    let core_ref = core.borrow();
-                    let effects = core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                    process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                }
+            Effect::App(request) => {
+                handle_app_effect(&request.operation);
             }
-            done();
-        });
+        }
     }
 }
 
+// ── Effect processing ────────────────────────────────────────────────────
+
 /// Process effects returned by the Crux core.
 ///
-/// HTTP-backed effects use `spawn_local()` to run async tasks.
-/// Session-in-progress effects remain localStorage-based (FR-008).
+/// Called by views after `core.process_event(...)`. Spawns async tasks for
+/// HTTP effects and handles localStorage operations synchronously.
+///
+/// Automatically sets `is_submitting` when HTTP effects are present and
+/// the app is not in the initial loading state.
 pub fn process_effects(
     core: &Core<Intrada>,
+    effects: Vec<Effect>,
+    view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
+) {
+    // If HTTP effects are present and we're past initial load, mark submitting.
+    let has_http = effects.iter().any(|e| matches!(e, Effect::Http(_)));
+    if has_http && !is_loading.get_untracked() {
+        is_submitting.set(true);
+    }
+
+    process_effects_inner(effects, view_model, is_loading, is_submitting);
+    view_model.set(core.view());
+}
+
+/// Internal effect processor. Spawns async tasks for HTTP effects.
+///
+/// Does NOT call `view_model.set(core.view())` — callers are responsible
+/// for updating the view model after this returns.
+fn process_effects_inner(
     effects: Vec<Effect>,
     view_model: &RwSignal<ViewModel>,
     is_loading: &IsLoading,
@@ -197,452 +164,169 @@ pub fn process_effects(
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
-            Effect::App(boxed_request) => match &boxed_request.operation {
-                // ---- Load operations: spawn async HTTP fetch ----
-                AppEffect::LoadAll => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    spawn_local(async move {
-                        loading.set(true);
-                        match api_client::fetch_items().await {
-                            Ok(items) => {
-                                let core_ref = core.borrow();
-                                let effects = core_ref.process_event(Event::DataLoaded { items });
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                            Err(e) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+            Effect::Http(mut request) => {
+                let core = leptos::prelude::expect_context::<SharedCore>();
+                let vm = *view_model;
+                let loading = *is_loading;
+                let submitting = *is_submitting;
+                spawn_local(async move {
+                    let result = execute_http(&request.operation).await;
+                    let core_ref = core.borrow();
+                    match core_ref.resolve(&mut request, result) {
+                        Ok(new_effects) => {
+                            let has_more_http =
+                                new_effects.iter().any(|e| matches!(e, Effect::Http(_)));
+                            process_effects_inner(new_effects, &vm, &loading, &submitting);
+                            vm.set(core_ref.view());
+                            // Clear submitting once the HTTP chain ends
+                            // (but not if we're still in initial loading).
+                            if !has_more_http && !loading.get_untracked() {
+                                submitting.set(false);
                             }
                         }
-                        loading.set(false);
-                    });
-                }
-
-                AppEffect::LoadSessions => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    spawn_local(async move {
-                        loading.set(true);
-                        match api_client::fetch_sessions().await {
-                            Ok(sessions) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::SessionsLoaded { sessions });
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                            Err(e) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
+                        Err(e) => {
+                            web_sys::console::error_1(&format!("resolve error: {e:?}").into());
+                            if !loading.get_untracked() {
+                                submitting.set(false);
                             }
                         }
-                        loading.set(false);
-                    });
-                }
-
-                // ---- Library write operations ----
-                AppEffect::SaveItem(item) => {
-                    let create = intrada_core::CreateItem {
-                        title: item.title.clone(),
-                        kind: item.kind.clone(),
-                        composer: item.composer.clone(),
-                        category: item.category.clone(),
-                        key: item.key.clone(),
-                        tempo: item.tempo.clone(),
-                        notes: item.notes.clone(),
-                        tags: item.tags.clone(),
-                    };
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::create_item(&create).await },
-                        RefreshKind::Library,
-                    );
-                }
-
-                AppEffect::UpdateItem(item) => {
-                    let item_id = item.id.clone();
-                    let update = intrada_core::UpdateItem {
-                        title: Some(item.title.clone()),
-                        composer: Some(item.composer.clone()),
-                        category: Some(item.category.clone()),
-                        key: Some(item.key.clone()),
-                        tempo: Some(item.tempo.clone()),
-                        notes: Some(item.notes.clone()),
-                        tags: Some(item.tags.clone()),
-                    };
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::update_item(&item_id, &update).await },
-                        RefreshKind::Library,
-                    );
-                }
-
-                AppEffect::DeleteItem { id } => {
-                    let item_id = id.clone();
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::delete_item(&item_id).await },
-                        RefreshKind::Library,
-                    );
-                }
-
-                // ---- Session write operations ----
-                AppEffect::SavePracticeSession(session) => {
-                    let session_data = session.clone();
-                    // Clear in-progress from localStorage immediately (FR-008)
-                    clear_session_in_progress();
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::create_session(&session_data).await },
-                        RefreshKind::Sessions,
-                    );
-                }
-
-                AppEffect::DeletePracticeSession { id } => {
-                    let session_id = id.clone();
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::delete_session(&session_id).await },
-                        RefreshKind::Sessions,
-                    );
-                }
-
-                // ---- Session-in-progress: localStorage only (FR-008) ----
-                AppEffect::SaveSessionInProgress(session) => {
-                    save_session_in_progress(session);
-                }
-                AppEffect::ClearSessionInProgress => {
-                    clear_session_in_progress();
-                }
-
-                // ---- Routine operations ----
-                AppEffect::SaveRoutine(routine) => {
-                    let create = build_create_routine_request(routine);
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::create_routine(&create).await },
-                        RefreshKind::Routines,
-                    );
-                }
-
-                AppEffect::UpdateRoutine(routine) => {
-                    let routine_id = routine.id.clone();
-                    let update = build_update_routine_request(routine);
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::update_routine(&routine_id, &update).await },
-                        RefreshKind::Routines,
-                    );
-                }
-
-                AppEffect::DeleteRoutine { id } => {
-                    let routine_id = id.clone();
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::delete_routine(&routine_id).await },
-                        RefreshKind::Routines,
-                    );
-                }
-
-                // ---- Goal operations ----
-                AppEffect::SaveGoal(goal) => {
-                    let create = intrada_core::domain::types::CreateGoal {
-                        title: goal.title.clone(),
-                        kind: goal.kind.clone(),
-                        deadline: goal.deadline,
-                    };
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::create_goal(&create).await },
-                        RefreshKind::Goals,
-                    );
-                }
-
-                AppEffect::UpdateGoal(goal) => {
-                    let goal_id = goal.id.clone();
-                    let update = build_update_goal_request(goal);
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::update_goal(&goal_id, &update).await },
-                        RefreshKind::Goals,
-                    );
-                }
-
-                AppEffect::DeleteGoal { id } => {
-                    let goal_id = id.clone();
-                    spawn_mutate(
-                        view_model,
-                        is_loading,
-                        is_submitting,
-                        async move { api_client::delete_goal(&goal_id).await },
-                        RefreshKind::Goals,
-                    );
-                }
-
-                AppEffect::LoadGoals => {
-                    let core = leptos::prelude::expect_context::<SharedCore>();
-                    let vm = *view_model;
-                    let loading = *is_loading;
-                    let submitting = *is_submitting;
-                    spawn_local(async move {
-                        loading.set(true);
-                        match api_client::fetch_goals().await {
-                            Ok(goals) => {
-                                let core_ref = core.borrow();
-                                let effects = core_ref.process_event(Event::GoalsLoaded { goals });
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                            Err(e) => {
-                                let core_ref = core.borrow();
-                                let effects =
-                                    core_ref.process_event(Event::LoadFailed(e.to_user_message()));
-                                process_effects(&core_ref, effects, &vm, &loading, &submitting);
-                            }
-                        }
-                        loading.set(false);
-                    });
-                }
-            },
+                    }
+                });
+            }
+            Effect::App(request) => {
+                handle_app_effect(&request.operation);
+            }
         }
     }
-    view_model.set(core.view());
 }
 
-/// Which data to re-fetch from the API after a write operation.
-#[derive(Clone, Copy)]
-enum RefreshKind {
-    Library,
-    Sessions,
-    Routines,
-    Goals,
-}
-
-/// Spawn a mutating API call followed by a data refresh.
-///
-/// Encapsulates the "refresh-after-mutate" pattern used by all write operations:
-/// set submitting → run API call → report error (if any) → re-fetch from API.
-fn spawn_mutate<T, Fut>(
-    view_model: &RwSignal<ViewModel>,
-    is_loading: &IsLoading,
-    is_submitting: &IsSubmitting,
-    api_call: Fut,
-    kind: RefreshKind,
-) where
-    T: 'static,
-    Fut: Future<Output = Result<T, api_client::ApiError>> + 'static,
-{
-    let core = leptos::prelude::expect_context::<SharedCore>();
-    let vm = *view_model;
-    let loading = *is_loading;
-    let submitting = *is_submitting;
-    submitting.set(true);
-    spawn_local(async move {
-        if let Err(e) = api_call.await {
-            report_error(&core, &vm, &loading, &submitting, e);
-        }
-        match kind {
-            RefreshKind::Library => refresh_library(core, vm, loading, submitting).await,
-            RefreshKind::Sessions => refresh_sessions(core, vm, loading, submitting).await,
-            RefreshKind::Routines => refresh_routines(core, vm, loading, submitting).await,
-            RefreshKind::Goals => refresh_goals(core, vm, loading, submitting).await,
-        }
-    });
-}
-
-/// Refresh library data from API after a mutation (refresh-after-mutate pattern).
-async fn refresh_library(
-    core: SharedCore,
-    view_model: RwSignal<ViewModel>,
-    is_loading: IsLoading,
-    is_submitting: IsSubmitting,
-) {
-    match api_client::fetch_items().await {
-        Ok(items) => {
-            let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::DataLoaded { items });
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-        }
-        Err(e) => {
-            report_error(&core, &view_model, &is_loading, &is_submitting, e);
-        }
+/// Handle a non-HTTP shell effect (localStorage only).
+fn handle_app_effect(effect: &AppEffect) {
+    match effect {
+        AppEffect::SaveSessionInProgress(session) => save_session_in_progress(session),
+        AppEffect::ClearSessionInProgress => clear_session_in_progress(),
     }
-
-    is_submitting.set(false);
 }
 
-/// Refresh sessions data from API after a mutation.
-async fn refresh_sessions(
-    core: SharedCore,
-    view_model: RwSignal<ViewModel>,
-    is_loading: IsLoading,
-    is_submitting: IsSubmitting,
-) {
-    match api_client::fetch_sessions().await {
-        Ok(sessions) => {
-            let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::SessionsLoaded { sessions });
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-        }
-        Err(e) => {
-            report_error(&core, &view_model, &is_loading, &is_submitting, e);
-        }
+// ── HTTP execution ───────────────────────────────────────────────────────
+
+/// Execute an HTTP request and return a `HttpResult` for `core.resolve()`.
+async fn execute_http(request: &intrada_core::HttpRequest) -> intrada_core::HttpResult {
+    match send_with_retry(request).await {
+        Ok(response) => intrada_core::HttpResult::Ok(response),
+        Err(error) => intrada_core::HttpResult::Err(error),
     }
-
-    is_submitting.set(false);
 }
 
-/// Refresh routines data from API after a mutation.
-async fn refresh_routines(
-    core: SharedCore,
-    view_model: RwSignal<ViewModel>,
-    is_loading: IsLoading,
-    is_submitting: IsSubmitting,
-) {
-    match api_client::fetch_routines().await {
-        Ok(routines) => {
-            let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::RoutinesLoaded { routines });
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-        }
-        Err(e) => {
-            report_error(&core, &view_model, &is_loading, &is_submitting, e);
-        }
+/// Send an HTTP request, retrying once with a fresh Clerk token on 401.
+async fn send_with_retry(
+    request: &intrada_core::HttpRequest,
+) -> Result<intrada_core::HttpResponse, intrada_core::HttpError> {
+    let response = send_once(request).await?;
+    if response.status == 401 {
+        // Retry with fresh auth token
+        return send_once(request).await;
     }
-
-    is_submitting.set(false);
+    Ok(response)
 }
 
-/// Refresh goals data from API after a mutation.
-async fn refresh_goals(
-    core: SharedCore,
-    view_model: RwSignal<ViewModel>,
-    is_loading: IsLoading,
-    is_submitting: IsSubmitting,
-) {
-    match api_client::fetch_goals().await {
-        Ok(goals) => {
-            let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::GoalsLoaded { goals });
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+/// Send a single HTTP request via gloo-net with Clerk auth.
+async fn send_once(
+    request: &intrada_core::HttpRequest,
+) -> Result<intrada_core::HttpResponse, intrada_core::HttpError> {
+    let mut builder = match request.method.as_str() {
+        "GET" => gloo_net::http::Request::get(&request.url),
+        "POST" => gloo_net::http::Request::post(&request.url),
+        "PUT" => gloo_net::http::Request::put(&request.url),
+        "DELETE" => gloo_net::http::Request::delete(&request.url),
+        "PATCH" => gloo_net::http::Request::patch(&request.url),
+        other => {
+            return Err(intrada_core::HttpError::Io(format!(
+                "unsupported HTTP method: {other}"
+            )))
         }
-        Err(e) => {
-            report_error(&core, &view_model, &is_loading, &is_submitting, e);
-        }
-    }
-
-    is_submitting.set(false);
-}
-
-/// Build an UpdateGoalApiRequest from a domain Goal.
-///
-/// Converts the core Goal (with typed GoalStatus enum) into the API's string-based
-/// update DTO that includes title, status, and deadline.
-fn build_update_goal_request(goal: &Goal) -> api_client::UpdateGoalApiRequest {
-    let status_str = match goal.status {
-        GoalStatus::Active => "active",
-        GoalStatus::Completed => "completed",
-        GoalStatus::Archived => "archived",
     };
-    api_client::UpdateGoalApiRequest {
-        title: Some(goal.title.clone()),
-        status: Some(status_str.to_string()),
-        deadline: Some(goal.deadline),
+
+    // Forward headers from core, skipping Content-Type (let .json() set it).
+    for header in &request.headers {
+        if !header.name.eq_ignore_ascii_case("content-type") {
+            builder = builder.header(&header.name, &header.value);
+        }
     }
+
+    // Add Clerk auth header.
+    if let Some(auth) = api_client::auth_header_value().await {
+        builder = builder.header("Authorization", &auth);
+    }
+
+    // Send with or without JSON body.
+    let gloo_response = if !request.body.is_empty() {
+        let json: serde_json::Value = serde_json::from_slice(&request.body)
+            .map_err(|e| intrada_core::HttpError::Io(e.to_string()))?;
+        builder
+            .json(&json)
+            .map_err(|e| intrada_core::HttpError::Io(e.to_string()))?
+            .send()
+            .await
+            .map_err(|e| intrada_core::HttpError::Io(e.to_string()))?
+    } else {
+        builder
+            .send()
+            .await
+            .map_err(|e| intrada_core::HttpError::Io(e.to_string()))?
+    };
+
+    let status = gloo_response.status();
+    let body_bytes = gloo_response
+        .binary()
+        .await
+        .map_err(|e| intrada_core::HttpError::Io(e.to_string()))?;
+
+    Ok(intrada_core::HttpResponse {
+        status,
+        headers: vec![],
+        body: body_bytes,
+    })
 }
 
-/// Build a CreateRoutineApiRequest from a domain Routine.
-fn build_create_routine_request(routine: &Routine) -> api_client::CreateRoutineApiRequest {
-    api_client::CreateRoutineApiRequest {
-        name: routine.name.clone(),
-        entries: routine
-            .entries
-            .iter()
-            .map(|e| api_client::CreateRoutineEntryApiRequest {
-                item_id: e.item_id.clone(),
-                item_title: e.item_title.clone(),
-                item_type: e.item_type.clone(),
-            })
-            .collect(),
-    }
-}
-
-/// Build an UpdateRoutineApiRequest from a domain Routine.
-fn build_update_routine_request(routine: &Routine) -> api_client::UpdateRoutineApiRequest {
-    api_client::UpdateRoutineApiRequest {
-        name: routine.name.clone(),
-        entries: routine
-            .entries
-            .iter()
-            .map(|e| api_client::CreateRoutineEntryApiRequest {
-                item_id: e.item_id.clone(),
-                item_title: e.item_title.clone(),
-                item_type: e.item_type.clone(),
-            })
-            .collect(),
-    }
-}
-
-/// Report an API error to the core via LoadFailed event.
-fn report_error(
-    core: &SharedCore,
-    view_model: &RwSignal<ViewModel>,
-    is_loading: &IsLoading,
-    is_submitting: &IsSubmitting,
-    error: api_client::ApiError,
-) {
-    let core_ref = core.borrow();
-    let effects = core_ref.process_event(Event::LoadFailed(error.to_user_message()));
-    process_effects(&core_ref, effects, view_model, is_loading, is_submitting);
-    is_submitting.set(false);
-}
+// ── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use crux_core::Core;
-    use intrada_core::{AppEffect, CreateItem, Effect, Event, Intrada, Item, ItemEvent, ItemKind};
+    use intrada_core::{
+        AppEffect, CreateItem, Effect, Event, HttpRequest, Intrada, Item, ItemEvent, ItemKind,
+    };
 
-    /// Extract storage effects from a Vec<Effect>, skipping Render effects.
-    fn storage_effects(effects: Vec<Effect>) -> Vec<AppEffect> {
+    /// Extract HTTP request operations from a list of effects.
+    fn http_effects(effects: &[Effect]) -> Vec<&HttpRequest> {
         effects
-            .into_iter()
+            .iter()
             .filter_map(|e| match e {
-                Effect::App(boxed_req) => Some(boxed_req.operation.clone()),
-                Effect::Render(_) => None,
+                Effect::Http(req) => Some(&req.operation),
+                _ => None,
             })
             .collect()
     }
 
-    /// Create a core loaded with seed data so events can reference existing items.
+    /// Extract app (localStorage) effects from a list of effects.
+    fn app_effects(effects: &[Effect]) -> Vec<&AppEffect> {
+        effects
+            .iter()
+            .filter_map(|e| match e {
+                Effect::App(req) => Some(&req.operation),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Create a core with API URL set and seed data loaded.
     fn loaded_core() -> (Core<Intrada>, String) {
         let core = Core::<Intrada>::new();
+        // Set API base URL via Init (ignore the 4 HTTP fetch effects)
+        let _ = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
         let now = chrono::Utc::now();
         let item = Item {
             id: "item-1".to_string(),
@@ -657,14 +341,17 @@ mod tests {
             created_at: now,
             updated_at: now,
         };
-        let _effects = core.process_event(Event::DataLoaded { items: vec![item] });
-        let _effects = core.process_event(Event::SessionsLoaded { sessions: vec![] });
+        let _ = core.process_event(Event::DataLoaded { items: vec![item] });
+        let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
         (core, "item-1".to_string())
     }
 
     #[test]
-    fn test_add_piece_produces_save_item_effect() {
+    fn test_add_piece_produces_http_post() {
         let core = Core::<Intrada>::new();
+        let _ = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
@@ -679,18 +366,20 @@ mod tests {
             tags: vec![],
         })));
 
-        let storage = storage_effects(effects);
+        let http = http_effects(&effects);
         assert!(
-            storage
-                .iter()
-                .any(|e| matches!(e, AppEffect::SaveItem(i) if i.title == "Moonlight Sonata")),
-            "Expected SaveItem effect, got: {storage:?}"
+            http.iter()
+                .any(|r| r.method == "POST" && r.url.contains("/api/items")),
+            "Expected HTTP POST to /api/items, got: {http:?}"
         );
     }
 
     #[test]
-    fn test_add_exercise_produces_save_item_effect() {
+    fn test_add_exercise_produces_http_post() {
         let core = Core::<Intrada>::new();
+        let _ = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
@@ -705,29 +394,28 @@ mod tests {
             tags: vec![],
         })));
 
-        let storage = storage_effects(effects);
+        let http = http_effects(&effects);
         assert!(
-            storage
-                .iter()
-                .any(|e| matches!(e, AppEffect::SaveItem(i) if i.title == "C Major Scale")),
-            "Expected SaveItem effect, got: {storage:?}"
+            http.iter()
+                .any(|r| r.method == "POST" && r.url.contains("/api/items")),
+            "Expected HTTP POST to /api/items, got: {http:?}"
         );
     }
 
     #[test]
-    fn test_delete_item_produces_delete_effect() {
+    fn test_delete_item_produces_http_delete() {
         let (core, item_id) = loaded_core();
 
         let effects = core.process_event(Event::Item(ItemEvent::Delete {
             id: item_id.clone(),
         }));
 
-        let storage = storage_effects(effects);
+        let http = http_effects(&effects);
         assert!(
-            storage
-                .iter()
-                .any(|e| matches!(e, AppEffect::DeleteItem { id } if id == &item_id)),
-            "Expected DeleteItem effect, got: {storage:?}"
+            http.iter().any(|r| r.method == "DELETE"
+                && r.url.contains("/api/items/")
+                && r.url.contains(&item_id)),
+            "Expected HTTP DELETE to /api/items/{item_id}, got: {http:?}"
         );
     }
 
@@ -738,32 +426,25 @@ mod tests {
         let (core, item_id) = loaded_core();
 
         let effects = core.process_event(Event::Session(SessionEvent::StartBuilding));
-        let storage = storage_effects(effects);
-        assert!(
-            storage.is_empty(),
-            "Expected no storage effects for StartBuilding"
-        );
+        let app = app_effects(&effects);
+        assert!(app.is_empty(), "Expected no app effects for StartBuilding");
 
         let effects = core.process_event(Event::Session(SessionEvent::AddToSetlist { item_id }));
-        let storage = storage_effects(effects);
-        assert!(
-            storage.is_empty(),
-            "Expected no storage effects for AddToSetlist"
-        );
+        let app = app_effects(&effects);
+        assert!(app.is_empty(), "Expected no app effects for AddToSetlist");
 
         let now = chrono::Utc::now();
         let effects = core.process_event(Event::Session(SessionEvent::StartSession { now }));
-        let storage = storage_effects(effects);
+        let app = app_effects(&effects);
         assert!(
-            storage
-                .iter()
+            app.iter()
                 .any(|e| matches!(e, AppEffect::SaveSessionInProgress(_))),
-            "Expected SaveSessionInProgress effect, got: {storage:?}"
+            "Expected SaveSessionInProgress effect, got: {app:?}"
         );
     }
 
     #[test]
-    fn test_delete_session_produces_delete_practice_session_effect() {
+    fn test_save_session_produces_http_post_and_clear() {
         use intrada_core::SessionEvent;
 
         let (core, item_id) = loaded_core();
@@ -778,28 +459,66 @@ mod tests {
         let save_now = later + chrono::Duration::seconds(5);
         let effects =
             core.process_event(Event::Session(SessionEvent::SaveSession { now: save_now }));
-        let storage = storage_effects(effects);
-        let session_id = storage.iter().find_map(|e| match e {
-            AppEffect::SavePracticeSession(s) => Some(s.id.clone()),
-            _ => None,
-        });
-        assert!(session_id.is_some(), "Expected SavePracticeSession effect");
+
+        let http = http_effects(&effects);
+        assert!(
+            http.iter()
+                .any(|r| r.method == "POST" && r.url.contains("/api/sessions")),
+            "Expected HTTP POST to /api/sessions, got: {http:?}"
+        );
+
+        let app = app_effects(&effects);
+        assert!(
+            app.iter()
+                .any(|e| matches!(e, AppEffect::ClearSessionInProgress)),
+            "Expected ClearSessionInProgress effect, got: {app:?}"
+        );
+    }
+
+    #[test]
+    fn test_delete_session_produces_http_delete() {
+        use intrada_core::SessionEvent;
+
+        let (core, item_id) = loaded_core();
+
+        let _ = core.process_event(Event::Session(SessionEvent::StartBuilding));
+        let _ = core.process_event(Event::Session(SessionEvent::AddToSetlist { item_id }));
+        let now = chrono::Utc::now();
+        let _ = core.process_event(Event::Session(SessionEvent::StartSession { now }));
+        let later = now + chrono::Duration::minutes(10);
+        let _ = core.process_event(Event::Session(SessionEvent::FinishSession { now: later }));
+
+        let save_now = later + chrono::Duration::seconds(5);
+        let save_effects =
+            core.process_event(Event::Session(SessionEvent::SaveSession { now: save_now }));
+
+        // Extract session ID from the HTTP POST body
+        let session_id = http_effects(&save_effects)
+            .iter()
+            .find(|r| r.method == "POST" && r.url.contains("/api/sessions"))
+            .and_then(|r| serde_json::from_slice::<intrada_core::PracticeSession>(&r.body).ok())
+            .map(|s| s.id)
+            .expect("Expected session POST with deserializable body");
 
         let effects = core.process_event(Event::Session(SessionEvent::DeleteSession {
-            id: session_id.unwrap(),
+            id: session_id.clone(),
         }));
-        let storage = storage_effects(effects);
+
+        let http = http_effects(&effects);
         assert!(
-            storage
-                .iter()
-                .any(|e| matches!(e, AppEffect::DeletePracticeSession { .. })),
-            "Expected DeletePracticeSession effect, got: {storage:?}"
+            http.iter().any(|r| r.method == "DELETE"
+                && r.url.contains("/api/sessions/")
+                && r.url.contains(&session_id)),
+            "Expected HTTP DELETE to /api/sessions/{session_id}, got: {http:?}"
         );
     }
 
     #[test]
     fn test_view_reflects_added_item() {
         let core = Core::<Intrada>::new();
+        let _ = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
 
@@ -825,6 +544,9 @@ mod tests {
     #[test]
     fn test_view_shows_error_on_validation_failure() {
         let core = Core::<Intrada>::new();
+        let _ = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
 
         let _ = core.process_event(Event::Item(ItemEvent::Add(CreateItem {
@@ -840,5 +562,20 @@ mod tests {
 
         let vm = core.view();
         assert!(vm.error.is_some(), "Expected validation error in ViewModel");
+    }
+
+    #[test]
+    fn test_init_produces_four_http_fetches() {
+        let core = Core::<Intrada>::new();
+        let effects = core.process_event(Event::StartApp {
+            api_base_url: "http://localhost:3001".to_string(),
+        });
+
+        let http = http_effects(&effects);
+        assert_eq!(http.len(), 4, "Expected 4 HTTP GET fetches from Init");
+        assert!(
+            http.iter().all(|r| r.method == "GET"),
+            "All Init HTTP effects should be GET requests"
+        );
     }
 }
