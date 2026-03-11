@@ -39,6 +39,49 @@ Intrada is designed for self-directed musicians who are past the beginner stage 
 
 An estimated 15–20% of the population is neurodivergent, and the intersection of ADHD with music is particularly significant — music provides the kind of stimulation, flow, and immediate feedback that ADHD brains thrive on (Wilde & Welch, 2022). Designing for neurodivergent musicians isn't niche — it's likely a meaningful portion of Intrada's audience, and features that support executive function challenges benefit every user.
 
+### 1.5 Musician Tracks — Entry Points, Not Boxes
+
+Musicians come to Intrada with fundamentally different motivations, and a single onboarding path cannot serve them all. Intrada recognises six distinct tracks — not as rigid categories, but as starting points that shape the initial experience.
+
+| Track | Motivation | What they need from Intrada |
+|-------|-----------|----------------------------|
+| **The Entertainer** | Learn one thing to impress friends | Focused, single-goal workflow; quick wins; minimal admin |
+| **The Jammer** | Jam with pals | Repertoire breadth; key fluency; feel over perfection |
+| **The Virtuoso (Classical)** | Mastery through the classical tradition | Technique, études, exam prep; fine-grained progression; tempo targets |
+| **The Virtuoso (Jazz)** | Mastery through the jazz tradition | Standards, improvisation, transcription; key-aware practice across all 12 |
+| **The Soul Player** | Play for themselves | Personal enjoyment; consistency over scores; low-pressure structure |
+| **The Late Starter** | Always wanted to but thinks it's too late | Encouragement; proof that progress is possible at any stage; gentle goals |
+
+#### How tracks shape the experience
+
+Tracks influence the onboarding journey, default library suggestions, session structure, analytics framing, and encouragement tone. A Virtuoso sees mastery scores and tempo progress front and centre; a Soul Player sees consistency and time spent; a Late Starter sees evidence of growth from zero with warmth and normalisation.
+
+| Touchpoint | How it varies |
+|------------|--------------|
+| **Onboarding** | Different welcome questions, starter library, initial goal templates |
+| **Session defaults** | Duration, scoring emphasis, focus mode (e.g. Soul Player might skip scoring) |
+| **Analytics framing** | Virtuoso → precision metrics; Soul Player → consistency; Late Starter → progress from baseline |
+| **Encouragement tone** | Virtuoso → data-driven; Late Starter → warmth and normalisation; Jammer → social readiness |
+| **Goal suggestions** | Track-appropriate templates (e.g. "Learn 3 standards this month" vs "Play for 10 minutes, 3 times this week") |
+
+#### A shared foundation that diverges
+
+All tracks share a common core: the act of showing up, playing, and reflecting. The fundamental loop — pick something to practise, play it with intention, notice what happened — is universal. What changes between tracks is the framing, the defaults, and the emphasis.
+
+This means the onboarding journey can begin with shared ground. Every musician, regardless of track, benefits from building a library, running a first session, and seeing their initial data. The divergence happens in how the app responds after that: what it suggests next, how it frames progress, what goals it offers, how much structure it applies.
+
+Think of it as a tree: the trunk is the core practice loop that every musician recognises. The branches are where tracks diverge — a Virtuoso's branch emphasises precision, tempo targets, and exam preparation; a Jammer's branch emphasises repertoire breadth and playing with others; a Late Starter's branch emphasises evidence that it is not too late and that small steps compound.
+
+This shared-then-divergent structure has practical benefits. It means the core product stays simple — one practice loop, one library, one session flow. The track system layers on top as a personalisation lens rather than requiring separate feature paths. A musician who changes track does not need to relearn the app; they see the same structure through different eyes.
+
+#### Fluidity is core
+
+Tracks are entry points, not permanent assignments. Musicians can change track at any time — no friction, no confirmation dialog. The app actively signals this: real musical journeys are not linear. Someone starts as a Late Starter, gains confidence, becomes a Jammer, then catches the mastery bug. Moving from Virtuoso to Soul Player is not giving up — it is choosing what matters now.
+
+Track changes trigger a gentle experience refresh: updated suggestions, reframed analytics, adjusted defaults — without losing any data or history. The musician's complete practice record travels with them regardless of which track they are on.
+
+This design is grounded in SDT: autonomy means the musician defines their own relationship with practice, and that definition can evolve. It also connects to growth mindset research — if the app frames a track change as regression, it undermines the very belief system that sustains long-term engagement.
+
 ---
 
 ## 2. Research Foundation
@@ -245,6 +288,8 @@ The encouragement philosophy avoids empty praise — Dweck's own clarifications 
 
 **Customisable encouragement:** Encouragement messaging is configurable in frequency (every item, once per session, weekly summary only, off), tone (data-focused, warm, minimal), and delivery (inline during practice, end-of-session summary, notification). Some musicians find unsolicited encouragement patronising or distracting; others depend on it for motivation. This respects the reality that musicians — particularly neurodivergent musicians — are not a monolith.
 
+**Track-aware defaults:** The musician's active track (see Section 1.5) sets sensible defaults for encouragement style. A Virtuoso receives precision-focused, data-driven feedback; a Late Starter receives warmer messaging that normalises the learning curve and celebrates small wins; a Soul Player receives gentle consistency nudges without performance pressure. These defaults can always be overridden — the track provides a starting point, not a constraint.
+
 ### 4.7 Rest & Recovery Awareness
 
 The deliberate practice literature emphasises that effortful practice requires recovery. Intrada tracks total practice time per day and week and gently flags when a musician is practising significantly more than their historical average or exceeding recommended thresholds. The messaging is encouraging: "You've been putting in serious work this week — your body and brain need recovery time to consolidate what you've learned." This protects against burnout and repetitive strain.
@@ -319,19 +364,27 @@ Time blindness affects ADHD musicians (Ptacek et al., 2019), but all musicians b
 
 Consistency matters, but the framing of consistency determines whether it motivates or shames. Intrada never shows a broken streak counter or a zero. It celebrates returns: "Welcome back — your scheduling has adapted and we've got a session ready for you." This aligns with growth mindset research (Dweck & Yeager, 2019) and protects against the emotional dysregulation that can turn a missed day into an abandoned practice habit.
 
-### 7.4 Sensory Sensitivity
+### 7.4 No Journey Is Linear
+
+Musical development is not a straight line. Musicians plateau, change direction, take breaks, restart, and redefine what they want from their instrument. Intrada normalises all of this.
+
+The tracks system (Section 1.5) embodies this principle: a musician can shift between tracks at any time, and the app never frames a change as failure. Taking a break is not quitting. Choosing enjoyment over mastery is not giving up. Coming back after six months is not starting over — the data is still there, the progress is still real, and the app adapts to where the musician is now.
+
+This is particularly important for the Late Starter track. Someone who picks up an instrument at 40, 50, or 60 carries a specific kind of vulnerability — the belief that it is "too late." Every interaction in Intrada should counter that belief with evidence: progress is measurable, improvement is real, and starting points do not determine destinations.
+
+### 7.5 Sensory Sensitivity
 
 Avoid auto-playing sounds, sudden animations, or bright flashing elements. Offer colour themes including high-contrast and low-contrast modes, with a calm, muted palette as the default. All haptic feedback and sound cues are optional and configurable. Music notation rendering (if added) avoids overly dense visual presentation, allowing the musician to control how much is visible at once.
 
-### 7.5 Accessible Typography
+### 7.6 Accessible Typography
 
 Use a clean sans-serif font as the default. Ensure sufficient contrast between text and background — dark grey on off-white rather than pure black on pure white to reduce visual stress. Adequate line spacing and letter spacing support readability for the estimated 10–15% of the population with some degree of dyslexia, and benefit every user.
 
-### 7.6 Predictable Navigation
+### 7.7 Predictable Navigation
 
 Navigation elements are always in the same place. The flow through a practice session follows the same pattern every time. Core workflows remain stable across versions. Consistency is a form of accessibility — particularly for autistic users who benefit from predictable interface behaviour, but for all users who build muscle memory around their tools.
 
-### 7.7 Configurable Feedback
+### 7.8 Configurable Feedback
 
 Not all musicians want the same encouragement. Messaging is configurable in frequency (every item, once per session, weekly summary only, off), tone (data-focused, warm, minimal), and delivery (inline during practice, end-of-session summary, notification). What motivates one musician may irritate another — particularly across neurodivergent profiles.
 
@@ -354,6 +407,8 @@ These principles guide every feature and design decision in Intrada.
 **6. Offline-first.** Musicians practise wherever their instrument is, not necessarily where there's internet. The app must work fully offline and sync when connected.
 
 **7. Designing for the edges improves the middle.** Features that support neurodivergent musicians — reduced friction, external time structure, configurable feedback, sensory consideration — make the experience better for everyone. Accessibility is not a separate feature; it's a design philosophy embedded from the foundation.
+
+**8. Meet musicians where they are.** A musician's relationship with practice is personal and evolving. Intrada adapts to where the musician is now — their motivation, their experience level, their current chapter — rather than prescribing a single path. Tracks (Section 1.5) shape the entry point; fluidity ensures the app grows with the musician. No journey is linear, and the app should never make a musician feel they are on the wrong one.
 
 ---
 
