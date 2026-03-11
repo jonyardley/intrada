@@ -1,23 +1,36 @@
 // CodableExtensions.swift
 //
-// Codable conformances for auto-generated types that cross the REST API boundary.
+// ⚠️  HAND-MAINTAINED — this file is NOT generated. Edit it directly.
 //
-// The shared_types crate generates Swift types with BCS (Binary Canonical Serialization)
-// for the Crux FFI bridge. This file adds JSON Codable for the subset of types that
-// also need to be serialised as JSON for the REST API and UserDefaults storage.
+// Adds JSON Codable and Sendable conformances for auto-generated types that
+// cross the REST API boundary.
 //
-// Types that ONLY cross the BCS bridge (Event, Effect, ViewModel, view types) do NOT
-// need Codable and are intentionally omitted.
+// The shared_types crate generates Swift types with BCS (Binary Canonical
+// Serialization) for the Crux FFI bridge. This file adds:
+//   - Indirect<T> Codable/Sendable (property wrapper used by all generated structs)
+//   - Enum Codable (explicit implementations matching Rust serde attributes)
+//   - Struct Sendable (@unchecked, safe because all value types)
+//   - JSON coders with snake_case key strategy for the REST API
+//
+// Struct Codable (auto-synthesised empty conformances) is injected into the
+// generated SharedTypes.swift by build-ios.sh because Swift 6 requires those
+// to be in the same file as the struct definition.
+//
+// Types that ONLY cross the BCS bridge (Event, Effect, ViewModel, view types)
+// do NOT need Codable and are intentionally omitted.
 //
 // IMPORTANT: This file must stay in sync with the Rust serde attributes.
 // When domain types change, regenerate with `just typegen` and update this file.
 
 import Foundation
 
-// MARK: - Indirect Property Wrapper Codable
+// MARK: - Indirect Property Wrapper Extensions
 
 // Auto-generated structs use @Indirect for all properties. These transparent
-// extensions let Swift's auto-synthesised Codable encode/decode the wrapped value.
+// extensions let Swift's auto-synthesised Codable encode/decode the wrapped value,
+// and Sendable lets the structs cross concurrency boundaries (Swift 6).
+
+extension Indirect: @unchecked Sendable where T: Sendable {}
 
 extension Indirect: Encodable where T: Encodable {
     public func encode(to encoder: Encoder) throws {
@@ -250,6 +263,21 @@ extension RepAction: Codable {
         }
     }
 }
+
+// MARK: - Sendable (Swift 6 strict concurrency)
+//
+// Generated structs use @Indirect (an enum with `indirect case`), which is a
+// value type wrapping value types — safe to send across concurrency boundaries.
+// @unchecked because Swift can't auto-synthesise through the property wrapper.
+
+extension Item: @unchecked Sendable {}
+extension Tempo: @unchecked Sendable {}
+extension PracticeSession: @unchecked Sendable {}
+extension SetlistEntry: @unchecked Sendable {}
+extension Routine: @unchecked Sendable {}
+extension RoutineEntry: @unchecked Sendable {}
+extension Goal: @unchecked Sendable {}
+extension ActiveSession: @unchecked Sendable {}
 
 // MARK: - Struct Codable
 //
