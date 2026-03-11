@@ -81,12 +81,6 @@ jobs:
       - name: Select Xcode version
         run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
 
-      - name: Install iOS Simulator runtime
-        run: |
-          # Xcode 16.3 ships the iOS SDK headers but the simulator runtime
-          # is a separate download on macos-15 runners.
-          xcodebuild -downloadPlatform iOS
-
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -107,7 +101,8 @@ jobs:
           xcodebuild build \
             -project Intrada.xcodeproj \
             -scheme Intrada \
-            -destination "generic/platform=iOS Simulator" \
+            -sdk iphonesimulator \
+            -arch arm64 \
             -configuration Release \
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
