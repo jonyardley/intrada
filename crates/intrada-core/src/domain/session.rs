@@ -13,6 +13,8 @@ use crate::validation;
 
 /// Completion status of a single setlist entry.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum EntryStatus {
     /// Item was practised and time was recorded.
     Completed,
@@ -24,6 +26,8 @@ pub enum EntryStatus {
 
 /// Whether the session ran to completion or was ended early.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum CompletionStatus {
     /// All items in the setlist were addressed (completed or skipped).
     Completed,
@@ -37,6 +41,7 @@ pub enum CompletionStatus {
 /// Enables analytics: sum for net progress, running total for sparkline charts,
 /// count of `-1`s for total misses, longest streak of `1`s for best run.
 #[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[repr(i8)]
 pub enum RepAction {
     /// Failed rep — count decremented.
@@ -49,6 +54,7 @@ pub enum RepAction {
 
 /// An individual item within a session's setlist.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetlistEntry {
     pub id: String,
     pub item_id: String,
@@ -78,6 +84,7 @@ pub struct SetlistEntry {
 
 /// A completed practice session (persisted to localStorage).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeSession {
     pub id: String,
     pub entries: Vec<SetlistEntry>,
@@ -102,6 +109,7 @@ pub struct BuildingSession {
 /// State during active practice (Active phase).
 /// Persisted to `intrada:session-in-progress` for crash recovery.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSession {
     pub id: String,
     pub entries: Vec<SetlistEntry>,
@@ -137,6 +145,8 @@ pub enum SessionStatus {
 // ── Events ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum SessionEvent {
     // === Building Phase ===
     StartBuilding,

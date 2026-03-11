@@ -5,7 +5,6 @@ edition = "2021"
 rust-version.workspace = true
 
 [build-dependencies]
-crux_core = { workspace = true, features = ["typegen"] }
-shared = { path = "../shared", features = ["typegen"] }
+crux_core = { workspace = true, features = ["facet_typegen"] }
+shared = { path = "../shared", features = ["facet_typegen"] }
 anyhow = "1"
-chrono = { workspace = true }

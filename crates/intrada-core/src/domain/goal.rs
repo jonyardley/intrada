@@ -10,7 +10,9 @@ use crate::validation;
 
 /// The three lifecycle states a goal can be in.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum GoalStatus {
     Active,
     Completed,
@@ -20,7 +22,9 @@ pub enum GoalStatus {
 /// Discriminated union of goal types. Uses internally-tagged serde so
 /// the JSON includes `"type": "session_frequency"` etc.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[serde(rename_all = "snake_case", tag = "type")]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum GoalKind {
     SessionFrequency { target_days_per_week: u8 },
     PracticeTime { target_minutes_per_week: u32 },
@@ -30,6 +34,7 @@ pub enum GoalKind {
 
 /// A goal set by the musician.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Goal {
     pub id: String,
     pub title: String,
@@ -43,6 +48,8 @@ pub struct Goal {
 
 /// Events that can modify goals.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum GoalEvent {
     Add(CreateGoal),
     Update { id: String, input: UpdateGoal },

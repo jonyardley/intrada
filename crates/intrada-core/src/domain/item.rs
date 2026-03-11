@@ -11,7 +11,9 @@ use crate::validation;
 
 /// Discriminates between a piece (repertoire) and an exercise (technique drill).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ItemKind {
     Piece,
     Exercise,
@@ -27,6 +29,7 @@ impl fmt::Display for ItemKind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Item {
     pub id: String,
     pub title: String,
@@ -42,6 +45,8 @@ pub struct Item {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ItemEvent {
     Add(CreateItem),
     Update { id: String, input: UpdateItem },

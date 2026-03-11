@@ -18,8 +18,10 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Output directories — inside the Xcode source root so XcodeGen picks them up
 GENERATED_DIR="$ROOT_DIR/ios/Intrada/Generated"
-TYPES_DIR="$GENERATED_DIR/SharedTypes"
 BINDINGS_DIR="$GENERATED_DIR/UniFFI"
+
+# Where facet typegen outputs the Swift package
+TYPEGEN_OUTPUT="$ROOT_DIR/crates/shared_types/generated/swift/SharedTypes"
 
 # Targets
 DEVICE_TARGET="aarch64-apple-ios"
@@ -83,27 +85,59 @@ if [ "$BUILD_SIM" = true ]; then
 fi
 
 # ───────────────────────────────────────────────────
-# Step 2: Generate Swift type bindings via codegen CLI
+# Step 2: Generate Swift type bindings via facet typegen
 # ───────────────────────────────────────────────────
 
 if [ "$GENERATE_TYPES" = true ]; then
     echo ""
-    echo "→ Generating Swift type bindings..."
+    echo "→ Generating Swift type bindings (facet typegen)..."
 
-    # Build the codegen binary (host target)
-    cargo build -p shared --features codegen
+    # Build shared_types crate — its build.rs runs TypeRegistry to generate Swift
+    cargo build -p shared_types
+    echo "  ✓ SharedTypes generated: $TYPEGEN_OUTPUT"
 
-    # Generate SharedTypes (Event, Effect, ViewModel, domain types)
-    mkdir -p "$TYPES_DIR"
-    cargo run -p shared --features codegen -- \
-        --language swift \
-        --output-dir "$TYPES_DIR"
-    echo "  ✓ Swift types generated: $TYPES_DIR"
+    # Remove old hand-written SharedTypes.swift (replaced by typegen)
+    if [ -f "$GENERATED_DIR/SharedTypes.swift" ]; then
+        rm "$GENERATED_DIR/SharedTypes.swift"
+        echo "  ✓ Removed old hand-written SharedTypes.swift"
+    fi
 
-    # Generate UniFFI bindings (CoreFFI interface)
+    # Copy generated SharedTypes into the iOS project
+    mkdir -p "$GENERATED_DIR/SharedTypes"
+    cp -R "$TYPEGEN_OUTPUT/Sources/SharedTypes/"*.swift "$GENERATED_DIR/SharedTypes/"
+
+    # Strip `import Serde` — generated as a separate module but we compile in a single target
+    sed -i '' '/^import Serde$/d' "$GENERATED_DIR/SharedTypes/"*.swift
+    echo "  ✓ Copied to: $GENERATED_DIR/SharedTypes/ (stripped import Serde)"
+
+    # Append struct Codable conformances to SharedTypes.swift.
+    # Swift 6 requires auto-synthesised Codable to be in the same file as the
+    # struct definition. Enum Codable (with explicit implementations) stays in
+    # CodableExtensions.swift because cross-file explicit conformance is fine.
+    cat >> "$GENERATED_DIR/SharedTypes/SharedTypes.swift" << 'CODABLE'
+
+// MARK: - Codable (appended by build-ios.sh for REST API JSON serialisation)
+
+extension Item: Codable {}
+extension Tempo: Codable {}
+extension PracticeSession: Codable {}
+extension SetlistEntry: Codable {}
+extension Routine: Codable {}
+extension RoutineEntry: Codable {}
+extension Goal: Codable {}
+extension ActiveSession: Codable {}
+CODABLE
+    echo "  ✓ Appended struct Codable conformances to SharedTypes.swift"
+
+    # Copy Serde runtime (BCS serialization helpers)
+    mkdir -p "$GENERATED_DIR/Serde"
+    cp -R "$TYPEGEN_OUTPUT/Sources/Serde/"*.swift "$GENERATED_DIR/Serde/"
+    echo "  ✓ Serde runtime: $GENERATED_DIR/Serde/"
+
+    # Generate UniFFI bindings (CoreFFI + CoreJson interface)
     mkdir -p "$BINDINGS_DIR"
 
-    # Use uniffi-bindgen to generate Swift bindings from the compiled library
+    # Build uniffi-bindgen and generate Swift bindings
     if [ "$BUILD_SIM" = true ]; then
         LIB_PATH="$ROOT_DIR/target/$SIM_TARGET/$PROFILE_DIR/libshared.dylib"
     elif [ "$BUILD_DEVICE" = true ]; then
@@ -114,10 +148,9 @@ if [ "$GENERATE_TYPES" = true ]; then
         LIB_PATH="$ROOT_DIR/target/$PROFILE_DIR/libshared.dylib"
     fi
 
-    # Generate the UniFFI Swift bindings
-    cargo run -p shared --features codegen -- \
-        generate uniffi swift \
-        --library-path "$LIB_PATH" \
+    cargo run -p shared --features uniffi-bindgen -- \
+        generate --library "$LIB_PATH" \
+        --language swift \
         --out-dir "$BINDINGS_DIR" 2>/dev/null || {
         echo "  ⚠ UniFFI binding generation skipped (library not available as dylib)"
         echo "  → Swift bindings will be generated during Xcode build"
@@ -147,7 +180,8 @@ if [ "$BUILD_SIM" = true ]; then
     fi
 fi
 
-echo "  Types:       $TYPES_DIR"
+echo "  Types:       $GENERATED_DIR/SharedTypes/"
+echo "  Serde:       $GENERATED_DIR/Serde/"
 echo "  Bindings:    $BINDINGS_DIR"
 echo ""
 echo "Next: Open ios/Intrada.xcodeproj in Xcode or run 'xcodegen' to regenerate the project."

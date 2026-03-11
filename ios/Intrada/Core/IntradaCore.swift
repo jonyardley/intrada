@@ -3,17 +3,20 @@
 // Swift shell effect processor for Intrada.
 // Port of crates/intrada-web/src/core_bridge.rs.
 //
-// Wraps CoreJson (Rust FFI via JSON) and dispatches all AppEffect variants
+// Wraps CoreFfi (Rust FFI via BCS/bincode) and dispatches all AppEffect variants
 // to the API client, session storage, and view model updates.
 //
-// Effect handling is added incrementally as features are implemented.
+// The CoreFfi bridge uses the Request/Resolve pattern:
+//   1. update(eventBytes) → [Request] (each with id + effect)
+//   2. Shell processes each effect (Render → read view, App → execute side effect)
+//   3. Shell calls resolve(id, responseBytes) for App effects → more [Request]
 
 import Foundation
 import Observation
 
 /// The main effect processor for the Intrada iOS shell.
 ///
-/// Holds the Rust `CoreJson` instance and publishes the `ViewModel` for SwiftUI.
+/// Holds the Rust `CoreFfi` instance and publishes the `ViewModel` for SwiftUI.
 /// All state changes flow through: UI -> `update(Event)` -> Core -> effects -> API -> re-render.
 @Observable
 @MainActor
@@ -22,32 +25,30 @@ final class IntradaCore {
     // MARK: - Published State
 
     /// The current view model, updated after every Render effect.
-    private(set) var viewModel = ViewModel(
-        items: [],
-        sessions: [],
-        activeSession: nil,
-        buildingSetlist: nil,
-        summary: nil,
-        sessionStatus: "idle",
-        error: nil,
-        analytics: nil,
-        routines: [],
-        goals: []
-    )
+    private(set) var viewModel: ViewModel
 
     /// Whether the initial data load is in progress.
     private(set) var isLoading = true
 
     // MARK: - Private State
 
-    private let core: CoreJson
+    private let core: CoreFfi
     private let api: APIClient
 
     // MARK: - Init
 
     init(api: APIClient = APIClient()) {
-        self.core = CoreJson()
+        let core = CoreFfi()
+        self.core = core
         self.api = api
+
+        // Read initial ViewModel from the core (empty lists, default values)
+        let data = core.view()
+        do {
+            self.viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](data))
+        } catch {
+            fatalError("[IntradaCore] Failed to deserialize initial ViewModel: \(error)")
+        }
     }
 
     // MARK: - Public API
@@ -56,21 +57,16 @@ final class IntradaCore {
     ///
     /// This is the primary entry point for all UI interactions.
     func update(_ event: Event) {
-        let eventJSON: String
+        let eventBytes: [UInt8]
         do {
-            let data = try JSONEncoder.intrada.encode(event)
-            guard let str = String(data: data, encoding: .utf8) else {
-                reportError("Failed to encode event as UTF-8 string")
-                return
-            }
-            eventJSON = str
+            eventBytes = try event.bincodeSerialize()
         } catch {
-            reportError("Failed to encode event: \(error)")
+            reportError("Failed to serialize event: \(error)")
             return
         }
 
-        let effectsJSON = core.processEvent(eventJSON)
-        processEffects(effectsJSON)
+        let responseData = core.update(Data(eventBytes))
+        processRequests(responseData)
     }
 
     /// Load initial data from the API.
@@ -97,48 +93,51 @@ final class IntradaCore {
         }
     }
 
-    // MARK: - Effect Processing
+    // MARK: - Request Processing (BCS Bridge)
 
-    private func processEffects(_ effectsJSON: String) {
-        guard let data = effectsJSON.data(using: .utf8) else {
-            reportError("Effects JSON is not valid UTF-8")
-            return
-        }
+    /// Deserialise a BCS response from the core into [Request] and process each one.
+    private func processRequests(_ data: Data) {
+        let bytes = [UInt8](data)
+        guard !bytes.isEmpty else { return }
 
-        let effects: [JsonEffect]
+        let requests: [Request]
         do {
-            effects = try JSONDecoder.intrada.decode([JsonEffect].self, from: data)
+            requests = try [Request].bincodeDeserialize(input: bytes)
         } catch {
-            reportError("Failed to decode effects: \(error)")
+            reportError("Failed to deserialize requests: \(error)")
             return
         }
 
-        for effect in effects {
-            if effect.isRender {
+        for request in requests {
+            switch request.effect {
+            case .render:
                 refreshViewModel()
-            } else if let appEffect = effect.appEffect {
-                handleAppEffect(appEffect)
+            case .app(let appEffect):
+                handleAppEffect(appEffect, requestId: request.id)
             }
         }
     }
 
+    /// Read the current ViewModel from the core via BCS.
     private func refreshViewModel() {
-        let viewJSON = core.view()
-        guard let data = viewJSON.data(using: .utf8) else {
-            reportError("View JSON is not valid UTF-8")
-            return
-        }
+        let data = core.view()
         do {
-            viewModel = try JSONDecoder.intrada.decode(ViewModel.self, from: data)
+            viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](data))
         } catch {
-            reportError("Failed to decode ViewModel: \(error)")
+            reportError("Failed to deserialize ViewModel: \(error)")
         }
+    }
+
+    /// Tell the core an App effect has been resolved, then process any new requests.
+    private func resolveEffect(_ requestId: UInt32) {
+        let moreData = core.resolve(requestId, Data())
+        processRequests(moreData)
     }
 
     // MARK: - AppEffect Dispatch
 
     // swiftlint:disable:next function_body_length cyclomatic_complexity
-    private func handleAppEffect(_ effect: AppEffect) {
+    private func handleAppEffect(_ effect: AppEffect, requestId: UInt32) {
         Task {
             switch effect {
             case .loadAll:
@@ -211,6 +210,10 @@ final class IntradaCore {
             case .loadGoals:
                 await fetchGoals()
             }
+
+            // Resolve the effect to notify the core it's complete.
+            // This may produce further requests (e.g., additional Render effects).
+            resolveEffect(requestId)
         }
     }
 

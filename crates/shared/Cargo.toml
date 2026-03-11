@@ -18,8 +18,9 @@ required-features = ["uniffi-bindgen"]
 
 [features]
 typegen = ["crux_core/typegen", "intrada-core/typegen"]
+facet_typegen = ["crux_core/facet_typegen", "intrada-core/facet_typegen"]
 uniffi = ["dep:uniffi"]
-uniffi-bindgen = ["dep:uniffi-cli"]
+uniffi-bindgen = ["uniffi", "uniffi/cli"]
 codegen = [
     "crux_core/cli",
     "dep:anyhow",
@@ -36,10 +37,8 @@ intrada-core = { path = "../intrada-core" }
 serde = { workspace = true }
 serde_json = "1"
 
-# Optional: UniFFI for iOS/Android FFI
+# Optional: UniFFI for iOS/Android FFI (cli feature added by uniffi-bindgen)
 uniffi = { version = "=0.29.4", optional = true }
-# UniFFI with CLI for binding generation
-uniffi-cli = { package = "uniffi", version = "=0.29.4", features = ["cli"], optional = true }
 
 # Optional: codegen CLI deps
 anyhow = { version = "1", optional = true }

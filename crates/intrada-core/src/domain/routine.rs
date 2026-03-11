@@ -11,6 +11,7 @@ use crate::validation;
 
 /// A named, reusable setlist template containing an ordered list of library item references.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Routine {
     pub id: String,
     pub name: String,
@@ -21,6 +22,7 @@ pub struct Routine {
 
 /// A single item within a routine, representing a library piece or exercise.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct RoutineEntry {
     pub id: String,
     pub item_id: String,
@@ -32,6 +34,8 @@ pub struct RoutineEntry {
 // ── Events ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum RoutineEvent {
     SaveBuildingAsRoutine {
         name: String,

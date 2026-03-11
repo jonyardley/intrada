@@ -2,6 +2,8 @@
 //
 // UserDefaults wrapper for active session crash recovery.
 // Equivalent of localStorage key `intrada:session-in-progress` in the web shell.
+//
+// Uses BCS (bincode) serialization to match the CoreFfi bridge format.
 
 import Foundation
 
@@ -16,8 +18,8 @@ enum SessionStorage {
     /// Save an active session for crash recovery.
     static func save(_ session: ActiveSession) {
         do {
-            let data = try JSONEncoder.intrada.encode(session)
-            UserDefaults.standard.set(data, forKey: key)
+            let bytes = try session.bincodeSerialize()
+            UserDefaults.standard.set(Data(bytes), forKey: key)
         } catch {
             print("[SessionStorage] Failed to save session: \(error)")
         }
@@ -29,9 +31,12 @@ enum SessionStorage {
             return nil
         }
         do {
-            return try JSONDecoder.intrada.decode(ActiveSession.self, from: data)
+            return try ActiveSession.bincodeDeserialize(input: [UInt8](data))
         } catch {
-            print("[SessionStorage] Failed to load session: \(error)")
+            // BCS deserialization failed — likely a legacy JSON-encoded session
+            // from before the CoreFfi migration. Clear it and move on.
+            print("[SessionStorage] Failed to load session (clearing stale data): \(error)")
+            clear()
             return nil
         }
     }

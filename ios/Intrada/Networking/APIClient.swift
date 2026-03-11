@@ -6,6 +6,9 @@
 // All requests include `Authorization: Bearer {jwt}` from Clerk.
 // Built-in 401 retry: get fresh token, retry once.
 //
+// Uses JSONEncoder.api / JSONDecoder.api with snake_case key strategy
+// to match Rust serde's default field naming.
+//
 // Endpoints are added incrementally as features are implemented.
 
 import ClerkKit
@@ -109,7 +112,7 @@ actor APIClient {
         }
 
         if let body {
-            request.httpBody = try JSONEncoder.intrada.encode(body)
+            request.httpBody = try JSONEncoder.api.encode(body)
         }
 
         let (data, response) = try await session.data(for: request)
@@ -124,7 +127,7 @@ actor APIClient {
                 // swiftlint:disable:next force_cast
                 return Empty() as! T
             }
-            return try JSONDecoder.intrada.decode(T.self, from: data)
+            return try JSONDecoder.api.decode(T.self, from: data)
         case 401:
             throw APIError.unauthorized
         default:

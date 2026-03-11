@@ -1,14 +1,12 @@
-//! JSON-based FFI bridge for iOS/Android shells.
+//! JSON-based FFI bridge (legacy — kept for testing and potential future use).
 //!
 //! This module wraps `crux_core::Core<Intrada>` and exposes JSON-based
-//! methods for shells that prefer JSON over BCS serialisation.
+//! methods. It was the original iOS bridge before the migration to
+//! `CoreFfi` (BCS via `facet` typegen).
 //!
-//! Why JSON instead of BCS:
-//! - The `crux_core::typegen` codegen for Swift BCS is blocked by a
-//!   `serde-reflection` limitation with GoalKind's enum variants.
-//! - JSON serialisation is natively supported by Swift's `Codable`/`JSONEncoder`.
-//! - `serde_json` uses the same field names and enum tagging as our Rust types.
-//! - Performance difference is negligible for this app's data volume.
+//! The iOS shell now uses `CoreFfi` (see `core.rs`) with auto-generated
+//! BCS types from `shared_types`. This JSON bridge is retained for
+//! integration testing and as a reference implementation.
 
 use std::sync::Mutex;
 

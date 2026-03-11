@@ -9,11 +9,11 @@
 //!
 //! Two bridge implementations are provided:
 //!
-//! - `CoreFFI` — BCS binary serialisation via `crux_core::Bridge` (for future use)
-//! - `CoreJson` — JSON string serialisation via `crux_core::Core` (used by iOS shell)
+//! - `CoreFFI` — BCS binary serialisation via `crux_core::Bridge` (primary, used by iOS shell)
+//! - `CoreJson` — JSON string serialisation via `crux_core::Core` (legacy, kept for testing)
 //!
-//! The JSON bridge exists because `crux_core::typegen` codegen for Swift BCS
-//! is blocked by a `serde-reflection` limitation with GoalKind's enum variants.
+//! The iOS shell uses `CoreFFI` with auto-generated BCS types from `shared_types`.
+//! The JSON bridge is retained for integration testing and as a reference.
 
 pub use intrada_core::*;
 
