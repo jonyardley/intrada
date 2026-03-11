@@ -94,7 +94,7 @@ jobs:
           key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: brew install xcodegen || brew link xcodegen
 
       - name: Download device Rust library
         uses: actions/download-artifact@v8
@@ -152,7 +152,7 @@ jobs:
           key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: brew install xcodegen || brew link xcodegen
 
       - name: Cache Ruby gems (Fastlane)
         uses: actions/cache@v4
