@@ -2,7 +2,7 @@
 
 **Your Intentional Practice Companion**
 
-*Product Vision & Research Foundation — February 2026*
+*Product Vision & Research Foundation — March 2026*
 
 ---
 
@@ -14,9 +14,21 @@ Musicians at every level share a common frustration: they practise, but they don
 
 Most practice is unstructured. Musicians repeat what feels comfortable, avoid what feels hard, and lack visibility into whether they're actually improving. Existing tools either track time (which measures attendance, not progress) or overwhelm with features that feel like work rather than music.
 
+But beneath the structural problem lies a deeper one: **music has one of the longest feedback loops of any skill.** A software developer writes code and sees whether it works in seconds. An athlete shoots a basket and the ball goes in or it doesn't. A musician practises a passage and… it sounds slightly better? Maybe? Improvement in music is often invisible for weeks or months — motor skills consolidate between sessions, not within them (Walker & Stickgold, 2004; Brashers-Krug, Shadmehr & Bizzi, 1996). You have to trust the process before you can see the results.
+
+There is a third layer to the problem: **the sheer volume of what *could* be practised is paralysing.** A pianist learning to improvise faces twelve keys, dozens of chord voicings per key, multiple scale types, ornaments, rhythmic patterns, harmonic substitutions — the material is effectively infinite. Without guidance, the obvious question is not "how do I practise?" but "what should I even be working on?" Even classically trained musicians crossing into improvisation often need a teacher not for technique instruction but simply to answer that question — to cut through the noise and identify what actually matters *right now*. Research on choice in learning contexts confirms the intuition: choice is only motivating when the learner has the competence and knowledge to choose meaningfully (Katz & Assor, 2007). When they don't — and by definition, learners at the boundary of their knowledge don't — excessive choice becomes a burden rather than a freedom (Schwartz, 2004; Iyengar & Lepper, 2000). The result is either paralysis (the musician sits down and doesn't know where to start) or scattershot practice (they try a bit of everything and master nothing).
+
+What musicians need is not more material — the internet has made that infinite — but a **critical path**: the minimum, well-sequenced set of things to practise that leads most efficiently to their specific goal. You don't need to practise scales in every key over two octaves to learn a specific piece. You need the keys, the passages, and the techniques that piece demands — and then to build outward from there. This is what good teachers do instinctively: they filter, sequence, and focus. It's also what self-taught musicians consistently lack (Duke, 2005; Hallam, 2001). In essence, the meta-skill that separates effective from ineffective practice is *learning how to learn* — and that meta-skill is precisely what teachers transmit and what self-directed musicians must somehow develop on their own.
+
+This delayed feedback is particularly devastating for musicians with ADHD, whose brains require frequent evidence of progress to sustain engagement (Barkley, 2015). But it affects every musician: the gap between effort and visible reward is where motivation dies. Research on why music students abandon their instruments points consistently to declining motivation and a lost sense of progress rather than a lack of talent or time (Hallam, 1998; Evans, 2015). Without external evidence that practice is working, "trust the process" becomes an empty mantra.
+
+> **Open question:** While the connection between delayed feedback and dropout is strongly supported by motivation research (SDT, self-efficacy theory), there is limited direct research measuring the *specific* feedback loop length in music learning versus other domains. The claim that music has "one of the longest" feedback loops is an informed inference from motor consolidation research and practitioner experience, not a directly measured comparison. This is a testable hypothesis that Intrada's own data could eventually contribute to answering.
+
 ### 1.2 The Vision
 
-**Intrada is an intentional practice companion that helps musicians practise smarter, see their progress, and trust the process.**
+**Intrada is an intentional practice companion that helps musicians practise smarter, see their progress, and trust the process — by making invisible progress visible.**
+
+Its core job is twofold: **shrink the feedback loop** by surfacing evidence of improvement that the musician cannot yet feel, and **illuminate the critical path** by guiding each musician toward the specific material that matters most for their goals right now. Together, these make progress both *visible* and *efficient* — the musician can see that practice is working, and trust that they are working on the right things.
 
 It sits at the intersection of three evidence-based principles: the science of learning (spaced repetition, interleaved practice, deliberate practice), the psychology of motivation (self-determination theory, growth mindset), and the practical realities of musical skill acquisition (technique across all keys, repertoire management, goal-directed study).
 
@@ -26,6 +38,8 @@ Intrada doesn't replace your teacher or your musicianship. It gives you the stru
 
 Where other apps track minutes or provide generic tools, Intrada offers something different:
 
+- **Shrink the feedback loop** — surface evidence of progress before the musician can feel it, turning weeks of invisible improvement into daily visible signals
+- **Illuminate the critical path** — guide musicians toward the specific material that matters for their goals, cutting through the noise of everything they *could* practise to focus on what they *should* practise right now
 - **Fine-grained metric-based progression** — track mastery at the level of individual keys, passages, and techniques, not just "time spent"
 - **Smart scheduling** — algorithmically surface what you need to practise based on spaced repetition and interleaved practice research
 - **Mindful and intentional practice** — encourage focus, reflection, and deliberate engagement rather than mindless repetition
@@ -37,7 +51,52 @@ Where other apps track minutes or provide generic tools, Intrada offers somethin
 
 Intrada is designed for self-directed musicians who are past the beginner stage and serious about improvement. This includes jazz and classical pianists, instrumental students at intermediate to advanced level, adult returners to music, and anyone preparing for graded exams, auditions, or performance. The common thread is a desire to practise more effectively, not just more.
 
-An estimated 15–20% of the population is neurodivergent, and the intersection of ADHD with music is particularly significant — music provides the kind of stimulation, flow, and immediate feedback that ADHD brains thrive on (Wilde & Welch, 2022). Designing for neurodivergent musicians isn't niche — it's likely a meaningful portion of Intrada's audience, and features that support executive function challenges benefit every user.
+An estimated 15–20% of the population is neurodivergent (a commonly cited range combining ADHD, autism, dyslexia, and other cognitive variations, though exact prevalence depends on diagnostic criteria and definition), and the intersection of ADHD with music is particularly significant — music provides the kind of stimulation and flow that ADHD brains thrive on, and ADHD behaviours are often notably *absent* during active music-making (Wilde & Welch, 2022). Designing for neurodivergent musicians isn't niche — it's likely a meaningful portion of Intrada's audience, and features that support executive function challenges benefit every user.
+
+### 1.5 Musician Tracks — Entry Points, Not Boxes
+
+Musicians come to Intrada with fundamentally different motivations, and a single onboarding path cannot serve them all. Intrada recognises six distinct tracks — not as rigid categories, but as starting points that shape the initial experience.
+
+> **Assumption:** These six tracks are a product design hypothesis based on practitioner observation and user interviews, not empirically validated categories. The underlying principle — that musicians have different motivations that should shape their experience — is well-supported by SDT research (different forms of motivation lead to different practice behaviours; Evans & Bonneville-Roussy, 2016). But the specific six categories, their boundaries, and whether they capture the most meaningful distinctions are untested. They should be validated against real user data and refined as the product matures.
+
+| Track | Motivation | What they need from Intrada |
+|-------|-----------|----------------------------|
+| **The Entertainer** | Learn one thing to impress friends | Focused, single-goal workflow; quick wins; minimal admin |
+| **The Jammer** | Jam with pals | Repertoire breadth; key fluency; feel over perfection |
+| **The Virtuoso (Classical)** | Mastery through the classical tradition | Technique, études, exam prep; fine-grained progression; tempo targets |
+| **The Virtuoso (Jazz)** | Mastery through the jazz tradition | Standards, improvisation, transcription; key-aware practice across all 12 |
+| **The Soul Player** | Play for themselves | Personal enjoyment; consistency over scores; low-pressure structure |
+| **The Late Starter** | Always wanted to but thinks it's too late | Encouragement; proof that progress is possible at any stage; gentle goals |
+
+#### How tracks shape the experience
+
+Tracks influence the onboarding journey, default library suggestions, session structure, analytics framing, and encouragement tone. A Virtuoso sees mastery scores and tempo progress front and centre; a Soul Player sees consistency and time spent; a Late Starter sees evidence of growth from zero with warmth and normalisation.
+
+| Touchpoint | How it varies |
+|------------|--------------|
+| **Onboarding** | Different welcome questions, starter library, initial goal templates |
+| **Session defaults** | Duration, scoring emphasis, focus mode (e.g. Soul Player might skip scoring) |
+| **Analytics framing** | Virtuoso → precision metrics; Soul Player → consistency; Late Starter → progress from baseline |
+| **Encouragement tone** | Virtuoso → data-driven; Late Starter → warmth and normalisation; Jammer → social readiness |
+| **Goal suggestions** | Track-appropriate templates (e.g. "Learn 3 standards this month" vs "Play for 10 minutes, 3 times this week") |
+
+#### A shared foundation that diverges
+
+All tracks share a common core: the act of showing up, playing, and reflecting. The fundamental loop — pick something to practise, play it with intention, notice what happened — is universal. What changes between tracks is the framing, the defaults, and the emphasis.
+
+This means the onboarding journey can begin with shared ground. Every musician, regardless of track, benefits from building a library, running a first session, and seeing their initial data. The divergence happens in how the app responds after that: what it suggests next, how it frames progress, what goals it offers, how much structure it applies.
+
+Think of it as a tree: the trunk is the core practice loop that every musician recognises. The branches are where tracks diverge — a Virtuoso's branch emphasises precision, tempo targets, and exam preparation; a Jammer's branch emphasises repertoire breadth and playing with others; a Late Starter's branch emphasises evidence that it is not too late and that small steps compound.
+
+This shared-then-divergent structure has practical benefits. It means the core product stays simple — one practice loop, one library, one session flow. The track system layers on top as a personalisation lens rather than requiring separate feature paths. A musician who changes track does not need to relearn the app; they see the same structure through different eyes.
+
+#### Fluidity is core
+
+Tracks are entry points, not permanent assignments. Musicians can change track at any time — no friction, no confirmation dialog. The app actively signals this: real musical journeys are not linear. Someone starts as a Late Starter, gains confidence, becomes a Jammer, then catches the mastery bug. Moving from Virtuoso to Soul Player is not giving up — it is choosing what matters now.
+
+Track changes trigger a gentle experience refresh: updated suggestions, reframed analytics, adjusted defaults — without losing any data or history. The musician's complete practice record travels with them regardless of which track they are on.
+
+This design is grounded in SDT: autonomy means the musician defines their own relationship with practice, and that definition can evolve. It also connects to growth mindset research — if the app frames a track change as regression, it undermines the very belief system that sustains long-term engagement.
 
 ### 1.5 Musician Tracks — Entry Points, Not Boxes
 
@@ -94,6 +153,8 @@ The spacing effect is one of the most robust findings in learning science. Mater
 
 **Important nuance for music:** Donovan & Radosevich also found that the spacing effect is moderated by task complexity — more complex tasks benefit less from distributed practice than simpler ones. Musical skill acquisition involves complex motor coordination, and Simmons (2012) found no spacing effect when teaching a 17-note piano sequence to novices, suggesting that the effect "may not always be demonstrable for complex motor skills." However, Moss (1995), reviewing 120 articles, found spacing improved learning of motor skills in over 80% of studies reviewed. The weight of evidence supports spacing for music, but Intrada's scheduling algorithm should be understood as leveraging a *general principle with strong support* rather than a precisely calibrated system proven specifically for instrument practice.
 
+> **Citation note:** Moss (1995) is an unpublished review cited secondarily via Firth et al. (2023). The specific "120 articles" and "80%+" claims cannot be independently verified from the primary source. The broader claim — that spacing benefits motor skills — is well-supported by published meta-analyses, but this specific citation should be treated with caution.
+
 Intrada applies this by tracking when each item was last practised and scheduling reviews at increasing intervals based on the musician's self-rated mastery, while remaining tuneable as we learn more about how spacing interacts with musical skill retention.
 
 ### 2.2 Interleaved Practice
@@ -136,11 +197,15 @@ For Intrada, the relevant takeaway is not that a brief mindset intervention will
 
 **Design implication for consistency tracking:** Growth mindset research also informs how Intrada handles practice gaps. Rather than streak-based tracking that creates anxiety around breaking a streak (and can trigger shame-driven avoidance, particularly in musicians with ADHD), Intrada uses "comeback" framing that emphasises the return rather than the gap. "You've practised 4 of the last 7 days — that's great spacing for retention" rather than "5 day streak — don't break it!"
 
+> **Assumption:** The claim that streak-based tracking causes anxiety and avoidance is a design hypothesis, not a research-proven finding. While there is general psychology research on shame-avoidance cycles and ADHD emotional dysregulation (Barkley, 2015), no published study directly compares streak-based versus comeback-based practice tracking in music apps. The design choice is informed by SDT principles (autonomy support) and anecdotal practitioner experience with apps like Duolingo (whose own research has shown streaks drive retention but at the cost of some anxiety). This is a reasonable design decision but should not be presented as research-proven.
+
 ### 2.6 Retrieval Practice
 
 An emerging area of relevance is retrieval practice — the finding that actively recalling information produces better long-term retention than passive review. While extensively studied in verbal learning, Wellmann & Skillicorn (2024) recently proposed the first systematic application of retrieval practice to jazz performance education, noting that its benefits should extend to music learning given that the underlying memory mechanisms are domain-general. They recommend spaced retrieval schedules with intervals of at least 24 hours between practice sessions of the same material for optimal retention.
 
 This supports Intrada's scheduling approach: rather than letting musicians repeatedly drill the same material in a single session, the app encourages returning to material across sessions, leveraging both spacing and retrieval effects.
+
+> **Open question:** Wellmann & Skillicorn's proposal is theoretical — they argue retrieval practice *should* benefit music learning based on domain-general memory mechanisms, but this has not been empirically tested in a music practice context. The underlying principle is sound (retrieval practice benefits are among the most replicated findings in cognitive psychology), but the specific transfer to complex motor skills with a musical-expressive component remains an assumption.
 
 ### 2.7 Neurodiversity & Music Practice
 
@@ -157,6 +222,129 @@ Research at the intersection of ADHD and music reveals both specific challenges 
 **Music-specific findings.** Research identifies timing deficits in ADHD, including difficulties with beat tracking and processing short time intervals (Puyjarinet et al., 2017; Serrallach et al., 2022). However, these deficits do not extend to improvisation and musical expression (Grob et al., 2022), and Wilde & Welch (2022) found that ADHD behaviours were often *absent* during active music-making. Raz (2025) found that musicians with ADHD showed enhanced cognitive abilities compared to non-musician ADHD peers, including better sustained attention and impulse control. This suggests that the practice session itself may be less affected than the surrounding executive function demands — deciding what to practise, starting, transitioning between items, and stopping.
 
 **Broader neurodiversity.** Beyond ADHD, sensory processing differences (common in autism), dyslexia (affecting 10–15% of the population), and other cognitive variations all influence how musicians interact with a practice tool. Design principles that support neurodivergent users — reduced visual clutter, predictable navigation, configurable feedback, accessible typography — benefit every user.
+
+### 2.8 The Feedback Loop Problem & Self-Taught Learning
+
+The feedback loop problem identified in Section 1.1 is not just a motivational challenge — it connects to a well-documented set of failure modes in self-directed practice and explains why teacher guidance is so effective.
+
+#### What teachers actually do
+
+Effective music teaching is not primarily about demonstrating technique. Duke (2005) describes the core teacher functions as: **diagnose** (identify what specifically is going wrong), **decompose** (break complex skills into manageable sub-skills), **sequence** (order learning steps appropriately), and **regulate** (monitor progress and adjust the plan). These functions are forms of metacognition that expert musicians have internalised but that developing musicians typically lack (Hallam, 2001).
+
+Bonneville-Roussy & Evans (2024) found that teacher autonomy support predicted autonomous motivation, which in turn predicted both practice time and quality. Critically, Macnamara & Maitra (2019) found that self-designed practice was perceived as more relevant than teacher-designed practice. These are not contradictory: the ideal is a teacher who helps the musician develop their own practice intelligence, not one who dictates every session.
+
+#### Self-taught failure modes
+
+Without the diagnostic and regulatory functions a teacher provides, self-directed musicians exhibit predictable failure patterns:
+
+- **Inability to self-diagnose** — Musicians cannot hear their own errors with the objectivity of an external listener. They often misidentify what is going wrong, leading to practice strategies that address the wrong problem (Hallam, 2001).
+- **Repetition without variation** — The instinct to "just play it again" without changing approach is one of the most common and least productive practice strategies. Duke, Simmons & Cash (2009) found that what distinguished the top performers in learning a new passage was not how much they practised, but how they practised — specifically, they varied tempo systematically, targeted error sections rather than restarting from the beginning, and practised the passage in overlapping segments.
+- **Avoidance of difficult material** — Self-directed musicians gravitate toward material they can already play, spending disproportionate time on comfortable repertoire and avoiding the uncomfortable edge where learning happens (Renwick & McPherson, 2002).
+- **Wrong difficulty level** — Without external calibration, musicians frequently attempt material that is either too easy (leading to boredom) or too hard (leading to frustration). Wilson et al.'s (2019) 85% Rule suggests that optimal learning occurs at roughly 85% accuracy — one error per six attempts — but self-taught musicians have no way to objectively assess where they sit on this continuum.
+- **Poor session structure** — Without external scaffolding, practice sessions tend to lack warm-up, spend too long on single items, and end without consolidation or reflection. This contrasts with the deliberate practice framework's emphasis on structured, goal-directed work (Ericsson et al., 1993).
+- **No stopping rules** — Musicians without guidance either stop too early (abandoning an item after the first successful attempt, before overlearning consolidates the skill) or stop too late (drilling past the point of diminishing returns, risking both injury and encoding of fatigue-related errors).
+
+#### Motor consolidation: why progress is invisible
+
+The biological basis for the delayed feedback loop is motor memory consolidation. Walker & Stickgold (2004) demonstrated that motor skill performance improves 20–26% following a night of sleep, with no additional practice. Brashers-Krug, Shadmehr & Bizzi (1996) showed that motor memories require several hours to consolidate and are vulnerable to interference during this window.
+
+This means a musician can practise a passage, feel like they made no progress, go to sleep, and return the next day measurably better — but they will attribute the improvement to the new session's practice rather than the previous day's. The subjective experience is: "I practised yesterday and it didn't help; today it suddenly clicked." Without data to show the trajectory, the musician's narrative becomes "I'm not improving" even when they objectively are.
+
+> **This is Intrada's core design opportunity.** By tracking mastery ratings, tempo progress, and practice patterns over time, the app can surface evidence of improvement that the musician cannot yet perceive. "Your average mastery score for this piece has gone from 2.3 to 3.1 over the past two weeks" is the kind of signal that turns invisible progress into visible evidence — shrinking the feedback loop from weeks to days.
+
+#### What this means for Intrada
+
+Intrada cannot replicate all teacher functions — it cannot listen to a musician play and diagnose tonal issues or suggest a different fingering. But it can address the *structural* functions that teachers provide:
+
+| Teacher function | How Intrada addresses it |
+|-----------------|-------------------------|
+| **Diagnose** | Data patterns surface what the musician cannot self-diagnose — persistent weak keys, plateau detection, effort/progress mismatches |
+| **Decompose** | Key-aware exercise management and section-level tracking break complex goals into measurable sub-skills |
+| **Sequence** | Smart scheduling orders practice material based on evidence (spacing, interleaving, goal alignment) rather than impulse |
+| **Regulate** | Progress visualisation and session analytics provide the external monitoring that self-taught musicians lack |
+
+> **Open question:** The extent to which a software tool can meaningfully replicate teacher regulatory functions is untested. The hypothesis is promising — data-driven feedback and intelligent scheduling address the *information* gap in self-taught practice — but whether this translates to improved outcomes compared to unstructured self-teaching is an empirical question that Intrada's data could help answer over time.
+
+> **Assumption:** The self-taught failure modes listed above are drawn from research on music students in educational contexts (typically school-age or conservatoire students). Whether adult self-directed learners — who form a significant portion of Intrada's target audience — exhibit the same patterns is assumed but not specifically validated. Adult learners may have better metacognitive abilities from other domains, or they may have different failure modes entirely.
+
+### 2.9 The Choice Overload Problem & Guided Learning
+
+Learning a musical instrument is one of the most daunting undertakings an adult can attempt. The amount of material is effectively infinite: twelve keys, multiple scale types, chord voicings, arpeggios, ornaments, rhythmic patterns, stylistic conventions, repertoire — and that's before considering that each musical tradition has its own vocabulary. The internet has made access to this material trivially easy, but access is not the same as curation. The self-taught musician faces what Schwartz (2004) calls the "paradox of choice" — more options don't lead to better decisions; they lead to worse ones, or no decision at all.
+
+#### Choice is only motivating when you know how to choose
+
+The relationship between choice and motivation is not linear. Patall, Cooper & Robinson (2008) found in a meta-analysis that providing choice generally enhances intrinsic motivation — but the effect diminishes or reverses when choices become too numerous or complex. Katz & Assor (2007) showed that choice is only motivating when learners have the competence and knowledge to make meaningful choices. When they don't, choice becomes a burden.
+
+This is directly relevant to music practice. A musician who has been playing for ten years knows instinctively that their Db major scale needs work, that they should practise their weak chord voicings before a gig, and that the bridge of their new piece needs isolated attention. A musician at the boundary of their knowledge — whether a beginner or an experienced player moving into a new style — has no basis for these decisions. They face a blank page and an infinite menu.
+
+#### The critical path problem
+
+In software engineering, the "critical path" is the minimum sequence of tasks that determines the total time to project completion. Music learning has an analogous structure: for any specific goal, there is a subset of material that matters most and a sequence in which it should be learned. You don't need to practise scales in every key over two octaves before you can learn a specific piece — you need the keys that piece uses, the techniques it demands, and the supporting exercises that build those specific skills.
+
+Good teachers identify this critical path instinctively. They look at where the student is, where they want to go, and draw the shortest line between the two — filtering out the 90% of possible material that, while valuable in the abstract, isn't relevant to the current goal. This is the *sequencing* function from Section 2.8, but viewed through the lens of what to *exclude* rather than what to include.
+
+Research on guided versus unguided learning strongly supports this filtering function. Kirschner, Sweller & Clark (2006) argued that minimal guidance during instruction does not work, particularly for novices, because unguided approaches impose excessive cognitive load — the learner spends cognitive resources on deciding what to do rather than actually doing it. Mayer (2004) reviewed decades of evidence and concluded that guided instruction consistently outperforms pure discovery learning. Alfieri et al. (2011) found in a meta-analysis that unassisted discovery rarely benefits learners, but *guided* discovery — with scaffolding, feedback, and structure — outperforms both unguided discovery and rote instruction.
+
+#### Learning how to learn
+
+The meta-skill that separates effective from ineffective practice is metacognition — the ability to monitor, evaluate, and direct one's own learning. Hallam (2001) studied how practice strategies develop with expertise and found that novices tend to play through entire pieces start-to-finish, while experts identify specific problem areas and deploy targeted strategies. The difference is not just skill — it's knowledge about *how to practise*.
+
+This metacognitive development is slow. McPherson & Renwick (2001) found in a longitudinal study that children's ability to self-regulate their practice — including choosing what to work on — develops gradually and is a major differentiator in outcomes. Williamon & Valentine (2000) showed that practice quality (including strategic decision-making about what to practise) is a stronger predictor of performance quality than practice quantity.
+
+The implication for Intrada is significant: the app should not just provide material and scheduling, but should actively teach musicians *how to learn*. Every intelligent scheduling decision the app makes is an implicit lesson in practice design. Over time, the musician should internalise these patterns — understanding why the app surfaces certain items, why it interleaves different material types, why it prioritises some keys over others — and develop their own metacognitive skills.
+
+> **Assumption:** The claim that Intrada can develop musicians' metacognitive skills through example (implicit modelling via scheduling decisions) is a design hypothesis, not an established finding. Explicit metacognitive instruction has strong research support (Hallam, 2001; McPherson & Zimmerman, 2002), but whether passive exposure to intelligent scheduling transfers metacognitive skills is untested. This is an area where user research could inform whether explicit "here's why I scheduled this" explanations accelerate learning.
+
+#### What this means for Intrada
+
+The choice overload problem reinforces three design principles:
+
+1. **Default to guidance.** The app should always have an answer to "what should I practise?" — not a menu of everything the musician *could* do, but a curated recommendation of what they *should* do right now, given their goals and current state. The one-tap session start (Section 4.2) is the primary expression of this principle.
+2. **Goal-driven filtering.** When a musician sets a goal ("learn this piece by March," "get comfortable improvising over ii-V-I progressions"), the library and scheduler should filter aggressively — surfacing only the material that serves that goal and deprioritising everything else. The musician can always explore beyond the recommendation, but the default path is focused.
+3. **Progressive disclosure.** The full breadth of what could be practised should be available but not presented up front. A musician starting a new exercise sees the keys they need now, not all twelve. As they master the immediate set, the app reveals the next layer. This mirrors the scaffolding approach (Wood, Bruner & Ross, 1976) — support is removed gradually as competence develops.
+
+### 2.10 Goal-Specific Pathways: From Aspiration to Curriculum
+
+The critical path principle (Section 2.9) identifies what musicians need — a focused, well-sequenced subset of material rather than the full universe of what could be practised. But the principle alone doesn't answer the most concrete and important question a musician can ask: **"I want to play *this* — how do I get there?"**
+
+"I want to play Claire de Lune — where do I even start?" "I want to improvise like Bill Evans — what do I actually need to learn?" These are not scheduling problems or motivation problems. They are curriculum design problems — and they are precisely what good teachers solve, often instinctively, in the first lesson after a student names their goal.
+
+#### Backward design: start with the destination
+
+Wiggins & McTighe (2005) formalised "backward design" in education: begin with the desired outcome, determine what evidence would demonstrate mastery, then design the learning experiences that lead there. This inverts the traditional approach of starting with available content and hoping it leads somewhere useful.
+
+Applied to music, backward design means: a pianist whose goal is to play Debussy's *Claire de Lune* doesn't need a generic piano curriculum. They need the specific skills that piece demands — reading fluency in Db major, control of soft dynamics, pedal technique for sustained resonance, independence of inner voices, rhythmic flexibility for rubato — and a sequence that builds those skills from wherever the musician currently stands. The pathway is goal-specific, not instrument-generic.
+
+#### Prerequisite hierarchies in music
+
+Musical skills form natural hierarchies where complex abilities depend on simpler foundations. Gagné (1985) described how instruction should ensure prerequisite skills are in place before higher-order skills are attempted. Gordon (2007) developed this into a detailed sequential framework specific to music — progressing through aural/oral skills, verbal association, partial synthesis, symbolic association, and composite synthesis — with each stage building on the last.
+
+Every target piece or skill can be decomposed into prerequisite chains. To improvise over jazz standards, a musician needs: functional harmony, voice leading, scale-chord relationships, rhythmic vocabulary, and the ear training to hear chord changes in real time — each of which has its own prerequisites. To play a Chopin nocturne, they need: reading fluency in the relevant keys, chord voicing technique, dynamic control at soft volumes, pedal management, and melodic projection above accompaniment texture. Each of these connects to specific, proven exercises and studies that generations of teachers have refined.
+
+Graded examination systems — ABRSM, the Royal Conservatory, Trinity College London — encode these hierarchies into structured syllabi. The Suzuki method (Suzuki, 1969) builds prerequisite chains directly into its carefully sequenced repertoire, with each piece introducing skills needed for the next. These systems have demonstrated the value of sequenced learning over more than a century of use. Their limitation is that they define a single generic path for all learners of an instrument, regardless of individual goals or starting points.
+
+#### Material within the zone of proximal development
+
+Vygotsky (1978) described the "zone of proximal development" (ZPD) — the gap between what a learner can do independently and what they can achieve with appropriate guidance. Material within this zone is optimally challenging: difficult enough to promote learning, approachable enough to avoid frustration. Lehmann, Sloboda & Woody (2007) apply this directly to music, arguing that effective skill acquisition requires material calibrated to the learner's current level.
+
+A well-designed pathway keeps every step within the musician's ZPD. Each exercise, study, or piece should build on mastered prerequisites and stretch toward the next milestone. This is what distinguishes a pathway from a reading list: it is sequenced for the individual learner, not ordered by publishing convention.
+
+#### Adaptive pathways through knowledge tracing
+
+Static curricula — even well-designed ones — cannot adapt to the individual. Two musicians with the same goal but different starting points, learning speeds, and strengths need different paths. Corbett & Anderson (1995) developed "knowledge tracing," a Bayesian model that estimates learner mastery of individual skills based on their response history. This approach underlies modern adaptive learning platforms and is directly applicable to music: by tracking mastery of individual skills (keys, techniques, reading fluency, chord progressions), the system can infer which prerequisites are met and which pathway steps need attention.
+
+The result is a pathway that adjusts as the musician progresses — skipping what they already know, spending more time where they struggle, and revealing new material only when the foundation is solid. This is progressive disclosure (Section 2.9) applied at the curriculum level.
+
+> **Assumption:** The claim that prerequisite relationships between musical skills can be reliably modelled and automatically sequenced is a design hypothesis. Music pedagogy involves significant tacit knowledge — experienced teachers make sequencing decisions based on intuitions about student readiness that may not reduce to measurable prerequisites. Initial pathways will likely need expert curation (informed by established pedagogical traditions), with adaptive personalisation layered on top as the system accumulates data. Teacher integration (Section 4.9) could provide invaluable input here.
+
+#### What this means for Intrada
+
+Guided pathways are the feature that turns Intrada from a practice *tracker* into a practice *companion*. They answer the question every self-directed musician asks: *"I want to do this — how do I get there?"*
+
+1. **Goal as entry point.** When a musician sets an aspiration — a target piece, a skill to develop, a style to explore — the app generates a pathway: a sequenced set of exercises, studies, and sub-skills that leads from where they are now to that goal.
+2. **Concrete, proven material.** Pathways recommend specific exercises and studies with established pedagogical value — the material a teacher would actually assign. Czerny studies for finger independence, Hanon for evenness, Aebersold patterns for jazz vocabulary, Bach chorales for voice leading. The app connects aspiration to actionable daily practice.
+3. **Visible progress through the pathway.** Each step has measurable criteria (mastery rating, tempo target, key coverage). The musician can see where they are in the journey — not just "am I practising?" but "am I getting closer to my goal?" This is the feedback loop principle (Section 1.1) applied at the curriculum level.
+4. **Adaptive pacing.** The pathway adjusts based on actual progress. A musician who masters a prerequisite quickly moves on; one who struggles stays until the foundation is solid. The app doesn't judge pace — it adapts to it.
 
 ---
 
@@ -208,7 +396,9 @@ The scheduler is Intrada's core intelligence. Given a musician's available pract
 
 #### Scheduling Algorithm
 
-The algorithm combines four factors. First, **spaced repetition urgency**: items whose review is overdue based on their mastery level and time since last practice are prioritised. The spacing intervals follow a modified SM-2 algorithm adapted for musical skill learning, with parameters that should be validated against user data over time (see Section 2.1 on the nuances of spacing for motor skills). Second, **interleaving**: the generated setlist alternates between different types of material (e.g. scale work, then a piece passage, then a lick in a new key) rather than grouping similar items together, with the degree of interleaving adjustable by the musician. Third, **goal alignment**: items tagged as relevant to the musician's current goals receive a priority boost. Fourth, **difficulty balancing**: the session balances effort across its duration, front-loading demanding work when focus is fresh and tapering toward lighter review material, avoiding sequences of multiple high-effort items back-to-back.
+The algorithm combines four factors. First, **spaced repetition urgency**: items whose review is overdue based on their mastery level and time since last practice are prioritised. The spacing intervals follow a modified SM-2 algorithm adapted for musical skill learning, with parameters that should be validated against user data over time (see Section 2.1 on the nuances of spacing for motor skills).
+
+> **Assumption:** SM-2 was designed for verbal flashcard learning (Wozniak, 1987) and its interval growth parameters are calibrated for declarative memory retention. Musical skill learning involves procedural/motor memory with different consolidation dynamics (Walker & Stickgold, 2004). No published research validates SM-2 parameters for motor skill scheduling. Intrada's initial parameters are informed guesses that must be refined empirically through user data. This is a known unknown, not a solved problem. Second, **interleaving**: the generated setlist alternates between different types of material (e.g. scale work, then a piece passage, then a lick in a new key) rather than grouping similar items together, with the degree of interleaving adjustable by the musician. Third, **goal alignment**: items tagged as relevant to the musician's current goals receive a priority boost. Fourth, **difficulty balancing**: the session balances effort across its duration, front-loading demanding work when focus is fresh and tapering toward lighter review material, avoiding sequences of multiple high-effort items back-to-back.
 
 The Donovan & Radosevich (1999) finding that task complexity moderates the spacing effect informs the algorithm: items tagged as "high effort" may receive different scheduling parameters (shorter intervals) than "maintenance" items.
 
@@ -219,6 +409,8 @@ A generated practice session includes warm-up items (drawn from saved routines o
 #### One-Tap Session Start
 
 The default interaction when opening Intrada is a ready-to-go session with a prominent "Start" button. No configuration required. The app has already decided what to practise based on the scheduling algorithm — the musician just has to begin. This directly addresses task initiation difficulty (Barkley, 2015) and reduces cognitive overhead for all users. The musician can always choose to modify the session, but the default path is zero-decision start.
+
+This is also the primary expression of the critical path principle (Section 2.9). The generated session is not a random selection from the library — it is a curated, goal-aware recommendation that answers the question every musician silently asks when they sit down: "what should I work on?" By absorbing the decision-making burden, the app eliminates the blank-page problem that derails practice before it begins (see Katz & Assor, 2007 on choice as burden for learners without domain knowledge to choose meaningfully).
 
 #### Short Session Support
 
@@ -252,7 +444,9 @@ An optional tool available during practice on any item: a simple counter that tr
 
 The target is configurable per item (default 5, adjustable from 3 to 10). The decrement-on-error mechanic is the key design choice: it prevents musicians from counting sloppy repetitions toward their goal and ensures the final sequence of attempts represents genuine consistency rather than accumulated luck.
 
-**Research basis:** The overlearning literature supports continuing correct repetitions beyond initial success to improve retention. Driskell, Willis & Copper (1992) reviewed 11 studies and found that overlearning (50–100% additional correct trials beyond the criterion of first success) has a positive influence on retention, with a moderate overall effect size (d = 0.753). Practically, this means if it takes a few attempts to get a passage right, doing 3–5 more correct repetitions is beneficial, with diminishing returns beyond that. Experienced music pedagogues converge on a similar range — enough to confirm consistency, not so many that habituation and careless errors set in (the "Practising the Piano" approach emphasises reflection between repetitions to prevent mindless drilling).
+**Research basis:** The overlearning literature supports continuing correct repetitions beyond initial success to improve retention. Driskell, Willis & Copper (1992) reviewed 11 studies and found that overlearning (50–100% additional correct trials beyond the criterion of first success) has a positive influence on retention, with a moderate overall effect size (d = 0.753). Practically, this means if it takes a few attempts to get a passage right, doing 3–5 more correct repetitions is beneficial, with diminishing returns beyond that. Experienced music pedagogues converge on a similar range — enough to confirm consistency, not so many that habituation and careless errors set in.
+
+> **Note on the 85% Rule:** Wilson et al. (2019) derived the 85% optimal accuracy rate using mathematical modelling of gradient-descent learning in neural networks and binary classification tasks. The original paper is about *machine learning systems*, not human motor skill acquisition. The application to music practice repetitions below is a **creative inference** — the principle resonates intuitively (practice should be challenging but not overwhelming), and it aligns with Vygotsky's zone of proximal development concept, but it is not a direct application of the original research. The 85% figure should be treated as a useful heuristic, not a precise prescription for musical practice.
 
 The 85% Rule (Wilson et al., 2019) found that learning is optimised at roughly 85% accuracy — about 1 error per 6 attempts. This has two implications for the repetition counter. First, it validates the decrement mechanic: errors during the process are expected and healthy, not failures. Second, it suggests the target shouldn't be too high — requiring 10 consecutive perfect repetitions may indicate the material is already too easy for maximal learning, or may frustrate musicians working at the productive edge of their ability. A default of 5 balances overlearning benefit against the 85% principle: a musician working at appropriate difficulty will typically experience a few decrements on the way to 5, resulting in a total attempt count where the error rate falls naturally in a productive range.
 
@@ -270,7 +464,11 @@ Intrada tracks multiple dimensions of mastery for each item:
 
 ### 4.5 Progress Visualisation
 
-Visualisations serve two purposes: they provide actionable insight (where are the gaps?) and they reinforce the sense of competence that sustains motivation. Since perceived competence is the strongest predictor of flow during instrument practice (Valenzuela et al., 2018), making progress visible is not a cosmetic feature — it is motivationally central. Planned visualisations include:
+Visualisations are Intrada's primary tool for **shrinking the feedback loop** (Section 1.1). They serve two purposes: they provide actionable insight (where are the gaps?) and they reinforce the sense of competence that sustains motivation. Since perceived competence is the strongest predictor of flow during instrument practice (Valenzuela et al., 2018), making progress visible is not a cosmetic feature — it is motivationally central. Every visualisation should answer the question the musician is silently asking: *"Is this working?"*
+
+Progress visualisation is also the app's most direct response to the self-taught failure modes documented in Section 2.8. Where a teacher would say "look how far you've come since September," Intrada shows the data. Where a teacher would say "you're avoiding your weak keys," Intrada surfaces the coverage gap. The visualisations are not just motivation — they are a partial substitute for the diagnostic and regulatory functions that self-directed musicians lack.
+
+Planned visualisations include:
 
 - **Key coverage heatmap** — a circle-of-fifths view showing mastery level per key for any exercise, immediately revealing weak keys
 - **Mastery timeline** — line charts showing how mastery scores have improved over weeks and months
@@ -308,11 +506,27 @@ A teacher integration feature could allow a teacher to suggest items for the stu
 
 ### 4.10 AI Practice Assistant (Future)
 
-A future AI layer could help musicians in several ways: suggesting practice setlists tailored to specific goals (e.g. "I have a gig in three weeks playing these standards"), identifying patterns in practice data ("You consistently struggle with keys that have four or more flats — here's a targeted exercise plan"), and helping navigate technique and musical understanding by explaining concepts in context.
+A future AI layer could replicate the *structural* teacher functions identified in Section 2.8 — not the musical ear of a teacher, but the diagnostic, planning, and regulatory intelligence that self-directed musicians lack.
 
-An additional AI feature is post-session review: after a session, the AI analyses the pattern of ratings, time allocations, and reflections and offers a brief synthesis — "You spent 40% of your time on pieces and only 10% on the keys you rated lowest. Want me to rebalance tomorrow's session?" This connects the AI to the scheduling engine in a way that's immediately actionable.
+**Goal decomposition:** When a musician says "I want to learn this piece by March," the AI can decompose that goal into specific sub-tasks (learn sections A–D independently, bring each to target tempo, chain sections, work on dynamics, prepare for performance conditions), schedule them appropriately, and track progress against each. This replicates the teacher function of *decomposition* and *sequencing* — two functions that self-taught musicians consistently lack (Duke, 2005; Hallam, 2001).
 
-The AI layer could also adapt interleaving intensity based on user response patterns, automatically adjusting mixing aggressiveness based on how the musician responds to different levels of contextual interference over time.
+**Pattern detection and diagnosis:** The AI analyses practice data to surface what the musician cannot self-diagnose — "You consistently struggle with keys that have four or more flats," "Your mastery ratings drop on items you haven't practised in more than 10 days," "You spend 40% of your time on pieces and only 10% on the keys you rated lowest." This is the *diagnostic* function.
+
+**Post-session synthesis:** After a session, the AI offers a brief review connecting today's work to the bigger picture — "You brought two more keys of this exercise above mastery level 3 this week. At this rate, you'll have all 12 above 3 within two weeks." This directly addresses the feedback loop problem by surfacing trajectory-level progress after every session.
+
+**Guided pathway generation:** This is the AI's most transformative function — the engine behind the guided pathways described in Section 2.10. When a musician sets a goal, the AI generates a complete, sequenced pathway from where they are now to where they want to be. This is not generic advice; it is a personalised curriculum built from the musician's mastery data, the specific demands of the goal, and the prerequisite relationships between skills (Gagné, 1985; Gordon, 2007).
+
+Consider two examples. A musician asks: *"I want to play Claire de Lune — how do I even start?"* The AI analyses the piece's demands (Db major fluency, wide chord voicings, pp/ppp dynamic control, pedal technique, inner-voice independence), compares these against the musician's current mastery data, identifies the gaps, and generates a pathway of specific exercises and studies — Czerny or Hanon exercises adapted to Db major, dynamic control drills, pedal exercises, and simplified arrangements of the opening bars — sequenced so each step builds on the last. The musician doesn't face a blank page; they face step one of a clear journey.
+
+A different musician asks: *"How do I learn to improvise like Bill Evans?"* The AI decomposes this into prerequisite skill chains — basic chord construction, rootless voicings, ii-V-I progressions in all keys, modal scale relationships, melodic phrasing patterns, transcription study of Evans recordings — and sequences them based on what the musician already knows. A pianist who can already voice major and minor seventh chords starts further along the path than one who is building chords for the first time.
+
+In both cases, the pathway uses backward design (Wiggins & McTighe, 2005): start with the destination, identify what mastery looks like, then work backward to the current starting point. Catrambone (1998) showed that explicitly labelling subgoals in complex tasks significantly improves learning transfer; the AI makes these subgoals visible and concrete, giving each step in the pathway a clear name and measurable criterion.
+
+The pathway adapts as the musician progresses. Knowledge tracing (Corbett & Anderson, 1995) estimates mastery of individual skills from practice data, allowing the system to skip prerequisites the musician has already met, linger on skills that need more work, and adjust pacing to keep material within the zone of proximal development (Vygotsky, 1978). Initial pathways will draw on expert-curated templates grounded in established pedagogical traditions; the AI personalises timing, sequencing, and emphasis based on individual data.
+
+**Adaptive scheduling:** The AI adapts interleaving intensity based on user response patterns, automatically adjusting mixing aggressiveness based on how the musician responds to different levels of contextual interference over time. It could also detect plateau patterns and suggest strategy changes — shifting from repetition-based to variation-based practice when progress stalls (informed by Duke, Simmons & Cash, 2009).
+
+> **Open question:** The extent to which AI-generated practice advice improves outcomes compared to algorithmically-generated schedules alone is unknown. There is growing evidence from adaptive learning platforms (Duolingo's Birdbrain model, Khan Academy's mastery-based pathways) that personalised sequencing improves retention, but these operate on declarative knowledge tasks, not complex motor-musical skills. Whether similar benefits transfer to music practice is a testable hypothesis but not an established finding.
 
 This feature builds on the existing library and data layer — the AI has access to the musician's practice history, mastery data, and goals, making its suggestions specific and actionable rather than generic.
 
@@ -355,6 +569,8 @@ Designing for neurodivergent musicians isn't a separate workstream — it's embe
 ### 7.1 Reduce Decisions to Start
 
 Every decision point between "I want to practise" and "I am practising" is an opportunity for any musician to stall — and for a musician with executive function challenges, it's a potential session-ending barrier. The default path through Intrada requires one decision: tap "Start." Everything else is optional.
+
+This principle extends beyond session initiation to the entire practice planning process. The choice overload research (Section 2.9) shows that having to decide *what* to practise — not just *when* — consumes cognitive resources that would be better spent on the practice itself (Katz & Assor, 2007; Kirschner, Sweller & Clark, 2006). The app absorbs this decision-making burden by maintaining a ready recommendation at all times, informed by the musician's goals, current state, and scheduling intelligence. The musician always *can* choose; they never *have to*.
 
 ### 7.2 Externalise Time
 
@@ -439,6 +655,10 @@ The spaced repetition engine should be adapted from SM-2 but with modifications 
 
 ## 10. References
 
+> **Reference validation note:** All references below have been verified as real published works to the best of current knowledge. Where a reference is secondary, unpublished, or has a date discrepancy between online-first and print publication, this is noted. Two references — Moss (1995) and the Mathias & Goldman year — carry specific caveats documented in the text where they are cited.
+
+Alfieri, L., Brooks, P. J., Aldrich, N. J., & Tenenbaum, H. R. (2011). Does discovery-based instruction enhance learning? *Journal of Educational Psychology*, 103(1), 1–18. https://doi.org/10.1037/a0021017
+
 Ambrose, S. A., Bridges, M. W., DiPietro, M., Lovett, M. C., & Norman, M. K. (2010). *How Learning Works: Seven Research-Based Principles for Smart Teaching*. San Francisco: Jossey-Bass. ISBN: 978-0-470-48410-4.
 
 Barkley, R. A. (2015). *Attention-Deficit Hyperactivity Disorder: A Handbook for Diagnosis and Treatment* (4th ed.). New York: Guilford Press.
@@ -447,13 +667,23 @@ Blackwell, L. S., Trzesniewski, K. H., & Dweck, C. S. (2007). Implicit theories 
 
 Bonneville-Roussy, A., & Evans, P. (2024). The support of autonomy, motivation, and music practice in university music students: A self-determination theory perspective. *Psychology of Music*. https://doi.org/10.1177/03057356241296109
 
+Brashers-Krug, T., Shadmehr, R., & Bizzi, E. (1996). Consolidation in human motor learning. *Nature*, 382, 252–255. https://doi.org/10.1038/382252a0
+
 Carter, C. E., & Grahn, J. A. (2016). Optimizing music learning: Exploring how blocked and interleaved practice schedules affect advanced performance. *Frontiers in Psychology*, 7, 1251. https://doi.org/10.3389/fpsyg.2016.01251
 
+Catrambone, R. (1998). The subgoal learning model: Creating better examples so that students can solve novel problems. *Journal of Experimental Psychology: General*, 127(4), 355–376. https://doi.org/10.1037/0096-3445.127.4.355
+
 Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., & Rohrer, D. (2006). Distributed practice in verbal recall tasks: A review and quantitative synthesis. *Psychological Bulletin*, 132(3), 354–380. https://doi.org/10.1037/0033-2909.132.3.354
+
+Corbett, A. T., & Anderson, J. R. (1995). Knowledge tracing: Modeling the acquisition of procedural knowledge. *User Modeling and User-Adapted Interaction*, 4(4), 253–278. https://doi.org/10.1007/BF01099821
 
 Donovan, J. J., & Radosevich, D. J. (1999). A meta-analytic review of the distribution of practice effect: Now you see it, now you don't. *Journal of Applied Psychology*, 84(5), 795–805. https://doi.org/10.1037/0021-9010.84.5.795
 
 Driskell, J. E., Willis, R. P., & Copper, C. (1992). Effect of overlearning on retention. *Journal of Applied Psychology*, 77(5), 615–622. https://doi.org/10.1037/0021-9010.77.5.615
+
+Duke, R. A. (2005). *Intelligent Music Teaching: Essays on the Core Principles of Effective Instruction*. Austin, TX: Learning and Behavior Resources.
+
+Duke, R. A., Simmons, A. L., & Cash, C. D. (2009). It's not how much; it's how: Characteristics of practice behavior and retention of performance skills. *Journal of Research in Music Education*, 56(4), 310–321. https://doi.org/10.1177/0022429408328851
 
 Dweck, C. S. (2006). *Mindset: The New Psychology of Success*. New York: Random House.
 
@@ -461,11 +691,27 @@ Dweck, C. S., & Yeager, D. S. (2019). Mindsets: A view from two eras. *Perspecti
 
 Ericsson, K. A., Krampe, R. T., & Tesch-Römer, C. (1993). The role of deliberate practice in the acquisition of expert performance. *Psychological Review*, 100(3), 363–406. https://doi.org/10.1037/0033-295X.100.3.363
 
+Evans, P. (2015). Self-determination theory: An approach to motivation in music education. *Musicae Scientiae*, 19(1), 65–83. https://doi.org/10.1177/1029864914568044
+
 Evans, P., & Bonneville-Roussy, A. (2016). Self-determined motivation for practice in university music students. *Psychology of Music*, 44(5), 1095–1110. https://doi.org/10.1177/0305735615610926
+
+Gagné, R. M. (1985). *The Conditions of Learning and Theory of Instruction* (4th ed.). New York: Holt, Rinehart and Winston.
+
+Gordon, E. E. (2007). *Learning Sequences in Music: A Contemporary Music Learning Theory*. Chicago: GIA Publications.
 
 Grob, C. M., Biasutti, M., & Schacter, E. N. (2022). Musical improvisation and expression in individuals with ADHD. *Frontiers in Psychology*, 13, 895780.
 
+Hallam, S. (1998). The predictors of achievement and dropout in instrumental tuition. *Psychology of Music*, 26(2), 116–132. https://doi.org/10.1177/0305735698262002
+
 Hallam, S. (2001). The development of metacognition in musicians: Implications for education. *British Journal of Music Education*, 18(1), 27–39.
+
+Iyengar, S. S., & Lepper, M. R. (2000). When choice is demotivating: Can one desire too much of a good thing? *Journal of Personality and Social Psychology*, 79(6), 995–1006. https://doi.org/10.1037/0022-3514.79.6.995
+
+Katz, I., & Assor, A. (2007). When choice motivates and when it does not. *Educational Psychology Review*, 19(4), 429–442. https://doi.org/10.1007/s10648-006-9027-y
+
+Kirschner, P. A., Sweller, J., & Clark, R. E. (2006). Why minimal guidance during instruction does not work: An analysis of the failure of constructivist, discovery, problem-based, experiential, and inquiry-based teaching. *Educational Psychologist*, 41(2), 75–86. https://doi.org/10.1207/s15326985ep4102_1
+
+Lehmann, A. C., Sloboda, J. A., & Woody, R. H. (2007). *Psychology for Musicians: Understanding and Acquiring the Skills*. Oxford: Oxford University Press.
 
 Macnamara, B. N., Hambrick, D. Z., & Oswald, F. L. (2014). Deliberate practice and performance in music, games, sports, education, and professions: A meta-analysis. *Psychological Science*, 25(8), 1608–1618. https://doi.org/10.1177/0956797614535810
 
@@ -473,9 +719,17 @@ Macnamara, B. N., & Maitra, M. (2019). The role of deliberate practice in expert
 
 Mathias, T., & Goldman, A. (2025). How does increasing contextual interference in a musical practice session affect acquisition and retention? *Journal of Research in Music Education*. https://doi.org/10.1177/00224294231222801
 
+Mayer, R. E. (2004). Should there be a three-strikes rule against pure discovery learning? The case for guided methods of instruction. *American Psychologist*, 59(1), 14–19. https://doi.org/10.1037/0003-066X.59.1.14
+
+McPherson, G. E., & Renwick, J. M. (2001). A longitudinal study of self-regulation in children's musical practice. *Music Education Research*, 3(2), 169–186. https://doi.org/10.1080/14613800120089232
+
+McPherson, G. E., & Zimmerman, B. J. (2002). Self-regulation of musical learning: A social cognitive perspective. In R. Colwell & C. Richardson (Eds.), *The New Handbook of Research on Music Teaching and Learning* (pp. 327–347). Oxford: Oxford University Press.
+
 Moss, S. L. (1995). The distribution of practice effect: A review of the literature. Unpublished review, cited in Firth et al. (2023).
 
 O'Neill, S. A. (2002). The self-identity of young musicians. In R. A. R. MacDonald, D. J. Hargreaves, & D. Miell (Eds.), *Musical Identities* (pp. 79–96). Oxford University Press.
+
+Patall, E. A., Cooper, H., & Robinson, J. C. (2008). The effects of choice on intrinsic motivation and related outcomes: A meta-analysis of research findings. *Psychological Bulletin*, 134(2), 270–300. https://doi.org/10.1037/0033-2909.134.2.270
 
 Ptacek, R., Weissenberger, S., Braaten, E., Klicperova-Baker, M., Goetz, M., Raboch, J., & Stefano, G. B. (2019). Clinical implications of the perception of time in attention deficit hyperactivity disorder (ADHD): A review. *Medical Science Monitor*, 25, 3918–3924.
 
@@ -483,7 +737,11 @@ Puyjarinet, F., Bégel, V., Lopez, R., Dellacherie, D., & Dalla Bella, S. (2017)
 
 Raz, S. (2025). Enhancing cognitive abilities in young adults with ADHD through instrumental music training. *Psychological Research*, 89, 9. https://doi.org/10.1007/s00426-024-02048-2
 
+Renwick, J. M., & McPherson, G. E. (2002). Interest and choice: Student-selected repertoire and its effect on practising behaviour. *British Journal of Music Education*, 19(2), 173–188. https://doi.org/10.1017/S0265051702000256
+
 Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. *American Psychologist*, 55(1), 68–78. https://doi.org/10.1037/0003-066X.55.1.68
+
+Schwartz, B. (2004). *The Paradox of Choice: Why More Is Less*. New York: Ecco/HarperCollins.
 
 Serrallach, B., Groß, C., Christiner, M., Wildermuth, S., & Schneider, P. (2022). Musical performance in adolescents with ADHD, ADD and dyslexia — Behavioral and neurophysiological aspects. *Brain Sciences*, 12(2), 127.
 
@@ -497,13 +755,25 @@ Stambaugh, L. A. (2009). Effects of practice schedule on wind instrument perform
 
 Stambaugh, L. A., & Demorest, S. M. (2010). Effects of practice schedule on the acquisition and retention of wind instrument skills. *Journal of Research in Music Education*, 58(4), 357–367.
 
+Suzuki, S. (1969). *Nurtured by Love: A New Approach to Education*. New York: Exposition Press.
+
 Valenzuela, R., Codina, N., & Pestana, J. V. (2018). Self-determination theory applied to flow in conservatoire music practice: The roles of perceived autonomy and competence, and autonomous and controlled motivation. *Psychology of Music*, 46(1), 33–48. https://doi.org/10.1177/0305735617694502
+
+Vygotsky, L. S. (1978). *Mind in Society: The Development of Higher Psychological Processes*. Cambridge, MA: Harvard University Press.
+
+Walker, M. P., & Stickgold, R. (2004). Sleep-dependent learning and memory consolidation. *Neuron*, 44(1), 121–133. https://doi.org/10.1016/j.neuron.2004.08.031
 
 Wellmann, M., & Skillicorn, A. T. (2024). Research-to-resource: Introducing retrieval practice in jazz pedagogy. *Journal of Research in Music Education*. https://doi.org/10.1177/87551233221146282
 
+Wiggins, G., & McTighe, J. (2005). *Understanding by Design* (2nd ed.). Alexandria, VA: Association for Supervision and Curriculum Development (ASCD).
+
 Wilde, E. M., & Welch, G. F. (2022). Attention deficit hyperactivity disorder (ADHD) and musical behaviour: The significance of context. *Psychology of Music*, 50(6), 1903–1920.
 
+Williamon, A., & Valentine, E. (2000). Quantity and quality of musical practice as predictors of performance quality. *British Journal of Psychology*, 91(3), 353–376. https://doi.org/10.1348/000712600161871
+
 Wilson, R. C., Shenhav, A., Straccia, M., & Cohen, J. D. (2019). The Eighty Five Percent Rule for optimal learning. *Nature Communications*, 10, 4646. https://doi.org/10.1038/s41467-019-12552-4
+
+Wood, D., Bruner, J. S., & Ross, G. (1976). The role of tutoring in problem solving. *Journal of Child Psychology and Psychiatry*, 17(2), 89–100. https://doi.org/10.1111/j.1469-7610.1976.tb00381.x
 
 ---
 
