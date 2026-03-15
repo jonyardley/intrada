@@ -156,24 +156,16 @@ TYPE_EXTENSIONS
 
     mkdir -p "$BINDINGS_DIR"
 
-    # Build uniffi-bindgen and generate Swift bindings
-    if [ "$BUILD_SIM" = true ]; then
-        LIB_PATH="$ROOT_DIR/target/$SIM_TARGET/$PROFILE_DIR/libshared.dylib"
-    elif [ "$BUILD_DEVICE" = true ]; then
-        LIB_PATH="$ROOT_DIR/target/$DEVICE_TARGET/$PROFILE_DIR/libshared.dylib"
-    else
-        # Types-only mode — build for host to generate bindings
-        cargo build -p shared --features uniffi
-        LIB_PATH="$ROOT_DIR/target/$PROFILE_DIR/libshared.dylib"
-    fi
+    # Build for host to get a dylib — iOS cross-compilation only produces
+    # static .a files, but uniffi-bindgen needs a dylib to extract metadata.
+    echo "  → Building host dylib for UniFFI binding generation..."
+    cargo build -p shared --features uniffi
+    LIB_PATH="$ROOT_DIR/target/debug/libshared.dylib"
 
-    cargo run -p shared --features uniffi-bindgen -- \
+    cargo run -p shared --features uniffi-bindgen --bin uniffi-bindgen -- \
         generate --library "$LIB_PATH" \
         --language swift \
-        --out-dir "$BINDINGS_DIR" 2>/dev/null || {
-        echo "  ⚠ UniFFI binding generation skipped (library not available as dylib)"
-        echo "  → Swift bindings will be generated during Xcode build"
-    }
+        --out-dir "$BINDINGS_DIR"
 
     echo "  ✓ UniFFI bindings: $BINDINGS_DIR"
 fi
