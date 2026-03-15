@@ -15,7 +15,6 @@ struct MainTabView: View {
         case library = "Library"
         case practice = "Practice"
         case routines = "Routines"
-        case goals = "Goals"
         case analytics = "Analytics"
 
         var icon: String {
@@ -23,7 +22,6 @@ struct MainTabView: View {
             case .library: "books.vertical"
             case .practice: "play.circle"
             case .routines: "list.bullet.rectangle"
-            case .goals: "target"
             case .analytics: "chart.xyaxis.line"
             }
         }

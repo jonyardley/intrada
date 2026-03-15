@@ -25,11 +25,6 @@ pub fn BottomTabBar() -> impl IntoView {
         path.starts_with("/routines")
     };
 
-    let is_goals_active = move || {
-        let path = location.pathname.get();
-        path.starts_with("/goals")
-    };
-
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
@@ -123,31 +118,6 @@ pub fn BottomTabBar() -> impl IntoView {
                         />
                     </svg>
                     <span class="text-xs font-medium">"Routines"</span>
-                </A>
-
-                // Goals tab
-                <A
-                    href="/goals"
-                    attr:class=move || {
-                        if is_goals_active() {
-                            "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center"
-                        } else {
-                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
-                        }
-                    }
-                    attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
-                >
-                    // Bullseye/target icon (SVG)
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                    >
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 100-12 6 6 0 000 12zm0-2a4 4 0 100-8 4 4 0 000 8zm0-2a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                    </svg>
-                    <span class="text-xs font-medium">"Goals"</span>
                 </A>
 
                 // Analytics tab

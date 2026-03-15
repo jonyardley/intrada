@@ -89,6 +89,33 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
+/// Parse rep_history JSON from the database.
+///
+/// Handles both the legacy integer format (`[-1, 1, 1]`) and the current
+/// string format (`["Missed", "Success", "Success"]`). Legacy data was written
+/// when RepAction used `serde_repr` with `#[repr(i8)]`.
+fn parse_rep_history(json_str: &str) -> Result<Vec<RepAction>, ApiError> {
+    // Try the current string format first (most common going forward)
+    if let Ok(actions) = serde_json::from_str::<Vec<RepAction>>(json_str) {
+        return Ok(actions);
+    }
+
+    // Fall back to legacy integer format: -1 = Missed, 1 = Success
+    let integers: Vec<i8> = serde_json::from_str(json_str)
+        .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?;
+
+    integers
+        .into_iter()
+        .map(|v| match v {
+            -1 => Ok(RepAction::Missed),
+            1 => Ok(RepAction::Success),
+            other => Err(ApiError::Internal(format!(
+                "Invalid legacy rep_history value: {other}"
+            ))),
+        })
+        .collect()
+}
+
 /// Column list for setlist_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo";
 
@@ -109,10 +136,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let rep_target_reached: Option<i64> = col!(row, 12)?;
     let rep_history_raw: Option<String> = col!(row, 13)?;
     let rep_history = match rep_history_raw {
-        Some(json_str) => Some(
-            serde_json::from_str(&json_str)
-                .map_err(|e| ApiError::Internal(format!("Invalid rep_history JSON: {e}")))?,
-        ),
+        Some(json_str) => Some(parse_rep_history(&json_str)?),
         None => None,
     };
     let planned_duration_secs_raw: Option<i64> = col!(row, 14)?;

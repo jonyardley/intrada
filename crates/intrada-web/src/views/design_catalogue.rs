@@ -1256,7 +1256,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonCardList"</p>
-                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines, goals."</p>
+                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines."</p>
                             <SkeletonCardList count=3 />
                         </div>
                     </div>

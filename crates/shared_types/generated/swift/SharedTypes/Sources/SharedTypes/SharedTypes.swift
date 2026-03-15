@@ -456,54 +456,6 @@ indirect public enum CompletionStatus: Hashable {
     }
 }
 
-public struct CreateGoal: Hashable {
-    @Indirect public var title: String
-    @Indirect public var kind: GoalKind
-    @Indirect public var deadline: String?
-
-    public init(title: String, kind: GoalKind, deadline: String?) {
-        self.title = title
-        self.kind = kind
-        self.deadline = deadline
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_str(value: self.title)
-        try self.kind.serialize(serializer: serializer)
-        try serializeOption(value: self.deadline, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> CreateGoal {
-        try deserializer.increase_container_depth()
-        let title = try deserializer.deserialize_str()
-        let kind = try GoalKind.deserialize(deserializer: deserializer)
-        let deadline = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        try deserializer.decrease_container_depth()
-        return CreateGoal(title: title, kind: kind, deadline: deadline)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> CreateGoal {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
 public struct CreateItem: Hashable {
     @Indirect public var title: String
     @Indirect public var kind: ItemKind
@@ -797,15 +749,12 @@ indirect public enum Event: Hashable {
     case refetchItems
     case refetchSessions
     case refetchRoutines
-    case refetchGoals
     case item(ItemEvent)
     case session(SessionEvent)
     case routine(RoutineEvent)
-    case goal(GoalEvent)
     case dataLoaded(items: [Item])
     case sessionsLoaded(sessions: [PracticeSession])
     case routinesLoaded(routines: [Routine])
-    case goalsLoaded(goals: [Goal])
     case loadFailed(String)
     case clearError
     case setQuery(ListQuery?)
@@ -824,47 +773,37 @@ indirect public enum Event: Hashable {
             try serializer.serialize_variant_index(value: 3)
         case .refetchRoutines:
             try serializer.serialize_variant_index(value: 4)
-        case .refetchGoals:
-            try serializer.serialize_variant_index(value: 5)
         case .item(let x):
-            try serializer.serialize_variant_index(value: 6)
+            try serializer.serialize_variant_index(value: 5)
             try x.serialize(serializer: serializer)
         case .session(let x):
-            try serializer.serialize_variant_index(value: 7)
+            try serializer.serialize_variant_index(value: 6)
             try x.serialize(serializer: serializer)
         case .routine(let x):
-            try serializer.serialize_variant_index(value: 8)
-            try x.serialize(serializer: serializer)
-        case .goal(let x):
-            try serializer.serialize_variant_index(value: 9)
+            try serializer.serialize_variant_index(value: 7)
             try x.serialize(serializer: serializer)
         case .dataLoaded(let items):
-            try serializer.serialize_variant_index(value: 10)
+            try serializer.serialize_variant_index(value: 8)
             try serializeArray(value: items, serializer: serializer) { item, serializer in
                 try item.serialize(serializer: serializer)
             }
         case .sessionsLoaded(let sessions):
-            try serializer.serialize_variant_index(value: 11)
+            try serializer.serialize_variant_index(value: 9)
             try serializeArray(value: sessions, serializer: serializer) { item, serializer in
                 try item.serialize(serializer: serializer)
             }
         case .routinesLoaded(let routines):
-            try serializer.serialize_variant_index(value: 12)
+            try serializer.serialize_variant_index(value: 10)
             try serializeArray(value: routines, serializer: serializer) { item, serializer in
                 try item.serialize(serializer: serializer)
             }
-        case .goalsLoaded(let goals):
-            try serializer.serialize_variant_index(value: 13)
-            try serializeArray(value: goals, serializer: serializer) { item, serializer in
-                try item.serialize(serializer: serializer)
-            }
         case .loadFailed(let x):
-            try serializer.serialize_variant_index(value: 14)
+            try serializer.serialize_variant_index(value: 11)
             try serializer.serialize_str(value: x)
         case .clearError:
-            try serializer.serialize_variant_index(value: 15)
+            try serializer.serialize_variant_index(value: 12)
         case .setQuery(let x):
-            try serializer.serialize_variant_index(value: 16)
+            try serializer.serialize_variant_index(value: 13)
             try serializeOption(value: x, serializer: serializer) { value, serializer in
                 try value.serialize(serializer: serializer)
             }
@@ -899,56 +838,43 @@ indirect public enum Event: Hashable {
             try deserializer.decrease_container_depth()
             return .refetchRoutines
         case 5:
-            try deserializer.decrease_container_depth()
-            return .refetchGoals
-        case 6:
             let x = try ItemEvent.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .item(x)
-        case 7:
+        case 6:
             let x = try SessionEvent.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .session(x)
-        case 8:
+        case 7:
             let x = try RoutineEvent.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .routine(x)
-        case 9:
-            let x = try GoalEvent.deserialize(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .goal(x)
-        case 10:
+        case 8:
             let items = try deserializeArray(deserializer: deserializer) { deserializer in
                 try Item.deserialize(deserializer: deserializer)
             }
             try deserializer.decrease_container_depth()
             return .dataLoaded(items: items)
-        case 11:
+        case 9:
             let sessions = try deserializeArray(deserializer: deserializer) { deserializer in
                 try PracticeSession.deserialize(deserializer: deserializer)
             }
             try deserializer.decrease_container_depth()
             return .sessionsLoaded(sessions: sessions)
-        case 12:
+        case 10:
             let routines = try deserializeArray(deserializer: deserializer) { deserializer in
                 try Routine.deserialize(deserializer: deserializer)
             }
             try deserializer.decrease_container_depth()
             return .routinesLoaded(routines: routines)
-        case 13:
-            let goals = try deserializeArray(deserializer: deserializer) { deserializer in
-                try Goal.deserialize(deserializer: deserializer)
-            }
-            try deserializer.decrease_container_depth()
-            return .goalsLoaded(goals: goals)
-        case 14:
+        case 11:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .loadFailed(x)
-        case 15:
+        case 12:
             try deserializer.decrease_container_depth()
             return .clearError
-        case 16:
+        case 13:
             let x = try deserializeOption(deserializer: deserializer) { deserializer in
                 try ListQuery.deserialize(deserializer: deserializer)
             }
@@ -959,423 +885,6 @@ indirect public enum Event: Hashable {
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> Event {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-public struct Goal: Hashable {
-    @Indirect public var id: String
-    @Indirect public var title: String
-    @Indirect public var kind: GoalKind
-    @Indirect public var status: GoalStatus
-    @Indirect public var deadline: String?
-    @Indirect public var createdAt: String
-    @Indirect public var updatedAt: String
-    @Indirect public var completedAt: String?
-
-    public init(id: String, title: String, kind: GoalKind, status: GoalStatus, deadline: String?, createdAt: String, updatedAt: String, completedAt: String?) {
-        self.id = id
-        self.title = title
-        self.kind = kind
-        self.status = status
-        self.deadline = deadline
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-        self.completedAt = completedAt
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_str(value: self.id)
-        try serializer.serialize_str(value: self.title)
-        try self.kind.serialize(serializer: serializer)
-        try self.status.serialize(serializer: serializer)
-        try serializeOption(value: self.deadline, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializer.serialize_str(value: self.createdAt)
-        try serializer.serialize_str(value: self.updatedAt)
-        try serializeOption(value: self.completedAt, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> Goal {
-        try deserializer.increase_container_depth()
-        let id = try deserializer.deserialize_str()
-        let title = try deserializer.deserialize_str()
-        let kind = try GoalKind.deserialize(deserializer: deserializer)
-        let status = try GoalStatus.deserialize(deserializer: deserializer)
-        let deadline = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        let createdAt = try deserializer.deserialize_str()
-        let updatedAt = try deserializer.deserialize_str()
-        let completedAt = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        try deserializer.decrease_container_depth()
-        return Goal(id: id, title: title, kind: kind, status: status, deadline: deadline, createdAt: createdAt, updatedAt: updatedAt, completedAt: completedAt)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> Goal {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-indirect public enum GoalEvent: Hashable {
-    case add(CreateGoal)
-    case update(id: String, input: UpdateGoal)
-    case complete(id: String)
-    case archive(id: String)
-    case reactivate(id: String)
-    case delete(id: String)
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        switch self {
-        case .add(let x):
-            try serializer.serialize_variant_index(value: 0)
-            try x.serialize(serializer: serializer)
-        case .update(let id, let input):
-            try serializer.serialize_variant_index(value: 1)
-            try serializer.serialize_str(value: id)
-            try input.serialize(serializer: serializer)
-        case .complete(let id):
-            try serializer.serialize_variant_index(value: 2)
-            try serializer.serialize_str(value: id)
-        case .archive(let id):
-            try serializer.serialize_variant_index(value: 3)
-            try serializer.serialize_str(value: id)
-        case .reactivate(let id):
-            try serializer.serialize_variant_index(value: 4)
-            try serializer.serialize_str(value: id)
-        case .delete(let id):
-            try serializer.serialize_variant_index(value: 5)
-            try serializer.serialize_str(value: id)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> GoalEvent {
-        let index = try deserializer.deserialize_variant_index()
-        try deserializer.increase_container_depth()
-        switch index {
-        case 0:
-            let x = try CreateGoal.deserialize(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .add(x)
-        case 1:
-            let id = try deserializer.deserialize_str()
-            let input = try UpdateGoal.deserialize(deserializer: deserializer)
-            try deserializer.decrease_container_depth()
-            return .update(id: id, input: input)
-        case 2:
-            let id = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .complete(id: id)
-        case 3:
-            let id = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .archive(id: id)
-        case 4:
-            let id = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .reactivate(id: id)
-        case 5:
-            let id = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .delete(id: id)
-        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for GoalEvent: \(index)")
-        }
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> GoalEvent {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-indirect public enum GoalKind: Hashable {
-    case sessionFrequency(targetDaysPerWeek: UInt8)
-    case practiceTime(targetMinutesPerWeek: UInt32)
-    case itemMastery(itemId: String, targetScore: UInt8)
-    case milestone(description: String)
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        switch self {
-        case .sessionFrequency(let targetDaysPerWeek):
-            try serializer.serialize_variant_index(value: 0)
-            try serializer.serialize_u8(value: targetDaysPerWeek)
-        case .practiceTime(let targetMinutesPerWeek):
-            try serializer.serialize_variant_index(value: 1)
-            try serializer.serialize_u32(value: targetMinutesPerWeek)
-        case .itemMastery(let itemId, let targetScore):
-            try serializer.serialize_variant_index(value: 2)
-            try serializer.serialize_str(value: itemId)
-            try serializer.serialize_u8(value: targetScore)
-        case .milestone(let description):
-            try serializer.serialize_variant_index(value: 3)
-            try serializer.serialize_str(value: description)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> GoalKind {
-        let index = try deserializer.deserialize_variant_index()
-        try deserializer.increase_container_depth()
-        switch index {
-        case 0:
-            let targetDaysPerWeek = try deserializer.deserialize_u8()
-            try deserializer.decrease_container_depth()
-            return .sessionFrequency(targetDaysPerWeek: targetDaysPerWeek)
-        case 1:
-            let targetMinutesPerWeek = try deserializer.deserialize_u32()
-            try deserializer.decrease_container_depth()
-            return .practiceTime(targetMinutesPerWeek: targetMinutesPerWeek)
-        case 2:
-            let itemId = try deserializer.deserialize_str()
-            let targetScore = try deserializer.deserialize_u8()
-            try deserializer.decrease_container_depth()
-            return .itemMastery(itemId: itemId, targetScore: targetScore)
-        case 3:
-            let description = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .milestone(description: description)
-        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for GoalKind: \(index)")
-        }
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> GoalKind {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-public struct GoalProgress: Hashable {
-    @Indirect public var currentValue: Double
-    @Indirect public var targetValue: Double
-    @Indirect public var percentage: Double
-    @Indirect public var displayText: String
-
-    public init(currentValue: Double, targetValue: Double, percentage: Double, displayText: String) {
-        self.currentValue = currentValue
-        self.targetValue = targetValue
-        self.percentage = percentage
-        self.displayText = displayText
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_f64(value: self.currentValue)
-        try serializer.serialize_f64(value: self.targetValue)
-        try serializer.serialize_f64(value: self.percentage)
-        try serializer.serialize_str(value: self.displayText)
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> GoalProgress {
-        try deserializer.increase_container_depth()
-        let currentValue = try deserializer.deserialize_f64()
-        let targetValue = try deserializer.deserialize_f64()
-        let percentage = try deserializer.deserialize_f64()
-        let displayText = try deserializer.deserialize_str()
-        try deserializer.decrease_container_depth()
-        return GoalProgress(currentValue: currentValue, targetValue: targetValue, percentage: percentage, displayText: displayText)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> GoalProgress {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-indirect public enum GoalStatus: Hashable {
-    case active
-    case completed
-    case archived
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        switch self {
-        case .active:
-            try serializer.serialize_variant_index(value: 0)
-        case .completed:
-            try serializer.serialize_variant_index(value: 1)
-        case .archived:
-            try serializer.serialize_variant_index(value: 2)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> GoalStatus {
-        let index = try deserializer.deserialize_variant_index()
-        try deserializer.increase_container_depth()
-        switch index {
-        case 0:
-            try deserializer.decrease_container_depth()
-            return .active
-        case 1:
-            try deserializer.decrease_container_depth()
-            return .completed
-        case 2:
-            try deserializer.decrease_container_depth()
-            return .archived
-        default: throw DeserializationError.invalidInput(issue: "Unknown variant index for GoalStatus: \(index)")
-        }
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> GoalStatus {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
-public struct GoalView: Hashable {
-    @Indirect public var id: String
-    @Indirect public var title: String
-    @Indirect public var kindLabel: String
-    @Indirect public var kindType: String
-    @Indirect public var status: String
-    @Indirect public var progress: GoalProgress?
-    @Indirect public var deadline: String?
-    @Indirect public var createdAt: String
-    @Indirect public var completedAt: String?
-    @Indirect public var itemId: String?
-    @Indirect public var itemTitle: String?
-
-    public init(id: String, title: String, kindLabel: String, kindType: String, status: String, progress: GoalProgress?, deadline: String?, createdAt: String, completedAt: String?, itemId: String?, itemTitle: String?) {
-        self.id = id
-        self.title = title
-        self.kindLabel = kindLabel
-        self.kindType = kindType
-        self.status = status
-        self.progress = progress
-        self.deadline = deadline
-        self.createdAt = createdAt
-        self.completedAt = completedAt
-        self.itemId = itemId
-        self.itemTitle = itemTitle
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializer.serialize_str(value: self.id)
-        try serializer.serialize_str(value: self.title)
-        try serializer.serialize_str(value: self.kindLabel)
-        try serializer.serialize_str(value: self.kindType)
-        try serializer.serialize_str(value: self.status)
-        try serializeOption(value: self.progress, serializer: serializer) { value, serializer in
-            try value.serialize(serializer: serializer)
-        }
-        try serializeOption(value: self.deadline, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializer.serialize_str(value: self.createdAt)
-        try serializeOption(value: self.completedAt, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.itemId, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.itemTitle, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> GoalView {
-        try deserializer.increase_container_depth()
-        let id = try deserializer.deserialize_str()
-        let title = try deserializer.deserialize_str()
-        let kindLabel = try deserializer.deserialize_str()
-        let kindType = try deserializer.deserialize_str()
-        let status = try deserializer.deserialize_str()
-        let progress = try deserializeOption(deserializer: deserializer) { deserializer in
-            try GoalProgress.deserialize(deserializer: deserializer)
-        }
-        let deadline = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        let createdAt = try deserializer.deserialize_str()
-        let completedAt = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        let itemId = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        let itemTitle = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        try deserializer.decrease_container_depth()
-        return GoalView(id: id, title: title, kindLabel: kindLabel, kindType: kindType, status: status, progress: progress, deadline: deadline, createdAt: createdAt, completedAt: completedAt, itemId: itemId, itemTitle: itemTitle)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> GoalView {
         let deserializer = BincodeDeserializer.init(input: input);
         let obj = try deserialize(deserializer: deserializer)
         if deserializer.get_buffer_offset() < input.count {
@@ -3748,58 +3257,6 @@ public struct TempoHistoryEntry: Hashable {
     }
 }
 
-public struct UpdateGoal: Hashable {
-    @Indirect public var title: String?
-    @Indirect public var deadline: String??
-
-    public init(title: String?, deadline: String??) {
-        self.title = title
-        self.deadline = deadline
-    }
-
-    public func serialize<S: Serializer>(serializer: S) throws {
-        try serializer.increase_container_depth()
-        try serializeOption(value: self.title, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.deadline, serializer: serializer) { value, serializer in
-            try serializeOption(value: value, serializer: serializer) { value, serializer in
-                try serializer.serialize_str(value: value)
-            }
-        }
-        try serializer.decrease_container_depth()
-    }
-
-    public func bincodeSerialize() throws -> [UInt8] {
-        let serializer = BincodeSerializer.init();
-        try self.serialize(serializer: serializer)
-        return serializer.get_bytes()
-    }
-
-    public static func deserialize<D: Deserializer>(deserializer: D) throws -> UpdateGoal {
-        try deserializer.increase_container_depth()
-        let title = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
-        let deadline = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializeOption(deserializer: deserializer) { deserializer in
-                try deserializer.deserialize_str()
-            }
-        }
-        try deserializer.decrease_container_depth()
-        return UpdateGoal(title: title, deadline: deadline)
-    }
-
-    public static func bincodeDeserialize(input: [UInt8]) throws -> UpdateGoal {
-        let deserializer = BincodeDeserializer.init(input: input);
-        let obj = try deserialize(deserializer: deserializer)
-        if deserializer.get_buffer_offset() < input.count {
-            throw DeserializationError.invalidInput(issue: "Some input bytes were not read")
-        }
-        return obj
-    }
-}
-
 public struct UpdateItem: Hashable {
     @Indirect public var title: String?
     @Indirect public var composer: String??
@@ -3922,9 +3379,8 @@ public struct ViewModel: Hashable {
     @Indirect public var error: String?
     @Indirect public var analytics: AnalyticsView?
     @Indirect public var routines: [RoutineView]
-    @Indirect public var goals: [GoalView]
 
-    public init(items: [LibraryItemView], sessions: [PracticeSessionView], activeSession: ActiveSessionView?, buildingSetlist: BuildingSetlistView?, summary: SummaryView?, sessionStatus: String, error: String?, analytics: AnalyticsView?, routines: [RoutineView], goals: [GoalView]) {
+    public init(items: [LibraryItemView], sessions: [PracticeSessionView], activeSession: ActiveSessionView?, buildingSetlist: BuildingSetlistView?, summary: SummaryView?, sessionStatus: String, error: String?, analytics: AnalyticsView?, routines: [RoutineView]) {
         self.items = items
         self.sessions = sessions
         self.activeSession = activeSession
@@ -3934,7 +3390,6 @@ public struct ViewModel: Hashable {
         self.error = error
         self.analytics = analytics
         self.routines = routines
-        self.goals = goals
     }
 
     public func serialize<S: Serializer>(serializer: S) throws {
@@ -3962,9 +3417,6 @@ public struct ViewModel: Hashable {
             try value.serialize(serializer: serializer)
         }
         try serializeArray(value: self.routines, serializer: serializer) { item, serializer in
-            try item.serialize(serializer: serializer)
-        }
-        try serializeArray(value: self.goals, serializer: serializer) { item, serializer in
             try item.serialize(serializer: serializer)
         }
         try serializer.decrease_container_depth()
@@ -4003,11 +3455,8 @@ public struct ViewModel: Hashable {
         let routines = try deserializeArray(deserializer: deserializer) { deserializer in
             try RoutineView.deserialize(deserializer: deserializer)
         }
-        let goals = try deserializeArray(deserializer: deserializer) { deserializer in
-            try GoalView.deserialize(deserializer: deserializer)
-        }
         try deserializer.decrease_container_depth()
-        return ViewModel(items: items, sessions: sessions, activeSession: activeSession, buildingSetlist: buildingSetlist, summary: summary, sessionStatus: sessionStatus, error: error, analytics: analytics, routines: routines, goals: goals)
+        return ViewModel(items: items, sessions: sessions, activeSession: activeSession, buildingSetlist: buildingSetlist, summary: summary, sessionStatus: sessionStatus, error: error, analytics: analytics, routines: routines)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ViewModel {

@@ -7,13 +7,9 @@
 use crux_core::Command;
 
 use crate::app::{Effect, Event};
-use crate::domain::goal::Goal;
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
-use crate::domain::types::{
-    CreateGoal, CreateItem, CreateRoutineRequest, UpdateGoalRequest, UpdateItem,
-    UpdateRoutineRequest,
-};
+use crate::domain::types::{CreateItem, CreateRoutineRequest, UpdateItem, UpdateRoutineRequest};
 
 type Http = crux_http::command::Http<Effect, Event>;
 
@@ -54,18 +50,6 @@ pub fn fetch_routines(api_base_url: &str) -> Command<Effect, Event> {
                 routines: response.body().cloned().unwrap_or_default(),
             },
             Err(e) => Event::LoadFailed(format!("Failed to load routines: {e}")),
-        })
-}
-
-pub fn fetch_goals(api_base_url: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/goals"))
-        .expect_json::<Vec<Goal>>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => Event::GoalsLoaded {
-                goals: response.body().cloned().unwrap_or_default(),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load goals: {e}")),
         })
 }
 
@@ -181,44 +165,5 @@ pub fn delete_routine(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(_) => Event::RefetchRoutines,
             Err(e) => Event::LoadFailed(format!("Failed to delete routine: {e}")),
-        })
-}
-
-// ── Goal operations ─────────────────────────────────────────────────────
-
-pub fn create_goal(api_base_url: &str, goal: &Goal) -> Command<Effect, Event> {
-    let create = CreateGoal {
-        title: goal.title.clone(),
-        kind: goal.kind.clone(),
-        deadline: goal.deadline,
-    };
-    Http::post(format!("{api_base_url}/api/goals"))
-        .body_json(&create)
-        .expect("serialize CreateGoal")
-        .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
-            Err(e) => Event::LoadFailed(format!("Failed to save goal: {e}")),
-        })
-}
-
-pub fn update_goal(api_base_url: &str, goal: &Goal) -> Command<Effect, Event> {
-    let update = UpdateGoalRequest::from_goal(goal);
-    Http::put(format!("{api_base_url}/api/goals/{}", goal.id))
-        .body_json(&update)
-        .expect("serialize UpdateGoalRequest")
-        .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
-            Err(e) => Event::LoadFailed(format!("Failed to update goal: {e}")),
-        })
-}
-
-pub fn delete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::delete(format!("{api_base_url}/api/goals/{id}"))
-        .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
-            Err(e) => Event::LoadFailed(format!("Failed to delete goal: {e}")),
         })
 }

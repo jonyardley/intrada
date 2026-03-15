@@ -6,6 +6,7 @@ use leptos::prelude::*;
 /// `stroke-width="2"`, `fill="none"`. Size and colour are inherited from
 /// the parent via the `class` prop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum IconName {
     ArrowLeft,
     ArrowRight,
@@ -20,7 +21,6 @@ pub enum IconName {
     Minus,
     RotateCcw,
     Star,
-    Target,
     X,
 }
 
@@ -100,12 +100,6 @@ pub fn Icon(
         .into_any(),
         IconName::Star => view! {
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        }
-        .into_any(),
-        IconName::Target => view! {
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="6" />
-            <circle cx="12" cy="12" r="2" />
         }
         .into_any(),
         IconName::X => view! {

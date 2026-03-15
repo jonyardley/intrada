@@ -206,6 +206,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0030_index_sessions_user_started",
         "CREATE INDEX IF NOT EXISTS idx_sessions_user_started ON sessions(user_id, started_at DESC);",
     ),
+    (
+        "0031_drop_goals",
+        "DROP TABLE IF EXISTS goals;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
