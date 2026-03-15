@@ -6,6 +6,7 @@ struct IntradaApp: App {
 
     @State private var core = IntradaCore()
     @State private var clerk: Clerk
+    @State private var toastManager = ToastManager()
 
     init() {
         // Always configure Clerk — store the returned instance directly
@@ -17,8 +18,11 @@ struct IntradaApp: App {
     var body: some Scene {
         WindowGroup {
             ContentRouter()
+                .toastOverlay()
                 .environment(clerk)
                 .environment(core)
+                .environment(toastManager)
+                .preferredColorScheme(.dark)
         }
     }
 }
@@ -52,19 +56,21 @@ struct SignInView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.backgroundApp
+                .ignoresSafeArea()
+
             VStack(spacing: 32) {
                 VStack(spacing: 8) {
                     Image(systemName: "music.note.list")
                         .font(.system(size: 48))
-                        .foregroundStyle(.indigo)
+                        .foregroundStyle(Color.accent)
                     Text("intrada")
-                        .font(.largeTitle)
+                        .font(.heading(size: 34))
                         .fontWeight(.bold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.textPrimary)
                     Text("Your music practice companion")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.textSecondary)
                 }
 
                 Button {
@@ -81,18 +87,18 @@ struct SignInView: View {
                     HStack {
                         if isLoading {
                             ProgressView()
-                                .tint(.white)
+                                .tint(Color.textPrimary)
                         } else {
                             Image(systemName: "person.crop.circle.fill")
                         }
                         Text("Sign in with Google")
                     }
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(.indigo)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .background(Color.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: DesignRadius.button))
                 }
                 .disabled(isLoading)
                 .padding(.horizontal, 40)
@@ -100,7 +106,7 @@ struct SignInView: View {
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Color.dangerText)
                         .padding(.horizontal, 40)
                 }
             }

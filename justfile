@@ -147,6 +147,115 @@ ios-check: ios-release
         COMPILER_INDEX_STORE_ENABLE=NO \
         | xcpretty --color 2>/dev/null || true
 
+# Quick Swift-only build check (no Rust cross-compilation)
+# Use after modifying any Swift files to catch compile errors fast (~30s vs ~5min)
+ios-swift-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    if ! command -v xcodegen &>/dev/null; then
+        echo "❌ xcodegen not installed (brew install xcodegen)" >&2
+        exit 1
+    fi
+    xcodegen generate --quiet 2>/dev/null || xcodegen generate
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'generic/platform=iOS Simulator' \
+        -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        2>&1 | tail -20
+    echo "✓ iOS Swift build check passed"
+
+# SwiftUI preview validation — checks all preview providers compile
+ios-preview-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    if ! command -v xcodegen &>/dev/null; then
+        echo "❌ xcodegen not installed (brew install xcodegen)" >&2
+        exit 1
+    fi
+    xcodegen generate --quiet 2>/dev/null || xcodegen generate
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'generic/platform=iOS Simulator' \
+        -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        ENABLE_PREVIEWS=YES \
+        2>&1 | tail -20
+    echo "✓ iOS preview check passed"
+
+# Smoke test: build for sim, install, launch, verify app doesn't crash on startup
+# Catches runtime errors (missing environment objects, bad modifier ordering, etc.)
+# Requires a prior `just ios-sim` or `just ios` build.
+ios-smoke-test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    DEVICE="iPhone 16"
+    BUNDLE_ID="com.intrada.app"
+    TIMEOUT=8
+
+    # Find the built app — check local build dir first, then DerivedData
+    APP_PATH="ios/build/Build/Products/Debug-iphonesimulator/Intrada.app"
+    if [ ! -d "$APP_PATH" ]; then
+        APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Products/Debug-iphonesimulator/Intrada.app -maxdepth 0 2>/dev/null | head -1)
+    fi
+    if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+        echo "❌ App not built for simulator. Run 'just ios-swift-check' or 'just ios-sim' first." >&2
+        exit 1
+    fi
+    echo "  Using app at: $APP_PATH"
+
+    echo "=== iOS Smoke Test ==="
+
+    # Boot simulator (ignore if already booted)
+    echo "  Booting $DEVICE..."
+    xcrun simctl boot "$DEVICE" 2>/dev/null || true
+    sleep 2
+
+    # Terminate any existing instance
+    xcrun simctl terminate booted "$BUNDLE_ID" 2>/dev/null || true
+
+    # Install and launch
+    echo "  Installing app..."
+    xcrun simctl install booted "$APP_PATH"
+    echo "  Launching app..."
+    xcrun simctl launch booted "$BUNDLE_ID"
+
+    # Wait and check if process is still alive
+    echo "  Waiting ${TIMEOUT}s for crash..."
+    sleep "$TIMEOUT"
+
+    # Check if the app process is still running
+    PROC_CHECK=$(xcrun simctl spawn booted launchctl list 2>/dev/null | grep "$BUNDLE_ID" || true)
+    if [ -n "$PROC_CHECK" ]; then
+        echo "  ✓ App is still running after ${TIMEOUT}s"
+    else
+        echo "  ❌ App crashed or terminated within ${TIMEOUT}s!"
+        echo ""
+        echo "  Recent crash log:"
+        # Show the most recent crash log for our app
+        CRASH_LOG=$(find ~/Library/Logs/DiagnosticReports -name "Intrada-*" -newer /tmp/.ios-smoke-marker 2>/dev/null | head -1)
+        if [ -n "$CRASH_LOG" ]; then
+            head -30 "$CRASH_LOG"
+        else
+            echo "  (no crash log found — check Xcode console)"
+        fi
+        exit 1
+    fi
+
+    # Terminate cleanly
+    xcrun simctl terminate booted "$BUNDLE_ID" 2>/dev/null || true
+    echo ""
+    echo "✓ iOS smoke test passed"
+
 # Nuclear clean — removes every iOS artifact to guarantee a fresh build
 ios-clean:
     #!/usr/bin/env bash
