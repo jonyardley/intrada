@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
-use intrada_core::{LibraryItemView, SetlistEntryView, TempoHistoryEntry};
+use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
     Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DayCell,
@@ -53,7 +53,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let sample_piece = LibraryItemView {
         id: "sample-1".to_string(),
-        item_type: "piece".to_string(),
+        item_type: ItemKind::Piece,
         title: "Clair de Lune".to_string(),
         subtitle: "Claude Debussy".to_string(),
         key: Some("Db Major".to_string()),
@@ -68,7 +68,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let sample_exercise = LibraryItemView {
         id: "sample-2".to_string(),
-        item_type: "exercise".to_string(),
+        item_type: ItemKind::Exercise,
         title: "Hanon No. 1".to_string(),
         subtitle: "C Major scale pattern".to_string(),
         key: Some("C Major".to_string()),
@@ -83,7 +83,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let sample_minimal = LibraryItemView {
         id: "sample-3".to_string(),
-        item_type: "piece".to_string(),
+        item_type: ItemKind::Piece,
         title: "Prelude in C Major".to_string(),
         subtitle: String::new(),
         key: None,
@@ -98,7 +98,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let sample_long_title = LibraryItemView {
         id: "sample-4".to_string(),
-        item_type: "exercise".to_string(),
+        item_type: ItemKind::Exercise,
         title:
             "Scales and Arpeggios in All Major and Minor Keys — Two Octaves with Contrary Motion"
                 .to_string(),
@@ -219,10 +219,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         id: "entry-1".to_string(),
         item_id: "item-1".to_string(),
         item_title: "Clair de Lune".to_string(),
-        item_type: "piece".to_string(),
+        item_type: ItemKind::Piece,
         position: 0,
         duration_display: "5m 32s".to_string(),
-        status: "completed".to_string(),
+        status: EntryStatus::Completed,
         notes: None,
         score: Some(4),
         intention: None,
@@ -238,10 +238,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         id: "entry-2".to_string(),
         item_id: "item-2".to_string(),
         item_title: "Hanon No. 1".to_string(),
-        item_type: "exercise".to_string(),
+        item_type: ItemKind::Exercise,
         position: 1,
         duration_display: "3m 10s".to_string(),
-        status: "pending".to_string(),
+        status: EntryStatus::NotAttempted,
         notes: None,
         score: None,
         intention: None,
@@ -257,10 +257,10 @@ pub fn DesignCatalogue() -> impl IntoView {
         id: "entry-3".to_string(),
         item_id: "item-3".to_string(),
         item_title: "Chromatic Scales".to_string(),
-        item_type: "exercise".to_string(),
+        item_type: ItemKind::Exercise,
         position: 2,
         duration_display: "2m 05s".to_string(),
-        status: "pending".to_string(),
+        status: EntryStatus::NotAttempted,
         notes: None,
         score: None,
         intention: None,
@@ -724,9 +724,8 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <p class="text-xs text-faint mb-3">"Equal visual weight — accent-derived for Piece, warm-accent-derived for Exercise."</p>
                     <div class="flex flex-wrap gap-3">
-                        <TypeBadge item_type="piece".to_string() />
-                        <TypeBadge item_type="exercise".to_string() />
-                        <TypeBadge item_type="unknown".to_string() />
+                        <TypeBadge item_type=ItemKind::Piece />
+                        <TypeBadge item_type=ItemKind::Exercise />
                     </div>
                 </Card>
             </section>

@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use libsql::Connection;
 use serde::{Deserialize, Serialize};
 
+use intrada_core::domain::item::ItemKind;
 use intrada_core::domain::routine::{Routine, RoutineEntry};
 
 use super::col;
@@ -21,7 +22,7 @@ pub struct CreateRoutineRequest {
 pub struct CreateRoutineEntry {
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
 }
 
 /// Request body for updating an existing routine.
@@ -39,11 +40,27 @@ const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
 const ROUTINE_IDS_FOR_USER: &str = "SELECT id FROM routines WHERE user_id = ?1";
 
 /// Parse an entry row into a RoutineEntry (columns 0–4 matching [`ENTRY_COLUMNS`]).
+fn item_kind_from_str(s: &str) -> Result<ItemKind, ApiError> {
+    match s {
+        "piece" => Ok(ItemKind::Piece),
+        "exercise" => Ok(ItemKind::Exercise),
+        other => Err(ApiError::Internal(format!("Invalid item_type: {other}"))),
+    }
+}
+
+fn item_kind_to_str(kind: &ItemKind) -> &'static str {
+    match kind {
+        ItemKind::Piece => "piece",
+        ItemKind::Exercise => "exercise",
+    }
+}
+
 fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     let id: String = col!(row, 0)?;
     let item_id: String = col!(row, 1)?;
     let item_title: String = col!(row, 2)?;
-    let item_type: String = col!(row, 3)?;
+    let item_type_str: String = col!(row, 3)?;
+    let item_type = item_kind_from_str(&item_type_str)?;
     let position: i64 = col!(row, 4)?;
 
     Ok(RoutineEntry {
@@ -228,7 +245,7 @@ pub async fn insert_routine(
                     id.as_str(),
                     entry.item_id.as_str(),
                     entry.item_title.as_str(),
-                    entry.item_type.as_str(),
+                    item_kind_to_str(&entry.item_type),
                     position as i64
                 ],
             )
@@ -310,7 +327,7 @@ pub async fn update_routine(
                     id,
                     entry.item_id.as_str(),
                     entry.item_title.as_str(),
-                    entry.item_type.as_str(),
+                    item_kind_to_str(&entry.item_type),
                     position as i64
                 ],
             )

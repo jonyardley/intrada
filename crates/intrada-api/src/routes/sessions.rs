@@ -49,10 +49,11 @@ async fn save_session(
     validation::validate_intention(&input.session_intention)?;
 
     // Validate entries not empty
-    validation::validate_session_entries_not_empty(&input.entries)?;
+    validation::validate_entries_not_empty(&input.entries, "Session")?;
 
-    // Validate each entry's notes, score, intention, and rep fields
+    // Validate each entry's fields
     for entry in &input.entries {
+        validation::validate_routine_entry_fields(&entry.item_id, &entry.item_title)?;
         validation::validate_entry_notes(&entry.notes)?;
         validation::validate_score(&entry.score)?;
         validation::validate_intention(&entry.intention)?;

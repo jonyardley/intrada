@@ -14,11 +14,7 @@ use crate::state::AppState;
 
 fn validate_entries(entries: &[CreateRoutineEntry]) -> Result<(), ApiError> {
     for entry in entries {
-        validation::validate_routine_entry_fields(
-            &entry.item_id,
-            &entry.item_title,
-            &entry.item_type,
-        )?;
+        validation::validate_routine_entry_fields(&entry.item_id, &entry.item_title)?;
     }
     Ok(())
 }
@@ -62,7 +58,7 @@ async fn create_routine(
     validation::validate_routine_name(&input.name)?;
 
     // Validate entries not empty
-    validation::validate_routine_entries_not_empty_generic(&input.entries)?;
+    validation::validate_entries_not_empty(&input.entries, "Routine")?;
 
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;
@@ -82,7 +78,7 @@ async fn update_routine(
     validation::validate_routine_name(&input.name)?;
 
     // Validate entries not empty
-    validation::validate_routine_entries_not_empty_generic(&input.entries)?;
+    validation::validate_entries_not_empty(&input.entries, "Routine")?;
 
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;

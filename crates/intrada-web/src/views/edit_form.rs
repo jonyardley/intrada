@@ -86,10 +86,9 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let back_href = format!("/library/{}", item_id);
 
     // Determine item type — plain value, not a signal (display-only tabs)
-    let item_type = if item.item_type == "piece" {
-        ItemType::Piece
-    } else {
-        ItemType::Exercise
+    let item_type = match item.item_type {
+        intrada_core::ItemKind::Piece => ItemType::Piece,
+        intrada_core::ItemKind::Exercise => ItemType::Exercise,
     };
 
     // Pre-populate signals from ViewModel

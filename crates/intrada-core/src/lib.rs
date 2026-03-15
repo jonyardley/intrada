@@ -22,8 +22,8 @@ pub use crux_http::protocol::{HttpHeader, HttpResponse, HttpResult};
 pub use crux_http::{HttpError, HttpRequest};
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
-    PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SetlistEntryView,
-    SummaryView, TempoHistoryEntry, ViewModel,
+    PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SessionStatusView,
+    SetlistEntryView, SummaryView, TempoHistoryEntry, ViewModel,
 };
 pub use validation::{
     MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_ROUTINE_NAME, MAX_TAG,

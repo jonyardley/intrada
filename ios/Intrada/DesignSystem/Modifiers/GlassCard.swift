@@ -25,25 +25,6 @@ struct GlassCardModifier: ViewModifier {
     }
 }
 
-/// Active card variant — accent border with glow.
-/// Matches the web's `glass-card-active` utility.
-struct GlassCardActiveModifier: ViewModifier {
-
-    var padding: CGFloat = Spacing.card
-
-    func body(content: Content) -> some View {
-        content
-            .padding(padding)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: DesignRadius.card))
-            .overlay(
-                RoundedRectangle(cornerRadius: DesignRadius.card)
-                    .stroke(Color.accentFocus, lineWidth: 2)
-            )
-            .shadow(color: Color.accentFocus.opacity(0.20), radius: 12, y: 0)
-    }
-}
-
 // MARK: - View Extension
 
 extension View {
@@ -52,13 +33,6 @@ extension View {
     /// - Parameter padding: Internal padding. Defaults to `Spacing.card` (16pt).
     func glassCard(padding: CGFloat = Spacing.card) -> some View {
         modifier(GlassCardModifier(padding: padding))
-    }
-
-    /// Apply active glassmorphism card styling (accent border + glow).
-    ///
-    /// - Parameter padding: Internal padding. Defaults to `Spacing.card` (16pt).
-    func glassCardActive(padding: CGFloat = Spacing.card) -> some View {
-        modifier(GlassCardActiveModifier(padding: padding))
     }
 }
 
@@ -85,16 +59,6 @@ extension View {
                 .foregroundStyle(Color.textSecondary)
         }
         .glassCard(padding: Spacing.cardCompact)
-
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Active Glass Card")
-                .font(.headline)
-                .foregroundStyle(Color.textPrimary)
-            Text("Accent border with glow — used for currently practicing item.")
-                .font(.subheadline)
-                .foregroundStyle(Color.textSecondary)
-        }
-        .glassCardActive()
     }
     .padding()
     .background(Color.backgroundApp)

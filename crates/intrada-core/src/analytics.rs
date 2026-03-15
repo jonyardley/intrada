@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use chrono::{Datelike, NaiveDate};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::item::Item;
+use crate::domain::item::{Item, ItemKind};
 use crate::domain::session::PracticeSession;
 
 // ── Analytics View Model Types ───────────────────────────────────────
@@ -103,7 +103,7 @@ pub struct DailyPracticeTotal {
 pub struct ItemRanking {
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub total_minutes: u32,
     pub session_count: usize,
 }
@@ -277,7 +277,7 @@ pub fn compute_daily_totals(
 /// descending, takes top 10.
 pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
     // item_id -> (title, type, total_secs, set of session_ids)
-    let mut items: HashMap<String, (String, String, u64, HashSet<String>)> = HashMap::new();
+    let mut items: HashMap<String, (String, ItemKind, u64, HashSet<String>)> = HashMap::new();
 
     for session in sessions {
         for entry in &session.entries {
@@ -560,7 +560,7 @@ mod tests {
     fn make_entry(
         item_id: &str,
         title: &str,
-        item_type: &str,
+        item_type: ItemKind,
         duration_secs: u64,
         score: Option<u8>,
     ) -> SetlistEntry {
@@ -568,7 +568,7 @@ mod tests {
             id: format!("entry-{item_id}-{duration_secs}"),
             item_id: item_id.to_string(),
             item_title: title.to_string(),
-            item_type: item_type.to_string(),
+            item_type,
             position: 0,
             duration_secs,
             status: EntryStatus::Completed,
@@ -645,32 +645,32 @@ mod tests {
                 "s1",
                 this_mon,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             make_session(
                 "s2",
                 today,
                 1200,
-                vec![make_entry("p2", "Scales", "exercise", 1200, None)],
+                vec![make_entry("p2", "Scales", ItemKind::Exercise, 1200, None)],
             ),
             // Last week: 3 sessions, 90 min, 1 item
             make_session(
                 "s3",
                 last_wed,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             make_session(
                 "s4",
                 last_wed,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             make_session(
                 "s5",
                 last_thu,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
         ];
 
@@ -696,7 +696,7 @@ mod tests {
             "s1",
             today,
             1800,
-            vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
         )];
 
         let summary = compute_weekly_summary(&sessions, today);
@@ -719,7 +719,7 @@ mod tests {
             "s1",
             last_fri,
             3600,
-            vec![make_entry("p1", "Sonata", "piece", 3600, None)],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 3600, None)],
         )];
 
         let summary = compute_weekly_summary(&sessions, today);
@@ -744,8 +744,8 @@ mod tests {
                 today,
                 1800,
                 vec![
-                    make_entry("p1", "Sonata", "piece", 900, None),
-                    make_entry("p1", "Sonata", "piece", 900, None), // same item
+                    make_entry("p1", "Sonata", ItemKind::Piece, 900, None),
+                    make_entry("p1", "Sonata", ItemKind::Piece, 900, None), // same item
                 ],
             ),
             make_session(
@@ -753,8 +753,8 @@ mod tests {
                 today,
                 600,
                 vec![
-                    make_entry("p1", "Sonata", "piece", 300, None), // same item again
-                    make_entry("p2", "Scales", "exercise", 300, None),
+                    make_entry("p1", "Sonata", ItemKind::Piece, 300, None), // same item again
+                    make_entry("p2", "Scales", ItemKind::Exercise, 300, None),
                 ],
             ),
         ];
@@ -775,26 +775,26 @@ mod tests {
                 "s1",
                 today,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             make_session(
                 "s2",
                 today,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             // Last week: 2 sessions, 30 min, 1 item (sessions same, time down, items same)
             make_session(
                 "s3",
                 last_wed,
                 900,
-                vec![make_entry("p1", "Sonata", "piece", 900, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 900, None)],
             ),
             make_session(
                 "s4",
                 last_wed,
                 900,
-                vec![make_entry("p2", "Scales", "exercise", 900, None)],
+                vec![make_entry("p2", "Scales", ItemKind::Exercise, 900, None)],
             ),
         ];
 
@@ -821,7 +821,7 @@ mod tests {
                 completion_status: crate::domain::session::CompletionStatus::Completed,
                 session_notes: None,
                 session_intention: None,
-                entries: vec![make_entry("p1", "Sonata", "piece", 600, None)],
+                entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
             }
         };
 
@@ -829,7 +829,7 @@ mod tests {
             "mon",
             monday,
             1200,
-            vec![make_entry("p2", "Scales", "exercise", 1200, None)],
+            vec![make_entry("p2", "Scales", ItemKind::Exercise, 1200, None)],
         );
 
         // From Monday's perspective
@@ -972,11 +972,11 @@ mod tests {
             today,
             9000,
             vec![
-                make_entry("p1", "Sonata", "piece", 3600, None), // 60 min
-                make_entry("p2", "Etude", "piece", 1800, None),  // 30 min
-                make_entry("e1", "Scales", "exercise", 900, None), // 15 min
-                make_entry("e2", "Arps", "exercise", 1500, None), // 25 min
-                make_entry("p3", "Nocturne", "piece", 1200, None), // 20 min
+                make_entry("p1", "Sonata", ItemKind::Piece, 3600, None), // 60 min
+                make_entry("p2", "Etude", ItemKind::Piece, 1800, None),  // 30 min
+                make_entry("e1", "Scales", ItemKind::Exercise, 900, None), // 15 min
+                make_entry("e2", "Arps", ItemKind::Exercise, 1500, None), // 25 min
+                make_entry("p3", "Nocturne", ItemKind::Piece, 1200, None), // 20 min
             ],
         )];
 
@@ -1000,7 +1000,7 @@ mod tests {
                 make_entry(
                     &format!("item{i}"),
                     &format!("Item {i}"),
-                    "piece",
+                    ItemKind::Piece,
                     (i + 1) as u64 * 60, // 1 min, 2 min, ..., 15 min
                     None,
                 )
@@ -1029,19 +1029,19 @@ mod tests {
                 "s1",
                 today,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
             ),
             make_session(
                 "s2",
                 yesterday,
                 1200,
-                vec![make_entry("p1", "Sonata", "piece", 1200, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1200, None)],
             ),
             make_session(
                 "s3",
                 day_before,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, None)],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
             ),
         ];
 
@@ -1073,19 +1073,19 @@ mod tests {
                 "s1",
                 d1,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, Some(2))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(2))],
             ),
             make_session(
                 "s2",
                 d2,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, Some(3))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(3))],
             ),
             make_session(
                 "s3",
                 d3,
                 1800,
-                vec![make_entry("p1", "Sonata", "piece", 1800, Some(4))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4))],
             ),
         ];
 
@@ -1110,7 +1110,7 @@ mod tests {
                 make_entry(
                     &format!("item{i}"),
                     &format!("Item {i}"),
-                    "piece",
+                    ItemKind::Piece,
                     900,
                     Some(3),
                 )
@@ -1147,8 +1147,8 @@ mod tests {
             today,
             3600,
             vec![
-                make_entry("p1", "Sonata", "piece", 1800, Some(4)), // scored
-                make_entry("p2", "Etude", "piece", 1800, None),     // unscored
+                make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4)), // scored
+                make_entry("p2", "Etude", ItemKind::Piece, 1800, None),     // unscored
             ],
         )];
 
@@ -1165,7 +1165,7 @@ mod tests {
             "s1",
             today,
             1800,
-            vec![make_entry("p1", "Sonata", "piece", 1800, None)],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, None)],
         )];
 
         let trends = compute_score_trends(&sessions);
@@ -1204,8 +1204,8 @@ mod tests {
                 today,
                 1800,
                 vec![
-                    make_entry("p1", "Item 1", "piece", 600, None),
-                    make_entry("p2", "Item 2", "piece", 600, None),
+                    make_entry("p1", "Item 1", ItemKind::Piece, 600, None),
+                    make_entry("p2", "Item 2", ItemKind::Piece, 600, None),
                 ],
             ),
             make_session(
@@ -1213,8 +1213,8 @@ mod tests {
                 today - chrono::Duration::days(5),
                 1200,
                 vec![
-                    make_entry("p3", "Item 3", "piece", 600, None),
-                    make_entry("p4", "Item 4", "piece", 600, None),
+                    make_entry("p3", "Item 3", ItemKind::Piece, 600, None),
+                    make_entry("p4", "Item 4", ItemKind::Piece, 600, None),
                 ],
             ),
         ];
@@ -1240,7 +1240,7 @@ mod tests {
             "s1",
             today - chrono::Duration::days(20),
             600,
-            vec![make_entry("p1", "Old Item", "piece", 600, None)],
+            vec![make_entry("p1", "Old Item", ItemKind::Piece, 600, None)],
         )];
 
         let neglected = compute_neglected_items(&sessions, &items, today);
@@ -1265,19 +1265,19 @@ mod tests {
                 "s1",
                 today - chrono::Duration::days(20),
                 600,
-                vec![make_entry("p1", "A", "piece", 600, None)],
+                vec![make_entry("p1", "A", ItemKind::Piece, 600, None)],
             ),
             make_session(
                 "s2",
                 today - chrono::Duration::days(30),
                 600,
-                vec![make_entry("p2", "B", "piece", 600, None)],
+                vec![make_entry("p2", "B", ItemKind::Piece, 600, None)],
             ),
             make_session(
                 "s3",
                 today - chrono::Duration::days(15),
                 600,
-                vec![make_entry("p3", "C", "piece", 600, None)],
+                vec![make_entry("p3", "C", ItemKind::Piece, 600, None)],
             ),
         ];
 
@@ -1299,8 +1299,8 @@ mod tests {
             today - chrono::Duration::days(5),
             1200,
             vec![
-                make_entry("p1", "A", "piece", 600, None),
-                make_entry("p2", "B", "piece", 600, None),
+                make_entry("p1", "A", ItemKind::Piece, 600, None),
+                make_entry("p2", "B", ItemKind::Piece, 600, None),
             ],
         )];
 
@@ -1326,7 +1326,7 @@ mod tests {
             "s1",
             today - chrono::Duration::days(20),
             600,
-            vec![make_entry("p2", "Deleted", "piece", 600, None)],
+            vec![make_entry("p2", "Deleted", ItemKind::Piece, 600, None)],
         )];
 
         let neglected = compute_neglected_items(&sessions, &items, today);
@@ -1345,7 +1345,7 @@ mod tests {
             "s1",
             today - chrono::Duration::days(13),
             600,
-            vec![make_entry("p1", "Recent", "piece", 600, None)],
+            vec![make_entry("p1", "Recent", ItemKind::Piece, 600, None)],
         )];
 
         let neglected = compute_neglected_items(&sessions, &items, today);
@@ -1362,7 +1362,7 @@ mod tests {
             "s1",
             today - chrono::Duration::days(14),
             600,
-            vec![make_entry("p1", "Old", "piece", 600, None)],
+            vec![make_entry("p1", "Old", ItemKind::Piece, 600, None)],
         )];
 
         let neglected = compute_neglected_items(&sessions, &items, today);
@@ -1384,13 +1384,13 @@ mod tests {
                 "s1",
                 last_wed,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(2))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(2))],
             ),
             make_session(
                 "s2",
                 today,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(4))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(4))],
             ),
         ];
 
@@ -1414,13 +1414,13 @@ mod tests {
                 "s1",
                 last_wed,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(4))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(4))],
             ),
             make_session(
                 "s2",
                 today,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             ),
         ];
 
@@ -1438,7 +1438,7 @@ mod tests {
             "s1",
             today,
             600,
-            vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
         )];
 
         let changes = compute_score_changes(&sessions, today);
@@ -1459,7 +1459,7 @@ mod tests {
             "s1",
             last_wed,
             600,
-            vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
         )];
 
         let changes = compute_score_changes(&sessions, today);
@@ -1478,14 +1478,14 @@ mod tests {
             last_entries.push(make_entry(
                 &format!("p{i}"),
                 &format!("Item {i}"),
-                "piece",
+                ItemKind::Piece,
                 600,
                 Some(1),
             ));
             this_entries.push(make_entry(
                 &format!("p{i}"),
                 &format!("Item {i}"),
-                "piece",
+                ItemKind::Piece,
                 600,
                 Some(1 + i as u8), // deltas: 1,2,3,4,5,6,7
             ));
@@ -1514,19 +1514,19 @@ mod tests {
                 "s1",
                 last_wed,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(2))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(2))],
             ),
             make_session(
                 "s2",
                 mon,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             ),
             make_session(
                 "s3",
                 today,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(5))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(5))],
             ),
         ];
 
@@ -1548,13 +1548,13 @@ mod tests {
                 "s1",
                 last_wed,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             ),
             make_session(
                 "s2",
                 today,
                 600,
-                vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+                vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             ),
         ];
 
@@ -1571,7 +1571,7 @@ mod tests {
             "s1",
             today,
             1800,
-            vec![make_entry("p1", "Sonata", "piece", 1800, Some(4))],
+            vec![make_entry("p1", "Sonata", ItemKind::Piece, 1800, Some(4))],
         )];
 
         let analytics = compute_analytics(&sessions, &[], today);
@@ -1597,7 +1597,7 @@ mod tests {
             completion_status: CompletionStatus::EndedEarly,
             session_notes: None,
             session_intention: None,
-            entries: vec![make_entry("p1", "Sonata", "piece", 600, Some(3))],
+            entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
         }];
 
         let analytics = compute_analytics(&sessions, &[], today);

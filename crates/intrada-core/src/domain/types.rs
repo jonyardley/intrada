@@ -94,7 +94,7 @@ pub struct CreateRoutineRequest {
 pub struct CreateRoutineEntryRequest {
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
 }
 
 /// Request body for updating a routine via the REST API.

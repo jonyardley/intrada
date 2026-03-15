@@ -21,7 +21,7 @@ use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView, ViewModel,
 };
 
 /// Root Crux application for the music practice library.
@@ -218,7 +218,7 @@ impl App for Intrada {
             let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
             items.push(LibraryItemView {
                 id: item.id.clone(),
-                item_type: item.kind.to_string(),
+                item_type: item.kind.clone(),
                 title: item.title.clone(),
                 subtitle,
                 key: item.key.clone(),
@@ -271,10 +271,10 @@ impl App for Intrada {
         };
 
         let session_status = match &model.session_status {
-            SessionStatus::Idle => "idle".to_string(),
-            SessionStatus::Building(_) => "building".to_string(),
-            SessionStatus::Active(_) => "active".to_string(),
-            SessionStatus::Summary(_) => "summary".to_string(),
+            SessionStatus::Idle => SessionStatusView::Idle,
+            SessionStatus::Building(_) => SessionStatusView::Building,
+            SessionStatus::Active(_) => SessionStatusView::Active,
+            SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
 
         // Compute analytics from session data.
@@ -398,7 +398,7 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
         .filter(|item| {
             // Filter by item type
             if let Some(ref item_type) = query.item_type {
-                if item.item_type != item_type.to_string() {
+                if item.item_type != *item_type {
                     return false;
                 }
             }
@@ -410,7 +410,6 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
                 }
             }
 
-            // Filter by category (exercises only)
             // Filter by tags (all must match, case-insensitive)
             if !query.tags.is_empty() {
                 for tag in &query.tags {
@@ -511,7 +510,7 @@ mod tests {
         assert!(vm.items.is_empty());
         assert_eq!(vm.items.len(), 0);
         assert!(vm.error.is_none());
-        assert_eq!(vm.session_status, "idle");
+        assert_eq!(vm.session_status, SessionStatusView::Idle);
     }
 
     #[test]
@@ -557,7 +556,7 @@ mod tests {
 
         // Check piece
         let piece_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
-        assert_eq!(piece_view.item_type, "piece");
+        assert_eq!(piece_view.item_type, ItemKind::Piece);
         assert_eq!(piece_view.title, "Sonata");
         assert_eq!(piece_view.subtitle, "Beethoven");
         assert_eq!(piece_view.tempo, Some("Allegro (132 BPM)".to_string()));
@@ -565,7 +564,7 @@ mod tests {
 
         // Check exercise
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
-        assert_eq!(ex_view.item_type, "exercise");
+        assert_eq!(ex_view.item_type, ItemKind::Exercise);
         assert_eq!(ex_view.title, "Scales");
         assert_eq!(ex_view.subtitle, "");
     }
@@ -629,7 +628,7 @@ mod tests {
         );
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].item_type, "piece");
+        assert_eq!(vm.items[0].item_type, ItemKind::Piece);
 
         // Clear filter
         let _cmd = app.update(Event::SetQuery(None), &mut model);
@@ -833,14 +832,14 @@ mod tests {
                         (
                             format!("p{item_idx:05}"),
                             format!("Piece {item_idx}"),
-                            "piece".to_string(),
+                            ItemKind::Piece,
                         )
                     } else {
                         let idx = item_idx - 5000;
                         (
                             format!("e{idx:05}"),
                             format!("Exercise {idx}"),
-                            "exercise".to_string(),
+                            ItemKind::Exercise,
                         )
                     };
                     SetlistEntry {
@@ -983,7 +982,7 @@ mod tests {
                     id: "e1".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800, // 30 min
                     status: EntryStatus::Completed,
@@ -1001,7 +1000,7 @@ mod tests {
                     id: "e2".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 900, // 15 min
                     status: EntryStatus::Completed,
@@ -1077,7 +1076,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
@@ -1106,7 +1105,7 @@ mod tests {
                 id: "e2".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 900,
                 status: EntryStatus::Completed,
@@ -1174,7 +1173,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
@@ -1236,7 +1235,7 @@ mod tests {
                     id: "e1".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
@@ -1254,7 +1253,7 @@ mod tests {
                     id: "e2".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
@@ -1321,7 +1320,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 600,
                 status: EntryStatus::Skipped,

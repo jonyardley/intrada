@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
+use intrada_core::{CompletionStatus, EntryStatus, Event, RoutineEvent, SessionEvent, ViewModel};
 use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{Button, ButtonVariant, Card, Icon, IconName, RoutineSaveForm};
@@ -50,7 +50,7 @@ pub fn SessionSummary() -> impl IntoView {
                                     <p class="text-lg text-secondary">
                                         {format!("Total: {}", total_duration)}
                                     </p>
-                                    {if completion_status == "ended_early" {
+                                    {if completion_status == CompletionStatus::EndedEarly {
                                         Some(view! {
                                             <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
                                                 "Ended Early"
@@ -81,7 +81,7 @@ pub fn SessionSummary() -> impl IntoView {
                                         let core_notes = core_entries.clone();
                                         let core_score_inner = core_score.clone();
                                         let core_tempo_inner = core_tempo.clone();
-                                        let is_completed = entry.status == "completed";
+                                        let is_completed = entry.status == EntryStatus::Completed;
                                         let current_score = entry.score;
                                         let entry_intention = entry.intention.clone();
                                         let entry_rep_target = entry.rep_target;
@@ -89,10 +89,10 @@ pub fn SessionSummary() -> impl IntoView {
                                         let entry_rep_reached = entry.rep_target_reached.unwrap_or(false);
                                         let notes_label = format!("Notes for {}", entry.item_title);
                                         let notes_input_id = format!("entry-notes-{}", entry.id);
-                                        let (status_icon, status_color) = match entry.status.as_str() {
-                                            "completed" => (IconName::Check, "text-success-text"),
-                                            "skipped" => (IconName::Ban, "text-warning-text"),
-                                            _ => (IconName::Minus, "text-faint"),
+                                        let (status_icon, status_color) = match entry.status {
+                                            EntryStatus::Completed => (IconName::Check, "text-success-text"),
+                                            EntryStatus::Skipped => (IconName::Ban, "text-warning-text"),
+                                            EntryStatus::NotAttempted => (IconName::Minus, "text-faint"),
                                         };
                                         view! {
                                             <div class="rounded-lg bg-surface-secondary p-3 space-y-2">
@@ -102,7 +102,7 @@ pub fn SessionSummary() -> impl IntoView {
                                                             <Icon name=status_icon class="w-4 h-4" />
                                                         </span>
                                                         <span class="text-sm font-medium text-primary">{entry.item_title}</span>
-                                                        <span class="text-xs text-faint">{entry.item_type}</span>
+                                                        <span class="text-xs text-faint">{entry.item_type.to_string()}</span>
                                                     </div>
                                                     <span class="text-sm text-muted">{entry.duration_display}</span>
                                                 </div>

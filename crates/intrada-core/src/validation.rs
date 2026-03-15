@@ -1,6 +1,4 @@
 use crate::domain::item::ItemKind;
-use crate::domain::routine::RoutineEntry;
-use crate::domain::session::SetlistEntry;
 use crate::domain::types::{CreateItem, Tempo, UpdateItem};
 use crate::error::LibraryError;
 
@@ -147,11 +145,11 @@ pub fn validate_entry_notes(notes: &Option<String>) -> Result<(), LibraryError> 
     Ok(())
 }
 
-pub fn validate_setlist_not_empty(entries: &[SetlistEntry]) -> Result<(), LibraryError> {
+pub fn validate_entries_not_empty<T>(entries: &[T], context: &str) -> Result<(), LibraryError> {
     if entries.is_empty() {
         return Err(LibraryError::Validation {
             field: "entries".to_string(),
-            message: "Setlist must contain at least one item".to_string(),
+            message: format!("{context} must have at least one entry"),
         });
     }
     Ok(())
@@ -278,40 +276,6 @@ pub fn validate_routine_name(name: &str) -> Result<(), LibraryError> {
     Ok(())
 }
 
-pub fn validate_routine_entries_not_empty(entries: &[RoutineEntry]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Routine must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
-/// Validate that a session's entries list is not empty.
-pub fn validate_session_entries_not_empty<T>(entries: &[T]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Setlist must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
-/// Validate that a routine's entries list is not empty (generic version
-/// that works with any entry type, unlike `validate_routine_entries_not_empty`
-/// which requires `&[RoutineEntry]`).
-pub fn validate_routine_entries_not_empty_generic<T>(entries: &[T]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Routine must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
 /// Validate rep field consistency: rep_count must be <= rep_target, and
 /// rep_count, rep_target_reached, and rep_history all require rep_target.
 pub fn validate_rep_consistency(
@@ -342,15 +306,8 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-/// Valid item types for routine and session entries.
-pub const VALID_ITEM_TYPES: &[&str] = &["piece", "exercise"];
-
 /// Validate a routine entry's required fields: item_id, item_title, and item_type.
-pub fn validate_routine_entry_fields(
-    item_id: &str,
-    item_title: &str,
-    item_type: &str,
-) -> Result<(), LibraryError> {
+pub fn validate_routine_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {
             field: "item_id".to_string(),
@@ -361,12 +318,6 @@ pub fn validate_routine_entry_fields(
         return Err(LibraryError::Validation {
             field: "item_title".to_string(),
             message: "Entry item_title must not be empty".to_string(),
-        });
-    }
-    if !VALID_ITEM_TYPES.contains(&item_type) {
-        return Err(LibraryError::Validation {
-            field: "item_type".to_string(),
-            message: format!("Entry item_type must be 'piece' or 'exercise', got '{item_type}'"),
         });
     }
     Ok(())
@@ -1134,21 +1085,34 @@ mod tests {
         }
     }
 
-    // --- validate_session_entries_not_empty tests ---
+    // --- validate_entries_not_empty tests ---
 
     #[test]
-    fn test_session_entries_not_empty_ok() {
-        assert!(validate_session_entries_not_empty(&[1, 2, 3]).is_ok());
+    fn test_entries_not_empty_ok() {
+        assert!(validate_entries_not_empty(&[1, 2, 3], "Setlist").is_ok());
     }
 
     #[test]
-    fn test_session_entries_empty() {
+    fn test_entries_empty_setlist() {
         let entries: Vec<i32> = vec![];
-        let err = validate_session_entries_not_empty(&entries).unwrap_err();
+        let err = validate_entries_not_empty(&entries, "Setlist").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "entries");
                 assert_eq!(message, "Setlist must have at least one entry");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_entries_empty_routine() {
+        let entries: Vec<i32> = vec![];
+        let err = validate_entries_not_empty(&entries, "Routine").unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "entries");
+                assert_eq!(message, "Routine must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1223,18 +1187,13 @@ mod tests {
     // --- validate_routine_entry_fields tests ---
 
     #[test]
-    fn test_routine_entry_fields_valid_piece() {
-        assert!(validate_routine_entry_fields("id1", "Sonata", "piece").is_ok());
-    }
-
-    #[test]
-    fn test_routine_entry_fields_valid_exercise() {
-        assert!(validate_routine_entry_fields("id2", "Scales", "exercise").is_ok());
+    fn test_routine_entry_fields_valid() {
+        assert!(validate_routine_entry_fields("id1", "Sonata").is_ok());
     }
 
     #[test]
     fn test_routine_entry_fields_empty_item_id() {
-        let err = validate_routine_entry_fields("", "Sonata", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_id");
@@ -1246,7 +1205,7 @@ mod tests {
 
     #[test]
     fn test_routine_entry_fields_whitespace_item_id() {
-        let err = validate_routine_entry_fields("  ", "Sonata", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("  ", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, .. } => {
                 assert_eq!(field, "item_id");
@@ -1257,46 +1216,11 @@ mod tests {
 
     #[test]
     fn test_routine_entry_fields_empty_item_title() {
-        let err = validate_routine_entry_fields("id1", "", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("id1", "").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_title");
                 assert_eq!(message, "Entry item_title must not be empty");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_routine_entry_fields_invalid_item_type() {
-        let err = validate_routine_entry_fields("id1", "Sonata", "song").unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "item_type");
-                assert_eq!(
-                    message,
-                    "Entry item_type must be 'piece' or 'exercise', got 'song'"
-                );
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    // --- validate_routine_entries_not_empty_generic tests ---
-
-    #[test]
-    fn test_routine_entries_generic_not_empty_ok() {
-        assert!(validate_routine_entries_not_empty_generic(&[1]).is_ok());
-    }
-
-    #[test]
-    fn test_routine_entries_generic_empty() {
-        let entries: Vec<i32> = vec![];
-        let err = validate_routine_entries_not_empty_generic(&entries).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "entries");
-                assert_eq!(message, "Routine must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }

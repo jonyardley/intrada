@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use libsql::Connection;
 use serde::{Deserialize, Serialize};
 
+use intrada_core::domain::item::ItemKind;
 use intrada_core::domain::session::{
     CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
 };
@@ -32,7 +33,7 @@ pub struct SaveSessionEntry {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub position: usize,
     pub duration_secs: u64,
     pub status: EntryStatus,
@@ -89,6 +90,21 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
     }
 }
 
+fn item_kind_to_str(kind: &ItemKind) -> &'static str {
+    match kind {
+        ItemKind::Piece => "piece",
+        ItemKind::Exercise => "exercise",
+    }
+}
+
+fn item_kind_from_str(s: &str) -> Result<ItemKind, ApiError> {
+    match s {
+        "piece" => Ok(ItemKind::Piece),
+        "exercise" => Ok(ItemKind::Exercise),
+        other => Err(ApiError::Internal(format!("Invalid item_type: {other}"))),
+    }
+}
+
 /// Parse rep_history JSON from the database.
 ///
 /// Handles both the legacy integer format (`[-1, 1, 1]`) and the current
@@ -128,7 +144,8 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let id: String = col!(row, 0)?;
     let item_id: String = col!(row, 1)?;
     let item_title: String = col!(row, 2)?;
-    let item_type: String = col!(row, 3)?;
+    let item_type_str: String = col!(row, 3)?;
+    let item_type = item_kind_from_str(&item_type_str)?;
     let position: i64 = col!(row, 4)?;
     let duration_secs: i64 = col!(row, 5)?;
     let status_str: String = col!(row, 6)?;
@@ -371,7 +388,7 @@ pub async fn insert_session(
                     id.as_str(),
                     entry.item_id.as_str(),
                     entry.item_title.as_str(),
-                    entry.item_type.as_str(),
+                    item_kind_to_str(&entry.item_type),
                     entry.position as i64,
                     entry.duration_secs as i64,
                     status_str,

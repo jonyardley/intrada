@@ -398,10 +398,10 @@ mod tests {
     }
 
     // unique_tags tests
-    fn make_item(item_type: &str, subtitle: &str, tags: &[&str]) -> LibraryItemView {
+    fn make_item(_item_type: &str, subtitle: &str, tags: &[&str]) -> LibraryItemView {
         LibraryItemView {
             id: String::new(),
-            item_type: item_type.to_string(),
+            item_type: intrada_core::ItemKind::Piece,
             title: String::new(),
             subtitle: subtitle.to_string(),
             key: None,
@@ -647,7 +647,7 @@ mod tests {
             started_at: started_at.to_string(),
             finished_at: started_at.to_string(),
             total_duration_display: "25 min".to_string(),
-            completion_status: "completed".to_string(),
+            completion_status: intrada_core::CompletionStatus::Completed,
             notes: None,
             entries: vec![],
             session_intention: None,

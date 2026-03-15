@@ -90,13 +90,10 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         .expect_json::<Item>()
         .build()
         .then_send(|result| match result {
-            Ok(response) => {
-                let item = response
-                    .body()
-                    .cloned()
-                    .unwrap_or_else(|| panic!("update_item: server returned no body"));
-                Event::ItemUpdated { item }
-            }
+            Ok(response) => match response.body().cloned() {
+                Some(item) => Event::ItemUpdated { item },
+                None => Event::LoadFailed("update_item: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to update item: {e}")),
         })
 }
@@ -162,13 +159,10 @@ pub fn update_routine(
         .expect_json::<Routine>()
         .build()
         .then_send(|result| match result {
-            Ok(response) => {
-                let routine = response
-                    .body()
-                    .cloned()
-                    .unwrap_or_else(|| panic!("update_routine: server returned no body"));
-                Event::RoutineUpdated { routine }
-            }
+            Ok(response) => match response.body().cloned() {
+                Some(routine) => Event::RoutineUpdated { routine },
+                None => Event::LoadFailed("update_routine: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to update routine: {e}")),
         })
 }

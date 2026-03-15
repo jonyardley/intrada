@@ -3,6 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
+use crate::domain::item::ItemKind;
 use crate::domain::session::{EntryStatus, SessionStatus, SetlistEntry};
 use crate::model::Model;
 use crate::validation;
@@ -27,7 +28,7 @@ pub struct RoutineEntry {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub position: usize,
 }
 
@@ -233,7 +234,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             }
 
             // Validate entries non-empty
-            if let Err(e) = validation::validate_routine_entries_not_empty(&entries) {
+            if let Err(e) = validation::validate_entries_not_empty(&entries, "Routine") {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
@@ -291,7 +292,7 @@ mod tests {
                 id: "entry-1".to_string(),
                 item_id: "item-a".to_string(),
                 item_title: "Long Tones".to_string(),
-                item_type: "exercise".to_string(),
+                item_type: ItemKind::Exercise,
                 position: 0,
                 duration_secs: 0,
                 status: EntryStatus::NotAttempted,
@@ -309,7 +310,7 @@ mod tests {
                 id: "entry-2".to_string(),
                 item_id: "item-b".to_string(),
                 item_title: "C Major Scale".to_string(),
-                item_type: "exercise".to_string(),
+                item_type: ItemKind::Exercise,
                 position: 1,
                 duration_secs: 0,
                 status: EntryStatus::NotAttempted,
@@ -335,14 +336,14 @@ mod tests {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
-                    item_type: "exercise".to_string(),
+                    item_type: ItemKind::Exercise,
                     position: 0,
                 },
                 RoutineEntry {
                     id: "re-2".to_string(),
                     item_id: "item-b".to_string(),
                     item_title: "C Major Scale".to_string(),
-                    item_type: "exercise".to_string(),
+                    item_type: ItemKind::Exercise,
                     position: 1,
                 },
             ],
@@ -524,7 +525,7 @@ mod tests {
             id: "existing-1".to_string(),
             item_id: "item-x".to_string(),
             item_title: "Existing Item".to_string(),
-            item_type: "piece".to_string(),
+            item_type: ItemKind::Piece,
             position: 0,
             duration_secs: 0,
             status: EntryStatus::NotAttempted,
@@ -624,7 +625,7 @@ mod tests {
             id: ulid::Ulid::new().to_string(),
             item_id: "item-c".to_string(),
             item_title: "New Item".to_string(),
-            item_type: "piece".to_string(),
+            item_type: ItemKind::Piece,
             position: 0,
         }];
 
@@ -657,7 +658,7 @@ mod tests {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
-                    item_type: "exercise".to_string(),
+                    item_type: ItemKind::Exercise,
                     position: 0,
                 }],
             },
@@ -700,7 +701,7 @@ mod tests {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
-                    item_type: "exercise".to_string(),
+                    item_type: ItemKind::Exercise,
                     position: 0,
                 }],
             },

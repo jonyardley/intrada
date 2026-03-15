@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, SessionEvent, ViewModel};
+use intrada_core::{Event, SessionEvent, SessionStatusView, ViewModel};
 
 use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading, SetlistBuilder};
 use intrada_web::core_bridge::process_effects;
@@ -34,7 +34,7 @@ pub fn SessionNewView() -> impl IntoView {
     // "idle" are safe to treat as idle here.
     {
         let vm = view_model.get_untracked();
-        if vm.session_status == "idle" || vm.session_status.is_empty() {
+        if vm.session_status == SessionStatusView::Idle {
             let core_ref = core.borrow();
             let effects = core_ref.process_event(Event::Session(SessionEvent::StartBuilding));
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
@@ -45,8 +45,8 @@ pub fn SessionNewView() -> impl IntoView {
     // Navigate on state transitions
     Effect::new(move |_| {
         let vm = view_model.get();
-        match vm.session_status.as_str() {
-            "active" if started_building.get_untracked() => {
+        match vm.session_status {
+            SessionStatusView::Active if started_building.get_untracked() => {
                 navigate(
                     "/sessions/active",
                     NavigateOptions {
@@ -55,7 +55,7 @@ pub fn SessionNewView() -> impl IntoView {
                     },
                 );
             }
-            "idle" if started_building.get_untracked() => {
+            SessionStatusView::Idle if started_building.get_untracked() => {
                 // CancelBuilding or AbandonSession completed — go back
                 navigate(
                     "/sessions",
@@ -79,7 +79,7 @@ pub fn SessionNewView() -> impl IntoView {
 
             {move || {
                 let vm = view_model.get();
-                if vm.session_status == "active" {
+                if vm.session_status == SessionStatusView::Active {
                     // Active session exists — show recovery banner
                     let core_a = core_abandon.clone();
                     let nav = navigate_resume.clone();
@@ -125,7 +125,7 @@ pub fn SessionNewView() -> impl IntoView {
             }}
 
             // Only show the setlist builder when in building state
-            <Show when=move || view_model.get().session_status == "building">
+            <Show when=move || view_model.get().session_status == SessionStatusView::Building>
                 <SetlistBuilder />
             </Show>
         </div>

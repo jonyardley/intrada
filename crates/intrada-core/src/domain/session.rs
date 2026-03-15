@@ -57,7 +57,7 @@ pub struct SetlistEntry {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub position: usize,
     pub duration_secs: u64,
     pub status: EntryStatus,
@@ -172,7 +172,7 @@ pub enum SessionEvent {
     },
     AddNewItemToSetlist {
         title: String,
-        item_type: String,
+        item_type: ItemKind,
     },
     RemoveFromSetlist {
         entry_id: String,
@@ -198,7 +198,7 @@ pub enum SessionEvent {
     },
     AddNewItemMidSession {
         title: String,
-        item_type: String,
+        item_type: ItemKind,
     },
     FinishSession {
         now: DateTime<Utc>,
@@ -267,22 +267,27 @@ pub fn format_duration_display(secs: u64) -> String {
     }
 }
 
-/// Look up a library item by ID and return (title, type_string).
-fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, String)> {
+/// Look up a library item by ID and return (title, kind).
+fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, ItemKind)> {
     model
         .items
         .iter()
         .find(|i| i.id == item_id)
-        .map(|i| (i.title.clone(), i.kind.to_string()))
+        .map(|i| (i.title.clone(), i.kind.clone()))
 }
 
 /// Create a new SetlistEntry from a library item lookup.
-fn create_entry(item_id: &str, item_title: &str, item_type: &str, position: usize) -> SetlistEntry {
+fn create_entry(
+    item_id: &str,
+    item_title: &str,
+    item_type: ItemKind,
+    position: usize,
+) -> SetlistEntry {
     SetlistEntry {
         id: ulid::Ulid::new().to_string(),
         item_id: item_id.to_string(),
         item_title: item_title.to_string(),
-        item_type: item_type.to_string(),
+        item_type,
         position,
         duration_secs: 0,
         status: EntryStatus::NotAttempted,
@@ -489,7 +494,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
             let position = building.entries.len();
-            let entry = create_entry(&item_id, &title, &item_type, position);
+            let entry = create_entry(&item_id, &title, item_type, position);
             building.entries.push(entry);
             model.last_error = None;
             crux_core::render::render()
@@ -509,21 +514,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let kind = match item_type.as_str() {
-                "piece" => ItemKind::Piece,
-                "exercise" => ItemKind::Exercise,
-                _ => {
-                    model.last_error = Some("Item type must be 'piece' or 'exercise'".to_string());
-                    return crux_core::render::render();
-                }
-            };
-
-            let item = create_item_from_title(&title, kind);
+            let item = create_item_from_title(&title, item_type.clone());
             let new_item_id = item.id.clone();
             model.items.push(item.clone());
 
             let position = building.entries.len();
-            let entry = create_entry(&new_item_id, &title, &item_type, position);
+            let entry = create_entry(&new_item_id, &title, item_type, position);
             building.entries.push(entry);
             model.last_error = None;
 
@@ -587,7 +583,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            if let Err(e) = validation::validate_setlist_not_empty(&building.entries) {
+            if let Err(e) = validation::validate_entries_not_empty(&building.entries, "Setlist") {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
@@ -721,7 +717,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
             let position = active.entries.len();
-            let entry = create_entry(&item_id, &title, &item_type, position);
+            let entry = create_entry(&item_id, &title, item_type, position);
             active.entries.push(entry);
             model.last_error = None;
 
@@ -746,21 +742,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let kind = match item_type.as_str() {
-                "piece" => ItemKind::Piece,
-                "exercise" => ItemKind::Exercise,
-                _ => {
-                    model.last_error = Some("Item type must be 'piece' or 'exercise'".to_string());
-                    return crux_core::render::render();
-                }
-            };
-
-            let item = create_item_from_title(&title, kind);
+            let item = create_item_from_title(&title, item_type.clone());
             let new_item_id = item.id.clone();
             model.items.push(item.clone());
 
             let position = active.entries.len();
-            let entry = create_entry(&new_item_id, &title, &item_type, position);
+            let entry = create_entry(&new_item_id, &title, item_type, position);
             active.entries.push(entry);
             model.last_error = None;
 
@@ -1177,7 +1164,7 @@ mod tests {
         if let SessionStatus::Building(ref b) = model.session_status {
             assert_eq!(b.entries.len(), 1);
             assert_eq!(b.entries[0].item_title, "Moonlight Sonata");
-            assert_eq!(b.entries[0].item_type, "piece");
+            assert_eq!(b.entries[0].item_type, ItemKind::Piece);
             assert_eq!(b.entries[0].position, 0);
         } else {
             panic!("Expected Building state");
@@ -1534,7 +1521,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::AddNewItemMidSession {
                 title: "New Scale".to_string(),
-                item_type: "exercise".to_string(),
+                item_type: ItemKind::Exercise,
             }),
         );
 
@@ -1695,7 +1682,12 @@ mod tests {
 
         let active = ActiveSession {
             id: "recovered-session".to_string(),
-            entries: vec![create_entry("piece-1", "Moonlight Sonata", "piece", 0)],
+            entries: vec![create_entry(
+                "piece-1",
+                "Moonlight Sonata",
+                ItemKind::Piece,
+                0,
+            )],
             current_index: 0,
             current_item_started_at: now,
             session_started_at: now,
@@ -2317,7 +2309,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::AddNewItemToSetlist {
                 title: "New Piece".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
             }),
         );
 
@@ -2329,7 +2321,7 @@ mod tests {
         if let SessionStatus::Building(ref b) = model.session_status {
             assert_eq!(b.entries.len(), 1);
             assert_eq!(b.entries[0].item_title, "New Piece");
-            assert_eq!(b.entries[0].item_type, "piece");
+            assert_eq!(b.entries[0].item_type, ItemKind::Piece);
         } else {
             panic!("Expected Building state");
         }
@@ -2343,7 +2335,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::AddNewItemToSetlist {
                 title: "New Exercise".to_string(),
-                item_type: "exercise".to_string(),
+                item_type: ItemKind::Exercise,
             }),
         );
 
@@ -2352,20 +2344,8 @@ mod tests {
         assert_eq!(model.items.len(), 4);
     }
 
-    #[test]
-    fn test_add_new_item_invalid_type() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddNewItemToSetlist {
-                title: "Something".to_string(),
-                item_type: "invalid".to_string(),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-    }
+    // test_add_new_item_invalid_type removed — item_type is now ItemKind enum,
+    // invalid values are prevented at compile time.
 
     // --- Intention Tests ---
 

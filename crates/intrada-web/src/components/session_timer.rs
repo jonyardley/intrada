@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
-use intrada_core::{Event, SessionEvent, ViewModel};
+use intrada_core::{EntryStatus, Event, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
@@ -75,7 +75,7 @@ pub fn SessionTimer() -> impl IntoView {
                             .and_then(|e| e.intention.clone());
                         let session_intention = active.session_intention.clone();
                         let completed_entries: Vec<_> = active.entries.iter()
-                            .filter(|e| e.status == "completed" || e.status == "skipped")
+                            .filter(|e| e.status == EntryStatus::Completed || e.status == EntryStatus::Skipped)
                             .cloned()
                             .collect();
 

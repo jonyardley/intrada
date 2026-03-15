@@ -142,7 +142,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                                 {item.item_title.clone()}
                                             </span>
                                             <span class="text-xs text-faint shrink-0">
-                                                {item.item_type.clone()}
+                                                {item.item_type.to_string()}
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0 ml-2">

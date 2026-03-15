@@ -20,14 +20,6 @@ enum Config {
         return "pk_live_Y2xlcmsubXlpbnRyYWRhLmNvbSQ"
     }()
 
-    /// Whether the Clerk publishable key looks valid (starts with pk_test_ or pk_live_
-    /// and has content after the prefix).
-    static var isClerkConfigured: Bool {
-        let key = clerkPublishableKey
-        return (key.hasPrefix("pk_test_") || key.hasPrefix("pk_live_"))
-            && key.count > 10
-    }
-
     /// Base URL for the Intrada REST API.
     static let apiBaseURL: String = {
         if let url = ProcessInfo.processInfo.environment["INTRADA_API_URL"], !url.isEmpty {

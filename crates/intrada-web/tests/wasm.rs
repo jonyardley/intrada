@@ -27,7 +27,7 @@ fn read_storage_key(key: &str) -> Option<String> {
 // Session-in-progress round-trip (crash recovery via localStorage — FR-008)
 #[wasm_bindgen_test]
 fn test_session_in_progress_round_trip() {
-    use intrada_core::{ActiveSession, EntryStatus, SetlistEntry};
+    use intrada_core::{ActiveSession, EntryStatus, ItemKind, SetlistEntry};
     use intrada_web::core_bridge::{load_session_in_progress, SESSION_IN_PROGRESS_KEY};
 
     clear_local_storage();
@@ -44,7 +44,7 @@ fn test_session_in_progress_round_trip() {
             id: "e1".to_string(),
             item_id: "p1".to_string(),
             item_title: "Test Piece".to_string(),
-            item_type: "piece".to_string(),
+            item_type: ItemKind::Piece,
             position: 0,
             duration_secs: 0,
             status: EntryStatus::NotAttempted,

@@ -462,17 +462,15 @@ public struct CreateItem: Hashable {
     @Indirect public var title: String
     @Indirect public var kind: ItemKind
     @Indirect public var composer: String?
-    @Indirect public var category: String?
     @Indirect public var key: String?
     @Indirect public var tempo: Tempo?
     @Indirect public var notes: String?
     @Indirect public var tags: [String]
 
-    public init(title: String, kind: ItemKind, composer: String?, category: String?, key: String?, tempo: Tempo?, notes: String?, tags: [String]) {
+    public init(title: String, kind: ItemKind, composer: String?, key: String?, tempo: Tempo?, notes: String?, tags: [String]) {
         self.title = title
         self.kind = kind
         self.composer = composer
-        self.category = category
         self.key = key
         self.tempo = tempo
         self.notes = notes
@@ -484,9 +482,6 @@ public struct CreateItem: Hashable {
         try serializer.serialize_str(value: self.title)
         try self.kind.serialize(serializer: serializer)
         try serializeOption(value: self.composer, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.category, serializer: serializer) { value, serializer in
             try serializer.serialize_str(value: value)
         }
         try serializeOption(value: self.key, serializer: serializer) { value, serializer in
@@ -517,9 +512,6 @@ public struct CreateItem: Hashable {
         let composer = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
-        let category = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
         let key = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
@@ -533,7 +525,7 @@ public struct CreateItem: Hashable {
             try deserializer.deserialize_str()
         }
         try deserializer.decrease_container_depth()
-        return CreateItem(title: title, kind: kind, composer: composer, category: category, key: key, tempo: tempo, notes: notes, tags: tags)
+        return CreateItem(title: title, kind: kind, composer: composer, key: key, tempo: tempo, notes: notes, tags: tags)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> CreateItem {
@@ -757,6 +749,9 @@ indirect public enum Event: Hashable {
     case dataLoaded(items: [Item])
     case sessionsLoaded(sessions: [PracticeSession])
     case routinesLoaded(routines: [Routine])
+    case itemUpdated(item: Item)
+    case routineUpdated(routine: Routine)
+    case deleteConfirmed
     case loadFailed(String)
     case clearError
     case setQuery(ListQuery?)
@@ -799,13 +794,21 @@ indirect public enum Event: Hashable {
             try serializeArray(value: routines, serializer: serializer) { item, serializer in
                 try item.serialize(serializer: serializer)
             }
-        case .loadFailed(let x):
+        case .itemUpdated(let item):
             try serializer.serialize_variant_index(value: 11)
+            try item.serialize(serializer: serializer)
+        case .routineUpdated(let routine):
+            try serializer.serialize_variant_index(value: 12)
+            try routine.serialize(serializer: serializer)
+        case .deleteConfirmed:
+            try serializer.serialize_variant_index(value: 13)
+        case .loadFailed(let x):
+            try serializer.serialize_variant_index(value: 14)
             try serializer.serialize_str(value: x)
         case .clearError:
-            try serializer.serialize_variant_index(value: 12)
+            try serializer.serialize_variant_index(value: 15)
         case .setQuery(let x):
-            try serializer.serialize_variant_index(value: 13)
+            try serializer.serialize_variant_index(value: 16)
             try serializeOption(value: x, serializer: serializer) { value, serializer in
                 try value.serialize(serializer: serializer)
             }
@@ -870,13 +873,24 @@ indirect public enum Event: Hashable {
             try deserializer.decrease_container_depth()
             return .routinesLoaded(routines: routines)
         case 11:
+            let item = try Item.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .itemUpdated(item: item)
+        case 12:
+            let routine = try Routine.deserialize(deserializer: deserializer)
+            try deserializer.decrease_container_depth()
+            return .routineUpdated(routine: routine)
+        case 13:
+            try deserializer.decrease_container_depth()
+            return .deleteConfirmed
+        case 14:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .loadFailed(x)
-        case 12:
+        case 15:
             try deserializer.decrease_container_depth()
             return .clearError
-        case 13:
+        case 16:
             let x = try deserializeOption(deserializer: deserializer) { deserializer in
                 try ListQuery.deserialize(deserializer: deserializer)
             }
@@ -1145,7 +1159,6 @@ public struct Item: Hashable {
     @Indirect public var title: String
     @Indirect public var kind: ItemKind
     @Indirect public var composer: String?
-    @Indirect public var category: String?
     @Indirect public var key: String?
     @Indirect public var tempo: Tempo?
     @Indirect public var notes: String?
@@ -1153,12 +1166,11 @@ public struct Item: Hashable {
     @Indirect public var createdAt: String
     @Indirect public var updatedAt: String
 
-    public init(id: String, title: String, kind: ItemKind, composer: String?, category: String?, key: String?, tempo: Tempo?, notes: String?, tags: [String], createdAt: String, updatedAt: String) {
+    public init(id: String, title: String, kind: ItemKind, composer: String?, key: String?, tempo: Tempo?, notes: String?, tags: [String], createdAt: String, updatedAt: String) {
         self.id = id
         self.title = title
         self.kind = kind
         self.composer = composer
-        self.category = category
         self.key = key
         self.tempo = tempo
         self.notes = notes
@@ -1173,9 +1185,6 @@ public struct Item: Hashable {
         try serializer.serialize_str(value: self.title)
         try self.kind.serialize(serializer: serializer)
         try serializeOption(value: self.composer, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.category, serializer: serializer) { value, serializer in
             try serializer.serialize_str(value: value)
         }
         try serializeOption(value: self.key, serializer: serializer) { value, serializer in
@@ -1209,9 +1218,6 @@ public struct Item: Hashable {
         let composer = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
-        let category = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
         let key = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
@@ -1227,7 +1233,7 @@ public struct Item: Hashable {
         let createdAt = try deserializer.deserialize_str()
         let updatedAt = try deserializer.deserialize_str()
         try deserializer.decrease_container_depth()
-        return Item(id: id, title: title, kind: kind, composer: composer, category: category, key: key, tempo: tempo, notes: notes, tags: tags, createdAt: createdAt, updatedAt: updatedAt)
+        return Item(id: id, title: title, kind: kind, composer: composer, key: key, tempo: tempo, notes: notes, tags: tags, createdAt: createdAt, updatedAt: updatedAt)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> Item {
@@ -1553,7 +1559,6 @@ public struct LibraryItemView: Hashable {
     @Indirect public var itemType: String
     @Indirect public var title: String
     @Indirect public var subtitle: String
-    @Indirect public var category: String?
     @Indirect public var key: String?
     @Indirect public var tempo: String?
     @Indirect public var notes: String?
@@ -1563,12 +1568,11 @@ public struct LibraryItemView: Hashable {
     @Indirect public var practice: ItemPracticeSummary?
     @Indirect public var latestAchievedTempo: UInt16?
 
-    public init(id: String, itemType: String, title: String, subtitle: String, category: String?, key: String?, tempo: String?, notes: String?, tags: [String], createdAt: String, updatedAt: String, practice: ItemPracticeSummary?, latestAchievedTempo: UInt16?) {
+    public init(id: String, itemType: String, title: String, subtitle: String, key: String?, tempo: String?, notes: String?, tags: [String], createdAt: String, updatedAt: String, practice: ItemPracticeSummary?, latestAchievedTempo: UInt16?) {
         self.id = id
         self.itemType = itemType
         self.title = title
         self.subtitle = subtitle
-        self.category = category
         self.key = key
         self.tempo = tempo
         self.notes = notes
@@ -1585,9 +1589,6 @@ public struct LibraryItemView: Hashable {
         try serializer.serialize_str(value: self.itemType)
         try serializer.serialize_str(value: self.title)
         try serializer.serialize_str(value: self.subtitle)
-        try serializeOption(value: self.category, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
         try serializeOption(value: self.key, serializer: serializer) { value, serializer in
             try serializer.serialize_str(value: value)
         }
@@ -1623,9 +1624,6 @@ public struct LibraryItemView: Hashable {
         let itemType = try deserializer.deserialize_str()
         let title = try deserializer.deserialize_str()
         let subtitle = try deserializer.deserialize_str()
-        let category = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
         let key = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
@@ -1647,7 +1645,7 @@ public struct LibraryItemView: Hashable {
             try deserializer.deserialize_u16()
         }
         try deserializer.decrease_container_depth()
-        return LibraryItemView(id: id, itemType: itemType, title: title, subtitle: subtitle, category: category, key: key, tempo: tempo, notes: notes, tags: tags, createdAt: createdAt, updatedAt: updatedAt, practice: practice, latestAchievedTempo: latestAchievedTempo)
+        return LibraryItemView(id: id, itemType: itemType, title: title, subtitle: subtitle, key: key, tempo: tempo, notes: notes, tags: tags, createdAt: createdAt, updatedAt: updatedAt, practice: practice, latestAchievedTempo: latestAchievedTempo)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> LibraryItemView {
@@ -1664,14 +1662,12 @@ public struct ListQuery: Hashable {
     @Indirect public var text: String?
     @Indirect public var itemType: ItemKind?
     @Indirect public var key: String?
-    @Indirect public var category: String?
     @Indirect public var tags: [String]
 
-    public init(text: String?, itemType: ItemKind?, key: String?, category: String?, tags: [String]) {
+    public init(text: String?, itemType: ItemKind?, key: String?, tags: [String]) {
         self.text = text
         self.itemType = itemType
         self.key = key
-        self.category = category
         self.tags = tags
     }
 
@@ -1684,9 +1680,6 @@ public struct ListQuery: Hashable {
             try value.serialize(serializer: serializer)
         }
         try serializeOption(value: self.key, serializer: serializer) { value, serializer in
-            try serializer.serialize_str(value: value)
-        }
-        try serializeOption(value: self.category, serializer: serializer) { value, serializer in
             try serializer.serialize_str(value: value)
         }
         try serializeArray(value: self.tags, serializer: serializer) { item, serializer in
@@ -1712,14 +1705,11 @@ public struct ListQuery: Hashable {
         let key = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
-        let category = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializer.deserialize_str()
-        }
         let tags = try deserializeArray(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
         try deserializer.decrease_container_depth()
-        return ListQuery(text: text, itemType: itemType, key: key, category: category, tags: tags)
+        return ListQuery(text: text, itemType: itemType, key: key, tags: tags)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> ListQuery {
@@ -3262,16 +3252,14 @@ public struct TempoHistoryEntry: Hashable {
 public struct UpdateItem: Hashable {
     @Indirect public var title: String?
     @Indirect public var composer: String??
-    @Indirect public var category: String??
     @Indirect public var key: String??
     @Indirect public var tempo: Tempo??
     @Indirect public var notes: String??
     @Indirect public var tags: [String]?
 
-    public init(title: String?, composer: String??, category: String??, key: String??, tempo: Tempo??, notes: String??, tags: [String]?) {
+    public init(title: String?, composer: String??, key: String??, tempo: Tempo??, notes: String??, tags: [String]?) {
         self.title = title
         self.composer = composer
-        self.category = category
         self.key = key
         self.tempo = tempo
         self.notes = notes
@@ -3284,11 +3272,6 @@ public struct UpdateItem: Hashable {
             try serializer.serialize_str(value: value)
         }
         try serializeOption(value: self.composer, serializer: serializer) { value, serializer in
-            try serializeOption(value: value, serializer: serializer) { value, serializer in
-                try serializer.serialize_str(value: value)
-            }
-        }
-        try serializeOption(value: self.category, serializer: serializer) { value, serializer in
             try serializeOption(value: value, serializer: serializer) { value, serializer in
                 try serializer.serialize_str(value: value)
             }
@@ -3332,11 +3315,6 @@ public struct UpdateItem: Hashable {
                 try deserializer.deserialize_str()
             }
         }
-        let category = try deserializeOption(deserializer: deserializer) { deserializer in
-            try deserializeOption(deserializer: deserializer) { deserializer in
-                try deserializer.deserialize_str()
-            }
-        }
         let key = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
@@ -3358,7 +3336,7 @@ public struct UpdateItem: Hashable {
             }
         }
         try deserializer.decrease_container_depth()
-        return UpdateItem(title: title, composer: composer, category: category, key: key, tempo: tempo, notes: notes, tags: tags)
+        return UpdateItem(title: title, composer: composer, key: key, tempo: tempo, notes: notes, tags: tags)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> UpdateItem {
