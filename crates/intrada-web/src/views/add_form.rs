@@ -37,9 +37,6 @@ pub fn AddLibraryItemForm() -> impl IntoView {
     let notes = RwSignal::new(String::new());
     let tags = RwSignal::new(Vec::<String>::new());
 
-    // Type-specific field — value preserved in memory when hidden (FR-005)
-    let category = RwSignal::new(String::new());
-
     // Validation errors — cleared on tab switch (FR-007)
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
@@ -70,7 +67,6 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                             &FormData {
                                 title: &title.get(),
                                 composer: &composer.get(),
-                                category: &category.get(),
                                 notes: &notes.get(),
                                 bpm_str: &bpm.get(),
                                 tempo_marking: &tempo_marking.get(),
@@ -98,17 +94,15 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         let tags_val = tags.get();
 
                         // FR-008: Create correct item type based on active tab
-                        let (kind, composer_val, category_val) = match current_tab {
+                        let (kind, composer_val) = match current_tab {
                             ItemType::Piece => {
                                 let c = composer.get().trim().to_string();
-                                (ItemKind::Piece, Some(c), None)
+                                (ItemKind::Piece, Some(c))
                             }
                             ItemType::Exercise => {
                                 let c = composer.get().trim().to_string();
                                 let composer_opt = if c.is_empty() { None } else { Some(c) };
-                                let cat = category.get().trim().to_string();
-                                let category_opt = if cat.is_empty() { None } else { Some(cat) };
-                                (ItemKind::Exercise, composer_opt, category_opt)
+                                (ItemKind::Exercise, composer_opt)
                             }
                         };
 
@@ -116,7 +110,6 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                             title: title_val,
                             kind,
                             composer: composer_val,
-                            category: category_val,
                             key: key_val,
                             tempo: tempo_val,
                             notes: notes_val,
@@ -154,17 +147,6 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                                 view! {
                                     <AutocompleteTextField id="add-composer" label="Composer (optional)" value=composer suggestions=all_composers_signal field_name="composer" errors=errors />
                                 }.into_any()
-                            }
-                        }}
-
-                        // Category — Exercise only, conditionally rendered (FR-005)
-                        {move || {
-                            if active_tab.get() == ItemType::Exercise {
-                                Some(view! {
-                                    <TextField id="add-category" label="Category" value=category placeholder="e.g. Technique, Scales" field_name="category" errors=errors />
-                                })
-                            } else {
-                                None
                             }
                         }}
 

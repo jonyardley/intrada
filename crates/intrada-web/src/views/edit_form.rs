@@ -86,10 +86,9 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let back_href = format!("/library/{}", item_id);
 
     // Determine item type — plain value, not a signal (display-only tabs)
-    let item_type = if item.item_type == "piece" {
-        ItemType::Piece
-    } else {
-        ItemType::Exercise
+    let item_type = match item.item_type {
+        intrada_core::ItemKind::Piece => ItemType::Piece,
+        intrada_core::ItemKind::Exercise => ItemType::Exercise,
     };
 
     // Pre-populate signals from ViewModel
@@ -101,24 +100,8 @@ pub fn EditLibraryItemForm() -> impl IntoView {
     let notes = RwSignal::new(item.notes.clone().unwrap_or_default());
     let tags = RwSignal::new(item.tags.clone());
 
-    // Pre-populate composer based on item type
-    // For Piece: subtitle is always the composer
-    // For Exercise: subtitle = category.or(composer). If category is set, we can't recover
-    // the composer from ViewModel alone (documented limitation).
-    let composer_initial = match item_type {
-        ItemType::Piece => item.subtitle.clone(),
-        ItemType::Exercise => {
-            if item.category.is_some() {
-                // Subtitle is category, not composer — can't recover composer
-                String::new()
-            } else {
-                // No category, subtitle is composer (or empty)
-                item.subtitle.clone()
-            }
-        }
-    };
-    let composer = RwSignal::new(composer_initial);
-    let category = RwSignal::new(item.category.clone().unwrap_or_default());
+    // Pre-populate composer — subtitle is always the composer now
+    let composer = RwSignal::new(item.subtitle.clone());
 
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
@@ -151,7 +134,6 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                                 &FormData {
                                     title: &title.get(),
                                     composer: &composer.get(),
-                                    category: &category.get(),
                                     notes: &notes.get(),
                                     bpm_str: &bpm.get(),
                                     tempo_marking: &tempo_marking.get(),
@@ -194,15 +176,9 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                                     }
                                 }
                             };
-                            let category_val = {
-                                let c = category.get().trim().to_string();
-                                if c.is_empty() { Some(None) } else { Some(Some(c)) }
-                            };
-
                             let input = UpdateItem {
                                 title: Some(title_val),
                                 composer: composer_val,
-                                category: category_val,
                                 key: key_val,
                                 tempo: tempo_val,
                                 notes: notes_val,
@@ -241,15 +217,6 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                             view! {
                                 <AutocompleteTextField id="edit-composer" label="Composer (optional)" value=composer suggestions=all_composers_signal field_name="composer" errors=errors />
                             }.into_any()
-                        }}
-
-                        // Category — Exercise only
-                        {if item_type == ItemType::Exercise {
-                            Some(view! {
-                                <TextField id="edit-category" label="Category" value=category placeholder="e.g. Technique, Scales" field_name="category" errors=errors />
-                            })
-                        } else {
-                            None
                         }}
 
                         // Key (optional — shared)

@@ -37,6 +37,9 @@ any of them without waiting for the others.
 | iOS native shell (#187) — Crux/UniFFI/BCS bridge, SwiftUI, CI pipeline | Done |
 | iOS cleanup (#202) — removed dead code and legacy networking layer | Done |
 | iOS design system (#194) — tokens, shared components, modifiers, navigation | Done |
+| Remove category field (#211) — exercises use tags only, simplified subtitle logic | Done |
+| Use mutate response (#148) — updates/deletes use API response directly, no re-fetch | Done |
+| Filter clause sync (#152) — extracted subquery constants to prevent user isolation drift | Done |
 
 ---
 
@@ -150,9 +153,7 @@ These don't belong to a single pillar — they support all three.
 | # | Feature | Horizon | Labels |
 |---|---------|---------|--------|
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
-| 148 | **Use mutate response** — stop re-fetching all data after writes, use API response directly | Next | architecture |
 | 149 | **Pagination** — add limit/offset to list endpoints | Next | architecture |
-| 211 | **Remove category field** — migrate exercise categories to tags | Now | architecture, pillar:plan |
 
 ---
 

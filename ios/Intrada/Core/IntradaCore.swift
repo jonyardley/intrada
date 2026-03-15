@@ -46,6 +46,10 @@ final class IntradaCore {
     private let core: CoreFfi
     private let session: URLSession
 
+    /// The Clerk instance for auth token retrieval.
+    /// Set via `setClerk(_:)` before calling `startApp()` to avoid using `Clerk.shared`.
+    private var clerk: Clerk?
+
     // MARK: - Init
 
     init() {
@@ -92,6 +96,14 @@ final class IntradaCore {
 
         let responseData = core.update(Data(eventBytes))
         processRequests(responseData)
+    }
+
+    /// Provide the Clerk instance for auth token retrieval.
+    ///
+    /// Must be called before `startApp()`. This avoids using `Clerk.shared`
+    /// which crashes if `Clerk.configure()` failed.
+    func setClerk(_ clerk: Clerk) {
+        self.clerk = clerk
     }
 
     /// Initialise the core with the API base URL and start loading data.
@@ -238,12 +250,16 @@ final class IntradaCore {
     }
 
     /// Get a Bearer token from Clerk for API authorization.
+    ///
+    /// Uses the injected `clerk` instance (set via `setClerk(_:)`) instead of
+    /// `Clerk.shared`, which can crash if `Clerk.configure()` failed.
     @MainActor
     private func getAuthHeader(forceRefresh: Bool) async -> String? {
-        guard let clerkSession = Clerk.shared.session else {
-            print("[IntradaCore] Warning: No Clerk session available")
+        guard let clerkSession = clerk?.session else {
+            print("[IntradaCore] Warning: No Clerk session available (clerk instance: \(clerk == nil ? "nil" : "set, no session"))")
             return nil
         }
+
         do {
             let token = try await clerkSession.getToken(.init(skipCache: forceRefresh))
             return token.map { "Bearer \($0)" }

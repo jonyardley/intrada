@@ -165,7 +165,7 @@ Key principles:
 - **Validation**: `intrada-core/src/validation.rs` is the single source of truth for all validation constants and rules
 - **Database**: Positional column indexing (`row.get(0)`, etc.) with a `SELECT_COLUMNS` const to keep column order in one place
 - **Migrations**: Sequential numbered migrations in `intrada-api/src/migrations.rs`, each must be a single SQL statement
-- **Refresh-after-mutate**: Every write operation (create/update/delete) is followed by a full re-fetch from the API. This keeps the Crux model as the single source of truth without client-side merge logic.
+- **Mutate response**: Updates and deletes use the API response (or optimistic confirmation) directly — no re-fetch. Creates still re-fetch the full list because the server assigns the canonical ID. The Crux model remains the single source of truth.
 
 ### Type generation (typegen)
 
@@ -485,8 +485,7 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 
 ## Known Tech Debt
 
-- Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
-- `category` field on exercises is redundant with tags (#211) — scheduled for removal
+- Creates still re-fetch the full collection (server assigns ID, client-side merge is fragile)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
-use crate::domain::item::Item;
+use crate::domain::item::{Item, ItemKind};
 use crate::domain::routine::Routine;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
@@ -39,6 +39,22 @@ impl Model {
     }
 }
 
+/// View-layer representation of session lifecycle state.
+///
+/// Mirrors the internal `SessionStatus` enum but is serializable and
+/// exposed to shells via the `ViewModel`. Using an enum instead of a
+/// String gives compile-time safety in both Rust and generated Swift code.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SessionStatusView {
+    #[default]
+    Idle,
+    Building,
+    Active,
+    Summary,
+}
+
 /// Serializable view state sent to shells for rendering.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -48,7 +64,7 @@ pub struct ViewModel {
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,
-    pub session_status: String,
+    pub session_status: SessionStatusView,
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
     pub routines: Vec<RoutineView>,
@@ -71,7 +87,7 @@ pub struct RoutineEntryView {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub position: usize,
 }
 
@@ -80,10 +96,9 @@ pub struct RoutineEntryView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryItemView {
     pub id: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub title: String,
     pub subtitle: String,
-    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<String>,
     pub notes: Option<String>,
@@ -132,7 +147,7 @@ pub struct PracticeSessionView {
     pub started_at: String,
     pub finished_at: String,
     pub total_duration_display: String,
-    pub completion_status: String,
+    pub completion_status: CompletionStatus,
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
@@ -145,10 +160,10 @@ pub struct SetlistEntryView {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
-    pub item_type: String,
+    pub item_type: ItemKind,
     pub position: usize,
     pub duration_display: String,
-    pub status: String,
+    pub status: EntryStatus,
     pub notes: Option<String>,
     pub score: Option<u8>,
     pub intention: Option<String>,
@@ -166,7 +181,7 @@ pub struct SetlistEntryView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSessionView {
     pub current_item_title: String,
-    pub current_item_type: String,
+    pub current_item_type: ItemKind,
     pub current_position: usize,
     pub total_items: usize,
     pub started_at: String,
@@ -194,7 +209,7 @@ pub struct BuildingSetlistView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SummaryView {
     pub total_duration_display: String,
-    pub completion_status: String,
+    pub completion_status: CompletionStatus,
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
@@ -211,11 +226,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         item_type: entry.item_type.clone(),
         position: entry.position,
         duration_display: crate::domain::session::format_duration_display(entry.duration_secs),
-        status: match entry.status {
-            EntryStatus::Completed => "completed".to_string(),
-            EntryStatus::Skipped => "skipped".to_string(),
-            EntryStatus::NotAttempted => "not_attempted".to_string(),
-        },
+        status: entry.status.clone(),
         notes: entry.notes.clone(),
         score: entry.score,
         intention: entry.intention.clone(),
@@ -244,7 +255,7 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
     let current = &active.entries[safe_index];
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
-        current_item_type: current.item_type.clone(),
+        current_item_type: current.item_type.clone(), // Now ItemKind
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
@@ -267,10 +278,7 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
     let total_secs: u64 = summary.entries.iter().map(|e| e.duration_secs).sum();
     SummaryView {
         total_duration_display: crate::domain::session::format_duration_display(total_secs),
-        completion_status: match summary.completion_status {
-            CompletionStatus::Completed => "completed".to_string(),
-            CompletionStatus::EndedEarly => "ended_early".to_string(),
-        },
+        completion_status: summary.completion_status.clone(),
         notes: summary.session_notes.clone(),
         entries: summary.entries.iter().map(entry_to_view).collect(),
         session_intention: summary.session_intention.clone(),
@@ -286,10 +294,7 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         total_duration_display: crate::domain::session::format_duration_display(
             session.total_duration_secs,
         ),
-        completion_status: match session.completion_status {
-            CompletionStatus::Completed => "completed".to_string(),
-            CompletionStatus::EndedEarly => "ended_early".to_string(),
-        },
+        completion_status: session.completion_status.clone(),
         notes: session.session_notes.clone(),
         entries: session.entries.iter().map(entry_to_view).collect(),
         session_intention: session.session_intention.clone(),

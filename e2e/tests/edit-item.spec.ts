@@ -55,30 +55,6 @@ test.describe("edit library item", () => {
     ).toBeVisible();
   });
 
-  test("edit exercise category field", async ({ page }) => {
-    await page.goto("/");
-
-    // Navigate to Hanon No. 1 detail then edit
-    await page.getByRole("heading", { name: "Hanon No. 1" }).click();
-    await page.getByRole("link", { name: "Edit" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Edit Library Item" })
-    ).toBeVisible();
-
-    // Category field should be visible and pre-populated for exercises
-    await expect(page.locator("#edit-category")).toHaveValue("Technique");
-
-    // Change it
-    await page.locator("#edit-category").fill("Finger Independence");
-
-    // Save
-    await page.getByRole("button", { name: "Save" }).click();
-
-    // Should redirect back to detail
-    await expect(
-      page.getByRole("heading", { name: "Hanon No. 1", level: 2 })
-    ).toBeVisible();
-  });
 
   test("cancel edit returns to detail without changes", async ({ page }) => {
     await page.goto("/");

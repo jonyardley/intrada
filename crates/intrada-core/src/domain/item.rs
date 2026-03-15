@@ -35,7 +35,6 @@ pub struct Item {
     pub title: String,
     pub kind: ItemKind,
     pub composer: Option<String>,
-    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
@@ -69,7 +68,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 title: input.title,
                 kind: input.kind,
                 composer: input.composer,
-                category: input.category,
                 key: input.key,
                 tempo: input.tempo,
                 notes: input.notes,
@@ -102,9 +100,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
             if let Some(composer) = input.composer {
                 item.composer = composer;
-            }
-            if let Some(category) = input.category {
-                item.category = category;
             }
             if let Some(key) = input.key {
                 item.key = key;

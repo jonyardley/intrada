@@ -1,6 +1,7 @@
 mod common;
 
 use axum::http::StatusCode;
+use intrada_core::domain::item::ItemKind;
 use intrada_core::domain::routine::Routine;
 use serde_json::json;
 
@@ -47,11 +48,11 @@ async fn create_routine_with_entries() {
     assert_eq!(routine.entries.len(), 2);
     assert_eq!(routine.entries[0].item_id, "piece-001");
     assert_eq!(routine.entries[0].item_title, "Clair de Lune");
-    assert_eq!(routine.entries[0].item_type, "piece");
+    assert_eq!(routine.entries[0].item_type, ItemKind::Piece);
     assert_eq!(routine.entries[0].position, 0);
     assert_eq!(routine.entries[1].item_id, "exercise-001");
     assert_eq!(routine.entries[1].item_title, "Hanon No. 1");
-    assert_eq!(routine.entries[1].item_type, "exercise");
+    assert_eq!(routine.entries[1].item_type, ItemKind::Exercise);
     assert_eq!(routine.entries[1].position, 1);
 }
 

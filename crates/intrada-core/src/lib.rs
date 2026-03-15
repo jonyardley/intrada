@@ -22,10 +22,10 @@ pub use crux_http::protocol::{HttpHeader, HttpResponse, HttpResult};
 pub use crux_http::{HttpError, HttpRequest};
 pub use model::{
     ActiveSessionView, BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model,
-    PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SetlistEntryView,
-    SummaryView, TempoHistoryEntry, ViewModel,
+    PracticeSessionView, RoutineEntryView, RoutineView, ScoreHistoryEntry, SessionStatusView,
+    SetlistEntryView, SummaryView, TempoHistoryEntry, ViewModel,
 };
 pub use validation::{
-    MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_ROUTINE_NAME, MAX_TAG,
+    MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_ROUTINE_NAME, MAX_TAG,
     MAX_TEMPO_MARKING, MAX_TITLE, MIN_ACHIEVED_TEMPO, MIN_BPM,
 };

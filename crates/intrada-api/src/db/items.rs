@@ -37,14 +37,13 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
     let kind_str: String = col!(row, 1)?;
     let title: String = col!(row, 2)?;
     let composer: Option<String> = col!(row, 3)?;
-    let category: Option<String> = col!(row, 4)?;
-    let key: Option<String> = col!(row, 5)?;
-    let tempo_marking: Option<String> = col!(row, 6)?;
-    let tempo_bpm: Option<i64> = col!(row, 7)?;
-    let notes: Option<String> = col!(row, 8)?;
-    let tags_json: String = col!(row, 9)?;
-    let created_at_str: String = col!(row, 10)?;
-    let updated_at_str: String = col!(row, 11)?;
+    let key: Option<String> = col!(row, 4)?;
+    let tempo_marking: Option<String> = col!(row, 5)?;
+    let tempo_bpm: Option<i64> = col!(row, 6)?;
+    let notes: Option<String> = col!(row, 7)?;
+    let tags_json: String = col!(row, 8)?;
+    let created_at_str: String = col!(row, 9)?;
+    let updated_at_str: String = col!(row, 10)?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
@@ -58,7 +57,6 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
         kind: parse_kind(&kind_str)?,
         title,
         composer,
-        category,
         key,
         tempo: tempo_from_row(tempo_marking, tempo_bpm),
         notes,
@@ -69,7 +67,7 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
 }
 
 const SELECT_COLUMNS: &str =
-    "id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
+    "id, kind, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
 
 pub async fn list_items(conn: &Connection, user_id: &str) -> Result<Vec<Item>, ApiError> {
     let mut rows = conn
@@ -132,14 +130,13 @@ pub async fn insert_item(
     let tags_json = tags_to_json(&input.tags);
 
     conn.execute(
-        "INSERT INTO items (id, kind, title, composer, category, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at, user_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+        "INSERT INTO items (id, kind, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at, user_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         libsql::params![
             id.as_str(),
             kind_str.as_str(),
             input.title.as_str(),
             input.composer.as_deref(),
-            input.category.as_deref(),
             input.key.as_deref(),
             tempo_marking.as_deref(),
             tempo_bpm,
@@ -157,7 +154,6 @@ pub async fn insert_item(
         kind: input.kind.clone(),
         title: input.title.clone(),
         composer: input.composer.clone(),
-        category: input.category.clone(),
         key: input.key.clone(),
         tempo: input.tempo.clone(),
         notes: input.notes.clone(),
@@ -182,11 +178,6 @@ pub async fn update_item(
 
     let composer = match &input.composer {
         None => current.composer.as_deref(),
-        Some(opt) => opt.as_deref(),
-    };
-
-    let category = match &input.category {
-        None => current.category.as_deref(),
         Some(opt) => opt.as_deref(),
     };
 
@@ -217,11 +208,10 @@ pub async fn update_item(
     let tags_json = tags_to_json(tags);
 
     conn.execute(
-        "UPDATE items SET title = ?1, composer = ?2, category = ?3, key_signature = ?4, tempo_marking = ?5, tempo_bpm = ?6, notes = ?7, tags = ?8, updated_at = ?9 WHERE id = ?10 AND user_id = ?11",
+        "UPDATE items SET title = ?1, composer = ?2, key_signature = ?3, tempo_marking = ?4, tempo_bpm = ?5, notes = ?6, tags = ?7, updated_at = ?8 WHERE id = ?9 AND user_id = ?10",
         libsql::params![
             title.as_str(),
             composer,
-            category,
             key,
             tempo_marking.as_deref(),
             tempo_bpm,
@@ -239,7 +229,6 @@ pub async fn update_item(
         kind: current.kind,
         title: title.to_string(),
         composer: composer.map(|s| s.to_string()),
-        category: category.map(|s| s.to_string()),
         key: key.map(|s| s.to_string()),
         tempo,
         notes: notes.map(|s| s.to_string()),

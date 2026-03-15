@@ -42,7 +42,7 @@ test.describe("add library item", () => {
     await expect(items).toHaveCount(3);
   });
 
-  test("add an exercise with category", async ({ page }) => {
+  test("add an exercise", async ({ page }) => {
     await page.goto("/library/new");
 
     // Switch to Exercise tab
@@ -52,12 +52,8 @@ test.describe("add library item", () => {
       "true"
     );
 
-    // Category field should now be visible
-    await expect(page.locator("#add-category")).toBeVisible();
-
     // Fill required + optional fields
     await page.locator("#add-title").fill("Chromatic Scale");
-    await page.locator("#add-category").fill("Scales");
     await page.locator("#add-key").fill("C Major");
 
     // Submit
@@ -107,18 +103,4 @@ test.describe("add library item", () => {
     await expect(page.getByText("BPM must be between")).not.toBeVisible();
   });
 
-  test("category field only visible for exercises", async ({ page }) => {
-    await page.goto("/library/new");
-
-    // Piece tab — no category field
-    await expect(page.locator("#add-category")).not.toBeVisible();
-
-    // Switch to Exercise — category appears
-    await page.getByRole("tab", { name: "Exercise" }).click();
-    await expect(page.locator("#add-category")).toBeVisible();
-
-    // Switch back to Piece — category disappears
-    await page.getByRole("tab", { name: "Piece" }).click();
-    await expect(page.locator("#add-category")).not.toBeVisible();
-  });
 });

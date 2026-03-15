@@ -38,6 +38,7 @@ private struct ContentRouter: View {
             if clerk.user != nil {
                 MainTabView()
                     .onAppear {
+                        core.setClerk(clerk)
                         core.startApp()
                     }
             } else {

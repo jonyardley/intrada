@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use intrada_core::{
-    MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_CATEGORY, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING,
-    MAX_TITLE, MIN_ACHIEVED_TEMPO, MIN_BPM,
+    MAX_ACHIEVED_TEMPO, MAX_BPM, MAX_COMPOSER, MAX_NOTES, MAX_TAG, MAX_TEMPO_MARKING, MAX_TITLE,
+    MIN_ACHIEVED_TEMPO, MIN_BPM,
 };
 
 use crate::helpers::parse_tags;
@@ -13,7 +13,6 @@ use crate::types::ItemType;
 pub struct FormData<'a> {
     pub title: &'a str,
     pub composer: &'a str,
-    pub category: &'a str,
     pub notes: &'a str,
     pub bpm_str: &'a str,
     pub tempo_marking: &'a str,
@@ -56,17 +55,6 @@ pub fn validate_library_form(item_type: ItemType, data: &FormData<'_>) -> HashMa
                     format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
                 );
             }
-        }
-    }
-
-    // Category: only validated for Exercise, optional max MAX_CATEGORY
-    if item_type == ItemType::Exercise {
-        let category = data.category.trim();
-        if !category.is_empty() && category.len() > MAX_CATEGORY {
-            errors.insert(
-                "category".to_string(),
-                format!("Category must be between 1 and {MAX_CATEGORY} characters"),
-            );
         }
     }
 
@@ -147,7 +135,6 @@ mod tests {
         FormData {
             title: "Clair de Lune",
             composer: "Claude Debussy",
-            category: "",
             notes: "",
             bpm_str: "",
             tempo_marking: "",
@@ -159,7 +146,6 @@ mod tests {
         FormData {
             title: "Hanon No. 1",
             composer: "",
-            category: "Technique",
             notes: "",
             bpm_str: "",
             tempo_marking: "",
@@ -229,17 +215,6 @@ mod tests {
         };
         let errors = validate_library_form(ItemType::Piece, &data);
         assert!(errors.contains_key("composer"));
-    }
-
-    #[test]
-    fn test_oversized_category_for_exercise() {
-        let long_cat = "x".repeat(MAX_CATEGORY + 1);
-        let data = FormData {
-            category: &long_cat,
-            ..valid_exercise_data()
-        };
-        let errors = validate_library_form(ItemType::Exercise, &data);
-        assert!(errors.contains_key("category"));
     }
 
     #[test]

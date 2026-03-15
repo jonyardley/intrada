@@ -220,6 +220,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0033_drop_exercises",
         "DROP TABLE IF EXISTS exercises;",
     ),
+    (
+        "0034_drop_category_from_items",
+        "ALTER TABLE items DROP COLUMN category;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

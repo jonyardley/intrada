@@ -136,7 +136,7 @@ fn RoutineRow(routine: RoutineView) -> impl IntoView {
                                     view! {
                                         <div class="flex items-center gap-2 text-xs">
                                             <span class="text-primary">{entry.item_title}</span>
-                                            <span class="text-faint">{entry.item_type}</span>
+                                            <span class="text-faint">{entry.item_type.to_string()}</span>
                                         </div>
                                     }
                                 }).collect::<Vec<_>>()}

@@ -15,7 +15,6 @@ export interface Item {
   kind: "piece" | "exercise";
   title: string;
   composer: string | null;
-  category: string | null;
   key: string | null;
   tempo: Tempo | null;
   notes: string | null;
@@ -61,7 +60,6 @@ export const STUB_PIECE: Item = {
   kind: "piece",
   title: "Clair de Lune",
   composer: "Claude Debussy",
-  category: null,
   key: "Db Major",
   tempo: { marking: "Andante très expressif", bpm: 66 },
   notes: "Third movement of Suite bergamasque",
@@ -75,7 +73,6 @@ export const STUB_EXERCISE: Item = {
   kind: "exercise",
   title: "Hanon No. 1",
   composer: "Charles-Louis Hanon",
-  category: "Technique",
   key: "C Major",
   tempo: { marking: "Moderato", bpm: 108 },
   notes: "The Virtuoso Pianist — Exercise 1",

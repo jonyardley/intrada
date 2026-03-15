@@ -44,7 +44,6 @@ pub fn DetailView() -> impl IntoView {
                         title,
                         subtitle,
                         item_type,
-                        category,
                         key,
                         tempo,
                         notes,
@@ -115,14 +114,6 @@ pub fn DetailView() -> impl IntoView {
                             </div>
 
                             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                                {category.map(|cat| {
-                                    view! {
-                                        <div>
-                                            <FieldLabel text="Category" />
-                                            <dd class="mt-1 text-sm text-secondary">{cat}</dd>
-                                        </div>
-                                    }
-                                })}
                                 {key.map(|k| {
                                     view! {
                                         <div>

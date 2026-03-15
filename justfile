@@ -49,7 +49,7 @@ build:
 
 # Run E2E tests (builds WASM first)
 e2e: build
-    cd e2e && npm install && npx playwright test --project=chromium
+    cd e2e && npm ci && npx playwright test --project=chromium
 
 # ─────────────────────────────────────────────
 # Type Generation

@@ -1,13 +1,10 @@
 use crate::domain::item::ItemKind;
-use crate::domain::routine::RoutineEntry;
-use crate::domain::session::SetlistEntry;
 use crate::domain::types::{CreateItem, Tempo, UpdateItem};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
 pub const MAX_TITLE: usize = 500;
 pub const MAX_COMPOSER: usize = 200;
-pub const MAX_CATEGORY: usize = 100;
 pub const MAX_NOTES: usize = 5000;
 pub const MAX_INTENTION: usize = 500;
 pub const MAX_TAG: usize = 100;
@@ -69,14 +66,6 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
             }
         }
     }
-    if let Some(ref category) = input.category {
-        if category.is_empty() || category.len() > MAX_CATEGORY {
-            return Err(LibraryError::Validation {
-                field: "category".to_string(),
-                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
-            });
-        }
-    }
     if let Some(ref notes) = input.notes {
         if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
@@ -112,14 +101,6 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
                 message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
-            });
-        }
-    }
-    if let Some(Some(ref category)) = input.category {
-        if category.is_empty() || category.len() > MAX_CATEGORY {
-            return Err(LibraryError::Validation {
-                field: "category".to_string(),
-                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
             });
         }
     }
@@ -164,11 +145,11 @@ pub fn validate_entry_notes(notes: &Option<String>) -> Result<(), LibraryError> 
     Ok(())
 }
 
-pub fn validate_setlist_not_empty(entries: &[SetlistEntry]) -> Result<(), LibraryError> {
+pub fn validate_entries_not_empty<T>(entries: &[T], context: &str) -> Result<(), LibraryError> {
     if entries.is_empty() {
         return Err(LibraryError::Validation {
             field: "entries".to_string(),
-            message: "Setlist must contain at least one item".to_string(),
+            message: format!("{context} must have at least one entry"),
         });
     }
     Ok(())
@@ -295,40 +276,6 @@ pub fn validate_routine_name(name: &str) -> Result<(), LibraryError> {
     Ok(())
 }
 
-pub fn validate_routine_entries_not_empty(entries: &[RoutineEntry]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Routine must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
-/// Validate that a session's entries list is not empty.
-pub fn validate_session_entries_not_empty<T>(entries: &[T]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Setlist must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
-/// Validate that a routine's entries list is not empty (generic version
-/// that works with any entry type, unlike `validate_routine_entries_not_empty`
-/// which requires `&[RoutineEntry]`).
-pub fn validate_routine_entries_not_empty_generic<T>(entries: &[T]) -> Result<(), LibraryError> {
-    if entries.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "entries".to_string(),
-            message: "Routine must have at least one entry".to_string(),
-        });
-    }
-    Ok(())
-}
-
 /// Validate rep field consistency: rep_count must be <= rep_target, and
 /// rep_count, rep_target_reached, and rep_history all require rep_target.
 pub fn validate_rep_consistency(
@@ -359,15 +306,8 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-/// Valid item types for routine and session entries.
-pub const VALID_ITEM_TYPES: &[&str] = &["piece", "exercise"];
-
 /// Validate a routine entry's required fields: item_id, item_title, and item_type.
-pub fn validate_routine_entry_fields(
-    item_id: &str,
-    item_title: &str,
-    item_type: &str,
-) -> Result<(), LibraryError> {
+pub fn validate_routine_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {
             field: "item_id".to_string(),
@@ -378,12 +318,6 @@ pub fn validate_routine_entry_fields(
         return Err(LibraryError::Validation {
             field: "item_title".to_string(),
             message: "Entry item_title must not be empty".to_string(),
-        });
-    }
-    if !VALID_ITEM_TYPES.contains(&item_type) {
-        return Err(LibraryError::Validation {
-            field: "item_type".to_string(),
-            message: format!("Entry item_type must be 'piece' or 'exercise', got '{item_type}'"),
         });
     }
     Ok(())
@@ -401,7 +335,6 @@ mod tests {
             title: "Moonlight Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: Some("C# minor".to_string()),
             tempo: Some(Tempo {
                 marking: Some("Adagio sostenuto".to_string()),
@@ -419,7 +352,6 @@ mod tests {
             title: "".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -441,7 +373,6 @@ mod tests {
             title: "x".repeat(501),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -463,7 +394,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -485,7 +415,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -507,7 +436,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("x".repeat(201)),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -529,7 +457,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
@@ -551,7 +478,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5000)),
@@ -566,7 +492,6 @@ mod tests {
             title: "A".to_string(),
             kind: ItemKind::Piece,
             composer: Some("B".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -583,7 +508,6 @@ mod tests {
             title: "Scale Practice".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("Hanon".to_string()),
-            category: Some("Scales".to_string()),
             key: Some("C major".to_string()),
             tempo: Some(Tempo {
                 marking: Some("Moderato".to_string()),
@@ -601,7 +525,6 @@ mod tests {
             title: "".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -623,7 +546,6 @@ mod tests {
             title: "x".repeat(501),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -645,7 +567,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -667,7 +588,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("x".repeat(201)),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -684,56 +604,11 @@ mod tests {
     }
 
     #[test]
-    fn test_create_exercise_empty_category() {
-        let input = CreateItem {
-            title: "Scales".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        };
-        let err = validate_create_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_create_exercise_category_too_long() {
-        let input = CreateItem {
-            title: "Scales".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("x".repeat(101)),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        };
-        let err = validate_create_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
     fn test_create_exercise_notes_too_long() {
         let input = CreateItem {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
@@ -755,7 +630,6 @@ mod tests {
             title: "Warm up".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -993,31 +867,6 @@ mod tests {
     }
 
     #[test]
-    fn test_update_item_empty_category() {
-        let input = UpdateItem {
-            category: Some(Some("".to_string())),
-            ..Default::default()
-        };
-        let err = validate_update_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_item_clear_category() {
-        let input = UpdateItem {
-            category: Some(None),
-            ..Default::default()
-        };
-        assert!(validate_update_item(&input).is_ok());
-    }
-
-    #[test]
     fn test_update_item_notes_too_long() {
         let input = UpdateItem {
             notes: Some(Some("x".repeat(5001))),
@@ -1092,7 +941,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
-            category: None,
             key: None,
             tempo: Some(Tempo {
                 marking: Some("x".repeat(101)),
@@ -1117,7 +965,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1139,7 +986,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: Some(Tempo {
                 marking: None,
@@ -1239,21 +1085,34 @@ mod tests {
         }
     }
 
-    // --- validate_session_entries_not_empty tests ---
+    // --- validate_entries_not_empty tests ---
 
     #[test]
-    fn test_session_entries_not_empty_ok() {
-        assert!(validate_session_entries_not_empty(&[1, 2, 3]).is_ok());
+    fn test_entries_not_empty_ok() {
+        assert!(validate_entries_not_empty(&[1, 2, 3], "Setlist").is_ok());
     }
 
     #[test]
-    fn test_session_entries_empty() {
+    fn test_entries_empty_setlist() {
         let entries: Vec<i32> = vec![];
-        let err = validate_session_entries_not_empty(&entries).unwrap_err();
+        let err = validate_entries_not_empty(&entries, "Setlist").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "entries");
                 assert_eq!(message, "Setlist must have at least one entry");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_entries_empty_routine() {
+        let entries: Vec<i32> = vec![];
+        let err = validate_entries_not_empty(&entries, "Routine").unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "entries");
+                assert_eq!(message, "Routine must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1328,18 +1187,13 @@ mod tests {
     // --- validate_routine_entry_fields tests ---
 
     #[test]
-    fn test_routine_entry_fields_valid_piece() {
-        assert!(validate_routine_entry_fields("id1", "Sonata", "piece").is_ok());
-    }
-
-    #[test]
-    fn test_routine_entry_fields_valid_exercise() {
-        assert!(validate_routine_entry_fields("id2", "Scales", "exercise").is_ok());
+    fn test_routine_entry_fields_valid() {
+        assert!(validate_routine_entry_fields("id1", "Sonata").is_ok());
     }
 
     #[test]
     fn test_routine_entry_fields_empty_item_id() {
-        let err = validate_routine_entry_fields("", "Sonata", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_id");
@@ -1351,7 +1205,7 @@ mod tests {
 
     #[test]
     fn test_routine_entry_fields_whitespace_item_id() {
-        let err = validate_routine_entry_fields("  ", "Sonata", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("  ", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, .. } => {
                 assert_eq!(field, "item_id");
@@ -1362,46 +1216,11 @@ mod tests {
 
     #[test]
     fn test_routine_entry_fields_empty_item_title() {
-        let err = validate_routine_entry_fields("id1", "", "piece").unwrap_err();
+        let err = validate_routine_entry_fields("id1", "").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_title");
                 assert_eq!(message, "Entry item_title must not be empty");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_routine_entry_fields_invalid_item_type() {
-        let err = validate_routine_entry_fields("id1", "Sonata", "song").unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "item_type");
-                assert_eq!(
-                    message,
-                    "Entry item_type must be 'piece' or 'exercise', got 'song'"
-                );
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    // --- validate_routine_entries_not_empty_generic tests ---
-
-    #[test]
-    fn test_routine_entries_generic_not_empty_ok() {
-        assert!(validate_routine_entries_not_empty_generic(&[1]).is_ok());
-    }
-
-    #[test]
-    fn test_routine_entries_generic_empty() {
-        let entries: Vec<i32> = vec![];
-        let err = validate_routine_entries_not_empty_generic(&entries).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "entries");
-                assert_eq!(message, "Routine must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }

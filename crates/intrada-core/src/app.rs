@@ -10,7 +10,9 @@ use crux_http::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
-use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
+#[cfg(test)]
+use crate::domain::item::ItemKind;
+use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
@@ -19,7 +21,7 @@ use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView, ViewModel,
 };
 
 /// Root Crux application for the music practice library.
@@ -59,6 +61,18 @@ pub enum Event {
     RoutinesLoaded {
         routines: Vec<Routine>,
     },
+
+    // ── Write-confirmation callbacks ────────────────────────────────
+    /// Server confirmed an item update — replace the optimistic copy.
+    ItemUpdated {
+        item: Item,
+    },
+    /// Server confirmed a routine update — replace the optimistic copy.
+    RoutineUpdated {
+        routine: Routine,
+    },
+    /// Server confirmed a delete — model already updated optimistically.
+    DeleteConfirmed,
 
     // ── Error handling ──────────────────────────────────────────────
     LoadFailed(String),
@@ -161,6 +175,24 @@ impl App for Intrada {
                 crux_core::render::render()
             }
 
+            // ── Write-confirmation callbacks ─────────────────────────
+            Event::ItemUpdated { item } => {
+                if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
+                    *existing = item;
+                }
+                crux_core::render::render()
+            }
+            Event::RoutineUpdated { routine } => {
+                if let Some(existing) = model.routines.iter_mut().find(|r| r.id == routine.id) {
+                    *existing = routine;
+                }
+                crux_core::render::render()
+            }
+            Event::DeleteConfirmed => {
+                // Model was already updated optimistically; just re-render to confirm.
+                crux_core::render::render()
+            }
+
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
                 model.last_error = Some(msg);
@@ -182,21 +214,13 @@ impl App for Intrada {
 
         for item in &model.items {
             let practice = model.practice_summaries.get(&item.id).cloned();
-            let subtitle = match item.kind {
-                ItemKind::Piece => item.composer.clone().unwrap_or_default(),
-                ItemKind::Exercise => item
-                    .category
-                    .clone()
-                    .or_else(|| item.composer.clone())
-                    .unwrap_or_default(),
-            };
+            let subtitle = item.composer.clone().unwrap_or_default();
             let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
             items.push(LibraryItemView {
                 id: item.id.clone(),
-                item_type: item.kind.to_string(),
+                item_type: item.kind.clone(),
                 title: item.title.clone(),
                 subtitle,
-                category: item.category.clone(),
                 key: item.key.clone(),
                 tempo: item
                     .tempo
@@ -247,10 +271,10 @@ impl App for Intrada {
         };
 
         let session_status = match &model.session_status {
-            SessionStatus::Idle => "idle".to_string(),
-            SessionStatus::Building(_) => "building".to_string(),
-            SessionStatus::Active(_) => "active".to_string(),
-            SessionStatus::Summary(_) => "summary".to_string(),
+            SessionStatus::Idle => SessionStatusView::Idle,
+            SessionStatus::Building(_) => SessionStatusView::Building,
+            SessionStatus::Active(_) => SessionStatusView::Active,
+            SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
 
         // Compute analytics from session data.
@@ -374,7 +398,7 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
         .filter(|item| {
             // Filter by item type
             if let Some(ref item_type) = query.item_type {
-                if item.item_type != item_type.to_string() {
+                if item.item_type != *item_type {
                     return false;
                 }
             }
@@ -382,13 +406,6 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
             // Filter by key
             if let Some(ref key) = query.key {
                 if item.key.as_deref() != Some(key.as_str()) {
-                    return false;
-                }
-            }
-
-            // Filter by category (exercises only)
-            if let Some(ref category) = query.category {
-                if item.category.as_deref() != Some(category.as_str()) {
                     return false;
                 }
             }
@@ -415,11 +432,7 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
                     || item
                         .tags
                         .iter()
-                        .any(|t| t.to_lowercase().contains(&text_lower))
-                    || item
-                        .category
-                        .as_ref()
-                        .is_some_and(|c| c.to_lowercase().contains(&text_lower));
+                        .any(|t| t.to_lowercase().contains(&text_lower));
                 if !matches {
                     return false;
                 }
@@ -446,7 +459,6 @@ mod tests {
                 title: "Clair de Lune".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Debussy".to_string()),
-                category: None,
                 key: Some("Db Major".to_string()),
                 tempo: None,
                 notes: None,
@@ -459,7 +471,6 @@ mod tests {
                 title: "C Major Scale".to_string(),
                 kind: ItemKind::Exercise,
                 composer: None,
-                category: Some("Scales".to_string()),
                 key: Some("C Major".to_string()),
                 tempo: None,
                 notes: None,
@@ -499,7 +510,7 @@ mod tests {
         assert!(vm.items.is_empty());
         assert_eq!(vm.items.len(), 0);
         assert!(vm.error.is_none());
-        assert_eq!(vm.session_status, "idle");
+        assert_eq!(vm.session_status, SessionStatusView::Idle);
     }
 
     #[test]
@@ -513,7 +524,6 @@ mod tests {
                     title: "Sonata".to_string(),
                     kind: ItemKind::Piece,
                     composer: Some("Beethoven".to_string()),
-                    category: None,
                     key: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
@@ -529,7 +539,6 @@ mod tests {
                     title: "Scales".to_string(),
                     kind: ItemKind::Exercise,
                     composer: None,
-                    category: Some("Technique".to_string()),
                     key: None,
                     tempo: None,
                     notes: None,
@@ -547,7 +556,7 @@ mod tests {
 
         // Check piece
         let piece_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
-        assert_eq!(piece_view.item_type, "piece");
+        assert_eq!(piece_view.item_type, ItemKind::Piece);
         assert_eq!(piece_view.title, "Sonata");
         assert_eq!(piece_view.subtitle, "Beethoven");
         assert_eq!(piece_view.tempo, Some("Allegro (132 BPM)".to_string()));
@@ -555,10 +564,9 @@ mod tests {
 
         // Check exercise
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
-        assert_eq!(ex_view.item_type, "exercise");
+        assert_eq!(ex_view.item_type, ItemKind::Exercise);
         assert_eq!(ex_view.title, "Scales");
-        assert_eq!(ex_view.subtitle, "Technique");
-        assert_eq!(ex_view.category, Some("Technique".to_string()));
+        assert_eq!(ex_view.subtitle, "");
     }
 
     #[test]
@@ -586,7 +594,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -599,7 +606,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: Some("Technique".to_string()),
             key: None,
             tempo: None,
             notes: None,
@@ -622,7 +628,7 @@ mod tests {
         );
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].item_type, "piece");
+        assert_eq!(vm.items[0].item_type, ItemKind::Piece);
 
         // Clear filter
         let _cmd = app.update(Event::SetQuery(None), &mut model);
@@ -641,7 +647,6 @@ mod tests {
             title: "Moonlight Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -654,7 +659,6 @@ mod tests {
             title: "Clair de Lune".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -674,49 +678,6 @@ mod tests {
     }
 
     #[test]
-    fn test_set_query_filters_by_category() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        let now = chrono::Utc::now();
-
-        model.items.push(Item {
-            id: "e1".to_string(),
-            title: "C Scale".to_string(),
-            kind: ItemKind::Exercise,
-            composer: Some("Hanon".to_string()),
-            category: Some("Scales".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        });
-        model.items.push(Item {
-            id: "e2".to_string(),
-            title: "Chord Inversions".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("Chords".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        });
-
-        model.active_query = Some(ListQuery {
-            category: Some("Scales".to_string()),
-            ..Default::default()
-        });
-
-        let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "C Scale");
-    }
-
-    #[test]
     fn test_set_query_filters_by_tags() {
         let app = Intrada;
         let mut model = Model::test_default();
@@ -727,7 +688,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -740,7 +700,6 @@ mod tests {
             title: "Etude".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -771,7 +730,6 @@ mod tests {
                 title: "Ménuet en Sol".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Dvořák".to_string()),
-                category: None,
                 key: Some("ré mineur".to_string()),
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
@@ -813,7 +771,6 @@ mod tests {
                 title: format!("Piece {i}"),
                 kind: ItemKind::Piece,
                 composer: Some(format!("Composer {}", i % 100)),
-                category: None,
                 key: if i % 3 == 0 {
                     Some("C Major".to_string())
                 } else {
@@ -843,7 +800,6 @@ mod tests {
                 title: format!("Exercise {i}"),
                 kind: ItemKind::Exercise,
                 composer: None,
-                category: Some(format!("Category {}", i % 20)),
                 key: if i % 4 == 0 {
                     Some("G Major".to_string())
                 } else {
@@ -876,14 +832,14 @@ mod tests {
                         (
                             format!("p{item_idx:05}"),
                             format!("Piece {item_idx}"),
-                            "piece".to_string(),
+                            ItemKind::Piece,
                         )
                     } else {
                         let idx = item_idx - 5000;
                         (
                             format!("e{idx:05}"),
                             format!("Exercise {idx}"),
-                            "exercise".to_string(),
+                            ItemKind::Exercise,
                         )
                     };
                     SetlistEntry {
@@ -943,7 +899,6 @@ mod tests {
                 title: "New Piece".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("New Composer".to_string()),
-                category: None,
                 key: None,
                 tempo: None,
                 notes: None,
@@ -989,7 +944,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1002,7 +956,6 @@ mod tests {
             title: "Etude".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1029,7 +982,7 @@ mod tests {
                     id: "e1".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800, // 30 min
                     status: EntryStatus::Completed,
@@ -1047,7 +1000,7 @@ mod tests {
                     id: "e2".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 900, // 15 min
                     status: EntryStatus::Completed,
@@ -1098,7 +1051,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1124,7 +1076,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
@@ -1153,7 +1105,7 @@ mod tests {
                 id: "e2".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 900,
                 status: EntryStatus::Completed,
@@ -1196,7 +1148,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1222,7 +1173,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 1800,
                 status: EntryStatus::Completed,
@@ -1258,7 +1209,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1285,7 +1235,7 @@ mod tests {
                     id: "e1".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 0,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
@@ -1303,7 +1253,7 @@ mod tests {
                     id: "e2".to_string(),
                     item_id: "p1".to_string(),
                     item_title: "Sonata".to_string(),
-                    item_type: "piece".to_string(),
+                    item_type: ItemKind::Piece,
                     position: 1,
                     duration_secs: 1800,
                     status: EntryStatus::Completed,
@@ -1345,7 +1295,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1371,7 +1320,7 @@ mod tests {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
                 item_title: "Sonata".to_string(),
-                item_type: "piece".to_string(),
+                item_type: ItemKind::Piece,
                 position: 0,
                 duration_secs: 600,
                 status: EntryStatus::Skipped,

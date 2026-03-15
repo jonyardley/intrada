@@ -2,17 +2,15 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
-use intrada_core::ViewModel;
+use intrada_core::{SessionStatusView, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{PageHeading, SessionTimer};
-use intrada_web::types::SharedCore;
 
 /// Active session view: wraps the SessionTimer, redirects when session state changes.
 #[component]
 pub fn SessionActiveView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
-    let _core = expect_context::<SharedCore>();
     let focus_mode = expect_context::<FocusMode>();
     let navigate = use_navigate();
 
@@ -25,7 +23,7 @@ pub fn SessionActiveView() -> impl IntoView {
     // Redirect if no active session
     {
         let vm = view_model.get_untracked();
-        if vm.session_status != "active" {
+        if vm.session_status != SessionStatusView::Active {
             navigate(
                 "/sessions/new",
                 NavigateOptions {
@@ -39,8 +37,8 @@ pub fn SessionActiveView() -> impl IntoView {
     // Watch for state transitions
     Effect::new(move |_| {
         let vm = view_model.get();
-        match vm.session_status.as_str() {
-            "summary" => {
+        match vm.session_status {
+            SessionStatusView::Summary => {
                 navigate(
                     "/sessions/summary",
                     NavigateOptions {
@@ -49,7 +47,7 @@ pub fn SessionActiveView() -> impl IntoView {
                     },
                 );
             }
-            "idle" => {
+            SessionStatusView::Idle => {
                 navigate(
                     "/sessions",
                     NavigateOptions {

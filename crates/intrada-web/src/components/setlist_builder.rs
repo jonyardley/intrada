@@ -473,7 +473,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                         >
                                             <div class="flex items-center gap-2">
                                                 <span class="text-sm text-primary">{title}</span>
-                                                <span class="text-xs text-faint">{item_type}</span>
+                                                <span class="text-xs text-faint">{item_type.to_string()}</span>
                                             </div>
                                             <span class="text-xs font-medium text-accent-text">
                                                 "+ Add"

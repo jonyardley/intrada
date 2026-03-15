@@ -4,7 +4,9 @@ use chrono::NaiveDate;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use intrada_core::{Event, PracticeSessionView, SessionEvent, ViewModel};
+use intrada_core::{
+    CompletionStatus, EntryStatus, Event, PracticeSessionView, SessionEvent, ViewModel,
+};
 
 use crate::components::{
     Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList, WeekStrip,
@@ -233,7 +235,7 @@ pub(crate) fn SessionRow(
                                         <span class="text-xs text-muted">
                                             {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
                                         </span>
-                                        {if completion_status == "ended_early" {
+                                        {if completion_status == CompletionStatus::EndedEarly {
                                             Some(view! {
                                                 <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
                                                     "Ended Early"
@@ -267,10 +269,10 @@ pub(crate) fn SessionRow(
                             // Entry details with scores
                             <div class="mt-1 pt-2 space-y-1.5">
                                 {entries.into_iter().map(|entry| {
-                                    let (status_icon, status_color) = match entry.status.as_str() {
-                                        "completed" => (IconName::Check, "text-success-text"),
-                                        "skipped" => (IconName::Ban, "text-warning-text"),
-                                        _ => (IconName::Minus, "text-faint"),
+                                    let (status_icon, status_color) = match entry.status {
+                                        EntryStatus::Completed => (IconName::Check, "text-success-text"),
+                                        EntryStatus::Skipped => (IconName::Ban, "text-warning-text"),
+                                        EntryStatus::NotAttempted => (IconName::Minus, "text-faint"),
                                     };
                                     let entry_intention = entry.intention.clone();
                                     let entry_rep_target = entry.rep_target;
