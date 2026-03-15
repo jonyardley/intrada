@@ -234,6 +234,7 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 | `SkeletonCardList` | Generic list page skeleton (sessions, routines) |
 | `LineChart`     | SVG line chart for analytics              |
 | `TempoProgressChart` | Tempo progress visualization         |
+| `ProgressRing`  | Circular progress indicator               |
 | `LibraryItemCard` | Library item display card               |
 | `SessionTimer`  | Active session countdown timer            |
 | `SessionSummary`| End-of-session review with scoring        |
