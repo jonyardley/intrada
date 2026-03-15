@@ -81,43 +81,39 @@ typegen-check:
 # iOS
 # ─────────────────────────────────────────────
 
-# Build Rust for iOS (device + simulator), generate Swift types, regenerate Xcode project
+# Full iOS build: Rust (device debug), types, UniFFI bindings, Xcode project
+# This is the main command for day-to-day iOS development.
 ios:
-    bash scripts/build-ios.sh
+    bash scripts/build-ios.sh --device --debug
     cd ios && xcodegen generate
 
-# Build for device only + regenerate project
-ios-device:
+# Full build + open Xcode
+ios-dev: ios
+    open ios/Intrada.xcodeproj
+
+# Release build for device (CI/TestFlight)
+ios-release:
     bash scripts/build-ios.sh --device
     cd ios && xcodegen generate
 
-# Build for simulator only + regenerate project
-ios-sim:
-    bash scripts/build-ios.sh --sim
+# Release build for device + simulator (CI)
+ios-release-all:
+    bash scripts/build-ios.sh
     cd ios && xcodegen generate
 
-# Generate Swift types only (no Rust cross-compilation) + regenerate project
+# Simulator debug build
+ios-sim:
+    bash scripts/build-ios.sh --sim --debug
+    cd ios && xcodegen generate
+
+# Generate Swift types + UniFFI bindings only (no Rust cross-compilation)
 ios-types:
     bash scripts/build-ios.sh --types
     cd ios && xcodegen generate
 
-# Debug build for simulator (faster iteration)
-ios-debug:
-    bash scripts/build-ios.sh --sim --debug
-    cd ios && xcodegen generate
-
-# Debug build for device
-ios-debug-device:
-    bash scripts/build-ios.sh --device --debug
-    cd ios && xcodegen generate
-
-# Regenerate Xcode project from project.yml
+# Regenerate Xcode project from project.yml (no Rust build)
 ios-project:
     cd ios && xcodegen generate
-
-# Full build + regenerate project + open Xcode
-ios-dev: ios
-    open ios/Intrada.xcodeproj
 
 # Build for simulator, regenerate project, and run in simulator
 ios-run: ios-sim
@@ -137,7 +133,7 @@ ios-run: ios-sim
         echo "Note: Launch from Xcode for first run"
 
 # Build for device without code signing (CI-style check)
-ios-check: ios-device
+ios-check: ios-release
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
