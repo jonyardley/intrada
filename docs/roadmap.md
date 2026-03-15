@@ -33,6 +33,31 @@ any of them without waiting for the others.
 | DB composite indexes (#146) and request timing middleware (#147) | Done |
 | Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
 | Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
+| Practice consistency calendar (#65) — week strip, comeback framing, session dots | Done |
+| iOS native shell (#187) — Crux/UniFFI/BCS bridge, SwiftUI, CI pipeline | Done |
+| iOS cleanup (#202) — removed dead code and legacy networking layer | Done |
+| iOS design system (#194) — tokens, shared components, modifiers, navigation | Done |
+
+---
+
+## Current Focus: iOS Feature Parity
+
+Building out the iOS app as the primary user channel. SwiftUI shell using
+the shared Crux core via UniFFI/BCS bridge. Shell, CI, and design system are
+complete — now building out feature views to reach parity with the web app.
+
+Build order follows the user journey: library first (need items to practise),
+then sessions (the core loop), then routines and analytics. After iOS parity,
+cross-platform features (Crux core + API) benefit both shells simultaneously.
+
+| # | Feature | Size | Depends on |
+|---|---------|------|------------|
+| 195 | **Library** — browse, search & manage repertoire | M | — |
+| 196 | **Session builder** — construct practice setlists | M | #195 |
+| 197 | **Active session** — focus mode, timer & scoring | L | #196 |
+| 198 | **Session summary & history** | M | #197 |
+| 199 | **Routines** — create, edit & manage practice routines | M | #195 |
+| 201 | **Analytics dashboard** — practice insights & visualisation | M | #198 |
 
 ---
 
@@ -75,19 +100,15 @@ goals, and eventually letting the app decide for you.
 Instrument is out. Timer running. The app stays out of the way and supports
 focus, not admin.
 
-#### Now (next 4 weeks)
-
-| # | Feature | Size |
-|---|---------|------|
-| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S |
-
 #### Next (4-12 weeks)
 
 | # | Feature | Size |
 |---|---------|------|
+| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S |
 | 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S |
 | 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S |
 | 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M |
+| 212 | **Short session presets** — 10/15/20/30 minute options | S |
 
 #### Later (12+ weeks)
 
@@ -102,12 +123,6 @@ focus, not admin.
 
 After the session. Analytics, insights, visualisation. Evidence that the practice
 is actually working.
-
-#### Now (next 4 weeks)
-
-| # | Feature | Size |
-|---|---------|------|
-| 65 | **Practice consistency calendar** — comeback framing: "4 of the last 7 days." Celebrate returns, never shame gaps. | M |
 
 #### Next (4-12 weeks)
 
@@ -137,27 +152,7 @@ These don't belong to a single pillar — they support all three.
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
 | 148 | **Use mutate response** — stop re-fetching all data after writes, use API response directly | Next | architecture |
 | 149 | **Pagination** — add limit/offset to list endpoints | Next | architecture |
-| — | **Remove category field** — migrate exercise categories to tags | Now | architecture, pillar:plan |
-
----
-
-### iOS — Native App
-
-Building out the iOS app as the primary user channel. SwiftUI shell using
-the shared Crux core via UniFFI/BCS bridge.
-
-#### Now (next 4 weeks)
-
-| # | Feature | Size |
-|---|---------|------|
-| 202 | **iOS cleanup** — remove dead code and legacy networking layer | S |
-| 194 | **Design system foundation** — tokens, shared components & navigation | M |
-| 195 | **Library** — browse, search & manage repertoire | M |
-| 196 | **Session builder** — construct practice setlists | M |
-| 197 | **Active session** — focus mode, timer & scoring | L |
-| 198 | **Session summary & history** | M |
-| 199 | **Routines** — create, edit & manage practice routines | M |
-| 201 | **Analytics dashboard** — practice insights & visualisation | M |
+| 211 | **Remove category field** — migrate exercise categories to tags | Now | architecture, pillar:plan |
 
 ---
 
@@ -201,9 +196,9 @@ Priority field (P0/P1/P2) ranks items.
 2. **Offline-first architecture.** Currently API-dependent. What syncs? When?
    Gets harder to retrofit the longer we wait.
 
-3. **iOS native vs web-first.** Web shell is fine for Plan and Track pillars.
-   For Practice (audio recording, metronome), native APIs would be significantly
-   better. Decision point: before audio recording (#69).
+3. ~~**iOS native vs web-first.**~~ **Decided: iOS is the primary channel.**
+   The native shell is built and feature views are in progress (#195–#201).
+   Cross-platform features (Crux core, API) benefit both shells.
 
 4. **Scoring + tempo coupling.** Should every mastery rating require a tempo?
    Or is tempo optional (only for items with tempo targets)?
