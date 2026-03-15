@@ -1,13 +1,11 @@
-use chrono::{DateTime, Utc};
-use crux_core::Command;
-use serde::{Deserialize, Serialize};
-use serde_repr::{Deserialize_repr, Serialize_repr};
-
 use crate::app::{AppEffect, Effect, Event};
 use crate::domain::item::{Item, ItemKind};
 use crate::error::LibraryError;
 use crate::model::Model;
 use crate::validation;
+use chrono::{DateTime, Utc};
+use crux_core::Command;
+use serde::{Deserialize, Serialize};
 
 // ── Enums ──────────────────────────────────────────────────────────────
 
@@ -40,14 +38,14 @@ pub enum CompletionStatus {
 /// Values are deltas: `1` = count + 1 (success), `-1` = count − 1 (missed).
 /// Enables analytics: sum for net progress, running total for sparkline charts,
 /// count of `-1`s for total misses, longest streak of `1`s for best run.
-#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[repr(i8)]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum RepAction {
     /// Failed rep — count decremented.
-    Missed = -1,
+    Missed,
     /// Successful rep — count incremented.
-    Success = 1,
+    Success,
 }
 
 // ── Domain Types ───────────────────────────────────────────────────────
