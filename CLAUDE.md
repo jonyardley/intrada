@@ -98,22 +98,35 @@ just ios-swift-check       # quick Swift-only build validation (~30s, no Rust bu
 just ios-preview-check     # validate SwiftUI previews compile
 ```
 
-### iOS build validation (IMPORTANT — always do this after Swift changes)
+### iOS validation (IMPORTANT — always do this after Swift changes)
 
-After modifying **any** Swift file in `ios/`, run `just ios-swift-check` to verify
-the project still compiles. This catches argument ordering errors, missing imports,
-type mismatches, and other Swift compiler errors without the 5-minute Rust
-cross-compilation overhead.
+iOS has three levels of validation. **Always run level 1.** Run level 2 when
+changing the app entry point, environment injection, or navigation structure.
+
+| Level | Command | Time | Catches |
+|-------|---------|------|---------|
+| 1. Compile | `just ios-swift-check` | ~30s | Argument ordering, missing imports, type errors |
+| 2. Smoke test | `just ios-smoke-test` | ~15s | Runtime crashes: missing `@Environment`, bad modifier ordering, crash-on-launch |
+| 3. Preview | `just ios-preview-check` | ~30s | Broken `#Preview` providers |
 
 ```bash
-just ios-swift-check       # ~30s — validates all Swift compiles for simulator
-just ios-preview-check     # same + validates #Preview providers
+just ios-swift-check       # ALWAYS after editing any .swift file
+just ios-smoke-test        # after changing IntradaApp, environment, navigation
+just ios-preview-check     # after changing #Preview blocks
 ```
 
-**When to run:**
-- After editing any `.swift` file in `ios/`
-- After regenerating types with `just typegen`
-- Before committing iOS changes
+**When to run level 2 (smoke test):**
+- After changing `IntradaApp.swift` or `ContentRouter`
+- After adding/moving `.environment()` or `.toastOverlay()` modifiers
+- After changing navigation structure (`MainTabView`, tab routing)
+- After adding new `@Environment` reads in views
+- Requires a prior `just ios-sim` build (Rust cross-compilation for simulator)
+
+**Common runtime crash patterns to watch for:**
+- `.toastOverlay()` or other modifiers that read `@Environment` must be applied
+  **before** the `.environment()` that injects the value (SwiftUI reads environment
+  from parent, not from sibling modifiers in the same chain)
+- Every `@Environment(X.self)` must have a matching `.environment(x)` ancestor
 
 ## Architecture Patterns
 
