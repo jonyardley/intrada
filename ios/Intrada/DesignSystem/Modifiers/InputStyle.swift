@@ -52,5 +52,5 @@ extension View {
             .inputStyle(hasError: true)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

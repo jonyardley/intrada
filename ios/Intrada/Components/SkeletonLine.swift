@@ -10,19 +10,13 @@ struct SkeletonLine: View {
     var width: CGFloat? = nil
     var height: CGFloat = 16
 
-    @State private var isAnimating = false
-
     var body: some View {
         RoundedRectangle(cornerRadius: 4)
             .fill(Color.surfaceSecondary)
             .frame(width: width, height: height)
             .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
-            .opacity(isAnimating ? 0.3 : 1.0)
-            .animation(
-                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
-                value: isAnimating
-            )
-            .onAppear { isAnimating = true }
+            .pulsing()
+            .accessibilityHidden(true)
     }
 }
 
@@ -34,5 +28,5 @@ struct SkeletonLine: View {
         SkeletonLine(width: 80, height: 10)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

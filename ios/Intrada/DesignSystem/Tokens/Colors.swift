@@ -105,6 +105,11 @@ extension Color {
     /// Info surface (10% opacity)
     static let infoSurface = Color(red: 0.000, green: 0.565, blue: 0.815, opacity: 0.10)
 
+    // MARK: - Backgrounds
+
+    /// App background — oklch(13.4% 0.02 261)
+    static let backgroundApp = Color(red: 0.05, green: 0.05, blue: 0.10)
+
     // MARK: - Surfaces
 
     /// Glassmorphism cards (white @ 12%)
@@ -160,6 +165,32 @@ extension Color {
 
     /// Progress complete (success)
     static let progressComplete = Color(red: 0.000, green: 0.634, blue: 0.374)
+
+    // MARK: - Charts
+
+    /// Chart line stroke — warm indigo-400
+    static let chartLine = Color(red: 0.454, green: 0.525, blue: 0.975)
+
+    /// Chart area fill — warm indigo-400 @ 15%
+    static let chartArea = Color(red: 0.454, green: 0.525, blue: 0.975, opacity: 0.15)
+
+    /// Chart point stroke — indigo-950
+    static let chartPointStroke = Color(red: 0.117, green: 0.103, blue: 0.301)
+
+    /// Chart grid lines — white @ 10%
+    static let chartGrid = Color.white.opacity(0.10)
+
+    /// Chart mid grid — white @ 5%
+    static let chartGridMid = Color.white.opacity(0.05)
+
+    /// Chart axis labels — gray-400 @ 70%
+    static let chartLabel = Color(red: 0.565, green: 0.632, blue: 0.725, opacity: 0.70)
+
+    /// Chart secondary series — warm gold @ 80%
+    static let chartSecondary = Color(red: 0.781, green: 0.581, blue: 0.236, opacity: 0.80)
+
+    /// Chart bar fills — accent @ 40%
+    static let chartBar = Color(red: 0.271, green: 0.265, blue: 0.915, opacity: 0.40)
 }
 
 // MARK: - Preview
@@ -214,7 +245,7 @@ extension Color {
         }
         .padding()
     }
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }
 
 private func colourSwatch(_ label: String, _ colour: Color) -> some View {

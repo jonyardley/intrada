@@ -9,18 +9,12 @@ struct SkeletonBlock: View {
 
     var height: CGFloat = 96
 
-    @State private var isAnimating = false
-
     var body: some View {
         RoundedRectangle(cornerRadius: DesignRadius.card)
             .fill(Color.surfaceSecondary)
             .frame(height: height)
-            .opacity(isAnimating ? 0.3 : 1.0)
-            .animation(
-                .easeInOut(duration: 1.0).repeatForever(autoreverses: true),
-                value: isAnimating
-            )
-            .onAppear { isAnimating = true }
+            .pulsing()
+            .accessibilityHidden(true)
     }
 }
 
@@ -31,5 +25,5 @@ struct SkeletonBlock: View {
         SkeletonBlock(height: 60)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

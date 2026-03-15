@@ -16,7 +16,7 @@ struct TextAreaView: View {
     var error: String? = nil
     var minHeight: CGFloat = 100
 
-    private var hasError: Bool { error != nil && !(error?.isEmpty ?? true) }
+    private var hasError: Bool { error.hasContent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -74,5 +74,5 @@ struct TextAreaView: View {
         )
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

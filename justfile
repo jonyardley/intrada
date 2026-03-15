@@ -153,6 +153,10 @@ ios-swift-check:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
+    if ! command -v xcodegen &>/dev/null; then
+        echo "❌ xcodegen not installed (brew install xcodegen)" >&2
+        exit 1
+    fi
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
     xcodebuild build \
         -project Intrada.xcodeproj \
@@ -170,6 +174,10 @@ ios-preview-check:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
+    if ! command -v xcodegen &>/dev/null; then
+        echo "❌ xcodegen not installed (brew install xcodegen)" >&2
+        exit 1
+    fi
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
     xcodebuild build \
         -project Intrada.xcodeproj \

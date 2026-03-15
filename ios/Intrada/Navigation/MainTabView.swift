@@ -122,7 +122,7 @@ private struct PlaceholderView: View {
                 .foregroundStyle(Color.textFaint)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.clear)
+        .background(Color.backgroundApp)
         .navigationTitle(tab.rawValue)
     }
 }

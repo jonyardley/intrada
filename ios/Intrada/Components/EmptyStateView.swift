@@ -52,5 +52,5 @@ struct EmptyStateView: View {
             message: "Start practising to see your sessions here."
         )
     }
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

@@ -40,5 +40,5 @@ struct PageHeading: View {
         )
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

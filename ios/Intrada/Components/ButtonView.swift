@@ -88,6 +88,9 @@ struct ButtonView: View {
         }
         .disabled(disabled || loading)
         .opacity(disabled ? 0.5 : 1.0)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(loading ? "Loading" : disabled ? "Disabled" : "")
     }
 }
 
@@ -101,5 +104,5 @@ struct ButtonView: View {
         ButtonView("Disabled", variant: .primary, disabled: true) { }
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

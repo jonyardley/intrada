@@ -1,54 +1,59 @@
 import SwiftUI
 
+// MARK: - ItemKind Display Extensions
+
+extension ItemKind {
+
+    /// Human-readable display text for the badge.
+    var displayText: String {
+        switch self {
+        case .piece: "Piece"
+        case .exercise: "Exercise"
+        }
+    }
+
+    /// Badge background colour for this item type.
+    var badgeBackground: Color {
+        switch self {
+        case .piece: Color.badgePieceBg
+        case .exercise: Color.badgeExerciseBg
+        }
+    }
+
+    /// Badge text colour for this item type.
+    var badgeTextColor: Color {
+        switch self {
+        case .piece: Color.badgePieceText
+        case .exercise: Color.badgeExerciseText
+        }
+    }
+}
+
 /// Piece/Exercise type pill matching the web's `TypeBadge` component.
 ///
-///     TypeBadge(itemType: "piece")
-///     TypeBadge(itemType: "exercise")
+///     TypeBadge(kind: .piece)
+///     TypeBadge(kind: .exercise)
 struct TypeBadge: View {
 
-    let itemType: String
-
-    private var backgroundColor: Color {
-        switch itemType.lowercased() {
-        case "piece": Color.badgePieceBg
-        case "exercise": Color.badgeExerciseBg
-        default: Color.surfacePrimary
-        }
-    }
-
-    private var textColor: Color {
-        switch itemType.lowercased() {
-        case "piece": Color.badgePieceText
-        case "exercise": Color.badgeExerciseText
-        default: Color.textSecondary
-        }
-    }
-
-    private var displayText: String {
-        switch itemType.lowercased() {
-        case "piece": "Piece"
-        case "exercise": "Exercise"
-        default: itemType
-        }
-    }
+    let kind: ItemKind
 
     var body: some View {
-        Text(displayText)
+        Text(kind.displayText)
             .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(textColor)
+            .foregroundStyle(kind.badgeTextColor)
             .padding(.horizontal, 12)
             .padding(.vertical, 4)
-            .background(backgroundColor)
+            .background(kind.badgeBackground)
             .clipShape(RoundedRectangle(cornerRadius: DesignRadius.badge))
+            .accessibilityLabel("\(kind.displayText) type")
     }
 }
 
 #Preview("TypeBadge") {
     HStack(spacing: 12) {
-        TypeBadge(itemType: "piece")
-        TypeBadge(itemType: "exercise")
-        TypeBadge(itemType: "unknown")
+        TypeBadge(kind: .piece)
+        TypeBadge(kind: .exercise)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

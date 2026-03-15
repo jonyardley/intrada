@@ -116,5 +116,5 @@ extension View {
     }
     .padding()
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

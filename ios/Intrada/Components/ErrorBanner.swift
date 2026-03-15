@@ -27,11 +27,11 @@ struct ErrorBanner: View {
         }
         .padding(Spacing.card)
         .background(Color.dangerSurface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignRadius.badge))
         .overlay(
             RoundedRectangle(cornerRadius: DesignRadius.badge)
                 .stroke(Color.dangerText.opacity(0.20), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: DesignRadius.badge))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Error: \(message)")
         .accessibilityAddTraits(.isStaticText)
@@ -47,5 +47,5 @@ struct ErrorBanner: View {
         ErrorBanner(message: "Network connection lost")
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

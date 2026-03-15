@@ -2,20 +2,26 @@ import SwiftUI
 
 // MARK: - Design Tokens: Corner Radius
 //
-// Matches the web's radius custom properties.
+// Maps to the web's radius custom properties.
+// iOS values are intentionally scaled up from the web (Tailwind v4 defaults:
+// xl=12px, lg=8px, md=6px) to feel native on larger touch targets and
+// match Apple HIG corner radius conventions.
 
 enum DesignRadius {
-    /// Card corners — 16pt (web: var(--radius-xl))
+    /// Card corners — 16pt (web: var(--radius-xl) = 12px, scaled +4 for iOS)
     static let card: CGFloat = 16
 
-    /// Button corners — 12pt (web: var(--radius-lg))
+    /// Button corners — 12pt (web: var(--radius-lg) = 8px, scaled +4 for iOS)
     static let button: CGFloat = 12
 
-    /// Input field corners — 12pt (web: var(--radius-lg))
+    /// Input field corners — 12pt (web: var(--radius-lg) = 8px, scaled +4 for iOS)
     static let input: CGFloat = 12
 
-    /// Badge/pill corners — 8pt (web: var(--radius-md))
+    /// Badge corners — 8pt (web: var(--radius-md) = 6px, scaled +2 for iOS)
     static let badge: CGFloat = 8
+
+    /// Fully rounded pill — for TypeTabs, tags (web: 9999px)
+    static let pill: CGFloat = 9999
 }
 
 // MARK: - Preview
@@ -28,7 +34,7 @@ enum DesignRadius {
         radiusSample("Badge", DesignRadius.badge)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }
 
 private func radiusSample(_ label: String, _ radius: CGFloat) -> some View {

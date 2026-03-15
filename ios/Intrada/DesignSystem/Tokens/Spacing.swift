@@ -33,7 +33,7 @@ enum Spacing {
         spacingRow("Section Large", Spacing.sectionLarge)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }
 
 private func spacingRow(_ label: String, _ value: CGFloat) -> some View {

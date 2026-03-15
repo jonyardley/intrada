@@ -26,5 +26,5 @@ struct FormFieldError: View {
         FormFieldError(message: nil)
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }

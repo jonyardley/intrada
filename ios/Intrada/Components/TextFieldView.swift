@@ -22,7 +22,7 @@ struct TextFieldView: View {
     var hint: String? = nil
     var error: String? = nil
 
-    private var hasError: Bool { error != nil && !(error?.isEmpty ?? true) }
+    private var hasError: Bool { error.hasContent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -74,5 +74,5 @@ struct TextFieldView: View {
         )
     }
     .padding()
-    .background(Color(red: 0.05, green: 0.05, blue: 0.10))
+    .background(Color.backgroundApp)
 }
