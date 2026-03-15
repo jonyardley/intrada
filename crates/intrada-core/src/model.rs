@@ -83,7 +83,6 @@ pub struct LibraryItemView {
     pub item_type: String,
     pub title: String,
     pub subtitle: String,
-    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<String>,
     pub notes: Option<String>,

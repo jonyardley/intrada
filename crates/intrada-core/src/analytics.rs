@@ -1180,7 +1180,6 @@ mod tests {
             title: title.to_string(),
             kind: crate::domain::item::ItemKind::Piece,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,

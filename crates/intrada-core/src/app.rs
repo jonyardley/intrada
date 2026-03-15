@@ -10,7 +10,9 @@ use crux_http::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
-use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
+#[cfg(test)]
+use crate::domain::item::ItemKind;
+use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
@@ -59,6 +61,18 @@ pub enum Event {
     RoutinesLoaded {
         routines: Vec<Routine>,
     },
+
+    // ── Write-confirmation callbacks ────────────────────────────────
+    /// Server confirmed an item update — replace the optimistic copy.
+    ItemUpdated {
+        item: Item,
+    },
+    /// Server confirmed a routine update — replace the optimistic copy.
+    RoutineUpdated {
+        routine: Routine,
+    },
+    /// Server confirmed a delete — model already updated optimistically.
+    DeleteConfirmed,
 
     // ── Error handling ──────────────────────────────────────────────
     LoadFailed(String),
@@ -161,6 +175,24 @@ impl App for Intrada {
                 crux_core::render::render()
             }
 
+            // ── Write-confirmation callbacks ─────────────────────────
+            Event::ItemUpdated { item } => {
+                if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
+                    *existing = item;
+                }
+                crux_core::render::render()
+            }
+            Event::RoutineUpdated { routine } => {
+                if let Some(existing) = model.routines.iter_mut().find(|r| r.id == routine.id) {
+                    *existing = routine;
+                }
+                crux_core::render::render()
+            }
+            Event::DeleteConfirmed => {
+                // Model was already updated optimistically; just re-render to confirm.
+                crux_core::render::render()
+            }
+
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
                 model.last_error = Some(msg);
@@ -182,21 +214,13 @@ impl App for Intrada {
 
         for item in &model.items {
             let practice = model.practice_summaries.get(&item.id).cloned();
-            let subtitle = match item.kind {
-                ItemKind::Piece => item.composer.clone().unwrap_or_default(),
-                ItemKind::Exercise => item
-                    .category
-                    .clone()
-                    .or_else(|| item.composer.clone())
-                    .unwrap_or_default(),
-            };
+            let subtitle = item.composer.clone().unwrap_or_default();
             let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.to_string(),
                 title: item.title.clone(),
                 subtitle,
-                category: item.category.clone(),
                 key: item.key.clone(),
                 tempo: item
                     .tempo
@@ -387,12 +411,6 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
             }
 
             // Filter by category (exercises only)
-            if let Some(ref category) = query.category {
-                if item.category.as_deref() != Some(category.as_str()) {
-                    return false;
-                }
-            }
-
             // Filter by tags (all must match, case-insensitive)
             if !query.tags.is_empty() {
                 for tag in &query.tags {
@@ -415,11 +433,7 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
                     || item
                         .tags
                         .iter()
-                        .any(|t| t.to_lowercase().contains(&text_lower))
-                    || item
-                        .category
-                        .as_ref()
-                        .is_some_and(|c| c.to_lowercase().contains(&text_lower));
+                        .any(|t| t.to_lowercase().contains(&text_lower));
                 if !matches {
                     return false;
                 }
@@ -446,7 +460,6 @@ mod tests {
                 title: "Clair de Lune".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Debussy".to_string()),
-                category: None,
                 key: Some("Db Major".to_string()),
                 tempo: None,
                 notes: None,
@@ -459,7 +472,6 @@ mod tests {
                 title: "C Major Scale".to_string(),
                 kind: ItemKind::Exercise,
                 composer: None,
-                category: Some("Scales".to_string()),
                 key: Some("C Major".to_string()),
                 tempo: None,
                 notes: None,
@@ -513,7 +525,6 @@ mod tests {
                     title: "Sonata".to_string(),
                     kind: ItemKind::Piece,
                     composer: Some("Beethoven".to_string()),
-                    category: None,
                     key: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
@@ -529,7 +540,6 @@ mod tests {
                     title: "Scales".to_string(),
                     kind: ItemKind::Exercise,
                     composer: None,
-                    category: Some("Technique".to_string()),
                     key: None,
                     tempo: None,
                     notes: None,
@@ -557,8 +567,7 @@ mod tests {
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
         assert_eq!(ex_view.item_type, "exercise");
         assert_eq!(ex_view.title, "Scales");
-        assert_eq!(ex_view.subtitle, "Technique");
-        assert_eq!(ex_view.category, Some("Technique".to_string()));
+        assert_eq!(ex_view.subtitle, "");
     }
 
     #[test]
@@ -586,7 +595,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -599,7 +607,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: Some("Technique".to_string()),
             key: None,
             tempo: None,
             notes: None,
@@ -641,7 +648,6 @@ mod tests {
             title: "Moonlight Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -654,7 +660,6 @@ mod tests {
             title: "Clair de Lune".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -674,49 +679,6 @@ mod tests {
     }
 
     #[test]
-    fn test_set_query_filters_by_category() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        let now = chrono::Utc::now();
-
-        model.items.push(Item {
-            id: "e1".to_string(),
-            title: "C Scale".to_string(),
-            kind: ItemKind::Exercise,
-            composer: Some("Hanon".to_string()),
-            category: Some("Scales".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        });
-        model.items.push(Item {
-            id: "e2".to_string(),
-            title: "Chord Inversions".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("Chords".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            created_at: now,
-            updated_at: now,
-        });
-
-        model.active_query = Some(ListQuery {
-            category: Some("Scales".to_string()),
-            ..Default::default()
-        });
-
-        let vm = app.view(&model);
-        assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.items[0].title, "C Scale");
-    }
-
-    #[test]
     fn test_set_query_filters_by_tags() {
         let app = Intrada;
         let mut model = Model::test_default();
@@ -727,7 +689,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -740,7 +701,6 @@ mod tests {
             title: "Etude".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -771,7 +731,6 @@ mod tests {
                 title: "Ménuet en Sol".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("Dvořák".to_string()),
-                category: None,
                 key: Some("ré mineur".to_string()),
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
@@ -813,7 +772,6 @@ mod tests {
                 title: format!("Piece {i}"),
                 kind: ItemKind::Piece,
                 composer: Some(format!("Composer {}", i % 100)),
-                category: None,
                 key: if i % 3 == 0 {
                     Some("C Major".to_string())
                 } else {
@@ -843,7 +801,6 @@ mod tests {
                 title: format!("Exercise {i}"),
                 kind: ItemKind::Exercise,
                 composer: None,
-                category: Some(format!("Category {}", i % 20)),
                 key: if i % 4 == 0 {
                     Some("G Major".to_string())
                 } else {
@@ -943,7 +900,6 @@ mod tests {
                 title: "New Piece".to_string(),
                 kind: ItemKind::Piece,
                 composer: Some("New Composer".to_string()),
-                category: None,
                 key: None,
                 tempo: None,
                 notes: None,
@@ -989,7 +945,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1002,7 +957,6 @@ mod tests {
             title: "Etude".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1098,7 +1052,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1196,7 +1149,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1258,7 +1210,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1345,7 +1296,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,

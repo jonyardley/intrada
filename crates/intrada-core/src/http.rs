@@ -60,7 +60,6 @@ pub fn create_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         title: item.title.clone(),
         kind: item.kind.clone(),
         composer: item.composer.clone(),
-        category: item.category.clone(),
         key: item.key.clone(),
         tempo: item.tempo.clone(),
         notes: item.notes.clone(),
@@ -80,7 +79,6 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
     let update = UpdateItem {
         title: Some(item.title.clone()),
         composer: Some(item.composer.clone()),
-        category: Some(item.category.clone()),
         key: Some(item.key.clone()),
         tempo: Some(item.tempo.clone()),
         notes: Some(item.notes.clone()),
@@ -89,9 +87,16 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
     Http::put(format!("{api_base_url}/api/items/{}", item.id))
         .body_json(&update)
         .expect("serialize UpdateItem")
+        .expect_json::<Item>()
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchItems,
+            Ok(response) => {
+                let item = response
+                    .body()
+                    .cloned()
+                    .unwrap_or_else(|| panic!("update_item: server returned no body"));
+                Event::ItemUpdated { item }
+            }
             Err(e) => Event::LoadFailed(format!("Failed to update item: {e}")),
         })
 }
@@ -100,7 +105,7 @@ pub fn delete_item(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::delete(format!("{api_base_url}/api/items/{id}"))
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchItems,
+            Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete item: {e}")),
         })
 }
@@ -122,7 +127,7 @@ pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::delete(format!("{api_base_url}/api/sessions/{id}"))
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchSessions,
+            Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete session: {e}")),
         })
 }
@@ -148,13 +153,22 @@ pub fn update_routine(
     api_base_url: &str,
     routine: &crate::domain::routine::Routine,
 ) -> Command<Effect, Event> {
+    use crate::domain::routine::Routine;
+
     let update = UpdateRoutineRequest::from_routine(routine);
     Http::put(format!("{api_base_url}/api/routines/{}", routine.id))
         .body_json(&update)
         .expect("serialize UpdateRoutineRequest")
+        .expect_json::<Routine>()
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchRoutines,
+            Ok(response) => {
+                let routine = response
+                    .body()
+                    .cloned()
+                    .unwrap_or_else(|| panic!("update_routine: server returned no body"));
+                Event::RoutineUpdated { routine }
+            }
             Err(e) => Event::LoadFailed(format!("Failed to update routine: {e}")),
         })
 }
@@ -163,7 +177,7 @@ pub fn delete_routine(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::delete(format!("{api_base_url}/api/routines/{id}"))
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchRoutines,
+            Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete routine: {e}")),
         })
 }

@@ -7,7 +7,6 @@ use crate::error::LibraryError;
 /// Validation limits shared across shells (web, CLI).
 pub const MAX_TITLE: usize = 500;
 pub const MAX_COMPOSER: usize = 200;
-pub const MAX_CATEGORY: usize = 100;
 pub const MAX_NOTES: usize = 5000;
 pub const MAX_INTENTION: usize = 500;
 pub const MAX_TAG: usize = 100;
@@ -69,14 +68,6 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
             }
         }
     }
-    if let Some(ref category) = input.category {
-        if category.is_empty() || category.len() > MAX_CATEGORY {
-            return Err(LibraryError::Validation {
-                field: "category".to_string(),
-                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
-            });
-        }
-    }
     if let Some(ref notes) = input.notes {
         if notes.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
@@ -112,14 +103,6 @@ pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
             return Err(LibraryError::Validation {
                 field: "composer".to_string(),
                 message: format!("Composer must be between 1 and {MAX_COMPOSER} characters"),
-            });
-        }
-    }
-    if let Some(Some(ref category)) = input.category {
-        if category.is_empty() || category.len() > MAX_CATEGORY {
-            return Err(LibraryError::Validation {
-                field: "category".to_string(),
-                message: format!("Category must be between 1 and {MAX_CATEGORY} characters"),
             });
         }
     }
@@ -401,7 +384,6 @@ mod tests {
             title: "Moonlight Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: Some("C# minor".to_string()),
             tempo: Some(Tempo {
                 marking: Some("Adagio sostenuto".to_string()),
@@ -419,7 +401,6 @@ mod tests {
             title: "".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -441,7 +422,6 @@ mod tests {
             title: "x".repeat(501),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -463,7 +443,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -485,7 +464,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -507,7 +485,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("x".repeat(201)),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -529,7 +506,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
@@ -551,7 +527,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5000)),
@@ -566,7 +541,6 @@ mod tests {
             title: "A".to_string(),
             kind: ItemKind::Piece,
             composer: Some("B".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -583,7 +557,6 @@ mod tests {
             title: "Scale Practice".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("Hanon".to_string()),
-            category: Some("Scales".to_string()),
             key: Some("C major".to_string()),
             tempo: Some(Tempo {
                 marking: Some("Moderato".to_string()),
@@ -601,7 +574,6 @@ mod tests {
             title: "".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -623,7 +595,6 @@ mod tests {
             title: "x".repeat(501),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -645,7 +616,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -667,7 +637,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: Some("x".repeat(201)),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -684,56 +653,11 @@ mod tests {
     }
 
     #[test]
-    fn test_create_exercise_empty_category() {
-        let input = CreateItem {
-            title: "Scales".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("".to_string()),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        };
-        let err = validate_create_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_create_exercise_category_too_long() {
-        let input = CreateItem {
-            title: "Scales".to_string(),
-            kind: ItemKind::Exercise,
-            composer: None,
-            category: Some("x".repeat(101)),
-            key: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-        };
-        let err = validate_create_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
     fn test_create_exercise_notes_too_long() {
         let input = CreateItem {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: Some("x".repeat(5001)),
@@ -755,7 +679,6 @@ mod tests {
             title: "Warm up".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -993,31 +916,6 @@ mod tests {
     }
 
     #[test]
-    fn test_update_item_empty_category() {
-        let input = UpdateItem {
-            category: Some(Some("".to_string())),
-            ..Default::default()
-        };
-        let err = validate_update_item(&input).unwrap_err();
-        match err {
-            LibraryError::Validation { field, message } => {
-                assert_eq!(field, "category");
-                assert_eq!(message, "Category must be between 1 and 100 characters");
-            }
-            _ => panic!("Expected Validation error"),
-        }
-    }
-
-    #[test]
-    fn test_update_item_clear_category() {
-        let input = UpdateItem {
-            category: Some(None),
-            ..Default::default()
-        };
-        assert!(validate_update_item(&input).is_ok());
-    }
-
-    #[test]
     fn test_update_item_notes_too_long() {
         let input = UpdateItem {
             notes: Some(Some("x".repeat(5001))),
@@ -1092,7 +990,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
-            category: None,
             key: None,
             tempo: Some(Tempo {
                 marking: Some("x".repeat(101)),
@@ -1117,7 +1014,6 @@ mod tests {
             title: "Sonata".to_string(),
             kind: ItemKind::Piece,
             composer: Some("Bach".to_string()),
-            category: None,
             key: None,
             tempo: None,
             notes: None,
@@ -1139,7 +1035,6 @@ mod tests {
             title: "Scales".to_string(),
             kind: ItemKind::Exercise,
             composer: None,
-            category: None,
             key: None,
             tempo: Some(Tempo {
                 marking: None,

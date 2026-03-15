@@ -101,7 +101,6 @@ async function setupApiMock(page: Page, store: MockStore) {
         kind: body.kind,
         title: body.title,
         composer: body.composer ?? null,
-        category: body.category ?? null,
         key: body.key ?? null,
         tempo: body.tempo ?? null,
         notes: body.notes ?? null,
@@ -133,7 +132,6 @@ async function setupApiMock(page: Page, store: MockStore) {
         const item = store.items[idx];
         if (body.title !== undefined) item.title = body.title;
         if (body.composer !== undefined) item.composer = body.composer;
-        if (body.category !== undefined) item.category = body.category;
         if (body.key !== undefined) item.key = body.key;
         if (body.tempo !== undefined) item.tempo = body.tempo;
         if (body.notes !== undefined) item.notes = body.notes;

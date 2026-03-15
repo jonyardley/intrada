@@ -47,7 +47,6 @@ pub struct CreateItem {
     pub title: String,
     pub kind: ItemKind,
     pub composer: Option<String>,
-    pub category: Option<String>,
     pub key: Option<String>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
@@ -63,7 +62,6 @@ pub struct CreateItem {
 pub struct UpdateItem {
     pub title: Option<String>,
     pub composer: Option<Option<String>>,
-    pub category: Option<Option<String>>,
     pub key: Option<Option<String>>,
     pub tempo: Option<Option<Tempo>>,
     pub notes: Option<Option<String>>,
@@ -152,7 +150,6 @@ pub struct ListQuery {
     pub text: Option<String>,
     pub item_type: Option<ItemKind>,
     pub key: Option<String>,
-    pub category: Option<String>,
     /// Empty vec means "no filter". Avoids `Option<Vec<T>>` which
     /// serde-reflection (used by Crux typegen) cannot handle.
     pub tags: Vec<String>,

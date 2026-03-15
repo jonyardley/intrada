@@ -90,20 +90,13 @@ pub fn unique_tags(items: &[LibraryItemView]) -> Vec<String> {
 }
 
 /// Extract unique composers from library items.
-/// For pieces: extract `subtitle` (which is the composer).
-/// For exercises: extract `subtitle` only when `category` is `None`
-/// (otherwise subtitle is the category, not composer).
+/// Subtitle is always the composer for all item types.
 /// Deduplicates case-insensitively (preserving first-seen casing),
 /// filters out empty strings, and sorts alphabetically.
 pub fn unique_composers(items: &[LibraryItemView]) -> Vec<String> {
     let mut seen = HashSet::new();
     let mut result = Vec::new();
     for item in items {
-        // Pieces: subtitle is the composer. Exercises: subtitle is
-        // composer only when category is None (otherwise subtitle = category).
-        if item.item_type != "piece" && item.category.is_some() {
-            continue;
-        }
         let composer = &item.subtitle;
         if composer.is_empty() {
             continue;
@@ -405,18 +398,12 @@ mod tests {
     }
 
     // unique_tags tests
-    fn make_item(
-        item_type: &str,
-        subtitle: &str,
-        category: Option<&str>,
-        tags: &[&str],
-    ) -> LibraryItemView {
+    fn make_item(item_type: &str, subtitle: &str, tags: &[&str]) -> LibraryItemView {
         LibraryItemView {
             id: String::new(),
             item_type: item_type.to_string(),
             title: String::new(),
             subtitle: subtitle.to_string(),
-            category: category.map(|s| s.to_string()),
             key: None,
             tempo: None,
             notes: None,
@@ -436,8 +423,8 @@ mod tests {
     #[test]
     fn test_unique_tags_dedup_case_insensitive() {
         let items = vec![
-            make_item("piece", "", None, &["Classical", "jazz"]),
-            make_item("piece", "", None, &["classical", "Jazz"]),
+            make_item("piece", "", &["Classical", "jazz"]),
+            make_item("piece", "", &["classical", "Jazz"]),
         ];
         let tags = unique_tags(&items);
         assert_eq!(tags, vec!["Classical", "jazz"]);
@@ -446,8 +433,8 @@ mod tests {
     #[test]
     fn test_unique_tags_sorted_alphabetically() {
         let items = vec![
-            make_item("piece", "", None, &["piano", "baroque"]),
-            make_item("piece", "", None, &["classical"]),
+            make_item("piece", "", &["piano", "baroque"]),
+            make_item("piece", "", &["classical"]),
         ];
         let tags = unique_tags(&items);
         assert_eq!(tags, vec!["baroque", "classical", "piano"]);
@@ -462,29 +449,19 @@ mod tests {
     #[test]
     fn test_unique_composers_from_pieces() {
         let items = vec![
-            make_item("piece", "Bach", None, &[]),
-            make_item("piece", "Mozart", None, &[]),
-            make_item("piece", "Bach", None, &[]), // duplicate
+            make_item("piece", "Bach", &[]),
+            make_item("piece", "Mozart", &[]),
+            make_item("piece", "Bach", &[]), // duplicate
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Bach", "Mozart"]);
     }
 
     #[test]
-    fn test_unique_composers_exercise_with_category_excluded() {
-        let items = vec![
-            make_item("exercise", "Technique", Some("Technique"), &[]),
-            make_item("exercise", "Bach", None, &[]),
-        ];
-        let composers = unique_composers(&items);
-        assert_eq!(composers, vec!["Bach"]);
-    }
-
-    #[test]
     fn test_unique_composers_empty_subtitle_excluded() {
         let items = vec![
-            make_item("piece", "", None, &[]),
-            make_item("piece", "Mozart", None, &[]),
+            make_item("piece", "", &[]),
+            make_item("piece", "Mozart", &[]),
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Mozart"]);
@@ -493,8 +470,8 @@ mod tests {
     #[test]
     fn test_unique_composers_case_insensitive_dedup() {
         let items = vec![
-            make_item("piece", "Bach", None, &[]),
-            make_item("piece", "bach", None, &[]),
+            make_item("piece", "Bach", &[]),
+            make_item("piece", "bach", &[]),
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Bach"]);

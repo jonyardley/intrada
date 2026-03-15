@@ -119,6 +119,10 @@ fn parse_rep_history(json_str: &str) -> Result<Vec<RepAction>, ApiError> {
 /// Column list for setlist_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo";
 
+/// Subquery to select session IDs for a user. Shared between the parent query
+/// and the batch entry query so filter clauses stay in sync (#152).
+const SESSION_IDS_FOR_USER: &str = "SELECT id FROM sessions WHERE user_id = ?1";
+
 /// Parse an entry row into a SetlistEntry (columns 0–14 matching [`ENTRY_COLUMNS`]).
 fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
     let id: String = col!(row, 0)?;
@@ -252,7 +256,7 @@ pub async fn list_sessions(
         .query(
             &format!(
                 "SELECT {ENTRY_COLUMNS}, session_id FROM setlist_entries
-                 WHERE session_id IN (SELECT id FROM sessions WHERE user_id = ?1)
+                 WHERE session_id IN ({SESSION_IDS_FOR_USER})
                  ORDER BY session_id, position ASC"
             ),
             libsql::params![user_id],

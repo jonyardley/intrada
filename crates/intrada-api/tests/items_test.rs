@@ -353,7 +353,6 @@ async fn create_exercise_with_all_fields() {
             "title": "Hanon No. 1",
             "kind": "exercise",
             "composer": "Charles-Louis Hanon",
-            "category": "Technique",
             "key": "C Major",
             "tempo": { "marking": "Allegro", "bpm": 120 },
             "notes": "Focus on even finger strength",
@@ -367,7 +366,6 @@ async fn create_exercise_with_all_fields() {
     assert_eq!(item.title, "Hanon No. 1");
     assert_eq!(item.kind.to_string(), "exercise");
     assert_eq!(item.composer.as_deref(), Some("Charles-Louis Hanon"));
-    assert_eq!(item.category.as_deref(), Some("Technique"));
     assert_eq!(item.key.as_deref(), Some("C Major"));
     assert_eq!(item.tags, vec!["technique", "warm-up"]);
 }

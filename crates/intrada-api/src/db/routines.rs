@@ -34,6 +34,10 @@ pub struct UpdateRoutineRequest {
 /// Column list for routine_entries SELECTs.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
 
+/// Subquery to select routine IDs for a user. Shared between the parent query
+/// and the batch entry query so filter clauses stay in sync (#152).
+const ROUTINE_IDS_FOR_USER: &str = "SELECT id FROM routines WHERE user_id = ?1";
+
 /// Parse an entry row into a RoutineEntry (columns 0–4 matching [`ENTRY_COLUMNS`]).
 fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     let id: String = col!(row, 0)?;
@@ -128,7 +132,7 @@ pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routi
         .query(
             &format!(
                 "SELECT {ENTRY_COLUMNS}, routine_id FROM routine_entries
-                 WHERE routine_id IN (SELECT id FROM routines WHERE user_id = ?1)
+                 WHERE routine_id IN ({ROUTINE_IDS_FOR_USER})
                  ORDER BY routine_id, position ASC"
             ),
             libsql::params![user_id],
