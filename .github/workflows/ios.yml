@@ -135,7 +135,7 @@ jobs:
     name: Deploy to TestFlight
     runs-on: macos-14
     needs: [build-rust, build-ios]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false  # Disabled until iOS app is ready (#216)
     steps:
       - uses: actions/checkout@v6
 
