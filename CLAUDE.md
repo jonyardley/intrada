@@ -45,11 +45,12 @@ specs/            # SpecKit design artifacts
 ## Tech Stack
 
 - **Language**: Rust stable (1.89.0 in CI; workspace MSRV 1.75+, intrada-api requires 1.78+ for axum 0.8)
-- **Core**: crux_core 0.17.0-rc2, serde 1, ulid 1, chrono 0.4, thiserror 1
+- **Core**: crux_core 0.17.0-rc3, serde 1, ulid 1, chrono 0.4, thiserror 1
 - **API**: axum 0.8, tokio 1, libsql 0.9 (remote), tower-http 0.6 (CORS), reqwest 0.12, jsonwebtoken 10 (rust_crypto feature), tracing 0.1
 - **Web**: leptos 0.8.x (CSR), leptos_router 0.8.x, gloo-net 0.6, web-sys 0.3, wasm-bindgen 0.2, send_wrapper 0.6, Tailwind CSS v4 (standalone CLI), trunk 0.21.x
 - **Auth**: Clerk (managed auth, Google OAuth only), @clerk/clerk-js v5 (loaded via CDN)
 - **Database**: Turso (managed libsql/SQLite) via HTTP protocol
+- **iOS**: Swift 6.0, iOS 17.0+, SwiftUI, ClerkKit, UniFFI (BCS bridge)
 - **Testing**: cargo test (unit/integration), wasm-bindgen-test 0.3, Playwright (E2E)
 - **CI/CD**: GitHub Actions, deploy to Cloudflare Workers (web) + Fly.io (API)
 
@@ -95,6 +96,7 @@ just typegen               # regenerate Swift types after changing intrada-core 
 just typegen-check         # verify generated types are up to date (CI use)
 just ios                   # cross-compile for iOS + generate types + UniFFI bindings
 just ios-swift-check       # quick Swift-only build validation (~30s, no Rust build)
+just ios-smoke-test        # build + launch on sim, verify no crash (~15s after build)
 just ios-preview-check     # validate SwiftUI previews compile
 ```
 
@@ -201,17 +203,18 @@ while Swift expects u32 variant indices, corrupting the entire byte stream. Use 
 ### State boundary
 
 State is split between two systems. This is intentional — Crux owns *what the user has*,
-Leptos owns *what the user is doing right now*.
+shells own *what the user is doing right now*.
 
 | State kind | Where it lives | Examples |
 |------------|---------------|----------|
 | Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, active session progress, analytics |
-| UI interaction | Leptos signals | Form field values, loading/submitting flags, timer ticks, drag state, tab selection |
-| Crash recovery | localStorage | `intrada:session-in-progress` (single key, FR-008) |
+| UI interaction (web) | Leptos signals | Form field values, loading/submitting flags, timer ticks, drag state, tab selection |
+| UI interaction (iOS) | SwiftUI `@State` / `@Environment` | Form field values, loading flags, tab selection, toast state |
+| Crash recovery | localStorage / UserDefaults | `intrada:session-in-progress` (single key, FR-008) |
 
 **Rules:**
-- Domain state must flow through `Event` → `Model` → `ViewModel`. Never store domain data in Leptos signals.
-- UI state that has no meaning outside the current view stays in Leptos signals. Don't inflate the Crux model with ephemeral UI concerns.
+- Domain state must flow through `Event` → `Model` → `ViewModel`. Never store domain data in shell-local state (Leptos signals or SwiftUI `@State`).
+- UI state that has no meaning outside the current view stays in shell-local state. Don't inflate the Crux model with ephemeral UI concerns.
 - The `ViewModel` is the read-only projection that views consume. Views never mutate it directly.
 
 ## Code Style
@@ -221,7 +224,7 @@ Leptos owns *what the user is doing right now*.
 - `cargo fmt` and `cargo clippy -- -D warnings` must pass
 - No `unwrap()` without justification
 
-## Design System (Components-First)
+## Web Design System (Components-First)
 
 All visual styling flows from the design token system defined in `intrada-web/input.css`.
 Before writing any new UI code, check whether an existing token, utility, or component
@@ -387,8 +390,9 @@ and after finishing, check alignment with the source-of-truth documents.
 
 1. **Identify the roadmap item.** Find the issue number in [`docs/roadmap.md`](docs/roadmap.md).
    If the work doesn't map to an existing item, pause and discuss whether it should.
-2. **Check the pillar.** Know which pillar (Plan / Practice / Track) and horizon
-   (Now / Next / Later) the work belongs to. Prefer `horizon:now` items over others.
+2. **Check the current focus.** iOS feature parity (#195–#201) is the current priority.
+   After iOS parity, cross-platform features (Crux core + API) benefit both shells.
+   Within the three pillars, prefer `horizon:now` items over others.
 3. **Check the project board.** The issue should be in Ready or In Progress on the
    [GitHub project board](https://github.com/users/jonyardley/projects/2). If it's
    still in Backlog, move it to Ready before starting.
@@ -483,16 +487,7 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 
 - Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
 - Legacy `pieces` and `exercises` tables from early migrations still exist in the schema
+- `category` field on exercises is redundant with tags (#211) — scheduled for removal
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
-
-
-## Active Technologies
-- Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events) (154-session-week-strip)
-- N/A — no new storage; reads existing `ViewModel.sessions` from Crux core (154-session-week-strip)
-- Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit (existing) (194-ios-design-system)
-- N/A — no new persistence (194-ios-design-system)
-
-## Recent Changes
-- 154-session-week-strip: Added Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events)
