@@ -106,6 +106,11 @@ ios-debug:
     bash scripts/build-ios.sh --sim --debug
     cd ios && xcodegen generate
 
+# Debug build for device
+ios-debug-device:
+    bash scripts/build-ios.sh --device --debug
+    cd ios && xcodegen generate
+
 # Regenerate Xcode project from project.yml
 ios-project:
     cd ios && xcodegen generate
