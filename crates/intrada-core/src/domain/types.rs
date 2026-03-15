@@ -70,7 +70,6 @@ pub struct UpdateItem {
     pub tags: Option<Vec<String>>,
 }
 
-use super::goal::{GoalKind, GoalStatus};
 use super::session::PracticeSession;
 
 /// Top-level serialisation unit for `sessions.json` / `intrada:sessions`.
@@ -79,24 +78,6 @@ use super::session::PracticeSession;
 pub struct SessionsData {
     #[serde(default)]
     pub sessions: Vec<PracticeSession>,
-}
-
-/// Input for creating a new goal.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct CreateGoal {
-    pub title: String,
-    pub kind: GoalKind,
-    pub deadline: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-/// PATCH-style update for a goal. `Option<Option<T>>` fields use three-state
-/// semantics: `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct UpdateGoal {
-    pub title: Option<String>,
-    pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
 }
 
 // ── API request DTOs ─────────────────────────────────────────────────
@@ -124,21 +105,6 @@ pub struct CreateRoutineEntryRequest {
 pub struct UpdateRoutineRequest {
     pub name: String,
     pub entries: Vec<CreateRoutineEntryRequest>,
-}
-
-/// Request body for updating a goal via the REST API.
-///
-/// The core uses typed `GoalStatus` / `GoalEvent` discriminants, but the
-/// REST API expects a flat JSON object with a string `status` field.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct UpdateGoalRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deadline: Option<Option<chrono::DateTime<chrono::Utc>>>,
 }
 
 // ── Conversion helpers ──────────────────────────────────────────────
@@ -175,22 +141,6 @@ impl UpdateRoutineRequest {
                     item_type: e.item_type.clone(),
                 })
                 .collect(),
-        }
-    }
-}
-
-impl UpdateGoalRequest {
-    /// Build from a domain `Goal`, converting the typed status to a string.
-    pub fn from_goal(goal: &super::goal::Goal) -> Self {
-        let status_str = match goal.status {
-            GoalStatus::Active => "active",
-            GoalStatus::Completed => "completed",
-            GoalStatus::Archived => "archived",
-        };
-        Self {
-            title: Some(goal.title.clone()),
-            status: Some(status_str.to_string()),
-            deadline: Some(goal.deadline),
         }
     }
 }

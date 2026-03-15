@@ -55,7 +55,7 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
 /// Initialise the Crux core and fetch all data from the API.
 ///
 /// Sends `Event::StartApp` with the API base URL, which makes the core produce
-/// HTTP fetch effects for items, sessions, routines, and goals. A shared
+/// HTTP fetch effects for items, sessions, and routines. A shared
 /// counter keeps `is_loading` true until ALL fetches complete.
 pub fn init_core(
     view_model: &RwSignal<ViewModel>,
@@ -565,14 +565,14 @@ mod tests {
     }
 
     #[test]
-    fn test_init_produces_four_http_fetches() {
+    fn test_init_produces_three_http_fetches() {
         let core = Core::<Intrada>::new();
         let effects = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
         });
 
         let http = http_effects(&effects);
-        assert_eq!(http.len(), 4, "Expected 4 HTTP GET fetches from Init");
+        assert_eq!(http.len(), 3, "Expected 3 HTTP GET fetches from Init");
         assert!(
             http.iter().all(|r| r.method == "GET"),
             "All Init HTTP effects should be GET requests"

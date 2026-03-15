@@ -46,12 +46,6 @@ actor APIClient {
         try await getJSON("/api/routines")
     }
 
-    // MARK: - Goals (added with Goals feature)
-
-    func getGoals() async throws -> [Goal] {
-        try await getJSON("/api/goals")
-    }
-
     // MARK: - Generic Helpers with 401 Retry
 
     func getJSON<T: Decodable>(_ path: String) async throws -> T {

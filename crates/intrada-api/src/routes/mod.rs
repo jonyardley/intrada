@@ -1,4 +1,3 @@
-mod goals;
 mod health;
 mod items;
 mod routines;
@@ -40,5 +39,4 @@ fn api_routes() -> Router<AppState> {
         .nest("/items", items::router())
         .nest("/sessions", sessions::router())
         .nest("/routines", routines::router())
-        .nest("/goals", goals::router())
 }

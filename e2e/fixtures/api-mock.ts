@@ -11,7 +11,6 @@ import {
   Item,
   PracticeSession,
   Routine,
-  Goal,
   createSeedItems,
   createSeedRoutines,
 } from "./seed-data";
@@ -28,7 +27,6 @@ export interface MockStore {
   items: Item[];
   sessions: PracticeSession[];
   routines: Routine[];
-  goals: Goal[];
 }
 
 /**
@@ -304,93 +302,6 @@ async function setupApiMock(page: Page, store: MockStore) {
       }
     }
 
-    // ---- Goals ----
-    if (path === "/api/goals" && method === "GET") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(store.goals),
-      });
-    }
-
-    if (path === "/api/goals" && method === "POST") {
-      const body = request.postDataJSON();
-      const now = new Date().toISOString();
-      const goal: Goal = {
-        id: generateId(),
-        title: body.title,
-        kind: body.kind,
-        status: "active",
-        deadline: body.deadline ?? null,
-        created_at: now,
-        updated_at: now,
-        completed_at: null,
-      };
-      store.goals.push(goal);
-      return route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify(goal),
-      });
-    }
-
-    const goalMatch = path.match(/^\/api\/goals\/(.+)$/);
-    if (goalMatch) {
-      const id = goalMatch[1];
-      if (method === "GET") {
-        const goal = store.goals.find((g) => g.id === id);
-        if (!goal) {
-          return route.fulfill({
-            status: 404,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "Not found" }),
-          });
-        }
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(goal),
-        });
-      }
-      if (method === "PUT") {
-        const idx = store.goals.findIndex((g) => g.id === id);
-        if (idx === -1) {
-          return route.fulfill({
-            status: 404,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "Not found" }),
-          });
-        }
-        const body = request.postDataJSON();
-        const goal = store.goals[idx];
-        if (body.title !== undefined) goal.title = body.title;
-        if (body.status !== undefined) goal.status = body.status;
-        if (body.deadline !== undefined) goal.deadline = body.deadline;
-        goal.updated_at = new Date().toISOString();
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(goal),
-        });
-      }
-      if (method === "DELETE") {
-        const idx = store.goals.findIndex((g) => g.id === id);
-        if (idx === -1) {
-          return route.fulfill({
-            status: 404,
-            contentType: "application/json",
-            body: JSON.stringify({ error: "Not found" }),
-          });
-        }
-        store.goals.splice(idx, 1);
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "Goal deleted" }),
-        });
-      }
-    }
-
     // Unmatched routes
     return route.fulfill({
       status: 404,
@@ -413,7 +324,6 @@ export const test = base.extend<{ mockApi: MockStore }>({
         items: createSeedItems(),
         sessions: [],
         routines: createSeedRoutines(),
-        goals: [],
       };
       await setupClerkMock(page);
       await setupApiMock(page, store);

@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-02-26*
+*Updated 2026-03-15*
 
 Everything in intrada serves one of three activities a musician does around their
 instrument. This roadmap is organised around those three pillars, not delivery
@@ -28,9 +28,8 @@ any of them without waiting for the others.
 | Focus mode (#48) — minimal UI during active practice | Done |
 | Repetition counter (#49) — consecutive correct attempts per item | Done |
 | Tempo tracking (#52) — log achieved tempo per item, progress charts (#66) | Done |
-| Basic goal setting (#60) — frequency, time, mastery, milestone goals with progress | Done |
 | Weekly practice summary (#68) — week-over-week comparison, neglected items, score changes | Done |
-| Holistic practice loop (#93) — unified library, sessions, routines & goals flow | Done |
+| Holistic practice loop (#93) — unified library, sessions & routines flow | Done |
 | DB composite indexes (#146) and request timing middleware (#147) | Done |
 | Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
 | Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
@@ -53,6 +52,7 @@ goals, and eventually letting the app decide for you.
 | 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
 | 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
 | 142 | **Session time budgeting** — declare available time, allocate across items automatically or manually. | M |
+| 57 | **One-tap session start** — open the app, tap Start, play. Initial version uses recent routine + items not practised recently. | L |
 | 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
 
 #### Later (12+ weeks)
@@ -61,12 +61,11 @@ goals, and eventually letting the app decide for you.
 |---|---------|------|
 | 55 | **Spaced repetition engine** — modified SM-2 algorithm for optimal review intervals based on mastery scores and time since last practice. | XL |
 | 56 | **Interleaved setlist generator** — mixed-type sessions with configurable interleaving intensity. | L |
-| 57 | **One-tap session start** — open the app, tap Start, play. Zero other decisions. | L |
 | 58 | **Mastery decay model** — scores decrease over time without review, creating natural scheduling urgency. | M |
 | 42 | **Links to IMSLP** — link pieces to free sheet music on IMSLP. | S |
 | 43 | **Open-source exercise library** — built-in scales, arpeggios, Hanon, Czerny etc. | L |
 | 71 | **AI setlist generation** — goal-driven practice plans ("I have a gig in 3 weeks — build me a plan"). | L |
-| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. | L |
+| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. (blocked on goals redesign) | L |
 | 100 | **Personalisation** — user preferences and customisation. | — |
 
 ---
@@ -76,14 +75,18 @@ goals, and eventually letting the app decide for you.
 Instrument is out. Timer running. The app stays out of the way and supports
 focus, not admin.
 
+#### Now (next 4 weeks)
+
+| # | Feature | Size |
+|---|---------|------|
+| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S |
+
 #### Next (4-12 weeks)
 
 | # | Feature | Size |
 |---|---------|------|
 | 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S |
-| 61 | **Encouragement messaging** — data-tied, process-focused messages. "Your Db mastery went from 2 to 4 over three weeks." Configurable frequency, tone, delivery. | M |
 | 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S |
-| 79 | **Calendar view** — calendar-based view of practice sessions. | M |
 | 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M |
 
 #### Later (12+ weeks)
@@ -100,12 +103,18 @@ focus, not admin.
 After the session. Analytics, insights, visualisation. Evidence that the practice
 is actually working.
 
+#### Now (next 4 weeks)
+
+| # | Feature | Size |
+|---|---------|------|
+| 65 | **Practice consistency calendar** — comeback framing: "4 of the last 7 days." Celebrate returns, never shame gaps. | M |
+
 #### Next (4-12 weeks)
 
 | # | Feature | Size |
 |---|---------|------|
 | 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L |
-| 65 | **Practice consistency calendar** — comeback framing: "4 of the last 7 days." Celebrate returns, never shame gaps. | M |
+| 79 | **Calendar view** — calendar-based view of practice sessions. | M |
 
 #### Later (12+ weeks)
 
@@ -115,7 +124,7 @@ is actually working.
 | 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L |
 | 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M |
 | 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L |
-| 75 | **Teacher integration** — shared goals, suggested items, progress visibility (with permission). | L |
+| 75 | **Teacher integration** — suggested items, progress visibility (with permission). | L |
 
 ---
 
@@ -128,6 +137,27 @@ These don't belong to a single pillar — they support all three.
 | 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
 | 148 | **Use mutate response** — stop re-fetching all data after writes, use API response directly | Next | architecture |
 | 149 | **Pagination** — add limit/offset to list endpoints | Next | architecture |
+| — | **Remove category field** — migrate exercise categories to tags | Now | architecture, pillar:plan |
+
+---
+
+### iOS — Native App
+
+Building out the iOS app as the primary user channel. SwiftUI shell using
+the shared Crux core via UniFFI/BCS bridge.
+
+#### Now (next 4 weeks)
+
+| # | Feature | Size |
+|---|---------|------|
+| 202 | **iOS cleanup** — remove dead code and legacy networking layer | S |
+| 194 | **Design system foundation** — tokens, shared components & navigation | M |
+| 195 | **Library** — browse, search & manage repertoire | M |
+| 196 | **Session builder** — construct practice setlists | M |
+| 197 | **Active session** — focus mode, timer & scoring | L |
+| 198 | **Session summary & history** | M |
+| 199 | **Routines** — create, edit & manage practice routines | M |
+| 201 | **Analytics dashboard** — practice insights & visualisation | M |
 
 ---
 
@@ -180,3 +210,7 @@ Priority field (P0/P1/P2) ranks items.
 
 5. **Teacher integration timing.** Currently horizon:later. Basic sharing
    (routines, item suggestions) could come earlier without AI.
+
+6. **Goals redesign.** The goals feature has been removed for a ground-up rethink.
+   What value should goals add to the practice experience? How do they connect
+   to the critical path and guided pathways vision?

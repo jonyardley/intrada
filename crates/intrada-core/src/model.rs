@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
-use crate::domain::goal::Goal;
 use crate::domain::item::Item;
 use crate::domain::routine::Routine;
 use crate::domain::session::{
@@ -24,7 +23,6 @@ pub struct Model {
     pub last_error: Option<String>,
     pub routines: Vec<Routine>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
-    pub goals: Vec<Goal>,
 }
 
 #[cfg(test)]
@@ -54,7 +52,6 @@ pub struct ViewModel {
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
     pub routines: Vec<RoutineView>,
-    pub goals: Vec<GoalView>,
 }
 
 /// Represents a routine for display in the UI.
@@ -201,41 +198,6 @@ pub struct SummaryView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
-}
-
-/// A goal as displayed in the UI.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct GoalView {
-    pub id: String,
-    pub title: String,
-    /// Human-readable label, e.g. "Practise 5 days per week"
-    pub kind_label: String,
-    /// Machine-readable type discriminant, e.g. "session_frequency"
-    pub kind_type: String,
-    /// "active", "completed", or "archived"
-    pub status: String,
-    /// Present only for active goals
-    pub progress: Option<GoalProgress>,
-    pub deadline: Option<String>,
-    pub created_at: String,
-    pub completed_at: Option<String>,
-    /// Only for item-mastery goals
-    pub item_id: Option<String>,
-    /// Resolved item title (if item still exists)
-    pub item_title: Option<String>,
-}
-
-/// Computed progress for a single goal. Never stored — derived from session data.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct GoalProgress {
-    pub current_value: f64,
-    pub target_value: f64,
-    /// 0.0–100.0, capped at 100.
-    pub percentage: f64,
-    /// Positive, process-focused text, e.g. "3 of 5 days — great spacing for retention"
-    pub display_text: String,
 }
 
 // ── View helpers ──────────────────────────────────────────────────────

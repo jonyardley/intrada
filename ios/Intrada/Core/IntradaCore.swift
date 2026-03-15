@@ -80,7 +80,7 @@ final class IntradaCore {
     /// Initialise the core with the API base URL and start loading data.
     ///
     /// Called once after sign-in. Sends `StartApp` to the core which triggers
-    /// HTTP effects for fetching items, sessions, routines, and goals.
+    /// HTTP effects for fetching items, sessions, and routines.
     func startApp() {
         isLoading = true
         update(.startApp(apiBaseUrl: Config.apiBaseURL))

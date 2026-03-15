@@ -10,7 +10,7 @@ manage a library of pieces and exercises, run timed practice sessions with scori
 build reusable routines, and view analytics.
 
 The product is organised around three activity pillars:
-- **Plan** — decide what to practise (library, routines, goals, scheduling)
+- **Plan** — decide what to practise (library, routines, scheduling)
 - **Practice** — play with intention (focus mode, timers, scoring, in-session UX)
 - **Track** — see the process working (analytics, visualisation, insights)
 
@@ -71,7 +71,7 @@ Key files: `intrada-api/src/auth.rs`, `intrada-web/src/clerk_bindings.rs`, `intr
 
 ## Storage
 
-- **All persistent data** (items, sessions, routines, goals) is stored via the REST API in Turso
+- **All persistent data** (items, sessions, routines) is stored via the REST API in Turso
 - **localStorage** is used ONLY for `intrada:session-in-progress` crash recovery
 - No other localStorage keys are used — the old `intrada:library` and `intrada:sessions` keys were removed when the API was introduced
 
@@ -157,7 +157,7 @@ Leptos owns *what the user is doing right now*.
 
 | State kind | Where it lives | Examples |
 |------------|---------------|----------|
-| Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, goals, active session progress, analytics |
+| Domain data | Crux `Model` → `ViewModel` | Items, sessions, routines, active session progress, analytics |
 | UI interaction | Leptos signals | Form field values, loading/submitting flags, timer ticks, drag state, tab selection |
 | Crash recovery | localStorage | `intrada:session-in-progress` (single key, FR-008) |
 
@@ -231,10 +231,9 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 | `SkeletonLine`  | Pulsing text-line placeholder             |
 | `SkeletonBlock` | Pulsing rectangular placeholder           |
 | `SkeletonItemCard` | Library item card skeleton             |
-| `SkeletonCardList` | Generic list page skeleton (sessions, routines, goals) |
+| `SkeletonCardList` | Generic list page skeleton (sessions, routines) |
 | `LineChart`     | SVG line chart for analytics              |
 | `TempoProgressChart` | Tempo progress visualization         |
-| `ProgressRing`  | Circular progress indicator for goals     |
 | `LibraryItemCard` | Library item display card               |
 | `SessionTimer`  | Active session countdown timer            |
 | `SessionSummary`| End-of-session review with scoring        |
