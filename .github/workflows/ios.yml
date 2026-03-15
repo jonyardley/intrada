@@ -85,7 +85,7 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
 
       - name: Cache Homebrew packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Caches/Homebrew
@@ -103,7 +103,7 @@ jobs:
           path: target/aarch64-apple-ios/release/
 
       - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/Library/Developer/Xcode/DerivedData
           key: xcode-deriveddata-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**/*.swift') }}
@@ -143,7 +143,7 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
 
       - name: Cache Homebrew packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/Library/Caches/Homebrew
@@ -155,7 +155,7 @@ jobs:
         run: brew install xcodegen && brew link --overwrite xcodegen 2>/dev/null || true
 
       - name: Cache Ruby gems (Fastlane)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ios/vendor/bundle
           key: gems-${{ runner.os }}-${{ hashFiles('ios/Gemfile.lock') }}
