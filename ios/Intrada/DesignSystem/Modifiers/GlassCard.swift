@@ -21,7 +21,7 @@ struct GlassCardModifier: ViewModifier {
                 RoundedRectangle(cornerRadius: DesignRadius.card)
                     .stroke(Color.borderCard, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+            .shadow(color: .shadowSubtle, radius: 8, y: 4)
     }
 }
 

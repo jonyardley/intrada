@@ -11,7 +11,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
-    let conn = match state.db.connect() {
+    let conn = match state.connect().await {
         Ok(conn) => conn,
         Err(_) => {
             return (

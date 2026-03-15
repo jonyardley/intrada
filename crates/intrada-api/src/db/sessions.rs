@@ -430,7 +430,7 @@ pub async fn insert_session(
 }
 
 pub async fn delete_session(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
-    // setlist_entries will be cascade-deleted due to ON DELETE CASCADE
+    // Verify ownership first — only delete entries if the session belongs to this user.
     let rows_affected = conn
         .execute(
             "DELETE FROM sessions WHERE id = ?1 AND user_id = ?2",
@@ -438,5 +438,18 @@ pub async fn delete_session(conn: &Connection, id: &str, user_id: &str) -> Resul
         )
         .await?;
 
-    Ok(rows_affected > 0)
+    if rows_affected == 0 {
+        return Ok(false);
+    }
+
+    // PRAGMA foreign_keys = ON is set on every connection (see AppState::connect),
+    // so ON DELETE CASCADE will handle this automatically. We keep the explicit
+    // delete as a belt-and-suspenders safety net, matching delete_routine's pattern.
+    conn.execute(
+        "DELETE FROM setlist_entries WHERE session_id = ?1",
+        libsql::params![id],
+    )
+    .await?;
+
+    Ok(true)
 }

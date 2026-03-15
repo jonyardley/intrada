@@ -357,8 +357,9 @@ pub async fn delete_routine(conn: &Connection, id: &str, user_id: &str) -> Resul
     }
 
     // Now safe to delete entries — we confirmed ownership above.
-    // SQLite only enforces ON DELETE CASCADE when PRAGMA foreign_keys = ON,
-    // which is off by default, so we delete explicitly.
+    // PRAGMA foreign_keys = ON is set on every connection (see AppState::connect),
+    // so ON DELETE CASCADE will handle this automatically. We keep the explicit
+    // delete as a belt-and-suspenders safety net.
     conn.execute(
         "DELETE FROM routine_entries WHERE routine_id = ?1",
         libsql::params![id],

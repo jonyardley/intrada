@@ -49,7 +49,7 @@ async fn list_routines(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<Vec<Routine>>, ApiError> {
-    let conn = state.db.connect()?;
+    let conn = state.connect().await?;
     let routines = db::routines::list_routines(&conn, &user_id).await?;
     Ok(Json(routines))
 }
@@ -59,7 +59,7 @@ async fn get_routine(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Routine>, ApiError> {
-    let conn = state.db.connect()?;
+    let conn = state.connect().await?;
     let routine = db::routines::get_routine(&conn, &id, &user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Routine not found: {id}")))?;
@@ -84,7 +84,7 @@ async fn create_routine(
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;
 
-    let conn = state.db.connect()?;
+    let conn = state.connect().await?;
     let routine = db::routines::insert_routine(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(routine)))
 }
@@ -108,7 +108,7 @@ async fn update_routine(
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;
 
-    let conn = state.db.connect()?;
+    let conn = state.connect().await?;
     let routine = db::routines::update_routine(&conn, &id, &user_id, &input)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Routine not found: {id}")))?;
@@ -120,7 +120,7 @@ async fn delete_routine(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let conn = state.db.connect()?;
+    let conn = state.connect().await?;
     let deleted = db::routines::delete_routine(&conn, &id, &user_id).await?;
     if deleted {
         Ok(Json(serde_json::json!({ "message": "Routine deleted" })))

@@ -24,6 +24,11 @@ async fn main() {
 
     let conn = db.connect().expect("Failed to create database connection");
 
+    // Enable foreign key enforcement — SQLite disables this by default per connection.
+    conn.execute("PRAGMA foreign_keys = ON", ())
+        .await
+        .expect("Failed to enable PRAGMA foreign_keys");
+
     tracing::info!("Running migrations...");
     migrations::run_migrations(&conn)
         .await

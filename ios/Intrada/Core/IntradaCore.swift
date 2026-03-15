@@ -38,6 +38,9 @@ final class IntradaCore {
     /// Whether the initial data load is in progress.
     private(set) var isLoading = true
 
+    /// Non-nil if the initial ViewModel deserialization failed.
+    private(set) var initializationError: String?
+
     // MARK: - Private State
 
     private let core: CoreFfi
@@ -55,7 +58,21 @@ final class IntradaCore {
         do {
             self.viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](data))
         } catch {
-            fatalError("[IntradaCore] Failed to deserialize initial ViewModel: \(error)")
+            let message = "Failed to deserialize initial ViewModel: \(error)"
+            print("[IntradaCore] \(message)")
+            self.initializationError = message
+            // Provide a default empty ViewModel so the app can show an error state
+            self.viewModel = ViewModel(
+                items: [],
+                sessions: [],
+                activeSession: nil,
+                buildingSetlist: nil,
+                summary: nil,
+                sessionStatus: "",
+                error: message,
+                analytics: nil,
+                routines: []
+            )
         }
     }
 

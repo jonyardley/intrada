@@ -467,7 +467,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
                 if session_date.iso_week() == today_iso_week {
                     // This week — keep latest
                     let existing = this_week.get(&entry.item_id);
-                    if existing.is_none() || session_date >= existing.unwrap().1 {
+                    if !matches!(existing, Some(e) if session_date < e.1) {
                         this_week.insert(
                             entry.item_id.clone(),
                             (score, session_date, entry.item_title.clone()),
@@ -476,7 +476,7 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
                 } else {
                     // Before this week — keep latest
                     let existing = prev.get(&entry.item_id);
-                    if existing.is_none() || session_date >= existing.unwrap().1 {
+                    if !matches!(existing, Some(e) if session_date < e.1) {
                         prev.insert(entry.item_id.clone(), (score, session_date));
                     }
                 }

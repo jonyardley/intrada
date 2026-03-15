@@ -32,6 +32,10 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>) -> Router {
 
     let conn = db.connect().expect("Failed to connect to test database");
 
+    conn.execute("PRAGMA foreign_keys = ON", ())
+        .await
+        .expect("Failed to enable PRAGMA foreign_keys");
+
     migrations::run_migrations_direct(&conn)
         .await
         .expect("Failed to run migrations");

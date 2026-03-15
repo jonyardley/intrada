@@ -34,7 +34,7 @@ struct ToastView: View {
             alignment: .leading
         )
         .clipShape(RoundedRectangle(cornerRadius: DesignRadius.badge))
-        .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+        .shadow(color: .shadowDefault, radius: 8, y: 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(message)
         .accessibilityAddTraits(.isStaticText)

@@ -191,6 +191,14 @@ extension Color {
 
     /// Chart bar fills — accent @ 40%
     static let chartBar = Color(red: 0.271, green: 0.265, blue: 0.915, opacity: 0.40)
+
+    // MARK: - Shadows
+
+    /// Default drop shadow colour
+    static let shadowDefault = Color.black.opacity(0.3)
+
+    /// Subtle drop shadow for glass cards
+    static let shadowSubtle = Color.black.opacity(0.15)
 }
 
 // MARK: - Preview
