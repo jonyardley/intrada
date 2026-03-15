@@ -44,7 +44,7 @@ struct MainTabView: View {
                 .tag(tab)
             }
         }
-        .tint(.indigo)
+        .tint(Color.accent)
         .confirmationDialog(
             "Sign Out",
             isPresented: $showingSignOutConfirmation,
@@ -93,7 +93,7 @@ struct MainTabView: View {
                 } else {
                     Image(systemName: "person.circle")
                         .font(.title3)
-                        .foregroundStyle(.indigo)
+                        .foregroundStyle(Color.accentText)
                 }
             }
         }
@@ -110,19 +110,19 @@ private struct PlaceholderView: View {
         VStack(spacing: 16) {
             Image(systemName: tab.icon)
                 .font(.system(size: 48))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color.textFaint)
 
             Text(tab.rawValue)
                 .font(.title2)
                 .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.textSecondary)
 
             Text("Coming soon")
                 .font(.subheadline)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Color.textFaint)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color.clear)
         .navigationTitle(tab.rawValue)
     }
 }

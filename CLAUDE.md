@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-03-11.
+> significant feature lands. Last reviewed: 2026-03-15.
 
 ## Project Overview
 
@@ -30,6 +30,15 @@ design/           # Pencil design system file (intrada.pen)
 docs/             # Product roadmap (single source of truth for what's next)
 e2e/              # Playwright E2E tests
 ios/              # iOS app — SwiftUI shell using CoreFfi (BCS bridge)
+  Intrada/
+    Core/           # Crux bridge (IntradaCore.swift — effect processor)
+    DesignSystem/   # Tokens (Color, Font, Spacing) + ViewModifiers
+    Components/     # Reusable SwiftUI components (one file per component)
+    Views/          # Feature screens composed from components
+    Navigation/     # Tab bar and navigation structure
+    Config/         # App configuration (Clerk keys, API URL)
+    Storage/        # UserDefaults wrappers (session crash recovery)
+    Generated/      # Auto-generated types (SharedTypes, Serde, UniFFI)
 specs/            # SpecKit design artifacts
 ```
 
@@ -275,6 +284,68 @@ already covers the pattern. If not, **create the abstraction first**, then use i
 
 Key files: `intrada-web/input.css` (tokens + utilities), `intrada-web/src/components/` (Leptos components), `views/design_catalogue.rs` (visual reference)
 
+## iOS Design System (Components-First)
+
+**Design consistency and reuse are critical.** The iOS app MUST look and feel like the
+same product as the web app. Both platforms share the same dark-on-dark glassmorphism
+aesthetic, warm indigo accents, and component vocabulary. Never build one-off UI —
+always compose from the shared component library.
+
+### Architecture layers (same hierarchy as web)
+
+```text
+1. Tokens       →  Color, Font, Spacing extensions (ios/Intrada/DesignSystem/Tokens/)
+2. Modifiers    →  Reusable ViewModifiers for common patterns (ios/Intrada/DesignSystem/Modifiers/)
+3. Components   →  SwiftUI views that use tokens internally (ios/Intrada/Components/)
+4. Views        →  Feature screens composed entirely from components (ios/Intrada/Views/)
+```
+
+### Colour tokens — must match web token names
+
+Every `Color` extension in the iOS design system maps 1:1 to a CSS custom property
+in `input.css`. Use the **same token name** (e.g. `.textPrimary`, `.surfaceSecondary`,
+`.accent`) so developers can cross-reference between platforms.
+
+Never use raw SwiftUI colours (`.white`, `.gray`, `.indigo`, `.red`) in views or
+components. Always use the named token.
+
+### iOS components — mirror the web component library
+
+| iOS Component     | Web Equivalent  | Purpose                                   |
+|-------------------|-----------------|-------------------------------------------|
+| `CardView`        | `Card`          | Glassmorphism container                   |
+| `ButtonView`      | `Button`        | All tappable actions (Primary/Secondary/Danger) |
+| `TextFieldView`   | `TextField`     | Form input with label + hint + error      |
+| `TextAreaView`    | `TextArea`      | Form textarea with label + hint + error   |
+| `StatCardView`    | `StatCard`      | Metric display (title + value + subtitle) |
+| `PageHeading`     | `PageHeading`   | Serif page title                          |
+| `TypeBadge`       | `TypeBadge`     | Piece/Exercise type pill                  |
+| `Toast`           | `Toast`         | Notification banner                       |
+| `ErrorBanner`     | `ErrorBanner`   | Persistent error display                  |
+| `FormFieldError`  | `FormFieldError`| Inline validation error                   |
+| `BackLink`        | `BackLink`      | Back-navigation with arrow                |
+| `EmptyStateView`  | (inline)        | No-data empty states                      |
+| `SkeletonLine`    | `SkeletonLine`  | Pulsing text placeholder                  |
+| `SkeletonBlock`   | `SkeletonBlock` | Pulsing rectangular placeholder           |
+
+### Rules for new iOS UI work
+
+1. **Tokens first**: Every rendered colour MUST trace to a named `Color` extension in
+   `DesignSystem/Tokens/`. Never use `.white`, `.indigo`, `.gray` directly.
+2. **Modifiers second**: If a styling pattern appears in 2+ places, create a `ViewModifier`
+   in `DesignSystem/Modifiers/`.
+3. **Components third**: If a pattern includes layout + logic, create a SwiftUI view in
+   `Components/`. One file per component.
+4. **Xcode Previews**: Every component MUST have a `#Preview` block so the full system
+   is visible during development.
+5. **Cross-platform parity**: When building an iOS component, reference the matching web
+   component for visual behaviour. The user should not be able to tell which platform
+   they're on from the visual design.
+6. **Dark mode only**: The app forces dark appearance. All tokens are defined for dark mode.
+7. **Dynamic Type**: Components must support the system text size setting.
+
+Key files: `ios/Intrada/DesignSystem/` (tokens + modifiers), `ios/Intrada/Components/` (SwiftUI components)
+
 ## Roadmap Alignment
 
 Every piece of work should connect back to the product vision. Before starting
@@ -388,6 +459,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 ## Active Technologies
 - Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events) (154-session-week-strip)
 - N/A — no new storage; reads existing `ViewModel.sessions` from Crux core (154-session-week-strip)
+- Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit (existing) (194-ios-design-system)
+- N/A — no new persistence (194-ios-design-system)
 
 ## Recent Changes
 - 154-session-week-strip: Added Rust stable (1.89.0), compiled to WASM + Leptos 0.8 (CSR), chrono 0.4, web-sys 0.3 (touch events)
