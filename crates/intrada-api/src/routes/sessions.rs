@@ -48,6 +48,9 @@ async fn save_session(
     validation::validate_session_notes(&input.session_notes)?;
     validation::validate_intention(&input.session_intention)?;
 
+    // Validate entries not empty
+    validation::validate_session_entries_not_empty(&input.entries)?;
+
     // Validate each entry's notes, score, intention, and rep fields
     for entry in &input.entries {
         validation::validate_entry_notes(&entry.notes)?;
@@ -56,36 +59,12 @@ async fn save_session(
         validation::validate_rep_target(&entry.rep_target)?;
         validation::validate_planned_duration(&entry.planned_duration_secs)?;
         validation::validate_achieved_tempo(&entry.achieved_tempo)?;
-
-        // Rep count consistency: count must be <= target, and both must be
-        // present/absent together with rep_target as the gating field.
-        if let Some(target) = entry.rep_target {
-            if let Some(count) = entry.rep_count {
-                if count > target {
-                    return Err(ApiError::Validation(format!(
-                        "rep_count ({count}) cannot exceed rep_target ({target})"
-                    )));
-                }
-            }
-        } else {
-            // If no target, count, reached, and history must also be absent
-            if entry.rep_count.is_some()
-                || entry.rep_target_reached.is_some()
-                || entry.rep_history.is_some()
-            {
-                return Err(ApiError::Validation(
-                    "rep_count, rep_target_reached, and rep_history require rep_target".to_string(),
-                ));
-            }
-        }
-    }
-
-    // Validate setlist is not empty — need to convert to SetlistEntry slice
-    // We validate the entries vec is not empty directly
-    if input.entries.is_empty() {
-        return Err(ApiError::Validation(
-            "Setlist must have at least one entry".to_string(),
-        ));
+        validation::validate_rep_consistency(
+            entry.rep_target,
+            entry.rep_count,
+            entry.rep_target_reached,
+            entry.rep_history.is_some(),
+        )?;
     }
 
     let conn = state.connect().await?;

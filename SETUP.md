@@ -81,8 +81,6 @@ Migrations run automatically on server startup. Key tables:
 - `sessions` + `setlist_entries` — completed practice sessions with their entries
 - `routines` + `routine_entries` — reusable practice routines
 
-> **Note:** Legacy `pieces` and `exercises` tables still exist from early migrations but are no longer used.
-
 ## 3. Fly.io (API Server)
 
 ### Account setup

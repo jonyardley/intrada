@@ -17,7 +17,7 @@ intrada-core = { path = "../intrada-core" }
 
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["cors", "limit", "trace"] }
 libsql = { version = "0.9", default-features = false, features = ["remote", "core"] }
 libsql_migration = { version = "0.2", features = ["content"] }
 

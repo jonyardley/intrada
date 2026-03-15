@@ -12,26 +12,13 @@ use crate::db::routines::{CreateRoutineEntry, CreateRoutineRequest, UpdateRoutin
 use crate::error::ApiError;
 use crate::state::AppState;
 
-const VALID_ITEM_TYPES: &[&str] = &["piece", "exercise"];
-
 fn validate_entries(entries: &[CreateRoutineEntry]) -> Result<(), ApiError> {
     for entry in entries {
-        if entry.item_id.trim().is_empty() {
-            return Err(ApiError::Validation(
-                "Entry item_id must not be empty".to_string(),
-            ));
-        }
-        if entry.item_title.trim().is_empty() {
-            return Err(ApiError::Validation(
-                "Entry item_title must not be empty".to_string(),
-            ));
-        }
-        if !VALID_ITEM_TYPES.contains(&entry.item_type.as_str()) {
-            return Err(ApiError::Validation(format!(
-                "Entry item_type must be 'piece' or 'exercise', got '{}'",
-                entry.item_type
-            )));
-        }
+        validation::validate_routine_entry_fields(
+            &entry.item_id,
+            &entry.item_title,
+            &entry.item_type,
+        )?;
     }
     Ok(())
 }
@@ -75,11 +62,7 @@ async fn create_routine(
     validation::validate_routine_name(&input.name)?;
 
     // Validate entries not empty
-    if input.entries.is_empty() {
-        return Err(ApiError::Validation(
-            "Routine must have at least one entry".to_string(),
-        ));
-    }
+    validation::validate_routine_entries_not_empty_generic(&input.entries)?;
 
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;
@@ -99,11 +82,7 @@ async fn update_routine(
     validation::validate_routine_name(&input.name)?;
 
     // Validate entries not empty
-    if input.entries.is_empty() {
-        return Err(ApiError::Validation(
-            "Routine must have at least one entry".to_string(),
-        ));
-    }
+    validation::validate_routine_entries_not_empty_generic(&input.entries)?;
 
     // Validate each entry has required fields and valid item_type
     validate_entries(&input.entries)?;

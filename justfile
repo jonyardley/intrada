@@ -62,20 +62,7 @@ typegen:
 
 # Check that generated Swift types are up to date (CI use)
 typegen-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # Snapshot current generated output
-    BEFORE=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
-    # Regenerate
-    cargo build -p shared_types
-    # Compare
-    AFTER=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
-    if [ "$BEFORE" != "$AFTER" ]; then
-        echo "❌ Generated Swift types are out of date!"
-        echo "   Run 'just typegen' and commit the changes."
-        exit 1
-    fi
-    echo "✓ Generated Swift types are up to date."
+    bash scripts/typegen-check.sh
 
 # ─────────────────────────────────────────────
 # iOS

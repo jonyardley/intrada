@@ -210,6 +210,16 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0031_drop_goals",
         "DROP TABLE IF EXISTS goals;",
     ),
+    // Legacy pieces/exercises tables were replaced by the unified items table
+    // (migrations 0010–0012). Data was migrated in 0011/0012. Safe to drop now.
+    (
+        "0032_drop_pieces",
+        "DROP TABLE IF EXISTS pieces;",
+    ),
+    (
+        "0033_drop_exercises",
+        "DROP TABLE IF EXISTS exercises;",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

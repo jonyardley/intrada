@@ -137,16 +137,7 @@ jobs:
           shared-key: "native"
           save-if: "false"
       - name: Check generated Swift types are up to date
-        run: |
-          BEFORE=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
-          cargo build -p shared_types
-          AFTER=$(find crates/shared_types/generated -name '*.swift' -exec md5sum {} + 2>/dev/null | sort || true)
-          if [ "$BEFORE" != "$AFTER" ]; then
-            echo "❌ Generated Swift types are out of date!"
-            echo "   Run 'just typegen' and commit the changes."
-            exit 1
-          fi
-          echo "✓ Generated Swift types are up to date."
+        run: bash scripts/typegen-check.sh
 
   fmt:
     name: Formatting

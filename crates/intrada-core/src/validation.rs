@@ -305,6 +305,90 @@ pub fn validate_routine_entries_not_empty(entries: &[RoutineEntry]) -> Result<()
     Ok(())
 }
 
+/// Validate that a session's entries list is not empty.
+pub fn validate_session_entries_not_empty<T>(entries: &[T]) -> Result<(), LibraryError> {
+    if entries.is_empty() {
+        return Err(LibraryError::Validation {
+            field: "entries".to_string(),
+            message: "Setlist must have at least one entry".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Validate that a routine's entries list is not empty (generic version
+/// that works with any entry type, unlike `validate_routine_entries_not_empty`
+/// which requires `&[RoutineEntry]`).
+pub fn validate_routine_entries_not_empty_generic<T>(entries: &[T]) -> Result<(), LibraryError> {
+    if entries.is_empty() {
+        return Err(LibraryError::Validation {
+            field: "entries".to_string(),
+            message: "Routine must have at least one entry".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// Validate rep field consistency: rep_count must be <= rep_target, and
+/// rep_count, rep_target_reached, and rep_history all require rep_target.
+pub fn validate_rep_consistency(
+    rep_target: Option<u8>,
+    rep_count: Option<u8>,
+    rep_target_reached: Option<bool>,
+    rep_history_present: bool,
+) -> Result<(), LibraryError> {
+    if let Some(target) = rep_target {
+        if let Some(count) = rep_count {
+            if count > target {
+                return Err(LibraryError::Validation {
+                    field: "rep_count".to_string(),
+                    message: format!("rep_count ({count}) cannot exceed rep_target ({target})"),
+                });
+            }
+        }
+    } else {
+        // If no target, count, reached, and history must also be absent
+        if rep_count.is_some() || rep_target_reached.is_some() || rep_history_present {
+            return Err(LibraryError::Validation {
+                field: "rep_target".to_string(),
+                message: "rep_count, rep_target_reached, and rep_history require rep_target"
+                    .to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Valid item types for routine and session entries.
+pub const VALID_ITEM_TYPES: &[&str] = &["piece", "exercise"];
+
+/// Validate a routine entry's required fields: item_id, item_title, and item_type.
+pub fn validate_routine_entry_fields(
+    item_id: &str,
+    item_title: &str,
+    item_type: &str,
+) -> Result<(), LibraryError> {
+    if item_id.trim().is_empty() {
+        return Err(LibraryError::Validation {
+            field: "item_id".to_string(),
+            message: "Entry item_id must not be empty".to_string(),
+        });
+    }
+    if item_title.trim().is_empty() {
+        return Err(LibraryError::Validation {
+            field: "item_title".to_string(),
+            message: "Entry item_title must not be empty".to_string(),
+        });
+    }
+    if !VALID_ITEM_TYPES.contains(&item_type) {
+        return Err(LibraryError::Validation {
+            field: "item_type".to_string(),
+            message: format!("Entry item_type must be 'piece' or 'exercise', got '{item_type}'"),
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1150,6 +1234,174 @@ mod tests {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "achieved_tempo");
                 assert_eq!(message, "Achieved tempo must be between 1 and 500 BPM");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- validate_session_entries_not_empty tests ---
+
+    #[test]
+    fn test_session_entries_not_empty_ok() {
+        assert!(validate_session_entries_not_empty(&[1, 2, 3]).is_ok());
+    }
+
+    #[test]
+    fn test_session_entries_empty() {
+        let entries: Vec<i32> = vec![];
+        let err = validate_session_entries_not_empty(&entries).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "entries");
+                assert_eq!(message, "Setlist must have at least one entry");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- validate_rep_consistency tests ---
+
+    #[test]
+    fn test_rep_consistency_all_none() {
+        assert!(validate_rep_consistency(None, None, None, false).is_ok());
+    }
+
+    #[test]
+    fn test_rep_consistency_valid() {
+        assert!(validate_rep_consistency(Some(5), Some(3), Some(false), true).is_ok());
+    }
+
+    #[test]
+    fn test_rep_consistency_count_at_target() {
+        assert!(validate_rep_consistency(Some(5), Some(5), Some(true), true).is_ok());
+    }
+
+    #[test]
+    fn test_rep_consistency_count_exceeds_target() {
+        let err = validate_rep_consistency(Some(5), Some(6), None, false).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "rep_count");
+                assert_eq!(message, "rep_count (6) cannot exceed rep_target (5)");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_rep_consistency_count_without_target() {
+        let err = validate_rep_consistency(None, Some(3), None, false).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "rep_target");
+                assert_eq!(
+                    message,
+                    "rep_count, rep_target_reached, and rep_history require rep_target"
+                );
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_rep_consistency_reached_without_target() {
+        let err = validate_rep_consistency(None, None, Some(true), false).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "rep_target");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_rep_consistency_history_without_target() {
+        let err = validate_rep_consistency(None, None, None, true).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "rep_target");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- validate_routine_entry_fields tests ---
+
+    #[test]
+    fn test_routine_entry_fields_valid_piece() {
+        assert!(validate_routine_entry_fields("id1", "Sonata", "piece").is_ok());
+    }
+
+    #[test]
+    fn test_routine_entry_fields_valid_exercise() {
+        assert!(validate_routine_entry_fields("id2", "Scales", "exercise").is_ok());
+    }
+
+    #[test]
+    fn test_routine_entry_fields_empty_item_id() {
+        let err = validate_routine_entry_fields("", "Sonata", "piece").unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "item_id");
+                assert_eq!(message, "Entry item_id must not be empty");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_routine_entry_fields_whitespace_item_id() {
+        let err = validate_routine_entry_fields("  ", "Sonata", "piece").unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "item_id");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_routine_entry_fields_empty_item_title() {
+        let err = validate_routine_entry_fields("id1", "", "piece").unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "item_title");
+                assert_eq!(message, "Entry item_title must not be empty");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_routine_entry_fields_invalid_item_type() {
+        let err = validate_routine_entry_fields("id1", "Sonata", "song").unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "item_type");
+                assert_eq!(
+                    message,
+                    "Entry item_type must be 'piece' or 'exercise', got 'song'"
+                );
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    // --- validate_routine_entries_not_empty_generic tests ---
+
+    #[test]
+    fn test_routine_entries_generic_not_empty_ok() {
+        assert!(validate_routine_entries_not_empty_generic(&[1]).is_ok());
+    }
+
+    #[test]
+    fn test_routine_entries_generic_empty() {
+        let entries: Vec<i32> = vec![];
+        let err = validate_routine_entries_not_empty_generic(&entries).unwrap_err();
+        match err {
+            LibraryError::Validation { field, message } => {
+                assert_eq!(field, "entries");
+                assert_eq!(message, "Routine must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }

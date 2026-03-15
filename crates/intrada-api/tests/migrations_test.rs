@@ -37,13 +37,14 @@ async fn run_migrations_creates_all_tables() {
         tables.push(name);
     }
 
+    // Legacy pieces/exercises tables were dropped in migrations 0032/0033.
     assert!(
-        tables.contains(&"pieces".to_string()),
-        "Missing 'pieces' table. Found: {tables:?}"
+        !tables.contains(&"pieces".to_string()),
+        "Legacy 'pieces' table should have been dropped. Found: {tables:?}"
     );
     assert!(
-        tables.contains(&"exercises".to_string()),
-        "Missing 'exercises' table. Found: {tables:?}"
+        !tables.contains(&"exercises".to_string()),
+        "Legacy 'exercises' table should have been dropped. Found: {tables:?}"
     );
     assert!(
         tables.contains(&"sessions".to_string()),

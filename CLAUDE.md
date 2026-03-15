@@ -486,7 +486,6 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 ## Known Tech Debt
 
 - Sessions and routines SQL is inline in route handlers (items has a dedicated `db/items.rs` module)
-- Legacy `pieces` and `exercises` tables from early migrations still exist in the schema
 - `category` field on exercises is redundant with tags (#211) — scheduled for removal
 
 <!-- MANUAL ADDITIONS START -->

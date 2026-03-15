@@ -6,6 +6,7 @@ mod sessions;
 use axum::http::{header, HeaderValue, Method};
 use axum::Router;
 use tower_http::cors::CorsLayer;
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
@@ -29,6 +30,7 @@ pub fn api_router(state: AppState) -> Router {
     Router::new()
         .nest("/api", api_routes())
         .layer(cors)
+        .layer(RequestBodyLimitLayer::new(1_048_576)) // 1 MB
         .layer(trace)
         .with_state(state)
 }
