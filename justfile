@@ -81,36 +81,41 @@ typegen-check:
 # iOS
 # ─────────────────────────────────────────────
 
-# Build Rust for iOS (device + simulator) and generate Swift types
+# Build Rust for iOS (device + simulator), generate Swift types, regenerate Xcode project
 ios:
     bash scripts/build-ios.sh
+    cd ios && xcodegen generate
 
-# Build for device only
+# Build for device only + regenerate project
 ios-device:
     bash scripts/build-ios.sh --device
+    cd ios && xcodegen generate
 
-# Build for simulator only
+# Build for simulator only + regenerate project
 ios-sim:
     bash scripts/build-ios.sh --sim
+    cd ios && xcodegen generate
 
-# Generate Swift types only (no Rust cross-compilation)
+# Generate Swift types only (no Rust cross-compilation) + regenerate project
 ios-types:
     bash scripts/build-ios.sh --types
+    cd ios && xcodegen generate
 
 # Debug build for simulator (faster iteration)
 ios-debug:
     bash scripts/build-ios.sh --sim --debug
+    cd ios && xcodegen generate
 
 # Regenerate Xcode project from project.yml
 ios-project:
     cd ios && xcodegen generate
 
 # Full build + regenerate project + open Xcode
-ios-dev: ios ios-project
+ios-dev: ios
     open ios/Intrada.xcodeproj
 
 # Build for simulator, regenerate project, and run in simulator
-ios-run: ios-sim ios-project
+ios-run: ios-sim
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
@@ -127,7 +132,7 @@ ios-run: ios-sim ios-project
         echo "Note: Launch from Xcode for first run"
 
 # Build for device without code signing (CI-style check)
-ios-check: ios-device ios-project
+ios-check: ios-device
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
