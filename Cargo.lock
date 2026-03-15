@@ -2527,7 +2527,7 @@ dependencies = [
  "chrono",
  "console_error_panic_hook",
  "crux_core",
- "getrandom 0.3.4",
+ "getrandom 0.4.2",
  "gloo-net",
  "gloo-timers",
  "intrada-core",
