@@ -147,6 +147,42 @@ ios-check: ios-release
         COMPILER_INDEX_STORE_ENABLE=NO \
         | xcpretty --color 2>/dev/null || true
 
+# Quick Swift-only build check (no Rust cross-compilation)
+# Use after modifying any Swift files to catch compile errors fast (~30s vs ~5min)
+ios-swift-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodegen generate --quiet 2>/dev/null || xcodegen generate
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'generic/platform=iOS Simulator' \
+        -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        2>&1 | tail -20
+    echo "✓ iOS Swift build check passed"
+
+# SwiftUI preview validation — checks all preview providers compile
+ios-preview-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodegen generate --quiet 2>/dev/null || xcodegen generate
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination 'generic/platform=iOS Simulator' \
+        -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        ENABLE_PREVIEWS=YES \
+        2>&1 | tail -20
+    echo "✓ iOS preview check passed"
+
 # Nuclear clean — removes every iOS artifact to guarantee a fresh build
 ios-clean:
     #!/usr/bin/env bash

@@ -69,8 +69,8 @@ struct TextFieldView: View {
         TextFieldView(
             label: "Composer",
             text: .constant(""),
-            hint: "Optional — the composer or author",
-            placeholder: "e.g. Debussy"
+            placeholder: "e.g. Debussy",
+            hint: "Optional — the composer or author"
         )
     }
     .padding()

@@ -94,7 +94,26 @@ cargo test -p intrada-api  # API tests only (includes auth tests)
 just typegen               # regenerate Swift types after changing intrada-core types
 just typegen-check         # verify generated types are up to date (CI use)
 just ios                   # cross-compile for iOS + generate types + UniFFI bindings
+just ios-swift-check       # quick Swift-only build validation (~30s, no Rust build)
+just ios-preview-check     # validate SwiftUI previews compile
 ```
+
+### iOS build validation (IMPORTANT — always do this after Swift changes)
+
+After modifying **any** Swift file in `ios/`, run `just ios-swift-check` to verify
+the project still compiles. This catches argument ordering errors, missing imports,
+type mismatches, and other Swift compiler errors without the 5-minute Rust
+cross-compilation overhead.
+
+```bash
+just ios-swift-check       # ~30s — validates all Swift compiles for simulator
+just ios-preview-check     # same + validates #Preview providers
+```
+
+**When to run:**
+- After editing any `.swift` file in `ios/`
+- After regenerating types with `just typegen`
+- Before committing iOS changes
 
 ## Architecture Patterns
 
