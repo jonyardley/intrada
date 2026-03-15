@@ -18,10 +18,10 @@ struct IntradaApp: App {
     var body: some Scene {
         WindowGroup {
             ContentRouter()
+                .toastOverlay()
                 .environment(clerk)
                 .environment(core)
                 .environment(toastManager)
-                .toastOverlay()
                 .preferredColorScheme(.dark)
         }
     }
