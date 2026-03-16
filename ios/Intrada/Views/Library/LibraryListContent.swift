@@ -5,6 +5,7 @@ import SwiftUI
 /// sidebar on iPad and as the main list on iPhone.
 struct LibraryListContent: View {
     @Environment(IntradaCore.self) private var core
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Binding var selectedItemId: String?
     @Binding var showAddSheet: Bool
     @State private var filterTab: FilterTab = .all
@@ -17,70 +18,89 @@ struct LibraryListContent: View {
     }
 
     var body: some View {
-        Group {
-            if core.isLoading {
-                ScrollView {
-                    LibrarySkeletonView()
-                }
-                .transition(.opacity)
-            } else if items.isEmpty {
-                if !searchText.isEmpty || filterTab != .all {
-                    EmptyStateView(
-                        icon: "magnifyingglass",
-                        title: "No results",
-                        message: "Try a different search or filter"
-                    )
-                } else {
-                    EmptyStateView(
-                        icon: "music.note.list",
-                        title: "No items yet",
-                        message: "Add your first piece or exercise to get started",
-                        actionTitle: "Add Item",
-                        action: { showAddSheet = true }
-                    )
-                }
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(items, id: \.id) { item in
-                            Button {
-                                selectedItemId = item.id
-                            } label: {
-                                LibraryItemRow(item: item)
-                                    .background(
-                                        item.id == selectedItemId
-                                            ? Color.surfaceHover
-                                            : Color.clear
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("\(item.title), \(item.subtitle)")
+        listContent
+            .background(Color.backgroundApp)
+            .animation(.easeInOut(duration: 0.2), value: core.isLoading)
+            .searchable(text: $searchText, prompt: "Search by title or composer")
+            .onChange(of: searchText) { _, newText in
+                dispatchQuery(tab: filterTab, text: newText)
+            }
+            .onChange(of: filterTab) { _, newTab in
+                dispatchQuery(tab: newTab, text: searchText)
+            }
+    }
 
-                            Divider()
-                                .overlay(Color.borderDefault)
-                        }
+    // MARK: - List Content
+
+    @ViewBuilder
+    private var listContent: some View {
+        if core.isLoading {
+            ScrollView {
+                LibrarySkeletonView()
+            }
+            .transition(.opacity)
+        } else if items.isEmpty {
+            List {
+                filterSection
+
+                Section {
+                    if !searchText.isEmpty || filterTab != .all {
+                        EmptyStateView(
+                            icon: "magnifyingglass",
+                            title: "No results",
+                            message: "Try a different search or filter"
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    } else {
+                        EmptyStateView(
+                            icon: "music.note.list",
+                            title: "No items yet",
+                            message: "Add your first piece or exercise to get started",
+                            actionTitle: "Add Item",
+                            action: { showAddSheet = true }
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
-                .transition(.opacity)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+        } else {
+            List(selection: $selectedItemId) {
+                filterSection
+
+                Section {
+                    ForEach(items, id: \.id) { item in
+                        LibraryItemRow(item: item)
+                            .tag(item.id)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                            .accessibilityLabel("\(item.title), \(item.subtitle)")
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .transition(.opacity)
         }
-        .animation(.easeInOut(duration: 0.2), value: core.isLoading)
-        .searchable(text: $searchText, prompt: "Search by title or composer")
-        .onChange(of: searchText) { _, newText in
-            dispatchQuery(tab: filterTab, text: newText)
-        }
-        .safeAreaInset(edge: .top) {
+    }
+
+    // MARK: - Filter Section
+
+    /// Filter tabs, error banner, and item count — displayed as the first section in the list.
+    private var filterSection: some View {
+        Section {
             VStack(spacing: 8) {
                 // Error banner
                 if let error = core.viewModel.error {
                     ErrorBanner(message: error, onDismiss: {
                         core.update(.clearError)
                     })
-                    .padding(.horizontal, Spacing.card)
                 }
 
                 TypeTabs(selection: $filterTab)
-                    .padding(.horizontal, Spacing.card)
 
                 if !core.isLoading {
                     Text("\(items.count) item\(items.count == 1 ? "" : "s")")
@@ -88,13 +108,13 @@ struct LibraryListContent: View {
                         .foregroundStyle(Color.textMuted)
                 }
             }
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-        }
-        .onChange(of: filterTab) { _, newTab in
-            dispatchQuery(tab: newTab, text: searchText)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 8, leading: Spacing.card, bottom: 8, trailing: Spacing.card))
+            .listRowSeparator(.hidden)
         }
     }
+
+    // MARK: - Helpers
 
     private func dispatchQuery(tab: FilterTab, text: String) {
         let query = ListQuery(

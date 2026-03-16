@@ -7,7 +7,7 @@ struct LibraryView: View {
     @Environment(IntradaCore.self) private var core
     @State private var selectedItemId: String?
     @State private var showAddSheet: Bool = false
-    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -16,6 +16,7 @@ struct LibraryView: View {
                 showAddSheet: $showAddSheet
             )
             .navigationTitle("Library")
+            .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {

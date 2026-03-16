@@ -7,10 +7,16 @@ import SwiftUI
 struct TypeTabs: View {
     @Binding var selection: FilterTab
     var isInteractive: Bool = true
+    /// When false, hides the "All" tab — use in add/edit forms where a specific type must be chosen.
+    var showAll: Bool = true
+
+    private var visibleTabs: [FilterTab] {
+        showAll ? FilterTab.allCases : FilterTab.allCases.filter { $0 != .all }
+    }
 
     var body: some View {
         HStack(spacing: 4) {
-            ForEach(FilterTab.allCases) { tab in
+            ForEach(visibleTabs) { tab in
                 Button {
                     if isInteractive {
                         selection = tab

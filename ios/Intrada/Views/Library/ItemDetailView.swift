@@ -27,7 +27,7 @@ struct ItemDetailView: View {
                     }
                 }
                 .navigationTitle(item.title)
-                .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(sizeClass == .regular ? .inline : .large)
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
@@ -78,6 +78,7 @@ struct ItemDetailView: View {
                 )
             }
         }
+        .background(Color.backgroundApp)
     }
 
     // MARK: - iPhone Layout (single column)
@@ -99,27 +100,21 @@ struct ItemDetailView: View {
 
     @ViewBuilder
     private func iPadLayout(item: LibraryItemView) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 24) {
             headerSection(item: item)
 
-            HStack(alignment: .top, spacing: 24) {
-                // Left column: metadata
-                VStack(alignment: .leading, spacing: 20) {
-                    metadataCard(item: item)
+            // Main content card with metadata
+            CardView {
+                VStack(alignment: .leading, spacing: 16) {
+                    metadataFields(item: item)
                     tagsSection(item: item)
-                    notesCard(item: item)
+                    notesInline(item: item)
                     timestampsSection(item: item)
                 }
-                .frame(maxWidth: .infinity)
-
-                // Right column: practice summary
-                if item.practice != nil {
-                    VStack(alignment: .leading, spacing: 20) {
-                        practiceSummarySection(item: item)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
             }
+
+            // Practice summary below in full width
+            practiceSummarySection(item: item)
         }
         .padding(Spacing.cardComfortable)
     }
@@ -129,9 +124,13 @@ struct ItemDetailView: View {
     @ViewBuilder
     private func headerSection(item: LibraryItemView) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(item.title)
-                .font(.heading(size: 28))
-                .foregroundStyle(Color.textPrimary)
+            // On iPhone, the large navigation title shows the title.
+            // On iPad, the title is inline so we show it prominently here.
+            if sizeClass == .regular {
+                Text(item.title)
+                    .font(.heading(size: 28))
+                    .foregroundStyle(Color.textPrimary)
+            }
 
             if !item.subtitle.isEmpty {
                 Text(item.subtitle)
@@ -140,6 +139,40 @@ struct ItemDetailView: View {
             }
 
             TypeBadge(kind: item.itemType)
+        }
+    }
+
+    /// Inline metadata fields without card wrapping (for use inside iPad's combined card).
+    @ViewBuilder
+    private func metadataFields(item: LibraryItemView) -> some View {
+        let hasKey = item.key?.isEmpty == false
+        let hasTempo = item.tempo?.isEmpty == false
+
+        if hasKey || hasTempo {
+            HStack(spacing: 24) {
+                if let key = item.key, !key.isEmpty {
+                    metadataRow(label: "KEY", value: key)
+                }
+                if let tempo = item.tempo, !tempo.isEmpty {
+                    metadataRow(label: "TEMPO", value: tempo)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    /// Notes without card wrapping (for use inside iPad's combined card).
+    @ViewBuilder
+    private func notesInline(item: LibraryItemView) -> some View {
+        if let notes = item.notes, !notes.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("NOTES")
+                    .fieldLabelStyle()
+                Text(notes)
+                    .font(.body)
+                    .foregroundStyle(Color.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

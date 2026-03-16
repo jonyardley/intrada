@@ -33,10 +33,8 @@ struct AddItemView: View {
                     set: { newTab in
                         if newTab == .pieces { kindPicker = .piece }
                         else if newTab == .exercises { kindPicker = .exercise }
-                        // Ignore .all — shouldn't happen since TypeTabs shows all cases
-                        // but this is a safety guard
                     }
-                ))
+                ), showAll: false)
                 .onChange(of: kindPicker) { _, _ in
                     // Clear composer error when switching types
                     errors.removeValue(forKey: "composer")
