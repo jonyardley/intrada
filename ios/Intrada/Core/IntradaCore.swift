@@ -36,7 +36,12 @@ final class IntradaCore {
     private(set) var viewModel: ViewModel
 
     /// Whether the initial data load is in progress.
+    /// True until the first Render effect after startApp(), then stays false
+    /// so background refreshes don't flash the skeleton.
     private(set) var isLoading = true
+
+    /// Guard to prevent duplicate startApp() calls (e.g. from onAppear firing multiple times).
+    private var hasStarted = false
 
     /// Non-nil if the initial ViewModel deserialization failed.
     private(set) var initializationError: String?
@@ -110,17 +115,18 @@ final class IntradaCore {
     ///
     /// Called once after sign-in. Sends `StartApp` to the core which triggers
     /// HTTP effects for fetching items, sessions, and routines.
+    /// Guarded to prevent duplicate calls from `onAppear` re-firing.
     func startApp() {
+        guard !hasStarted else { return }
+        hasStarted = true
         isLoading = true
         update(.startApp(apiBaseUrl: Config.apiBaseURL))
 
         // Restore any in-progress session from crash recovery
-        Task {
-            if let savedSession = SessionStorage.load() {
-                update(.session(.recoverSession(session: savedSession)))
-            }
-            isLoading = false
+        if let savedSession = SessionStorage.load() {
+            update(.session(.recoverSession(session: savedSession)))
         }
+        // isLoading is cleared by the first Render effect (see refreshViewModel)
     }
 
     // MARK: - Request Processing (BCS Bridge)
@@ -151,10 +157,17 @@ final class IntradaCore {
     }
 
     /// Read the current ViewModel from the core via BCS.
+    ///
+    /// The first render after `startApp()` clears `isLoading` so the skeleton
+    /// is replaced by real content. Subsequent renders (background refreshes)
+    /// never re-set `isLoading`, preventing skeleton flashes.
     private func refreshViewModel() {
         let data = core.view()
         do {
             viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](data))
+            if isLoading {
+                isLoading = false
+            }
         } catch {
             print("[IntradaCore] Failed to deserialize ViewModel: \(error)")
         }

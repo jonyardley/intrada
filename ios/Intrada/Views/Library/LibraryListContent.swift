@@ -75,7 +75,7 @@ struct LibraryListContent: View {
                     ForEach(items, id: \.id) { item in
                         LibraryItemRow(item: item)
                             .tag(item.id)
-                            .listRowBackground(Color.clear)
+                            .listRowBackground(rowBackground(for: item))
                             .listRowInsets(EdgeInsets())
                             .accessibilityLabel("\(item.title), \(item.subtitle)")
                     }
@@ -111,6 +111,25 @@ struct LibraryListContent: View {
             .listRowBackground(Color.clear)
             .listRowInsets(EdgeInsets(top: 8, leading: Spacing.card, bottom: 8, trailing: Spacing.card))
             .listRowSeparator(.hidden)
+        }
+    }
+
+    // MARK: - Selection Indicator (iPad only)
+
+    /// Custom row background for iPad sidebar selection.
+    /// Shows a subtle accent tint with a leading accent bar on the selected row.
+    /// On iPhone (compact), rows always use a clear background since selection
+    /// pushes to detail and the list isn't visible alongside the detail.
+    @ViewBuilder
+    private func rowBackground(for item: LibraryItemView) -> some View {
+        if sizeClass == .regular && item.id == selectedItemId {
+            Color.accent.opacity(0.12)
+                .overlay(alignment: .leading) {
+                    Color.accent
+                        .frame(width: 3)
+                }
+        } else {
+            Color.clear
         }
     }
 
