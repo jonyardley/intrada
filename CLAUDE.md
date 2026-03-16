@@ -117,6 +117,18 @@ just ios-smoke-test        # after changing IntradaApp, environment, navigation
 just ios-preview-check     # after changing #Preview blocks
 ```
 
+**⚠️ Incremental build cache warning**: `just ios-swift-check` uses Xcode's
+incremental build. If the Rust static library or generated types changed since
+the last clean build, Xcode may reuse stale cached artefacts and **report
+BUILD SUCCEEDED when the code is actually broken**. After any of these events,
+do a clean rebuild before trusting the result:
+- After running `just typegen` or `just ios` (generated types changed)
+- After switching branches
+- When CI fails but local build passes
+- After any Rust core changes
+
+**Clean rebuild**: `cd ios && xcodegen generate && xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet` then `just ios-swift-check`.
+
 **When to run level 2 (smoke test):**
 - After changing `IntradaApp.swift` or `ContentRouter`
 - After adding/moving `.environment()` or `.toastOverlay()` modifiers
@@ -400,6 +412,10 @@ components. Always use the named token.
    wrapper for Sendable conformance). Access properties directly (`item.title`, not
    `item.title.value`). In closures, add explicit type annotations for type inference:
    `.map { (item: LibraryItemView) -> String in item.subtitle }` not `.map { $0.subtitle }`.
+9. **Trust generated types, not assumptions**: Always read the actual generated type
+   definitions in `ios/Intrada/Generated/SharedTypes/SharedTypes.swift` before writing
+   code. Don't assume field types (e.g. `itemType` is `ItemKind`, not `String`). After
+   writing code, do a **clean** build to catch stale-cache false positives.
 
 Key files: `ios/Intrada/DesignSystem/` (tokens + modifiers), `ios/Intrada/Components/` (SwiftUI components)
 
