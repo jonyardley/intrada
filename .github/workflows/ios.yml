@@ -102,23 +102,15 @@ jobs:
           name: rust-ios-device-lib
           path: target/aarch64-apple-ios/release/
 
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v5
-        with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: xcode-deriveddata-${{ runner.os }}-${{ env.XCODE_VERSION }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**/*.swift') }}
-          restore-keys: |
-            xcode-deriveddata-${{ runner.os }}-${{ env.XCODE_VERSION }}-
-
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
 
-      - name: Build for device (no code signing)
+      - name: Build for device (no code signing, clean build)
         working-directory: ios
         run: |
           set -o pipefail
-          xcodebuild build \
+          xcodebuild clean build \
             -project Intrada.xcodeproj \
             -scheme Intrada \
             -destination 'generic/platform=iOS' \

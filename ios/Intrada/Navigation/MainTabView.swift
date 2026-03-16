@@ -29,7 +29,15 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ForEach(Tab.allCases, id: \.self) { tab in
+            // Library — fully implemented
+            LibraryView()
+                .tabItem {
+                    Label(Tab.library.rawValue, systemImage: Tab.library.icon)
+                }
+                .tag(Tab.library)
+
+            // Remaining tabs — placeholders
+            ForEach([Tab.practice, Tab.routines, Tab.analytics], id: \.self) { tab in
                 NavigationStack {
                     PlaceholderView(tab: tab)
                         .toolbar {

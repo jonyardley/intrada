@@ -16,16 +16,21 @@ struct StatCardView: View {
         VStack(spacing: 4) {
             Text(title)
                 .fieldLabelStyle()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Text(value)
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundStyle(Color.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             if let subtitle {
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(Color.textMuted)
+                    .lineLimit(1)
             }
         }
         .frame(maxWidth: .infinity)

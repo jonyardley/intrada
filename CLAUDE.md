@@ -117,6 +117,14 @@ just ios-smoke-test        # after changing IntradaApp, environment, navigation
 just ios-preview-check     # after changing #Preview blocks
 ```
 
+**⚠️ Incremental build cache**: `just ios-swift-check` uses Xcode's incremental
+build. The `just typegen`, `just ios`, `just ios-sim`, and `just ios-types` recipes
+automatically invalidate the Xcode intermediate cache, so `ios-swift-check` is safe
+to run immediately after them. Use `just ios-swift-check --clean` when:
+- After switching branches
+- When CI fails but local build passes
+- After any manual changes to generated files
+
 **When to run level 2 (smoke test):**
 - After changing `IntradaApp.swift` or `ContentRouter`
 - After adding/moving `.environment()` or `.toastOverlay()` modifiers
@@ -362,6 +370,25 @@ components. Always use the named token.
 | `EmptyStateView`  | (inline)        | No-data empty states                      |
 | `SkeletonLine`    | `SkeletonLine`  | Pulsing text placeholder                  |
 | `SkeletonBlock`   | `SkeletonBlock` | Pulsing rectangular placeholder           |
+| `TypeTabs`        | `TypeTabs`      | Piece/Exercise filter pill toggle         |
+| `AutocompleteField` | `Autocomplete` | Text field with dropdown suggestions    |
+| `TagInputView`    | `TagInput`      | Chip-based multi-tag input with autocomplete |
+| `LibraryItemRow`  | `LibraryItemCard` | Library item list row (title, composer, badges) |
+| `ScoreHistoryList` | (inline)       | Score history entries with colour-coded badges |
+| `FlowLayout`      | (CSS flexbox)   | Wrapping layout for tag chips and badges   |
+
+### iOS views — feature screens
+
+| View | Purpose |
+|------|---------|
+| `LibraryView` | Root library screen — `NavigationSplitView` (sidebar + detail on iPad, stack on iPhone) |
+| `LibraryListContent` | Scrollable item list with filter tabs, search, item count, skeleton/empty states |
+| `ItemDetailView` | Full item detail — adaptive layout (single column iPhone, two-column iPad) |
+| `AddItemView` | Create item form with client-side validation |
+| `EditItemView` | Edit item form with pre-populated fields, PATCH-style double-optional updates |
+| `LibrarySkeletonView` | List loading skeleton (5 placeholder rows) |
+| `DetailSkeletonView` | Detail pane loading skeleton |
+| `LibraryHelpers` | Shared helpers: `FilterTab`, `LibraryFormValidator`, date/tempo formatters |
 
 ### Rules for new iOS UI work
 
@@ -378,6 +405,14 @@ components. Always use the named token.
    they're on from the visual design.
 6. **Dark mode only**: The app forces dark appearance. All tokens are defined for dark mode.
 7. **Dynamic Type**: Components must support the system text size setting.
+8. **`@Indirect` property wrapper**: All generated type fields use `@Indirect` (an enum
+   wrapper for Sendable conformance). Access properties directly (`item.title`, not
+   `item.title.value`). In closures, add explicit type annotations for type inference:
+   `.map { (item: LibraryItemView) -> String in item.subtitle }` not `.map { $0.subtitle }`.
+9. **Trust generated types, not assumptions**: Always read the actual generated type
+   definitions in `ios/Intrada/Generated/SharedTypes/SharedTypes.swift` before writing
+   code. Don't assume field types (e.g. `itemType` is `ItemKind`, not `String`). After
+   writing code, do a **clean** build to catch stale-cache false positives.
 
 Key files: `ios/Intrada/DesignSystem/` (tokens + modifiers), `ios/Intrada/Components/` (SwiftUI components)
 
@@ -489,3 +524,10 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+## Active Technologies
+- Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated) (001-ios-library)
+- N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
+
+## Recent Changes
+- 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

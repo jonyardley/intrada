@@ -6,8 +6,8 @@ import SwiftUI
 /// `.toastOverlay()` modifier at the app root.
 ///
 ///     ContentView()
-///         .environment(toastManager)
 ///         .toastOverlay()
+///         .environment(toastManager)
 struct ToastView: View {
 
     let message: String
