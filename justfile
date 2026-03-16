@@ -136,7 +136,8 @@ ios-check: ios-release
 
 # Quick Swift-only build check (no Rust cross-compilation)
 # Use after modifying any Swift files to catch compile errors fast (~30s vs ~5min)
-ios-swift-check:
+# Pass --clean to force a clean build (slower but avoids stale cache false positives)
+ios-swift-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
@@ -145,6 +146,17 @@ ios-swift-check:
         exit 1
     fi
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
+
+    # Clean if requested or if generated types changed since last build
+    if [[ " {{ ARGS }} " == *" --clean "* ]]; then
+        echo "  Cleaning DerivedData..."
+        xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet 2>/dev/null || true
+    fi
+
+    BUILD_LOG=$(mktemp)
+    trap "rm -f $BUILD_LOG" EXIT
+
+    set +e
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
@@ -153,11 +165,27 @@ ios-swift-check:
         CODE_SIGNING_ALLOWED=NO \
         CODE_SIGN_IDENTITY="" \
         COMPILER_INDEX_STORE_ENABLE=NO \
-        2>&1 | tail -20
+        2>&1 | tee "$BUILD_LOG" | tail -20
+    BUILD_EXIT=${PIPESTATUS[0]}
+    set -e
+
+    if [ $BUILD_EXIT -ne 0 ]; then
+        echo ""
+        echo "❌ iOS Swift build FAILED"
+        # Show all Swift errors for quick diagnosis
+        ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$BUILD_LOG" || true)
+        if [ -n "$ERRORS" ]; then
+            echo ""
+            echo "Swift errors:"
+            echo "$ERRORS"
+        fi
+        exit 1
+    fi
     echo "✓ iOS Swift build check passed"
 
 # SwiftUI preview validation — checks all preview providers compile
-ios-preview-check:
+# Pass --clean to force a clean build
+ios-preview-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
     cd ios
@@ -166,6 +194,16 @@ ios-preview-check:
         exit 1
     fi
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
+
+    if [[ " {{ ARGS }} " == *" --clean "* ]]; then
+        echo "  Cleaning DerivedData..."
+        xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet 2>/dev/null || true
+    fi
+
+    BUILD_LOG=$(mktemp)
+    trap "rm -f $BUILD_LOG" EXIT
+
+    set +e
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
@@ -175,7 +213,21 @@ ios-preview-check:
         CODE_SIGN_IDENTITY="" \
         COMPILER_INDEX_STORE_ENABLE=NO \
         ENABLE_PREVIEWS=YES \
-        2>&1 | tail -20
+        2>&1 | tee "$BUILD_LOG" | tail -20
+    BUILD_EXIT=${PIPESTATUS[0]}
+    set -e
+
+    if [ $BUILD_EXIT -ne 0 ]; then
+        echo ""
+        echo "❌ iOS preview check FAILED"
+        ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$BUILD_LOG" || true)
+        if [ -n "$ERRORS" ]; then
+            echo ""
+            echo "Swift errors:"
+            echo "$ERRORS"
+        fi
+        exit 1
+    fi
     echo "✓ iOS preview check passed"
 
 # Smoke test: build for sim, install, launch, verify app doesn't crash on startup
