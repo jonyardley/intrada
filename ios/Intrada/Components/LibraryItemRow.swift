@@ -17,7 +17,7 @@ struct LibraryItemRow: View {
 
                 Spacer()
 
-                TypeBadge(kind: itemKind(from: item.itemType))
+                TypeBadge(kind: item.itemType)
             }
 
             // Composer

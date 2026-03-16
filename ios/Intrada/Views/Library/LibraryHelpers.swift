@@ -119,14 +119,6 @@ func uniqueTags(from items: [LibraryItemView]) -> [String] {
     return Array(Set(allTags)).sorted()
 }
 
-// MARK: - ItemKind from String
-
-/// Converts the ViewModel's string item type to an ItemKind enum.
-/// The ViewModel stores item_type as a String ("piece" or "exercise").
-func itemKind(from typeString: String) -> ItemKind {
-    typeString.lowercased() == "exercise" ? .exercise : .piece
-}
-
 // MARK: - Date Formatting
 
 /// Formats an RFC3339 date string for display (e.g. "12 Jan 2026").

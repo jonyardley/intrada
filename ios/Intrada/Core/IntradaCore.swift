@@ -72,7 +72,7 @@ final class IntradaCore {
                 activeSession: nil,
                 buildingSetlist: nil,
                 summary: nil,
-                sessionStatus: "",
+                sessionStatus: .idle,
                 error: message,
                 analytics: nil,
                 routines: []

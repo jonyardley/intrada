@@ -138,7 +138,7 @@ struct ItemDetailView: View {
                     .foregroundStyle(Color.textSecondary)
             }
 
-            TypeBadge(kind: itemKind(from: item.itemType))
+            TypeBadge(kind: item.itemType)
         }
     }
 

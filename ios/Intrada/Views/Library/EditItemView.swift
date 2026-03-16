@@ -26,7 +26,7 @@ struct EditItemView: View {
 
     private var kind: ItemKind {
         guard let item else { return .piece }
-        return itemKind(from: item.itemType)
+        return item.itemType
     }
 
     var body: some View {
