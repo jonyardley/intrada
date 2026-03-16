@@ -44,6 +44,7 @@ struct ItemDetailView: View {
                             }
                         } label: {
                             Image(systemName: "ellipsis.circle")
+                                .accessibilityLabel("Item actions")
                         }
                     }
                 }
@@ -54,9 +55,9 @@ struct ItemDetailView: View {
                 ) {
                     Button("Delete", role: .destructive) {
                         core.update(.item(.delete(id: itemId)))
-                        toast.show("Item deleted", variant: .success)
                         selectedItemId = nil
                         dismiss()
+                        toast.show("Item deleted", variant: .success)
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
@@ -281,60 +282,6 @@ struct ItemDetailView: View {
                 .font(.caption)
                 .foregroundStyle(Color.textFaint)
         }
-    }
-}
-
-// MARK: - FlowLayout (tag wrapping)
-
-/// A simple flow layout that wraps children to the next line when they exceed available width.
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = computeLayout(proposal: proposal, subviews: subviews)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = computeLayout(proposal: proposal, subviews: subviews)
-        for (index, position) in result.positions.enumerated() {
-            subviews[index].place(
-                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
-                proposal: .unspecified
-            )
-        }
-    }
-
-    private struct LayoutResult {
-        var size: CGSize
-        var positions: [CGPoint]
-    }
-
-    private func computeLayout(proposal: ProposedViewSize, subviews: Subviews) -> LayoutResult {
-        let maxWidth = proposal.width ?? .infinity
-        var positions: [CGPoint] = []
-        var currentX: CGFloat = 0
-        var currentY: CGFloat = 0
-        var lineHeight: CGFloat = 0
-        var totalHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if currentX + size.width > maxWidth && currentX > 0 {
-                currentX = 0
-                currentY += lineHeight + spacing
-                lineHeight = 0
-            }
-            positions.append(CGPoint(x: currentX, y: currentY))
-            lineHeight = max(lineHeight, size.height)
-            currentX += size.width + spacing
-            totalHeight = currentY + lineHeight
-        }
-
-        return LayoutResult(
-            size: CGSize(width: maxWidth, height: totalHeight),
-            positions: positions
-        )
     }
 }
 

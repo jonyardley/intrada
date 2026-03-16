@@ -10,22 +10,27 @@ struct LibraryListContent: View {
     @State private var filterTab: FilterTab = .all
     @State private var searchText: String = ""
 
+    /// Items from the ViewModel. Filtering is done by the Crux core via `dispatchQuery()`,
+    /// so this is the already-filtered result set, not a client-side filter.
+    private var items: [LibraryItemView] {
+        core.viewModel.items
+    }
+
     var body: some View {
         Group {
             if core.isLoading {
                 ScrollView {
                     LibrarySkeletonView()
                 }
-            } else if filteredItems.isEmpty {
+                .transition(.opacity)
+            } else if items.isEmpty {
                 if !searchText.isEmpty || filterTab != .all {
-                    // No results for current filter/search
                     EmptyStateView(
                         icon: "magnifyingglass",
                         title: "No results",
                         message: "Try a different search or filter"
                     )
                 } else {
-                    // Library is genuinely empty
                     EmptyStateView(
                         icon: "music.note.list",
                         title: "No items yet",
@@ -37,7 +42,7 @@ struct LibraryListContent: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(filteredItems, id: \.id) { item in
+                        ForEach(items, id: \.id) { item in
                             Button {
                                 selectedItemId = item.id
                             } label: {
@@ -49,14 +54,17 @@ struct LibraryListContent: View {
                                     )
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(item.title), \(item.subtitle)")
 
                             Divider()
                                 .overlay(Color.borderDefault)
                         }
                     }
                 }
+                .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: core.isLoading)
         .searchable(text: $searchText, prompt: "Search by title or composer")
         .onChange(of: searchText) { _, newText in
             dispatchQuery(tab: filterTab, text: newText)
@@ -75,7 +83,7 @@ struct LibraryListContent: View {
                     .padding(.horizontal, Spacing.card)
 
                 if !core.isLoading {
-                    Text("\(filteredItems.count) item\(filteredItems.count == 1 ? "" : "s")")
+                    Text("\(items.count) item\(items.count == 1 ? "" : "s")")
                         .font(.caption)
                         .foregroundStyle(Color.textMuted)
                 }
@@ -86,10 +94,6 @@ struct LibraryListContent: View {
         .onChange(of: filterTab) { _, newTab in
             dispatchQuery(tab: newTab, text: searchText)
         }
-    }
-
-    private var filteredItems: [LibraryItemView] {
-        core.viewModel.items
     }
 
     private func dispatchQuery(tab: FilterTab, text: String) {

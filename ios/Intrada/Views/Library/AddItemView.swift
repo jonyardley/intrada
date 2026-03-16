@@ -7,7 +7,7 @@ struct AddItemView: View {
     @Environment(ToastManager.self) private var toast
     @Environment(\.dismiss) private var dismiss
 
-    @State private var filterTab: FilterTab = .pieces
+    @State private var kindPicker: ItemKindPicker = .piece
     @State private var title: String = ""
     @State private var composer: String = ""
     @State private var key: String = ""
@@ -17,20 +17,30 @@ struct AddItemView: View {
     @State private var tags: [String] = []
     @State private var errors: [String: String] = [:]
     @State private var isSubmitting: Bool = false
+    /// Snapshot of item count before submission, used to detect when the core adds the item.
+    @State private var itemCountBeforeSubmit: Int?
 
     private var itemKindValue: ItemKind {
-        filterTab == .exercises ? .exercise : .piece
+        kindPicker.itemKind
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Type selection
-                TypeTabs(selection: $filterTab)
-                    .onChange(of: filterTab) { _, _ in
-                        // Clear composer error when switching types
-                        errors.removeValue(forKey: "composer")
+                // Type selection (Piece / Exercise only — no "All")
+                TypeTabs(selection: Binding(
+                    get: { kindPicker.filterTab },
+                    set: { newTab in
+                        if newTab == .pieces { kindPicker = .piece }
+                        else if newTab == .exercises { kindPicker = .exercise }
+                        // Ignore .all — shouldn't happen since TypeTabs shows all cases
+                        // but this is a safety guard
                     }
+                ))
+                .onChange(of: kindPicker) { _, _ in
+                    // Clear composer error when switching types
+                    errors.removeValue(forKey: "composer")
+                }
 
                 // Title (required)
                 TextFieldView(
@@ -72,6 +82,7 @@ struct AddItemView: View {
                         placeholder: "1-400",
                         error: errors["bpm"]
                     )
+                    .keyboardType(.numberPad)
                 }
 
                 // Notes
@@ -79,7 +90,6 @@ struct AddItemView: View {
                     label: "Notes",
                     text: $notes,
                     placeholder: "Practice notes, goals, or reminders",
-                    hint: "Practice notes, goals, or reminders",
                     error: errors["notes"]
                 )
 
@@ -106,6 +116,18 @@ struct AddItemView: View {
                 }
             }
         }
+        // Watch for core completing the add (item count changes) or error
+        .onChange(of: core.viewModel.items.count) { _, newCount in
+            guard isSubmitting, let before = itemCountBeforeSubmit, newCount > before else { return }
+            toast.show("Item added", variant: .success)
+            isSubmitting = false
+            dismiss()
+        }
+        .onChange(of: core.viewModel.error) { _, newError in
+            guard isSubmitting, newError != nil else { return }
+            isSubmitting = false
+            // Error is shown by ErrorBanner in the list — just reset the form state
+        }
     }
 
     private func submitForm() {
@@ -124,6 +146,7 @@ struct AddItemView: View {
         guard errors.isEmpty else { return }
 
         isSubmitting = true
+        itemCountBeforeSubmit = core.viewModel.items.count
 
         // Build Tempo if either field is set
         let trimmedMarking = tempoMarking.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -152,9 +175,6 @@ struct AddItemView: View {
         )
 
         core.update(.item(.add(createItem)))
-        toast.show("Item added", variant: .success)
-        isSubmitting = false
-        dismiss()
     }
 }
 

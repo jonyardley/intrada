@@ -90,6 +90,7 @@ struct TagInputView: View {
                     .foregroundStyle(Color.textMuted)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(tag)")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
@@ -116,13 +117,12 @@ struct TagInputView: View {
 
     private var filteredSuggestions: [String] {
         let query = inputText.lowercased()
-        return availableTags
+        return Array(availableTags
             .filter { suggestion in
                 suggestion.lowercased().contains(query)
                     && !tags.contains(where: { $0.lowercased() == suggestion.lowercased() })
             }
-            .prefix(6)
-            .map { $0 }
+            .prefix(6))
     }
 
     private var suggestionsDropdown: some View {

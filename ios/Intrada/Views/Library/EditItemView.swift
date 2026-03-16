@@ -19,6 +19,8 @@ struct EditItemView: View {
     @State private var errors: [String: String] = [:]
     @State private var isSubmitting: Bool = false
     @State private var hasLoaded: Bool = false
+    /// Snapshot of updatedAt before submission, used to detect when the core completes the update.
+    @State private var updatedAtBeforeSubmit: String?
 
     private var item: LibraryItemView? {
         core.viewModel.items.first(where: { $0.id == itemId })
@@ -33,8 +35,10 @@ struct EditItemView: View {
         Group {
             if let item, hasLoaded {
                 formContent(item: item)
-            } else if let item, !hasLoaded {
-                Color.clear.onAppear { populateFields(from: item) }
+            } else if item != nil, !hasLoaded {
+                // Use .task to populate fields when item is available
+                ProgressView()
+                    .task { populateFields() }
             } else if core.isLoading {
                 DetailSkeletonView()
             } else {
@@ -53,6 +57,17 @@ struct EditItemView: View {
                     dismiss()
                 }
             }
+        }
+        // Watch for core completing the update (updatedAt changes) or error
+        .onChange(of: item?.updatedAt) { _, newValue in
+            guard isSubmitting, let before = updatedAtBeforeSubmit, newValue != before else { return }
+            toast.show("Item updated", variant: .success)
+            isSubmitting = false
+            dismiss()
+        }
+        .onChange(of: core.viewModel.error) { _, newError in
+            guard isSubmitting, newError != nil else { return }
+            isSubmitting = false
         }
     }
 
@@ -103,6 +118,7 @@ struct EditItemView: View {
                         placeholder: "1-400",
                         error: errors["bpm"]
                     )
+                    .keyboardType(.numberPad)
                 }
 
                 // Notes
@@ -129,7 +145,8 @@ struct EditItemView: View {
         }
     }
 
-    private func populateFields(from item: LibraryItemView) {
+    private func populateFields() {
+        guard let item else { return }
         title = item.title
         composer = item.subtitle
         key = item.key ?? ""
@@ -157,6 +174,7 @@ struct EditItemView: View {
         guard errors.isEmpty else { return }
 
         isSubmitting = true
+        updatedAtBeforeSubmit = item?.updatedAt
 
         // Build Tempo
         let trimmedMarking = tempoMarking.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -184,9 +202,6 @@ struct EditItemView: View {
         )
 
         core.update(.item(.update(id: itemId, input: updateItem)))
-        toast.show("Item updated", variant: .success)
-        isSubmitting = false
-        dismiss()
     }
 }
 

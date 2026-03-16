@@ -56,9 +56,11 @@ e2e: build
 # ─────────────────────────────────────────────
 
 # Regenerate Swift types from Rust core (run after changing intrada-core types)
+# Automatically invalidates Xcode's incremental cache to avoid stale-type build errors.
 typegen:
     cargo build -p shared_types
-    @echo "✓ Swift types generated: crates/shared_types/generated/swift/"
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
+    @echo "✓ Swift types generated (Xcode incremental cache invalidated)"
 
 # Check that generated Swift types are up to date (CI use)
 typegen-check:
@@ -70,8 +72,10 @@ typegen-check:
 
 # Full iOS build: Rust (device debug), types, UniFFI bindings, Xcode project
 # This is the main command for day-to-day iOS development.
+# Automatically invalidates Xcode's incremental cache since generated types change.
 ios:
     bash scripts/build-ios.sh --device --debug
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Full build + open Xcode
@@ -81,21 +85,25 @@ ios-dev: ios
 # Release build for device (CI/TestFlight)
 ios-release:
     bash scripts/build-ios.sh --device
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Release build for device + simulator (CI)
 ios-release-all:
     bash scripts/build-ios.sh
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Simulator debug build
 ios-sim:
     bash scripts/build-ios.sh --sim --debug
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Generate Swift types + UniFFI bindings only (no Rust cross-compilation)
 ios-types:
     bash scripts/build-ios.sh --types
+    @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Regenerate Xcode project from project.yml (no Rust build)

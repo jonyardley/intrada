@@ -117,17 +117,13 @@ just ios-smoke-test        # after changing IntradaApp, environment, navigation
 just ios-preview-check     # after changing #Preview blocks
 ```
 
-**⚠️ Incremental build cache warning**: `just ios-swift-check` uses Xcode's
-incremental build. If the Rust static library or generated types changed since
-the last clean build, Xcode may reuse stale cached artefacts and **report
-BUILD SUCCEEDED when the code is actually broken**. After any of these events,
-do a clean rebuild before trusting the result:
-- After running `just typegen` or `just ios` (generated types changed)
+**⚠️ Incremental build cache**: `just ios-swift-check` uses Xcode's incremental
+build. The `just typegen`, `just ios`, `just ios-sim`, and `just ios-types` recipes
+automatically invalidate the Xcode intermediate cache, so `ios-swift-check` is safe
+to run immediately after them. Use `just ios-swift-check --clean` when:
 - After switching branches
 - When CI fails but local build passes
-- After any Rust core changes
-
-**Clean rebuild**: `cd ios && xcodegen generate && xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet` then `just ios-swift-check`.
+- After any manual changes to generated files
 
 **When to run level 2 (smoke test):**
 - After changing `IntradaApp.swift` or `ContentRouter`
@@ -379,6 +375,7 @@ components. Always use the named token.
 | `TagInputView`    | `TagInput`      | Chip-based multi-tag input with autocomplete |
 | `LibraryItemRow`  | `LibraryItemCard` | Library item list row (title, composer, badges) |
 | `ScoreHistoryList` | (inline)       | Score history entries with colour-coded badges |
+| `FlowLayout`      | (CSS flexbox)   | Wrapping layout for tag chips and badges   |
 
 ### iOS views — feature screens
 

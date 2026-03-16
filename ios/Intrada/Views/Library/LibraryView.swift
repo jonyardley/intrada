@@ -24,13 +24,8 @@ struct LibraryView: View {
                         Image(systemName: "plus")
                     }
                     .tint(.accent)
+                    .accessibilityLabel("Add item")
                 }
-            }
-            .navigationDestination(for: String.self) { itemId in
-                ItemDetailView(
-                    itemId: itemId,
-                    selectedItemId: $selectedItemId
-                )
             }
         } detail: {
             if let itemId = selectedItemId {

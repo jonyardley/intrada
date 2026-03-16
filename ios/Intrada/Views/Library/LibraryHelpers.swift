@@ -20,6 +20,39 @@ enum FilterTab: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - ItemKindPicker
+
+/// Item kind selection for add/edit forms. Unlike FilterTab, this excludes "All"
+/// since you must choose either Piece or Exercise when creating/editing an item.
+enum ItemKindPicker: String, CaseIterable, Identifiable {
+    case piece = "Piece"
+    case exercise = "Exercise"
+
+    var id: String { rawValue }
+
+    var itemKind: ItemKind {
+        switch self {
+        case .piece: .piece
+        case .exercise: .exercise
+        }
+    }
+
+    /// The corresponding FilterTab case (for TypeTabs display).
+    var filterTab: FilterTab {
+        switch self {
+        case .piece: .pieces
+        case .exercise: .exercises
+        }
+    }
+
+    init(from kind: ItemKind) {
+        switch kind {
+        case .piece: self = .piece
+        case .exercise: self = .exercise
+        }
+    }
+}
+
 // MARK: - LibraryFormValidator
 
 /// Client-side validation mirroring intrada-core/src/validation.rs constants.
@@ -82,7 +115,8 @@ struct LibraryFormValidator {
         }
 
         // Notes: max length
-        if notes.count > maxNotes {
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedNotes.count > maxNotes {
             errors["notes"] = "Notes must be \(maxNotes) characters or less"
         }
 
@@ -131,16 +165,18 @@ func formatDate(_ rfc3339: String) -> String {
         guard let date = formatter.date(from: rfc3339) else {
             return rfc3339
         }
-        return displayFormatter.string(from: date)
+        return DateFormatting.display.string(from: date)
     }
-    return displayFormatter.string(from: date)
+    return DateFormatting.display.string(from: date)
 }
 
-private let displayFormatter: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "d MMM yyyy"
-    return f
-}()
+private enum DateFormatting {
+    static let display: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+}
 
 /// Parses a formatted tempo string back into marking and BPM components.
 /// Handles: "Allegro (132 BPM)", "132 BPM", "Allegro"
