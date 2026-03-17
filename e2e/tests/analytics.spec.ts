@@ -37,7 +37,7 @@ test.describe("analytics page", () => {
     // Empty state
     await expect(page.getByText("No practice data yet")).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Start a Session" })
+      page.getByRole("link", { name: "Start a Practice" })
     ).toBeVisible();
   });
 
