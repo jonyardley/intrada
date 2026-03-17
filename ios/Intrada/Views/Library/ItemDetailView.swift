@@ -256,7 +256,7 @@ struct ItemDetailView: View {
 
                 HStack(spacing: 12) {
                     StatCardView(
-                        title: "Sessions",
+                        title: "Practices",
                         value: "\(practice.sessionCount)"
                     )
                     StatCardView(

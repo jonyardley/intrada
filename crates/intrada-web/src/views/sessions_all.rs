@@ -22,7 +22,7 @@ pub fn SessionsAllView() -> impl IntoView {
             <BackLink href="/sessions".to_string() label="Back to week view" />
 
             <div class="mb-6">
-                <PageHeading text="All Practice Sessions" subtitle="Complete chronological history of your practice sessions." />
+                <PageHeading text="All Practices" subtitle="Complete chronological history of your practices." />
             </div>
 
             {move || {
@@ -37,8 +37,8 @@ pub fn SessionsAllView() -> impl IntoView {
                 if vm.sessions.is_empty() {
                     view! {
                         <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
-                            <p class="text-muted">"No practice sessions recorded yet."</p>
-                            <p class="text-sm text-faint mt-2">"Start a practice session to begin tracking your progress."</p>
+                            <p class="text-muted">"No practices recorded yet."</p>
+                            <p class="text-sm text-faint mt-2">"Start a practice to begin tracking your progress."</p>
                         </div>
                     }.into_any()
                 } else {
@@ -57,7 +57,7 @@ pub fn SessionsAllView() -> impl IntoView {
                             }).collect::<Vec<_>>()}
                         </div>
                         <p class="text-sm text-muted mt-4">
-                            {format!("{} session{}", session_count, if session_count == 1 { "" } else { "s" })}
+                            {format!("{} practice{}", session_count, if session_count == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
                 }

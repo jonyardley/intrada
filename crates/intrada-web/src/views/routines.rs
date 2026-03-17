@@ -30,10 +30,10 @@ pub fn RoutinesListView() -> impl IntoView {
                     view! {
                         <div class="text-center py-12 px-4 sm:px-6 lg:px-0">
                             <p class="text-muted">"No saved routines yet."</p>
-                            <p class="text-sm text-faint mt-2">"Save a setlist as a routine during session building or from the session summary."</p>
+                            <p class="text-sm text-faint mt-2">"Save a setlist as a routine when building a practice or from the practice summary."</p>
                             <div class="mt-6">
                                 <A href="/sessions/new" attr:class="cta-link">
-                                    "New Session"
+                                    "New Practice"
                                 </A>
                             </div>
                         </div>

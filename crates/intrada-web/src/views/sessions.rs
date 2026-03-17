@@ -91,11 +91,11 @@ pub fn SessionsListView() -> impl IntoView {
 
     view! {
         <div>
-            // Page header with "New Session" CTA
+            // Page header with "New Practice" CTA
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                <PageHeading text="Practice Sessions" subtitle="Review your practice history and track how your sessions build over time." />
+                <PageHeading text="Practice" subtitle="Review your practice history and track how your sessions build over time." />
                 <A href="/sessions/new" attr:class="cta-link shrink-0">
-                    "New Session"
+                    "New Practice"
                 </A>
             </div>
 
@@ -133,7 +133,7 @@ pub fn SessionsListView() -> impl IntoView {
 
                 if sessions.is_empty() {
                     view! {
-                        <p class="empty-text">"No sessions on this day"</p>
+                        <p class="empty-text">"No practices on this day"</p>
                     }.into_any()
                 } else {
                     let core = core.clone();
@@ -151,7 +151,7 @@ pub fn SessionsListView() -> impl IntoView {
                             }).collect::<Vec<_>>()}
                         </div>
                         <p class="text-sm text-muted mt-4">
-                            {format!("{} session{}", session_count, if session_count == 1 { "" } else { "s" })}
+                            {format!("{} practice{}", session_count, if session_count == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
                 }
@@ -160,7 +160,7 @@ pub fn SessionsListView() -> impl IntoView {
             // "Show all sessions" link
             <div class="mt-6 text-center">
                 <A href="/sessions/all" attr:class="action-link text-muted hover:text-accent-text">
-                    "Show all sessions →"
+                    "Show all practices →"
                 </A>
             </div>
         </div>
@@ -195,7 +195,7 @@ pub(crate) fn SessionRow(
                     let id_del = id_for_delete.clone();
                     view! {
                         <div>
-                            <p class="text-sm text-danger-text mb-3">"Delete this session? This cannot be undone."</p>
+                            <p class="text-sm text-danger-text mb-3">"Delete this practice? This cannot be undone."</p>
                             <div class="flex gap-2">
                                 <Button
                                     variant=ButtonVariant::Danger

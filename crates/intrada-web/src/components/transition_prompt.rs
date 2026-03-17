@@ -25,7 +25,7 @@ pub fn TransitionPrompt(
                 }.into_any(),
                 None => view! {
                     <p class="text-sm text-secondary">
-                        "Session complete \u{2014} ready to finish?"
+                        "Practice complete \u{2014} ready to finish?"
                     </p>
                 }.into_any(),
             }}

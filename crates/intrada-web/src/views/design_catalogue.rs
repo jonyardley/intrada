@@ -653,7 +653,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
-                    <StatCard title="Sessions" value="12".to_string() subtitle="This month" />
+                    <StatCard title="Practices" value="12".to_string() subtitle="This month" />
                     <StatCard title="Avg Score" value="3.8".to_string() subtitle="Out of 5" />
                 </div>
             </section>
@@ -758,7 +758,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="toast">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Toast Notifications"</h3>
                 <div class="space-y-3">
-                    <Toast variant=ToastVariant::Info>"Session auto-saved"</Toast>
+                    <Toast variant=ToastVariant::Info>"Practice auto-saved"</Toast>
                     <Toast variant=ToastVariant::Success>"5 correct in a row!"</Toast>
                     <Toast variant=ToastVariant::Warning>"Practice timer paused — are you still there?"</Toast>
                     <Toast variant=ToastVariant::Danger>"Failed to save session. Please check your connection."</Toast>
