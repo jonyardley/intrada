@@ -46,7 +46,7 @@ pub fn SessionSummary() -> impl IntoView {
                             // Summary header
                             <Card>
                                 <div class="text-center space-y-2">
-                                    <h2 class="text-2xl font-bold text-primary">"Practice Complete!"</h2>
+                                    <h2 class="text-2xl font-bold text-primary">"Session Complete!"</h2>
                                     <p class="text-lg text-secondary">
                                         {format!("Total: {}", total_duration)}
                                     </p>
@@ -261,10 +261,10 @@ pub fn SessionSummary() -> impl IntoView {
 
                             // Practice notes
                             <Card>
-                                <h3 class="section-title">"Practice Notes"</h3>
+                                <h3 class="section-title">"Session Notes"</h3>
                                 <textarea
                                     rows="3"
-                                    placeholder="How did this practice go?"
+                                    placeholder="How did this session go?"
                                     class="input-base"
                                     bind:value=session_notes
                                     on:blur=move |_| {
@@ -300,7 +300,7 @@ pub fn SessionSummary() -> impl IntoView {
                                     let effects = core_ref.process_event(event);
                                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                 })>
-                                    "Save Practice"
+                                    "Save Session"
                                 </Button>
                                 <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
                                     let event = Event::Session(SessionEvent::DiscardSession);
@@ -325,7 +325,7 @@ pub fn SessionSummary() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-muted text-center py-8">"No practice summary available."</p>
+                            <p class="text-sm text-muted text-center py-8">"No session summary available."</p>
                         }.into_any()
                     }
                 }

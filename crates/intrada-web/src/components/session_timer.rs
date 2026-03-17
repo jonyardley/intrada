@@ -285,7 +285,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             elapsed_secs.set(0);
                                             duration_elapsed.set(false);
                                         })>
-                                            "Finish Practice"
+                                            "Finish Session"
                                         </Button>
                                     }.into_any()
                                 } else {
@@ -375,7 +375,7 @@ pub fn SessionTimer() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-muted text-center py-8">"No practice in progress."</p>
+                            <p class="text-sm text-muted text-center py-8">"No session in progress."</p>
                         }.into_any()
                     }
                 }

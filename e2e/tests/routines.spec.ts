@@ -10,9 +10,9 @@ test.describe("routines page", () => {
     ).toBeVisible();
     await expect(page.getByText("No saved routines yet.")).toBeVisible();
 
-    // Should have a link to create a practice
+    // Should have a link to create a session
     await expect(
-      page.getByRole("link", { name: "New Practice" })
+      page.getByRole("link", { name: "New Session" })
     ).toBeVisible();
   });
 
@@ -100,9 +100,9 @@ test.describe("routines page", () => {
     await page.getByRole("button", { name: "Load" }).click();
 
     // Setlist should now have the routine's entries (items also appear in library list)
-    // Check that the Start Practice button is enabled (proves items were loaded)
+    // Check that the Start Session button is enabled (proves items were loaded)
     await expect(
-      page.getByRole("button", { name: "Start Practice" })
+      page.getByRole("button", { name: "Start Session" })
     ).toBeEnabled();
   });
 });

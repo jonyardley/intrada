@@ -42,7 +42,7 @@ pub fn SessionSummaryView() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Practice Summary" />
+            <PageHeading text="Session Summary" />
             <SessionSummary />
         </div>
     }
