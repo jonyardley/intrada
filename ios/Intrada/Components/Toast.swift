@@ -76,9 +76,9 @@ extension View {
 
 #Preview("Toast Variants") {
     VStack(spacing: 16) {
-        ToastView(message: "Practice saved successfully", variant: .success, onDismiss: {})
+        ToastView(message: "Session saved successfully", variant: .success, onDismiss: {})
         ToastView(message: "Check your connection", variant: .warning, onDismiss: {})
-        ToastView(message: "Failed to save practice", variant: .danger, onDismiss: {})
+        ToastView(message: "Failed to save session", variant: .danger, onDismiss: {})
         ToastView(message: "New update available", variant: .info, onDismiss: {})
     }
     .padding()

@@ -94,9 +94,9 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                 {if daily_totals.iter().all(|d| d.minutes == 0) {
                     view! {
                         <p class="text-sm text-muted text-center py-8">
-                            "No practice data for the past 28 days. "
+                            "No session data for the past 28 days. "
                             <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
-                                "Start a practice"
+                                "Start a session"
                             </A>
                             " to see your progress here."
                         </p>
@@ -114,9 +114,9 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                 {if top_items.is_empty() {
                     view! {
                         <p class="text-sm text-muted text-center py-4">
-                            "No practice data yet. "
+                            "No session data yet. "
                             <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
-                                "Start a practice"
+                                "Start a session"
                             </A>
                             " to track your most practised items."
                         </p>
@@ -147,7 +147,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0 ml-2">
                                             <span class="text-xs text-muted">
-                                                {format!("{} practices", item.session_count)}
+                                                {format!("{} sessions", item.session_count)}
                                             </span>
                                             <span class="text-sm font-medium text-accent-text">
                                                 {time}
@@ -251,7 +251,7 @@ fn WeekComparisonRow(weekly: WeeklySummary) -> impl IntoView {
             />
             <ComparisonMetric
                 value=session_display
-                label="Practices"
+                label="Sessions"
                 direction=weekly.sessions_direction.clone()
                 prev_value=format!("{}", weekly.prev_session_count)
                 has_prev=weekly.has_prev_week_data
@@ -463,15 +463,15 @@ fn EmptyState() -> impl IntoView {
             >
                 <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
             </svg>
-            <h3 class="text-lg font-semibold text-secondary mb-2">"No practice data yet"</h3>
+            <h3 class="text-lg font-semibold text-secondary mb-2">"No session data yet"</h3>
             <p class="text-sm text-muted mb-6 max-w-sm mx-auto">
-                "Complete some practices to see your analytics. Track your progress, streaks, and most practised items."
+                "Complete some sessions to see your analytics. Track your progress, streaks, and most practised items."
             </p>
             <A
                 href="/sessions/new"
                 attr:class="cta-link"
             >
-                "Start a Practice"
+                "Start a Session"
             </A>
         </div>
     }

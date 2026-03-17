@@ -9,28 +9,28 @@ test.describe("sessions page", () => {
     ).toBeVisible();
 
     // Week strip is visible with day cells
-    await expect(page.getByText("No practices on this day")).toBeVisible();
+    await expect(page.getByText("No sessions on this day")).toBeVisible();
 
-    // Should have a "New Practice" link
+    // Should have a "New Session" link
     await expect(
-      page.getByRole("link", { name: "New Practice" })
+      page.getByRole("link", { name: "New Session" })
     ).toBeVisible();
 
-    // Should have a "Show all practices" link
+    // Should have a "Show all sessions" link
     await expect(
-      page.getByRole("link", { name: "Show all practices →" })
+      page.getByRole("link", { name: "Show all sessions →" })
     ).toBeVisible();
   });
 
   test("create a session via the setlist flow", async ({ page }) => {
     await page.goto("/sessions");
 
-    // Click "New Practice" to go to the setlist builder
-    await page.getByRole("link", { name: "New Practice" }).click();
+    // Click "New Session" to go to the setlist builder
+    await page.getByRole("link", { name: "New Session" }).click();
 
     // Should see the setlist builder page
     await expect(
-      page.getByRole("heading", { name: "New Practice" })
+      page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
     await expect(page.getByText("Your Setlist")).toBeVisible();
 
@@ -38,27 +38,27 @@ test.describe("sessions page", () => {
     // (026-drag-drop-builder: whole library row is now the click target)
     await page.getByText("Clair de Lune").click();
 
-    // Start the practice
-    await page.getByRole("button", { name: "Start Practice" }).click();
+    // Start the session
+    await page.getByRole("button", { name: "Start Session" }).click();
 
-    // Should be on the active practice page with the timer
-    // (Focus mode hides the "Practice" heading, so check item indicator instead)
+    // Should be on the active session page with the timer
+    // (Focus mode hides the heading, so check item indicator instead)
     await expect(page.getByText("Item 1 of 1")).toBeVisible();
 
-    // Finish the practice (single item = "Finish Practice" button)
-    await page.getByRole("button", { name: "Finish Practice" }).click();
+    // Finish the session (single item = "Finish Session" button)
+    await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Should be on the summary page
-    await expect(page.getByText("Practice Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete!")).toBeVisible();
 
-    // Save the practice
-    await page.getByRole("button", { name: "Save Practice" }).click();
+    // Save the session
+    await page.getByRole("button", { name: "Save Session" }).click();
 
-    // Should redirect to practice list with the new practice
+    // Should redirect to sessions list with the new session
     await expect(
       page.getByRole("heading", { name: "Practice" })
     ).toBeVisible();
-    await expect(page.getByText("1 practice", { exact: true })).toBeVisible();
+    await expect(page.getByText("1 session", { exact: true })).toBeVisible();
   });
 
   test("multi-item session with skip", async ({ page }) => {
@@ -68,8 +68,8 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start the practice
-    await page.getByRole("button", { name: "Start Practice" }).click();
+    // Start the session
+    await page.getByRole("button", { name: "Start Session" }).click();
 
     // Should show first item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
@@ -80,11 +80,11 @@ test.describe("sessions page", () => {
     // Should advance to second item
     await expect(page.getByText("Item 2 of 2")).toBeVisible();
 
-    // Finish the practice (last item)
-    await page.getByRole("button", { name: "Finish Practice" }).click();
+    // Finish the session (last item)
+    await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Summary should show both items
-    await expect(page.getByText("Practice Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete!")).toBeVisible();
     await expect(page.getByText("Items Practiced")).toBeVisible();
   });
 
@@ -93,13 +93,13 @@ test.describe("sessions page", () => {
 
     // Should be on the builder
     await expect(
-      page.getByRole("heading", { name: "New Practice" })
+      page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
 
     // Click Cancel
     await page.getByRole("button", { name: "Cancel" }).click();
 
-    // Should redirect to practice list
+    // Should redirect to sessions list
     await expect(
       page.getByRole("heading", { name: "Practice" })
     ).toBeVisible();
@@ -112,8 +112,8 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start practice
-    await page.getByRole("button", { name: "Start Practice" }).click();
+    // Start session
+    await page.getByRole("button", { name: "Start Session" }).click();
 
     // First item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
@@ -124,18 +124,18 @@ test.describe("sessions page", () => {
     // Second item
     await expect(page.getByText("Item 2 of 2")).toBeVisible();
 
-    // Now it's the last item, so button says "Finish Practice"
-    await page.getByRole("button", { name: "Finish Practice" }).click();
+    // Now it's the last item, so button says "Finish Session"
+    await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Summary
-    await expect(page.getByText("Practice Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete!")).toBeVisible();
 
     // Save
-    await page.getByRole("button", { name: "Save Practice" }).click();
+    await page.getByRole("button", { name: "Save Session" }).click();
     await expect(
       page.getByRole("heading", { name: "Practice" })
     ).toBeVisible();
-    await expect(page.getByText("1 practice", { exact: true })).toBeVisible();
+    await expect(page.getByText("1 session", { exact: true })).toBeVisible();
   });
 
   test("end session early", async ({ page }) => {
@@ -145,15 +145,15 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start practice
-    await page.getByRole("button", { name: "Start Practice" }).click();
+    // Start session
+    await page.getByRole("button", { name: "Start Session" }).click();
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
     // End early
     await page.getByRole("button", { name: "End Early" }).click();
 
     // Should see summary with "Ended Early" indicator
-    await expect(page.getByText("Practice Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete!")).toBeVisible();
     await expect(page.getByText("Ended Early")).toBeVisible();
   });
 });

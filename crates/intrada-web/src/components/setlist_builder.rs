@@ -395,7 +395,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                             })
                         >
-                            "Start Practice"
+                            "Start Session"
                         </Button>
                         <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
                             let event = Event::Session(SessionEvent::CancelBuilding);

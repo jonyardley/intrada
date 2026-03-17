@@ -75,7 +75,7 @@ pub fn SessionNewView() -> impl IntoView {
     view! {
         <div>
             <BackLink label="Back to Practice" href="/sessions".to_string() />
-            <PageHeading text="New Practice" />
+            <PageHeading text="New Session" />
 
             {move || {
                 let vm = view_model.get();
@@ -87,7 +87,7 @@ pub fn SessionNewView() -> impl IntoView {
                         <Card>
                             <div class="space-y-3">
                                 <p class="text-sm text-secondary">
-                                    "You have a practice in progress."
+                                    "You have a session in progress."
                                 </p>
                                 <div class="flex gap-3">
                                     <Button
@@ -102,7 +102,7 @@ pub fn SessionNewView() -> impl IntoView {
                                             );
                                         })
                                     >
-                                        "Resume Practice"
+                                        "Resume Session"
                                     </Button>
                                     <Button
                                         variant=ButtonVariant::Danger
@@ -113,7 +113,7 @@ pub fn SessionNewView() -> impl IntoView {
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                         })
                                     >
-                                        "Discard Practice"
+                                        "Discard Session"
                                     </Button>
                                 </div>
                             </div>

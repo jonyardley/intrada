@@ -653,7 +653,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
-                    <StatCard title="Practices" value="12".to_string() subtitle="This month" />
+                    <StatCard title="Sessions" value="12".to_string() subtitle="This month" />
                     <StatCard title="Avg Score" value="3.8".to_string() subtitle="Out of 5" />
                 </div>
             </section>
@@ -758,10 +758,10 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="toast">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Toast Notifications"</h3>
                 <div class="space-y-3">
-                    <Toast variant=ToastVariant::Info>"Practice auto-saved"</Toast>
+                    <Toast variant=ToastVariant::Info>"Session auto-saved"</Toast>
                     <Toast variant=ToastVariant::Success>"5 correct in a row!"</Toast>
-                    <Toast variant=ToastVariant::Warning>"Practice timer paused — are you still there?"</Toast>
-                    <Toast variant=ToastVariant::Danger>"Failed to save practice. Please check your connection."</Toast>
+                    <Toast variant=ToastVariant::Warning>"Session timer paused — are you still there?"</Toast>
+                    <Toast variant=ToastVariant::Danger>"Failed to save session. Please check your connection."</Toast>
                 </div>
             </section>
 
@@ -772,7 +772,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
                     <div class="flex items-start justify-between gap-3">
                         <p class="text-sm text-danger-text">
-                            <span class="font-medium">"Error: "</span>"Failed to save practice. Please check your connection and try again."
+                            <span class="font-medium">"Error: "</span>"Failed to save session. Please check your connection and try again."
                         </p>
                         <button class="shrink-0 text-danger-text hover:text-danger-hover text-xs font-medium">
                             "Dismiss"
@@ -1215,7 +1215,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                         <rect x="8" y="26" width="8" height="4" rx="1" fill="currentColor" opacity="0.5" />
                                     </svg>
                                 </div>
-                                <span class="text-sm text-muted">"Preparing practice..."</span>
+                                <span class="text-sm text-muted">"Preparing session..."</span>
                             </div>
                         </div>
                     </div>
@@ -1251,7 +1251,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonCardList"</p>
-                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for practices, routines."</p>
+                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines."</p>
                             <SkeletonCardList count=3 />
                         </div>
                     </div>
