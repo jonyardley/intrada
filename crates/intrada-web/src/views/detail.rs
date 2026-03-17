@@ -182,7 +182,7 @@ pub fn DetailView() -> impl IntoView {
                                             <h3 class="text-sm font-semibold text-primary mb-1">"Practice Summary"</h3>
                                             <p class="text-sm text-secondary">
                                                 {format!(
-                                                    "{} session{}, {} min total",
+                                                    "{} practice{}, {} min total",
                                                     p.session_count,
                                                     if p.session_count == 1 { "" } else { "s" },
                                                     p.total_minutes

@@ -58,11 +58,11 @@ impl ToastVariant {
 /// Toast notification component with four severity variants (audit #18).
 ///
 /// Each variant has a distinct left-border colour, background tint,
-/// text colour, and icon. Designed for practice-session context:
-/// - Info: "Session auto-saved"
+/// text colour, and icon. Designed for practice context:
+/// - Info: "Practice auto-saved"
 /// - Success: "5 correct in a row!"
 /// - Warning: "Metronome battery low"
-/// - Danger: "Failed to save session"
+/// - Danger: "Failed to save practice"
 #[component]
 pub fn Toast(variant: ToastVariant, children: Children) -> impl IntoView {
     let container_class = format!(

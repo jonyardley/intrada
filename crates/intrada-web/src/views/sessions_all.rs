@@ -6,10 +6,10 @@ use crate::components::{BackLink, PageHeading, SkeletonCardList};
 use crate::views::sessions::SessionRow;
 use intrada_web::types::{IsLoading, SharedCore};
 
-/// Full chronological session list — all completed sessions.
+/// Full chronological practice list — all completed practices.
 ///
-/// Accessed via "Show all sessions" link from the week strip view.
-/// Shows every session in the same card format as the week view,
+/// Accessed via "Show all practices" link from the week strip view.
+/// Shows every practice in the same card format as the week view,
 /// ordered newest-first (same as ViewModel.sessions default order).
 #[component]
 pub fn SessionsAllView() -> impl IntoView {

@@ -300,7 +300,7 @@ pub fn SessionSummary() -> impl IntoView {
                                     let effects = core_ref.process_event(event);
                                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                 })>
-                                    "Save Session"
+                                    "Save Practice"
                                 </Button>
                                 <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
                                     let event = Event::Session(SessionEvent::DiscardSession);

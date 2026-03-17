@@ -15,7 +15,7 @@ pub fn RoutinesListView() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Routines" subtitle="Save and reuse your favourite practice session structures." />
+            <PageHeading text="Routines" subtitle="Save and reuse your favourite practice structures." />
 
             {move || {
                 if is_loading.get() {

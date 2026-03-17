@@ -48,8 +48,8 @@ struct EmptyStateView: View {
 
         EmptyStateView(
             icon: "play.circle",
-            title: "No sessions",
-            message: "Start practising to see your sessions here."
+            title: "No practices",
+            message: "Start practising to see your practices here."
         )
     }
     .background(Color.backgroundApp)

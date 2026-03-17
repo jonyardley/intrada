@@ -157,7 +157,7 @@ pub fn SessionsListView() -> impl IntoView {
                 }
             }}
 
-            // "Show all sessions" link
+            // "Show all practices" link
             <div class="mt-6 text-center">
                 <A href="/sessions/all" attr:class="action-link text-muted hover:text-accent-text">
                     "Show all practices →"

@@ -459,20 +459,14 @@ mod tests {
 
     #[test]
     fn test_unique_composers_empty_subtitle_excluded() {
-        let items = vec![
-            make_item("", &[]),
-            make_item("Mozart", &[]),
-        ];
+        let items = vec![make_item("", &[]), make_item("Mozart", &[])];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Mozart"]);
     }
 
     #[test]
     fn test_unique_composers_case_insensitive_dedup() {
-        let items = vec![
-            make_item("Bach", &[]),
-            make_item("bach", &[]),
-        ];
+        let items = vec![make_item("Bach", &[]), make_item("bach", &[])];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Bach"]);
     }

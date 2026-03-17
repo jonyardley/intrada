@@ -3,7 +3,7 @@ use leptos::prelude::*;
 /// Non-blocking visual prompt shown when an item's planned duration has elapsed.
 ///
 /// Displays either "Up next: [Item Name]" when there's a next item, or
-/// "Session complete — ready to finish?" for the last item. The prompt is
+/// "Practice complete — ready to finish?" for the last item. The prompt is
 /// purely informational — it doesn't block controls or interrupt practice.
 #[component]
 pub fn TransitionPrompt(

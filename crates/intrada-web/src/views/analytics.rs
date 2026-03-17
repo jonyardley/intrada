@@ -167,7 +167,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                 {if score_trends.is_empty() {
                     view! {
                         <p class="text-sm text-muted text-center py-4">
-                            "No scored items yet. During a practice session, rate your confidence "
+                            "No scored items yet. During practice, rate your confidence "
                             "on items (1\u{2013}5) to see your progress over time."
                         </p>
                     }.into_any()
