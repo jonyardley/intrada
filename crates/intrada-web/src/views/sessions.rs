@@ -17,11 +17,10 @@ use intrada_web::helpers::{
 };
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Sessions page with week strip navigator.
+/// Practice page with week strip navigator.
 ///
-/// Replaces the flat session list with a weekly calendar strip showing
-/// Mon–Sun with dot indicators for days that have sessions. Tapping a day
-/// shows that day's session cards below.
+/// Shows a weekly calendar strip with Mon–Sun and dot indicators for days
+/// that have practices. Tapping a day shows that day's practice cards below.
 #[component]
 pub fn SessionsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();

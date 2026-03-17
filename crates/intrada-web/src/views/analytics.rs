@@ -449,7 +449,7 @@ fn ErrorState(#[prop(into)] message: String) -> impl IntoView {
     }
 }
 
-/// Empty state when no sessions exist at all.
+/// Empty state when no practices exist at all.
 #[component]
 fn EmptyState() -> impl IntoView {
     view! {

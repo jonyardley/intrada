@@ -259,7 +259,7 @@ pub fn SessionSummary() -> impl IntoView {
                                 </div>
                             </Card>
 
-                            // Session notes
+                            // Practice notes
                             <Card>
                                 <h3 class="section-title">"Practice Notes"</h3>
                                 <textarea

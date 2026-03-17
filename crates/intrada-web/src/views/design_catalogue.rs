@@ -1104,7 +1104,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             // ══════════════════════════════════════════════════════════
-            // COMPONENTS — Session
+            // COMPONENTS — Practice
             // ══════════════════════════════════════════════════════════
 
             // ── Setlist Entry Row ─────────────────────────────────────
@@ -1289,7 +1289,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="week-strip">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Week Strip"</h3>
                 <div class="space-y-6">
-                    // Full WeekStrip with session dots on 3 days
+                    // Full WeekStrip with practice dots on 3 days
                     <Card>
                         <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — with practices on 3 days (selected: Wednesday)"</p>
                         <WeekStrip
@@ -1484,7 +1484,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 </Card>
             </section>
 
-            // ── Session Components (context-dependent) ────────────────
+            // ── Practice Components (context-dependent) ───────────────
             <section>
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Practice Components"</h3>
                 <Card>
