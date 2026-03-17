@@ -375,7 +375,7 @@ pub fn SessionTimer() -> impl IntoView {
                     }
                     None => {
                         view! {
-                            <p class="text-sm text-muted text-center py-8">"No active practice."</p>
+                            <p class="text-sm text-muted text-center py-8">"No practice in progress."</p>
                         }.into_any()
                     }
                 }

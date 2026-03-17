@@ -93,7 +93,7 @@ pub fn SessionsListView() -> impl IntoView {
         <div>
             // Page header with "New Practice" CTA
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                <PageHeading text="Practice" subtitle="Review your practice history and track how your sessions build over time." />
+                <PageHeading text="Practice" subtitle="Review your practice history and track how your practices build over time." />
                 <A href="/sessions/new" attr:class="cta-link shrink-0">
                     "New Practice"
                 </A>

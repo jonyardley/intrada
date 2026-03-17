@@ -49,7 +49,7 @@ async fn save_session(
     validation::validate_intention(&input.session_intention)?;
 
     // Validate entries not empty
-    validation::validate_entries_not_empty(&input.entries, "Session")?;
+    validation::validate_entries_not_empty(&input.entries, "Practice")?;
 
     // Validate each entry's fields
     for entry in &input.entries {
