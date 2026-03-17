@@ -5,20 +5,35 @@ default:
     @just --list
 
 # Start both API and web dev servers concurrently
+# Kills any stale processes first so port conflicts don't serve old builds.
 dev:
     #!/usr/bin/env bash
     set -e
+    # Kill stale dev processes to avoid port conflicts / serving old WASM
+    pkill -f "trunk serve" 2>/dev/null || true
+    pkill -f "intrada.api" 2>/dev/null || true
+    sleep 0.5
     trap 'kill 0' EXIT
+    echo "Starting API server..."
     cargo run -p intrada-api &
+    echo "Starting web dev server (trunk serve — watches for changes)..."
     trunk serve --config crates/intrada-web/Trunk.toml &
     wait
 
 # Start only the API server
 dev-api:
+    #!/usr/bin/env bash
+    set -e
+    pkill -f "intrada.api" 2>/dev/null || true
+    sleep 0.3
     cargo run -p intrada-api
 
 # Start only the web dev server
 dev-web:
+    #!/usr/bin/env bash
+    set -e
+    pkill -f "trunk serve" 2>/dev/null || true
+    sleep 0.3
     trunk serve --config crates/intrada-web/Trunk.toml
 
 # Run all tests
