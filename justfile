@@ -11,7 +11,7 @@ dev:
     set -e
     # Kill stale dev processes to avoid port conflicts / serving old WASM
     pkill -f "trunk serve" 2>/dev/null || true
-    pkill -f "intrada.api" 2>/dev/null || true
+    pkill -f "intrada-api" 2>/dev/null || true
     sleep 0.5
     trap 'kill 0' EXIT
     echo "Starting API server..."
@@ -24,7 +24,7 @@ dev:
 dev-api:
     #!/usr/bin/env bash
     set -e
-    pkill -f "intrada.api" 2>/dev/null || true
+    pkill -f "intrada-api" 2>/dev/null || true
     sleep 0.3
     cargo run -p intrada-api
 

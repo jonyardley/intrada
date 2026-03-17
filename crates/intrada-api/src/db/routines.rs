@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use intrada_core::domain::item::ItemKind;
 use intrada_core::domain::routine::{Routine, RoutineEntry};
 
-use super::col;
+use super::{col, item_kind_from_str, item_kind_to_str};
 use crate::error::ApiError;
 
 /// Request body for creating a new routine.
@@ -38,22 +38,6 @@ const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
 /// Subquery to select routine IDs for a user. Shared between the parent query
 /// and the batch entry query so filter clauses stay in sync (#152).
 const ROUTINE_IDS_FOR_USER: &str = "SELECT id FROM routines WHERE user_id = ?1";
-
-/// Parse an entry row into a RoutineEntry (columns 0–4 matching [`ENTRY_COLUMNS`]).
-fn item_kind_from_str(s: &str) -> Result<ItemKind, ApiError> {
-    match s {
-        "piece" => Ok(ItemKind::Piece),
-        "exercise" => Ok(ItemKind::Exercise),
-        other => Err(ApiError::Internal(format!("Invalid item_type: {other}"))),
-    }
-}
-
-fn item_kind_to_str(kind: &ItemKind) -> &'static str {
-    match kind {
-        ItemKind::Piece => "piece",
-        ItemKind::Exercise => "exercise",
-    }
-}
 
 fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     let id: String = col!(row, 0)?;

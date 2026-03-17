@@ -398,7 +398,7 @@ mod tests {
     }
 
     // unique_tags tests
-    fn make_item(_item_type: &str, subtitle: &str, tags: &[&str]) -> LibraryItemView {
+    fn make_item(subtitle: &str, tags: &[&str]) -> LibraryItemView {
         LibraryItemView {
             id: String::new(),
             item_type: intrada_core::ItemKind::Piece,
@@ -423,8 +423,8 @@ mod tests {
     #[test]
     fn test_unique_tags_dedup_case_insensitive() {
         let items = vec![
-            make_item("piece", "", &["Classical", "jazz"]),
-            make_item("piece", "", &["classical", "Jazz"]),
+            make_item("", &["Classical", "jazz"]),
+            make_item("", &["classical", "Jazz"]),
         ];
         let tags = unique_tags(&items);
         assert_eq!(tags, vec!["Classical", "jazz"]);
@@ -433,8 +433,8 @@ mod tests {
     #[test]
     fn test_unique_tags_sorted_alphabetically() {
         let items = vec![
-            make_item("piece", "", &["piano", "baroque"]),
-            make_item("piece", "", &["classical"]),
+            make_item("", &["piano", "baroque"]),
+            make_item("", &["classical"]),
         ];
         let tags = unique_tags(&items);
         assert_eq!(tags, vec!["baroque", "classical", "piano"]);
@@ -449,9 +449,9 @@ mod tests {
     #[test]
     fn test_unique_composers_from_pieces() {
         let items = vec![
-            make_item("piece", "Bach", &[]),
-            make_item("piece", "Mozart", &[]),
-            make_item("piece", "Bach", &[]), // duplicate
+            make_item("Bach", &[]),
+            make_item("Mozart", &[]),
+            make_item("Bach", &[]), // duplicate
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Bach", "Mozart"]);
@@ -460,8 +460,8 @@ mod tests {
     #[test]
     fn test_unique_composers_empty_subtitle_excluded() {
         let items = vec![
-            make_item("piece", "", &[]),
-            make_item("piece", "Mozart", &[]),
+            make_item("", &[]),
+            make_item("Mozart", &[]),
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Mozart"]);
@@ -470,8 +470,8 @@ mod tests {
     #[test]
     fn test_unique_composers_case_insensitive_dedup() {
         let items = vec![
-            make_item("piece", "Bach", &[]),
-            make_item("piece", "bach", &[]),
+            make_item("Bach", &[]),
+            make_item("bach", &[]),
         ];
         let composers = unique_composers(&items);
         assert_eq!(composers, vec!["Bach"]);

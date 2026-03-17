@@ -9,7 +9,7 @@ use intrada_core::domain::session::{
     CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
 };
 
-use super::col;
+use super::{col, item_kind_from_str, item_kind_to_str};
 use crate::error::ApiError;
 
 /// Request body for saving a new practice session.
@@ -87,21 +87,6 @@ fn entry_status_from_str(s: &str) -> Result<EntryStatus, ApiError> {
         "Skipped" => Ok(EntryStatus::Skipped),
         "NotAttempted" => Ok(EntryStatus::NotAttempted),
         other => Err(ApiError::Internal(format!("Invalid entry_status: {other}"))),
-    }
-}
-
-fn item_kind_to_str(kind: &ItemKind) -> &'static str {
-    match kind {
-        ItemKind::Piece => "piece",
-        ItemKind::Exercise => "exercise",
-    }
-}
-
-fn item_kind_from_str(s: &str) -> Result<ItemKind, ApiError> {
-    match s {
-        "piece" => Ok(ItemKind::Piece),
-        "exercise" => Ok(ItemKind::Exercise),
-        other => Err(ApiError::Internal(format!("Invalid item_type: {other}"))),
     }
 }
 
