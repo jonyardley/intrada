@@ -60,9 +60,9 @@ pub fn SetlistBuilder() -> impl IntoView {
             <Card>
                 <div>
                     <label class="form-label" for="session-intention">
-                        "Session Intention"
+                        "Practice Intention"
                     </label>
-                    <p class="hint-text">"Optional — set a focus for your practice session"</p>
+                    <p class="hint-text">"Optional — set a focus for your practice"</p>
                     <input
                         id="session-intention"
                         type="text"
@@ -395,7 +395,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                             })
                         >
-                            "Start Session"
+                            "Start Practice"
                         </Button>
                         <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
                             let event = Event::Session(SessionEvent::CancelBuilding);

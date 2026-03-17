@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// Shows a title (field-label style), large value, and optional subtitle.
 ///
-///     StatCardView(title: "Sessions", value: "12")
+///     StatCardView(title: "Practices", value: "12")
 ///     StatCardView(title: "Streak", value: "5 days", subtitle: "Keep it up!")
 struct StatCardView: View {
 
@@ -40,7 +40,7 @@ struct StatCardView: View {
 
 #Preview("StatCardView") {
     HStack(spacing: 12) {
-        StatCardView(title: "Sessions", value: "12")
+        StatCardView(title: "Practices", value: "12")
         StatCardView(title: "Streak", value: "5 days", subtitle: "Keep it up!")
         StatCardView(title: "Minutes", value: "87")
     }

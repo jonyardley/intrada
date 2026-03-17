@@ -6,10 +6,10 @@ test.describe("navigation", () => {
   }) => {
     await page.goto("/");
 
-    // Navigate to Sessions via header nav
-    await page.getByRole("link", { name: "Sessions" }).click();
+    // Navigate to Practice via header nav
+    await page.getByRole("link", { name: "Practice" }).click();
     await expect(
-      page.getByRole("heading", { name: "Practice Sessions" })
+      page.getByRole("heading", { name: "Practice" })
     ).toBeVisible();
 
     // Navigate back to Library via header nav

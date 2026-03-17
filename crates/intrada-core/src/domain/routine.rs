@@ -119,7 +119,7 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
                 SessionStatus::Summary(s) => s,
                 _ => {
                     model.last_error =
-                        Some("Can only save routine from session summary".to_string());
+                        Some("Can only save routine from practice summary".to_string());
                     return crux_core::render::render();
                 }
             };

@@ -374,7 +374,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         // ── Building Phase ─────────────────────────────────────────
         SessionEvent::StartBuilding => {
             if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A session is already in progress".to_string());
+                model.last_error = Some("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
             model.session_status = SessionStatus::Building(BuildingSession {
@@ -785,7 +785,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
         SessionEvent::AbandonSession => {
             if !matches!(model.session_status, SessionStatus::Active(_)) {
-                model.last_error = Some("No active session to abandon".to_string());
+                model.last_error = Some("No active practice to abandon".to_string());
                 return crux_core::render::render();
             }
 
@@ -1040,7 +1040,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         SessionEvent::RecoverSession { session } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
                 model.last_error =
-                    Some("Cannot recover: a session is already in progress".to_string());
+                    Some("Cannot recover: a practice is already in progress".to_string());
                 return crux_core::render::render();
             }
 
@@ -1669,7 +1669,7 @@ mod tests {
 
         assert_eq!(
             model.last_error.as_deref(),
-            Some("No active session to abandon")
+            Some("No active practice to abandon")
         );
     }
 

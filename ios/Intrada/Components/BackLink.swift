@@ -24,7 +24,7 @@ struct BackLink: View {
 #Preview("BackLink") {
     VStack(alignment: .leading, spacing: 16) {
         BackLink(label: "Library") { }
-        BackLink(label: "Sessions") { }
+        BackLink(label: "Practice") { }
     }
     .padding()
     .background(Color.backgroundApp)

@@ -325,7 +325,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </ul>
                     </div>
                     <div>
-                        <p class="text-xs font-medium text-muted uppercase mb-1">"Session & Shell"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-1">"Practice & Shell"</p>
                         <ul class="space-y-0.5 text-sm">
                             <li><a href="#navigation" class="text-accent-text hover:text-primary">"Navigation"</a></li>
                             <li><a href="#setlist-entry" class="text-accent-text hover:text-primary">"Setlist Entry"</a></li>
@@ -653,7 +653,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
-                    <StatCard title="Sessions" value="12".to_string() subtitle="This month" />
+                    <StatCard title="Practices" value="12".to_string() subtitle="This month" />
                     <StatCard title="Avg Score" value="3.8".to_string() subtitle="Out of 5" />
                 </div>
             </section>
@@ -758,10 +758,10 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="toast">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Toast Notifications"</h3>
                 <div class="space-y-3">
-                    <Toast variant=ToastVariant::Info>"Session auto-saved"</Toast>
+                    <Toast variant=ToastVariant::Info>"Practice auto-saved"</Toast>
                     <Toast variant=ToastVariant::Success>"5 correct in a row!"</Toast>
                     <Toast variant=ToastVariant::Warning>"Practice timer paused — are you still there?"</Toast>
-                    <Toast variant=ToastVariant::Danger>"Failed to save session. Please check your connection."</Toast>
+                    <Toast variant=ToastVariant::Danger>"Failed to save practice. Please check your connection."</Toast>
                 </div>
             </section>
 
@@ -772,7 +772,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
                     <div class="flex items-start justify-between gap-3">
                         <p class="text-sm text-danger-text">
-                            <span class="font-medium">"Error: "</span>"Failed to save session. Please check your connection and try again."
+                            <span class="font-medium">"Error: "</span>"Failed to save practice. Please check your connection and try again."
                         </p>
                         <button class="shrink-0 text-danger-text hover:text-danger-hover text-xs font-medium">
                             "Dismiss"
@@ -837,14 +837,14 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="transition-prompt">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Transition Prompt"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-4">"Non-blocking prompt shown when an item\u{2019}s planned duration elapses. Shows next item or session completion message."</p>
+                    <p class="text-xs text-faint mb-4">"Non-blocking prompt shown when an item\u{2019}s planned duration elapses. Shows next item or practice completion message."</p>
                     <div class="space-y-4">
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With next item"</p>
                             <TransitionPrompt next_item_title=Some("Clair de Lune".to_string()) />
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-muted uppercase mb-2">"Last item (session complete)"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Last item (practice complete)"</p>
                             <TransitionPrompt next_item_title=None />
                         </div>
                     </div>
@@ -1104,7 +1104,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             // ══════════════════════════════════════════════════════════
-            // COMPONENTS — Session
+            // COMPONENTS — Practice
             // ══════════════════════════════════════════════════════════
 
             // ── Setlist Entry Row ─────────────────────────────────────
@@ -1215,7 +1215,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                         <rect x="8" y="26" width="8" height="4" rx="1" fill="currentColor" opacity="0.5" />
                                     </svg>
                                 </div>
-                                <span class="text-sm text-muted">"Preparing session..."</span>
+                                <span class="text-sm text-muted">"Preparing practice..."</span>
                             </div>
                         </div>
                     </div>
@@ -1251,7 +1251,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonCardList"</p>
-                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines."</p>
+                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for practices, routines."</p>
                             <SkeletonCardList count=3 />
                         </div>
                     </div>
@@ -1289,9 +1289,9 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="week-strip">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Week Strip"</h3>
                 <div class="space-y-6">
-                    // Full WeekStrip with session dots on 3 days
+                    // Full WeekStrip with practice dots on 3 days
                     <Card>
-                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — with sessions on 3 days (selected: Wednesday)"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — with practices on 3 days (selected: Wednesday)"</p>
                         <WeekStrip
                             week_start=NaiveDate::from_ymd_opt(2026, 3, 2).unwrap()
                             selected_date=Some(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap())
@@ -1310,9 +1310,9 @@ pub fn DesignCatalogue() -> impl IntoView {
                         />
                     </Card>
 
-                    // Empty week — no sessions
+                    // Empty week — no practices
                     <Card>
-                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — empty week (no sessions, no selection)"</p>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — empty week (no practices, no selection)"</p>
                         <WeekStrip
                             week_start=NaiveDate::from_ymd_opt(2026, 2, 23).unwrap()
                             selected_date=None
@@ -1360,7 +1360,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 />
                             </div>
                             <div class="text-center">
-                                <p class="text-xs text-faint mb-2">"With session"</p>
+                                <p class="text-xs text-faint mb-2">"With practice"</p>
                                 <DayCell
                                     date=NaiveDate::from_ymd_opt(2026, 3, 3).unwrap()
                                     day_abbrev="T"
@@ -1380,7 +1380,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 />
                             </div>
                             <div class="text-center">
-                                <p class="text-xs text-faint mb-2">"Selected + session"</p>
+                                <p class="text-xs text-faint mb-2">"Selected + practice"</p>
                                 <DayCell
                                     date=NaiveDate::from_ymd_opt(2026, 3, 5).unwrap()
                                     day_abbrev="T"
@@ -1484,9 +1484,9 @@ pub fn DesignCatalogue() -> impl IntoView {
                 </Card>
             </section>
 
-            // ── Session Components (context-dependent) ────────────────
+            // ── Practice Components (context-dependent) ───────────────
             <section>
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Session Components"</h3>
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Practice Components"</h3>
                 <Card>
                     <p class="text-sm text-muted mb-3">"These components require app context (ViewModel, Core) and cannot be rendered in isolation. They are composed from the primitives shown above."</p>
                     <div class="space-y-2 text-sm text-faint">

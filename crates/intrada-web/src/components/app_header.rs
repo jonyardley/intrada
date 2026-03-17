@@ -65,7 +65,7 @@ pub fn AppHeader() -> impl IntoView {
                         }
                         attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
                     >
-                        "Sessions"
+                        "Practice"
                     </A>
                     <A
                         href="/routines"

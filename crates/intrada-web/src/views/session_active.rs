@@ -63,7 +63,7 @@ pub fn SessionActiveView() -> impl IntoView {
     view! {
         <div>
             <Show when=move || !focus_mode.get()>
-                <PageHeading text="Practice Session" />
+                <PageHeading text="Practice" />
             </Show>
             <SessionTimer />
         </div>

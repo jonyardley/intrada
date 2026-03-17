@@ -126,7 +126,7 @@ pub fn validate_session_notes(notes: &Option<String>) -> Result<(), LibraryError
         if n.len() > MAX_NOTES {
             return Err(LibraryError::Validation {
                 field: "session_notes".to_string(),
-                message: format!("Session notes must not exceed {MAX_NOTES} characters"),
+                message: format!("Practice notes must not exceed {MAX_NOTES} characters"),
             });
         }
     }

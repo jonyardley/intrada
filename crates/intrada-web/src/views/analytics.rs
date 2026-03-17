@@ -96,7 +96,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                         <p class="text-sm text-muted text-center py-8">
                             "No practice data for the past 28 days. "
                             <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
-                                "Start a session"
+                                "Start a practice"
                             </A>
                             " to see your progress here."
                         </p>
@@ -116,7 +116,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                         <p class="text-sm text-muted text-center py-4">
                             "No practice data yet. "
                             <A href="/sessions/new" attr:class="text-accent-text hover:text-accent-hover underline">
-                                "Start a session"
+                                "Start a practice"
                             </A>
                             " to track your most practised items."
                         </p>
@@ -147,7 +147,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0 ml-2">
                                             <span class="text-xs text-muted">
-                                                {format!("{} sessions", item.session_count)}
+                                                {format!("{} practices", item.session_count)}
                                             </span>
                                             <span class="text-sm font-medium text-accent-text">
                                                 {time}
@@ -167,7 +167,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                 {if score_trends.is_empty() {
                     view! {
                         <p class="text-sm text-muted text-center py-4">
-                            "No scored items yet. During a practice session, rate your confidence "
+                            "No scored items yet. During practice, rate your confidence "
                             "on items (1\u{2013}5) to see your progress over time."
                         </p>
                     }.into_any()
@@ -251,7 +251,7 @@ fn WeekComparisonRow(weekly: WeeklySummary) -> impl IntoView {
             />
             <ComparisonMetric
                 value=session_display
-                label="Sessions"
+                label="Practices"
                 direction=weekly.sessions_direction.clone()
                 prev_value=format!("{}", weekly.prev_session_count)
                 has_prev=weekly.has_prev_week_data
@@ -449,7 +449,7 @@ fn ErrorState(#[prop(into)] message: String) -> impl IntoView {
     }
 }
 
-/// Empty state when no sessions exist at all.
+/// Empty state when no practices exist at all.
 #[component]
 fn EmptyState() -> impl IntoView {
     view! {
@@ -465,13 +465,13 @@ fn EmptyState() -> impl IntoView {
             </svg>
             <h3 class="text-lg font-semibold text-secondary mb-2">"No practice data yet"</h3>
             <p class="text-sm text-muted mb-6 max-w-sm mx-auto">
-                "Complete practice sessions to see your analytics. Track your progress, streaks, and most practised items."
+                "Complete some practices to see your analytics. Track your progress, streaks, and most practised items."
             </p>
             <A
                 href="/sessions/new"
                 attr:class="cta-link"
             >
-                "Start a Session"
+                "Start a Practice"
             </A>
         </div>
     }

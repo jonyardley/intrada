@@ -88,7 +88,7 @@ pub fn BottomTabBar() -> impl IntoView {
                             clip-rule="evenodd"
                         />
                     </svg>
-                    <span class="text-xs font-medium">"Sessions"</span>
+                    <span class="text-xs font-medium">"Practice"</span>
                 </A>
 
                 // Routines tab
