@@ -15291,7 +15291,7 @@
     {
       "type": "frame",
       "id": "fB19s",
-      "x": 3451,
+      "x": 4401,
       "y": 3400,
       "name": "iOS / Routines",
       "clip": true,
@@ -15487,7 +15487,7 @@
     {
       "type": "frame",
       "id": "oGHBQ",
-      "x": 3944,
+      "x": 4894,
       "y": 3400,
       "name": "iOS / Analytics",
       "clip": true,
@@ -20383,22 +20383,11 @@
       ]
     },
     {
-      "type": "text",
-      "id": "U2Kpj",
-      "x": 0,
-      "y": 0,
-      "fill": "#000000",
-      "content": "505586",
-      "fontFamily": "Inter",
-      "fontSize": 12,
-      "fontWeight": "normal"
-    },
-    {
       "type": "frame",
       "id": "be1aV",
-      "x": 5500,
+      "x": 3451,
       "y": 3400,
-      "name": "iOS / Session Builder v2 (iPhone)",
+      "name": "iOS / Session Builder (iPhone)",
       "clip": true,
       "width": 375,
       "height": 812,
@@ -21204,8 +21193,8 @@
     {
       "type": "frame",
       "id": "qxrH0",
-      "x": 6450,
-      "y": 3400,
+      "x": 2248,
+      "y": 4500,
       "name": "iPad / Session Builder",
       "clip": true,
       "width": 1024,
@@ -22308,9 +22297,9 @@
     {
       "type": "frame",
       "id": "AYx23",
-      "x": 5975,
+      "x": 3926,
       "y": 3400,
-      "name": "iOS / Session Builder v2 (Sheet Open)",
+      "name": "iOS / Session Builder (Sheet)",
       "clip": true,
       "width": 375,
       "height": 812,
