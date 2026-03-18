@@ -7,6 +7,7 @@ import ClerkKit
 /// implemented incrementally.
 struct MainTabView: View {
     @Environment(Clerk.self) private var clerk
+    @Environment(IntradaCore.self) private var core
     @State private var selectedTab: Tab = .library
     @State private var showingSignOutConfirmation = false
     @State private var isSigningOut = false
@@ -27,6 +28,12 @@ struct MainTabView: View {
         }
     }
 
+    /// Whether the Practice tab should show an active indicator dot.
+    private var practiceTabHasActivity: Bool {
+        let status = core.viewModel.sessionStatus
+        return status == .active || status == .building
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             // Library — fully implemented
@@ -36,8 +43,21 @@ struct MainTabView: View {
                 }
                 .tag(Tab.library)
 
+            // Practice — state-driven router
+            PracticeTabRouter()
+                .tabItem {
+                    Label(
+                        Tab.practice.rawValue,
+                        systemImage: practiceTabHasActivity
+                            ? "play.circle.fill"
+                            : Tab.practice.icon
+                    )
+                }
+                .tag(Tab.practice)
+                .badge(practiceTabHasActivity ? "●" : nil)
+
             // Remaining tabs — placeholders
-            ForEach([Tab.practice, Tab.routines, Tab.analytics], id: \.self) { tab in
+            ForEach([Tab.routines, Tab.analytics], id: \.self) { tab in
                 NavigationStack {
                     PlaceholderView(tab: tab)
                         .toolbar {
