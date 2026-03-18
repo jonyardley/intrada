@@ -31,7 +31,7 @@ struct SetlistSheetContent: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("New Session")
+                Text("Your Setlist")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(Color.textPrimary)
 

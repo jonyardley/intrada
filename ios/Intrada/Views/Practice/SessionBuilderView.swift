@@ -36,6 +36,7 @@ struct SessionBuilderView: View {
     }
 
     /// Total planned duration in minutes.
+    /// Falls back to 5 min per entry when no durations are explicitly set.
     private var totalMinutes: Int {
         guard let entries = setlist?.entries else { return 0 }
         let totalSecs = entries.compactMap { (e: SetlistEntryView) -> UInt32? in
@@ -52,26 +53,89 @@ struct SessionBuilderView: View {
         }
     }
 
+    // MARK: - Search Bar (shared between layouts)
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Color.textFaint)
+            TextField("Search library...", text: $searchText)
+                .foregroundStyle(Color.textPrimary)
+                .autocorrectionDisabled()
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Color.textFaint)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 36)
+        .background(Color.surfaceInput)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.borderInput, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Back Link (shared between layouts)
+
+    private func backLink() -> some View {
+        HStack {
+            Button {
+                core.update(.session(.cancelBuilding))
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Practice")
+                }
+                .font(.body)
+                .foregroundStyle(Color.accentText)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 44)
+    }
+
+    // MARK: - Error Banner
+
+    private var errorBanner: some View {
+        Group {
+            if let error = core.viewModel.error {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(Color.dangerText)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(Color.dangerText)
+                    Spacer()
+                    Button {
+                        core.update(.clearError)
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundStyle(Color.textMuted)
+                    }
+                }
+                .padding(12)
+                .background(Color.dangerSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
     // MARK: - iPhone Layout
 
     private var iPhoneLayout: some View {
         VStack(spacing: 0) {
-            // Navigation bar
-            HStack {
-                Button {
-                    core.update(.session(.cancelBuilding))
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Practice")
-                    }
-                    .font(.body)
-                    .foregroundStyle(Color.accentText)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
+            backLink()
 
             // Heading
             HStack {
@@ -83,32 +147,9 @@ struct SessionBuilderView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 4)
 
-            // Search bar
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color.textFaint)
-                TextField("Search library...", text: $searchText)
-                    .foregroundStyle(Color.textPrimary)
-                    .autocorrectionDisabled()
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Color.textFaint)
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Color.surfaceInput)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.borderInput, lineWidth: 1)
-            )
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            errorBanner
+
+            searchBar
 
             // Library list
             SessionBuilderListContent(
@@ -145,22 +186,7 @@ struct SessionBuilderView: View {
         HStack(spacing: 0) {
             // Left column — Library
             VStack(spacing: 0) {
-                // Back link
-                HStack {
-                    Button {
-                        core.update(.session(.cancelBuilding))
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Practice")
-                        }
-                        .font(.body)
-                        .foregroundStyle(Color.accentText)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .frame(height: 44)
+                backLink()
 
                 // Heading
                 HStack {
@@ -171,32 +197,7 @@ struct SessionBuilderView: View {
                 }
                 .padding(.horizontal, 16)
 
-                // Search bar
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(Color.textFaint)
-                    TextField("Search library...", text: $searchText)
-                        .foregroundStyle(Color.textPrimary)
-                        .autocorrectionDisabled()
-                    if !searchText.isEmpty {
-                        Button {
-                            searchText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(Color.textFaint)
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 36)
-                .background(Color.surfaceInput)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.borderInput, lineWidth: 1)
-                )
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                searchBar
 
                 // Library list
                 SessionBuilderListContent(
@@ -213,10 +214,14 @@ struct SessionBuilderView: View {
             }
 
             // Right column — Setlist
-            SetlistSheetContent(
-                expandedEntryId: $expandedEntryId,
-                onStartSession: startSession
-            )
+            VStack(spacing: 0) {
+                errorBanner
+
+                SetlistSheetContent(
+                    expandedEntryId: $expandedEntryId,
+                    onStartSession: startSession
+                )
+            }
         }
         .background(Color.backgroundApp)
     }

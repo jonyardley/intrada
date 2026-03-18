@@ -51,7 +51,8 @@ struct StickyBottomBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        .padding(.bottom, 34) // Safe area for home indicator
+        .padding(.bottom, 12)
+        .background(ignoresSafeAreaEdges: .bottom)
         .background(
             Color.surfaceChrome
                 .background(.ultraThinMaterial)

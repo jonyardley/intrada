@@ -180,6 +180,7 @@ ios-swift-check *ARGS:
     trap "rm -f $BUILD_LOG" EXIT
 
     set +e
+    # Build for generic iOS Simulator (covers both iPhone and iPad architectures)
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
@@ -205,6 +206,42 @@ ios-swift-check *ARGS:
         exit 1
     fi
     echo "✓ iOS Swift build check passed"
+
+    # Also validate iPad-specific build (catches device-class-specific issues)
+    echo "  Checking iPad build..."
+    IPAD_LOG=$(mktemp)
+    trap "rm -f $IPAD_LOG" EXIT
+    IPAD_UDID=$(xcrun simctl list devices available | grep "iPad" | head -1 | grep -oE '[A-F0-9-]{36}' || echo "")
+    if [ -n "$IPAD_UDID" ]; then
+        IPAD_DEST="platform=iOS Simulator,id=$IPAD_UDID"
+    else
+        IPAD_DEST="generic/platform=iOS Simulator"
+        echo "  ⚠ No iPad simulator found, using generic destination"
+    fi
+    set +e
+    xcodebuild build \
+        -project Intrada.xcodeproj \
+        -scheme Intrada \
+        -destination "$IPAD_DEST" \
+        -configuration Debug \
+        CODE_SIGNING_ALLOWED=NO \
+        CODE_SIGN_IDENTITY="" \
+        COMPILER_INDEX_STORE_ENABLE=NO \
+        -quiet 2>&1 | tee "$IPAD_LOG"
+    IPAD_EXIT=${PIPESTATUS[0]}
+    set -e
+    if [ $IPAD_EXIT -ne 0 ]; then
+        echo ""
+        echo "❌ iPad build FAILED"
+        ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$IPAD_LOG" || true)
+        if [ -n "$ERRORS" ]; then
+            echo ""
+            echo "Swift errors:"
+            echo "$ERRORS"
+        fi
+        exit 1
+    fi
+    echo "✓ iPad build check passed"
 
 # SwiftUI preview validation — checks all preview providers compile
 # Pass --clean to force a clean build
