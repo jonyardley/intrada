@@ -376,6 +376,9 @@ components. Always use the named token.
 | `LibraryItemRow`  | `LibraryItemCard` | Library item list row (title, composer, badges) |
 | `ScoreHistoryList` | (inline)       | Score history entries with colour-coded badges |
 | `FlowLayout`      | (CSS flexbox)   | Wrapping layout for tag chips and badges   |
+| `LibraryQueueRow`  | (new)           | Tap-to-queue library row with toggle state (accent bar + check/plus icon) |
+| `SetlistEntryRow`  | `SetlistEntryRow` | Compact entry with drag handle, progressive disclosure for duration/intention/reps |
+| `StickyBottomBar`  | (new)           | iPhone bottom bar — item count, total time, Start Session button |
 
 ### iOS views — feature screens
 
@@ -389,6 +392,10 @@ components. Always use the named token.
 | `LibrarySkeletonView` | List loading skeleton (5 placeholder rows) |
 | `DetailSkeletonView` | Detail pane loading skeleton |
 | `LibraryHelpers` | Shared helpers: `FilterTab`, `LibraryFormValidator`, date/tempo formatters |
+| `PracticeTabRouter` | State-driven router — renders Idle/Building/Active/Summary based on `session_status` |
+| `SessionBuilderView` | Main builder — adaptive iPhone (list + bottom bar) / iPad (split view) layout |
+| `SessionBuilderListContent` | Scrollable library list with tap-to-queue rows and search filtering |
+| `SetlistSheetContent` | Setlist editor — intention, drag-to-reorder entries, Start Session (sheet on iPhone, panel on iPad) |
 
 ### Rules for new iOS UI work
 
@@ -528,6 +535,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 ## Active Technologies
 - Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated) (001-ios-library)
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
+- Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated types) (196-ios-session-builder)
+- N/A (all persistence via Crux core HTTP effects → REST API → Turso; crash recovery via UserDefaults) (196-ios-session-builder)
 
 ## Recent Changes
 - 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

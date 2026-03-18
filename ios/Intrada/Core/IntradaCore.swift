@@ -292,7 +292,7 @@ final class IntradaCore {
             SessionStorage.clear()
         }
 
-        // Resolve the effect to notify the core it's complete.
-        resolveEffect(requestId)
+        // App effects use Command::notify_shell (fire-and-forget).
+        // Do NOT call resolveEffect — the core doesn't expect a response.
     }
 }

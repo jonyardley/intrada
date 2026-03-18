@@ -1,5 +1,5 @@
 {
-  "version": "2.8",
+  "version": "2.9",
   "children": [
     {
       "type": "frame",
@@ -1579,421 +1579,6 @@
             {
               "type": "text",
               "id": "fB2Mp",
-              "name": "Text",
-              "fill": "$text-faint",
-              "content": "intrada · practice with intention",
-              "fontFamily": "Inter",
-              "fontSize": 12,
-              "fontWeight": "normal"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "fiTvF",
-      "x": 12320,
-      "y": 200,
-      "name": "Desktop / Goals",
-      "clip": true,
-      "width": 1440,
-      "height": 900,
-      "fill": {
-        "type": "gradient",
-        "gradientType": "linear",
-        "enabled": true,
-        "rotation": 180,
-        "size": {
-          "height": 1
-        },
-        "colors": [
-          {
-            "color": "#1A103A",
-            "position": 0
-          },
-          {
-            "color": "#0B0B1A",
-            "position": 0.5
-          },
-          {
-            "color": "#080818",
-            "position": 1
-          }
-        ]
-      },
-      "layout": "vertical",
-      "children": [
-        {
-          "id": "Cd9k8",
-          "type": "ref",
-          "ref": "x5Zo4",
-          "name": "Header",
-          "width": "fill_container",
-          "descendants": {
-            "z9Z9h": {
-              "x": 24,
-              "y": 14.5
-            },
-            "Ny0jO": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 976,
-              "y": 19.5
-            },
-            "6Nqxe": {
-              "fill": "$text-muted",
-              "fontWeight": "normal"
-            },
-            "LcQWR": {
-              "x": 71
-            },
-            "Viiu1": {
-              "x": 155
-            },
-            "avYT5": {
-              "fill": "$accent-text",
-              "fontWeight": "500",
-              "x": 237
-            },
-            "YPRhh": {
-              "x": 300
-            },
-            "zAb6z": {
-              "x": 385
-            }
-          }
-        },
-        {
-          "type": "frame",
-          "id": "CGVgx",
-          "name": "Content",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "padding": [
-            32,
-            0
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "lCAgq",
-              "name": "Inner",
-              "width": 896,
-              "layout": "vertical",
-              "gap": 24,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "Xp9EU",
-                  "name": "HeadingRow",
-                  "width": "fill_container",
-                  "justifyContent": "space_between",
-                  "children": [
-                    {
-                      "id": "Q4pfk",
-                      "type": "ref",
-                      "ref": "8xqk8",
-                      "name": "Heading",
-                      "width": "fit_content",
-                      "height": "fit_content",
-                      "descendants": {
-                        "ngxP3": {
-                          "content": "Goals"
-                        },
-                        "r3TyV": {
-                          "content": "Set targets and track your progress",
-                          "y": 42
-                        }
-                      }
-                    },
-                    {
-                      "id": "j1z2n",
-                      "type": "ref",
-                      "ref": "Jt16H",
-                      "name": "SetGoalBtn",
-                      "width": "fit_content",
-                      "x": 782,
-                      "descendants": {
-                        "sRv5N": {
-                          "content": "+ Set a Goal",
-                          "x": 16,
-                          "y": 13.5
-                        }
-                      }
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "uwfbZ",
-                  "name": "ActiveGoals",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": 12,
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "Er1ka",
-                      "name": "SectionTitle",
-                      "fill": "$text-primary",
-                      "content": "Active Goals",
-                      "fontFamily": "Inter",
-                      "fontSize": 16,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "fOH7t",
-                      "name": "GoalCard1",
-                      "width": "fill_container",
-                      "fill": "$surface-primary",
-                      "cornerRadius": "$radius-card",
-                      "stroke": {
-                        "thickness": 1,
-                        "fill": "$border-card"
-                      },
-                      "effect": {
-                        "type": "background_blur",
-                        "radius": 12
-                      },
-                      "layout": "vertical",
-                      "gap": 10,
-                      "padding": "$spacing-card",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "CuSDf",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "xddAj",
-                              "name": "Title",
-                              "fill": "$text-primary",
-                              "content": "Practice 5 days/week",
-                              "fontFamily": "Inter",
-                              "fontSize": 15,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "HitSK",
-                              "name": "Kind",
-                              "fill": "$text-muted",
-                              "content": "Frequency",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "O9pit",
-                          "name": "ProgressBar",
-                          "width": "fill_container",
-                          "height": 6,
-                          "fill": "$surface-secondary",
-                          "cornerRadius": "$radius-pill",
-                          "layout": "none",
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "L6SVh",
-                              "x": 0,
-                              "y": 0,
-                              "name": "Fill",
-                              "width": 550,
-                              "height": 6,
-                              "fill": "$accent",
-                              "cornerRadius": "$radius-pill"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "njHtj",
-                          "name": "Bottom",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "PKOuR",
-                              "name": "Percent",
-                              "fill": "$text-muted",
-                              "content": "60% · 3 of 5 days",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "frame",
-                              "id": "fx51f",
-                              "name": "Actions",
-                              "gap": 12,
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "id": "3JfAb",
-                                  "name": "Complete",
-                                  "fill": "$success-text",
-                                  "content": "Complete",
-                                  "fontFamily": "Inter",
-                                  "fontSize": 12,
-                                  "fontWeight": "500"
-                                },
-                                {
-                                  "type": "text",
-                                  "id": "LvraH",
-                                  "name": "Archive",
-                                  "fill": "$text-muted",
-                                  "content": "Archive",
-                                  "fontFamily": "Inter",
-                                  "fontSize": 12,
-                                  "fontWeight": "500"
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "frame",
-                      "id": "cFx2k",
-                      "name": "GoalCard2",
-                      "width": "fill_container",
-                      "fill": "$surface-primary",
-                      "cornerRadius": "$radius-card",
-                      "stroke": {
-                        "thickness": 1,
-                        "fill": "$border-card"
-                      },
-                      "effect": {
-                        "type": "background_blur",
-                        "radius": 12
-                      },
-                      "layout": "vertical",
-                      "gap": 10,
-                      "padding": "$spacing-card",
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "ewxuA",
-                          "name": "Top",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "d5U3A",
-                              "name": "Title",
-                              "fill": "$text-primary",
-                              "content": "Master Clair de Lune (★ 5)",
-                              "fontFamily": "Inter",
-                              "fontSize": 15,
-                              "fontWeight": "600"
-                            },
-                            {
-                              "type": "text",
-                              "id": "1rNkH",
-                              "name": "Kind",
-                              "fill": "$text-muted",
-                              "content": "Mastery",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "LK2Y7",
-                          "name": "ProgressBar",
-                          "width": "fill_container",
-                          "height": 6,
-                          "fill": "$surface-secondary",
-                          "cornerRadius": "$radius-pill",
-                          "layout": "none",
-                          "children": [
-                            {
-                              "type": "frame",
-                              "id": "zap8T",
-                              "x": 0,
-                              "y": 0,
-                              "name": "Fill",
-                              "width": 350,
-                              "height": 6,
-                              "fill": "$warm-accent",
-                              "cornerRadius": "$radius-pill"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "frame",
-                          "id": "EUuWP",
-                          "name": "Bottom",
-                          "width": "fill_container",
-                          "justifyContent": "space_between",
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "text",
-                              "id": "J9B5s",
-                              "name": "Percent",
-                              "fill": "$text-muted",
-                              "content": "Score: ★ 4 → ★ 5 target",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            },
-                            {
-                              "type": "text",
-                              "id": "BGFYh",
-                              "name": "Deadline",
-                              "fill": "$text-faint",
-                              "content": "Deadline: 30 Apr 2026",
-                              "fontFamily": "Inter",
-                              "fontSize": 12,
-                              "fontWeight": "normal"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "QCrW1",
-          "name": "Footer",
-          "width": "fill_container",
-          "height": 40,
-          "stroke": {
-            "thickness": {
-              "top": 1
-            },
-            "fill": "$border-default"
-          },
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "text",
-              "id": "bv05h",
               "name": "Text",
               "fill": "$text-faint",
               "content": "intrada · practice with intention",
@@ -4086,302 +3671,6 @@
             },
             "lAe91": {
               "fill": "$accent-text",
-              "y": 22
-            }
-          }
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "RZxav",
-      "x": 3800,
-      "y": 1900,
-      "name": "Mobile / Goals",
-      "clip": true,
-      "width": 375,
-      "height": 812,
-      "fill": {
-        "type": "gradient",
-        "gradientType": "linear",
-        "enabled": true,
-        "rotation": 180,
-        "size": {
-          "height": 1
-        },
-        "colors": [
-          {
-            "color": "#1A103A",
-            "position": 0
-          },
-          {
-            "color": "#0B0B1A",
-            "position": 0.5
-          },
-          {
-            "color": "#080818",
-            "position": 1
-          }
-        ]
-      },
-      "layout": "vertical",
-      "children": [
-        {
-          "type": "frame",
-          "id": "znjNX",
-          "name": "Content",
-          "width": "fill_container",
-          "height": "fill_container",
-          "layout": "vertical",
-          "gap": 16,
-          "padding": 16,
-          "children": [
-            {
-              "type": "frame",
-              "id": "g7zzW",
-              "name": "mGHead",
-              "width": "fill_container",
-              "justifyContent": "space_between",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "ATUEJ",
-                  "name": "mGTitle",
-                  "fill": "$text-primary",
-                  "content": "Goals",
-                  "fontFamily": "$font-heading",
-                  "fontSize": 24,
-                  "fontWeight": "600"
-                },
-                {
-                  "type": "text",
-                  "id": "kuhf7",
-                  "name": "mGAdd",
-                  "fill": "$accent-text",
-                  "content": "+ Set a Goal",
-                  "fontFamily": "Inter",
-                  "fontSize": 14,
-                  "fontWeight": "500"
-                }
-              ]
-            },
-            {
-              "id": "Fd6Ji",
-              "type": "ref",
-              "ref": "6iOgb",
-              "width": "fill_container",
-              "name": "mGCard1",
-              "height": "fit_content",
-              "x": 16,
-              "y": 65,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "a9ZCy",
-                  "name": "mGC1inner",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": 10,
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "si0lH",
-                      "name": "mGC1title",
-                      "fill": "$text-secondary",
-                      "content": "Practice 5 days/week",
-                      "fontFamily": "Inter",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "bNYaB",
-                      "name": "mGC1type",
-                      "fill": "$text-faint",
-                      "content": "Frequency",
-                      "fontFamily": "Inter",
-                      "fontSize": 11,
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "QTied",
-                      "name": "mGC1barBg",
-                      "width": "fill_container",
-                      "height": 6,
-                      "fill": "$surface-input",
-                      "cornerRadius": 3,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "hnqTu",
-                          "name": "mGC1bar",
-                          "width": 200,
-                          "height": "fill_container",
-                          "fill": "#7C3AED",
-                          "cornerRadius": 3
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "TDl8L",
-                      "name": "mGC1pct",
-                      "fill": "$text-faint",
-                      "content": "3 of 5 days (60%)",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "id": "rTrlO",
-              "type": "ref",
-              "ref": "6iOgb",
-              "width": "fill_container",
-              "name": "mGCard2",
-              "height": "fit_content",
-              "x": 16,
-              "y": 194,
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "SKPmH",
-                  "name": "mGC2inner",
-                  "width": "fill_container",
-                  "layout": "vertical",
-                  "gap": 10,
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "KPLSS",
-                      "name": "mGC2title",
-                      "fill": "$text-secondary",
-                      "content": "Master Clair de Lune (★ 5)",
-                      "fontFamily": "Inter",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "text",
-                      "id": "M3vhT",
-                      "name": "mGC2type",
-                      "fill": "$text-faint",
-                      "content": "Mastery · Due 30 Apr",
-                      "fontFamily": "Inter",
-                      "fontSize": 11,
-                      "fontWeight": "normal"
-                    },
-                    {
-                      "type": "frame",
-                      "id": "KYPmm",
-                      "name": "mGC2barBg",
-                      "width": "fill_container",
-                      "height": 6,
-                      "fill": "$surface-input",
-                      "cornerRadius": 3,
-                      "children": [
-                        {
-                          "type": "frame",
-                          "id": "SGJNb",
-                          "name": "mGC2bar",
-                          "width": 140,
-                          "height": "fill_container",
-                          "fill": "#E8B931",
-                          "cornerRadius": 3
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "id": "sdEgT",
-                      "name": "mGC2pct",
-                      "fill": "$text-faint",
-                      "content": "Current best: ★ 4",
-                      "fontFamily": "Inter",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "dWvY0",
-          "type": "ref",
-          "ref": "TRPLY",
-          "width": "fill_container",
-          "name": "mGTab",
-          "y": 752,
-          "descendants": {
-            "I14qv": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 18.6,
-              "y": 13
-            },
-            "56m4f": {
-              "fill": "$text-muted",
-              "x": 7
-            },
-            "pTvsJ": {
-              "fill": "$text-muted",
-              "y": 22
-            },
-            "niuP1": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 89.80000000000001,
-              "y": 13
-            },
-            "kLnRa": {
-              "x": 11.5
-            },
-            "7WtSX": {
-              "y": 22
-            },
-            "GJNfr": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 170,
-              "y": 13
-            },
-            "tlAMN": {
-              "x": 10.5
-            },
-            "59ysX": {
-              "y": 22
-            },
-            "DT6N1": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 248.2,
-              "y": 13
-            },
-            "tBV3Y": {
-              "fill": "$accent-text",
-              "x": 3.5
-            },
-            "Jte0G": {
-              "fill": "$accent-text",
-              "y": 22
-            },
-            "z3HyY": {
-              "width": "fit_content",
-              "height": "fit_content",
-              "x": 312.4,
-              "y": 13
-            },
-            "8QKGl": {
-              "x": 12
-            },
-            "lAe91": {
               "y": 22
             }
           }
@@ -15561,7 +14850,29 @@
               "width": "fill_container",
               "name": "tabs",
               "x": 16,
-              "y": 0
+              "y": 0,
+              "descendants": {
+                "G2TsA": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 4,
+                  "y": 4
+                },
+                "2PdUE": {
+                  "x": 16,
+                  "y": 8
+                },
+                "mz1hb": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 82,
+                  "y": 4
+                },
+                "Wvy5A": {
+                  "x": 16,
+                  "y": 8
+                }
+              }
             },
             {
               "type": "text",
@@ -15581,21 +14892,41 @@
               "name": "card1",
               "x": 16,
               "y": 79,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Clair de Lune"
                 },
                 "dzo6j": {
-                  "content": "Claude Debussy"
+                  "content": "Claude Debussy",
+                  "y": 22
+                },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 42
                 },
                 "aVkO2": {
                   "content": "D♭ Major"
                 },
+                "16g3K": {
+                  "x": 65
+                },
                 "V1viy": {
-                  "content": "72 / 80 BPM"
+                  "content": "72 / 80 BPM",
+                  "x": 77
                 },
                 "2BQDQ": {
-                  "x": 295
+                  "x": 295,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 35
                 }
               }
             },
@@ -15607,21 +14938,41 @@
               "name": "card2",
               "x": 16,
               "y": 182,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Nocturne Op.9 No.2"
                 },
                 "dzo6j": {
-                  "content": "Frédéric Chopin"
+                  "content": "Frédéric Chopin",
+                  "y": 22
+                },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 42
                 },
                 "aVkO2": {
                   "content": "E♭ Major"
                 },
+                "16g3K": {
+                  "x": 63
+                },
                 "V1viy": {
-                  "content": "Andante (108 BPM)"
+                  "content": "Andante (108 BPM)",
+                  "x": 75
                 },
                 "2BQDQ": {
-                  "x": 295
+                  "x": 295,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 35
                 }
               }
             },
@@ -15633,22 +14984,41 @@
               "name": "card3",
               "x": 16,
               "y": 285,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Hanon Exercise No.1"
                 },
                 "dzo6j": {
                   "enabled": false
                 },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 22
+                },
                 "aVkO2": {
                   "content": "C Major"
                 },
+                "16g3K": {
+                  "x": 53
+                },
                 "V1viy": {
-                  "content": "120 BPM"
+                  "content": "120 BPM",
+                  "x": 65
                 },
                 "2BQDQ": {
                   "x": 280,
-                  "fill": "$badge-exercise-bg"
+                  "fill": "$badge-exercise-bg",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 24
                 },
                 "2BQDQ/UcUpV": {
                   "content": "Exercise",
@@ -15921,7 +15291,7 @@
     {
       "type": "frame",
       "id": "fB19s",
-      "x": 3451,
+      "x": 4401,
       "y": 3400,
       "name": "iOS / Routines",
       "clip": true,
@@ -16117,7 +15487,7 @@
     {
       "type": "frame",
       "id": "oGHBQ",
-      "x": 3944,
+      "x": 4894,
       "y": 3400,
       "name": "iOS / Analytics",
       "clip": true,
@@ -16353,8 +15723,21 @@
           "x": 0,
           "y": 0,
           "descendants": {
+            "gqG26": {
+              "x": 24,
+              "y": 25
+            },
             "eqA7t": {
-              "x": 285
+              "x": 285,
+              "width": "fit_content",
+              "height": "fit_content",
+              "y": 26
+            },
+            "Fa6Dy": {
+              "x": 22
+            },
+            "JIN9A": {
+              "x": 44
             }
           }
         },
@@ -16368,15 +15751,19 @@
           "y": 54,
           "descendants": {
             "G73pb": {
-              "width": "fill_container"
+              "width": "fill_container",
+              "x": 16
             },
             "fypZq": {
               "x": 319,
               "iconFontName": "add",
-              "fill": "$accent-text"
+              "fill": "$accent-text",
+              "y": 10
             },
             "jKTX8": {
-              "content": "Library"
+              "content": "Library",
+              "x": 16,
+              "y": 44
             }
           }
         },
@@ -16402,7 +15789,29 @@
               "width": "fill_container",
               "name": "tabs1",
               "x": 16,
-              "y": 0
+              "y": 0,
+              "descendants": {
+                "G2TsA": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 4,
+                  "y": 4
+                },
+                "2PdUE": {
+                  "x": 16,
+                  "y": 8
+                },
+                "mz1hb": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 82,
+                  "y": 4
+                },
+                "Wvy5A": {
+                  "x": 16,
+                  "y": 8
+                }
+              }
             },
             {
               "type": "text",
@@ -16422,21 +15831,41 @@
               "name": "card1",
               "x": 16,
               "y": 79,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Clair de Lune"
                 },
                 "dzo6j": {
-                  "content": "Claude Debussy"
+                  "content": "Claude Debussy",
+                  "y": 22
+                },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 42
                 },
                 "aVkO2": {
                   "content": "D♭ Major"
                 },
+                "16g3K": {
+                  "x": 65
+                },
                 "V1viy": {
-                  "content": "72 / 80 BPM"
+                  "content": "72 / 80 BPM",
+                  "x": 77
                 },
                 "2BQDQ": {
-                  "x": 277
+                  "x": 277,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 35
                 }
               }
             },
@@ -16454,9 +15883,13 @@
                   "name": "tag1a",
                   "x": 0,
                   "y": 0,
+                  "width": "fit_content",
+                  "height": "fit_content",
                   "descendants": {
                     "Wi97G": {
-                      "content": "romantic"
+                      "content": "romantic",
+                      "x": 10,
+                      "y": 4
                     }
                   }
                 },
@@ -16467,9 +15900,13 @@
                   "name": "tag1b",
                   "x": 76,
                   "y": 0,
+                  "width": "fit_content",
+                  "height": "fit_content",
                   "descendants": {
                     "Wi97G": {
-                      "content": "exam"
+                      "content": "exam",
+                      "x": 10,
+                      "y": 4
                     }
                   }
                 }
@@ -16483,21 +15920,41 @@
               "name": "card2",
               "x": 16,
               "y": 217,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Nocturne Op.9 No.2"
                 },
                 "dzo6j": {
-                  "content": "Frédéric Chopin"
+                  "content": "Frédéric Chopin",
+                  "y": 22
+                },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 42
                 },
                 "aVkO2": {
                   "content": "E♭ Major"
                 },
+                "16g3K": {
+                  "x": 63
+                },
                 "V1viy": {
-                  "content": "Andante (108 BPM)"
+                  "content": "Andante (108 BPM)",
+                  "x": 75
                 },
                 "2BQDQ": {
-                  "x": 277
+                  "x": 277,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 35
                 }
               }
             },
@@ -16509,22 +15966,41 @@
               "name": "card3",
               "x": 16,
               "y": 320,
+              "height": "fit_content",
               "descendants": {
+                "O6ddV": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "x": 16,
+                  "y": 16
+                },
                 "uVHt5": {
                   "content": "Hanon Exercise No.1"
                 },
                 "dzo6j": {
                   "enabled": false
                 },
+                "UqPnC": {
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 22
+                },
                 "aVkO2": {
                   "content": "C Major"
                 },
+                "16g3K": {
+                  "x": 53
+                },
                 "V1viy": {
-                  "content": "120 BPM"
+                  "content": "120 BPM",
+                  "x": 65
                 },
                 "2BQDQ": {
                   "x": 262,
-                  "fill": "$badge-exercise-bg"
+                  "fill": "$badge-exercise-bg",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 24
                 },
                 "2BQDQ/UcUpV": {
                   "content": "Exercise",
@@ -16544,43 +16020,55 @@
           "y": 729,
           "descendants": {
             "SnnwV": {
-              "width": "fill_container"
+              "width": "fill_container",
+              "height": "fit_content",
+              "y": 8
             },
             "VADIu": {
               "x": 35.875
             },
             "nX39i": {
-              "x": 29.875
+              "x": 29.875,
+              "y": 26
             },
             "d1yrC": {
               "width": "fill_container",
-              "x": 93.75
+              "x": 93.75,
+              "height": "fit_content",
+              "y": 8
             },
             "IJFQW": {
               "x": 35.875
             },
             "JdaS0": {
-              "x": 26.875
+              "x": 26.875,
+              "y": 26
             },
             "WIoOy": {
               "width": "fill_container",
-              "x": 187.5
+              "x": 187.5,
+              "height": "fit_content",
+              "y": 8
             },
             "uYq1m": {
               "x": 35.875
             },
             "LRCSn": {
-              "x": 25.875
+              "x": 25.875,
+              "y": 26
             },
             "yoxwz": {
               "width": "fill_container",
-              "x": 281.25
+              "x": 281.25,
+              "height": "fit_content",
+              "y": 8
             },
             "EpCnU": {
               "x": 35.875
             },
             "lUM6B": {
-              "x": 24.375
+              "x": 24.375,
+              "y": 26
             }
           }
         }
@@ -16629,8 +16117,21 @@
           "x": 0,
           "y": 0,
           "descendants": {
+            "gqG26": {
+              "x": 24,
+              "y": 25
+            },
             "eqA7t": {
-              "x": 285
+              "x": 285,
+              "width": "fit_content",
+              "height": "fit_content",
+              "y": 26
+            },
+            "Fa6Dy": {
+              "x": 22
+            },
+            "JIN9A": {
+              "x": 44
             }
           }
         },
@@ -16745,7 +16246,15 @@
                       "ref": "rs0o1",
                       "name": "pBadge",
                       "x": 0,
-                      "y": 0
+                      "y": 0,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "descendants": {
+                        "UcUpV": {
+                          "x": 10,
+                          "y": 4
+                        }
+                      }
                     }
                   ]
                 }
@@ -16764,6 +16273,8 @@
                 "wZhf1": {
                   "width": "fill_container",
                   "height": "fit_content",
+                  "x": 16,
+                  "y": 16,
                   "children": [
                     {
                       "type": "frame",
@@ -16873,9 +16384,13 @@
                       "name": "dtag1",
                       "x": 0,
                       "y": 0,
+                      "width": "fit_content",
+                      "height": "fit_content",
                       "descendants": {
                         "Wi97G": {
-                          "content": "romantic"
+                          "content": "romantic",
+                          "x": 10,
+                          "y": 4
                         }
                       }
                     },
@@ -16886,9 +16401,13 @@
                       "name": "dtag2",
                       "x": 76,
                       "y": 0,
+                      "width": "fit_content",
+                      "height": "fit_content",
                       "descendants": {
                         "Wi97G": {
-                          "content": "exam"
+                          "content": "exam",
+                          "x": 10,
+                          "y": 4
                         }
                       }
                     },
@@ -16899,9 +16418,13 @@
                       "name": "dtag3",
                       "x": 133,
                       "y": 0,
+                      "width": "fit_content",
+                      "height": "fit_content",
                       "descendants": {
                         "Wi97G": {
-                          "content": "grade 8"
+                          "content": "grade 8",
+                          "x": 10,
+                          "y": 4
                         }
                       }
                     }
@@ -16922,6 +16445,8 @@
                 "wZhf1": {
                   "width": "fill_container",
                   "height": "fit_content",
+                  "x": 16,
+                  "y": 16,
                   "children": [
                     {
                       "type": "text",
@@ -16964,6 +16489,8 @@
                 "wZhf1": {
                   "width": "fill_container",
                   "height": "fit_content",
+                  "x": 16,
+                  "y": 16,
                   "children": [
                     {
                       "type": "text",
@@ -17159,8 +16686,21 @@
           "x": 0,
           "y": 0,
           "descendants": {
+            "gqG26": {
+              "x": 24,
+              "y": 25
+            },
             "eqA7t": {
-              "x": 285
+              "x": 285,
+              "width": "fit_content",
+              "height": "fit_content",
+              "y": 26
+            },
+            "Fa6Dy": {
+              "x": 22
+            },
+            "JIN9A": {
+              "x": 44
             }
           }
         },
@@ -17231,7 +16771,29 @@
               "width": "fill_container",
               "name": "typeTabs",
               "x": 16,
-              "y": 12
+              "y": 12,
+              "descendants": {
+                "G2TsA": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 4,
+                  "y": 4
+                },
+                "2PdUE": {
+                  "x": 16,
+                  "y": 8
+                },
+                "mz1hb": {
+                  "width": "fit_content",
+                  "height": "fill_container",
+                  "x": 82,
+                  "y": 4
+                },
+                "Wvy5A": {
+                  "x": 16,
+                  "y": 8
+                }
+              }
             },
             {
               "id": "I3Kqe",
@@ -17241,6 +16803,7 @@
               "name": "titleField",
               "x": 16,
               "y": 72,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Title"
@@ -17249,10 +16812,13 @@
                   "enabled": false
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "AVG6e": {
-                  "content": "e.g. Clair de Lune"
+                  "content": "e.g. Clair de Lune",
+                  "x": 12,
+                  "y": 11.5
                 }
               }
             },
@@ -17264,18 +16830,23 @@
               "name": "composerField",
               "x": 16,
               "y": 153,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Composer"
                 },
                 "H4XMM": {
-                  "content": "Required for pieces"
+                  "content": "Required for pieces",
+                  "y": 21
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 40
                 },
                 "AVG6e": {
-                  "content": "e.g. Claude Debussy"
+                  "content": "e.g. Claude Debussy",
+                  "x": 12,
+                  "y": 11.5
                 }
               }
             },
@@ -17287,6 +16858,7 @@
               "name": "keyField",
               "x": 16,
               "y": 253,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Key"
@@ -17295,10 +16867,13 @@
                   "enabled": false
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "AVG6e": {
-                  "content": "e.g. C Major, Db Minor"
+                  "content": "e.g. C Major, Db Minor",
+                  "x": 12,
+                  "y": 11.5
                 }
               }
             },
@@ -17317,6 +16892,7 @@
                   "name": "markingField",
                   "x": 0,
                   "y": 0,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "Tempo Marking"
@@ -17325,10 +16901,13 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
-                      "content": "e.g. Allegro"
+                      "content": "e.g. Allegro",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 },
@@ -17340,6 +16919,7 @@
                   "name": "bpmField",
                   "x": 177.5,
                   "y": 0,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "BPM"
@@ -17348,10 +16928,13 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
-                      "content": "1–400"
+                      "content": "1–400",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 }
@@ -17365,6 +16948,7 @@
               "name": "notesField",
               "x": 16,
               "y": 415,
+              "height": "fit_content",
               "descendants": {
                 "W8cM0": {
                   "content": "Notes"
@@ -17373,10 +16957,13 @@
                   "enabled": false
                 },
                 "TKJ29": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "3SpJy": {
-                  "content": "Practice notes, teacher feedback..."
+                  "content": "Practice notes, teacher feedback...",
+                  "x": 12,
+                  "y": 8
                 }
               }
             },
@@ -17508,8 +17095,21 @@
           "x": 0,
           "y": 0,
           "descendants": {
+            "gqG26": {
+              "x": 24,
+              "y": 25
+            },
             "eqA7t": {
-              "x": 285
+              "x": 285,
+              "width": "fit_content",
+              "height": "fit_content",
+              "y": 26
+            },
+            "Fa6Dy": {
+              "x": 22
+            },
+            "JIN9A": {
+              "x": 44
             }
           }
         },
@@ -17597,7 +17197,15 @@
                   "ref": "rs0o1",
                   "name": "eBadge",
                   "x": 42,
-                  "y": 0
+                  "y": 0,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "descendants": {
+                    "UcUpV": {
+                      "x": 10,
+                      "y": 4
+                    }
+                  }
                 }
               ]
             },
@@ -17609,6 +17217,7 @@
               "name": "eTitleField",
               "x": 16,
               "y": 53,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Title"
@@ -17617,11 +17226,14 @@
                   "enabled": false
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "AVG6e": {
                   "content": "Clair de Lune",
-                  "fill": "$text-secondary"
+                  "fill": "$text-secondary",
+                  "x": 12,
+                  "y": 11.5
                 }
               }
             },
@@ -17633,6 +17245,7 @@
               "name": "eComposerField",
               "x": 16,
               "y": 134,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Composer"
@@ -17641,11 +17254,14 @@
                   "enabled": false
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "AVG6e": {
                   "content": "Claude Debussy",
-                  "fill": "$text-secondary"
+                  "fill": "$text-secondary",
+                  "x": 12,
+                  "y": 11.5
                 }
               }
             },
@@ -17657,6 +17273,7 @@
               "name": "eKeyField",
               "x": 16,
               "y": 215,
+              "height": "fit_content",
               "descendants": {
                 "Lqueo": {
                   "content": "Key"
@@ -17665,11 +17282,14 @@
                   "enabled": false
                 },
                 "jNIYL": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "AVG6e": {
                   "content": "D♭ Major",
-                  "fill": "$text-secondary"
+                  "fill": "$text-secondary",
+                  "x": 12,
+                  "y": 10
                 }
               }
             },
@@ -17688,6 +17308,7 @@
                   "name": "eMarkingField",
                   "x": 0,
                   "y": 0,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "Tempo Marking"
@@ -17696,11 +17317,14 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
                       "content": "Andante",
-                      "fill": "$text-secondary"
+                      "fill": "$text-secondary",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 },
@@ -17712,6 +17336,7 @@
                   "name": "eBpmField",
                   "x": 177.5,
                   "y": 0,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "BPM"
@@ -17720,11 +17345,14 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
                       "content": "72",
-                      "fill": "$text-secondary"
+                      "fill": "$text-secondary",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 }
@@ -17738,6 +17366,7 @@
               "name": "eNotesField",
               "x": 16,
               "y": 377,
+              "height": "fit_content",
               "descendants": {
                 "W8cM0": {
                   "content": "Notes"
@@ -17746,11 +17375,14 @@
                   "enabled": false
                 },
                 "TKJ29": {
-                  "width": "fill_container"
+                  "width": "fill_container",
+                  "y": 21
                 },
                 "3SpJy": {
                   "content": "Focus on arpeggiated accompaniment...",
-                  "fill": "$text-secondary"
+                  "fill": "$text-secondary",
+                  "x": 12,
+                  "y": 8
                 }
               }
             },
@@ -17991,8 +17623,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 290
+                  "x": 290,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -18044,7 +17689,29 @@
                   "width": "fill_container",
                   "name": "sbTabs",
                   "x": 12,
-                  "y": 0
+                  "y": 0,
+                  "descendants": {
+                    "G2TsA": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 4,
+                      "y": 4
+                    },
+                    "2PdUE": {
+                      "x": 16,
+                      "y": 8
+                    },
+                    "mz1hb": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 82,
+                      "y": 4
+                    },
+                    "Wvy5A": {
+                      "x": 16,
+                      "y": 8
+                    }
+                  }
                 },
                 {
                   "type": "text",
@@ -18069,21 +17736,41 @@
                   "name": "sc1",
                   "x": 12,
                   "y": 75,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Clair de Lune"
                     },
                     "dzo6j": {
-                      "content": "Claude Debussy"
+                      "content": "Claude Debussy",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "D♭ Major"
                     },
+                    "16g3K": {
+                      "x": 65
+                    },
                     "V1viy": {
-                      "content": "72 / 80 BPM"
+                      "content": "72 / 80 BPM",
+                      "x": 77
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -18095,21 +17782,41 @@
                   "name": "sc2",
                   "x": 12,
                   "y": 176,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Nocturne Op.9 No.2"
                     },
                     "dzo6j": {
-                      "content": "Frédéric Chopin"
+                      "content": "Frédéric Chopin",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "E♭ Major"
                     },
+                    "16g3K": {
+                      "x": 63
+                    },
                     "V1viy": {
-                      "content": "Andante (108 BPM)"
+                      "content": "Andante (108 BPM)",
+                      "x": 75
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -18121,22 +17828,41 @@
                   "name": "sc3",
                   "x": 12,
                   "y": 277,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Hanon Exercise No.1"
                     },
                     "dzo6j": {
                       "enabled": false
                     },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 22
+                    },
                     "aVkO2": {
                       "content": "C Major"
                     },
+                    "16g3K": {
+                      "x": 53
+                    },
                     "V1viy": {
-                      "content": "120 BPM"
+                      "content": "120 BPM",
+                      "x": 65
                     },
                     "2BQDQ": {
                       "x": 275,
-                      "fill": "$badge-exercise-bg"
+                      "fill": "$badge-exercise-bg",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 24
                     },
                     "2BQDQ/UcUpV": {
                       "content": "Exercise",
@@ -18152,22 +17878,41 @@
                   "name": "sc4",
                   "x": 12,
                   "y": 356,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Scale Routine"
                     },
                     "dzo6j": {
                       "enabled": false
                     },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 22
+                    },
                     "aVkO2": {
                       "content": "All Keys"
                     },
+                    "16g3K": {
+                      "x": 53
+                    },
                     "V1viy": {
-                      "content": "92 BPM"
+                      "content": "92 BPM",
+                      "x": 65
                     },
                     "2BQDQ": {
                       "x": 275,
-                      "fill": "$badge-exercise-bg"
+                      "fill": "$badge-exercise-bg",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 24
                     },
                     "2BQDQ/UcUpV": {
                       "content": "Exercise",
@@ -18183,21 +17928,41 @@
                   "name": "sc5",
                   "x": 12,
                   "y": 435,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Prelude in E minor"
                     },
                     "dzo6j": {
-                      "content": "Frédéric Chopin"
+                      "content": "Frédéric Chopin",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "E Minor"
                     },
+                    "16g3K": {
+                      "x": 52
+                    },
                     "V1viy": {
-                      "content": "Largo (52 BPM)"
+                      "content": "Largo (52 BPM)",
+                      "x": 64
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 34
                     }
                   }
                 }
@@ -18222,8 +17987,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 554
+                  "x": 554,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -18300,7 +18078,15 @@
                           "ref": "rs0o1",
                           "name": "detBadge",
                           "x": 191,
-                          "y": 6.5
+                          "y": 6.5,
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "descendants": {
+                            "UcUpV": {
+                              "x": 10,
+                              "y": 4
+                            }
+                          }
                         }
                       ]
                     },
@@ -18447,9 +18233,13 @@
                                   "name": "t1",
                                   "x": 0,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "romantic"
+                                      "content": "romantic",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 },
@@ -18460,9 +18250,13 @@
                                   "name": "t2",
                                   "x": 78,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "exam"
+                                      "content": "exam",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 },
@@ -18473,9 +18267,13 @@
                                   "name": "t3",
                                   "x": 137,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "grade 8"
+                                      "content": "grade 8",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 }
@@ -18940,8 +18738,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 290
+                  "x": 290,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -18993,7 +18804,29 @@
                   "width": "fill_container",
                   "name": "sb2Tabs",
                   "x": 12,
-                  "y": 0
+                  "y": 0,
+                  "descendants": {
+                    "G2TsA": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 4,
+                      "y": 4
+                    },
+                    "2PdUE": {
+                      "x": 16,
+                      "y": 8
+                    },
+                    "mz1hb": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 82,
+                      "y": 4
+                    },
+                    "Wvy5A": {
+                      "x": 16,
+                      "y": 8
+                    }
+                  }
                 },
                 {
                   "type": "text",
@@ -19013,21 +18846,41 @@
                   "name": "sb2c1",
                   "x": 12,
                   "y": 75,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Clair de Lune"
                     },
                     "dzo6j": {
-                      "content": "Claude Debussy"
+                      "content": "Claude Debussy",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "D♭ Major"
                     },
+                    "16g3K": {
+                      "x": 65
+                    },
                     "V1viy": {
-                      "content": "72 / 80 BPM"
+                      "content": "72 / 80 BPM",
+                      "x": 77
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -19039,21 +18892,41 @@
                   "name": "sb2c2",
                   "x": 12,
                   "y": 176,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Nocturne Op.9 No.2"
                     },
                     "dzo6j": {
-                      "content": "Frédéric Chopin"
+                      "content": "Frédéric Chopin",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "E♭ Major"
                     },
+                    "16g3K": {
+                      "x": 63
+                    },
                     "V1viy": {
-                      "content": "Andante (108 BPM)"
+                      "content": "Andante (108 BPM)",
+                      "x": 75
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -19065,22 +18938,41 @@
                   "name": "sb2c3",
                   "x": 12,
                   "y": 277,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Hanon Exercise No.1"
                     },
                     "dzo6j": {
                       "enabled": false
                     },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 22
+                    },
                     "aVkO2": {
                       "content": "C Major"
                     },
+                    "16g3K": {
+                      "x": 53
+                    },
                     "V1viy": {
-                      "content": "120 BPM"
+                      "content": "120 BPM",
+                      "x": 65
                     },
                     "2BQDQ": {
                       "x": 275,
-                      "fill": "$badge-exercise-bg"
+                      "fill": "$badge-exercise-bg",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 24
                     },
                     "2BQDQ/UcUpV": {
                       "content": "Exercise",
@@ -19109,8 +19001,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 554
+                  "x": 554,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -19181,7 +19086,29 @@
                   "width": "fill_container",
                   "name": "formTabs",
                   "x": 32,
-                  "y": 16
+                  "y": 16,
+                  "descendants": {
+                    "G2TsA": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 4,
+                      "y": 4
+                    },
+                    "2PdUE": {
+                      "x": 16,
+                      "y": 8
+                    },
+                    "mz1hb": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 82,
+                      "y": 4
+                    },
+                    "Wvy5A": {
+                      "x": 16,
+                      "y": 8
+                    }
+                  }
                 },
                 {
                   "id": "03YOO",
@@ -19191,6 +19118,7 @@
                   "name": "f1",
                   "x": 32,
                   "y": 76,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "Title"
@@ -19199,10 +19127,13 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
-                      "content": "e.g. Clair de Lune"
+                      "content": "e.g. Clair de Lune",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 },
@@ -19214,18 +19145,23 @@
                   "name": "f2",
                   "x": 32,
                   "y": 157,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "Composer"
                     },
                     "H4XMM": {
-                      "content": "Required for pieces"
+                      "content": "Required for pieces",
+                      "y": 21
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 40
                     },
                     "AVG6e": {
-                      "content": "e.g. Claude Debussy"
+                      "content": "e.g. Claude Debussy",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 },
@@ -19237,6 +19173,7 @@
                   "name": "f3",
                   "x": 32,
                   "y": 257,
+                  "height": "fit_content",
                   "descendants": {
                     "Lqueo": {
                       "content": "Key"
@@ -19245,10 +19182,13 @@
                       "enabled": false
                     },
                     "jNIYL": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "AVG6e": {
-                      "content": "e.g. C Major, Db Minor"
+                      "content": "e.g. C Major, Db Minor",
+                      "x": 12,
+                      "y": 11.5
                     }
                   }
                 },
@@ -19267,6 +19207,7 @@
                       "name": "f4",
                       "x": 0,
                       "y": 0,
+                      "height": "fit_content",
                       "descendants": {
                         "Lqueo": {
                           "content": "Tempo Marking"
@@ -19275,10 +19216,13 @@
                           "enabled": false
                         },
                         "jNIYL": {
-                          "width": "fill_container"
+                          "width": "fill_container",
+                          "y": 21
                         },
                         "AVG6e": {
-                          "content": "e.g. Allegro"
+                          "content": "e.g. Allegro",
+                          "x": 12,
+                          "y": 11.5
                         }
                       }
                     },
@@ -19290,6 +19234,7 @@
                       "name": "f5",
                       "x": 298,
                       "y": 0,
+                      "height": "fit_content",
                       "descendants": {
                         "Lqueo": {
                           "content": "BPM"
@@ -19298,10 +19243,13 @@
                           "enabled": false
                         },
                         "jNIYL": {
-                          "width": "fill_container"
+                          "width": "fill_container",
+                          "y": 21
                         },
                         "AVG6e": {
-                          "content": "1-400"
+                          "content": "1-400",
+                          "x": 12,
+                          "y": 11.5
                         }
                       }
                     }
@@ -19315,6 +19263,7 @@
                   "name": "f6",
                   "x": 32,
                   "y": 419,
+                  "height": "fit_content",
                   "descendants": {
                     "W8cM0": {
                       "content": "Notes"
@@ -19323,10 +19272,13 @@
                       "enabled": false
                     },
                     "TKJ29": {
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "y": 21
                     },
                     "3SpJy": {
-                      "content": "Practice notes, teacher feedback..."
+                      "content": "Practice notes, teacher feedback...",
+                      "x": 12,
+                      "y": 8
                     }
                   }
                 },
@@ -19468,8 +19420,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 290
+                  "x": 290,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -19521,7 +19486,29 @@
                   "width": "fill_container",
                   "name": "lSbTabs",
                   "x": 12,
-                  "y": 0
+                  "y": 0,
+                  "descendants": {
+                    "G2TsA": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 4,
+                      "y": 4
+                    },
+                    "2PdUE": {
+                      "x": 16,
+                      "y": 8
+                    },
+                    "mz1hb": {
+                      "width": "fit_content",
+                      "height": "fill_container",
+                      "x": 82,
+                      "y": 4
+                    },
+                    "Wvy5A": {
+                      "x": 16,
+                      "y": 8
+                    }
+                  }
                 },
                 {
                   "type": "text",
@@ -19546,21 +19533,41 @@
                   "name": "lc1",
                   "x": 12,
                   "y": 75,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Clair de Lune"
                     },
                     "dzo6j": {
-                      "content": "Claude Debussy"
+                      "content": "Claude Debussy",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "D♭ Major"
                     },
+                    "16g3K": {
+                      "x": 65
+                    },
                     "V1viy": {
-                      "content": "72 / 80 BPM"
+                      "content": "72 / 80 BPM",
+                      "x": 77
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -19572,21 +19579,41 @@
                   "name": "lc2",
                   "x": 12,
                   "y": 176,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Nocturne Op.9 No.2"
                     },
                     "dzo6j": {
-                      "content": "Frédéric Chopin"
+                      "content": "Frédéric Chopin",
+                      "y": 22
+                    },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 42
                     },
                     "aVkO2": {
                       "content": "E♭ Major"
                     },
+                    "16g3K": {
+                      "x": 63
+                    },
                     "V1viy": {
-                      "content": "Andante (108 BPM)"
+                      "content": "Andante (108 BPM)",
+                      "x": 75
                     },
                     "2BQDQ": {
-                      "x": 290
+                      "x": 290,
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 35
                     }
                   }
                 },
@@ -19598,22 +19625,41 @@
                   "name": "lc3",
                   "x": 12,
                   "y": 277,
+                  "height": "fit_content",
                   "descendants": {
+                    "O6ddV": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "x": 16,
+                      "y": 16
+                    },
                     "uVHt5": {
                       "content": "Hanon Exercise No.1"
                     },
                     "dzo6j": {
                       "enabled": false
                     },
+                    "UqPnC": {
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 22
+                    },
                     "aVkO2": {
                       "content": "C Major"
                     },
+                    "16g3K": {
+                      "x": 53
+                    },
                     "V1viy": {
-                      "content": "120 BPM"
+                      "content": "120 BPM",
+                      "x": 65
                     },
                     "2BQDQ": {
                       "x": 275,
-                      "fill": "$badge-exercise-bg"
+                      "fill": "$badge-exercise-bg",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "y": 24
                     },
                     "2BQDQ/UcUpV": {
                       "content": "Exercise",
@@ -19642,8 +19688,21 @@
               "x": 0,
               "y": 0,
               "descendants": {
+                "gqG26": {
+                  "x": 24,
+                  "y": 25
+                },
                 "eqA7t": {
-                  "x": 896
+                  "x": 896,
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "y": 26
+                },
+                "Fa6Dy": {
+                  "x": 22
+                },
+                "JIN9A": {
+                  "x": 44
                 }
               }
             },
@@ -19720,7 +19779,15 @@
                           "ref": "rs0o1",
                           "name": "lBadge",
                           "x": 191,
-                          "y": 6.5
+                          "y": 6.5,
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "descendants": {
+                            "UcUpV": {
+                              "x": 10,
+                              "y": 4
+                            }
+                          }
                         }
                       ]
                     },
@@ -19867,9 +19934,13 @@
                                   "name": "lt1",
                                   "x": 0,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "romantic"
+                                      "content": "romantic",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 },
@@ -19880,9 +19951,13 @@
                                   "name": "lt2",
                                   "x": 78,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "exam"
+                                      "content": "exam",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 },
@@ -19893,9 +19968,13 @@
                                   "name": "lt3",
                                   "x": 137,
                                   "y": 0,
+                                  "width": "fit_content",
+                                  "height": "fit_content",
                                   "descendants": {
                                     "Wi97G": {
-                                      "content": "grade 8"
+                                      "content": "grade 8",
+                                      "x": 10,
+                                      "y": 4
                                     }
                                   }
                                 }
@@ -20294,6 +20373,3234 @@
                       "fontFamily": "Inter",
                       "fontSize": 12,
                       "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "be1aV",
+      "x": 3451,
+      "y": 3400,
+      "name": "iOS / Session Builder (iPhone)",
+      "clip": true,
+      "width": 375,
+      "height": 812,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1A103A",
+            "position": 0
+          },
+          {
+            "color": "#0B0B1A",
+            "position": 0.5
+          },
+          {
+            "color": "#080818",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "children": [
+        {
+          "id": "qfuTu",
+          "type": "ref",
+          "ref": "FWDJM",
+          "width": "fill_container",
+          "name": "sb",
+          "x": 0,
+          "y": 0,
+          "descendants": {
+            "eqA7t": {
+              "x": 285
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "zs4wU",
+          "name": "NavRow",
+          "width": "fill_container",
+          "height": 44,
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "fJ2oR",
+              "name": "backIcon",
+              "width": 20,
+              "height": 20,
+              "iconFontName": "chevron-left",
+              "iconFontFamily": "lucide",
+              "fill": "$accent-text"
+            },
+            {
+              "type": "text",
+              "id": "lJ9dL",
+              "name": "backLabel",
+              "fill": "$accent-text",
+              "content": "Practice",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WsXOY",
+          "name": "HeadingWrap",
+          "width": "fill_container",
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "LyXOi",
+              "name": "heading",
+              "fill": "$text-primary",
+              "content": "New Session",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "PhfHX",
+          "name": "SearchRow",
+          "width": "fill_container",
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "yQ37R",
+              "name": "SearchInput",
+              "width": "fill_container",
+              "height": 36,
+              "fill": "$surface-input",
+              "cornerRadius": "$radius-input",
+              "stroke": {
+                "thickness": 1,
+                "fill": "$border-input"
+              },
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "ElrSn",
+                  "name": "searchIcon",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "search",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-faint"
+                },
+                {
+                  "type": "text",
+                  "id": "W8bp8",
+                  "name": "searchText",
+                  "fill": "$text-faint",
+                  "content": "Search library...",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SAKZA",
+          "name": "LibraryList",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "kW2Mb",
+              "name": "Row1-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pwkd1",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "jFtyu",
+                  "name": "Info1",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "s8w63",
+                      "name": "title1",
+                      "fill": "$text-primary",
+                      "content": "Clair de Lune",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "5ZH44",
+                      "name": "sub1",
+                      "fill": "$text-muted",
+                      "content": "Debussy",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "ZYNan",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge1",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "12w0u",
+                  "name": "check1",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fSf4l",
+              "name": "Row2-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BnFR1",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "CdlnI",
+                  "name": "Info2",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QQHD0",
+                      "name": "title2",
+                      "fill": "$text-primary",
+                      "content": "Hanon No. 1",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LxIhA",
+                      "name": "sub2",
+                      "fill": "$text-muted",
+                      "content": "C Major · 120 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "W5GhE",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge2",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "2FaWF",
+                  "name": "check2",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z5T3X",
+              "name": "Row3-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "DDT24",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "GEPsa",
+                  "name": "Info3",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "nw9Bl",
+                      "name": "title3",
+                      "fill": "$text-primary",
+                      "content": "Moonlight Sonata",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tDwsp",
+                      "name": "sub3",
+                      "fill": "$text-muted",
+                      "content": "Beethoven",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "I8aTY",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge3",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "gsjk5",
+                  "name": "plus3",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CdLJr",
+              "name": "Row4-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hUhGA",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "a8ag2",
+                  "name": "Info4",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CF0Wy",
+                      "name": "title4",
+                      "fill": "$text-primary",
+                      "content": "Chromatic Scale",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "RvcF0",
+                      "name": "sub4",
+                      "fill": "$text-muted",
+                      "content": "All keys · 100 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "TZeKf",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge4",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "R12Ql",
+                  "name": "plus4",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aQnFZ",
+              "name": "Row5-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oJEgG",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "ModRv",
+                  "name": "Info5",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "4BJWM",
+                      "name": "title5",
+                      "fill": "$text-primary",
+                      "content": "Prelude in C Major",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "9ru8k",
+                      "name": "sub5",
+                      "fill": "$text-muted",
+                      "content": "Bach · BWV 846",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "GSpn3",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge5",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "i2CsC",
+                  "name": "plus5",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WIiEP",
+              "name": "Row6-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qmWBE",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "ydy4G",
+                  "name": "Info6",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rO0g7",
+                      "name": "title6",
+                      "fill": "$text-primary",
+                      "content": "Arpeggio Workout",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lbJ4b",
+                      "name": "sub6",
+                      "fill": "$text-muted",
+                      "content": "Major & Minor · 90 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "BdLk9",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge6",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "IJudV",
+                  "name": "plus6",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YhOdd",
+              "name": "Row7-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bQt7v",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "KkhZJ",
+                  "name": "Info7",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ubfPN",
+                      "name": "title7",
+                      "fill": "$text-primary",
+                      "content": "Nocturne Op. 9 No. 2",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XkrdD",
+                      "name": "sub7",
+                      "fill": "$text-muted",
+                      "content": "Chopin",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "ASyNd",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge7",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "2x8Uj",
+                  "name": "check7",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "cc1JC",
+          "name": "StickyBottomBar",
+          "width": "fill_container",
+          "fill": "$surface-chrome",
+          "stroke": {
+            "thickness": {
+              "top": 1
+            },
+            "fill": "$border-default"
+          },
+          "effect": {
+            "type": "background_blur",
+            "radius": 12
+          },
+          "gap": 12,
+          "padding": [
+            12,
+            16,
+            34,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "aiOHB",
+              "name": "CountWrap",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "OvpHt",
+                  "name": "countText",
+                  "fill": "$text-primary",
+                  "content": "3 items · 20 min",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "OU9Vt",
+                  "name": "tapHint",
+                  "fill": "$text-muted",
+                  "content": "Tap to edit setlist",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RlinR",
+              "name": "StartBtn",
+              "height": 40,
+              "fill": "$accent",
+              "cornerRadius": "$radius-button",
+              "gap": 6,
+              "padding": [
+                0,
+                20
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "gYPDG",
+                  "name": "startLabel",
+                  "fill": "$text-primary",
+                  "content": "Start Session",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "mhAXp",
+                  "name": "startArrow",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "arrow-right",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "qxrH0",
+      "x": 2248,
+      "y": 4500,
+      "name": "iPad / Session Builder",
+      "clip": true,
+      "width": 1024,
+      "height": 768,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1A103A",
+            "position": 0
+          },
+          {
+            "color": "#0B0B1A",
+            "position": 0.5
+          },
+          {
+            "color": "#080818",
+            "position": 1
+          }
+        ]
+      },
+      "children": [
+        {
+          "type": "frame",
+          "id": "OwiRr",
+          "name": "LeftColumn",
+          "width": 420,
+          "height": "fill_container",
+          "stroke": {
+            "thickness": {
+              "right": 1
+            },
+            "fill": "$border-default"
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "id": "gKvqU",
+              "type": "ref",
+              "ref": "FWDJM",
+              "width": "fill_container",
+              "name": "leftStatus",
+              "x": 0,
+              "y": 0,
+              "descendants": {
+                "eqA7t": {
+                  "x": 330
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "347Al",
+              "name": "LeftNavRow",
+              "width": "fill_container",
+              "height": 44,
+              "padding": [
+                0,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "LDiNy",
+                  "name": "leftBackIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "chevron-left",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                },
+                {
+                  "type": "text",
+                  "id": "nCgg6",
+                  "name": "leftBackLabel",
+                  "fill": "$accent-text",
+                  "content": "Practice",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "5aInG",
+              "name": "LeftHeadingWrap",
+              "width": "fill_container",
+              "padding": [
+                0,
+                16
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "P2xvP",
+                  "name": "leftHeading",
+                  "fill": "$text-primary",
+                  "content": "Library",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "h7IhJ",
+              "name": "LeftSearchRow",
+              "width": "fill_container",
+              "padding": [
+                8,
+                16
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dpOSe",
+                  "name": "SearchInput",
+                  "width": "fill_container",
+                  "height": 36,
+                  "fill": "$surface-input",
+                  "cornerRadius": "$radius-input",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "$border-input"
+                  },
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "wR0pg",
+                      "name": "leftSearchIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "search",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "TyPnT",
+                      "name": "leftSearchText",
+                      "fill": "$text-faint",
+                      "content": "Search library...",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "8x8hv",
+              "name": "LeftList",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                0,
+                16
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "36Dlx",
+                  "name": "LR1-Selected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pDVgr",
+                      "name": "ls1",
+                      "width": 3,
+                      "height": 40,
+                      "fill": "$accent",
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Ny6zQ",
+                      "name": "li1",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "03Onu",
+                          "name": "lt1",
+                          "fill": "$text-primary",
+                          "content": "Clair de Lune",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "uRAb1",
+                          "name": "lm1",
+                          "fill": "$text-muted",
+                          "content": "Debussy",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "vBI9Q",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "lb1",
+                      "x": 306,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "5qsFc",
+                      "name": "lc1",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "circle-check",
+                      "iconFontFamily": "lucide",
+                      "fill": "$accent-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XdDS7",
+                  "name": "LR2-Selected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YLvca",
+                      "name": "ls2",
+                      "width": 3,
+                      "height": 40,
+                      "fill": "$accent",
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "4wqa4",
+                      "name": "li2",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "7sRE3",
+                          "name": "lt2",
+                          "fill": "$text-primary",
+                          "content": "Hanon No. 1",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "faTMl",
+                          "name": "lm2",
+                          "fill": "$text-muted",
+                          "content": "C Major · 120 BPM",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "bUVOu",
+                      "type": "ref",
+                      "ref": "UYA27",
+                      "name": "lb2",
+                      "x": 291,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "xthQL",
+                      "name": "lc2",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "circle-check",
+                      "iconFontFamily": "lucide",
+                      "fill": "$accent-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "01cy3",
+                  "name": "LR3-Unselected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ftYUS",
+                      "name": "ls3",
+                      "opacity": 0,
+                      "width": 3,
+                      "height": 40,
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "idcOR",
+                      "name": "li3",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HHwkw",
+                          "name": "lt3",
+                          "fill": "$text-primary",
+                          "content": "Moonlight Sonata",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "dKQ9j",
+                          "name": "lm3",
+                          "fill": "$text-muted",
+                          "content": "Beethoven",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "hlpe5",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "lb3",
+                      "x": 306,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "O2dOU",
+                      "name": "lp3",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "plus",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "meD5P",
+                  "name": "LR4-Unselected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "tJqtM",
+                      "name": "ls4",
+                      "opacity": 0,
+                      "width": 3,
+                      "height": 40,
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "a5vz6",
+                      "name": "li4",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "GQW0c",
+                          "name": "lt4",
+                          "fill": "$text-primary",
+                          "content": "Chromatic Scale",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "i4jWi",
+                          "name": "lm4",
+                          "fill": "$text-muted",
+                          "content": "All keys · 100 BPM",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "9cgdY",
+                      "type": "ref",
+                      "ref": "UYA27",
+                      "name": "lb4",
+                      "x": 291,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "hd8YE",
+                      "name": "lp4",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "plus",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cKkoV",
+                  "name": "LR5-Unselected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "N9tvO",
+                      "name": "ls5",
+                      "opacity": 0,
+                      "width": 3,
+                      "height": 40,
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "sDsoJ",
+                      "name": "li5",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tWvsK",
+                          "name": "lt5",
+                          "fill": "$text-primary",
+                          "content": "Prelude in C Major",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "tYU6K",
+                          "name": "lm5",
+                          "fill": "$text-muted",
+                          "content": "Bach · BWV 846",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "E0emM",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "lb5",
+                      "x": 306,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "2LzoR",
+                      "name": "lp5",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "plus",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-muted"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "5qX9O",
+                  "name": "LR6-Selected",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "8oCCW",
+                      "name": "ls6",
+                      "width": 3,
+                      "height": 40,
+                      "fill": "$accent",
+                      "cornerRadius": 2
+                    },
+                    {
+                      "type": "frame",
+                      "id": "8BoUU",
+                      "name": "li6",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Q480Z",
+                          "name": "lt6",
+                          "fill": "$text-primary",
+                          "content": "Nocturne Op. 9 No. 2",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "CNYP6",
+                          "name": "lm6",
+                          "fill": "$text-muted",
+                          "content": "Chopin",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "ULg3t",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "lb6",
+                      "x": 306,
+                      "y": 21.5
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "oKk6r",
+                      "name": "lc6",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "circle-check",
+                      "iconFontFamily": "lucide",
+                      "fill": "$accent-text"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Pm7jd",
+          "name": "RightColumn",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "8D16g",
+              "name": "RightHeader",
+              "width": "fill_container",
+              "padding": [
+                16,
+                20,
+                12,
+                20
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bYPu9",
+                  "name": "rightTitle",
+                  "fill": "$text-primary",
+                  "content": "New Session",
+                  "fontFamily": "Inter",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Tx1pK",
+                  "name": "loadRoutineBtn",
+                  "fill": "$accent-text",
+                  "content": "Load Routine",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YEhFD",
+              "name": "IntentionSection",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                0,
+                20,
+                16,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kstoL",
+                  "name": "intentLabel",
+                  "fill": "$text-secondary",
+                  "content": "Session Intention",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "HMhc0",
+                  "name": "IntentionInput",
+                  "width": "fill_container",
+                  "height": 40,
+                  "fill": "$surface-input",
+                  "cornerRadius": "$radius-input",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "$border-input"
+                  },
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S6HRo",
+                      "name": "intentPlaceholder",
+                      "fill": "$text-faint",
+                      "content": "e.g. Focus on dynamics",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OKHIR",
+              "name": "Divider",
+              "width": "fill_container",
+              "height": 1,
+              "fill": "$border-default"
+            },
+            {
+              "type": "frame",
+              "id": "V8Gg8",
+              "name": "SetlistHeader",
+              "width": "fill_container",
+              "padding": [
+                12,
+                20,
+                8,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ITkeX",
+                  "name": "setlistTitle",
+                  "fill": "$text-primary",
+                  "content": "Setlist (3 items · 20 min)",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UPc3j",
+              "name": "SetlistEntries",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                0,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "uBtqt",
+                  "name": "RE1",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "NTpwp",
+                      "name": "rd1",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "u2s6X",
+                      "name": "ri1",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dUg7j",
+                          "name": "rt1",
+                          "fill": "$text-primary",
+                          "content": "Clair de Lune",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Zyhmv",
+                          "name": "rm1",
+                          "fill": "$text-muted",
+                          "content": "Debussy · 5 min",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "dVdQ5",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "rb1",
+                      "x": 488,
+                      "y": 19
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "yuVLz",
+                      "name": "rx1",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "6eHFp",
+                  "name": "RE2",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "HwVn2",
+                      "name": "rd2",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zcFFv",
+                      "name": "ri2",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "FZuqA",
+                          "name": "rt2",
+                          "fill": "$text-primary",
+                          "content": "Hanon No. 1",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ybVS8",
+                          "name": "rm2",
+                          "fill": "$text-muted",
+                          "content": "C Major · 10 min · 3 reps",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "KVAt7",
+                      "type": "ref",
+                      "ref": "UYA27",
+                      "name": "rb2",
+                      "x": 473,
+                      "y": 19
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "5rnqZ",
+                      "name": "rx2",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "fWQR6",
+                  "name": "RE3",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "Q2zHg",
+                      "name": "rd3",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZY1zT",
+                      "name": "ri3",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "9St0L",
+                          "name": "rt3",
+                          "fill": "$text-primary",
+                          "content": "Nocturne Op. 9 No. 2",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "tzY1h",
+                          "name": "rm3",
+                          "fill": "$text-muted",
+                          "content": "Chopin · 5 min",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "BHmZE",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "rb3",
+                      "x": 488,
+                      "y": 19
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "pO6dO",
+                      "name": "rx3",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qXc8F",
+              "name": "TotalRow",
+              "width": "fill_container",
+              "padding": [
+                0,
+                20
+              ],
+              "justifyContent": "end",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "BfPjj",
+                  "name": "totalText",
+                  "fill": "$text-muted",
+                  "content": "Total: 20 min",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qdHy8",
+              "name": "BtnWrap",
+              "width": "fill_container",
+              "gap": 12,
+              "padding": [
+                12,
+                20,
+                20,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lfZFM",
+                  "name": "StartBtn",
+                  "width": "fill_container",
+                  "height": 48,
+                  "fill": "$accent",
+                  "cornerRadius": "$radius-button",
+                  "gap": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "O3QZm",
+                      "name": "startLabel",
+                      "fill": "$text-primary",
+                      "content": "Start Session",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "5dOI7",
+                      "name": "startArrow",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "arrow-right",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-primary"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "AYx23",
+      "x": 3926,
+      "y": 3400,
+      "name": "iOS / Session Builder (Sheet)",
+      "clip": true,
+      "width": 375,
+      "height": 812,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1A103A",
+            "position": 0
+          },
+          {
+            "color": "#0B0B1A",
+            "position": 0.5
+          },
+          {
+            "color": "#080818",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "dPch2",
+          "type": "ref",
+          "ref": "FWDJM",
+          "width": 375,
+          "name": "sb",
+          "x": 0,
+          "y": 0,
+          "descendants": {
+            "eqA7t": {
+              "x": 285
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "n6NeZ",
+          "x": 0,
+          "y": 54,
+          "name": "NavRow",
+          "width": 375,
+          "height": 44,
+          "padding": [
+            0,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "iz9Om",
+              "name": "backIcon",
+              "width": 20,
+              "height": 20,
+              "iconFontName": "chevron-left",
+              "iconFontFamily": "lucide",
+              "fill": "$accent-text"
+            },
+            {
+              "type": "text",
+              "id": "qYCU6",
+              "name": "backLabel",
+              "fill": "$accent-text",
+              "content": "Practice",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "LqFbS",
+          "x": 0,
+          "y": 98,
+          "name": "HeadingWrap",
+          "width": 375,
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "yQSDm",
+              "name": "heading",
+              "fill": "$text-primary",
+              "content": "New Session",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ezAci",
+          "x": 0,
+          "y": 132,
+          "name": "SearchRow",
+          "width": 375,
+          "padding": [
+            4,
+            16,
+            8,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "qRVD0",
+              "name": "SearchInput",
+              "width": "fill_container",
+              "height": 36,
+              "fill": "$surface-input",
+              "cornerRadius": "$radius-input",
+              "stroke": {
+                "thickness": 1,
+                "fill": "$border-input"
+              },
+              "gap": 8,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "KwNjx",
+                  "name": "searchIcon",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "search",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-faint"
+                },
+                {
+                  "type": "text",
+                  "id": "KBZen",
+                  "name": "searchText",
+                  "fill": "$text-faint",
+                  "content": "Search library...",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "m339c",
+          "x": 0,
+          "y": 176,
+          "name": "LibraryList",
+          "width": 375,
+          "height": 510,
+          "layout": "vertical",
+          "padding": [
+            0,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ok4u5",
+              "name": "Row1-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Dqe1O",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "M1uSP",
+                  "name": "Info1",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FV0Lg",
+                      "name": "title1",
+                      "fill": "$text-primary",
+                      "content": "Clair de Lune",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "bJqVt",
+                      "name": "sub1",
+                      "fill": "$text-muted",
+                      "content": "Debussy",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "D91I7",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge1",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "eVoSN",
+                  "name": "check1",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wCdVA",
+              "name": "Row2-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AkBLU",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "MNQGz",
+                  "name": "Info2",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "M2dNK",
+                      "name": "title2",
+                      "fill": "$text-primary",
+                      "content": "Hanon No. 1",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "weTqk",
+                      "name": "sub2",
+                      "fill": "$text-muted",
+                      "content": "C Major · 120 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "yTQTu",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge2",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "z7UD6",
+                  "name": "check2",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "npSBK",
+              "name": "Row3-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JIT6J",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "qpIli",
+                  "name": "Info3",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Cs4bU",
+                      "name": "title3",
+                      "fill": "$text-primary",
+                      "content": "Moonlight Sonata",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "RWyw6",
+                      "name": "sub3",
+                      "fill": "$text-muted",
+                      "content": "Beethoven",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "5bXbV",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge3",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "4pnCt",
+                  "name": "plus3",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pp1Tv",
+              "name": "Row4-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dotn4",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "cyonp",
+                  "name": "Info4",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "nUynS",
+                      "name": "title4",
+                      "fill": "$text-primary",
+                      "content": "Chromatic Scale",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Mtyjq",
+                      "name": "sub4",
+                      "fill": "$text-muted",
+                      "content": "All keys · 100 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "SH6n3",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge4",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "ThRVg",
+                  "name": "plus4",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j5cFl",
+              "name": "Row5-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "YvrDY",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "GvFsS",
+                  "name": "Info5",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ef58Z",
+                      "name": "title5",
+                      "fill": "$text-primary",
+                      "content": "Prelude in C Major",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "BnsZ3",
+                      "name": "sub5",
+                      "fill": "$text-muted",
+                      "content": "Bach · BWV 846",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "LM7wx",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge5",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "rwmht",
+                  "name": "plus5",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "X5CVn",
+              "name": "Row6-Unselected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Gw6bn",
+                  "name": "SpacerBar",
+                  "opacity": 0,
+                  "width": 3,
+                  "height": 40,
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "9Yeff",
+                  "name": "Info6",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tElQM",
+                      "name": "title6",
+                      "fill": "$text-primary",
+                      "content": "Arpeggio Workout",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "M9Hl6",
+                      "name": "sub6",
+                      "fill": "$text-muted",
+                      "content": "Major & Minor · 90 BPM",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "B8hi5",
+                  "type": "ref",
+                  "ref": "UYA27",
+                  "name": "badge6",
+                  "x": 246,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "TzSYD",
+                  "name": "plus6",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-muted"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "9v4Nc",
+              "name": "Row7-Selected",
+              "width": "fill_container",
+              "stroke": {
+                "thickness": {
+                  "bottom": 1
+                },
+                "fill": "$border-default"
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "i7K0Y",
+                  "name": "AccentBar",
+                  "width": 3,
+                  "height": 40,
+                  "fill": "$accent",
+                  "cornerRadius": 2
+                },
+                {
+                  "type": "frame",
+                  "id": "NdFCS",
+                  "name": "Info7",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h7x5H",
+                      "name": "title7",
+                      "fill": "$text-primary",
+                      "content": "Nocturne Op. 9 No. 2",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "m7smH",
+                      "name": "sub7",
+                      "fill": "$text-muted",
+                      "content": "Chopin",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "X6ZKt",
+                  "type": "ref",
+                  "ref": "rs0o1",
+                  "name": "badge7",
+                  "x": 261,
+                  "y": 21.5
+                },
+                {
+                  "type": "icon_font",
+                  "id": "egpT6",
+                  "name": "check7",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "circle-check",
+                  "iconFontFamily": "lucide",
+                  "fill": "$accent-text"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "BTzo6",
+          "x": 0,
+          "y": 730,
+          "name": "StickyBottomBar",
+          "width": 375,
+          "fill": "$surface-chrome",
+          "stroke": {
+            "thickness": {
+              "top": 1
+            },
+            "fill": "$border-default"
+          },
+          "effect": {
+            "type": "background_blur",
+            "radius": 12
+          },
+          "gap": 12,
+          "padding": [
+            12,
+            16,
+            34,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "71VS9",
+              "name": "CountWrap",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 2,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "5zZJI",
+                  "name": "countText",
+                  "fill": "$text-primary",
+                  "content": "3 items · 20 min",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "ELzvc",
+                  "name": "tapHint",
+                  "fill": "$text-muted",
+                  "content": "Tap to edit setlist",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "9nkTW",
+              "name": "StartBtn",
+              "height": 40,
+              "fill": "$accent",
+              "cornerRadius": "$radius-button",
+              "gap": 6,
+              "padding": [
+                0,
+                20
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "eS6tR",
+                  "name": "startLabel",
+                  "fill": "$text-primary",
+                  "content": "Start Session",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "ZBdZZ",
+                  "name": "startArrow",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "arrow-right",
+                  "iconFontFamily": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "GjzUd",
+          "x": 0,
+          "y": 0,
+          "name": "Scrim",
+          "fill": "#00000080",
+          "width": 375,
+          "height": 812
+        },
+        {
+          "type": "frame",
+          "id": "YuuQH",
+          "x": 0,
+          "y": 292,
+          "name": "BottomSheet",
+          "clip": true,
+          "width": 375,
+          "height": 520,
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#1E1440",
+                "position": 0
+              },
+              {
+                "color": "#0F0F24",
+                "position": 0.5
+              },
+              {
+                "color": "#0B0B1A",
+                "position": 1
+              }
+            ]
+          },
+          "cornerRadius": [
+            20,
+            20,
+            0,
+            0
+          ],
+          "stroke": {
+            "thickness": {
+              "top": 1,
+              "right": 1,
+              "left": 1
+            },
+            "fill": "$border-card"
+          },
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "T1gJO",
+              "name": "HandleWrap",
+              "width": "fill_container",
+              "padding": [
+                10,
+                0,
+                6,
+                0
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 2,
+                  "id": "cRg3C",
+                  "name": "HandleBar",
+                  "fill": "$text-faint",
+                  "width": 36,
+                  "height": 4
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZekQC",
+              "name": "SheetHeader",
+              "width": "fill_container",
+              "padding": [
+                0,
+                20,
+                12,
+                20
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Em9yY",
+                  "name": "sheetTitle",
+                  "fill": "$text-primary",
+                  "content": "Your Setlist",
+                  "fontFamily": "Inter",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "XoT8t",
+                  "name": "loadRoutine",
+                  "fill": "$accent-text",
+                  "content": "Load Routine",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DlPq5",
+              "name": "IntentionWrap",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                0,
+                20,
+                12,
+                20
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Cl8ED",
+                  "name": "intentLabel",
+                  "fill": "$text-secondary",
+                  "content": "Session Intention",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "JJjOM",
+                  "name": "IntentionInput",
+                  "width": "fill_container",
+                  "height": 36,
+                  "fill": "$surface-input",
+                  "cornerRadius": "$radius-input",
+                  "stroke": {
+                    "thickness": 1,
+                    "fill": "$border-input"
+                  },
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HFXhb",
+                      "name": "intentPlaceholder",
+                      "fill": "$text-faint",
+                      "content": "e.g. Focus on dynamics",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iAzWp",
+              "name": "SetlistItems",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "padding": [
+                0,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "l7JJa",
+                  "name": "Entry1",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "Gqpiq",
+                      "name": "dragHandle1",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "66bS2",
+                      "name": "EntryInfo1",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "0z6iH",
+                          "name": "entryTitle1",
+                          "fill": "$text-primary",
+                          "content": "Clair de Lune",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "2w5F9",
+                          "name": "entryMeta1",
+                          "fill": "$text-muted",
+                          "content": "5 min",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "qECkv",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "entryBadge1",
+                      "x": 259,
+                      "y": 17
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "9lNYz",
+                      "name": "entryRemove1",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "al7NK",
+                  "name": "Entry2",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "N9yV5",
+                      "name": "dragHandle2",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "WzbEf",
+                      "name": "EntryInfo2",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "7Rbb3",
+                          "name": "entryTitle2",
+                          "fill": "$text-primary",
+                          "content": "Hanon No. 1",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "w458T",
+                          "name": "entryMeta2",
+                          "fill": "$text-muted",
+                          "content": "10 min · 3 reps",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "rjpKd",
+                      "type": "ref",
+                      "ref": "UYA27",
+                      "name": "entryBadge2",
+                      "x": 244,
+                      "y": 17
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "qsr5u",
+                      "name": "entryRemove2",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lOQCy",
+                  "name": "Entry3",
+                  "width": "fill_container",
+                  "stroke": {
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "$border-default"
+                  },
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "KUSTv",
+                      "name": "dragHandle3",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "grip-vertical",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-faint"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "BbAZz",
+                      "name": "EntryInfo3",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PqIKn",
+                          "name": "entryTitle3",
+                          "fill": "$text-primary",
+                          "content": "Nocturne Op. 9 No. 2",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "500"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Kx6aB",
+                          "name": "entryMeta3",
+                          "fill": "$text-muted",
+                          "content": "5 min",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "id": "tG38k",
+                      "type": "ref",
+                      "ref": "rs0o1",
+                      "name": "entryBadge3",
+                      "x": 259,
+                      "y": 17
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "GTzrR",
+                      "name": "entryRemove3",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "$danger-text"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aKzdp",
+                  "name": "TotalRow",
+                  "width": "fill_container",
+                  "padding": [
+                    8,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "end",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LjH0N",
+                      "name": "totalText",
+                      "fill": "$text-muted",
+                      "content": "Total: 20 min",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ecr7p",
+              "name": "SheetStartBtn",
+              "width": "fill_container",
+              "padding": [
+                12,
+                20,
+                34,
+                20
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hY4GD",
+                  "name": "StartBtnFull",
+                  "width": "fill_container",
+                  "height": 44,
+                  "fill": "$accent",
+                  "cornerRadius": "$radius-button",
+                  "gap": 6,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "5abno",
+                      "name": "startLbl",
+                      "fill": "$text-primary",
+                      "content": "Start Session",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "Tj89i",
+                      "name": "startArr",
+                      "width": 18,
+                      "height": 18,
+                      "iconFontName": "arrow-right",
+                      "iconFontFamily": "lucide",
+                      "fill": "$text-primary"
                     }
                   ]
                 }
