@@ -16,6 +16,9 @@ struct SetlistEntryRow: View {
     @State private var durationMinutes: String = ""
     @State private var intentionText: String = ""
     @State private var repTargetText: String = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case duration, intention, repTarget }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -85,13 +88,7 @@ struct SetlistEntryRow: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color.borderInput, lineWidth: 1)
                             )
-                            .onChange(of: durationMinutes) {
-                                if let mins = UInt32(durationMinutes), mins > 0 {
-                                    onSetDuration(mins * 60)
-                                } else if durationMinutes.isEmpty {
-                                    onSetDuration(nil)
-                                }
-                            }
+                            .focused($focusedField, equals: .duration)
                     }
 
                     // Intention
@@ -113,9 +110,8 @@ struct SetlistEntryRow: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color.borderInput, lineWidth: 1)
                             )
-                            .onChange(of: intentionText) {
-                                onSetIntention(intentionText.isEmpty ? nil : intentionText)
-                            }
+                            .focused($focusedField, equals: .intention)
+                            .onSubmit { commitIntention() }
                     }
 
                     // Rep target
@@ -138,13 +134,7 @@ struct SetlistEntryRow: View {
                                 RoundedRectangle(cornerRadius: 6)
                                     .stroke(Color.borderInput, lineWidth: 1)
                             )
-                            .onChange(of: repTargetText) {
-                                if let reps = UInt8(repTargetText), reps > 0 {
-                                    onSetRepTarget(reps)
-                                } else if repTargetText.isEmpty {
-                                    onSetRepTarget(nil)
-                                }
-                            }
+                            .focused($focusedField, equals: .repTarget)
                     }
                 }
                 .padding(.leading, 26) // Align with text (past drag handle)
@@ -164,8 +154,47 @@ struct SetlistEntryRow: View {
                 repTargetText = "\(target)"
             }
         }
+        .onChange(of: focusedField) { oldField, _ in
+            // Commit the value of the field the user just left
+            switch oldField {
+            case .duration: commitDuration()
+            case .intention: commitIntention()
+            case .repTarget: commitRepTarget()
+            case nil: break
+            }
+        }
+        .onChange(of: isExpanded) {
+            // Commit all fields when the row collapses
+            if !isExpanded {
+                commitDuration()
+                commitIntention()
+                commitRepTarget()
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(entry.itemTitle), \(metadataText)")
+    }
+
+    // MARK: - Commit Helpers
+
+    private func commitDuration() {
+        if let mins = UInt32(durationMinutes), mins > 0 {
+            onSetDuration(mins * 60)
+        } else {
+            onSetDuration(nil)
+        }
+    }
+
+    private func commitIntention() {
+        onSetIntention(intentionText.isEmpty ? nil : intentionText)
+    }
+
+    private func commitRepTarget() {
+        if let reps = UInt8(repTargetText), reps > 0 {
+            onSetRepTarget(reps)
+        } else {
+            onSetRepTarget(nil)
+        }
     }
 
     private var metadataText: String {
@@ -184,11 +213,43 @@ struct SetlistEntryRow: View {
 }
 
 #Preview {
-    VStack(spacing: 1) {
-        Text("SetlistEntryRow Preview")
-            .font(.caption)
-            .foregroundStyle(Color.textMuted)
-            .padding()
+    let sampleEntry = SetlistEntryView(
+        id: "e1", itemId: "i1", itemTitle: "Clair de Lune",
+        itemType: .piece, position: 0, durationDisplay: "0:00",
+        status: .notAttempted, notes: nil, score: nil,
+        intention: "Focus on pedalling", repTarget: nil,
+        repCount: nil, repTargetReached: nil, repHistory: nil,
+        plannedDurationSecs: 300, plannedDurationDisplay: "5 min",
+        achievedTempo: nil
+    )
+    let exerciseEntry = SetlistEntryView(
+        id: "e2", itemId: "i2", itemTitle: "Hanon No. 1",
+        itemType: .exercise, position: 1, durationDisplay: "0:00",
+        status: .notAttempted, notes: nil, score: nil,
+        intention: nil, repTarget: 3,
+        repCount: nil, repTargetReached: nil, repHistory: nil,
+        plannedDurationSecs: 600, plannedDurationDisplay: "10 min",
+        achievedTempo: nil
+    )
+
+    VStack(spacing: 0) {
+        Text("Collapsed").font(.caption2).foregroundStyle(Color.textFaint).padding(.top, 8)
+        SetlistEntryRow(
+            entry: sampleEntry, isExpanded: false,
+            onTap: {}, onRemove: {},
+            onSetDuration: { _ in }, onSetIntention: { _ in }, onSetRepTarget: { _ in }
+        )
+        .padding(.horizontal, 20)
+
+        Divider().background(Color.borderDefault).padding(.leading, 20)
+
+        Text("Expanded").font(.caption2).foregroundStyle(Color.textFaint).padding(.top, 8)
+        SetlistEntryRow(
+            entry: exerciseEntry, isExpanded: true,
+            onTap: {}, onRemove: {},
+            onSetDuration: { _ in }, onSetIntention: { _ in }, onSetRepTarget: { _ in }
+        )
+        .padding(.horizontal, 20)
     }
     .background(Color.backgroundApp)
     .preferredColorScheme(.dark)

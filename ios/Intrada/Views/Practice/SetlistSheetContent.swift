@@ -21,10 +21,7 @@ struct SetlistSheetContent: View {
     }
 
     private var totalMinutes: Int {
-        let totalSecs = entries.compactMap { (e: SetlistEntryView) -> UInt32? in
-            e.plannedDurationSecs
-        }.reduce(0, +)
-        return totalSecs > 0 ? Int(totalSecs) / 60 : entries.count * 5
+        estimatedTotalMinutes(for: entries)
     }
 
     var body: some View {

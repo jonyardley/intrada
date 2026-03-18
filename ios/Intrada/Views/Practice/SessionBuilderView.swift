@@ -36,13 +36,8 @@ struct SessionBuilderView: View {
     }
 
     /// Total planned duration in minutes.
-    /// Falls back to 5 min per entry when no durations are explicitly set.
     private var totalMinutes: Int {
-        guard let entries = setlist?.entries else { return 0 }
-        let totalSecs = entries.compactMap { (e: SetlistEntryView) -> UInt32? in
-            e.plannedDurationSecs
-        }.reduce(0, +)
-        return totalSecs > 0 ? Int(totalSecs) / 60 : Int(entries.count) * 5
+        estimatedTotalMinutes(for: setlist?.entries ?? [])
     }
 
     var body: some View {
