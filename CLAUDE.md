@@ -537,6 +537,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
 - Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated types) (196-ios-session-builder)
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso; crash recovery via UserDefaults) (196-ios-session-builder)
+- Rust stable (1.89.0), Leptos 0.8.x (CSR/WASM) + leptos 0.8, leptos_router 0.8, web-sys 0.3, Tailwind CSS v4 (219-web-ios-layout-parity)
+- N/A (no storage changes) (219-web-ios-layout-parity)
 
 ## Recent Changes
 - 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

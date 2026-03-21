@@ -15,8 +15,8 @@ use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
 use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
-    NotFoundView, RoutineEditView, RoutinesListView, SessionActiveView, SessionNewView,
-    SessionSummaryView, SessionsAllView, SessionsListView,
+    LibrarySplitView, NotFoundView, RoutineEditView, RoutinesListView, SessionActiveView,
+    SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
@@ -171,15 +171,19 @@ fn AuthenticatedApp() -> impl IntoView {
                 <ErrorBanner />
 
                 <Routes fallback=|| view! { <NotFoundView /> }>
+                    // Library split-view: sidebar + detail pane
                     <Route path=path!("/") view=move || view! {
-                        <LibraryListView />
+                        <LibrarySplitView />
+                    } />
+                    <Route path=path!("/library") view=move || view! {
+                        <LibrarySplitView />
+                    } />
+                    <Route path=path!("/library/:id") view=move || view! {
+                        <LibrarySplitView />
                     } />
                     // /library/new MUST come before /library/:id to avoid "new" matching :id
                     <Route path=path!("/library/new") view=move || view! {
                         <AddLibraryItemForm />
-                    } />
-                    <Route path=path!("/library/:id") view=move || view! {
-                        <DetailView />
                     } />
                     <Route path=path!("/library/:id/edit") view=move || view! {
                         <EditLibraryItemForm />
