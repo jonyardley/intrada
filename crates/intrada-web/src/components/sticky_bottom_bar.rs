@@ -24,7 +24,7 @@ pub fn StickyBottomBar(
     on_start: Callback<()>,
 ) -> impl IntoView {
     view! {
-        <div class="fixed bottom-0 left-0 right-0 md:hidden z-40 bg-surface-chrome border-t border-border-default backdrop-blur-lg">
+        <div class="fixed bottom-16 left-0 right-0 sm:hidden z-40 bg-surface-chrome border-t border-border-default backdrop-blur-lg">
             <div class="flex items-center justify-between px-4 py-3 safe-area-bottom">
                 // Summary area (tappable to open sheet)
                 <button
