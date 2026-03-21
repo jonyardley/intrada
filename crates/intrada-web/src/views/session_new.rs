@@ -4,6 +4,8 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::{Event, RoutineEvent, SessionEvent, SessionStatusView, ViewModel};
 
+use intrada_core::ItemKind;
+
 use crate::components::{
     BackLink, Button, ButtonVariant, Card, DropIndicator, Icon, IconName, LibraryListRow,
     PageHeading, RoutineLoader, RoutineSaveForm, SetlistEntryRow, SlideUpSheet, StickyBottomBar,
@@ -29,6 +31,8 @@ pub fn SessionNewView() -> impl IntoView {
 
     let started_building = RwSignal::new(false);
     let sheet_open = RwSignal::new(false);
+    let search_query = RwSignal::new(String::new());
+    let filter_type = RwSignal::new(None::<ItemKind>);
 
     // Dispatch StartBuilding on mount (same as before)
     {
@@ -158,6 +162,41 @@ pub fn SessionNewView() -> impl IntoView {
                                     <h1 class="text-lg font-semibold text-primary mt-2">"New Session"</h1>
                                 </div>
                             </div>
+                            // Search field
+                            <input
+                                type="text"
+                                class="input-base text-sm"
+                                placeholder="Search library..."
+                                bind:value=search_query
+                            />
+                            // Type filter (All / Pieces / Exercises)
+                            <div class="inline-flex items-center rounded-full bg-surface-input p-1 gap-1">
+                                {
+                                    let tabs: Vec<(Option<ItemKind>, &str)> = vec![
+                                        (None, "All"),
+                                        (Some(ItemKind::Piece), "Pieces"),
+                                        (Some(ItemKind::Exercise), "Exercises"),
+                                    ];
+                                    tabs.into_iter().map(|(kind, label)| {
+                                        let kind_for_active = kind.clone();
+                                        let kind_for_click = kind.clone();
+                                        let is_active = Signal::derive(move || filter_type.get() == kind_for_active);
+                                        view! {
+                                            <button
+                                                type="button"
+                                                class=move || if is_active.get() {
+                                                    "flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-full bg-accent text-primary"
+                                                } else {
+                                                    "flex-1 inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium rounded-full text-muted hover:text-primary cursor-pointer"
+                                                }
+                                                on:click=move |_| filter_type.set(kind_for_click.clone())
+                                            >
+                                                {label}
+                                            </button>
+                                        }
+                                    }).collect::<Vec<_>>()
+                                }
+                            </div>
                         </div>
 
                         // Library item list
@@ -168,10 +207,31 @@ pub fn SessionNewView() -> impl IntoView {
                                 let vm = view_model.get();
                                 let selected_ids = setlist_item_ids.get();
                                 let core_toggle = core_for_list.clone();
+                                let query = search_query.get().to_lowercase();
+                                let kind_filter = filter_type.get();
+
+                                // Filter items by search query and type
+                                let filtered_items: Vec<_> = vm.items.into_iter().filter(|item| {
+                                    // Type filter
+                                    if let Some(ref kind) = kind_filter {
+                                        if item.item_type != *kind {
+                                            return false;
+                                        }
+                                    }
+                                    // Search filter
+                                    if !query.is_empty() {
+                                        let title_match = item.title.to_lowercase().contains(&query);
+                                        let subtitle_match = item.subtitle.to_lowercase().contains(&query);
+                                        if !title_match && !subtitle_match {
+                                            return false;
+                                        }
+                                    }
+                                    true
+                                }).collect();
 
                                 view! {
                                     <ul role="list" aria-label="Library items">
-                                        {vm.items.into_iter().map(|item| {
+                                        {filtered_items.into_iter().map(|item| {
                                             let item_id = item.id.clone();
                                             let is_in_setlist = selected_ids.contains(&item_id);
                                             let core_t = core_toggle.clone();
