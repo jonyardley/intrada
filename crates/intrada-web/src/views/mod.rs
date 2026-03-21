@@ -19,9 +19,7 @@ pub use add_form::AddLibraryItemForm;
 pub use analytics::AnalyticsPage;
 #[cfg(debug_assertions)]
 pub use design_catalogue::DesignCatalogue;
-pub use detail::DetailView;
 pub use edit_form::EditLibraryItemForm;
-pub use library_list::LibraryListView;
 pub use library_split::LibrarySplitView;
 pub use not_found::NotFoundView;
 pub use routine_edit::RoutineEditView;

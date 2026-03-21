@@ -14,9 +14,9 @@ use crate::components::{AppFooter, AppHeader, BottomTabBar, ErrorBanner};
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
 use crate::views::{
-    AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
-    LibrarySplitView, NotFoundView, RoutineEditView, RoutinesListView, SessionActiveView,
-    SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
+    AddLibraryItemForm, AnalyticsPage, EditLibraryItemForm, LibrarySplitView, NotFoundView,
+    RoutineEditView, RoutinesListView, SessionActiveView, SessionNewView, SessionSummaryView,
+    SessionsAllView, SessionsListView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};

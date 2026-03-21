@@ -128,7 +128,8 @@ pub fn LibraryListRow(
                     {row_content}
                 </A>
             </li>
-        }.into_any()
+        }
+        .into_any()
     } else if let Some(cb) = on_click {
         view! {
             <li class="border-b border-border-default last:border-0">
@@ -145,6 +146,7 @@ pub fn LibraryListRow(
             <li class="border-b border-border-default last:border-0 px-3 py-2.5">
                 {row_content}
             </li>
-        }.into_any()
+        }
+        .into_any()
     }
 }

@@ -7,7 +7,7 @@ use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{
     parse_target_bpm, BackLink, Button, ButtonVariant, Card, FieldLabel, LibraryListRow,
-    PageHeading, SkeletonBlock, SkeletonLine, TempoProgressChart, TypeBadge,
+    SkeletonBlock, SkeletonLine, TempoProgressChart, TypeBadge,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{format_date_short, format_datetime_short};
@@ -26,9 +26,7 @@ pub fn LibrarySplitView() -> impl IntoView {
     let navigate = use_navigate();
 
     // Get selected item ID from route params (if any)
-    let selected_id = Signal::derive(move || {
-        params.read().get("id").unwrap_or_default()
-    });
+    let selected_id = Signal::derive(move || params.read().get("id").unwrap_or_default());
 
     let has_selected = Signal::derive(move || !selected_id.get().is_empty());
 
