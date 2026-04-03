@@ -1,0 +1,252 @@
+import SwiftUI
+
+/// Post-session review screen with inline editing.
+///
+/// Shows header stats, per-item results with editable scores/tempo/notes,
+/// session notes, and Save/Discard actions. Replaces SummaryPlaceholderView.
+struct SessionSummaryView: View {
+    @Environment(IntradaCore.self) private var core
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    @State private var sessionNotesText: String = ""
+    @State private var showDiscardConfirmation: Bool = false
+    @State private var sessionNotesCommitTask: Task<Void, Never>? = nil
+
+    private var summary: SummaryView? {
+        core.viewModel.summary
+    }
+
+    var body: some View {
+        Group {
+            if sizeClass == .regular {
+                iPadLayout
+            } else {
+                iPhoneLayout
+            }
+        }
+        .background(Color.backgroundApp)
+        .onAppear {
+            sessionNotesText = summary?.notes ?? ""
+        }
+        .confirmationDialog(
+            "Discard this session?",
+            isPresented: $showDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) {
+                core.update(.session(.discardSession))
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("All progress will be lost.")
+        }
+    }
+
+    // MARK: - iPhone Layout
+
+    private var iPhoneLayout: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                headerSection
+                Divider().background(Color.borderDefault)
+                entryList
+                Divider().background(Color.borderDefault)
+                sessionNotesSection
+                actionsSection
+            }
+        }
+    }
+
+    // MARK: - iPad Layout
+
+    private var iPadLayout: some View {
+        HStack(spacing: 0) {
+            // Left: stats + notes + actions
+            ScrollView {
+                VStack(spacing: 0) {
+                    headerSection
+                    Divider().background(Color.borderDefault)
+                    sessionNotesSection
+                    actionsSection
+                }
+            }
+            .frame(width: 360)
+
+            Divider().background(Color.borderDefault)
+
+            // Right: entry list
+            ScrollView {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("ITEMS PRACTICED")
+                            .font(.system(size: 9, weight: .semibold))
+                            .tracking(1.5)
+                            .foregroundStyle(Color.textFaint)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+
+                    entryList
+                }
+            }
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerSection: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 40))
+                .foregroundStyle(Color.successText)
+
+            Text("Session Complete!")
+                .font(.heading(size: 22))
+                .foregroundStyle(Color.textPrimary)
+
+            if let summary {
+                HStack(spacing: 8) {
+                    Text(summary.totalDurationDisplay)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.textSecondary)
+
+                    Text("·")
+                        .foregroundStyle(Color.textFaint)
+
+                    Text("\(summary.entries.count) items")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(Color.textSecondary)
+
+                    Text("·")
+                        .foregroundStyle(Color.textFaint)
+
+                    completionBadge(summary.completionStatus)
+                }
+
+                if let intention = summary.sessionIntention, !intention.isEmpty {
+                    Text(intention)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.textMuted)
+                        .italic()
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 24)
+    }
+
+    // MARK: - Entry List
+
+    private var entryList: some View {
+        LazyVStack(spacing: 0) {
+            if let summary {
+                ForEach(Array(summary.entries.enumerated()), id: \.element.id) { (index: Int, entry: SetlistEntryView) in
+                    if index > 0 {
+                        Divider().background(Color.borderDefault)
+                    }
+
+                    SessionEntryResultRow(
+                        entry: entry,
+                        isEditable: true,
+                        onScoreChanged: { score in
+                            core.update(.session(.updateEntryScore(entryId: entry.id, score: score)))
+                        },
+                        onTempoChanged: { tempo in
+                            core.update(.session(.updateEntryTempo(entryId: entry.id, tempo: tempo)))
+                        },
+                        onNotesChanged: { notes in
+                            core.update(.session(.updateEntryNotes(entryId: entry.id, notes: notes)))
+                        }
+                    )
+                    .padding(.horizontal, 24)
+                }
+            }
+        }
+    }
+
+    // MARK: - Session Notes
+
+    private var sessionNotesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Session Notes")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.textSecondary)
+
+            TextField("How did this session go?", text: $sessionNotesText, axis: .vertical)
+                .font(.system(size: 13))
+                .foregroundStyle(Color.textPrimary)
+                .lineLimit(3...6)
+                .padding(12)
+                .background(Color.surfaceInput)
+                .clipShape(RoundedRectangle(cornerRadius: DesignRadius.input))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignRadius.input)
+                        .stroke(Color.borderInput, lineWidth: 1)
+                )
+                .onSubmit {
+                    commitSessionNotes()
+                }
+                .onChange(of: sessionNotesText) {
+                    // Debounce: only commit after 1s pause in typing
+                    sessionNotesCommitTask?.cancel()
+                    sessionNotesCommitTask = Task {
+                        try? await Task.sleep(for: .seconds(1))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run { commitSessionNotes() }
+                    }
+                }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+    }
+
+    // MARK: - Actions
+
+    private var actionsSection: some View {
+        VStack(spacing: 10) {
+            ButtonView("Save Session", variant: .primary) {
+                let now = ISO8601DateFormatter().string(from: Date())
+                core.update(.session(.saveSession(now: now)))
+            }
+
+            ButtonView("Discard", variant: .dangerOutline) {
+                showDiscardConfirmation = true
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 40)
+    }
+
+    // MARK: - Helpers
+
+    private func commitSessionNotes() {
+        core.update(.session(.updateSessionNotes(notes: sessionNotesText.isEmpty ? nil : sessionNotesText)))
+    }
+
+    @ViewBuilder
+    private func completionBadge(_ status: CompletionStatus) -> some View {
+        switch status {
+        case .completed:
+            Text("Completed")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.successText)
+        case .endedEarly:
+            Text("Ended Early")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.warmAccentText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Color.warmAccentSurface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignRadius.badge))
+        }
+    }
+}
+
+#Preview("SessionSummaryView") {
+    SessionSummaryView()
+        .environment(IntradaCore())
+        .preferredColorScheme(.dark)
+}

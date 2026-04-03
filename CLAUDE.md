@@ -401,6 +401,10 @@ components. Always use the named token.
 | `SetlistSheetContent` | Setlist editor — intention, drag-to-reorder entries, Start Session (sheet on iPhone, panel on iPad) |
 | `ActivePracticeView` | Focus-mode active session — timer, progress ring, rep counter, pause overlay, iPhone + iPad layouts |
 | `TransitionPromptSheet` | Between-item scoring sheet — score (1–5), tempo wheel picker, notes, Continue/Finish |
+| `SessionSummaryView` | Post-session review — header stats, entry list with inline score/tempo/notes editing, Save/Discard |
+| `SessionHistoryView` | Chronological session list with date grouping, session cards, swipe-to-delete, empty state |
+| `SessionDetailView` | Past session detail — header stats, entry results (read-only) |
+| `SessionEntryResultRow` | Shared entry result display — status icon, score/tempo/rep badges, editable or read-only |
 
 ### Rules for new iOS UI work
 
