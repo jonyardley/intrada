@@ -43,6 +43,7 @@ any of them without waiting for the others.
 | iOS library (#195) — browse, search & manage repertoire on iOS | Done |
 | iOS session builder (#196) — tap-to-queue setlist construction | Done |
 | iOS active session (#197) — focus mode, timer, scoring, rep counter, pause/resume | Done |
+| iOS session summary & history (#198) — post-session review, save, history list, detail view | Done |
 
 ---
 
@@ -61,7 +62,7 @@ cross-platform features (Crux core + API) benefit both shells simultaneously.
 | ~~195~~ | ~~**Library** — browse, search & manage repertoire~~ | ~~M~~ | Done |
 | ~~196~~ | ~~**Session builder** — construct practice setlists~~ | ~~M~~ | Done |
 | ~~197~~ | ~~**Active session** — focus mode, timer & scoring~~ | ~~L~~ | Done |
-| 198 | **Session summary & history** | M | #197 |
+| ~~198~~ | ~~**Session summary & history**~~ | ~~M~~ | Done |
 | 199 | **Routines** — create, edit & manage practice routines | M | #195 |
 | 201 | **Analytics dashboard** — practice insights & visualisation | M | #198 |
 
