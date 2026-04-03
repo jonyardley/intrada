@@ -537,6 +537,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
 - Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated types) (196-ios-session-builder)
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso; crash recovery via UserDefaults) (196-ios-session-builder)
+- Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated SharedTypes) (197-ios-active-session)
+- UserDefaults via `SessionStorage.swift` (crash recovery only, handled by existing effect processor) (197-ios-active-session)
 
 ## Recent Changes
 - 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

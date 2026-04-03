@@ -10,7 +10,7 @@ import SwiftUI
 /// |----------|-------------------------------|
 /// | idle     | Session list (placeholder)    |
 /// | building | SessionBuilderView            |
-/// | active   | Active session (placeholder)  |
+/// | active   | ActivePracticeView            |
 /// | summary  | Session summary (placeholder) |
 struct PracticeTabRouter: View {
     @Environment(IntradaCore.self) private var core
@@ -25,7 +25,7 @@ struct PracticeTabRouter: View {
             case .building:
                 SessionBuilderView()
             case .active:
-                ActiveSessionPlaceholderView()
+                ActivePracticeView()
             case .summary:
                 SummaryPlaceholderView()
             }
@@ -78,71 +78,6 @@ private struct PracticeIdleView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.backgroundApp)
             .navigationTitle("Practice")
-        }
-    }
-}
-
-// MARK: - Active Session Placeholder (temporary — replaced by #197)
-
-/// Temporary placeholder with an "Abandon Session" button so the user
-/// can return to the builder during development.
-private struct ActiveSessionPlaceholderView: View {
-    @Environment(IntradaCore.self) private var core
-    @State private var showConfirmation = false
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "play.circle.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(Color.accentText)
-
-                Text("Active Session")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(Color.textSecondary)
-
-                Text("Active session view coming in #197")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.textFaint)
-
-                Spacer()
-
-                // Temporary: abandon session to get back to idle/builder
-                Button(role: .destructive) {
-                    showConfirmation = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "xmark.circle")
-                        Text("Abandon Session")
-                    }
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Color.dangerText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.dangerSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 40)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.backgroundApp)
-            .navigationTitle("Active Session")
-            .confirmationDialog(
-                "Abandon Session?",
-                isPresented: $showConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Abandon", role: .destructive) {
-                    core.update(.session(.abandonSession))
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will discard the current session. You can't undo this.")
-            }
         }
     }
 }
