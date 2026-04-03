@@ -432,6 +432,30 @@ components. Always use the named token.
 
 Key files: `ios/Intrada/DesignSystem/` (tokens + modifiers), `ios/Intrada/Components/` (SwiftUI components)
 
+### iOS UX pattern rules (canonical — see Pencil "iOS / UX Pattern Guide")
+
+These rules apply to ALL iOS views. See #243 for the consistency sweep.
+
+10. **System navigation titles**: Use `.navigationTitle()` on every screen. Large title
+    on root views, inline on pushed views. Never use custom heading text as a title
+    replacement (except Active Session focus mode which hides the bar entirely).
+11. **NavigationSplitView on iPad**: Every list→detail screen MUST use
+    `NavigationSplitView` on iPad (detect via `horizontalSizeClass == .regular`).
+    Sidebar width: 320–420pt. No screen may ignore iPad.
+12. **CardView for all content sections**: Every content section wraps in `CardView`.
+    Dividers are only used INSIDE cards to separate items. Never use bare dividers
+    as section separators.
+13. **ButtonView for all actions**: Every tappable action uses `ButtonView(variant:)`.
+    Never use raw `Button` with custom styling. Toolbar actions use `.toolbar { ToolbarItem }`.
+14. **EmptyStateView for all empty states**: Use the `EmptyStateView` component.
+    Never use custom VStack empty layouts or `ContentUnavailableView`.
+15. **Spacing tokens only**: Use `Spacing.cardCompact` (12), `Spacing.card` (16),
+    `Spacing.cardComfortable` (24). Never hardcode spacing values.
+16. **Destructive confirmations**: All destructive actions use `.confirmationDialog`
+    with `titleVisibility: .visible`. Never delete/discard without asking.
+17. **No custom back buttons**: Never use manual BackLink components on iOS.
+    NavigationStack provides system back buttons automatically.
+
 ## Roadmap Alignment
 
 Every piece of work should connect back to the product vision. Before starting
