@@ -42,7 +42,7 @@ struct SetlistSheetContent: View {
                     .foregroundStyle(Color.accentText)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.top, 16)
             .padding(.bottom, 12)
 
@@ -69,7 +69,7 @@ struct SetlistSheetContent: View {
                         )))
                     }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.bottom, 16)
 
             Divider()
@@ -82,7 +82,7 @@ struct SetlistSheetContent: View {
                     .foregroundStyle(Color.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, 12)
 
             // Setlist entries with drag-to-reorder
@@ -165,7 +165,7 @@ struct SetlistSheetContent: View {
                 }
                 .disabled(entries.isEmpty)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, 12)
             .padding(.bottom, 20)
         }
