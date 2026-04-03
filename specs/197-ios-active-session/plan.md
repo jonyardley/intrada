@@ -53,9 +53,8 @@ specs/197-ios-active-session/
 ios/Intrada/
 ├── Views/Practice/
 │   ├── PracticeTabRouter.swift          # UPDATE: Replace ActiveSessionPlaceholderView
-│   ├── ActiveSessionView.swift          # NEW: Main focus-mode screen
-│   ├── ActiveSessionContent.swift       # NEW: Shared content (ring, item info, controls)
-│   └── TransitionPromptSheet.swift      # NEW: Between-item scoring overlay
+│   ├── ActiveSessionView.swift          # NEW: Main focus-mode screen (struct: ActivePracticeView to avoid SharedTypes collision)
+│   └── TransitionPromptSheet.swift      # NEW: Between-item scoring overlay (wheel tempo picker)
 ├── Components/
 │   ├── ProgressRingView.swift           # NEW: Circular countdown timer
 │   ├── RepCounterView.swift             # NEW: Rep counter with Got it/Missed
@@ -115,6 +114,16 @@ ViewModel.sessionStatus == .active
 - `@Environment(\.horizontalSizeClass)` drives layout
 - `.regular` (iPad): Split view with session sidebar + focus area
 - `.compact` (iPhone): Full-screen focus mode, transition as bottom sheet
+
+### Event Mapping
+
+### Implementation Notes (post-build)
+
+- **Naming**: View struct is `ActivePracticeView` (not `ActiveSessionView`) to avoid collision with the auto-generated `ActiveSessionView` type in SharedTypes.swift
+- **Tempo input**: Changed from text field to wheel picker (30–300 BPM range) during design review. Defaults to last achieved tempo.
+- **Query reset**: Session builder resets the shared library query on appear, so Library tab filters don't persist unexpectedly.
+- **Keychain entitlement**: Added `keychain-access-groups` so Clerk can store auth tokens when installed via `simctl` (fixes `-34018` errSecMissingEntitlement on simulator).
+- **Consolidated files**: `ActiveSessionContent.swift` was merged into `ActiveSessionView.swift` — single file is simpler.
 
 ### Event Mapping
 
