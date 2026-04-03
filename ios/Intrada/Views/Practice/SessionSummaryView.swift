@@ -10,6 +10,7 @@ struct SessionSummaryView: View {
 
     @State private var sessionNotesText: String = ""
     @State private var showDiscardConfirmation: Bool = false
+    @State private var sessionNotesCommitTask: Task<Void, Never>? = nil
 
     private var summary: SummaryView? {
         core.viewModel.summary
@@ -185,10 +186,16 @@ struct SessionSummaryView: View {
                         .stroke(Color.borderInput, lineWidth: 1)
                 )
                 .onSubmit {
-                    core.update(.session(.updateSessionNotes(notes: sessionNotesText.isEmpty ? nil : sessionNotesText)))
+                    commitSessionNotes()
                 }
                 .onChange(of: sessionNotesText) {
-                    core.update(.session(.updateSessionNotes(notes: sessionNotesText.isEmpty ? nil : sessionNotesText)))
+                    // Debounce: only commit after 1s pause in typing
+                    sessionNotesCommitTask?.cancel()
+                    sessionNotesCommitTask = Task {
+                        try? await Task.sleep(for: .seconds(1))
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run { commitSessionNotes() }
+                    }
                 }
         }
         .padding(.horizontal, 24)
@@ -214,6 +221,10 @@ struct SessionSummaryView: View {
     }
 
     // MARK: - Helpers
+
+    private func commitSessionNotes() {
+        core.update(.session(.updateSessionNotes(notes: sessionNotesText.isEmpty ? nil : sessionNotesText)))
+    }
 
     @ViewBuilder
     private func completionBadge(_ status: CompletionStatus) -> some View {

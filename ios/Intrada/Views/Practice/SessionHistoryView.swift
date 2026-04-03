@@ -8,7 +8,6 @@ struct SessionHistoryView: View {
     @Environment(IntradaCore.self) private var core
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    @State private var selectedSessionId: String? = nil
     @State private var deleteSessionId: String? = nil
     @State private var showDeleteConfirmation: Bool = false
 
@@ -205,16 +204,25 @@ struct SessionHistoryView: View {
         var id: String { key }
     }
 
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
+    }()
+
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.timeStyle = .short
+        return f
+    }()
+
     private var groupedSessions: [SessionGroup] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-
-        let isoFormatter = ISO8601DateFormatter()
-        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let relFormatter = RelativeDateTimeFormatter()
-        relFormatter.unitsStyle = .full
-
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
 
@@ -222,7 +230,7 @@ struct SessionHistoryView: View {
         var groupOrder: [String] = []
 
         for session in sessions {
-            let date = isoFormatter.date(from: session.startedAt) ?? Date()
+            let date = Self.isoFormatter.date(from: session.startedAt) ?? Date()
             let dayStart = calendar.startOfDay(for: date)
 
             let label: String
@@ -231,9 +239,7 @@ struct SessionHistoryView: View {
             } else if dayStart == calendar.date(byAdding: .day, value: -1, to: today) {
                 label = "Yesterday"
             } else {
-                let df = DateFormatter()
-                df.dateStyle = .medium
-                label = df.string(from: date)
+                label = Self.dateFormatter.string(from: date)
             }
 
             if groups[label] == nil {
@@ -248,12 +254,8 @@ struct SessionHistoryView: View {
     }
 
     private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard let date = formatter.date(from: isoString) else { return "" }
-        let tf = DateFormatter()
-        tf.timeStyle = .short
-        return tf.string(from: date)
+        guard let date = Self.isoFormatter.date(from: isoString) else { return "" }
+        return Self.timeFormatter.string(from: date)
     }
 }
 

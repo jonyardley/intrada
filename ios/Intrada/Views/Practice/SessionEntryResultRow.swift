@@ -15,7 +15,6 @@ struct SessionEntryResultRow: View {
 
     @State private var selectedScore: UInt8? = nil
     @State private var notesText: String = ""
-    @State private var showTempoPicker: Bool = false
     @State private var selectedTempo: Int = 0
 
     var body: some View {
@@ -107,7 +106,10 @@ struct SessionEntryResultRow: View {
             notesText = entry.notes ?? ""
             selectedTempo = Int(entry.achievedTempo ?? 0)
         }
-        .onChange(of: selectedScore) { _, newScore in
+        .onChange(of: selectedScore) { oldScore, newScore in
+            // Guard against dispatching on initial load — only fire when user changes the value
+            guard oldScore != nil || entry.score == nil else { return }
+            guard newScore != entry.score else { return }
             onScoreChanged?(newScore)
         }
     }
