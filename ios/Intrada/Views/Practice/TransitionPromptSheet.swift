@@ -15,9 +15,6 @@ struct TransitionPromptSheet: View {
     @State private var selectedTempo: Int = 0
     @State private var notesText: String = ""
 
-    /// BPM range for the wheel picker. 0 = "No tempo".
-    private static let tempoRange = [0] + Array(30...300)
-
     /// Default tempo from the item's target BPM or last achieved tempo.
     private var defaultTempo: Int {
         let pos = Int(session.currentPosition)
@@ -130,7 +127,9 @@ struct TransitionPromptSheet: View {
         }
         .background(Color.backgroundApp)
         .onAppear {
+            selectedScore = nil
             selectedTempo = defaultTempo
+            notesText = ""
         }
     }
 

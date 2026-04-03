@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-03-15.
+> significant feature lands. Last reviewed: 2026-04-03.
 
 ## Project Overview
 

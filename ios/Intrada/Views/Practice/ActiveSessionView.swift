@@ -220,11 +220,12 @@ struct ActivePracticeView: View {
     private func ringTimerArea(size: CGFloat) -> some View {
         ZStack {
             if plannedDuration != nil {
+                // Countdown mode: ghosted ring with remaining time
                 ProgressRingView(
                     progress: ringProgress,
                     lineWidth: 5,
-                    trackOpacity: 0.2,
-                    fillOpacity: 0.15
+                    trackOpacity: 0.3,
+                    fillOpacity: 0.25
                 )
                 .frame(width: size, height: size)
             }
@@ -373,16 +374,7 @@ struct ActivePracticeView: View {
             }
             .padding(Spacing.cardComfortable)
             .frame(width: 320)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.118, green: 0.078, blue: 0.251),
-                        Color(red: 0.059, green: 0.059, blue: 0.141)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .background(Color.surfaceFallback)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
