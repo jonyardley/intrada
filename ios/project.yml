@@ -68,6 +68,7 @@ targets:
         ENABLE_PREVIEWS: "YES"
         CODE_SIGN_STYLE: "Automatic"
         DEVELOPMENT_TEAM: "9S5FG4LQAF"
+        CODE_SIGN_ENTITLEMENTS: "Intrada/Intrada.entitlements"
         # Only build arm64 for simulator (Rust lib is arm64 only)
         EXCLUDED_ARCHS[sdk=iphonesimulator*]: "x86_64"
       configs:

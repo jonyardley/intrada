@@ -11,7 +11,6 @@ struct SessionBuilderView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var searchText = ""
     @State private var isSheetPresented = false
-    @State private var expandedEntryId: String?
 
     /// Library items filtered by search text (shell-local concern).
     private var filteredItems: [LibraryItemView] {
@@ -166,7 +165,6 @@ struct SessionBuilderView: View {
         .background(Color.backgroundApp)
         .sheet(isPresented: $isSheetPresented) {
             SetlistSheetContent(
-                expandedEntryId: $expandedEntryId,
                 onStartSession: startSession
             )
             .presentationDetents([.medium, .large])
@@ -213,8 +211,7 @@ struct SessionBuilderView: View {
                 errorBanner
 
                 SetlistSheetContent(
-                    expandedEntryId: $expandedEntryId,
-                    onStartSession: startSession
+                        onStartSession: startSession
                 )
             }
         }

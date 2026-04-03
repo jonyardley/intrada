@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-03-15.
+> significant feature lands. Last reviewed: 2026-04-03.
 
 ## Project Overview
 
@@ -379,6 +379,9 @@ components. Always use the named token.
 | `LibraryQueueRow`  | (new)           | Tap-to-queue library row with toggle state (accent bar + check/plus icon) |
 | `SetlistEntryRow`  | `SetlistEntryRow` | Compact entry with drag handle, progressive disclosure for duration/intention/reps |
 | `StickyBottomBar`  | (new)           | iPhone bottom bar — item count, total time, Start Session button |
+| `ProgressRingView` | `ProgressRing`  | Circular countdown timer using `Circle().trim()` |
+| `RepCounterView`   | (inline)        | Rep counter with Got it/Missed buttons, celebration state |
+| `ScoreSelectorView` | (inline)       | 1–5 confidence score dot selector |
 
 ### iOS views — feature screens
 
@@ -396,6 +399,8 @@ components. Always use the named token.
 | `SessionBuilderView` | Main builder — adaptive iPhone (list + bottom bar) / iPad (split view) layout |
 | `SessionBuilderListContent` | Scrollable library list with tap-to-queue rows and search filtering |
 | `SetlistSheetContent` | Setlist editor — intention, drag-to-reorder entries, Start Session (sheet on iPhone, panel on iPad) |
+| `ActivePracticeView` | Focus-mode active session — timer, progress ring, rep counter, pause overlay, iPhone + iPad layouts |
+| `TransitionPromptSheet` | Between-item scoring sheet — score (1–5), tempo wheel picker, notes, Continue/Finish |
 
 ### Rules for new iOS UI work
 
@@ -537,6 +542,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
 - Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated types) (196-ios-session-builder)
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso; crash recovery via UserDefaults) (196-ios-session-builder)
+- Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated SharedTypes) (197-ios-active-session)
+- UserDefaults via `SessionStorage.swift` (crash recovery only, handled by existing effect processor) (197-ios-active-session)
 
 ## Recent Changes
 - 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

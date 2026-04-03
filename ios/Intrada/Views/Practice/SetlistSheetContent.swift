@@ -7,7 +7,6 @@ import SwiftUI
 /// total time, and a Start Session button.
 struct SetlistSheetContent: View {
     @Environment(IntradaCore.self) private var core
-    @Binding var expandedEntryId: String?
     let onStartSession: () -> Void
 
     @State private var intentionText: String = ""
@@ -102,12 +101,6 @@ struct SetlistSheetContent: View {
                     ForEach(entries, id: \.id) { (entry: SetlistEntryView) in
                         SetlistEntryRow(
                             entry: entry,
-                            isExpanded: expandedEntryId == entry.id,
-                            onTap: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    expandedEntryId = expandedEntryId == entry.id ? nil : entry.id
-                                }
-                            },
                             onRemove: {
                                 core.update(.session(.removeFromSetlist(entryId: entry.id)))
                             },
@@ -185,7 +178,6 @@ struct SetlistSheetContent: View {
 
 #Preview {
     SetlistSheetContent(
-        expandedEntryId: .constant(nil),
         onStartSession: {}
     )
     .environment(IntradaCore())
