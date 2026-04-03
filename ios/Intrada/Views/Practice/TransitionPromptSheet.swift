@@ -12,8 +12,21 @@ struct TransitionPromptSheet: View {
     let onSkip: () -> Void
 
     @State private var selectedScore: UInt8? = nil
-    @State private var tempoText: String = ""
+    @State private var selectedTempo: Int = 0
     @State private var notesText: String = ""
+
+    /// BPM range for the wheel picker. 0 = "No tempo".
+    private static let tempoRange = [0] + Array(30...300)
+
+    /// Default tempo from the item's target BPM or last achieved tempo.
+    private var defaultTempo: Int {
+        let pos = Int(session.currentPosition)
+        guard pos < session.entries.count else { return 0 }
+        let entry = session.entries[pos]
+        // Prefer last achieved tempo, then fall back to 0 (no selection)
+        if let achieved = entry.achievedTempo { return Int(achieved) }
+        return 0
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -54,25 +67,21 @@ struct TransitionPromptSheet: View {
                 ScoreSelectorView(selectedScore: $selectedScore)
                     .frame(maxWidth: .infinity)
 
-                // Tempo input
-                HStack(spacing: 12) {
-                    Text("Tempo (BPM)")
+                // Tempo picker
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tempo achieved (BPM)")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Color.textMuted)
 
-                    TextField("", text: $tempoText)
-                        .keyboardType(.numberPad)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.textPrimary)
-                        .frame(width: 80)
-                        .padding(.horizontal, 12)
-                        .frame(height: 36)
-                        .background(Color.surfaceInput)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignRadius.input))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignRadius.input)
-                                .stroke(Color.borderInput, lineWidth: 1)
-                        )
+                    Picker("BPM", selection: $selectedTempo) {
+                        Text("—").tag(0)
+                        ForEach(30...300, id: \.self) { bpm in
+                            Text("\(bpm)").tag(bpm)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 100)
+                    .clipped()
                 }
 
                 // Notes input
@@ -102,7 +111,7 @@ struct TransitionPromptSheet: View {
             // Actions
             VStack(spacing: 8) {
                 ButtonView(isLastItem ? "Finish" : "Continue", variant: .primary) {
-                    let tempo: UInt16? = UInt16(tempoText)
+                    let tempo: UInt16? = selectedTempo > 0 ? UInt16(selectedTempo) : nil
                     let notes: String? = notesText.isEmpty ? nil : notesText
                     onContinue(selectedScore, tempo, notes)
                 }
@@ -120,6 +129,9 @@ struct TransitionPromptSheet: View {
             .padding(.bottom, 40)
         }
         .background(Color.backgroundApp)
+        .onAppear {
+            selectedTempo = defaultTempo
+        }
     }
 
     @ViewBuilder

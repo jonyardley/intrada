@@ -129,18 +129,41 @@ ios-project:
 ios-run: ios-sim
     #!/usr/bin/env bash
     set -euo pipefail
+
+    # Find or boot the latest iPhone 16 simulator
+    DEVICE_ID=$(xcrun simctl list devices available -j \
+        | python3 -c "
+    import json, sys
+    data = json.load(sys.stdin)
+    for runtime, devices in data['devices'].items():
+        for d in devices:
+            if d['name'] == 'iPhone 16' and d['isAvailable']:
+                print(d['udid'])
+    " | tail -1)
+
+    if [ -z "$DEVICE_ID" ]; then
+        echo "Error: No available iPhone 16 simulator found"
+        exit 1
+    fi
+
+    echo "Using simulator: iPhone 16 ($DEVICE_ID)"
+    xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+
     cd ios
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
-        -destination 'platform=iOS Simulator,name=iPhone 16' \
+        -destination "platform=iOS Simulator,id=$DEVICE_ID" \
         -configuration Debug \
         | xcpretty --color 2>/dev/null || true
-    xcrun simctl boot "iPhone 16" 2>/dev/null || true
-    xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Intrada.app 2>/dev/null || \
-        echo "Note: Install from Xcode for first run"
-    xcrun simctl launch booted com.intrada.app 2>/dev/null || \
-        echo "Note: Launch from Xcode for first run"
+
+    APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Products/Debug-iphonesimulator/Intrada.app -maxdepth 0 2>/dev/null | head -1)
+    if [ -n "$APP_PATH" ]; then
+        xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+        xcrun simctl launch "$DEVICE_ID" com.intrada.app
+    else
+        echo "Note: App not found in DerivedData. Build from Xcode for first run."
+    fi
 
 # Build for device without code signing (CI-style check)
 ios-check: ios-release

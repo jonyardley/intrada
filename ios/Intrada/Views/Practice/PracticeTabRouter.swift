@@ -24,12 +24,18 @@ struct PracticeTabRouter: View {
                 PracticeIdleView()
             case .building:
                 SessionBuilderView()
+                    .onAppear { resetLibraryQuery() }
             case .active:
                 ActivePracticeView()
             case .summary:
                 SummaryPlaceholderView()
             }
         }
+    }
+
+    /// Reset the shared library query so the session builder starts unfiltered.
+    private func resetLibraryQuery() {
+        core.update(.setQuery(ListQuery(text: nil, itemType: nil, key: nil, tags: [])))
     }
 }
 
