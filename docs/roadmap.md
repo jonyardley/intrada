@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-03-15*
+*Updated 2026-04-03*
 
 Everything in intrada serves one of three activities a musician does around their
 instrument. This roadmap is organised around those three pillars, not delivery
@@ -40,6 +40,9 @@ any of them without waiting for the others.
 | Remove category field (#211) — exercises use tags only, simplified subtitle logic | Done |
 | Use mutate response (#148) — updates/deletes use API response directly, no re-fetch | Done |
 | Filter clause sync (#152) — extracted subquery constants to prevent user isolation drift | Done |
+| iOS library (#195) — browse, search & manage repertoire on iOS | Done |
+| iOS session builder (#196) — tap-to-queue setlist construction | Done |
+| iOS active session (#197) — focus mode, timer, scoring, rep counter, pause/resume | Done |
 
 ---
 
@@ -55,9 +58,9 @@ cross-platform features (Crux core + API) benefit both shells simultaneously.
 
 | # | Feature | Size | Depends on |
 |---|---------|------|------------|
-| 195 | **Library** — browse, search & manage repertoire | M | — |
-| 196 | **Session builder** — construct practice setlists | M | #195 |
-| 197 | **Active session** — focus mode, timer & scoring | L | #196 |
+| ~~195~~ | ~~**Library** — browse, search & manage repertoire~~ | ~~M~~ | Done |
+| ~~196~~ | ~~**Session builder** — construct practice setlists~~ | ~~M~~ | Done |
+| ~~197~~ | ~~**Active session** — focus mode, timer & scoring~~ | ~~L~~ | Done |
 | 198 | **Session summary & history** | M | #197 |
 | 199 | **Routines** — create, edit & manage practice routines | M | #195 |
 | 201 | **Analytics dashboard** — practice insights & visualisation | M | #198 |
