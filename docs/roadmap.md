@@ -45,6 +45,7 @@ any of them without waiting for the others.
 | iOS active session (#197) — focus mode, timer, scoring, rep counter, pause/resume | Done |
 | iOS session summary & history (#198) — post-session review, save, history list, detail view | Done |
 | iOS routines (#199) — browse, create, edit, delete, load into builder, save as routine | Done |
+| iOS analytics (#201) — practice insights dashboard, weekly summary, charts, trends | Done |
 
 ---
 
@@ -65,7 +66,7 @@ cross-platform features (Crux core + API) benefit both shells simultaneously.
 | ~~197~~ | ~~**Active session** — focus mode, timer & scoring~~ | ~~L~~ | Done |
 | ~~198~~ | ~~**Session summary & history**~~ | ~~M~~ | Done |
 | ~~199~~ | ~~**Routines** — create, edit & manage practice routines~~ | ~~M~~ | Done |
-| 201 | **Analytics dashboard** — practice insights & visualisation | M | #198 |
+| ~~201~~ | ~~**Analytics dashboard** — practice insights & visualisation~~ | ~~M~~ | Done |
 
 ---
 

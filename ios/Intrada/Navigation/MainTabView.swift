@@ -63,18 +63,11 @@ struct MainTabView: View {
                 }
                 .tag(Tab.routines)
 
-            // Analytics — placeholder
-            NavigationStack {
-                PlaceholderView(tab: .analytics)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            accountMenu
-                        }
-                    }
-            }
-            .tabItem {
-                Label(Tab.analytics.rawValue, systemImage: Tab.analytics.icon)
-            }
+            // Analytics — fully implemented
+            AnalyticsDashboardView()
+                .tabItem {
+                    Label(Tab.analytics.rawValue, systemImage: Tab.analytics.icon)
+                }
             .tag(Tab.analytics)
         }
         .tint(Color.accent)
@@ -130,32 +123,5 @@ struct MainTabView: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - Placeholder View
-
-/// Placeholder view shown for tabs that haven't been implemented yet.
-private struct PlaceholderView: View {
-    let tab: MainTabView.Tab
-
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: tab.icon)
-                .font(.system(size: 48))
-                .foregroundStyle(Color.textFaint)
-
-            Text(tab.rawValue)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.textSecondary)
-
-            Text("Coming soon")
-                .font(.subheadline)
-                .foregroundStyle(Color.textFaint)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.backgroundApp)
-        .navigationTitle(tab.rawValue)
     }
 }
