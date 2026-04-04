@@ -58,8 +58,8 @@ struct SessionDetailView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .padding(.horizontal, Spacing.cardComfortable)
+                .padding(.vertical, Spacing.card)
 
                 Divider().background(Color.borderDefault)
 
@@ -74,7 +74,7 @@ struct SessionDetailView: View {
                             entry: entry,
                             isEditable: false
                         )
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, Spacing.cardComfortable)
                     }
                 }
             }

@@ -227,14 +227,14 @@ struct SessionEntryResultRow: View {
     VStack(spacing: 0) {
         Text("Read-only").font(.caption2).foregroundStyle(Color.textFaint)
         SessionEntryResultRow(entry: completed, isEditable: false)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Spacing.cardComfortable)
         Divider().background(Color.borderDefault)
         SessionEntryResultRow(entry: skipped, isEditable: false)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Spacing.cardComfortable)
         Divider().background(Color.borderDefault)
         Text("Editable").font(.caption2).foregroundStyle(Color.textFaint).padding(.top, 16)
         SessionEntryResultRow(entry: completed, isEditable: true)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Spacing.cardComfortable)
     }
     .background(Color.backgroundApp)
     .preferredColorScheme(.dark)

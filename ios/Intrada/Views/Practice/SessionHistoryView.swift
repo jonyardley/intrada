@@ -8,6 +8,7 @@ struct SessionHistoryView: View {
     @Environment(IntradaCore.self) private var core
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    @State private var selectedSessionId: String? = nil
     @State private var deleteSessionId: String? = nil
     @State private var showDeleteConfirmation: Bool = false
 
@@ -15,40 +16,37 @@ struct SessionHistoryView: View {
         core.viewModel.sessions
     }
 
+    private var selectedSession: PracticeSessionView? {
+        guard let id = selectedSessionId else { return nil }
+        return sessions.first(where: { $0.id == id })
+    }
+
+    private var newSessionToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                core.update(.session(.startBuilding))
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("New Session")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(Color.textPrimary)
+                .padding(.horizontal, Spacing.cardCompact)
+                .padding(.vertical, 6)
+                .background(Color.accent)
+                .clipShape(RoundedRectangle(cornerRadius: DesignRadius.button))
+            }
+        }
+    }
+
     var body: some View {
-        NavigationStack {
-            Group {
-                if sessions.isEmpty {
-                    emptyState
-                } else {
-                    sessionList
-                }
-            }
-            .background(Color.backgroundApp)
-            .navigationTitle("Practice")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        core.update(.session(.startBuilding))
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("New Session")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundStyle(Color.textPrimary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignRadius.button))
-                    }
-                }
-            }
-            .navigationDestination(for: String.self) { sessionId in
-                if let session = sessions.first(where: { $0.id == sessionId }) {
-                    SessionDetailView(session: session)
-                }
+        Group {
+            if sizeClass == .regular {
+                iPadLayout
+            } else {
+                iPhoneLayout
             }
         }
         .confirmationDialog(
@@ -70,15 +68,71 @@ struct SessionHistoryView: View {
         }
     }
 
+    // MARK: - iPhone Layout
+
+    private var iPhoneLayout: some View {
+        NavigationStack {
+            Group {
+                if sessions.isEmpty {
+                    emptyState
+                } else {
+                    sessionList
+                }
+            }
+            .background(Color.backgroundApp)
+            .navigationTitle("Practice")
+            .toolbar { newSessionToolbar }
+            .navigationDestination(for: String.self) { sessionId in
+                if let session = sessions.first(where: { $0.id == sessionId }) {
+                    SessionDetailView(session: session)
+                }
+            }
+        }
+    }
+
+    // MARK: - iPad Layout
+
+    private var iPadLayout: some View {
+        NavigationSplitView {
+            Group {
+                if sessions.isEmpty {
+                    emptyState
+                } else {
+                    sessionList
+                }
+            }
+            .background(Color.backgroundApp)
+            .navigationTitle("Practice")
+            .toolbar { newSessionToolbar }
+        } detail: {
+            if let session = selectedSession {
+                SessionDetailView(session: session)
+            } else {
+                EmptyStateView(
+                    icon: "hand.tap",
+                    title: "Select a session",
+                    message: "Tap a session to view its details"
+                )
+            }
+        }
+    }
+
     // MARK: - Session List
 
     private var sessionList: some View {
-        List {
+        List(selection: sizeClass == .regular ? $selectedSessionId : nil) {
             ForEach(groupedSessions, id: \.key) { (group: SessionGroup) in
                 Section {
                     ForEach(group.sessions, id: \.id) { (session: PracticeSessionView) in
-                        NavigationLink(value: session.id) {
-                            sessionCard(session)
+                        Group {
+                            if sizeClass == .regular {
+                                sessionCard(session)
+                                    .tag(session.id)
+                            } else {
+                                NavigationLink(value: session.id) {
+                                    sessionCard(session)
+                                }
+                            }
                         }
                         .listRowBackground(Color.surfaceSecondary)
                         .swipeActions(edge: .trailing) {
@@ -160,40 +214,14 @@ struct SessionHistoryView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 24) {
-            Spacer()
-
-            Image(systemName: "play.circle")
-                .font(.system(size: 56))
-                .foregroundStyle(Color.textFaint)
-
-            Text("Practice")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundStyle(Color.textSecondary)
-
-            Text("Start a session to track your practice")
-                .font(.subheadline)
-                .foregroundStyle(Color.textMuted)
-
-            Button {
-                core.update(.session(.startBuilding))
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus")
-                    Text("New Session")
-                }
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color.textPrimary)
-                .frame(maxWidth: 200)
-                .frame(height: 44)
-                .background(Color.accent)
-                .clipShape(RoundedRectangle(cornerRadius: DesignRadius.button))
-            }
-
-            Spacer()
+        EmptyStateView(
+            icon: "play.circle",
+            title: "No sessions yet",
+            message: "Start a session to track your practice",
+            actionTitle: "New Session"
+        ) {
+            core.update(.session(.startBuilding))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Grouping

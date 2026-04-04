@@ -84,8 +84,8 @@ struct SessionSummaryView: View {
                             .foregroundStyle(Color.textFaint)
                         Spacer()
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
+                    .padding(.horizontal, Spacing.cardComfortable)
+                    .padding(.vertical, Spacing.card)
 
                     entryList
                 }
@@ -134,7 +134,7 @@ struct SessionSummaryView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Spacing.cardComfortable)
     }
 
     // MARK: - Entry List
@@ -160,7 +160,7 @@ struct SessionSummaryView: View {
                             core.update(.session(.updateEntryNotes(entryId: entry.id, notes: notes)))
                         }
                     )
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Spacing.cardComfortable)
                 }
             }
         }
@@ -198,8 +198,8 @@ struct SessionSummaryView: View {
                     }
                 }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
+        .padding(.horizontal, Spacing.cardComfortable)
+        .padding(.vertical, Spacing.card)
     }
 
     // MARK: - Actions
@@ -215,7 +215,7 @@ struct SessionSummaryView: View {
                 showDiscardConfirmation = true
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, Spacing.cardComfortable)
         .padding(.top, 8)
         .padding(.bottom, 40)
     }

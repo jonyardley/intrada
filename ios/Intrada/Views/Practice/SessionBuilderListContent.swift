@@ -21,11 +21,11 @@ struct SessionBuilderListContent: View {
                             isSelected: selectedItemIds.contains(item.id),
                             onTap: { onToggle(item) }
                         )
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Spacing.card)
 
                         Divider()
                             .background(Color.borderDefault)
-                            .padding(.leading, 16)
+                            .padding(.leading, Spacing.card)
                     }
                 }
             }

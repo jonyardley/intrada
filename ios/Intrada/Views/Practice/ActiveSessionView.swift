@@ -398,7 +398,7 @@ struct ActivePracticeView: View {
                         .foregroundStyle(Color.textMuted)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, Spacing.card)
 
             Divider().background(Color.borderDefault)
@@ -426,7 +426,7 @@ struct ActivePracticeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, Spacing.cardCompact)
 
             Divider().background(Color.borderDefault)
@@ -435,7 +435,7 @@ struct ActivePracticeView: View {
                 .font(.system(size: 9, weight: .semibold))
                 .tracking(1.5)
                 .foregroundStyle(Color.textFaint)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.cardComfortable)
                 .padding(.top, Spacing.cardCompact)
                 .padding(.bottom, 8)
 
@@ -505,7 +505,7 @@ struct ActivePracticeView: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Spacing.cardComfortable)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isCurrent ? Color.surfaceSecondary : Color.clear)

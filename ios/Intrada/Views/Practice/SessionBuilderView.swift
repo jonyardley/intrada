@@ -73,7 +73,7 @@ struct SessionBuilderView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.borderInput, lineWidth: 1)
         )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Spacing.card)
         .padding(.vertical, 8)
     }
 
@@ -93,7 +93,7 @@ struct SessionBuilderView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Spacing.card)
         .frame(height: 44)
     }
 
@@ -120,7 +120,7 @@ struct SessionBuilderView: View {
                 .padding(12)
                 .background(Color.dangerSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.card)
             }
         }
     }
@@ -138,7 +138,7 @@ struct SessionBuilderView: View {
                     .foregroundStyle(Color.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Spacing.card)
             .padding(.bottom, 4)
 
             errorBanner
@@ -188,7 +188,7 @@ struct SessionBuilderView: View {
                         .foregroundStyle(Color.textPrimary)
                     Spacer()
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.card)
 
                 searchBar
 
