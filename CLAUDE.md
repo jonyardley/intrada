@@ -409,6 +409,7 @@ components. Always use the named token.
 | `RoutineDetailView` | Routine detail — name, ordered item list, Edit button |
 | `RoutineEditView` | Edit routine — rename, reorder, add/remove items, Save/Cancel |
 | `RoutineSaveForm` | Collapsible save-as-routine form (name input), used in SetlistSheet and Summary |
+| `AnalyticsDashboardView` | Analytics tab — streak, weekly summary, 28-day chart, top items, score trends |
 
 ### Rules for new iOS UI work
 
