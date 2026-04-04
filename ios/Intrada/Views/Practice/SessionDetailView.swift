@@ -5,7 +5,6 @@ import SwiftUI
 /// Shows header stats and per-item results wrapped in cards.
 /// Adapts layout for iPad with split view.
 struct SessionDetailView: View {
-    @Environment(IntradaCore.self) private var core
     @Environment(\.horizontalSizeClass) private var sizeClass
     let session: PracticeSessionView
 
@@ -34,19 +33,7 @@ struct SessionDetailView: View {
                 }
                 .padding(.horizontal, Spacing.card)
 
-                if let notes = session.notes, !notes.isEmpty {
-                    CardView {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Session Notes")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.textSecondary)
-                            Text(notes)
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.textMuted)
-                        }
-                    }
-                    .padding(.horizontal, Spacing.card)
-                }
+                notesCard
             }
             .padding(.bottom, Spacing.cardComfortable)
         }
@@ -60,20 +47,7 @@ struct SessionDetailView: View {
             ScrollView {
                 VStack(spacing: Spacing.cardCompact) {
                     headerCard
-
-                    if let notes = session.notes, !notes.isEmpty {
-                        CardView {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Session Notes")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(Color.textSecondary)
-                                Text(notes)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Color.textMuted)
-                            }
-                        }
-                        .padding(.horizontal, Spacing.card)
-                    }
+                    notesCard
                 }
             }
             .frame(width: 360)
@@ -147,6 +121,25 @@ struct SessionDetailView: View {
         .padding(.top, Spacing.card)
     }
 
+    // MARK: - Notes Card
+
+    @ViewBuilder
+    private var notesCard: some View {
+        if let notes = session.notes, !notes.isEmpty {
+            CardView {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Session Notes")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.textSecondary)
+                    Text(notes)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.textMuted)
+                }
+            }
+            .padding(.horizontal, Spacing.card)
+        }
+    }
+
     // MARK: - Entry List
 
     private var entryList: some View {
@@ -160,7 +153,7 @@ struct SessionDetailView: View {
                     entry: entry,
                     isEditable: false
                 )
-                .padding(.horizontal, Spacing.card)
+                .padding(.horizontal, Spacing.cardComfortable)
             }
         }
     }
