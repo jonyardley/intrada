@@ -44,6 +44,7 @@ any of them without waiting for the others.
 | iOS session builder (#196) — tap-to-queue setlist construction | Done |
 | iOS active session (#197) — focus mode, timer, scoring, rep counter, pause/resume | Done |
 | iOS session summary & history (#198) — post-session review, save, history list, detail view | Done |
+| iOS routines (#199) — browse, create, edit, delete, load into builder, save as routine | Done |
 
 ---
 
@@ -63,7 +64,7 @@ cross-platform features (Crux core + API) benefit both shells simultaneously.
 | ~~196~~ | ~~**Session builder** — construct practice setlists~~ | ~~M~~ | Done |
 | ~~197~~ | ~~**Active session** — focus mode, timer & scoring~~ | ~~L~~ | Done |
 | ~~198~~ | ~~**Session summary & history**~~ | ~~M~~ | Done |
-| 199 | **Routines** — create, edit & manage practice routines | M | #195 |
+| ~~199~~ | ~~**Routines** — create, edit & manage practice routines~~ | ~~M~~ | Done |
 | 201 | **Analytics dashboard** — practice insights & visualisation | M | #198 |
 
 ---
