@@ -7,6 +7,7 @@ import Charts
 /// No events dispatched — purely renders computed analytics.
 struct AnalyticsDashboardView: View {
     @Environment(IntradaCore.self) private var core
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var analytics: AnalyticsView? {
         core.viewModel.analytics
@@ -16,19 +17,11 @@ struct AnalyticsDashboardView: View {
         NavigationStack {
             ScrollView {
                 if let analytics {
-                    VStack(spacing: Spacing.card) {
-                        streakCard(analytics.streak)
-                        weeklySummaryCard(analytics.weeklySummary)
-                        weeklyInsightsCard(
-                            neglected: analytics.neglectedItems,
-                            scoreChanges: analytics.scoreChanges
-                        )
-                        practiceChartCard(analytics.dailyTotals)
-                        topItemsCard(analytics.topItems)
-                        scoreTrendsCard(analytics.scoreTrends)
+                    if sizeClass == .regular {
+                        iPadDashboard(analytics)
+                    } else {
+                        iPhoneDashboard(analytics)
                     }
-                    .padding(.horizontal, Spacing.card)
-                    .padding(.bottom, Spacing.cardComfortable)
                 } else {
                     EmptyStateView(
                         icon: "chart.xyaxis.line",
@@ -44,21 +37,81 @@ struct AnalyticsDashboardView: View {
 
     // MARK: - Streak
 
+    // MARK: - iPhone Layout
+
     @ViewBuilder
-    private func streakCard(_ streak: PracticeStreak) -> some View {
+    private func iPhoneDashboard(_ analytics: AnalyticsView) -> some View {
+        VStack(spacing: Spacing.card) {
+            consistencyCard(analytics.streak)
+            weeklySummaryCard(analytics.weeklySummary)
+            weeklyInsightsCard(
+                neglected: analytics.neglectedItems,
+                scoreChanges: analytics.scoreChanges
+            )
+            practiceChartCard(analytics.dailyTotals)
+            topItemsCard(analytics.topItems)
+            scoreTrendsCard(analytics.scoreTrends)
+        }
+        .padding(.horizontal, Spacing.card)
+        .padding(.bottom, Spacing.cardComfortable)
+    }
+
+    // MARK: - iPad Layout
+
+    @ViewBuilder
+    private func iPadDashboard(_ analytics: AnalyticsView) -> some View {
+        VStack(spacing: Spacing.card) {
+            // Top row: consistency + weekly summary side by side
+            HStack(spacing: Spacing.card) {
+                consistencyCard(analytics.streak)
+                weeklySummaryCard(analytics.weeklySummary)
+            }
+
+            // Insights + chart side by side
+            HStack(alignment: .top, spacing: Spacing.card) {
+                weeklyInsightsCard(
+                    neglected: analytics.neglectedItems,
+                    scoreChanges: analytics.scoreChanges
+                )
+                practiceChartCard(analytics.dailyTotals)
+            }
+
+            // Bottom row: top items + score trends side by side
+            HStack(alignment: .top, spacing: Spacing.card) {
+                topItemsCard(analytics.topItems)
+                scoreTrendsCard(analytics.scoreTrends)
+            }
+        }
+        .padding(.horizontal, Spacing.cardComfortable)
+        .padding(.bottom, Spacing.cardComfortable)
+    }
+
+    // MARK: - Practice Consistency (comeback framing, not streak)
+
+    @ViewBuilder
+    private func consistencyCard(_ streak: PracticeStreak) -> some View {
         CardView {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(streak.currentDays)")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(Color.warmAccentText)
-                    Text("day streak")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.textMuted)
+                    if streak.currentDays > 0 {
+                        Text("\(streak.currentDays) days")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(Color.warmAccentText)
+                        Text("of practice this week")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.textMuted)
+                    } else {
+                        Text("Welcome back")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(Color.warmAccentText)
+                        Text("Ready to pick up where you left off?")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.textMuted)
+                    }
                 }
                 Spacer()
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 32))
+                Image(systemName: streak.currentDays > 0 ? "music.note.list" : "music.note")
+                    .font(.system(size: 28))
                     .foregroundStyle(Color.warmAccent)
             }
         }
@@ -129,7 +182,7 @@ struct AnalyticsDashboardView: View {
         case .down:
             Image(systemName: "arrow.down")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.dangerText)
+                .foregroundStyle(Color.textMuted)
         case .same:
             Image(systemName: "minus")
                 .font(.system(size: 10, weight: .bold))
@@ -224,7 +277,7 @@ struct AnalyticsDashboardView: View {
                 } else {
                     Chart(dailyTotals, id: \.date) { (total: DailyPracticeTotal) in
                         BarMark(
-                            x: .value("Date", String(total.date.suffix(5))),
+                            x: .value("Date", formatChartDate(total.date)),
                             y: .value("Minutes", total.minutes)
                         )
                         .foregroundStyle(Color.accent.opacity(0.6))
@@ -344,6 +397,25 @@ struct AnalyticsDashboardView: View {
     }
 
     // MARK: - Helpers
+
+    private static let chartDateParser: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    private static let chartDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        return f
+    }()
+
+    private func formatChartDate(_ isoDate: String) -> String {
+        guard let date = Self.chartDateParser.date(from: isoDate) else {
+            return String(isoDate.suffix(5))
+        }
+        return Self.chartDateFormatter.string(from: date)
+    }
 
     private func formatMinutes(_ minutes: UInt32) -> String {
         if minutes >= 60 {
