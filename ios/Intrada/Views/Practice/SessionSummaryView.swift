@@ -222,6 +222,10 @@ struct SessionSummaryView: View {
                 core.update(.session(.saveSession(now: now)))
             }
 
+            RoutineSaveForm { name in
+                core.update(.routine(.saveSummaryAsRoutine(name: name)))
+            }
+
             ButtonView("Discard", variant: .dangerOutline) {
                 showDiscardConfirmation = true
             }

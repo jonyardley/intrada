@@ -56,21 +56,26 @@ struct MainTabView: View {
                 .tag(Tab.practice)
                 .badge(practiceTabHasActivity ? "●" : nil)
 
-            // Remaining tabs — placeholders
-            ForEach([Tab.routines, Tab.analytics], id: \.self) { tab in
-                NavigationStack {
-                    PlaceholderView(tab: tab)
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                accountMenu
-                            }
-                        }
-                }
+            // Routines — fully implemented
+            RoutineListView()
                 .tabItem {
-                    Label(tab.rawValue, systemImage: tab.icon)
+                    Label(Tab.routines.rawValue, systemImage: Tab.routines.icon)
                 }
-                .tag(tab)
+                .tag(Tab.routines)
+
+            // Analytics — placeholder
+            NavigationStack {
+                PlaceholderView(tab: .analytics)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            accountMenu
+                        }
+                    }
             }
+            .tabItem {
+                Label(Tab.analytics.rawValue, systemImage: Tab.analytics.icon)
+            }
+            .tag(Tab.analytics)
         }
         .tint(Color.accent)
         .confirmationDialog(

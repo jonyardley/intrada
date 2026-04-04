@@ -405,6 +405,10 @@ components. Always use the named token.
 | `SessionHistoryView` | Chronological session list with date grouping, session cards, swipe-to-delete, empty state |
 | `SessionDetailView` | Past session detail — header stats, entry results (read-only) |
 | `SessionEntryResultRow` | Shared entry result display — status icon, score/tempo/rep badges, editable or read-only |
+| `RoutineListView` | Routines tab root — list of routine cards, empty state, iPad NavigationSplitView |
+| `RoutineDetailView` | Routine detail — name, ordered item list, Edit button |
+| `RoutineEditView` | Edit routine — rename, reorder, add/remove items, Save/Cancel |
+| `RoutineSaveForm` | Collapsible save-as-routine form (name input), used in SetlistSheet and Summary |
 
 ### Rules for new iOS UI work
 
