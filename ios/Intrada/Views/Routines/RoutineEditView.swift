@@ -112,12 +112,8 @@ struct RoutineEditView: View {
     private var addFromLibrarySheet: some View {
         NavigationStack {
             List {
-                let existingItemIds = Set(entries.map(\.itemId))
                 ForEach(core.viewModel.items, id: \.id) { (item: LibraryItemView) in
-                    let alreadyAdded = existingItemIds.contains(item.id)
-
                     Button {
-                        guard !alreadyAdded else { return }
                         let newEntry = RoutineEntry(
                             id: UUID().uuidString,
                             itemId: item.id,
@@ -130,21 +126,18 @@ struct RoutineEditView: View {
                         HStack {
                             Text(item.title)
                                 .font(.system(size: 15, weight: .medium))
-                                .foregroundStyle(alreadyAdded ? Color.textFaint : Color.textPrimary)
+                                .foregroundStyle(Color.textPrimary)
                                 .lineLimit(1)
 
                             Spacer()
 
                             TypeBadge(kind: item.itemType)
 
-                            if alreadyAdded {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Color.successText)
-                            }
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Color.accentText)
                         }
                     }
-                    .disabled(alreadyAdded)
                     .listRowBackground(Color.surfaceSecondary)
                 }
             }

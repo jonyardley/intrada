@@ -13,11 +13,6 @@ struct RoutineListView: View {
         core.viewModel.routines
     }
 
-    private var selectedRoutine: RoutineView? {
-        guard let id = selectedRoutineId else { return nil }
-        return routines.first(where: { $0.id == id })
-    }
-
     var body: some View {
         Group {
             if sizeClass == .regular {
@@ -59,9 +54,7 @@ struct RoutineListView: View {
             .background(Color.backgroundApp)
             .navigationTitle("Routines")
             .navigationDestination(for: String.self) { routineId in
-                if let routine = routines.first(where: { $0.id == routineId }) {
-                    RoutineDetailView(routine: routine)
-                }
+                RoutineDetailView(routineId: routineId)
             }
         }
     }
@@ -80,8 +73,8 @@ struct RoutineListView: View {
             .background(Color.backgroundApp)
             .navigationTitle("Routines")
         } detail: {
-            if let routine = selectedRoutine {
-                RoutineDetailView(routine: routine)
+            if let selectedRoutineId {
+                RoutineDetailView(routineId: selectedRoutineId)
             } else {
                 EmptyStateView(
                     icon: "hand.tap",
