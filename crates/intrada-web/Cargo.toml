@@ -18,7 +18,7 @@ send_wrapper = "0.6.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 gloo-net = { version = "0.7", features = ["http", "json"] }
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Window", "Storage", "ClipboardEvent", "DataTransfer", "PointerEvent", "Element", "DomRect", "HtmlElement"] }

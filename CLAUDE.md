@@ -1,7 +1,7 @@
 # intrada Development Guidelines
 
 > **Maintenance reminder**: Review this file for accuracy every 2 weeks or after any
-> significant feature lands. Last reviewed: 2026-03-15.
+> significant feature lands. Last reviewed: 2026-04-03.
 
 ## Project Overview
 
@@ -379,6 +379,9 @@ components. Always use the named token.
 | `LibraryQueueRow`  | (new)           | Tap-to-queue library row with toggle state (accent bar + check/plus icon) |
 | `SetlistEntryRow`  | `SetlistEntryRow` | Compact entry with drag handle, progressive disclosure for duration/intention/reps |
 | `StickyBottomBar`  | (new)           | iPhone bottom bar — item count, total time, Start Session button |
+| `ProgressRingView` | `ProgressRing`  | Circular countdown timer using `Circle().trim()` |
+| `RepCounterView`   | (inline)        | Rep counter with Got it/Missed buttons, celebration state |
+| `ScoreSelectorView` | (inline)       | 1–5 confidence score dot selector |
 
 ### iOS views — feature screens
 
@@ -396,6 +399,16 @@ components. Always use the named token.
 | `SessionBuilderView` | Main builder — adaptive iPhone (list + bottom bar) / iPad (split view) layout |
 | `SessionBuilderListContent` | Scrollable library list with tap-to-queue rows and search filtering |
 | `SetlistSheetContent` | Setlist editor — intention, drag-to-reorder entries, Start Session (sheet on iPhone, panel on iPad) |
+| `ActivePracticeView` | Focus-mode active session — timer, progress ring, rep counter, pause overlay, iPhone + iPad layouts |
+| `TransitionPromptSheet` | Between-item scoring sheet — score (1–5), tempo wheel picker, notes, Continue/Finish |
+| `SessionSummaryView` | Post-session review — header stats, entry list with inline score/tempo/notes editing, Save/Discard |
+| `SessionHistoryView` | Chronological session list with date grouping, session cards, swipe-to-delete, empty state |
+| `SessionDetailView` | Past session detail — header stats, entry results (read-only) |
+| `SessionEntryResultRow` | Shared entry result display — status icon, score/tempo/rep badges, editable or read-only |
+| `RoutineListView` | Routines tab root — list of routine cards, empty state, iPad NavigationSplitView |
+| `RoutineDetailView` | Routine detail — name, ordered item list, Edit button |
+| `RoutineEditView` | Edit routine — rename, reorder, add/remove items, Save/Cancel |
+| `RoutineSaveForm` | Collapsible save-as-routine form (name input), used in SetlistSheet and Summary |
 
 ### Rules for new iOS UI work
 
@@ -422,6 +435,30 @@ components. Always use the named token.
    writing code, do a **clean** build to catch stale-cache false positives.
 
 Key files: `ios/Intrada/DesignSystem/` (tokens + modifiers), `ios/Intrada/Components/` (SwiftUI components)
+
+### iOS UX pattern rules (canonical — see Pencil "iOS / UX Pattern Guide")
+
+These rules apply to ALL iOS views. See #243 for the consistency sweep.
+
+10. **System navigation titles**: Use `.navigationTitle()` on every screen. Large title
+    on root views, inline on pushed views. Never use custom heading text as a title
+    replacement (except Active Session focus mode which hides the bar entirely).
+11. **NavigationSplitView on iPad**: Every list→detail screen MUST use
+    `NavigationSplitView` on iPad (detect via `horizontalSizeClass == .regular`).
+    Sidebar width: 320–420pt. No screen may ignore iPad.
+12. **CardView for all content sections**: Every content section wraps in `CardView`.
+    Dividers are only used INSIDE cards to separate items. Never use bare dividers
+    as section separators.
+13. **ButtonView for all actions**: Every tappable action uses `ButtonView(variant:)`.
+    Never use raw `Button` with custom styling. Toolbar actions use `.toolbar { ToolbarItem }`.
+14. **EmptyStateView for all empty states**: Use the `EmptyStateView` component.
+    Never use custom VStack empty layouts or `ContentUnavailableView`.
+15. **Spacing tokens only**: Use `Spacing.cardCompact` (12), `Spacing.card` (16),
+    `Spacing.cardComfortable` (24). Never hardcode spacing values.
+16. **Destructive confirmations**: All destructive actions use `.confirmationDialog`
+    with `titleVisibility: .visible`. Never delete/discard without asking.
+17. **No custom back buttons**: Never use manual BackLink components on iOS.
+    NavigationStack provides system back buttons automatically.
 
 ## Roadmap Alignment
 
@@ -537,6 +574,8 @@ Key files: `design/intrada.pen` (design system + views), `intrada-web/input.css`
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso) (001-ios-library)
 - Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated types) (196-ios-session-builder)
 - N/A (all persistence via Crux core HTTP effects → REST API → Turso; crash recovery via UserDefaults) (196-ios-session-builder)
+- Swift 6.0, iOS 17.0+ + SwiftUI, UniFFI (CoreFfi), BCS serialization (auto-generated SharedTypes) (197-ios-active-session)
+- UserDefaults via `SessionStorage.swift` (crash recovery only, handled by existing effect processor) (197-ios-active-session)
 
 ## Recent Changes
 - 001-ios-library: Added Swift 6.0, iOS 17.0+ + SwiftUI, ClerkKit, UniFFI (CoreFfi), BCS serialization (auto-generated)

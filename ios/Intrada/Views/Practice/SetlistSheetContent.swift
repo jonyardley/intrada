@@ -7,10 +7,10 @@ import SwiftUI
 /// total time, and a Start Session button.
 struct SetlistSheetContent: View {
     @Environment(IntradaCore.self) private var core
-    @Binding var expandedEntryId: String?
     let onStartSession: () -> Void
 
     @State private var intentionText: String = ""
+    @State private var showRoutinePicker: Bool = false
 
     private var setlist: BuildingSetlistView? {
         core.viewModel.buildingSetlist
@@ -34,16 +34,15 @@ struct SetlistSheetContent: View {
 
                 Spacer()
 
-                // Load Routine link (P3 — placeholder)
                 if !core.viewModel.routines.isEmpty {
                     Button("Load Routine") {
-                        // TODO: Implement in US4
+                        showRoutinePicker = true
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Color.accentText)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.top, 16)
             .padding(.bottom, 12)
 
@@ -70,7 +69,7 @@ struct SetlistSheetContent: View {
                         )))
                     }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.bottom, 16)
 
             Divider()
@@ -83,7 +82,7 @@ struct SetlistSheetContent: View {
                     .foregroundStyle(Color.textPrimary)
                 Spacer()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, 12)
 
             // Setlist entries with drag-to-reorder
@@ -102,12 +101,6 @@ struct SetlistSheetContent: View {
                     ForEach(entries, id: \.id) { (entry: SetlistEntryView) in
                         SetlistEntryRow(
                             entry: entry,
-                            isExpanded: expandedEntryId == entry.id,
-                            onTap: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    expandedEntryId = expandedEntryId == entry.id ? nil : entry.id
-                                }
-                            },
                             onRemove: {
                                 core.update(.session(.removeFromSetlist(entryId: entry.id)))
                             },
@@ -171,21 +164,66 @@ struct SetlistSheetContent: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .disabled(entries.isEmpty)
+
+                if !entries.isEmpty {
+                    RoutineSaveForm { name in
+                        core.update(.routine(.saveBuildingAsRoutine(name: name)))
+                    }
+                }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Spacing.cardComfortable)
             .padding(.vertical, 12)
             .padding(.bottom, 20)
         }
         .onAppear {
-            // Initialise intention from ViewModel
             intentionText = setlist?.sessionIntention ?? ""
+        }
+        .sheet(isPresented: $showRoutinePicker) {
+            routinePickerSheet
+        }
+    }
+
+    // MARK: - Routine Picker
+
+    private var routinePickerSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(core.viewModel.routines, id: \.id) { (routine: RoutineView) in
+                    Button {
+                        core.update(.routine(.loadRoutineIntoSetlist(routineId: routine.id)))
+                        showRoutinePicker = false
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(routine.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.textPrimary)
+                            Text("\(routine.entryCount) items")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.textMuted)
+                        }
+                    }
+                    .listRowBackground(Color.surfaceSecondary)
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.backgroundApp)
+            .navigationTitle("Load Routine")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        showRoutinePicker = false
+                    }
+                    .foregroundStyle(Color.accentText)
+                }
+            }
         }
     }
 }
 
 #Preview {
     SetlistSheetContent(
-        expandedEntryId: .constant(nil),
         onStartSession: {}
     )
     .environment(IntradaCore())
