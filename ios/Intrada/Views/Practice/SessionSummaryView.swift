@@ -46,12 +46,19 @@ struct SessionSummaryView: View {
 
     private var iPhoneLayout: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: Spacing.cardCompact) {
                 headerSection
-                Divider().background(Color.borderDefault)
-                entryList
-                Divider().background(Color.borderDefault)
-                sessionNotesSection
+
+                CardView(padding: 0) {
+                    entryList
+                }
+                .padding(.horizontal, Spacing.card)
+
+                CardView {
+                    sessionNotesContent
+                }
+                .padding(.horizontal, Spacing.card)
+
                 actionsSection
             }
         }
@@ -63,10 +70,14 @@ struct SessionSummaryView: View {
         HStack(spacing: 0) {
             // Left: stats + notes + actions
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: Spacing.cardCompact) {
                     headerSection
-                    Divider().background(Color.borderDefault)
-                    sessionNotesSection
+
+                    CardView {
+                        sessionNotesContent
+                    }
+                    .padding(.horizontal, Spacing.card)
+
                     actionsSection
                 }
             }
@@ -76,7 +87,7 @@ struct SessionSummaryView: View {
 
             // Right: entry list
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: Spacing.cardCompact) {
                     HStack {
                         Text("ITEMS PRACTICED")
                             .font(.system(size: 9, weight: .semibold))
@@ -85,9 +96,12 @@ struct SessionSummaryView: View {
                         Spacer()
                     }
                     .padding(.horizontal, Spacing.cardComfortable)
-                    .padding(.vertical, Spacing.card)
+                    .padding(.top, Spacing.card)
 
-                    entryList
+                    CardView(padding: 0) {
+                        entryList
+                    }
+                    .padding(.horizontal, Spacing.card)
                 }
             }
         }
@@ -168,7 +182,7 @@ struct SessionSummaryView: View {
 
     // MARK: - Session Notes
 
-    private var sessionNotesSection: some View {
+    private var sessionNotesContent: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Session Notes")
                 .font(.system(size: 13, weight: .semibold))
@@ -178,7 +192,7 @@ struct SessionSummaryView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(Color.textPrimary)
                 .lineLimit(3...6)
-                .padding(12)
+                .padding(Spacing.cardCompact)
                 .background(Color.surfaceInput)
                 .clipShape(RoundedRectangle(cornerRadius: DesignRadius.input))
                 .overlay(
@@ -189,7 +203,6 @@ struct SessionSummaryView: View {
                     commitSessionNotes()
                 }
                 .onChange(of: sessionNotesText) {
-                    // Debounce: only commit after 1s pause in typing
                     sessionNotesCommitTask?.cancel()
                     sessionNotesCommitTask = Task {
                         try? await Task.sleep(for: .seconds(1))
@@ -198,8 +211,6 @@ struct SessionSummaryView: View {
                     }
                 }
         }
-        .padding(.horizontal, Spacing.cardComfortable)
-        .padding(.vertical, Spacing.card)
     }
 
     // MARK: - Actions
