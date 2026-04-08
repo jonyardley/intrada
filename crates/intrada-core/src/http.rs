@@ -115,7 +115,12 @@ pub fn create_session(api_base_url: &str, session: &PracticeSession) -> Command<
         .expect("serialize PracticeSession")
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchSessions,
+            // Don't re-fetch: SaveSession already pushed the session into the
+            // model optimistically and rebuilt practice_summaries. Re-fetching
+            // could overwrite the optimistic data with a stale server response
+            // before the write is visible, causing #247 (practice data not
+            // updating after session save).
+            Ok(_) => Event::SessionSaved,
             Err(e) => Event::LoadFailed(format!("Failed to save session: {e}")),
         })
 }

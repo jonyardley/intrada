@@ -73,6 +73,8 @@ pub enum Event {
     },
     /// Server confirmed a delete — model already updated optimistically.
     DeleteConfirmed,
+    /// Server confirmed session creation — model already updated optimistically.
+    SessionSaved,
 
     // ── Error handling ──────────────────────────────────────────────
     LoadFailed(String),
@@ -188,9 +190,9 @@ impl App for Intrada {
                 }
                 crux_core::render::render()
             }
-            Event::DeleteConfirmed => {
-                // Model was already updated optimistically; just re-render to confirm.
-                crux_core::render::render()
+            Event::DeleteConfirmed | Event::SessionSaved => {
+                // Model was already updated optimistically; no action needed.
+                Command::done()
             }
 
             // ── Error handling ───────────────────────────────────────

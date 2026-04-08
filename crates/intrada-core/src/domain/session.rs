@@ -1641,6 +1641,51 @@ mod tests {
     }
 
     #[test]
+    fn test_save_session_updates_practice_summaries_in_view() {
+        // Regression test for #247: practice data must be visible in the
+        // ViewModel immediately after SaveSession, without a re-fetch.
+        let mut model = model_with_summary();
+
+        // Score the first entry before saving
+        if let SessionStatus::Summary(ref mut summary) = model.session_status {
+            summary.entries[0].score = Some(4);
+        }
+
+        let now = Utc::now();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now }),
+        );
+
+        // The model should have updated practice_summaries
+        assert!(
+            !model.practice_summaries.is_empty(),
+            "practice_summaries should be populated after save"
+        );
+
+        // Build the view — this is what the shell sees
+        let app = crate::app::Intrada;
+        let vm = <crate::app::Intrada as crux_core::App>::view(&app, &model);
+
+        // Find the item that was practised (piece-1)
+        let practised_item = vm.items.iter().find(|i| i.id == "piece-1");
+        assert!(
+            practised_item.is_some(),
+            "piece-1 should be in the ViewModel"
+        );
+
+        let practice = practised_item.unwrap().practice.as_ref();
+        assert!(
+            practice.is_some(),
+            "piece-1 should have practice data after SaveSession"
+        );
+
+        let practice = practice.unwrap();
+        assert_eq!(practice.session_count, 1);
+        assert_eq!(practice.latest_score, Some(4));
+    }
+
+    #[test]
     fn test_discard_session() {
         let mut model = model_with_summary();
 
