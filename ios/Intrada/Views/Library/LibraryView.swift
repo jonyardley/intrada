@@ -47,6 +47,17 @@ struct LibraryView: View {
                 AddItemView()
             }
         }
+        .onAppear { autoSelectFirstItem() }
+        .onChange(of: core.viewModel.items.first?.id) { _, _ in
+            autoSelectFirstItem()
+        }
+    }
+    /// Auto-select the first library item on iPad when nothing is selected.
+    /// No-ops on iPhone (NavigationSplitView collapses to a stack).
+    private func autoSelectFirstItem() {
+        guard selectedItemId == nil,
+              let firstId = core.viewModel.items.first?.id else { return }
+        selectedItemId = firstId
     }
 }
 
