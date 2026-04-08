@@ -7,24 +7,31 @@ Intrada is organised around three activity pillars: **Plan** (decide what to pra
 ## Architecture
 
 ```
-┌─────────────────────┐     HTTPS      ┌──────────────────┐     libsql     ┌──────────┐
-│  Cloudflare Workers │ ─────────────→ │  Fly.io (Axum)   │ ────────────→ │  Turso   │
-│  (static WASM app)  │   REST API     │  intrada-api     │               │  (SQLite) │
-└─────────────────────┘                └──────────────────┘               └──────────┘
+┌─────────────────────┐                    ┌──────────────────┐               ┌──────────┐
+│  Cloudflare Workers │     HTTPS/REST     │  Fly.io (Axum)   │    libsql     │  Turso   │
+│  (Leptos WASM app)  │ ─────────────────→ │  intrada-api     │ ────────────→ │  (SQLite) │
+└─────────────────────┘                    └──────────────────┘               └──────────┘
+                                                    ↑
+┌─────────────────────┐     HTTPS/REST              │
+│  iOS app (SwiftUI)  │ ───────────────────────────-┘
+│  UniFFI + BCS       │
+└─────────────────────┘
 ```
 
-- **Frontend**: Leptos CSR + WASM, deployed as static files to Cloudflare Workers
-- **API**: Axum 0.8 REST server, deployed to Fly.io via Docker
-- **Database**: Turso (managed libsql/SQLite), accessed via HTTP
-- **Core**: Pure Rust business logic shared across shells via Crux
+Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all business logic with zero side effects. Events go in, commands (effects) come out. Platform shells (web + iOS) are dumb I/O pipes — they execute HTTP requests and render the ViewModel without understanding domain types.
 
-Intrada follows the Crux pure-core pattern: the core (`intrada-core`) contains all business logic with zero side effects. Events go in, commands (effects) come out. The web shell (`intrada-web`) runs the core in the browser via WASM, communicating with the API server for data persistence. The core never touches a database, network, or DOM directly — making it testable in isolation and portable across shells.
+- **Web shell**: Leptos CSR + WASM, deployed to Cloudflare Workers
+- **iOS shell**: SwiftUI, using UniFFI with BCS serialization for the Crux bridge
+- **API**: Axum 0.8 REST server on Fly.io
+- **Database**: Turso (managed libsql/SQLite) via HTTP
+- **Auth**: Clerk (Google OAuth), JWT RS256
 
 ## Prerequisites
 
 - Rust stable (2021 edition, 1.75+)
 - [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
+- For iOS: Xcode 16+, Swift 6.0, iOS 17.0+ target
 
 ## Quick start
 
@@ -45,118 +52,54 @@ just dev
 Run `just` to see all commands. Key ones:
 
 ```bash
-just dev        # Start API + web dev servers concurrently
-just dev-api    # Start only the API server
-just dev-web    # Start only the Trunk dev server
-just test       # Run all tests
-just lint       # Run clippy
-just fmt        # Format code
-just check      # Run test + clippy + format check
-just seed       # Seed development data (API must be running)
-just build      # Build WASM for production/E2E
-just e2e        # Build + run Playwright E2E tests
-```
+# Development
+just dev          # Start API + web dev servers concurrently
+just dev-api      # Start only the API server
+just dev-web      # Start only the Trunk dev server
 
-## Getting started (manual)
+# Quality
+just test         # Run all tests
+just lint         # Run clippy
+just fmt          # Format code
+just check        # Run test + clippy + format check
 
-If you prefer not to use `just`, all commands should be run from the project root:
+# Web
+just build        # Build WASM for production/E2E
+just e2e          # Build + run Playwright E2E tests
 
-```bash
-# Build all crates
-cargo build
+# iOS
+just ios          # Cross-compile for iOS + generate types + UniFFI bindings
+just ios-sim      # Build for iOS Simulator
+just ios-run      # Build for sim + launch
+just ios-smoke-test  # Build + launch, verify no crash
 
-# Run tests
-cargo test
+# Type generation
+just typegen      # Regenerate Swift types from Rust domain types
+just typegen-check  # Verify generated types are up to date (CI)
 
-# Run clippy
-cargo clippy
-```
-
-### Web app (local development)
-
-```bash
-trunk serve --config crates/intrada-web/Trunk.toml
-# → http://localhost:8080 (proxies /api/* to localhost:3001)
-```
-
-### API server (requires Turso credentials)
-
-```bash
-export TURSO_DATABASE_URL="libsql://intrada-<your-org>.turso.io"
-export TURSO_AUTH_TOKEN="<your-token>"
-export ALLOWED_ORIGIN="http://localhost:8080"
-export PORT=3001
-
-cargo run -p intrada-api
-```
-
-See [SETUP.md](SETUP.md) for full deployment and configuration instructions.
-
-### Seed data (local development)
-
-To populate the API with realistic sample data (8 pieces, 5 exercises, ~25 practice sessions spanning 35 days), run the seed script while the API server is running:
-
-```bash
-# Requires: curl, jq
-just seed
-# or: bash scripts/seed-dev-data.sh
-```
-
-This creates a realistic dataset with score progression, practice streaks, varied session lengths, and mixed completion statuses — useful for seeing how the library, session history, and analytics dashboard look with real data.
-
-```bash
-# Seed the live environment (Fly.io) — prompts for confirmation
-bash scripts/seed-dev-data.sh --live
-
-# Point at a different API server
-API_URL=https://your-api.example.com bash scripts/seed-dev-data.sh
-
-# Delete all existing data first, then re-seed
-bash scripts/seed-dev-data.sh --clean
+# Data
+just seed         # Seed development data (API must be running)
 ```
 
 ## Project structure
 
 ```
 crates/
-  intrada-core/       # Pure core library (no I/O)
-    src/
-      app.rs          # Crux app: Event -> update Model -> Command<Effect>
-      model.rs        # Application state and ViewModel
-      validation.rs   # Input validation rules and shared constants
-      error.rs        # Error types
-      domain/
-        item.rs       # Library item event handlers (pieces + exercises)
-        session.rs    # Practice session event handlers
-        routine.rs    # Routine event handlers
-        types.rs      # Domain types (Item, Tempo, etc.)
+  intrada-core/       # Pure Crux core (no I/O, no side effects)
   intrada-web/        # Web shell (Leptos CSR + WASM)
-    src/
-      lib.rs          # Library crate root (shared modules)
-      main.rs         # Binary entry point
-      app.rs          # Leptos app root and routing
-      core_bridge.rs  # Connects Crux effects to web APIs (HTTP + localStorage)
-      api_client.rs   # Async HTTP client (gloo-net) for REST API
-      helpers.rs      # Form parsing utilities
-      validation.rs   # Client-side validation (uses core constants)
-      types.rs        # Shared types (SharedCore, IsLoading, etc.)
-      components/     # Reusable UI primitives
-      views/          # Page-level views (list, detail, add, edit, sessions)
-    tests/
-      wasm.rs         # WASM integration tests
-  intrada-api/        # REST API server (Axum + Turso)
-    src/
-      main.rs         # Server entry point (Axum + CORS + migrations)
-      routes/         # HTTP handlers (items, sessions, routines, health)
-      db/             # Database layer (libsql CRUD operations)
-      migrations.rs   # Auto-run schema setup
-      error.rs        # API error types → HTTP responses
-      state.rs        # Shared app state (Arc<Database>)
+  intrada-api/        # REST API (Axum + Turso)
+  shared/             # UniFFI bindings + CoreFfi/CoreJson bridges
+  shared_types/       # Facet typegen — auto-generates Swift types with BCS
+design/               # Pencil design system (intrada.pen)
+docs/                 # Product roadmap and documentation
 e2e/                  # Playwright E2E tests
-  fixtures/           # API mocking (page.route interception)
-  tests/              # Test specs (smoke, add-item, detail, navigation, sessions)
-scripts/              # Development utilities
-  seed-dev-data.sh    # Populate API with realistic sample data
+ios/Intrada/          # iOS app (SwiftUI shell)
+  Core/               # Crux bridge (effect processor)
+  DesignSystem/       # Tokens (Color, Font, Spacing) + ViewModifiers
+  Components/         # Reusable SwiftUI components
+  Views/              # Feature screens
+  Generated/          # Auto-generated types (SharedTypes, Serde, UniFFI)
+scripts/              # Development utilities (seed data, build helpers)
 specs/                # SpecKit design artifacts
 ```
 
@@ -164,23 +107,23 @@ specs/                # SpecKit design artifacts
 
 - **API server**: Items (pieces and exercises), sessions, and routines are stored in Turso (managed SQLite) via the REST API. Migrations run automatically on server startup.
 - **Browser (localStorage)**: Only used for crash recovery of in-progress sessions (`intrada:session-in-progress` key). All other data flows through the API.
+- **iOS (UserDefaults)**: Same crash recovery pattern as web, single key only.
 - **IDs**: ULIDs generated server-side.
 
 ## Documentation
 
 | Document | Purpose |
 |----------|---------|
-| [`CLAUDE.md`](CLAUDE.md) | Development guidelines, tech stack, architecture, design system |
-| [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars, horizons, issue tracker) — **single source of truth for what's next** |
-| [`VISION.md`](VISION.md) | Product vision, research foundation, feature detail |
+| [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
+| [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars) — **single source of truth** |
+| [`VISION.md`](VISION.md) | Product vision and research foundation |
 | [`SETUP.md`](SETUP.md) | Deployment & configuration (Cloudflare, Fly.io, Turso, CI/CD) |
-| [`specs/design-system.md`](specs/design-system.md) | Design token reference and visual language |
 
 ## CI/CD
 
 GitHub Actions runs on every push:
 
-- **PR checks**: test, clippy, fmt, WASM build, WASM tests, E2E tests (Playwright)
+- **PR checks**: test, clippy, fmt, WASM build, WASM tests, typegen freshness, E2E tests (Playwright)
 - **Push to main**: all checks + deploy frontend (Cloudflare Workers) + deploy API (Fly.io)
 
 ## License
