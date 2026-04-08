@@ -150,7 +150,7 @@ struct ActivePracticeView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .tracking(1.5)
                 .foregroundStyle(Color.textSecondary)
-                .padding(.top, 16)
+                .padding(.top, Spacing.card)
 
             Spacer()
 
@@ -175,7 +175,7 @@ struct ActivePracticeView: View {
             // Controls
             controlsSection
                 .padding(.horizontal, Spacing.cardComfortable)
-                .padding(.bottom, 40)
+                .padding(.bottom, Spacing.section)
         }
     }
 
@@ -191,7 +191,7 @@ struct ActivePracticeView: View {
                 .background(Color.borderDefault)
 
             // Main focus area
-            VStack(spacing: 20) {
+            VStack(spacing: Spacing.cardComfortable) {
                 Text(positionLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .tracking(1.5)
@@ -295,8 +295,8 @@ struct ActivePracticeView: View {
     // MARK: - Controls
 
     private var controlsSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(spacing: Spacing.cardCompact) {
+            HStack(spacing: Spacing.cardCompact) {
                 if isLastItem {
                     ButtonView("Finish", variant: .primary) {
                         showTransitionPrompt = true
@@ -329,14 +329,14 @@ struct ActivePracticeView: View {
 
     private var pauseOverlay: some View {
         ZStack {
-            Color.black.opacity(0.8)
+            Color.surfaceOverlay
                 .ignoresSafeArea()
                 .onTapGesture {
                     isPaused = false
                     showPauseOverlay = false
                 }
 
-            VStack(spacing: 16) {
+            VStack(spacing: Spacing.card) {
                 Image(systemName: "pause.circle")
                     .font(.system(size: 48))
                     .foregroundStyle(Color.accentText)
@@ -353,7 +353,7 @@ struct ActivePracticeView: View {
                     .background(Color.borderDefault)
                     .padding(.vertical, 4)
 
-                VStack(spacing: 10) {
+                VStack(spacing: Spacing.cardCompact) {
                     ButtonView("Resume", variant: .primary) {
                         isPaused = false
                         showPauseOverlay = false
@@ -403,7 +403,7 @@ struct ActivePracticeView: View {
 
             Divider().background(Color.borderDefault)
 
-            HStack(spacing: 16) {
+            HStack(spacing: Spacing.card) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ELAPSED")
                         .font(.system(size: 9, weight: .semibold))
