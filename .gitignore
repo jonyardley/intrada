@@ -31,8 +31,9 @@ DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
-# Generated Swift types & bindings
-ios/Generated/
+# Generated Swift types & bindings (always regenerated from Rust sources)
+crates/shared_types/generated/
+ios/Intrada/Generated/
 # iOS universal simulator library
 target/universal-ios-sim/
 # Fastlane
