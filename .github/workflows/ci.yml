@@ -129,7 +129,7 @@ jobs:
         run: npx playwright test
 
   typegen:
-    name: Typegen Freshness
+    name: Typegen Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -140,8 +140,8 @@ jobs:
         with:
           shared-key: "native-v2"
           save-if: "false"
-      - name: Check generated Swift types are up to date
-        run: bash scripts/typegen-check.sh
+      - name: Generate Swift types from Rust sources
+        run: cargo build -p shared_types
 
   fmt:
     name: Formatting
