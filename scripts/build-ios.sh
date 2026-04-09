@@ -69,6 +69,37 @@ echo "  Profile: $PROFILE"
 echo ""
 
 # ───────────────────────────────────────────────────
+# Pre-flight: verify Xcode (not just Command Line Tools)
+# ───────────────────────────────────────────────────
+
+XCODE_PATH=$(xcode-select -p 2>/dev/null || echo "")
+if [[ "$XCODE_PATH" == */CommandLineTools* ]] || [ -z "$XCODE_PATH" ]; then
+    echo "❌ Full Xcode installation required for iOS builds." >&2
+    echo "   Current developer dir: ${XCODE_PATH:-<not set>}" >&2
+    echo "" >&2
+    echo "   If Xcode is installed, run:" >&2
+    echo "     sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+    echo "" >&2
+    echo "   If Xcode is not installed, download it from the App Store or" >&2
+    echo "   https://developer.apple.com/xcode/" >&2
+    exit 1
+fi
+
+if [ "$BUILD_DEVICE" = true ] && ! xcrun --sdk iphoneos --show-sdk-path &>/dev/null; then
+    echo "❌ iPhoneOS SDK not found." >&2
+    echo "   Current developer dir: $XCODE_PATH" >&2
+    echo "   Try: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+    exit 1
+fi
+
+if [ "$BUILD_SIM" = true ] && ! xcrun --sdk iphonesimulator --show-sdk-path &>/dev/null; then
+    echo "❌ iPhone Simulator SDK not found." >&2
+    echo "   Install via: Xcode → Settings → Platforms → iOS Simulator" >&2
+    echo "   Or skip simulator with: $0 --device" >&2
+    exit 1
+fi
+
+# ───────────────────────────────────────────────────
 # Step 1: Cross-compile shared crate for iOS targets
 # ───────────────────────────────────────────────────
 
