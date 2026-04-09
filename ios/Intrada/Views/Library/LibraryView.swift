@@ -35,10 +35,10 @@ struct LibraryView: View {
                     selectedItemId: $selectedItemId
                 )
             } else {
-                ContentUnavailableView(
-                    "Select an Item",
-                    systemImage: "music.note",
-                    description: Text("Choose an item from your library")
+                EmptyStateView(
+                    icon: "music.note",
+                    title: "Select an Item",
+                    message: "Choose an item from your library"
                 )
             }
         }

@@ -20,8 +20,9 @@ pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
         .expect_json::<Vec<Item>>()
         .build()
         .then_send(|result| match result {
-            Ok(response) => Event::DataLoaded {
-                items: response.body().cloned().unwrap_or_default(),
+            Ok(response) => match response.body().cloned() {
+                Some(items) => Event::DataLoaded { items },
+                None => Event::LoadFailed("Failed to parse items response".into()),
             },
             Err(e) => Event::LoadFailed(format!("Failed to load items: {e}")),
         })
@@ -32,8 +33,9 @@ pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
         .expect_json::<Vec<PracticeSession>>()
         .build()
         .then_send(|result| match result {
-            Ok(response) => Event::SessionsLoaded {
-                sessions: response.body().cloned().unwrap_or_default(),
+            Ok(response) => match response.body().cloned() {
+                Some(sessions) => Event::SessionsLoaded { sessions },
+                None => Event::LoadFailed("Failed to parse sessions response".into()),
             },
             Err(e) => Event::LoadFailed(format!("Failed to load sessions: {e}")),
         })
@@ -46,8 +48,9 @@ pub fn fetch_routines(api_base_url: &str) -> Command<Effect, Event> {
         .expect_json::<Vec<Routine>>()
         .build()
         .then_send(|result| match result {
-            Ok(response) => Event::RoutinesLoaded {
-                routines: response.body().cloned().unwrap_or_default(),
+            Ok(response) => match response.body().cloned() {
+                Some(routines) => Event::RoutinesLoaded { routines },
+                None => Event::LoadFailed("Failed to parse routines response".into()),
             },
             Err(e) => Event::LoadFailed(format!("Failed to load routines: {e}")),
         })
