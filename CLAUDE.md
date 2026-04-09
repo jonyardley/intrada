@@ -46,7 +46,6 @@ cargo test                 # all workspace tests
 cargo clippy               # lint check
 cargo test -p intrada-api  # API tests only
 just typegen               # regenerate Swift types after core type changes
-just typegen-check         # verify generated types are fresh (CI)
 just ios-swift-check       # quick Swift compile check (~30s) — ALWAYS after .swift edits
 just ios-smoke-test        # build + launch on sim (~15s) — after env/nav changes
 just ios-preview-check     # validate #Preview blocks
@@ -84,7 +83,8 @@ data in shell-local state. UI-only state stays in shell signals/`@State`.
 ### Type generation
 
 Pipeline: `facet` derive macros → `shared_types/build.rs` → Swift package with BCS.
-Run `just typegen` after changing any `Facet`-derived type. CI enforces freshness.
+Run `just typegen` after changing any `Facet`-derived type. Generated types are
+NOT committed — they're rebuilt from Rust sources in CI and local builds.
 
 **NEVER use `serde_repr`** on types in ViewModel or FFI traffic — causes byte-width
 mismatch (i8 vs u32 variant indices), corrupting the BCS byte stream.
@@ -95,7 +95,8 @@ mismatch (i8 vs u32 variant indices), corrupting the BCS byte stream.
 - **DB**: Positional column indexing with `SELECT_COLUMNS` const
 - **Migrations**: Sequential in `intrada-api/src/migrations.rs`, one SQL statement each
 - **Mutate response**: Updates/deletes use API response directly (no re-fetch).
-  Creates re-fetch the full list (server assigns ID).
+  Session creates use optimistic push (no re-fetch). Item creates re-fetch the
+  full list (server assigns ID).
 
 ## Authentication
 

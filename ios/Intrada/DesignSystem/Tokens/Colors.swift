@@ -192,6 +192,11 @@ extension Color {
     /// Chart bar fills — accent @ 40%
     static let chartBar = Color(red: 0.271, green: 0.265, blue: 0.915, opacity: 0.40)
 
+    // MARK: - Overlays
+
+    /// Full-screen dimming overlay (pause, modal backdrops)
+    static let surfaceOverlay = Color.black.opacity(0.8)
+
     // MARK: - Shadows
 
     /// Default drop shadow colour

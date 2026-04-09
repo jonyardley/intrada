@@ -77,9 +77,6 @@ typegen:
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     @echo "✓ Swift types generated (Xcode incremental cache invalidated)"
 
-# Check that generated Swift types are up to date (CI use)
-typegen-check:
-    bash scripts/typegen-check.sh
 
 # ─────────────────────────────────────────────
 # iOS
