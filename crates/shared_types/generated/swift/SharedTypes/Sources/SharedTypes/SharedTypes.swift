@@ -750,6 +750,7 @@ indirect public enum Event: Hashable {
     case itemUpdated(item: Item)
     case routineUpdated(routine: Routine)
     case deleteConfirmed
+    case sessionSaved
     case loadFailed(String)
     case clearError
     case setQuery(ListQuery?)
@@ -800,13 +801,15 @@ indirect public enum Event: Hashable {
             try routine.serialize(serializer: serializer)
         case .deleteConfirmed:
             try serializer.serialize_variant_index(value: 13)
-        case .loadFailed(let x):
+        case .sessionSaved:
             try serializer.serialize_variant_index(value: 14)
+        case .loadFailed(let x):
+            try serializer.serialize_variant_index(value: 15)
             try serializer.serialize_str(value: x)
         case .clearError:
-            try serializer.serialize_variant_index(value: 15)
-        case .setQuery(let x):
             try serializer.serialize_variant_index(value: 16)
+        case .setQuery(let x):
+            try serializer.serialize_variant_index(value: 17)
             try serializeOption(value: x, serializer: serializer) { value, serializer in
                 try value.serialize(serializer: serializer)
             }
@@ -882,13 +885,16 @@ indirect public enum Event: Hashable {
             try deserializer.decrease_container_depth()
             return .deleteConfirmed
         case 14:
+            try deserializer.decrease_container_depth()
+            return .sessionSaved
+        case 15:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .loadFailed(x)
-        case 15:
+        case 16:
             try deserializer.decrease_container_depth()
             return .clearError
-        case 16:
+        case 17:
             let x = try deserializeOption(deserializer: deserializer) { deserializer in
                 try ListQuery.deserialize(deserializer: deserializer)
             }
