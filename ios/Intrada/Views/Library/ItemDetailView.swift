@@ -71,10 +71,10 @@ struct ItemDetailView: View {
             } else if core.isLoading {
                 DetailSkeletonView()
             } else {
-                ContentUnavailableView(
-                    "Item Not Found",
-                    systemImage: "questionmark.circle",
-                    description: Text("This item may have been deleted")
+                EmptyStateView(
+                    icon: "questionmark.circle",
+                    title: "Item Not Found",
+                    message: "This item may have been deleted"
                 )
             }
         }
@@ -130,6 +130,7 @@ struct ItemDetailView: View {
                 Text(item.title)
                     .font(.heading(size: 28))
                     .foregroundStyle(Color.textPrimary)
+                    .lineLimit(3)
             }
 
             if !item.subtitle.isEmpty {
