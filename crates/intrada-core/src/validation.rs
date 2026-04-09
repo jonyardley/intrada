@@ -34,18 +34,7 @@ pub fn validate_title(title: &str) -> Result<(), LibraryError> {
 }
 
 pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
-    if input.title.is_empty() {
-        return Err(LibraryError::Validation {
-            field: "title".to_string(),
-            message: "Title is required".to_string(),
-        });
-    }
-    if input.title.len() > MAX_TITLE {
-        return Err(LibraryError::Validation {
-            field: "title".to_string(),
-            message: format!("Title must be between 1 and {MAX_TITLE} characters"),
-        });
-    }
+    validate_title(&input.title)?;
     // Composer is required for pieces, optional for exercises.
     match input.kind {
         ItemKind::Piece => {
@@ -93,18 +82,7 @@ pub fn validate_create_item(input: &CreateItem) -> Result<(), LibraryError> {
 
 pub fn validate_update_item(input: &UpdateItem) -> Result<(), LibraryError> {
     if let Some(ref title) = input.title {
-        if title.is_empty() {
-            return Err(LibraryError::Validation {
-                field: "title".to_string(),
-                message: "Title is required".to_string(),
-            });
-        }
-        if title.len() > MAX_TITLE {
-            return Err(LibraryError::Validation {
-                field: "title".to_string(),
-                message: format!("Title must be between 1 and {MAX_TITLE} characters"),
-            });
-        }
+        validate_title(title)?;
     }
     if let Some(Some(ref composer)) = input.composer {
         if composer.is_empty() || composer.len() > MAX_COMPOSER {
@@ -371,7 +349,7 @@ mod tests {
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
-                assert_eq!(message, "Title is required");
+                assert_eq!(message, "Title must be between 1 and 500 characters");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -544,7 +522,7 @@ mod tests {
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
-                assert_eq!(message, "Title is required");
+                assert_eq!(message, "Title must be between 1 and 500 characters");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -829,7 +807,7 @@ mod tests {
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "title");
-                assert_eq!(message, "Title is required");
+                assert_eq!(message, "Title must be between 1 and 500 characters");
             }
             _ => panic!("Expected Validation error"),
         }
