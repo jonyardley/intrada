@@ -70,6 +70,12 @@ struct MainTabView: View {
                 }
             .tag(Tab.analytics)
         }
+        .onChange(of: core.viewModel.sessionStatus) { _, newStatus in
+            // Auto-switch to Practice tab when a routine is loaded or session starts
+            if newStatus == .building || newStatus == .active {
+                selectedTab = .practice
+            }
+        }
         .tint(Color.accent)
         .confirmationDialog(
             "Sign Out",

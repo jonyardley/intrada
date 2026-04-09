@@ -30,6 +30,12 @@ struct RoutineDetailView: View {
                         .padding(.horizontal, Spacing.card)
                         .padding(.top, Spacing.card)
 
+                        // Start practice button
+                        ButtonView("Start Practice", variant: .primary) {
+                            core.update(.routine(.loadRoutineIntoSetlist(routineId: routine.id)))
+                        }
+                        .padding(.horizontal, Spacing.card)
+
                         // Entry list card
                         CardView(padding: 0) {
                             LazyVStack(spacing: 0) {
