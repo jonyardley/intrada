@@ -65,7 +65,7 @@ struct SessionBuilderView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Spacing.cardCompact)
         .frame(height: 36)
         .background(Color.surfaceInput)
         .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -117,7 +117,7 @@ struct SessionBuilderView: View {
                             .foregroundStyle(Color.textMuted)
                     }
                 }
-                .padding(12)
+                .padding(Spacing.cardCompact)
                 .background(Color.dangerSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .padding(.horizontal, Spacing.card)
