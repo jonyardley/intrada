@@ -207,7 +207,7 @@ struct SessionSummaryView: View {
                     sessionNotesCommitTask = Task {
                         try? await Task.sleep(for: .seconds(1))
                         guard !Task.isCancelled else { return }
-                        await MainActor.run { commitSessionNotes() }
+                        commitSessionNotes()
                     }
                 }
         }
