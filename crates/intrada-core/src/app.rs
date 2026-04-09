@@ -12,13 +12,13 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::compute_analytics;
 #[cfg(test)]
 use crate::domain::item::ItemKind;
-#[cfg(test)]
-use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
+#[cfg(test)]
+use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
@@ -1369,7 +1369,12 @@ mod tests {
 
     // --- Data loaded callbacks ---
 
-    fn make_session(id: &str, item_id: &str, score: Option<u8>, tempo: Option<u16>) -> PracticeSession {
+    fn make_session(
+        id: &str,
+        item_id: &str,
+        score: Option<u8>,
+        tempo: Option<u16>,
+    ) -> PracticeSession {
         let now = chrono::Utc::now();
         PracticeSession {
             id: id.to_string(),
@@ -1628,7 +1633,10 @@ mod tests {
         assert!(vm.active_session.is_none());
         assert!(vm.summary.is_none());
         let setlist = vm.building_setlist.unwrap();
-        assert_eq!(setlist.session_intention, Some("Focus on dynamics".to_string()));
+        assert_eq!(
+            setlist.session_intention,
+            Some("Focus on dynamics".to_string())
+        );
     }
 
     // --- View: routines ---
