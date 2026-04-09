@@ -13,9 +13,7 @@ use crate::analytics::compute_analytics;
 #[cfg(test)]
 use crate::domain::item::ItemKind;
 #[cfg(test)]
-use crate::domain::session::{
-    BuildingSession, CompletionStatus, EntryStatus, SetlistEntry,
-};
+use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
