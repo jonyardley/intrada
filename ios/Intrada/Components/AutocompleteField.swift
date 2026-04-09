@@ -36,7 +36,8 @@ struct AutocompleteField: View {
                     .onChange(of: isFocused) { _, focused in
                         if !focused {
                             // Delay hiding to allow tap on suggestion
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            Task {
+                                try? await Task.sleep(for: .milliseconds(200))
                                 showSuggestions = false
                             }
                         } else {
