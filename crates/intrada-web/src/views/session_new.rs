@@ -1,3 +1,4 @@
+use leptos::ev;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
@@ -10,8 +11,9 @@ use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Session creation view: start building a setlist and launch practice.
 ///
-/// If an active session already exists (e.g. from crash recovery or navigating
-/// away), shows a banner with Resume / Discard options instead of the builder.
+/// Shows preset duration buttons (10/15/20/30 min) and a custom session option.
+/// If an active session already exists (e.g. from crash recovery), shows
+/// Resume / Discard options instead.
 #[component]
 pub fn SessionNewView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -21,26 +23,7 @@ pub fn SessionNewView() -> impl IntoView {
     let navigate = use_navigate();
 
     // Track whether we entered building state on this mount.
-    // When true, an "active" status means StartSession was just clicked and we
-    // should navigate to the active view. When false, an "active" status means
-    // there was a pre-existing session and we show recovery UI instead.
     let started_building = RwSignal::new(false);
-
-    // Dispatch StartBuilding on mount — but only from idle state.
-    // If an active session exists we leave it alone and show recovery UI.
-    // Note: ViewModel::default() has session_status "" (empty string) which
-    // occurs when navigating directly to this page before async data loads.
-    // The underlying Model defaults to SessionStatus::Idle, so both "" and
-    // "idle" are safe to treat as idle here.
-    {
-        let vm = view_model.get_untracked();
-        if vm.session_status == SessionStatusView::Idle {
-            let core_ref = core.borrow();
-            let effects = core_ref.process_event(Event::Session(SessionEvent::StartBuilding));
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-            started_building.set(true);
-        }
-    }
 
     // Navigate on state transitions
     Effect::new(move |_| {
@@ -70,7 +53,32 @@ pub fn SessionNewView() -> impl IntoView {
     });
 
     let core_abandon = core.clone();
+    let core_presets = core.clone();
+    let core_custom = core.clone();
     let navigate_resume = use_navigate();
+
+    let make_preset_cb = |mins: u32, core: SharedCore| {
+        Callback::new(move |_: ev::MouseEvent| {
+            let core_ref = core.borrow();
+            let effects =
+                core_ref.process_event(Event::Session(SessionEvent::StartBuildingWithTarget {
+                    target_duration_mins: mins,
+                }));
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+            started_building.set(true);
+        })
+    };
+    let preset_10 = make_preset_cb(10, core_presets.clone());
+    let preset_15 = make_preset_cb(15, core_presets.clone());
+    let preset_20 = make_preset_cb(20, core_presets.clone());
+    let preset_30 = make_preset_cb(30, core_presets);
+
+    let start_custom = Callback::new(move |_: ev::MouseEvent| {
+        let core_ref = core_custom.borrow();
+        let effects = core_ref.process_event(Event::Session(SessionEvent::StartBuilding));
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        started_building.set(true);
+    });
 
     view! {
         <div>
@@ -123,6 +131,43 @@ pub fn SessionNewView() -> impl IntoView {
                     None
                 }
             }}
+
+            // Preset buttons — shown when idle (before building starts)
+            <Show when=move || view_model.get().session_status == SessionStatusView::Idle>
+                <Card>
+                    <div class="space-y-4">
+                        <p class="text-xs font-semibold text-muted uppercase tracking-wide">
+                            "Quick Start"
+                        </p>
+                        <div class="flex gap-3">
+                            <button
+                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
+                                on:click=move |e| preset_10.run(e)
+                            >"10 min"</button>
+                            <button
+                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
+                                on:click=move |e| preset_15.run(e)
+                            >"15 min"</button>
+                            <button
+                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
+                                on:click=move |e| preset_20.run(e)
+                            >"20 min"</button>
+                            <button
+                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
+                                on:click=move |e| preset_30.run(e)
+                            >"30 min"</button>
+                        </div>
+                        <div class="flex justify-center">
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=start_custom
+                            >
+                                "Custom Session"
+                            </Button>
+                        </div>
+                    </div>
+                </Card>
+            </Show>
 
             // Only show the setlist builder when in building state
             <Show when=move || view_model.get().session_status == SessionStatusView::Building>

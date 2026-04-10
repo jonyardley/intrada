@@ -157,6 +157,7 @@ struct SessionBuilderView: View {
             StickyBottomBar(
                 itemCount: entryCount,
                 totalMinutes: totalMinutes,
+                targetDurationMins: setlist?.targetDurationMins.flatMap { $0 }.map { Int($0) },
                 isDisabled: entryCount == 0,
                 onTapCount: { isSheetPresented = true },
                 onStartSession: startSession

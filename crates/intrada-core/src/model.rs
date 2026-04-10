@@ -202,6 +202,7 @@ pub struct BuildingSetlistView {
     pub entries: Vec<SetlistEntryView>,
     pub item_count: usize,
     pub session_intention: Option<String>,
+    pub target_duration_mins: Option<u32>,
 }
 
 /// View for the end-of-session summary.

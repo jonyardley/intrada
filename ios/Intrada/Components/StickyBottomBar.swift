@@ -7,6 +7,7 @@ import SwiftUI
 struct StickyBottomBar: View {
     let itemCount: Int
     let totalMinutes: Int
+    var targetDurationMins: Int? = nil
     let isDisabled: Bool
     let onTapCount: () -> Void
     let onStartSession: () -> Void
@@ -69,6 +70,9 @@ struct StickyBottomBar: View {
             return "No items selected"
         } else {
             let itemLabel = itemCount == 1 ? "item" : "items"
+            if let target = targetDurationMins {
+                return "\(itemCount) \(itemLabel) · \(totalMinutes) / \(target) min"
+            }
             return "\(itemCount) \(itemLabel) · \(totalMinutes) min"
         }
     }

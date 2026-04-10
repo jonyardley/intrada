@@ -214,14 +214,63 @@ struct SessionHistoryView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        EmptyStateView(
-            icon: "play.circle",
-            title: "No sessions yet",
-            message: "Start a session to track your practice",
-            actionTitle: "New Session"
-        ) {
-            core.update(.session(.startBuilding))
+        VStack(spacing: Spacing.cardComfortable) {
+            Spacer()
+
+            Image(systemName: "play.circle")
+                .font(.system(size: 40))
+                .foregroundStyle(Color.textFaint)
+
+            Text("No sessions yet")
+                .font(.headline)
+                .foregroundStyle(Color.textSecondary)
+
+            Text("Start a session to track your practice")
+                .font(.subheadline)
+                .foregroundStyle(Color.textMuted)
+                .multilineTextAlignment(.center)
+
+            quickStartPresets
+
+            ButtonView("Custom Session", variant: .secondary) {
+                core.update(.session(.startBuilding))
+            }
+            .frame(maxWidth: 200)
+
+            Spacer()
         }
+        .padding(Spacing.cardComfortable)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Quick Start Presets
+
+    private var quickStartPresets: some View {
+        VStack(spacing: 8) {
+            Text("QUICK START")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.textFaint)
+
+            HStack(spacing: 10) {
+                ForEach([10, 15, 20, 30], id: \.self) { mins in
+                    Button {
+                        core.update(.session(.startBuildingWithTarget(targetDurationMins: UInt32(mins))))
+                    } label: {
+                        Text("\(mins)m")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Color.textPrimary)
+                            .frame(width: 56, height: 44)
+                            .background(Color.surfaceSecondary)
+                            .clipShape(RoundedRectangle(cornerRadius: DesignRadius.button))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DesignRadius.button)
+                                    .strokeBorder(Color.borderDefault, lineWidth: 1)
+                            )
+                    }
+                }
+            }
+        }
+        .padding(.vertical, Spacing.cardCompact)
     }
 
     // MARK: - Grouping

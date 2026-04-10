@@ -20,6 +20,8 @@ pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_ROUTINE_NAME: usize = 200;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
+pub const MIN_SESSION_TARGET_MINS: u32 = 5;
+pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 
