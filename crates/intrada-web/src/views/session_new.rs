@@ -136,26 +136,34 @@ pub fn SessionNewView() -> impl IntoView {
             <Show when=move || view_model.get().session_status == SessionStatusView::Idle>
                 <Card>
                     <div class="space-y-4">
-                        <p class="text-xs font-semibold text-muted uppercase tracking-wide">
+                        <p class="field-label">
                             "Quick Start"
                         </p>
                         <div class="flex gap-3">
-                            <button
-                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
-                                on:click=move |e| preset_10.run(e)
-                            >"10 min"</button>
-                            <button
-                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
-                                on:click=move |e| preset_15.run(e)
-                            >"15 min"</button>
-                            <button
-                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
-                                on:click=move |e| preset_20.run(e)
-                            >"20 min"</button>
-                            <button
-                                class="flex-1 py-3 text-sm font-semibold text-primary bg-surface-secondary border border-default rounded-lg hover:bg-surface-hover transition-colors"
-                                on:click=move |e| preset_30.run(e)
-                            >"30 min"</button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=Callback::new(move |e: ev::MouseEvent| preset_10.run(e))
+                            >
+                                "10 min"
+                            </Button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=Callback::new(move |e: ev::MouseEvent| preset_15.run(e))
+                            >
+                                "15 min"
+                            </Button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=Callback::new(move |e: ev::MouseEvent| preset_20.run(e))
+                            >
+                                "20 min"
+                            </Button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=Callback::new(move |e: ev::MouseEvent| preset_30.run(e))
+                            >
+                                "30 min"
+                            </Button>
                         </div>
                         <div class="flex justify-center">
                             <Button

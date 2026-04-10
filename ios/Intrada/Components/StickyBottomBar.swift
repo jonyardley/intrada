@@ -91,6 +91,15 @@ struct StickyBottomBar: View {
         )
 
         StickyBottomBar(
+            itemCount: 3,
+            totalMinutes: 15,
+            targetDurationMins: 30,
+            isDisabled: false,
+            onTapCount: {},
+            onStartSession: {}
+        )
+
+        StickyBottomBar(
             itemCount: 0,
             totalMinutes: 0,
             isDisabled: true,
