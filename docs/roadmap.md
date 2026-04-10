@@ -1,11 +1,16 @@
 # intrada — Product Roadmap
 
-*Updated 2026-04-03*
+*Updated 2026-04-10*
 
-Everything in intrada serves one of three activities a musician does around their
-instrument. This roadmap is organised around those three pillars, not delivery
-phases. Each pillar advances independently — a musician benefits from progress in
-any of them without waiting for the others.
+Everything in intrada serves the five layers described in the [Product Vision](../VISION.md):
+**Capture → Plan → Space → Show → Guide**. These layers build on each other — you
+can't schedule what you haven't captured, you can't space what you haven't scheduled,
+and you can't show progress on what you haven't tracked.
+
+The roadmap is also organised around three activity pillars — **Plan** (decide what to
+practise), **Practice** (play with intention), and **Track** (see the process working) —
+which cut across the layers. Features are placed on a rolling horizon: **Now** (next
+4 weeks), **Next** (4–12 weeks), and **Later** (12+ weeks).
 
 ---
 
@@ -49,24 +54,14 @@ any of them without waiting for the others.
 
 ---
 
-## Current Focus: iOS Feature Parity
+## Prioritisation Model
 
-Building out the iOS app as the primary user channel. SwiftUI shell using
-the shared Crux core via UniFFI/BCS bridge. Shell, CI, and design system are
-complete — now building out feature views to reach parity with the web app.
+Features are prioritised by **vision layer first, then pillar**. Layer 1 (Capture)
+features take precedence over Layer 2 (Plan), which take precedence over Layer 3
+(Space), and so on. Within a layer, the three pillars advance independently.
 
-Build order follows the user journey: library first (need items to practise),
-then sessions (the core loop), then routines and analytics. After iOS parity,
-cross-platform features (Crux core + API) benefit both shells simultaneously.
-
-| # | Feature | Size | Depends on |
-|---|---------|------|------------|
-| ~~195~~ | ~~**Library** — browse, search & manage repertoire~~ | ~~M~~ | Done |
-| ~~196~~ | ~~**Session builder** — construct practice setlists~~ | ~~M~~ | Done |
-| ~~197~~ | ~~**Active session** — focus mode, timer & scoring~~ | ~~L~~ | Done |
-| ~~198~~ | ~~**Session summary & history**~~ | ~~M~~ | Done |
-| ~~199~~ | ~~**Routines** — create, edit & manage practice routines~~ | ~~M~~ | Done |
-| ~~201~~ | ~~**Analytics dashboard** — practice insights & visualisation~~ | ~~M~~ | Done |
+The question to ask is: "What's the most important thing I haven't captured yet?"
+before "What's the smartest way to schedule it?"
 
 ---
 
@@ -74,33 +69,40 @@ cross-platform features (Crux core + API) benefit both shells simultaneously.
 
 ### Plan — "Decide what to practise"
 
-Before the instrument comes out. Building sessions, organising the library, setting
-goals, and eventually letting the app decide for you.
+Before the instrument comes out. Building sessions, organising the library, and
+eventually letting the app decide for you.
+
+#### Now (next 4 weeks)
+
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL | 1: Capture |
+| 267 | **Teacher assignment capture** — quick-capture flow optimised for post-lesson entry. Structured fields for exercise type, keys, voicing details, teacher notes. Designed to replace the notebook. | M | 1: Capture |
+| 212 | **Short session presets** — 10/15/20/30 minute options. | S | 2: Plan |
 
 #### Next (4-12 weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 50 | **Section/passage management** — break pieces into practisable sections with independent mastery scores and tempo targets. | L |
-| 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL |
-| 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M |
-| 53 | **Full-text search** — search across all practice notes to find recurring themes. | M |
-| 142 | **Session time budgeting** — declare available time, allocate across items automatically or manually. | M |
-| 57 | **One-tap session start** — open the app, tap Start, play. Initial version uses recent routine + items not practised recently. | L |
-| 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 50 | **Section/passage management** — break pieces into practisable sections with independent mastery scores and tempo targets. | L | 1: Capture |
+| 53 | **Full-text search** — search across all practice notes to find recurring themes. | M | 1: Capture |
+| 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M | 1: Capture |
+| 57 | **One-tap session start** — open the app, tap Start, play. Initial version uses recent routine + items not practised recently + decayed mastery scores. Upgraded when spacing engine ships. | L | 2: Plan |
+| 142 | **Session time budgeting** — declare available time, allocate across items automatically or manually. | M | 2: Plan |
+| 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L | 2: Plan |
+| 58 | **Mastery decay model** — scores decrease over time without review, creating natural scheduling urgency. Gives one-tap start smarter item selection without the full spacing engine. | M | 3: Space |
 
 #### Later (12+ weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 55 | **Spaced repetition engine** — modified SM-2 algorithm for optimal review intervals based on mastery scores and time since last practice. | XL |
-| 56 | **Interleaved setlist generator** — mixed-type sessions with configurable interleaving intensity. | L |
-| 58 | **Mastery decay model** — scores decrease over time without review, creating natural scheduling urgency. | M |
-| 42 | **Links to IMSLP** — link pieces to free sheet music on IMSLP. | S |
-| 43 | **Open-source exercise library** — built-in scales, arpeggios, Hanon, Czerny etc. | L |
-| 71 | **AI setlist generation** — goal-driven practice plans ("I have a gig in 3 weeks — build me a plan"). | L |
-| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. (blocked on goals redesign) | L |
-| 100 | **Personalisation** — user preferences and customisation. | — |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 55 | **Spaced repetition engine** — modified SM-2 algorithm for optimal review intervals based on mastery scores and time since last practice. First feature built when Later begins. | XL | 3: Space |
+| 56 | **Interleaved setlist generator** — mixed-type sessions with configurable interleaving intensity. | L | 3: Space |
+| 42 | **Links to IMSLP** — link pieces to free sheet music on IMSLP. | S | 1: Capture |
+| 43 | **Open-source exercise library** — built-in scales, arpeggios, Hanon, Czerny etc. | L | 1: Capture |
+| 71 | **AI setlist generation** — goal-driven practice plans ("I have a gig in 3 weeks — build me a plan"). | L | 5: Guide |
+| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. (blocked on goals redesign) | L | 5: Guide |
+| 100 | **Personalisation** — user preferences and customisation. | — | — |
 
 ---
 
@@ -111,20 +113,19 @@ focus, not admin.
 
 #### Next (4-12 weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S |
-| 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S |
-| 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S |
-| 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M |
-| 212 | **Short session presets** — 10/15/20/30 minute options | S |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S | 4: Show |
+| 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S | Cross-cutting |
+| 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S | 4: Show |
+| 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M | 2: Plan |
 
 #### Later (12+ weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 69 | **Audio recording & playback** — record a run-through, play it back, compare to weeks ago. | L |
-| 70 | **Customisable encouragement preferences** — frequency, tone, delivery controls. Respects neurodiversity. | M |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 69 | **Audio recording & playback** — record a run-through, play it back, compare to weeks ago. | L | 4: Show |
+| 70 | **Customisable encouragement preferences** — frequency, tone, delivery controls. Respects neurodiversity. | M | 4: Show |
 
 ---
 
@@ -135,20 +136,20 @@ is actually working.
 
 #### Next (4-12 weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L |
-| 79 | **Calendar view** — calendar-based view of practice sessions. | M |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L | 4: Show |
+| 79 | **Calendar view** — calendar-based view of practice sessions. | M | 4: Show |
 
 #### Later (12+ weeks)
 
-| # | Feature | Size |
-|---|---------|------|
-| 64 | **Circle of fifths widget** — interactive key coverage visualisation showing mastery per key. | L |
-| 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L |
-| 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M |
-| 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L |
-| 75 | **Teacher integration** — suggested items, progress visibility (with permission). | L |
+| # | Feature | Size | Vision Layer |
+|---|---------|------|-------------|
+| 64 | **Circle of fifths widget** — interactive key coverage visualisation showing mastery per key. Depends on multi-key (#46). | L | 4: Show |
+| 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L | 5: Guide |
+| 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M | 5: Guide |
+| 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L | 5: Guide |
+| 75 | **Teacher integration** — suggested items, progress visibility (with permission). | L | 5: Guide |
 
 ---
 
@@ -172,6 +173,11 @@ These don't belong to a single pillar — they support all three.
 | `pillar:plan` | Decide what to practise |
 | `pillar:practice` | Play with intention |
 | `pillar:track` | See the process working |
+| `layer:capture` | Vision Layer 1 — capture and remember |
+| `layer:plan` | Vision Layer 2 — plan what to do today |
+| `layer:space` | Vision Layer 3 — space it for retention |
+| `layer:show` | Vision Layer 4 — show that it's working |
+| `layer:guide` | Vision Layer 5 — identify gaps and guide |
 | `horizon:now` | Next 4 weeks |
 | `horizon:next` | 4-12 weeks |
 | `horizon:later` | 12+ weeks / future |
@@ -183,14 +189,15 @@ These don't belong to a single pillar — they support all three.
 
 Backlog > Ready > In Progress > In Review > Done
 
-The board columns are workflow states, not categories. Use the pillar and horizon
-labels to filter and slice the board.
+The board columns are workflow states, not categories. Use the pillar, layer, and
+horizon labels to filter and slice the board.
 
 ### Prioritisation
 
-Each pillar advances independently. "What's the most important Plan feature?"
-is a better question than "What phase are we in?" Within each pillar, the
-Priority field (P0/P1/P2) ranks items.
+**Vision layer first, then pillar.** Layer 1 features take precedence over Layer 2,
+and so on. Within a layer, "What's the most important Plan feature?" is a better
+question than "What phase are we in?" Within each pillar, the Priority field
+(P0/P1/P2) ranks items.
 
 ---
 
@@ -204,15 +211,18 @@ Priority field (P0/P1/P2) ranks items.
    Gets harder to retrofit the longer we wait.
 
 3. ~~**iOS native vs web-first.**~~ **Decided: iOS is the primary channel.**
-   The native shell is built and feature views are in progress (#195–#201).
-   Cross-platform features (Crux core, API) benefit both shells.
+   The native shell is built and feature views are complete.
+   Cross-platform features (Crux core + API) benefit both shells.
 
 4. **Scoring + tempo coupling.** Should every mastery rating require a tempo?
    Or is tempo optional (only for items with tempo targets)?
 
 5. **Teacher integration timing.** Currently horizon:later. Basic sharing
-   (routines, item suggestions) could come earlier without AI.
+   (routines, item suggestions) could come earlier without AI. The new
+   "teacher assignment capture" feature (#267) addresses the immediate
+   capture problem without requiring teacher-facing features.
 
 6. **Goals redesign.** The goals feature has been removed for a ground-up rethink.
-   What value should goals add to the practice experience? How do they connect
-   to the critical path and guided pathways vision?
+   The five vision layers don't depend on goals in the short term — Capture, Plan,
+   Space, and Show all work without them. Goals become important when reaching
+   Layer 5 (gap analysis, pathways). Deferring is intentional, not an oversight.
