@@ -117,7 +117,8 @@ specs/                # SpecKit design artifacts
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
 | [`docs/development-workflow.md`](docs/development-workflow.md) | End-to-end feature workflow, SpecKit stages, AI subagents |
 | [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars) — **single source of truth** |
-| [`VISION.md`](VISION.md) | Product vision and research foundation |
+| [`VISION.md`](VISION.md) | Product vision |
+| [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
 | [`SETUP.md`](SETUP.md) | Deployment & configuration (Cloudflare, Fly.io, Turso, CI/CD) |
 
 ## CI/CD
