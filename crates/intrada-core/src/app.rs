@@ -264,6 +264,7 @@ impl App for Intrada {
                         entries,
                         item_count,
                         session_intention: building.session_intention.clone(),
+                        target_duration_mins: building.target_duration_mins,
                     }),
                     None,
                 )
@@ -1623,6 +1624,7 @@ mod tests {
             session_status: SessionStatus::Building(BuildingSession {
                 entries: vec![],
                 session_intention: Some("Focus on dynamics".to_string()),
+                target_duration_mins: None,
             }),
             ..Model::test_default()
         };

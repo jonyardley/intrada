@@ -365,11 +365,13 @@ public struct BuildingSetlistView: Hashable {
     @Indirect public var entries: [SetlistEntryView]
     @Indirect public var itemCount: UInt64
     @Indirect public var sessionIntention: String?
+    @Indirect public var targetDurationMins: UInt32?
 
-    public init(entries: [SetlistEntryView], itemCount: UInt64, sessionIntention: String?) {
+    public init(entries: [SetlistEntryView], itemCount: UInt64, sessionIntention: String?, targetDurationMins: UInt32?) {
         self.entries = entries
         self.itemCount = itemCount
         self.sessionIntention = sessionIntention
+        self.targetDurationMins = targetDurationMins
     }
 
     public func serialize<S: Serializer>(serializer: S) throws {
@@ -380,6 +382,9 @@ public struct BuildingSetlistView: Hashable {
         try serializer.serialize_u64(value: self.itemCount)
         try serializeOption(value: self.sessionIntention, serializer: serializer) { value, serializer in
             try serializer.serialize_str(value: value)
+        }
+        try serializeOption(value: self.targetDurationMins, serializer: serializer) { value, serializer in
+            try serializer.serialize_u32(value: value)
         }
         try serializer.decrease_container_depth()
     }
@@ -399,8 +404,11 @@ public struct BuildingSetlistView: Hashable {
         let sessionIntention = try deserializeOption(deserializer: deserializer) { deserializer in
             try deserializer.deserialize_str()
         }
+        let targetDurationMins = try deserializeOption(deserializer: deserializer) { deserializer in
+            try deserializer.deserialize_u32()
+        }
         try deserializer.decrease_container_depth()
-        return BuildingSetlistView(entries: entries, itemCount: itemCount, sessionIntention: sessionIntention)
+        return BuildingSetlistView(entries: entries, itemCount: itemCount, sessionIntention: sessionIntention, targetDurationMins: targetDurationMins)
     }
 
     public static func bincodeDeserialize(input: [UInt8]) throws -> BuildingSetlistView {
@@ -752,6 +760,7 @@ indirect public enum Event: Hashable {
     case itemUpdated(item: Item)
     case routineUpdated(routine: Routine)
     case deleteConfirmed
+    case sessionSaved
     case loadFailed(String)
     case clearError
     case setQuery(ListQuery?)
@@ -802,13 +811,15 @@ indirect public enum Event: Hashable {
             try routine.serialize(serializer: serializer)
         case .deleteConfirmed:
             try serializer.serialize_variant_index(value: 13)
-        case .loadFailed(let x):
+        case .sessionSaved:
             try serializer.serialize_variant_index(value: 14)
+        case .loadFailed(let x):
+            try serializer.serialize_variant_index(value: 15)
             try serializer.serialize_str(value: x)
         case .clearError:
-            try serializer.serialize_variant_index(value: 15)
-        case .setQuery(let x):
             try serializer.serialize_variant_index(value: 16)
+        case .setQuery(let x):
+            try serializer.serialize_variant_index(value: 17)
             try serializeOption(value: x, serializer: serializer) { value, serializer in
                 try value.serialize(serializer: serializer)
             }
@@ -884,13 +895,16 @@ indirect public enum Event: Hashable {
             try deserializer.decrease_container_depth()
             return .deleteConfirmed
         case 14:
+            try deserializer.decrease_container_depth()
+            return .sessionSaved
+        case 15:
             let x = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .loadFailed(x)
-        case 15:
+        case 16:
             try deserializer.decrease_container_depth()
             return .clearError
-        case 16:
+        case 17:
             let x = try deserializeOption(deserializer: deserializer) { deserializer in
                 try ListQuery.deserialize(deserializer: deserializer)
             }
@@ -2514,6 +2528,7 @@ public struct ScorePoint: Hashable {
 
 indirect public enum SessionEvent: Hashable {
     case startBuilding
+    case startBuildingWithTarget(targetDurationMins: UInt32)
     case setSessionIntention(intention: String?)
     case setEntryIntention(entryId: String, intention: String?)
     case setRepTarget(entryId: String, target: UInt8?)
@@ -2548,108 +2563,111 @@ indirect public enum SessionEvent: Hashable {
         switch self {
         case .startBuilding:
             try serializer.serialize_variant_index(value: 0)
-        case .setSessionIntention(let intention):
+        case .startBuildingWithTarget(let targetDurationMins):
             try serializer.serialize_variant_index(value: 1)
+            try serializer.serialize_u32(value: targetDurationMins)
+        case .setSessionIntention(let intention):
+            try serializer.serialize_variant_index(value: 2)
             try serializeOption(value: intention, serializer: serializer) { value, serializer in
                 try serializer.serialize_str(value: value)
             }
         case .setEntryIntention(let entryId, let intention):
-            try serializer.serialize_variant_index(value: 2)
+            try serializer.serialize_variant_index(value: 3)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: intention, serializer: serializer) { value, serializer in
                 try serializer.serialize_str(value: value)
             }
         case .setRepTarget(let entryId, let target):
-            try serializer.serialize_variant_index(value: 3)
+            try serializer.serialize_variant_index(value: 4)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: target, serializer: serializer) { value, serializer in
                 try serializer.serialize_u8(value: value)
             }
         case .setEntryDuration(let entryId, let durationSecs):
-            try serializer.serialize_variant_index(value: 4)
+            try serializer.serialize_variant_index(value: 5)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: durationSecs, serializer: serializer) { value, serializer in
                 try serializer.serialize_u32(value: value)
             }
         case .addToSetlist(let itemId):
-            try serializer.serialize_variant_index(value: 5)
+            try serializer.serialize_variant_index(value: 6)
             try serializer.serialize_str(value: itemId)
         case .addNewItemToSetlist(let title, let itemType):
-            try serializer.serialize_variant_index(value: 6)
+            try serializer.serialize_variant_index(value: 7)
             try serializer.serialize_str(value: title)
             try itemType.serialize(serializer: serializer)
         case .removeFromSetlist(let entryId):
-            try serializer.serialize_variant_index(value: 7)
+            try serializer.serialize_variant_index(value: 8)
             try serializer.serialize_str(value: entryId)
         case .reorderSetlist(let entryId, let newPosition):
-            try serializer.serialize_variant_index(value: 8)
+            try serializer.serialize_variant_index(value: 9)
             try serializer.serialize_str(value: entryId)
             try serializer.serialize_u64(value: newPosition)
         case .startSession(let now):
-            try serializer.serialize_variant_index(value: 9)
+            try serializer.serialize_variant_index(value: 10)
             try serializer.serialize_str(value: now)
         case .cancelBuilding:
-            try serializer.serialize_variant_index(value: 10)
-        case .nextItem(let now):
             try serializer.serialize_variant_index(value: 11)
-            try serializer.serialize_str(value: now)
-        case .skipItem(let now):
+        case .nextItem(let now):
             try serializer.serialize_variant_index(value: 12)
             try serializer.serialize_str(value: now)
-        case .addItemMidSession(let itemId):
+        case .skipItem(let now):
             try serializer.serialize_variant_index(value: 13)
+            try serializer.serialize_str(value: now)
+        case .addItemMidSession(let itemId):
+            try serializer.serialize_variant_index(value: 14)
             try serializer.serialize_str(value: itemId)
         case .addNewItemMidSession(let title, let itemType):
-            try serializer.serialize_variant_index(value: 14)
+            try serializer.serialize_variant_index(value: 15)
             try serializer.serialize_str(value: title)
             try itemType.serialize(serializer: serializer)
         case .finishSession(let now):
-            try serializer.serialize_variant_index(value: 15)
-            try serializer.serialize_str(value: now)
-        case .endSessionEarly(let now):
             try serializer.serialize_variant_index(value: 16)
             try serializer.serialize_str(value: now)
-        case .abandonSession:
+        case .endSessionEarly(let now):
             try serializer.serialize_variant_index(value: 17)
-        case .repGotIt:
+            try serializer.serialize_str(value: now)
+        case .abandonSession:
             try serializer.serialize_variant_index(value: 18)
-        case .repMissed:
+        case .repGotIt:
             try serializer.serialize_variant_index(value: 19)
-        case .initRepCounter:
+        case .repMissed:
             try serializer.serialize_variant_index(value: 20)
-        case .updateEntryNotes(let entryId, let notes):
+        case .initRepCounter:
             try serializer.serialize_variant_index(value: 21)
+        case .updateEntryNotes(let entryId, let notes):
+            try serializer.serialize_variant_index(value: 22)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: notes, serializer: serializer) { value, serializer in
                 try serializer.serialize_str(value: value)
             }
         case .updateEntryScore(let entryId, let score):
-            try serializer.serialize_variant_index(value: 22)
+            try serializer.serialize_variant_index(value: 23)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: score, serializer: serializer) { value, serializer in
                 try serializer.serialize_u8(value: value)
             }
         case .updateEntryTempo(let entryId, let tempo):
-            try serializer.serialize_variant_index(value: 23)
+            try serializer.serialize_variant_index(value: 24)
             try serializer.serialize_str(value: entryId)
             try serializeOption(value: tempo, serializer: serializer) { value, serializer in
                 try serializer.serialize_u16(value: value)
             }
         case .updateSessionNotes(let notes):
-            try serializer.serialize_variant_index(value: 24)
+            try serializer.serialize_variant_index(value: 25)
             try serializeOption(value: notes, serializer: serializer) { value, serializer in
                 try serializer.serialize_str(value: value)
             }
         case .saveSession(let now):
-            try serializer.serialize_variant_index(value: 25)
+            try serializer.serialize_variant_index(value: 26)
             try serializer.serialize_str(value: now)
         case .discardSession:
-            try serializer.serialize_variant_index(value: 26)
-        case .recoverSession(let session):
             try serializer.serialize_variant_index(value: 27)
+        case .recoverSession(let session):
+            try serializer.serialize_variant_index(value: 28)
             try session.serialize(serializer: serializer)
         case .deleteSession(let id):
-            try serializer.serialize_variant_index(value: 28)
+            try serializer.serialize_variant_index(value: 29)
             try serializer.serialize_str(value: id)
         }
         try serializer.decrease_container_depth()
@@ -2669,133 +2687,137 @@ indirect public enum SessionEvent: Hashable {
             try deserializer.decrease_container_depth()
             return .startBuilding
         case 1:
+            let targetDurationMins = try deserializer.deserialize_u32()
+            try deserializer.decrease_container_depth()
+            return .startBuildingWithTarget(targetDurationMins: targetDurationMins)
+        case 2:
             let intention = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
             }
             try deserializer.decrease_container_depth()
             return .setSessionIntention(intention: intention)
-        case 2:
+        case 3:
             let entryId = try deserializer.deserialize_str()
             let intention = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
             }
             try deserializer.decrease_container_depth()
             return .setEntryIntention(entryId: entryId, intention: intention)
-        case 3:
+        case 4:
             let entryId = try deserializer.deserialize_str()
             let target = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_u8()
             }
             try deserializer.decrease_container_depth()
             return .setRepTarget(entryId: entryId, target: target)
-        case 4:
+        case 5:
             let entryId = try deserializer.deserialize_str()
             let durationSecs = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_u32()
             }
             try deserializer.decrease_container_depth()
             return .setEntryDuration(entryId: entryId, durationSecs: durationSecs)
-        case 5:
+        case 6:
             let itemId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .addToSetlist(itemId: itemId)
-        case 6:
+        case 7:
             let title = try deserializer.deserialize_str()
             let itemType = try ItemKind.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .addNewItemToSetlist(title: title, itemType: itemType)
-        case 7:
+        case 8:
             let entryId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .removeFromSetlist(entryId: entryId)
-        case 8:
+        case 9:
             let entryId = try deserializer.deserialize_str()
             let newPosition = try deserializer.deserialize_u64()
             try deserializer.decrease_container_depth()
             return .reorderSetlist(entryId: entryId, newPosition: newPosition)
-        case 9:
+        case 10:
             let now = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .startSession(now: now)
-        case 10:
+        case 11:
             try deserializer.decrease_container_depth()
             return .cancelBuilding
-        case 11:
-            let now = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .nextItem(now: now)
         case 12:
             let now = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .skipItem(now: now)
+            return .nextItem(now: now)
         case 13:
+            let now = try deserializer.deserialize_str()
+            try deserializer.decrease_container_depth()
+            return .skipItem(now: now)
+        case 14:
             let itemId = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .addItemMidSession(itemId: itemId)
-        case 14:
+        case 15:
             let title = try deserializer.deserialize_str()
             let itemType = try ItemKind.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .addNewItemMidSession(title: title, itemType: itemType)
-        case 15:
-            let now = try deserializer.deserialize_str()
-            try deserializer.decrease_container_depth()
-            return .finishSession(now: now)
         case 16:
             let now = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .endSessionEarly(now: now)
+            return .finishSession(now: now)
         case 17:
+            let now = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
-            return .abandonSession
+            return .endSessionEarly(now: now)
         case 18:
             try deserializer.decrease_container_depth()
-            return .repGotIt
+            return .abandonSession
         case 19:
             try deserializer.decrease_container_depth()
-            return .repMissed
+            return .repGotIt
         case 20:
             try deserializer.decrease_container_depth()
-            return .initRepCounter
+            return .repMissed
         case 21:
+            try deserializer.decrease_container_depth()
+            return .initRepCounter
+        case 22:
             let entryId = try deserializer.deserialize_str()
             let notes = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
             }
             try deserializer.decrease_container_depth()
             return .updateEntryNotes(entryId: entryId, notes: notes)
-        case 22:
+        case 23:
             let entryId = try deserializer.deserialize_str()
             let score = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_u8()
             }
             try deserializer.decrease_container_depth()
             return .updateEntryScore(entryId: entryId, score: score)
-        case 23:
+        case 24:
             let entryId = try deserializer.deserialize_str()
             let tempo = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_u16()
             }
             try deserializer.decrease_container_depth()
             return .updateEntryTempo(entryId: entryId, tempo: tempo)
-        case 24:
+        case 25:
             let notes = try deserializeOption(deserializer: deserializer) { deserializer in
                 try deserializer.deserialize_str()
             }
             try deserializer.decrease_container_depth()
             return .updateSessionNotes(notes: notes)
-        case 25:
+        case 26:
             let now = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .saveSession(now: now)
-        case 26:
+        case 27:
             try deserializer.decrease_container_depth()
             return .discardSession
-        case 27:
+        case 28:
             let session = try ActiveSession.deserialize(deserializer: deserializer)
             try deserializer.decrease_container_depth()
             return .recoverSession(session: session)
-        case 28:
+        case 29:
             let id = try deserializer.deserialize_str()
             try deserializer.decrease_container_depth()
             return .deleteSession(id: id)

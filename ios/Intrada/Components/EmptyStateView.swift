@@ -2,12 +2,13 @@ import SwiftUI
 
 /// Reusable empty state with icon, message, and optional CTA.
 /// Uses design tokens — no raw SwiftUI colours.
-struct EmptyStateView: View {
+struct EmptyStateView<AdditionalContent: View>: View {
     let icon: String
     let title: String
     var message: String? = nil
     var actionTitle: String? = nil
     var action: (() -> Void)? = nil
+    var additionalContent: AdditionalContent
 
     var body: some View {
         VStack(spacing: 16) {
@@ -26,6 +27,8 @@ struct EmptyStateView: View {
                     .multilineTextAlignment(.center)
             }
 
+            additionalContent
+
             if let actionTitle, let action {
                 ButtonView(actionTitle, variant: .primary, action: action)
                     .frame(maxWidth: 200)
@@ -33,6 +36,41 @@ struct EmptyStateView: View {
         }
         .padding(Spacing.cardComfortable)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+extension EmptyStateView {
+    init(
+        icon: String,
+        title: String,
+        message: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil,
+        @ViewBuilder additionalContent: () -> AdditionalContent
+    ) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.action = action
+        self.additionalContent = additionalContent()
+    }
+}
+
+extension EmptyStateView where AdditionalContent == EmptyView {
+    init(
+        icon: String,
+        title: String,
+        message: String? = nil,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.action = action
+        self.additionalContent = EmptyView()
     }
 }
 

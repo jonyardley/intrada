@@ -217,11 +217,36 @@ struct SessionHistoryView: View {
         EmptyStateView(
             icon: "play.circle",
             title: "No sessions yet",
-            message: "Start a session to track your practice",
-            actionTitle: "New Session"
+            message: "Start a session to track your practice"
         ) {
-            core.update(.session(.startBuilding))
+            quickStartPresets
+
+            ButtonView("Custom Session", variant: .secondary) {
+                core.update(.session(.startBuilding))
+            }
+            .frame(maxWidth: 200)
         }
+        .frame(maxHeight: .infinity)
+    }
+
+    // MARK: - Quick Start Presets
+
+    private var quickStartPresets: some View {
+        VStack(spacing: Spacing.cardCompact) {
+            Text("QUICK START")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Color.textFaint)
+
+            HStack(spacing: Spacing.cardCompact) {
+                ForEach([10, 15, 20, 30], id: \.self) { mins in
+                    ButtonView("\(mins)m", variant: .secondary) {
+                        core.update(.session(.startBuildingWithTarget(targetDurationMins: UInt32(mins))))
+                    }
+                    .frame(width: 56)
+                }
+            }
+        }
+        .padding(.vertical, Spacing.cardCompact)
     }
 
     // MARK: - Grouping

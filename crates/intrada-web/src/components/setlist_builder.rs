@@ -83,7 +83,22 @@ pub fn SetlistBuilder() -> impl IntoView {
 
             // Current setlist
             <Card>
-                <h3 class="section-title">"Your Setlist"</h3>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="section-title">"Your Setlist"</h3>
+                    {move || {
+                        let vm = view_model.get();
+                        vm.building_setlist.as_ref().and_then(|s| s.target_duration_mins).map(|target| {
+                            let total: u32 = vm.building_setlist.as_ref()
+                                .map(|s| s.entries.iter().map(|e| e.planned_duration_secs.unwrap_or(intrada_core::validation::DEFAULT_PLANNED_DURATION_SECS)).sum::<u32>() / 60)
+                                .unwrap_or(0);
+                            view! {
+                                <span class="text-xs font-medium text-muted">
+                                    {format!("{total} / {target} min")}
+                                </span>
+                            }
+                        })
+                    }}
+                </div>
                 {move || {
                     let vm = view_model.get();
                     match vm.building_setlist {
@@ -327,7 +342,7 @@ pub fn SetlistBuilder() -> impl IntoView {
                                                                 on:click=move |_| {
                                                                     let event = Event::Session(SessionEvent::SetEntryDuration {
                                                                         entry_id: entry_duration_id.clone(),
-                                                                        duration_secs: Some(5 * 60),
+                                                                        duration_secs: Some(intrada_core::validation::DEFAULT_PLANNED_DURATION_SECS),
                                                                     });
                                                                     let core_ref = core_dur_set.borrow();
                                                                     let effects = core_ref.process_event(event);

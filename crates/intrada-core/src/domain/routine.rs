@@ -281,6 +281,7 @@ mod tests {
             session_status: SessionStatus::Building(BuildingSession {
                 entries,
                 session_intention: None,
+                target_duration_mins: None,
             }),
             ..Default::default()
         }
