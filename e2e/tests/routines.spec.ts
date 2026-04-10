@@ -71,6 +71,9 @@ test.describe("routines page", () => {
   test("save routine from session builder", async ({ page }) => {
     await page.goto("/sessions/new");
 
+    // Click "Custom Session" to enter the setlist builder
+    await page.getByRole("button", { name: "Custom Session" }).click();
+
     // Add an item to the setlist
     await page.getByText("Clair de Lune").click();
 
@@ -91,6 +94,9 @@ test.describe("routines page", () => {
     mockApi.routines = createSeedRoutinesWithStub();
 
     await page.goto("/sessions/new");
+
+    // Click "Custom Session" to enter the setlist builder
+    await page.getByRole("button", { name: "Custom Session" }).click();
 
     // Should see the saved routine in the "Saved Routines" section
     await expect(page.getByText("Saved Routines")).toBeVisible();
