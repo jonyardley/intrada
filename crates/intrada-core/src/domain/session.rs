@@ -401,8 +401,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 model.last_error = Some("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
-            if target_duration_mins < validation::MIN_SESSION_TARGET_MINS
-                || target_duration_mins > validation::MAX_SESSION_TARGET_MINS
+            if !(validation::MIN_SESSION_TARGET_MINS..=validation::MAX_SESSION_TARGET_MINS)
+                .contains(&target_duration_mins)
             {
                 model.last_error = Some(format!(
                     "Session target must be between {} and {} minutes",
