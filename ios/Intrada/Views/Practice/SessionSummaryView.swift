@@ -25,6 +25,8 @@ struct SessionSummaryView: View {
             }
         }
         .background(Color.backgroundApp)
+        .navigationTitle("Session Summary")
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             sessionNotesText = summary?.notes ?? ""
         }
@@ -147,7 +149,7 @@ struct SessionSummaryView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, Spacing.cardComfortable)
         .padding(.horizontal, Spacing.cardComfortable)
     }
 
@@ -207,7 +209,7 @@ struct SessionSummaryView: View {
                     sessionNotesCommitTask = Task {
                         try? await Task.sleep(for: .seconds(1))
                         guard !Task.isCancelled else { return }
-                        await MainActor.run { commitSessionNotes() }
+                        commitSessionNotes()
                     }
                 }
         }
@@ -216,7 +218,7 @@ struct SessionSummaryView: View {
     // MARK: - Actions
 
     private var actionsSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.cardCompact) {
             ButtonView("Save Session", variant: .primary) {
                 let now = ISO8601DateFormatter().string(from: Date())
                 core.update(.session(.saveSession(now: now)))
@@ -232,7 +234,7 @@ struct SessionSummaryView: View {
         }
         .padding(.horizontal, Spacing.cardComfortable)
         .padding(.top, 8)
-        .padding(.bottom, 40)
+        .padding(.bottom, Spacing.section)
     }
 
     // MARK: - Helpers

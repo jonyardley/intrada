@@ -62,10 +62,13 @@ struct AnalyticsDashboardView: View {
     private func iPadDashboard(_ analytics: AnalyticsView) -> some View {
         VStack(spacing: Spacing.card) {
             // Top row: consistency + weekly summary side by side
-            HStack(spacing: Spacing.card) {
+            HStack(alignment: .top, spacing: Spacing.card) {
                 consistencyCard(analytics.streak)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 weeklySummaryCard(analytics.weeklySummary)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             // Insights + chart side by side
             HStack(alignment: .top, spacing: Spacing.card) {
@@ -73,14 +76,20 @@ struct AnalyticsDashboardView: View {
                     neglected: analytics.neglectedItems,
                     scoreChanges: analytics.scoreChanges
                 )
+                .frame(maxHeight: .infinity, alignment: .top)
                 practiceChartCard(analytics.dailyTotals)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
 
             // Bottom row: top items + score trends side by side
             HStack(alignment: .top, spacing: Spacing.card) {
                 topItemsCard(analytics.topItems)
+                    .frame(maxHeight: .infinity, alignment: .top)
                 scoreTrendsCard(analytics.scoreTrends)
+                    .frame(maxHeight: .infinity, alignment: .top)
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, Spacing.cardComfortable)
         .padding(.bottom, Spacing.cardComfortable)

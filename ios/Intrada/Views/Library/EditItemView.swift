@@ -42,10 +42,10 @@ struct EditItemView: View {
             } else if core.isLoading {
                 DetailSkeletonView()
             } else {
-                ContentUnavailableView(
-                    "Item Not Found",
-                    systemImage: "questionmark.circle",
-                    description: Text("This item may have been deleted")
+                EmptyStateView(
+                    icon: "questionmark.circle",
+                    title: "Item Not Found",
+                    message: "This item may have been deleted"
                 )
             }
         }

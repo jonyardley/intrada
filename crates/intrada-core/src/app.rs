@@ -17,6 +17,8 @@ use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
+#[cfg(test)]
+use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
@@ -1346,6 +1348,364 @@ mod tests {
 
         assert_eq!(practice.latest_score, None);
         assert!(practice.score_history.is_empty());
+    }
+
+    // --- Lifecycle events ---
+
+    #[test]
+    fn test_start_app_sets_api_base_url() {
+        let app = Intrada;
+        let mut model = Model::default();
+        assert!(model.api_base_url.is_empty());
+
+        let _cmd = app.update(
+            Event::StartApp {
+                api_base_url: "https://api.example.com".to_string(),
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.api_base_url, "https://api.example.com");
+    }
+
+    // --- Data loaded callbacks ---
+
+    fn make_session(
+        id: &str,
+        item_id: &str,
+        score: Option<u8>,
+        tempo: Option<u16>,
+    ) -> PracticeSession {
+        let now = chrono::Utc::now();
+        PracticeSession {
+            id: id.to_string(),
+            started_at: now,
+            completed_at: now,
+            total_duration_secs: 300,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            entries: vec![SetlistEntry {
+                id: format!("{id}-e1"),
+                item_id: item_id.to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: ItemKind::Piece,
+                position: 0,
+                duration_secs: 300,
+                status: EntryStatus::Completed,
+                notes: None,
+                score,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: tempo,
+            }],
+        }
+    }
+
+    #[test]
+    fn test_sessions_loaded_populates_model_and_summaries() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let sessions = vec![make_session("s1", "item-1", Some(4), Some(120))];
+        let _cmd = app.update(Event::SessionsLoaded { sessions }, &mut model);
+
+        assert_eq!(model.sessions.len(), 1);
+        let summary = model.practice_summaries.get("item-1");
+        assert!(summary.is_some());
+        let summary = summary.unwrap();
+        assert_eq!(summary.session_count, 1);
+        assert_eq!(summary.total_minutes, 5);
+        assert_eq!(summary.latest_score, Some(4));
+        assert_eq!(summary.latest_tempo, Some(120));
+    }
+
+    #[test]
+    fn test_routines_loaded_populates_model() {
+        use crate::domain::routine::{Routine, RoutineEntry};
+
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+
+        let routines = vec![Routine {
+            id: "r1".to_string(),
+            name: "Warm-up".to_string(),
+            entries: vec![RoutineEntry {
+                id: "re1".to_string(),
+                item_id: "item-1".to_string(),
+                item_title: "Scales".to_string(),
+                item_type: ItemKind::Exercise,
+                position: 0,
+            }],
+            created_at: now,
+            updated_at: now,
+        }];
+
+        let _cmd = app.update(Event::RoutinesLoaded { routines }, &mut model);
+
+        assert_eq!(model.routines.len(), 1);
+        assert_eq!(model.routines[0].name, "Warm-up");
+    }
+
+    // --- Write-confirmation callbacks ---
+
+    #[test]
+    fn test_item_updated_replaces_existing() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "p1".to_string(),
+                title: "Old Title".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Composer".to_string()),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+            }],
+            ..Model::test_default()
+        };
+
+        let updated = Item {
+            id: "p1".to_string(),
+            title: "New Title".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Composer".to_string()),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
+
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].title, "New Title");
+    }
+
+    #[test]
+    fn test_item_updated_ignores_unknown_id() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "p1".to_string(),
+                title: "Original".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+            }],
+            ..Model::test_default()
+        };
+
+        let unknown = Item {
+            id: "unknown".to_string(),
+            title: "Ghost".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
+
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].title, "Original");
+    }
+
+    #[test]
+    fn test_routine_updated_replaces_existing() {
+        use crate::domain::routine::Routine;
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            routines: vec![Routine {
+                id: "r1".to_string(),
+                name: "Old Routine".to_string(),
+                entries: vec![],
+                created_at: now,
+                updated_at: now,
+            }],
+            ..Model::test_default()
+        };
+
+        let updated = Routine {
+            id: "r1".to_string(),
+            name: "Renamed Routine".to_string(),
+            entries: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        let _cmd = app.update(Event::RoutineUpdated { routine: updated }, &mut model);
+
+        assert_eq!(model.routines[0].name, "Renamed Routine");
+    }
+
+    #[test]
+    fn test_delete_confirmed_is_noop() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.items.push(Item {
+            id: "p1".to_string(),
+            title: "Still Here".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        });
+
+        let _cmd = app.update(Event::DeleteConfirmed, &mut model);
+
+        // Model unchanged — optimistic delete already happened
+        assert_eq!(model.items.len(), 1);
+    }
+
+    // --- Error handling ---
+
+    #[test]
+    fn test_load_failed_sets_error() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _cmd = app.update(
+            Event::LoadFailed("Connection refused".to_string()),
+            &mut model,
+        );
+
+        assert_eq!(model.last_error, Some("Connection refused".to_string()));
+    }
+
+    #[test]
+    fn test_data_loaded_clears_previous_error() {
+        let app = Intrada;
+        let mut model = Model {
+            last_error: Some("Old error".to_string()),
+            ..Model::test_default()
+        };
+
+        let _cmd = app.update(Event::DataLoaded { items: vec![] }, &mut model);
+
+        assert!(model.last_error.is_none());
+    }
+
+    // --- View: session status mapping ---
+
+    #[test]
+    fn test_view_session_status_building() {
+        use crate::domain::session::BuildingSession;
+
+        let app = Intrada;
+        let model = Model {
+            session_status: SessionStatus::Building(BuildingSession {
+                entries: vec![],
+                session_intention: Some("Focus on dynamics".to_string()),
+            }),
+            ..Model::test_default()
+        };
+
+        let vm = app.view(&model);
+        assert_eq!(vm.session_status, SessionStatusView::Building);
+        assert!(vm.building_setlist.is_some());
+        assert!(vm.active_session.is_none());
+        assert!(vm.summary.is_none());
+        let setlist = vm.building_setlist.unwrap();
+        assert_eq!(
+            setlist.session_intention,
+            Some("Focus on dynamics".to_string())
+        );
+    }
+
+    // --- View: routines ---
+
+    #[test]
+    fn test_view_renders_routines() {
+        use crate::domain::routine::{Routine, RoutineEntry};
+
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let model = Model {
+            routines: vec![Routine {
+                id: "r1".to_string(),
+                name: "Morning Warm-up".to_string(),
+                entries: vec![
+                    RoutineEntry {
+                        id: "re1".to_string(),
+                        item_id: "item-1".to_string(),
+                        item_title: "Scales".to_string(),
+                        item_type: ItemKind::Exercise,
+                        position: 0,
+                    },
+                    RoutineEntry {
+                        id: "re2".to_string(),
+                        item_id: "item-2".to_string(),
+                        item_title: "Arpeggios".to_string(),
+                        item_type: ItemKind::Exercise,
+                        position: 1,
+                    },
+                ],
+                created_at: now,
+                updated_at: now,
+            }],
+            ..Model::test_default()
+        };
+
+        let vm = app.view(&model);
+        assert_eq!(vm.routines.len(), 1);
+        assert_eq!(vm.routines[0].name, "Morning Warm-up");
+        assert_eq!(vm.routines[0].entry_count, 2);
+        assert_eq!(vm.routines[0].entries[0].item_title, "Scales");
+        assert_eq!(vm.routines[0].entries[1].item_title, "Arpeggios");
+    }
+
+    // --- Practice summaries edge cases ---
+
+    #[test]
+    fn test_practice_summaries_empty_sessions() {
+        let summaries = build_practice_summaries(&[]);
+        assert!(summaries.is_empty());
+    }
+
+    #[test]
+    fn test_practice_summaries_entry_without_score_or_tempo() {
+        let sessions = vec![{
+            let mut s = make_session("s1", "item-1", None, None);
+            s.entries[0].duration_secs = 180;
+            s
+        }];
+
+        let summaries = build_practice_summaries(&sessions);
+        let summary = &summaries["item-1"];
+        assert_eq!(summary.session_count, 1);
+        assert_eq!(summary.total_minutes, 3);
+        assert!(summary.latest_score.is_none());
+        assert!(summary.latest_tempo.is_none());
+        assert!(summary.score_history.is_empty());
+        assert!(summary.tempo_history.is_empty());
     }
 
     #[test]

@@ -77,9 +77,6 @@ typegen:
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     @echo "✓ Swift types generated (Xcode incremental cache invalidated)"
 
-# Check that generated Swift types are up to date (CI use)
-typegen-check:
-    bash scripts/typegen-check.sh
 
 # ─────────────────────────────────────────────
 # iOS
@@ -183,6 +180,7 @@ ios-check: ios-release
 # Quick Swift-only build check (no Rust cross-compilation)
 # Use after modifying any Swift files to catch compile errors fast (~30s vs ~5min)
 # Pass --clean to force a clean build (slower but avoids stale cache false positives)
+# Automatically falls back to device target if simulator SDK is unavailable.
 ios-swift-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -191,23 +189,41 @@ ios-swift-check *ARGS:
         echo "❌ xcodegen not installed (brew install xcodegen)" >&2
         exit 1
     fi
+
+    # Check Xcode is available (not just Command Line Tools)
+    XCODE_PATH=$(xcode-select -p 2>/dev/null || echo "")
+    if [[ "$XCODE_PATH" == */CommandLineTools* ]] || [ -z "$XCODE_PATH" ]; then
+        echo "❌ Full Xcode installation required (not just Command Line Tools)" >&2
+        echo "   Current developer dir: $XCODE_PATH" >&2
+        echo "   Fix: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+        exit 1
+    fi
+
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
 
-    # Clean if requested or if generated types changed since last build
+    # Clean if requested
     if [[ " {{ ARGS }} " == *" --clean "* ]]; then
         echo "  Cleaning DerivedData..."
         xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet 2>/dev/null || true
+    fi
+
+    # Detect whether simulator SDK is available; fall back to device target if not
+    if xcrun --sdk iphonesimulator --show-sdk-path &>/dev/null; then
+        DESTINATION='generic/platform=iOS Simulator'
+        echo "  Building for iOS Simulator..."
+    else
+        DESTINATION='generic/platform=iOS'
+        echo "  Simulator SDK not available — building for device instead..."
     fi
 
     BUILD_LOG=$(mktemp)
     trap "rm -f $BUILD_LOG" EXIT
 
     set +e
-    # Build for generic iOS Simulator (covers both iPhone and iPad architectures)
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
-        -destination 'generic/platform=iOS Simulator' \
+        -destination "$DESTINATION" \
         -configuration Debug \
         CODE_SIGNING_ALLOWED=NO \
         CODE_SIGN_IDENTITY="" \
@@ -219,7 +235,6 @@ ios-swift-check *ARGS:
     if [ $BUILD_EXIT -ne 0 ]; then
         echo ""
         echo "❌ iOS Swift build FAILED"
-        # Show all Swift errors for quick diagnosis
         ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$BUILD_LOG" || true)
         if [ -n "$ERRORS" ]; then
             echo ""
@@ -230,40 +245,43 @@ ios-swift-check *ARGS:
     fi
     echo "✓ iOS Swift build check passed"
 
-    # Also validate iPad simulator build (catches device-class-specific issues)
-    IPAD_UDID=$(xcrun simctl list devices available | grep "iPad" | head -1 | grep -oE '[A-F0-9-]{36}' || echo "")
-    if [ -n "$IPAD_UDID" ]; then
-        echo "  Checking iPad build..."
-        IPAD_LOG=$(mktemp)
-        trap "rm -f $IPAD_LOG" EXIT
-        set +e
-        xcodebuild build \
-            -project Intrada.xcodeproj \
-            -scheme Intrada \
-            -destination "platform=iOS Simulator,id=$IPAD_UDID" \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            COMPILER_INDEX_STORE_ENABLE=NO \
-            -quiet 2>"$IPAD_LOG"
-        IPAD_EXIT=$?
-        set -e
-        if [ $IPAD_EXIT -ne 0 ]; then
-            echo ""
-            echo "❌ iPad build FAILED"
-            ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$IPAD_LOG" || true)
-            if [ -n "$ERRORS" ]; then
+    # Also validate iPad simulator build if simulators are available
+    if xcrun --sdk iphonesimulator --show-sdk-path &>/dev/null; then
+        IPAD_UDID=$(xcrun simctl list devices available 2>/dev/null | grep "iPad" | head -1 | grep -oE '[A-F0-9-]{36}' || echo "")
+        if [ -n "$IPAD_UDID" ]; then
+            echo "  Checking iPad build..."
+            IPAD_LOG=$(mktemp)
+            trap "rm -f $IPAD_LOG" EXIT
+            set +e
+            xcodebuild build \
+                -project Intrada.xcodeproj \
+                -scheme Intrada \
+                -destination "platform=iOS Simulator,id=$IPAD_UDID" \
+                -configuration Debug \
+                CODE_SIGNING_ALLOWED=NO \
+                CODE_SIGN_IDENTITY="" \
+                COMPILER_INDEX_STORE_ENABLE=NO \
+                -quiet 2>"$IPAD_LOG"
+            IPAD_EXIT=$?
+            set -e
+            if [ $IPAD_EXIT -ne 0 ]; then
                 echo ""
-                echo "Swift errors:"
-                echo "$ERRORS"
+                echo "❌ iPad build FAILED"
+                ERRORS=$(grep -E "\.swift:[0-9]+:[0-9]+: error:" "$IPAD_LOG" || true)
+                if [ -n "$ERRORS" ]; then
+                    echo ""
+                    echo "Swift errors:"
+                    echo "$ERRORS"
+                fi
+                exit 1
             fi
-            exit 1
+            echo "✓ iPad build check passed"
         fi
-        echo "✓ iPad build check passed"
     fi
 
 # SwiftUI preview validation — checks all preview providers compile
 # Pass --clean to force a clean build
+# Falls back to device target if simulator SDK is unavailable.
 ios-preview-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -272,11 +290,26 @@ ios-preview-check *ARGS:
         echo "❌ xcodegen not installed (brew install xcodegen)" >&2
         exit 1
     fi
+
+    XCODE_PATH=$(xcode-select -p 2>/dev/null || echo "")
+    if [[ "$XCODE_PATH" == */CommandLineTools* ]] || [ -z "$XCODE_PATH" ]; then
+        echo "❌ Full Xcode installation required (not just Command Line Tools)" >&2
+        echo "   Fix: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+        exit 1
+    fi
+
     xcodegen generate --quiet 2>/dev/null || xcodegen generate
 
     if [[ " {{ ARGS }} " == *" --clean "* ]]; then
         echo "  Cleaning DerivedData..."
         xcodebuild clean -project Intrada.xcodeproj -scheme Intrada -quiet 2>/dev/null || true
+    fi
+
+    if xcrun --sdk iphonesimulator --show-sdk-path &>/dev/null; then
+        DESTINATION='generic/platform=iOS Simulator'
+    else
+        DESTINATION='generic/platform=iOS'
+        echo "  Simulator SDK not available — building for device instead..."
     fi
 
     BUILD_LOG=$(mktemp)
@@ -286,7 +319,7 @@ ios-preview-check *ARGS:
     xcodebuild build \
         -project Intrada.xcodeproj \
         -scheme Intrada \
-        -destination 'generic/platform=iOS Simulator' \
+        -destination "$DESTINATION" \
         -configuration Debug \
         CODE_SIGNING_ALLOWED=NO \
         CODE_SIGN_IDENTITY="" \
@@ -311,10 +344,17 @@ ios-preview-check *ARGS:
 
 # Smoke test: build for sim, install, launch, verify app doesn't crash on startup
 # Catches runtime errors (missing environment objects, bad modifier ordering, etc.)
-# Requires a prior `just ios-sim` or `just ios` build.
+# Requires a prior `just ios-sim` or `just ios` build and simulator runtimes installed.
 ios-smoke-test:
     #!/usr/bin/env bash
     set -euo pipefail
+
+    if ! xcrun --sdk iphonesimulator --show-sdk-path &>/dev/null; then
+        echo "❌ ios-smoke-test requires iOS Simulator runtimes." >&2
+        echo "   Install via: Xcode → Settings → Platforms → iOS Simulator" >&2
+        echo "   For device testing, build with 'just ios' and run from Xcode." >&2
+        exit 1
+    fi
 
     DEVICE="iPhone 16"
     BUNDLE_ID="com.intrada.app"

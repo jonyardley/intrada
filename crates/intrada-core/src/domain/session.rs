@@ -541,11 +541,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            if title.is_empty() || title.len() > validation::MAX_TITLE {
-                model.last_error = Some(format!(
-                    "Title must be between 1 and {} characters",
-                    validation::MAX_TITLE
-                ));
+            if let Err(e) = validation::validate_title(&title) {
+                model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
@@ -769,11 +766,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            if title.is_empty() || title.len() > validation::MAX_TITLE {
-                model.last_error = Some(format!(
-                    "Title must be between 1 and {} characters",
-                    validation::MAX_TITLE
-                ));
+            if let Err(e) = validation::validate_title(&title) {
+                model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 

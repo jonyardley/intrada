@@ -35,7 +35,7 @@ struct EmptyStateView<AdditionalContent: View>: View {
             }
         }
         .padding(Spacing.cardComfortable)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
