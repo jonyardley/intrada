@@ -11,6 +11,7 @@ struct SessionBuilderView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var searchText = ""
     @State private var isSheetPresented = false
+    @State private var showRoutinePicker = false
 
     /// Library items filtered by search text (shell-local concern).
     private var filteredItems: [LibraryItemView] {
@@ -137,6 +138,15 @@ struct SessionBuilderView: View {
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(Color.textPrimary)
                 Spacer()
+                if !core.viewModel.routines.isEmpty {
+                    Button {
+                        showRoutinePicker = true
+                    } label: {
+                        Label("Routine", systemImage: "list.bullet.rectangle")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.accentText)
+                    }
+                }
             }
             .padding(.horizontal, Spacing.card)
             .padding(.bottom, 4)
@@ -171,6 +181,9 @@ struct SessionBuilderView: View {
             .presentationDragIndicator(.visible)
             .presentationBackground(Color.backgroundApp)
         }
+        .sheet(isPresented: $showRoutinePicker) {
+            routinePickerSheet
+        }
     }
 
     // MARK: - iPad Layout
@@ -187,6 +200,15 @@ struct SessionBuilderView: View {
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(Color.textPrimary)
                     Spacer()
+                    if !core.viewModel.routines.isEmpty {
+                        Button {
+                            showRoutinePicker = true
+                        } label: {
+                            Label("Load Routine", systemImage: "list.bullet.rectangle")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Color.accentText)
+                        }
+                    }
                 }
                 .padding(.horizontal, Spacing.card)
 
@@ -238,6 +260,44 @@ struct SessionBuilderView: View {
     private func startSession() {
         let now = ISO8601DateFormatter().string(from: Date())
         core.update(.session(.startSession(now: now)))
+    }
+
+    // MARK: - Routine Picker
+
+    private var routinePickerSheet: some View {
+        NavigationStack {
+            List {
+                ForEach(core.viewModel.routines, id: \.id) { (routine: RoutineView) in
+                    Button {
+                        core.update(.routine(.loadRoutineIntoSetlist(routineId: routine.id)))
+                        showRoutinePicker = false
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(routine.name)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.textPrimary)
+                            Text("\(routine.entryCount) items")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.textMuted)
+                        }
+                    }
+                    .listRowBackground(Color.surfaceSecondary)
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.backgroundApp)
+            .navigationTitle("Load Routine")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Cancel") {
+                        showRoutinePicker = false
+                    }
+                    .foregroundStyle(Color.accentText)
+                }
+            }
+        }
     }
 }
 
