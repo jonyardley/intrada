@@ -224,6 +224,36 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0034_drop_category_from_items",
         "ALTER TABLE items DROP COLUMN category;",
     ),
+    (
+        "0035_create_lessons",
+        "CREATE TABLE IF NOT EXISTS lessons (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0036_index_lessons_user_date",
+        "CREATE INDEX IF NOT EXISTS idx_lessons_user_date ON lessons(user_id, date DESC);",
+    ),
+    (
+        "0037_create_lesson_photos",
+        "CREATE TABLE IF NOT EXISTS lesson_photos (
+            id TEXT PRIMARY KEY NOT NULL,
+            lesson_id TEXT NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            storage_key TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+        );",
+    ),
+    (
+        "0038_index_lesson_photos_lesson_id",
+        "CREATE INDEX IF NOT EXISTS idx_lesson_photos_lesson_id ON lesson_photos(lesson_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

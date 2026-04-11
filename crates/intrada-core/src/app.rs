@@ -13,6 +13,7 @@ use crate::analytics::compute_analytics;
 #[cfg(test)]
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
+use crate::domain::lesson::{handle_lesson_event, Lesson, LessonEvent};
 use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
@@ -22,7 +23,7 @@ use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, entry_to_view, session_to_view,
+    build_active_session_view, build_summary_view, entry_to_view, lesson_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView, ViewModel,
 };
 
@@ -47,11 +48,13 @@ pub enum Event {
     RefetchItems,
     RefetchSessions,
     RefetchRoutines,
+    RefetchLessons,
 
     // ── Domain ──────────────────────────────────────────────────────
     Item(ItemEvent),
     Session(SessionEvent),
     Routine(RoutineEvent),
+    Lesson(LessonEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -62,6 +65,12 @@ pub enum Event {
     },
     RoutinesLoaded {
         routines: Vec<Routine>,
+    },
+    LessonsLoaded {
+        lessons: Vec<Lesson>,
+    },
+    LessonLoaded {
+        lesson: Lesson,
     },
 
     // ── Write-confirmation callbacks ────────────────────────────────
@@ -157,11 +166,13 @@ impl App for Intrada {
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
             Event::RefetchRoutines => http::fetch_routines(&model.api_base_url),
+            Event::RefetchLessons => http::fetch_lessons(&model.api_base_url),
 
             // ── Domain handlers ──────────────────────────────────────
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Routine(routine_event) => handle_routine_event(routine_event, model),
+            Event::Lesson(lesson_event) => handle_lesson_event(lesson_event, model),
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -176,6 +187,16 @@ impl App for Intrada {
             }
             Event::RoutinesLoaded { routines } => {
                 model.routines = routines;
+                crux_core::render::render()
+            }
+            Event::LessonsLoaded { lessons } => {
+                model.lessons = lessons;
+                model.last_error = None;
+                crux_core::render::render()
+            }
+            Event::LessonLoaded { lesson } => {
+                model.current_lesson = Some(lesson);
+                model.last_error = None;
                 crux_core::render::render()
             }
 
@@ -319,6 +340,12 @@ impl App for Intrada {
             })
             .collect();
 
+        // Build lesson views sorted by date descending
+        let mut lessons: Vec<_> = model.lessons.iter().map(lesson_to_view).collect();
+        lessons.sort_by(|a, b| b.date.cmp(&a.date));
+
+        let current_lesson = model.current_lesson.as_ref().map(lesson_to_view);
+
         ViewModel {
             items,
             sessions,
@@ -329,6 +356,8 @@ impl App for Intrada {
             error: model.last_error.clone(),
             analytics,
             routines,
+            lessons,
+            current_lesson,
         }
     }
 }

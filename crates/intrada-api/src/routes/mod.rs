@@ -1,5 +1,6 @@
 mod health;
 mod items;
+mod lessons;
 mod routines;
 mod sessions;
 
@@ -30,7 +31,7 @@ pub fn api_router(state: AppState) -> Router {
     Router::new()
         .nest("/api", api_routes())
         .layer(cors)
-        .layer(RequestBodyLimitLayer::new(1_048_576)) // 1 MB
+        .layer(RequestBodyLimitLayer::new(6_291_456)) // 6 MB (5 MB photo + overhead)
         .layer(trace)
         .with_state(state)
 }
@@ -41,4 +42,5 @@ fn api_routes() -> Router<AppState> {
         .nest("/items", items::router())
         .nest("/sessions", sessions::router())
         .nest("/routines", routines::router())
+        .nest("/lessons", lessons::router())
 }

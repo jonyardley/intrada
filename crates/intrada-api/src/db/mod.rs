@@ -1,4 +1,5 @@
 pub mod items;
+pub mod lessons;
 pub mod routines;
 pub mod sessions;
 

@@ -8,8 +8,11 @@ use crux_core::Command;
 
 use crate::app::{Effect, Event};
 use crate::domain::item::Item;
+use crate::domain::lesson::Lesson;
 use crate::domain::session::PracticeSession;
-use crate::domain::types::{CreateItem, CreateRoutineRequest, UpdateItem, UpdateRoutineRequest};
+use crate::domain::types::{
+    CreateItem, CreateLesson, CreateRoutineRequest, UpdateItem, UpdateLesson, UpdateRoutineRequest,
+};
 
 type Http = crux_http::command::Http<Effect, Event>;
 
@@ -181,5 +184,68 @@ pub fn delete_routine(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete routine: {e}")),
+        })
+}
+
+// ── Lesson operations ──────────────────────────────────────────────────
+
+pub fn fetch_lessons(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/lessons"))
+        .expect_json::<Vec<Lesson>>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(lessons) => Event::LessonsLoaded { lessons },
+                None => Event::LoadFailed("Failed to parse lessons response".into()),
+            },
+            Err(e) => Event::LoadFailed(format!("Failed to load lessons: {e}")),
+        })
+}
+
+pub fn fetch_lesson(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/lessons/{id}"))
+        .expect_json::<Lesson>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(lesson) => Event::LessonLoaded { lesson },
+                None => Event::LoadFailed("Failed to parse lesson response".into()),
+            },
+            Err(e) => Event::LoadFailed(format!("Failed to load lesson: {e}")),
+        })
+}
+
+pub fn create_lesson(api_base_url: &str, input: &CreateLesson) -> Command<Effect, Event> {
+    Http::post(format!("{api_base_url}/api/lessons"))
+        .body_json(input)
+        .expect("serialize CreateLesson")
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::RefetchLessons,
+            Err(e) => Event::LoadFailed(format!("Failed to save lesson: {e}")),
+        })
+}
+
+pub fn update_lesson(api_base_url: &str, id: &str, input: &UpdateLesson) -> Command<Effect, Event> {
+    Http::put(format!("{api_base_url}/api/lessons/{id}"))
+        .body_json(input)
+        .expect("serialize UpdateLesson")
+        .expect_json::<Lesson>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(lesson) => Event::LessonLoaded { lesson },
+                None => Event::LoadFailed("update_lesson: server returned no body".into()),
+            },
+            Err(e) => Event::LoadFailed(format!("Failed to update lesson: {e}")),
+        })
+}
+
+pub fn delete_lesson(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::delete(format!("{api_base_url}/api/lessons/{id}"))
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::DeleteConfirmed,
+            Err(e) => Event::LoadFailed(format!("Failed to delete lesson: {e}")),
         })
 }

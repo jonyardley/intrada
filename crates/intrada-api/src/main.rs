@@ -2,6 +2,7 @@ use intrada_api::auth;
 use intrada_api::migrations;
 use intrada_api::routes;
 use intrada_api::state::AppState;
+use intrada_api::storage::R2Client;
 
 #[tokio::main]
 async fn main() {
@@ -64,7 +65,18 @@ async fn main() {
         });
     }
 
-    let state = AppState::new(db, allowed_origin, auth_config);
+    let r2 = match R2Client::from_env() {
+        Ok(client) => {
+            tracing::info!("R2 photo storage configured");
+            Some(client)
+        }
+        Err(msg) => {
+            tracing::warn!("R2 not configured — photo upload disabled ({msg})");
+            None
+        }
+    };
+
+    let state = AppState::new(db, allowed_origin, auth_config, r2);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

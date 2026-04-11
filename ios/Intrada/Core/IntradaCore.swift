@@ -80,7 +80,9 @@ final class IntradaCore {
                 sessionStatus: .idle,
                 error: message,
                 analytics: nil,
-                routines: []
+                routines: [],
+                lessons: [],
+                currentLesson: nil
             )
         }
     }
@@ -260,6 +262,14 @@ final class IntradaCore {
         } catch {
             return .err(.io(error.localizedDescription))
         }
+    }
+
+    /// Get an auth token for direct API calls (e.g., photo upload outside Crux).
+    ///
+    /// Returns the raw JWT token string, or nil if no session is available.
+    func getAuthToken() async throws -> String? {
+        guard let clerkSession = clerk?.session else { return nil }
+        return try await clerkSession.getToken()
     }
 
     /// Get a Bearer token from Clerk for API authorization.
