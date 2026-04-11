@@ -10,6 +10,11 @@ build reusable routines, and view analytics. Organised around three pillars:
 **Plan** (library, routines), **Practice** (focus mode, timers, scoring),
 **Track** (analytics, insights).
 
+**Platform priority**: iOS is the primary channel. Web stays functional but
+doesn't get active investment until iOS is in good shape. The Crux architecture
+means core improvements benefit both shells, so prioritise iOS shell work and
+defer web-only enhancements.
+
 ## Project Structure
 
 ```text
@@ -172,8 +177,9 @@ visual parity is required — users should not be able to tell which platform th
 ## Pencil Design Workflow
 
 All design in `design/intrada.pen` (single file). Required for new views and
-significant UI changes. Desktop (1440px) + Mobile (375px) frames. Reuse design
-system components. Colours must reference Pencil variables, not raw hex.
+significant UI changes. Mobile (375px) frames are primary; Desktop (1440px) frames
+are optional until web gets active investment. Reuse design system components.
+Colours must reference Pencil variables, not raw hex.
 
 ## Known Tech Debt
 
