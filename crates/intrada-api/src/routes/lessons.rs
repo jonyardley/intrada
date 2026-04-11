@@ -1,7 +1,8 @@
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{DefaultBodyLimit, Multipart, Path, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
+use tower_http::limit::RequestBodyLimitLayer;
 
 use intrada_core::domain::lesson::Lesson;
 use intrada_core::domain::types::{CreateLesson, UpdateLesson};
@@ -13,15 +14,28 @@ use crate::error::ApiError;
 use crate::state::AppState;
 use crate::storage::R2Client;
 
+/// Max photo upload size: 5 MB
+const MAX_PHOTO_SIZE: usize = 5 * 1024 * 1024;
+
+/// HTTP body limit for photo uploads: 5 MB photo + multipart overhead.
+const PHOTO_BODY_LIMIT: usize = 6 * 1024 * 1024;
+
 pub fn router() -> Router<AppState> {
+    // Photo upload gets its own sub-router so the 6 MB body limit is
+    // scoped to just that route — JSON endpoints keep axum's default.
+    let photo_upload = Router::new()
+        .route("/{id}/photos", post(upload_photo))
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(PHOTO_BODY_LIMIT));
+
     Router::new()
         .route("/", get(list_lessons).post(create_lesson))
         .route(
             "/{id}",
             get(get_lesson).put(update_lesson).delete(delete_lesson),
         )
-        .route("/{id}/photos", post(upload_photo))
         .route("/{id}/photos/{photo_id}", delete(delete_photo))
+        .merge(photo_upload)
 }
 
 async fn list_lessons(
@@ -81,11 +95,15 @@ async fn delete_lesson(
 ) -> Result<StatusCode, ApiError> {
     let conn = state.connect().await?;
 
-    // Delete photos from R2 if storage is configured
+    // Delete photos from R2 if storage is configured. Log but don't fail
+    // the request on R2 errors — DB is the source of truth and the lesson
+    // delete below cascades the photo rows.
     if let Ok(r2) = state.r2() {
         let keys = db::lessons::list_photo_storage_keys(&conn, &id, &user_id).await?;
         for key in keys {
-            let _ = r2.delete(&key).await;
+            if let Err(e) = r2.delete(&key).await {
+                tracing::warn!(lesson_id = %id, storage_key = %key, error = ?e, "R2 photo delete failed; orphaning object");
+            }
         }
     }
 
@@ -99,8 +117,19 @@ async fn delete_lesson(
 
 // ── Photo endpoints ────────────────────────────────────────────────────
 
-/// Max photo upload size: 5 MB
-const MAX_PHOTO_SIZE: usize = 5 * 1024 * 1024;
+/// Inspect the leading bytes and return the canonical image content-type,
+/// or `None` if the bytes don't match a supported format. This is the only
+/// source of truth for a photo's content-type — the client-supplied
+/// multipart header is never trusted.
+fn sniff_image_content_type(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("image/jpeg")
+    } else if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("image/png")
+    } else {
+        None
+    }
+}
 
 async fn upload_photo(
     State(state): State<AppState>,
@@ -123,16 +152,6 @@ async fn upload_photo(
         .map_err(|e| ApiError::Validation(format!("Invalid multipart data: {e}")))?
         .ok_or_else(|| ApiError::Validation("No photo field in request".into()))?;
 
-    let content_type = field
-        .content_type()
-        .unwrap_or("application/octet-stream")
-        .to_string();
-
-    // Validate content type
-    if !matches!(content_type.as_str(), "image/jpeg" | "image/png") {
-        return Err(ApiError::Validation("Photo must be JPEG or PNG".into()));
-    }
-
     let data = field
         .bytes()
         .await
@@ -145,10 +164,16 @@ async fn upload_photo(
         )));
     }
 
+    // Determine content-type from the bytes themselves — never trust the
+    // client's multipart header. Prevents XSS via spoofed Content-Type on
+    // the public R2 URL.
+    let content_type = sniff_image_content_type(&data)
+        .ok_or_else(|| ApiError::Validation("Photo must be JPEG or PNG".into()))?;
+
     // Upload to R2
     let photo_id = ulid::Ulid::new().to_string();
     let storage_key = R2Client::photo_key(&user_id, &id, &photo_id);
-    r2.upload(&storage_key, &data, &content_type).await?;
+    r2.upload(&storage_key, &data, content_type).await?;
 
     // Record in DB
     let photo = db::lessons::insert_lesson_photo(&conn, &id, &user_id, &storage_key, r2).await?;
@@ -175,9 +200,13 @@ async fn delete_photo(
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Photo not found: {photo_id}")))?;
 
-    // Delete from R2
+    // Delete from R2. Log but don't fail the request on R2 errors — the
+    // DB row below is the authoritative pointer; orphaned R2 objects are
+    // recoverable via prefix sweep but a stuck DB row is not.
     if let Ok(r2) = state.r2() {
-        let _ = r2.delete(&storage_key).await;
+        if let Err(e) = r2.delete(&storage_key).await {
+            tracing::warn!(photo_id = %photo_id, storage_key = %storage_key, error = ?e, "R2 photo delete failed; orphaning object");
+        }
     }
 
     // Delete from DB
