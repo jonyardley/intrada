@@ -40,7 +40,7 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>) -> Router {
         .await
         .expect("Failed to run migrations");
 
-    let state = AppState::new(db, "http://localhost:3000".to_string(), auth_config);
+    let state = AppState::new(db, "http://localhost:3000".to_string(), auth_config, None);
     routes::api_router(state)
 }
 
