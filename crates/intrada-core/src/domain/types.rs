@@ -143,6 +143,24 @@ impl UpdateRoutineRequest {
     }
 }
 
+// ── Lesson DTOs ────────────────────────────────────────────────────
+
+/// Request body for creating a lesson via the REST API.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct CreateLesson {
+    pub date: String,
+    pub notes: Option<String>,
+}
+
+/// Request body for updating a lesson via the REST API.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct UpdateLesson {
+    pub date: Option<String>,
+    pub notes: Option<Option<String>>,
+}
+
 /// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]

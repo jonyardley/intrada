@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(IntradaCore.self) private var core
     @State private var selectedItemId: String?
     @State private var showAddSheet: Bool = false
+    @State private var showLessonSheet: Bool = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
@@ -19,13 +20,23 @@ struct LibraryView: View {
             .navigationSplitViewColumnWidth(min: 300, ideal: 320, max: 400)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
+                    HStack(spacing: 12) {
+                        Button {
+                            showLessonSheet = true
+                        } label: {
+                            Image(systemName: "pencil.and.list.clipboard")
+                        }
+                        .tint(.accent)
+                        .accessibilityLabel("Log lesson")
+
+                        Button {
+                            showAddSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .tint(.accent)
+                        .accessibilityLabel("Add item")
                     }
-                    .tint(.accent)
-                    .accessibilityLabel("Add item")
                 }
             }
         } detail: {
@@ -45,6 +56,11 @@ struct LibraryView: View {
         .sheet(isPresented: $showAddSheet) {
             NavigationStack {
                 AddItemView()
+            }
+        }
+        .sheet(isPresented: $showLessonSheet) {
+            NavigationStack {
+                LessonCaptureView()
             }
         }
         .onAppear { autoSelectFirstItem() }

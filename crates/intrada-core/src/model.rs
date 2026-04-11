@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::item::{Item, ItemKind};
+use crate::domain::lesson::Lesson;
 use crate::domain::routine::Routine;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
@@ -22,6 +23,8 @@ pub struct Model {
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
     pub routines: Vec<Routine>,
+    pub lessons: Vec<Lesson>,
+    pub current_lesson: Option<Lesson>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
 }
 
@@ -68,6 +71,57 @@ pub struct ViewModel {
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
     pub routines: Vec<RoutineView>,
+    pub lessons: Vec<LessonView>,
+    pub current_lesson: Option<LessonView>,
+}
+
+/// Represents a lesson for display in the UI.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LessonView {
+    pub id: String,
+    pub date: String,
+    pub notes: Option<String>,
+    pub notes_preview: String,
+    pub photos: Vec<LessonPhotoView>,
+    pub has_photos: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Photo metadata for display in the UI.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LessonPhotoView {
+    pub id: String,
+    pub url: String,
+}
+
+pub fn lesson_to_view(lesson: &Lesson) -> LessonView {
+    let notes_preview = lesson
+        .notes
+        .as_deref()
+        .unwrap_or("")
+        .chars()
+        .take(100)
+        .collect::<String>();
+    LessonView {
+        id: lesson.id.clone(),
+        date: lesson.date.clone(),
+        notes: lesson.notes.clone(),
+        notes_preview,
+        photos: lesson
+            .photos
+            .iter()
+            .map(|p| LessonPhotoView {
+                id: p.id.clone(),
+                url: p.url.clone(),
+            })
+            .collect(),
+        has_photos: !lesson.photos.is_empty(),
+        created_at: lesson.created_at.to_rfc3339(),
+        updated_at: lesson.updated_at.to_rfc3339(),
+    }
 }
 
 /// Represents a routine for display in the UI.

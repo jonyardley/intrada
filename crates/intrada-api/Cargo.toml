@@ -15,7 +15,7 @@ path = "src/main.rs"
 [dependencies]
 intrada-core = { path = "../intrada-core" }
 
-axum = "0.8"
+axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["cors", "limit", "trace"] }
 libsql = { version = "0.9", default-features = false, features = ["remote", "core"] }
@@ -28,7 +28,8 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "multipart"] }
+rust-s3 = { version = "0.35", default-features = false, features = ["tokio-rustls-tls"] }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

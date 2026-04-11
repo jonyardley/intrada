@@ -1,5 +1,5 @@
 use crate::domain::item::ItemKind;
-use crate::domain::types::{CreateItem, Tempo, UpdateItem};
+use crate::domain::types::{CreateItem, CreateLesson, Tempo, UpdateItem, UpdateLesson};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
@@ -25,6 +25,7 @@ pub const MIN_SESSION_TARGET_MINS: u32 = 5;
 pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
+pub const MAX_LESSON_NOTES: usize = 10_000;
 
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || title.len() > MAX_TITLE {
@@ -310,6 +311,54 @@ pub fn validate_routine_entry_fields(item_id: &str, item_title: &str) -> Result<
             field: "item_title".to_string(),
             message: "Entry item_title must not be empty".to_string(),
         });
+    }
+    Ok(())
+}
+
+// ── Lesson validation ──────────────────────────────────────────────
+
+fn validate_lesson_date(date: &str) -> Result<(), LibraryError> {
+    let parsed = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
+        LibraryError::Validation {
+            field: "date".to_string(),
+            message: "Date must be in YYYY-MM-DD format".to_string(),
+        }
+    })?;
+
+    let today = chrono::Utc::now().date_naive();
+    if parsed > today {
+        return Err(LibraryError::Validation {
+            field: "date".to_string(),
+            message: "Date cannot be in the future".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_lesson_notes(notes: Option<&str>) -> Result<(), LibraryError> {
+    if let Some(n) = notes {
+        if n.len() > MAX_LESSON_NOTES {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: format!("Notes must not exceed {MAX_LESSON_NOTES} characters"),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_create_lesson(input: &CreateLesson) -> Result<(), LibraryError> {
+    validate_lesson_date(&input.date)?;
+    validate_lesson_notes(input.notes.as_deref())?;
+    Ok(())
+}
+
+pub fn validate_update_lesson(input: &UpdateLesson) -> Result<(), LibraryError> {
+    if let Some(ref date) = input.date {
+        validate_lesson_date(date)?;
+    }
+    if let Some(ref notes) = input.notes {
+        validate_lesson_notes(notes.as_deref())?;
     }
     Ok(())
 }

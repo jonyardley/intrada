@@ -4,3 +4,4 @@ pub mod error;
 pub mod migrations;
 pub mod routes;
 pub mod state;
+pub mod storage;
