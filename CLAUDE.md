@@ -117,6 +117,10 @@ mismatch (i8 vs u32 variant indices), corrupting the BCS byte stream.
 `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (required), `CLERK_ISSUER_URL` (required
 in prod), `ALLOWED_ORIGIN` (default `http://localhost:8080`), `PORT` (default 3001)
 
+### R2 photo storage (optional — API starts without it, photo endpoints return 500)
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`,
+`R2_PUBLIC_URL`. See `SETUP.md` §4 for provisioning steps.
+
 ### Web (compile-time)
 `CLERK_PUBLISHABLE_KEY`, `INTRADA_API_URL` (default `https://intrada-api.fly.dev`)
 
