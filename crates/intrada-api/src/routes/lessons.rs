@@ -142,6 +142,26 @@ async fn upload_photo(
     let r2 = state.r2()?;
     let conn = state.connect().await?;
 
+    // Debug: check what's actually in the DB for this lesson ID
+    let mut debug_rows = conn
+        .query(
+            "SELECT id, user_id FROM lessons WHERE id = ?1",
+            libsql::params![id.as_str()],
+        )
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?;
+    if let Some(row) = debug_rows
+        .next()
+        .await
+        .map_err(|e| ApiError::Internal(e.to_string()))?
+    {
+        let db_id: String = row.get(0).unwrap_or_default();
+        let db_user_id: String = row.get(1).unwrap_or_default();
+        tracing::info!(db_id = %db_id, db_user_id = %db_user_id, request_user_id = %user_id, "upload_photo_debug: lesson found by id");
+    } else {
+        tracing::warn!(lesson_id = %id, "upload_photo_debug: lesson NOT found by id alone");
+    }
+
     // Verify lesson exists and belongs to user
     db::lessons::get_lesson(&conn, &id, &user_id, r2)
         .await?
