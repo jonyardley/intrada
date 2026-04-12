@@ -66,6 +66,7 @@ async fn create_lesson(
     AuthUser(user_id): AuthUser,
     Json(input): Json<CreateLesson>,
 ) -> Result<(StatusCode, Json<Lesson>), ApiError> {
+    tracing::info!(user_id = %user_id, "create_lesson");
     validation::validate_create_lesson(&input)?;
     let conn = state.connect().await?;
     let r2 = state.r2()?;
@@ -137,6 +138,7 @@ async fn upload_photo(
     Path(id): Path<String>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    tracing::info!(user_id = %user_id, lesson_id = %id, "upload_photo");
     let r2 = state.r2()?;
     let conn = state.connect().await?;
 
