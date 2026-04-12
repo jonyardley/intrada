@@ -9,11 +9,19 @@ This document covers the external accounts, secrets, and configuration needed to
 │  Cloudflare Workers │ ─────────────→ │  Fly.io (Axum)   │ ────────────→ │  Turso   │
 │  (static WASM app)  │   REST API     │  intrada-api     │               │  (SQLite) │
 └─────────────────────┘                └──────────────────┘               └──────────┘
+                                              │
+                                              │  S3 API
+                                              ▼
+                                       ┌──────────────┐
+                                       │ Cloudflare R2 │
+                                       │ (photo store) │
+                                       └──────────────┘
 ```
 
 - **Frontend**: Leptos CSR + WASM, deployed as static files to Cloudflare Workers
 - **API**: Axum 0.8 REST server, deployed to Fly.io via Docker
 - **Database**: Turso (managed libsql/SQLite), accessed via HTTP
+- **Object storage**: Cloudflare R2 for lesson photos, accessed via S3-compatible API
 
 ## 1. Cloudflare Workers (Frontend)
 
@@ -142,7 +150,63 @@ curl https://intrada-api.fly.dev/api/health
 # Expected: {"status":"ok","database":"ok"}
 ```
 
-## 4. CI/CD Pipeline (GitHub Actions)
+## 4. Cloudflare R2 (Photo Storage)
+
+Lesson photos are stored in Cloudflare R2 (S3-compatible object storage). Without
+R2 configured, the API starts normally but photo upload/delete endpoints return 500.
+
+### Create the bucket
+
+1. Go to [Cloudflare Dashboard → R2](https://dash.cloudflare.com/?to=/:account/r2)
+2. Click **Create bucket**
+3. Name it (e.g. `intrada-photos`), select a location hint close to your Fly.io region
+
+### Enable public access
+
+Photos are served directly from R2 to the iOS app. You need a public URL:
+
+1. Open the bucket → **Settings** → **Public access**
+2. Either:
+   - **Custom domain** (recommended): add a subdomain like `photos.intrada.com` and configure the DNS record Cloudflare provides
+   - **R2.dev subdomain**: enable the `*.r2.dev` URL (quick but not production-grade)
+3. Note the public URL — this becomes `R2_PUBLIC_URL`
+
+### Create an API token
+
+1. Go to [R2 → Manage R2 API Tokens](https://dash.cloudflare.com/?to=/:account/r2/api-tokens)
+2. Click **Create API token**
+3. Permissions: **Object Read & Write** on the bucket you created
+4. Save the **Access Key ID** and **Secret Access Key**
+
+### Set Fly.io secrets
+
+```bash
+fly secrets set \
+  R2_ACCOUNT_ID="<your-cloudflare-account-id>" \
+  R2_ACCESS_KEY_ID="<access-key-from-step-above>" \
+  R2_SECRET_ACCESS_KEY="<secret-key-from-step-above>" \
+  R2_BUCKET_NAME="intrada-photos" \
+  R2_PUBLIC_URL="https://photos.intrada.com"
+```
+
+Your Cloudflare Account ID is in the dashboard sidebar (same one used for Workers).
+
+### Verify
+
+```bash
+# Check API logs after deploy
+fly logs | grep R2
+
+# Expected: "R2 photo storage configured"
+# If missing: "R2 not configured — photo upload disabled (R2_ACCOUNT_ID must be set)"
+```
+
+### Local development
+
+R2 is optional locally. Without the env vars, the API starts with photo upload
+disabled. To test photos locally, add the R2 variables to your `.env` file.
+
+## 5. CI/CD Pipeline (GitHub Actions)
 
 The single workflow `.github/workflows/ci.yml` handles both CI and deployment:
 
@@ -175,7 +239,7 @@ fly tokens create deploy -a intrada-api
 
 Add the output as the `FLY_API_TOKEN` secret in GitHub Actions.
 
-## 5. Local Development
+## 6. Local Development
 
 ### Prerequisites
 
@@ -261,5 +325,10 @@ Use this when setting up from scratch:
 - [ ] Fly.io secrets set (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, ALLOWED_ORIGIN)
 - [ ] First deploy successful (`fly deploy`)
 - [ ] Health check returns `{"status":"ok","database":"ok"}`
+- [ ] R2 bucket created in Cloudflare
+- [ ] R2 public access enabled (custom domain or r2.dev subdomain)
+- [ ] R2 API token created (Object Read & Write)
+- [ ] R2 secrets set on Fly.io (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_PUBLIC_URL)
+- [ ] `fly logs | grep R2` shows "R2 photo storage configured"
 - [ ] Frontend deployed to Cloudflare Workers
 - [ ] Frontend CORS requests to API work
