@@ -193,6 +193,14 @@ pub async fn update_lesson(
 }
 
 pub async fn delete_lesson(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
+    // Explicit child-row delete — FK cascade is disabled (Turso compatibility),
+    // so application code owns the cleanup.
+    conn.execute(
+        "DELETE FROM lesson_photos WHERE lesson_id = ?1 AND user_id = ?2",
+        libsql::params![id, user_id],
+    )
+    .await?;
+
     let rows_affected = conn
         .execute(
             "DELETE FROM lessons WHERE id = ?1 AND user_id = ?2",
@@ -216,27 +224,25 @@ pub async fn insert_lesson_photo(
     let now = Utc::now();
     let now_str = now.to_rfc3339();
 
-    // Use INSERT...SELECT to atomically verify the lesson exists and belongs
-    // to the user. This avoids a separate read query, which can fail under
-    // libsql connection-level read-after-write inconsistency.
-    let rows_affected = conn
-        .execute(
-            "INSERT INTO lesson_photos (id, lesson_id, user_id, storage_key, created_at)
-             SELECT ?1, ?2, ?3, ?4, ?5
-             WHERE EXISTS (SELECT 1 FROM lessons WHERE id = ?2 AND user_id = ?3)",
-            libsql::params![
-                id.as_str(),
-                lesson_id,
-                user_id,
-                storage_key,
-                now_str.as_str()
-            ],
-        )
-        .await?;
-
-    if rows_affected == 0 {
-        return Err(ApiError::NotFound(format!("Lesson not found: {lesson_id}")));
-    }
+    // Plain INSERT — no lesson existence check. Turso's remote HTTP
+    // connections have cross-connection read-after-write inconsistency
+    // (and with multi-machine Fly.io, cross-machine too). Any read of
+    // the lessons table — SELECT, INSERT...SELECT WHERE EXISTS, or FK
+    // constraint check — can fail to see a just-created lesson.
+    //
+    // Security: user_id comes from the JWT and is stored on the photo
+    // row, so ownership is enforced at read time.
+    conn.execute(
+        "INSERT INTO lesson_photos (id, lesson_id, user_id, storage_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        libsql::params![
+            id.as_str(),
+            lesson_id,
+            user_id,
+            storage_key,
+            now_str.as_str()
+        ],
+    )
+    .await?;
 
     Ok(LessonPhoto {
         id,

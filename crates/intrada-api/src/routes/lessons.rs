@@ -96,8 +96,7 @@ async fn delete_lesson(
     let conn = state.conn();
 
     // Delete photos from R2 if storage is configured. Log but don't fail
-    // the request on R2 errors — DB is the source of truth and the lesson
-    // delete below cascades the photo rows.
+    // the request on R2 errors — DB is the source of truth.
     if let Ok(r2) = state.r2() {
         let keys = db::lessons::list_photo_storage_keys(&conn, &id, &user_id).await?;
         for key in keys {
