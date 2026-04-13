@@ -216,17 +216,27 @@ pub async fn insert_lesson_photo(
     let now = Utc::now();
     let now_str = now.to_rfc3339();
 
-    conn.execute(
-        "INSERT INTO lesson_photos (id, lesson_id, user_id, storage_key, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        libsql::params![
-            id.as_str(),
-            lesson_id,
-            user_id,
-            storage_key,
-            now_str.as_str()
-        ],
-    )
-    .await?;
+    // Use INSERT...SELECT to atomically verify the lesson exists and belongs
+    // to the user. This avoids a separate read query, which can fail under
+    // libsql connection-level read-after-write inconsistency.
+    let rows_affected = conn
+        .execute(
+            "INSERT INTO lesson_photos (id, lesson_id, user_id, storage_key, created_at)
+             SELECT ?1, ?2, ?3, ?4, ?5
+             WHERE EXISTS (SELECT 1 FROM lessons WHERE id = ?2 AND user_id = ?3)",
+            libsql::params![
+                id.as_str(),
+                lesson_id,
+                user_id,
+                storage_key,
+                now_str.as_str()
+            ],
+        )
+        .await?;
+
+    if rows_affected == 0 {
+        return Err(ApiError::NotFound(format!("Lesson not found: {lesson_id}")));
+    }
 
     Ok(LessonPhoto {
         id,
