@@ -25,10 +25,11 @@ async fn main() {
 
     let conn = db.connect().expect("Failed to create database connection");
 
-    // Enable foreign key enforcement — SQLite disables this by default per connection.
-    conn.execute("PRAGMA foreign_keys = ON", ())
-        .await
-        .expect("Failed to enable PRAGMA foreign_keys");
+    // FK enforcement is intentionally OFF. Turso's remote HTTP protocol
+    // checks FK constraints via a parent-table read, which suffers the same
+    // cross-connection consistency issue that caused photo upload 404s.
+    // All cascade deletes are handled explicitly in application code
+    // (delete_session, delete_routine, delete_lesson).
 
     tracing::info!("Running migrations...");
     migrations::run_migrations(&conn)

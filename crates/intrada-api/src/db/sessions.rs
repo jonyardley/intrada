@@ -448,9 +448,8 @@ pub async fn delete_session(conn: &Connection, id: &str, user_id: &str) -> Resul
         return Ok(false);
     }
 
-    // PRAGMA foreign_keys = ON is set on every connection (see AppState::connect),
-    // so ON DELETE CASCADE will handle this automatically. We keep the explicit
-    // delete as a belt-and-suspenders safety net, matching delete_routine's pattern.
+    // Explicit child-row delete — FK cascade is disabled (Turso compatibility),
+    // so application code owns the cleanup.
     conn.execute(
         "DELETE FROM setlist_entries WHERE session_id = ?1",
         libsql::params![id],
