@@ -22,7 +22,7 @@ async fn list_items(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<Vec<Item>>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let items = db::items::list_items(&conn, &user_id).await?;
     Ok(Json(items))
 }
@@ -32,7 +32,7 @@ async fn get_item(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Item>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let item = db::items::get_item(&conn, &id, &user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
@@ -45,7 +45,7 @@ async fn create_item(
     Json(input): Json<CreateItem>,
 ) -> Result<(StatusCode, Json<Item>), ApiError> {
     validation::validate_create_item(&input)?;
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let item = db::items::insert_item(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(item)))
 }
@@ -57,7 +57,7 @@ async fn update_item(
     Json(input): Json<UpdateItem>,
 ) -> Result<Json<Item>, ApiError> {
     validation::validate_update_item(&input)?;
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let item = db::items::update_item(&conn, &id, &user_id, &input)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
@@ -69,7 +69,7 @@ async fn delete_item(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let deleted = db::items::delete_item(&conn, &id, &user_id).await?;
     if deleted {
         Ok(Json(serde_json::json!({ "message": "Item deleted" })))

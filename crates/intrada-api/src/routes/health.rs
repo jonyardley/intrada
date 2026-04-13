@@ -11,18 +11,7 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn health_check(State(state): State<AppState>) -> impl IntoResponse {
-    let conn = match state.connect().await {
-        Ok(conn) => conn,
-        Err(_) => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(serde_json::json!({
-                    "status": "degraded",
-                    "database": "error"
-                })),
-            );
-        }
-    };
+    let conn = state.conn();
 
     match conn.query("SELECT 1", ()).await {
         Ok(_) => (

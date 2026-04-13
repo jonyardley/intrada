@@ -42,7 +42,7 @@ async fn list_lessons(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<Vec<Lesson>>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let r2 = state.r2()?;
     let lessons = db::lessons::list_lessons(&conn, &user_id, r2).await?;
     Ok(Json(lessons))
@@ -53,7 +53,7 @@ async fn get_lesson(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Lesson>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let r2 = state.r2()?;
     let lesson = db::lessons::get_lesson(&conn, &id, &user_id, r2)
         .await?
@@ -67,7 +67,7 @@ async fn create_lesson(
     Json(input): Json<CreateLesson>,
 ) -> Result<(StatusCode, Json<Lesson>), ApiError> {
     validation::validate_create_lesson(&input)?;
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let r2 = state.r2()?;
     let lesson = db::lessons::insert_lesson(&conn, &user_id, &input, r2).await?;
     Ok((StatusCode::CREATED, Json(lesson)))
@@ -80,7 +80,7 @@ async fn update_lesson(
     Json(input): Json<UpdateLesson>,
 ) -> Result<Json<Lesson>, ApiError> {
     validation::validate_update_lesson(&input)?;
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let r2 = state.r2()?;
     let lesson = db::lessons::update_lesson(&conn, &id, &user_id, &input, r2)
         .await?
@@ -93,7 +93,7 @@ async fn delete_lesson(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
 
     // Delete photos from R2 if storage is configured. Log but don't fail
     // the request on R2 errors — DB is the source of truth and the lesson
@@ -138,7 +138,7 @@ async fn upload_photo(
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
     let r2 = state.r2()?;
-    let conn = state.connect().await?;
+    let conn = state.conn();
 
     // Extract the photo field from multipart
     let field = multipart
@@ -188,7 +188,7 @@ async fn delete_photo(
     AuthUser(user_id): AuthUser,
     Path((id, photo_id)): Path<(String, String)>,
 ) -> Result<StatusCode, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
 
     // Get storage key before deleting from DB
     let storage_key = db::lessons::get_lesson_photo_storage_key(&conn, &photo_id, &id, &user_id)

@@ -76,7 +76,7 @@ async fn main() {
         }
     };
 
-    let state = AppState::new(db, allowed_origin, auth_config, r2);
+    let state = AppState::new(conn, allowed_origin, auth_config, r2);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
