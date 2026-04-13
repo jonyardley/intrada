@@ -22,7 +22,7 @@ async fn list_sessions(
     State(state): State<AppState>,
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<Vec<PracticeSession>>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let sessions = db::sessions::list_sessions(&conn, &user_id).await?;
     Ok(Json(sessions))
 }
@@ -32,7 +32,7 @@ async fn get_session(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<PracticeSession>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let session = db::sessions::get_session(&conn, &id, &user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Session not found: {id}")))?;
@@ -68,7 +68,7 @@ async fn save_session(
         )?;
     }
 
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let session = db::sessions::insert_session(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(session)))
 }
@@ -78,7 +78,7 @@ async fn delete_session(
     AuthUser(user_id): AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let conn = state.connect().await?;
+    let conn = state.conn();
     let deleted = db::sessions::delete_session(&conn, &id, &user_id).await?;
     if deleted {
         Ok(Json(serde_json::json!({ "message": "Session deleted" })))
