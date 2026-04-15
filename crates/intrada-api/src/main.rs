@@ -1,7 +1,7 @@
 use intrada_api::auth;
 use intrada_api::migrations;
 use intrada_api::routes;
-use intrada_api::state::AppState;
+use intrada_api::state::{AppState, Db};
 use intrada_api::storage::R2Client;
 
 #[tokio::main]
@@ -77,7 +77,7 @@ async fn main() {
         }
     };
 
-    let state = AppState::new(conn, allowed_origin, auth_config, r2);
+    let state = AppState::new(Db::new(db, conn), allowed_origin, auth_config, r2);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

@@ -8,7 +8,7 @@ use tower::ServiceExt;
 use intrada_api::auth::AuthConfig;
 use intrada_api::migrations;
 use intrada_api::routes;
-use intrada_api::state::AppState;
+use intrada_api::state::{AppState, Db};
 
 /// Create a fresh Axum router backed by a temporary SQLite database file.
 /// Each call returns an isolated database — tests don't share state.
@@ -39,7 +39,12 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>) -> Router {
         .await
         .expect("Failed to run migrations");
 
-    let state = AppState::new(conn, "http://localhost:3000".to_string(), auth_config, None);
+    let state = AppState::new(
+        Db::new(db, conn),
+        "http://localhost:3000".to_string(),
+        auth_config,
+        None,
+    );
     routes::api_router(state)
 }
 
