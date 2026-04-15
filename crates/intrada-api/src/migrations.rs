@@ -254,6 +254,42 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0038_index_lesson_photos_lesson_id",
         "CREATE INDEX IF NOT EXISTS idx_lesson_photos_lesson_id ON lesson_photos(lesson_id);",
     ),
+    // Drop the FK constraint from lesson_photos. Turso's remote engine
+    // enforces FK regardless of the client-side `PRAGMA foreign_keys` —
+    // and the FK parent-table read fails across Fly machines / replicas
+    // that haven't yet observed a just-created lesson row, causing photo
+    // upload 500s. SQLite can't ALTER TABLE DROP CONSTRAINT, so we do
+    // the table-swap dance across 5 single-statement migrations.
+    //
+    // Orphan safety: `user_id` is on each row and `delete_lesson` deletes
+    // child photos explicitly (be44d1a), so removing the FK doesn't leak.
+    (
+        "0039_create_lesson_photos_new",
+        "CREATE TABLE IF NOT EXISTS lesson_photos_new (
+            id TEXT PRIMARY KEY NOT NULL,
+            lesson_id TEXT NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            storage_key TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0040_copy_lesson_photos_to_new",
+        "INSERT INTO lesson_photos_new (id, lesson_id, user_id, storage_key, created_at)
+         SELECT id, lesson_id, user_id, storage_key, created_at FROM lesson_photos;",
+    ),
+    (
+        "0041_drop_old_lesson_photos",
+        "DROP TABLE lesson_photos;",
+    ),
+    (
+        "0042_rename_lesson_photos_new",
+        "ALTER TABLE lesson_photos_new RENAME TO lesson_photos;",
+    ),
+    (
+        "0043_recreate_lesson_photos_lesson_id_index",
+        "CREATE INDEX IF NOT EXISTS idx_lesson_photos_lesson_id ON lesson_photos(lesson_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
