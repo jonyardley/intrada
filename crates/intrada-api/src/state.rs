@@ -1,16 +1,53 @@
-use libsql::Connection;
+use std::sync::{Arc, RwLock};
+
+use libsql::{Connection, Database};
 
 use crate::auth::AuthConfig;
 use crate::error::ApiError;
 use crate::storage::R2Client;
 
+/// Shared, self-healing database handle.
+///
+/// Turso's remote HTTP connections don't share replication state across
+/// `db.connect()` calls, so we reuse a single `Connection` to guarantee
+/// read-your-own-writes consistency. But that single HTTP session can rot
+/// (idle timeout, machine suspend/resume, network blip) and never recovers
+/// on its own. `Db` keeps the underlying `Database` so we can rebuild the
+/// `Connection` on demand when a query fails.
+#[derive(Clone)]
+pub struct Db {
+    db: Arc<Database>,
+    conn: Arc<RwLock<Connection>>,
+}
+
+impl Db {
+    pub fn new(db: Database, conn: Connection) -> Self {
+        Self {
+            db: Arc::new(db),
+            conn: Arc::new(RwLock::new(conn)),
+        }
+    }
+
+    /// Cheap clone of the current shared connection.
+    pub fn conn(&self) -> Connection {
+        self.conn
+            .read()
+            .expect("db connection lock poisoned")
+            .clone()
+    }
+
+    /// Rebuild the shared connection from the underlying `Database`.
+    /// Subsequent `conn()` calls observe the new connection.
+    pub fn reconnect(&self) -> Result<Connection, libsql::Error> {
+        let fresh = self.db.connect()?;
+        *self.conn.write().expect("db connection lock poisoned") = fresh.clone();
+        Ok(fresh)
+    }
+}
+
 #[derive(Clone)]
 pub struct AppState {
-    /// Single shared database connection. Turso's remote HTTP connections
-    /// don't share replication state across `db.connect()` calls, so a new
-    /// connection can fail to see rows written by a previous one. Reusing
-    /// one connection guarantees read-your-own-writes consistency.
-    conn: Connection,
+    db: Db,
     pub allowed_origin: String,
     pub auth_config: Option<AuthConfig>,
     pub r2: Option<R2Client>,
@@ -18,13 +55,13 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(
-        conn: Connection,
+        db: Db,
         allowed_origin: String,
         auth_config: Option<AuthConfig>,
         r2: Option<R2Client>,
     ) -> Self {
         Self {
-            conn,
+            db,
             allowed_origin,
             auth_config,
             r2,
@@ -44,6 +81,12 @@ impl AppState {
     /// handlers share the same underlying HTTP session to Turso, which
     /// ensures read-your-own-writes consistency across requests.
     pub fn conn(&self) -> Connection {
-        self.conn.clone()
+        self.db.conn()
+    }
+
+    /// Rebuild the shared connection. Use after a query fails so subsequent
+    /// requests get a working session instead of a permanently-broken one.
+    pub fn reconnect(&self) -> Result<Connection, libsql::Error> {
+        self.db.reconnect()
     }
 }
