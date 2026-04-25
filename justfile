@@ -92,6 +92,9 @@ ios-dev:
     #!/usr/bin/env bash
     set -e
     trap 'kill 0' EXIT
+    pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
+    pkill -f "trunk serve" 2>/dev/null || true
+    sleep 0.3
     echo "Starting trunk dev server..."
     trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (simulator)..."
