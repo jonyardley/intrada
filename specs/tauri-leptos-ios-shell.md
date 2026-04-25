@@ -608,7 +608,19 @@ in order. Captured so the setup path is predictable for future contributors.
   justfile recipe. This makes Trunk listen on all interfaces including the LAN
   IP. Only applied in `ios-dev`, not in the regular `dev` recipe.
 
-### 8. `just ios dev` / `just ios` recipe not found
+### 8. xcodebuild timed out — no simulator installed, iPad disk image failed
+- **Symptom**: `cargo tauri ios dev` picks up the connected iPad, fails with
+  `The developer disk image could not be mounted on this device`, then times out.
+- **Cause**: `cargo tauri ios dev` targets any available iOS destination. If no
+  simulator runtime is installed, Xcode falls back to a connected physical device.
+  iPads on newer iOS versions may require a developer disk image that the
+  installed Xcode version doesn't ship with.
+- **Fix**: Install the iOS Simulator runtime in Xcode → Settings → Platforms →
+  iOS Simulator. Once installed, `cargo tauri ios dev` will target the simulator
+  instead. To force simulator explicitly:
+  `cargo tauri ios dev --target aarch64-apple-ios-sim`
+
+### 9. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
 - **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
   with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the
