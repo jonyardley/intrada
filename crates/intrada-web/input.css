@@ -480,33 +480,33 @@ nav[aria-label="Mobile navigation"] {
   animation: none;
 }
 
-/* Forward navigation — root (content) slides left, new slides in from right */
+/* Full-screen slide — no opacity change so both snapshots are always
+   fully opaque. Old + new together cover exactly 100% of the viewport
+   at every frame, preventing any background from showing through. */
 html.router-outlet-0::view-transition-old(root) {
-  animation: 220ms ease-in both vt-slide-out-left;
+  animation: 300ms ease-in-out both vt-slide-out-left;
 }
 html.router-outlet-0::view-transition-new(root) {
-  animation: 220ms ease-out both vt-slide-in-right;
+  animation: 300ms ease-in-out both vt-slide-in-right;
 }
-
-/* Back navigation — reversed direction */
 html.router-outlet-0.router-back::view-transition-old(root) {
-  animation: 220ms ease-in both vt-slide-out-right;
+  animation: 300ms ease-in-out both vt-slide-out-right;
 }
 html.router-outlet-0.router-back::view-transition-new(root) {
-  animation: 220ms ease-out both vt-slide-in-left;
+  animation: 300ms ease-in-out both vt-slide-in-left;
 }
 
 @keyframes vt-slide-out-left {
-  to { opacity: 0; transform: translateX(-16px); }
+  to { transform: translateX(-100%); }
 }
 @keyframes vt-slide-in-right {
-  from { opacity: 0; transform: translateX(16px); }
+  from { transform: translateX(100%); }
 }
 @keyframes vt-slide-out-right {
-  to { opacity: 0; transform: translateX(16px); }
+  to { transform: translateX(100%); }
 }
 @keyframes vt-slide-in-left {
-  from { opacity: 0; transform: translateX(-16px); }
+  from { transform: translateX(-100%); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
