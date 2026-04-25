@@ -545,7 +545,61 @@ issues (#194, #195–201, #202) stay closed (work was real, just superseded).
 The SwiftUI design-system work is referenced in Phase 2a as the source-of-truth
 for what iOS-shaped variants need to look like.
 
-## 15. Out of scope for this spec
+## 15. Phase 0 setup log
+
+Issues encountered during the initial scaffold and `cargo tauri ios init` run,
+in order. Captured so the setup path is predictable for future contributors.
+
+### 1. `cargo-tauri` CLI not installed
+- **Symptom**: `cargo tauri ios init` → `error: no such command: tauri`
+- **Cause**: `cargo-tauri` is a separate binary, not part of the workspace.
+- **Fix**: `cargo install tauri-cli --version "^2" --locked`
+
+### 2. CI failing — glib-sys build error on ubuntu-latest
+- **Symptom**: Test and Clippy CI jobs fail with `failed to run custom build
+  command for glib-sys v0.18.1`.
+- **Cause**: Tauri 2 pulls in GTK/glib as a desktop rendering backend on Linux.
+  The ubuntu-latest runner doesn't have GTK system libraries installed.
+- **Fix**: Add `--workspace --exclude intrada-mobile` to `cargo test` and
+  `cargo clippy` in `ci.yml`. `intrada-mobile` is an iOS-only host with no
+  meaningful unit tests; excluding it from Linux CI is correct.
+
+### 3. `tauri.conf.json` schema error — `initializationScript` not allowed
+- **Symptom**: `cargo tauri ios init` → `"tauri.conf.json" error on app >
+  windows > 0: Additional properties are not allowed ('initializationScript'
+  was unexpected)`
+- **Cause**: `initializationScript` was a valid window config property in
+  Tauri v1 but was removed from the JSON schema in Tauri v2.
+- **Fix**: Removed `initializationScript` from `tauri.ios.conf.json`. Inject
+  `data-platform="ios"` via `setup` + `eval` in `lib.rs` instead, scoped to
+  `#[cfg(target_os = "ios")]`.
+
+### 4. `tauri.conf.json` — `apple.development-team` empty
+- **Symptom**: `cargo tauri ios init` → `Error failed to create Apple
+  configuration: apple.development-team is empty`
+- **Cause**: `bundle.iOS.developmentTeam` was left as `""` in the initial
+  scaffold.
+- **Fix**: Set to `9S5FG4LQAF` (matches `ios/project.yml`
+  `DEVELOPMENT_TEAM`). Find your team ID in Xcode → Settings → Accounts, or
+  at developer.apple.com → Membership.
+
+### 5. CocoaPods not installed
+- **Symptom**: `cargo tauri ios init` → `failed to run command pod install:
+  Failed to install cocoapods: No such file or directory`
+- **Cause**: Tauri's iOS init requires CocoaPods to manage native dependencies.
+  It tried Homebrew first (package not found) then gem (needs sudo, rejected).
+- **Fix**: `brew install cocoapods` before running `cargo tauri ios init`.
+
+### 6. Missing window `label` in tauri.conf.json
+- **Symptom**: Window/capability mismatch — capabilities reference `"main"`
+  but window had no label field.
+- **Cause**: Oversight in initial scaffold; Tauri requires the label to match
+  capability window references.
+- **Fix**: Added `"label": "main"` to the window object in `tauri.conf.json`.
+
+---
+
+## 16. Out of scope for this spec
 
 - Detailed Swift code for any custom plugin — written when the plugin is built.
 - Component-survival audit table contents — Phase 2a deliverable.
