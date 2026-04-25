@@ -20,7 +20,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "native-v2"
+          shared-key: "native-v3"
       # intrada-mobile (Tauri 2) requires GTK/glib system libs not present on
       # Ubuntu runners — it's an iOS-only host with no meaningful unit tests.
       - run: cargo test --workspace --exclude intrada-mobile
@@ -37,7 +37,7 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "native-v2"
+          shared-key: "native-v3"
           save-if: "false"
       # intrada-mobile excluded: Tauri 2 needs GTK/glib system libs on Linux.
       - run: cargo clippy --workspace --exclude intrada-mobile -- -D warnings
@@ -141,7 +141,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "native-v2"
+          shared-key: "native-v3"
           save-if: "false"
       - name: Generate Swift types from Rust sources
         run: cargo build -p shared_types
