@@ -1,6 +1,6 @@
 # intrada — Product Roadmap
 
-*Updated 2026-04-10*
+*Updated 2026-04-25*
 
 Everything in intrada serves the five layers described in the [Product Vision](../VISION.md):
 **Capture → Plan → Space → Show → Guide**. These layers build on each other — you
@@ -39,9 +39,10 @@ which cut across the layers. Features are placed on a rolling horizon: **Now** (
 | Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
 | Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
 | Practice consistency calendar (#65) — week strip, comeback framing, session dots | Done |
-| iOS native shell (#187) — Crux/UniFFI/BCS bridge, SwiftUI, CI pipeline | Done |
-| iOS cleanup (#202) — removed dead code and legacy networking layer | Done |
-| iOS design system (#194) — tokens, shared components, modifiers, navigation | Done |
+| iOS native shell (#187) — Crux/UniFFI/BCS bridge, SwiftUI, CI pipeline | Done (on hold — see below) |
+| iOS cleanup (#202) — removed dead code and legacy networking layer | Done (on hold) |
+| iOS design system (#194) — tokens, shared components, modifiers, navigation | Done (on hold) |
+| Tauri/Leptos iOS shell — Phase 0 (#302) — scaffold, CI, CLAUDE.md, simulator running | Done |
 | Remove category field (#211) — exercises use tags only, simplified subtitle logic | Done |
 | Use mutate response (#148) — updates/deletes use API response directly, no re-fetch | Done |
 | Filter clause sync (#152) — extracted subquery constants to prevent user isolation drift | Done |
@@ -153,6 +154,45 @@ is actually working.
 
 ---
 
+## Mobile Shell (Tauri/Leptos)
+
+The SwiftUI iOS shell (#187–#202) is on hold. Active iOS development now goes
+through the Tauri 2 + Leptos shell. See `specs/tauri-leptos-ios-shell.md`
+for the full plan.
+
+### Done
+| Phase | Description | PR |
+|-------|-------------|-----|
+| Phase 0 | Scaffold, CI, CLAUDE.md, simulator running | #302 |
+
+### Now
+| Phase | Description | Size |
+|-------|-------------|------|
+| Phase 1a | Foundation CSS — iOS reset, SF Pro, safe areas, no-zoom inputs | S |
+| Phase 1b | Interactivity — View Transitions, haptics, spring animations | M |
+| Phase 1c | `<SplitView>` primitive for iPad list→detail layouts | M |
+
+### Next
+| Phase | Description | Size |
+|-------|-------------|------|
+| Phase 2a | Component audit — classify all views/components for iOS parity | S |
+| Phase 2b | iOS-shaped component variants — sheets, segmented control, list rows, pull-to-refresh | L |
+| Phase 2c | Re-skin Practice pillar — focus mode, active session, scoring, rep counter | L |
+| Phase 2d | Background audio Swift plugin (P0 — lock-screen timers) | M |
+
+### Later
+| Phase | Description | Size |
+|-------|-------------|------|
+| Phase 3 | Plan + Track pillars at parity | L |
+| Phase 4 | Dogfood on physical device (Xcode sideload) | S |
+| Phase 5 | Shell-of-record cutover (CLAUDE.md, on-hold markers) | S |
+| [#300](https://github.com/jonyardley/intrada/issues/300) | TestFlight enablement | S |
+| [#301](https://github.com/jonyardley/intrada/issues/301) | App Store submission | M |
+| [#299](https://github.com/jonyardley/intrada/issues/299) | MusicKit integration | L |
+| [#303](https://github.com/jonyardley/intrada/issues/303) | CSP hardening | S |
+
+---
+
 ## Cross-Cutting Concerns
 
 These don't belong to a single pillar — they support all three.
@@ -210,9 +250,10 @@ question than "What phase are we in?" Within each pillar, the Priority field
 2. **Offline-first architecture.** Currently API-dependent. What syncs? When?
    Gets harder to retrofit the longer we wait.
 
-3. ~~**iOS native vs web-first.**~~ **Decided: iOS is the primary channel.**
-   The native shell is built and feature views are complete.
-   Cross-platform features (Crux core + API) benefit both shells.
+3. ~~**iOS native vs web-first.**~~ **Decided: Tauri/Leptos is the primary
+   channel for both web and iOS.** The SwiftUI shell is on hold. The Leptos
+   shell runs in a Tauri WKWebView on iOS, shipping features on both platforms
+   simultaneously. See `specs/tauri-leptos-ios-shell.md`.
 
 4. **Scoring + tempo coupling.** Should every mastery rating require a tempo?
    Or is tempo optional (only for items with tempo targets)?
