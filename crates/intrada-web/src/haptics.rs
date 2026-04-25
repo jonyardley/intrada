@@ -6,6 +6,9 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(inline_js = "
     function haptics_invoke(cmd, args) {
         try {
+            // Tauri 2 public API is window.__TAURI__.core.invoke.
+            // window.__TAURI_INTERNALS__.invoke is the lower-level path,
+            // always present in the WebView — used as a fallback.
             const invoke =
                 window.__TAURI__?.core?.invoke ??
                 window.__TAURI_INTERNALS__?.invoke;

@@ -130,6 +130,9 @@ ios-dev-device:
     pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
     pkill -f "trunk serve" 2>/dev/null || true
     sleep 0.3
+    # xcrun xctrace output format: "  DeviceName (Model) (UDID)"
+    # cut -d'(' -f1 takes everything before the first '(' — assumes device
+    # names don't contain parentheses (holds for all standard Apple device names).
     DEVICES=()
     while IFS= read -r line; do DEVICES+=("$line"); done < <(
         xcrun xctrace list devices 2>/dev/null \
