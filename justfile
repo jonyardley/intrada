@@ -120,6 +120,47 @@ ios-dev:
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM"
     wait
 
+# Start the Tauri iOS dev session on a connected physical device.
+# Device must be connected via USB and trusted. Requires Wi-Fi for the
+# dev server (device can't reach localhost — uses the host's LAN IP).
+ios-dev-device:
+    #!/usr/bin/env bash
+    set -e
+    trap 'kill 0' EXIT
+    pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
+    pkill -f "trunk serve" 2>/dev/null || true
+    sleep 0.3
+    DEVICES=()
+    while IFS= read -r line; do DEVICES+=("$line"); done < <(
+        xcrun xctrace list devices 2>/dev/null \
+            | grep -E "(iPhone|iPad)" \
+            | grep -v "Simulator" \
+            | awk -F' (' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}'
+    )
+    if [ ${#DEVICES[@]} -eq 0 ]; then
+        echo "❌ No physical iOS device found. Connect a device via USB and trust this Mac."
+        exit 1
+    elif [ ${#DEVICES[@]} -eq 1 ]; then
+        DEVICE="${DEVICES[0]}"
+    elif command -v fzf &>/dev/null; then
+        DEVICE=$(printf '%s\n' "${DEVICES[@]}" | fzf --prompt="Select device: ")
+    else
+        echo "Select device:"
+        select DEVICE in "${DEVICES[@]}"; do [ -n "$DEVICE" ] && break; done
+    fi
+    echo "  Using: $DEVICE"
+    LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "")
+    if [ -z "$LAN_IP" ]; then
+        echo "❌ Could not detect LAN IP. Connect to Wi-Fi and try again."
+        exit 1
+    fi
+    echo "  Dev server: http://$LAN_IP:8080"
+    echo "Starting trunk dev server..."
+    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    echo "Starting Tauri iOS dev (device)..."
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --host "$LAN_IP" "$DEVICE"
+    wait
+
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
 ios-build:
     cd crates/intrada-mobile/src-tauri && cargo tauri ios build
