@@ -1,11 +1,9 @@
 {
-  "$schema": "../gen/schemas/mobile-schema.json",
+  "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Intrada default capabilities",
+  "description": "Intrada desktop/web capabilities",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "haptics:default",
-    "deep-link:default"
+    "core:default"
   ]
 }

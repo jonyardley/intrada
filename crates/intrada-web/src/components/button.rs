@@ -1,3 +1,4 @@
+use intrada_web::haptics;
 use leptos::ev;
 use leptos::prelude::*;
 
@@ -54,6 +55,13 @@ pub fn Button(
             disabled=is_disabled
             on:click=move |ev| {
                 if !is_disabled.get() {
+                    match variant {
+                        ButtonVariant::Success => haptics::haptic_success(),
+                        ButtonVariant::Danger | ButtonVariant::DangerOutline => {
+                            haptics::haptic_warning()
+                        }
+                        _ => haptics::haptic_light(),
+                    }
                     if let Some(cb) = &on_click {
                         cb.run(ev);
                     }

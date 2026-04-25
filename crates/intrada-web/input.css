@@ -449,6 +449,27 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   View Transitions (Phase 1c — deferred)
+   @view-transition { navigation: auto } only fires for cross-document
+   (multi-page) navigations, NOT for Leptos Router's history.pushState
+   calls. Same-document SPA transitions require document.startViewTransition()
+   to be called explicitly around the DOM update. That wiring is deferred
+   to Phase 1c where we integrate it with Leptos's routing signals.
+
+   The animation rules below are kept so they're ready when Phase 1c lands.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+::view-transition-old(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-in;
+}
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    iOS WebView Reset (Phase 1a)
    All rules scoped to [data-platform="ios"] — set on <html> by the
    intrada-mobile lib.rs setup hook. Desktop web and iPhone Safari are
