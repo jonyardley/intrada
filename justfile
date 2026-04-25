@@ -83,6 +83,7 @@ typegen:
 # ─────────────────────────────────────────────
 # First-time setup:
 #   cargo install tauri-cli --version "^2" --locked
+#   brew install cocoapods
 #   cd crates/intrada-mobile/src-tauri && cargo tauri ios init
 
 # Start the Tauri iOS dev session on simulator.
