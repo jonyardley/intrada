@@ -28,7 +28,7 @@ design/           # Pencil design system (intrada.pen)
 docs/             # Product roadmap (single source of truth)
 e2e/              # Playwright E2E tests
 ios/Intrada/      # SwiftUI shell using CoreFfi (BCS bridge)
-specs/            # SpecKit design artifacts
+specs/            # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
 ## Tech Stack
@@ -167,11 +167,50 @@ visual parity is required — users should not be able to tell which platform th
 
 ## Workflow
 
-### Before starting work
+Match ceremony to scope. Default to less. Escalate only when the work demands
+it. The goal is a good outcome first time, not maximum process.
+
+### Tier 1 — Just do it
+Bug fixes, copy/text changes, style tweaks, renames, lint/clippy fixes,
+single-file refactors, dependency bumps, doc updates.
+
+No Plan mode, no spec doc. Read enough to confirm the change, make it,
+verify, ship.
+
+### Tier 2 — Plan mode only (default for most feature work)
+New component/view following existing patterns, new API endpoint following
+established conventions, adding a field to a model, new screen in existing
+navigation, anything touching 2-4 focused files.
+
+Use Plan mode to align on approach before coding. For UI work, design in
+`design/intrada.pen` after the plan, before implementing. No spec doc.
+
+### Tier 3 — Lightweight spec (rare; reserve for architectural work)
+Net-new top-level features, Crux core / FFI bridge changes, auth or DB
+schema changes, multi-week work spanning core + web + iOS, anything that
+can't be described in three sentences.
+
+Write ONE markdown doc in `specs/<feature>.md` — ~100-200 lines covering:
+problem, proposed approach, key decisions, open questions. Get alignment,
+then Pencil design (UI work), then Plan mode, then implement.
+
+Do not run the SpecKit `/speckit-*` commands. They produce multi-file
+spec/plan/tasks artifacts calibrated for multi-engineer teams; on a solo
+project they add 1-3 hours of markdown overhead per feature without
+qualitative benefit. Historical SpecKit folders under `specs/` are kept
+as reference but are no longer the workflow.
+
+### Decision rule
+If unsure between tiers, go one tier lighter. Drift up if scope expands
+during the work — don't pre-emptively over-spec.
+
+### Always (regardless of tier)
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-3. Run SpecKit: `/speckit-specify` → `/speckit-plan` → `/speckit-tasks`.
-4. For UI work: design in `design/intrada.pen` after specify, before plan.
+3. UI work designs in `design/intrada.pen` before implementation.
+4. Pre-push: `cargo fmt && cargo clippy` must pass.
+5. After Swift/generated changes: `just ios-swift-check`.
+6. Never push to main. Always a feature branch + PR.
 
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.
