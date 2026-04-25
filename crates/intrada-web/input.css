@@ -463,25 +463,20 @@ html {
    slide+fade animations.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Give persistent chrome and the fixed background their own capture groups
-   with animation:none. This keeps the background stable during transitions
-   so the glass tab bar always blurs a static surface — eliminating the dark
-   flicker caused by backdrop-filter blurring a moving root snapshot. */
+/* Give persistent chrome their own capture groups with animation:none.
+   The background gradient is left INSIDE the root capture — naming it
+   separately caused the html dark background to show in the root snapshot,
+   producing a black flash during the slide. */
 header[role="banner"] {
   view-transition-name: app-header;
 }
 nav[aria-label="Mobile navigation"] {
   view-transition-name: app-tab-bar;
 }
-.app-background {
-  view-transition-name: app-background;
-}
 ::view-transition-old(app-header),
 ::view-transition-new(app-header),
 ::view-transition-old(app-tab-bar),
-::view-transition-new(app-tab-bar),
-::view-transition-old(app-background),
-::view-transition-new(app-background) {
+::view-transition-new(app-tab-bar) {
   animation: none;
 }
 
