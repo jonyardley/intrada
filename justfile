@@ -135,7 +135,10 @@ ios-dev-device:
         xcrun xctrace list devices 2>/dev/null \
             | grep -E "(iPhone|iPad)" \
             | grep -v "Simulator" \
-            | awk -F' (' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}'
+            | cut -d'(' -f1 \
+            | sed 's/^[[:space:]]*//' \
+            | sed 's/[[:space:]]*$//' \
+            | grep -v '^$'
     )
     if [ ${#DEVICES[@]} -eq 0 ]; then
         echo "❌ No physical iOS device found. Connect a device via USB and trust this Mac."
