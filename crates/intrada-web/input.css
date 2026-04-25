@@ -449,23 +449,57 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   View Transitions (Phase 1c — deferred)
-   @view-transition { navigation: auto } only fires for cross-document
-   (multi-page) navigations, NOT for Leptos Router's history.pushState
-   calls. Same-document SPA transitions require document.startViewTransition()
-   to be called explicitly around the DOM update. That wiring is deferred
-   to Phase 1c where we integrate it with Leptos's routing signals.
-
-   The animation rules below are kept so they're ready when Phase 1c lands.
+   View Transitions (Phase 1c)
+   Leptos Router adds class="router-outlet-0" to <html> during a route
+   transition (transition=true on <Routes>), and "router-back" when the
+   browser back button is used. We target those classes for directional
+   slide+fade animations.
    ═══════════════════════════════════════════════════════════════════════ */
 
-::view-transition-old(root) {
-  animation-duration: 180ms;
-  animation-timing-function: ease-in;
+/* Forward navigation — old slides left, new slides in from right */
+html.router-outlet-0::view-transition-old(root) {
+  animation: 220ms ease-in both vt-slide-out-left;
 }
-::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: ease-out;
+html.router-outlet-0::view-transition-new(root) {
+  animation: 220ms ease-out both vt-slide-in-right;
+}
+
+/* Back navigation — old slides right, new slides in from left */
+html.router-outlet-0.router-back::view-transition-old(root) {
+  animation: 220ms ease-in both vt-slide-out-right;
+}
+html.router-outlet-0.router-back::view-transition-new(root) {
+  animation: 220ms ease-out both vt-slide-in-left;
+}
+
+@keyframes vt-slide-out-left {
+  to { opacity: 0; transform: translateX(-16px); }
+}
+@keyframes vt-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+}
+@keyframes vt-slide-out-right {
+  to { opacity: 0; transform: translateX(16px); }
+}
+@keyframes vt-slide-in-left {
+  from { opacity: 0; transform: translateX(-16px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tab spring animation (Phase 1c)
+   Applied only to the active tab — CSS animation fires when the class
+   is added (tab becomes active). No JS required.
+   Uses a spring-like cubic-bezier (slight overshoot = iOS feel).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes tab-spring {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+@utility tab-spring {
+  animation: tab-spring 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 

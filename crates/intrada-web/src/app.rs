@@ -170,7 +170,7 @@ fn AuthenticatedApp() -> impl IntoView {
                 // Global error banner
                 <ErrorBanner />
 
-                <Routes fallback=|| view! { <NotFoundView /> }>
+                <Routes transition=true fallback=|| view! { <NotFoundView /> }>
                     <Route path=path!("/") view=move || view! {
                         <LibraryListView />
                     } />
