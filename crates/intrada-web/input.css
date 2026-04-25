@@ -597,6 +597,67 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
+   iOS Library List (Phase 2b)
+   Transforms the web grid of glass cards into a native iOS grouped list.
+   All rules scoped to [data-platform="ios"].
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Hide the desktop hero intro — iOS doesn't need an onboarding explanation */
+[data-platform="ios"] .library-hero {
+  display: none;
+}
+
+/* Grouped list container — single column, one rounded card wrapping all rows */
+[data-platform="ios"] .library-list {
+  display: block;
+  background-color: var(--color-surface-primary);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  gap: 0;
+}
+
+/* Each row: strip the individual glass-card, add a bottom separator */
+[data-platform="ios"] .library-list li {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+[data-platform="ios"] .library-list li:last-child {
+  border-bottom: none;
+}
+
+/* Row link: horizontal flex with tight padding + disclosure chevron */
+[data-platform="ios"] .library-list li a {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+}
+
+/* Content area fills remaining space */
+[data-platform="ios"] .library-list li a > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Disclosure chevron */
+[data-platform="ios"] .library-list li a::after {
+  content: "›";
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--color-text-faint);
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    Metronome Loading Animation (audit #17)
    ═══════════════════════════════════════════════════════════════════════ */
 
