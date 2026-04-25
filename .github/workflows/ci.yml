@@ -21,7 +21,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "native-v2"
-      - run: cargo test
+      # intrada-mobile (Tauri 2) requires GTK/glib system libs not present on
+      # Ubuntu runners — it's an iOS-only host with no meaningful unit tests.
+      - run: cargo test --workspace --exclude intrada-mobile
 
   clippy:
     name: Clippy
@@ -37,7 +39,8 @@ jobs:
         with:
           shared-key: "native-v2"
           save-if: "false"
-      - run: cargo clippy -- -D warnings
+      # intrada-mobile excluded: Tauri 2 needs GTK/glib system libs on Linux.
+      - run: cargo clippy --workspace --exclude intrada-mobile -- -D warnings
       - name: Clippy (WASM target)
         run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
 
