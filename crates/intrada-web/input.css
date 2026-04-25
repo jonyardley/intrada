@@ -449,17 +449,16 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   View Transitions (Phase 1b)
-   Hooks into Leptos Router's pushState/replaceState navigations.
-   Progressive enhancement — no-op on unsupported browsers.
-   Safari 18.2+ / Chrome 126+: smooth cross-fade between route changes.
+   View Transitions (Phase 1c — deferred)
+   @view-transition { navigation: auto } only fires for cross-document
+   (multi-page) navigations, NOT for Leptos Router's history.pushState
+   calls. Same-document SPA transitions require document.startViewTransition()
+   to be called explicitly around the DOM update. That wiring is deferred
+   to Phase 1c where we integrate it with Leptos's routing signals.
+
+   The animation rules below are kept so they're ready when Phase 1c lands.
    ═══════════════════════════════════════════════════════════════════════ */
 
-@view-transition {
-  navigation: auto;
-}
-
-/* Slightly faster than the browser default (300ms → 180ms) */
 ::view-transition-old(root) {
   animation-duration: 180ms;
   animation-timing-function: ease-in;
