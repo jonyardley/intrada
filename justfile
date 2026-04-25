@@ -95,11 +95,14 @@ ios-dev:
     echo "Starting trunk dev server..."
     trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (simulator)..."
-    mapfile -t SIMS < <(xcrun simctl list devices available 2>/dev/null \
+    SIMS=()
+    while IFS= read -r line; do SIMS+=("$line"); done < <(
+        xcrun simctl list devices available 2>/dev/null \
         | grep -E "^\s+iPhone" \
         | sed -E 's/^\s+(iPhone[^(]+).*/\1/' \
         | sed 's/[[:space:]]*$//' \
-        | sort -u)
+        | sort -u
+    )
     if [ ${#SIMS[@]} -eq 0 ]; then
         echo "❌ No iPhone simulator found. Install one in Xcode → Settings → Platforms → iOS Simulator"
         exit 1
