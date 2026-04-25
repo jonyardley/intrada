@@ -1,3 +1,4 @@
+use intrada_web::haptics;
 use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
@@ -48,6 +49,7 @@ pub fn BottomTabBar() -> impl IntoView {
                         }
                     }
                     attr:aria-current=move || if is_library_active() { Some("page") } else { None }
+                    on:click=move |_| haptics::haptic_selection()
                 >
                     // Music note icon (SVG)
                     <svg
@@ -73,6 +75,7 @@ pub fn BottomTabBar() -> impl IntoView {
                         }
                     }
                     attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
+                    on:click=move |_| haptics::haptic_selection()
                 >
                     // Clock/timer icon (SVG)
                     <svg
@@ -102,6 +105,7 @@ pub fn BottomTabBar() -> impl IntoView {
                         }
                     }
                     attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
+                    on:click=move |_| haptics::haptic_selection()
                 >
                     // List/template icon (SVG)
                     <svg
@@ -131,6 +135,7 @@ pub fn BottomTabBar() -> impl IntoView {
                         }
                     }
                     attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
+                    on:click=move |_| haptics::haptic_selection()
                 >
                     // Chart/bar-chart icon (SVG)
                     <svg

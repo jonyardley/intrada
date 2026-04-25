@@ -449,6 +449,28 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   View Transitions (Phase 1b)
+   Hooks into Leptos Router's pushState/replaceState navigations.
+   Progressive enhancement — no-op on unsupported browsers.
+   Safari 18.2+ / Chrome 126+: smooth cross-fade between route changes.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@view-transition {
+  navigation: auto;
+}
+
+/* Slightly faster than the browser default (300ms → 180ms) */
+::view-transition-old(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-in;
+}
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    iOS WebView Reset (Phase 1a)
    All rules scoped to [data-platform="ios"] — set on <html> by the
    intrada-mobile lib.rs setup hook. Desktop web and iPhone Safari are
