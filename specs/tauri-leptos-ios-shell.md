@@ -597,7 +597,18 @@ in order. Captured so the setup path is predictable for future contributors.
   capability window references.
 - **Fix**: Added `"label": "main"` to the window object in `tauri.conf.json`.
 
-### 7. `just ios dev` / `just ios` recipe not found
+### 7. Tauri iOS dev can't reach Trunk dev server
+- **Symptom**: `cargo tauri ios dev` spams `Waiting for your frontend dev server
+  to start on http://192.168.0.x:8080/...` then times out after 180s.
+- **Cause**: Trunk binds to `127.0.0.1` by default. Tauri iOS dev resolves the
+  host machine's LAN IP (e.g. `192.168.0.11`) so the simulator can reach it —
+  `localhost` from the simulator's perspective isn't the host. Trunk isn't
+  listening on that interface, so Tauri's health check loop never succeeds.
+- **Fix**: Add `--address 0.0.0.0` to the `trunk serve` call in the `ios-dev`
+  justfile recipe. This makes Trunk listen on all interfaces including the LAN
+  IP. Only applied in `ios-dev`, not in the regular `dev` recipe.
+
+### 8. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
 - **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
   with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the

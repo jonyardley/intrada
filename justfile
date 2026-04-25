@@ -93,7 +93,7 @@ ios-dev:
     set -e
     trap 'kill 0' EXIT
     echo "Starting trunk dev server..."
-    trunk serve --config crates/intrada-web/Trunk.toml &
+    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (simulator)..."
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev
     wait
