@@ -597,6 +597,16 @@ in order. Captured so the setup path is predictable for future contributors.
   capability window references.
 - **Fix**: Added `"label": "main"` to the window object in `tauri.conf.json`.
 
+### 7. `just ios dev` / `just ios` recipe not found
+- **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
+- **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
+  with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the
+  old `ios` recipe was renamed to `ios-swiftui` when the SwiftUI shell went
+  on hold.
+- **Fix**: Use `just ios-dev` (hyphenated) from anywhere in the repo. `just`
+  searches upward for the justfile, so it works from any subdirectory. Or run
+  `cargo tauri ios dev` directly from `crates/intrada-mobile/src-tauri/`.
+
 ---
 
 ## 16. Out of scope for this spec
