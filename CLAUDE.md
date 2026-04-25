@@ -59,6 +59,7 @@ just ios-build             # build Tauri iOS app for device (no TestFlight)
 
 First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
+cargo install tauri-cli --version "^2" --locked   # install the Tauri CLI if not already present
 cd crates/intrada-mobile/src-tauri
 cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
 ```

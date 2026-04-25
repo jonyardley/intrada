@@ -81,7 +81,9 @@ typegen:
 # ─────────────────────────────────────────────
 # iOS — Tauri/Leptos shell (active)
 # ─────────────────────────────────────────────
-# First-time setup: cd crates/intrada-mobile/src-tauri && cargo tauri ios init
+# First-time setup:
+#   cargo install tauri-cli --version "^2" --locked
+#   cd crates/intrada-mobile/src-tauri && cargo tauri ios init
 
 # Start the Tauri iOS dev session on simulator.
 # Runs trunk serve (web) in background, then tauri ios dev.
