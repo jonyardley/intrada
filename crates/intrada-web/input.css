@@ -1,6 +1,13 @@
 @import 'tailwindcss';
 @source "./src/**/*.rs";
 
+/* Dark base background on html prevents white flash during View Transitions.
+   The app renders its gradient on a fixed <div>, but the <html> element itself
+   defaults to white in browsers — visible when the transition cross-fades. */
+html {
+  background-color: oklch(10% 0.04 281);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Design Tokens
    ═══════════════════════════════════════════════════════════════════════
