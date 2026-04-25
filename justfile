@@ -95,7 +95,7 @@ ios-dev:
     echo "Starting trunk dev server..."
     trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (simulator)..."
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --target aarch64-apple-ios-sim
     wait
 
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).

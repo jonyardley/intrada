@@ -616,9 +616,10 @@ in order. Captured so the setup path is predictable for future contributors.
   iPads on newer iOS versions may require a developer disk image that the
   installed Xcode version doesn't ship with.
 - **Fix**: Install the iOS Simulator runtime in Xcode → Settings → Platforms →
-  iOS Simulator. Once installed, `cargo tauri ios dev` will target the simulator
-  instead. To force simulator explicitly:
-  `cargo tauri ios dev --target aarch64-apple-ios-sim`
+  iOS Simulator. Even with the simulator installed, `cargo tauri ios dev`
+  prefers a connected physical device — so always pass
+  `--target aarch64-apple-ios-sim` explicitly. The `ios-dev` justfile recipe
+  now hardcodes this flag.
 
 ### 9. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
