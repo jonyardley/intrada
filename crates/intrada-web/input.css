@@ -463,32 +463,36 @@ html {
    slide+fade animations.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Give the main content area its own transition group so header and tab
-   bar are excluded — they stay fixed while only the content slides.
-   This matches native iOS behaviour: chrome is persistent, content transitions. */
-main[role="main"] {
-  view-transition-name: main-content;
+/* Give persistent chrome their own capture groups — then suppress their
+   animation. Old and new snapshots are identical so the instant swap is
+   invisible. main stays in normal document flow (no layout shift or safe
+   area clash). Root transition covers only the remaining content area. */
+header[role="banner"] {
+  view-transition-name: app-header;
 }
-
-/* Suppress the root transition entirely — we animate main-content instead */
-::view-transition-old(root),
-::view-transition-new(root) {
+nav[aria-label="Mobile navigation"] {
+  view-transition-name: app-tab-bar;
+}
+::view-transition-old(app-header),
+::view-transition-new(app-header),
+::view-transition-old(app-tab-bar),
+::view-transition-new(app-tab-bar) {
   animation: none;
 }
 
-/* Forward navigation — content slides left out, new slides in from right */
-html.router-outlet-0::view-transition-old(main-content) {
+/* Forward navigation — root (content) slides left, new slides in from right */
+html.router-outlet-0::view-transition-old(root) {
   animation: 220ms ease-in both vt-slide-out-left;
 }
-html.router-outlet-0::view-transition-new(main-content) {
+html.router-outlet-0::view-transition-new(root) {
   animation: 220ms ease-out both vt-slide-in-right;
 }
 
 /* Back navigation — reversed direction */
-html.router-outlet-0.router-back::view-transition-old(main-content) {
+html.router-outlet-0.router-back::view-transition-old(root) {
   animation: 220ms ease-in both vt-slide-out-right;
 }
-html.router-outlet-0.router-back::view-transition-new(main-content) {
+html.router-outlet-0.router-back::view-transition-new(root) {
   animation: 220ms ease-out both vt-slide-in-left;
 }
 
