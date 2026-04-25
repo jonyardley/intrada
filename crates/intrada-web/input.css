@@ -244,9 +244,19 @@
   }
 }
 
-/* Safe area bottom padding (iOS notch / home indicator) */
+/* Safe area bottom padding (iOS home indicator) */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Safe area top padding (iOS Dynamic Island / status bar) */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Contain scroll overscroll within a region — stops rubber-band propagating to root */
+@utility scroll-contain {
+  overscroll-behavior: contain;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -437,6 +447,55 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   iOS WebView Reset (Phase 1a)
+   All rules scoped to [data-platform="ios"] — set on <html> by the
+   intrada-mobile lib.rs setup hook. Desktop web and iPhone Safari are
+   completely unaffected; these rules only fire inside the Tauri WKWebView.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Remove long-press callout (link/image preview) and tap flash on all elements */
+[data-platform="ios"] * {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* SF Pro system font stack + disable root rubber-band scroll */
+[data-platform="ios"] body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+/* Push header content below Dynamic Island / status bar */
+[data-platform="ios"] header {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* No text selection on navigation chrome — preserve it on readable content */
+[data-platform="ios"] nav,
+[data-platform="ios"] header,
+[data-platform="ios"] footer,
+[data-platform="ios"] button,
+[data-platform="ios"] a {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Instant tap response — removes the 300ms delay on tappable elements */
+[data-platform="ios"] button,
+[data-platform="ios"] a,
+[data-platform="ios"] [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS auto-zoom when focusing an input with font-size < 16px */
+[data-platform="ios"] input,
+[data-platform="ios"] select,
+[data-platform="ios"] textarea {
+  font-size: max(16px, 1em);
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    Metronome Loading Animation (audit #17)
