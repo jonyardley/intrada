@@ -1,4 +1,10 @@
-name: iOS
+# SwiftUI iOS shell — ON HOLD
+# All jobs disabled. See specs/tauri-leptos-ios-shell.md for the migration plan.
+# The Tauri/Leptos iOS shell is now the active iOS path (crates/intrada-mobile/).
+# This workflow is preserved so the SwiftUI shell can be reactivated with a one-line
+# change (remove the `if: false` gates). Do not delete.
+
+name: iOS (on hold)
 
 on:
   push:
@@ -36,6 +42,7 @@ jobs:
   # Build Rust static library for iOS targets
   # ─────────────────────────────────────────────
   build-rust:
+    if: false  # SwiftUI shell on hold — see specs/tauri-leptos-ios-shell.md
     name: Build Rust (iOS)
     runs-on: macos-15
     steps:
@@ -75,6 +82,7 @@ jobs:
   # Build iOS app (device target, no code signing)
   # ─────────────────────────────────────────────
   build-ios:
+    if: false  # SwiftUI shell on hold — see specs/tauri-leptos-ios-shell.md
     name: Build iOS App
     runs-on: macos-14
     needs: build-rust
@@ -127,7 +135,7 @@ jobs:
     name: Deploy to TestFlight
     runs-on: macos-14
     needs: [build-rust, build-ios]
-    if: false  # Disabled until iOS app is ready (#216)
+    if: false  # SwiftUI shell on hold — see specs/tauri-leptos-ios-shell.md. Tauri TestFlight tracked in #300.
     steps:
       - uses: actions/checkout@v6
 

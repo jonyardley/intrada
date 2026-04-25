@@ -1,6 +1,6 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-04-08.
+> Last reviewed: 2026-04-25.
 
 ## Project Overview
 
@@ -10,25 +10,27 @@ build reusable routines, and view analytics. Organised around three pillars:
 **Plan** (library, routines), **Practice** (focus mode, timers, scoring),
 **Track** (analytics, insights).
 
-**Platform priority**: iOS is the primary channel. Web stays functional but
-doesn't get active investment until iOS is in good shape. The Crux architecture
-means core improvements benefit both shells, so prioritise iOS shell work and
-defer web-only enhancements.
+**Platform priority**: The Leptos shell (`crates/intrada-web`) is the primary
+channel — it runs as both the web app and the iOS app (via Tauri 2 in
+`crates/intrada-mobile`). New features ship on both platforms simultaneously.
+The SwiftUI shell (`ios/Intrada/`) is on hold; see `specs/tauri-leptos-ios-shell.md`.
 
 ## Project Structure
 
 ```text
 crates/
-  intrada-core/   # Pure Crux core — business logic, no I/O
-  intrada-web/    # Web shell — Leptos 0.8 CSR + WASM
-  intrada-api/    # REST API — Axum 0.8 + Turso (libsql)
-  shared/         # UniFFI bindings + CoreFfi/CoreJson bridges
-  shared_types/   # Facet typegen — auto-generates Swift types
-design/           # Pencil design system (intrada.pen)
-docs/             # Product roadmap (single source of truth)
-e2e/              # Playwright E2E tests
-ios/Intrada/      # SwiftUI shell using CoreFfi (BCS bridge)
-specs/            # Spec docs for major features (Tier 3 only — see Workflow)
+  intrada-core/          # Pure Crux core — business logic, no I/O
+  intrada-web/           # Leptos 0.8 CSR + WASM — primary UI shell (web + iOS)
+  intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
+  intrada-mobile/        # Tauri 2 iOS host — wraps intrada-web in WKWebView
+    src-tauri/           #   Rust host, tauri.conf.json, Swift plugins
+  shared/                # [ON HOLD] UniFFI bindings for SwiftUI shell
+  shared_types/          # [ON HOLD] Facet typegen → Swift types for SwiftUI shell
+design/                  # Pencil design system (intrada.pen)
+docs/                    # Product roadmap (single source of truth)
+e2e/                     # Playwright E2E tests
+ios/Intrada/             # [ON HOLD] SwiftUI shell — see specs/tauri-leptos-ios-shell.md
+specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
 ## Tech Stack
@@ -36,12 +38,13 @@ specs/            # Spec docs for major features (Tier 3 only — see Workflow)
 - **Rust** stable (1.89.0 CI; MSRV 1.75+, intrada-api 1.78+)
 - **Core**: crux_core 0.17.0-rc3, serde, ulid, chrono, thiserror
 - **API**: axum 0.8, tokio, libsql 0.9 (Turso), tower-http (CORS), jsonwebtoken 10
-- **Web**: leptos 0.8 (CSR), Tailwind CSS v4, trunk 0.21
-- **iOS**: Swift 6.0, iOS 17.0+, SwiftUI, UniFFI (BCS bridge)
+- **Web + iOS UI**: leptos 0.8 (CSR), Tailwind CSS v4, trunk 0.21
+- **iOS host**: Tauri 2, iOS 17.0+, WKWebView, tauri-plugin-haptics, tauri-plugin-deep-link
 - **Auth**: Clerk (Google OAuth), JWT RS256 against JWKS
 - **DB**: Turso (managed libsql/SQLite) via HTTP
 - **E2E**: Playwright
 - **CI/CD**: GitHub Actions → Cloudflare Workers (web) + Fly.io (API)
+- **[ON HOLD]** Swift 6.0, SwiftUI, UniFFI (BCS bridge) — see `specs/tauri-leptos-ios-shell.md`
 
 ## Commands
 
@@ -50,13 +53,18 @@ cargo fmt --check          # must pass before commit
 cargo test                 # all workspace tests
 cargo clippy               # lint check
 cargo test -p intrada-api  # API tests only
-just typegen               # regenerate Swift types after core type changes
-just ios-swift-check       # quick Swift compile check (~30s) — ALWAYS after .swift edits
-just ios-smoke-test        # build + launch on sim (~15s) — after env/nav changes
-just ios-preview-check     # validate #Preview blocks
+just ios-dev               # start Tauri iOS dev session (sim) — runs trunk serve + tauri ios dev
+just ios-build             # build Tauri iOS app for device (no TestFlight)
 ```
 
-Use `just ios-swift-check --clean` after switching branches or when CI/local diverge.
+First-time iOS setup (run once after cloning or pulling this branch):
+```bash
+cd crates/intrada-mobile/src-tauri
+cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
+```
+
+**SwiftUI shell commands (on hold — do not use for active development):**
+`just ios-swift-check`, `just ios-smoke-test`, `just ios-preview-check`, `just typegen`
 
 ## Architecture (Non-Negotiables)
 
@@ -79,20 +87,23 @@ User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Sh
 | State kind | Where it lives |
 |------------|---------------|
 | Domain data | Crux `Model` → `ViewModel` (single source of truth) |
-| UI interaction | Leptos signals (web) / SwiftUI `@State` (iOS) |
-| Crash recovery | localStorage / UserDefaults (`intrada:session-in-progress` only) |
+| UI interaction | Leptos signals (web + iOS via Tauri) |
+| Crash recovery | localStorage (`intrada:session-in-progress` only) |
 
 Domain state flows through `Event` → `Model` → `ViewModel`. Never store domain
-data in shell-local state. UI-only state stays in shell signals/`@State`.
+data in shell-local state. UI-only state stays in Leptos signals.
 
-### Type generation
+### Type generation (SwiftUI shell — on hold)
 
-Pipeline: `facet` derive macros → `shared_types/build.rs` → Swift package with BCS.
-Run `just typegen` after changing any `Facet`-derived type. Generated types are
-NOT committed — they're rebuilt from Rust sources in CI and local builds.
+`crates/shared_types` pipelines `facet` derive macros → Swift package with BCS.
+This is only needed for the SwiftUI shell. The Tauri/Leptos shell uses
+`wasm-bindgen` — no typegen step required.
 
-**NEVER use `serde_repr`** on types in ViewModel or FFI traffic — causes byte-width
-mismatch (i8 vs u32 variant indices), corrupting the BCS byte stream.
+`crates/shared` and `crates/shared_types` still compile in CI to keep the
+SwiftUI reactivation path green. Do not delete them.
+
+**NEVER use `serde_repr`** on types in ViewModel or FFI traffic if the SwiftUI
+shell is ever reactivated — causes byte-width mismatch in the BCS byte stream.
 
 ### Other patterns
 
@@ -140,18 +151,33 @@ visual parity is required — users should not be able to tell which platform th
 4. **Spacing tokens only**: `p-card`/`Spacing.card` (16), `p-card-compact`/
    `Spacing.cardCompact` (12), `p-card-comfortable`/`Spacing.cardComfortable` (24).
 
-### iOS-specific rules
+### iOS native-feel rules (Leptos shell in Tauri WKWebView)
 
-- Use `.navigationTitle()` on every screen (large on root, inline on pushed).
-- `NavigationSplitView` on iPad for all list→detail screens.
-- All content sections in `CardView`. All actions via `ButtonView(variant:)`.
-- All empty states via `EmptyStateView`. No `ContentUnavailableView`.
-- Destructive actions require `.confirmationDialog` with `titleVisibility: .visible`.
-- No custom back buttons — use system NavigationStack back.
-- `@Indirect` wrapper on generated types: access properties directly. In closures,
-  add explicit type annotations for inference.
-- Always read `Generated/SharedTypes/SharedTypes.swift` before writing code against
-  generated types. Don't assume field types.
+These rules apply when building or modifying views/components that will run
+inside the Tauri iOS shell. Gate iOS-only CSS with `[data-platform="ios"]`
+(injected by `tauri.ios.conf.json`) — never with raw media queries alone.
+
+- **CSS reset**: `-webkit-touch-callout: none`, `-webkit-tap-highlight-color: transparent`,
+  `-webkit-user-select: none` on chrome (not text content), `touch-action: manipulation`
+  on interactive elements, `overscroll-behavior: none` on root.
+- **Inputs**: `font-size: 16px` minimum (prevents iOS zoom-on-focus).
+- **Safe areas**: `env(safe-area-inset-*)` on tab bar, headers, sticky bars.
+  `viewport-fit=cover` already set in `index.html`.
+- **Scroll**: only inner regions scroll; `overscroll-behavior: contain` on scroll containers.
+- **View Transitions**: wrap route changes in `document.startViewTransition()` via wasm-bindgen.
+- **Haptics**: use `tauri-plugin-haptics` — `selection` for tabs, `light` for taps,
+  `success` for saves, `warning` for destructive confirms.
+- **iPad**: all list→detail screens use `<SplitView>` (CSS-grid sidebar + detail pane,
+  viewport-driven visibility). Build it before the view, not as a retrofit.
+- **Typography**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui`.
+- **Animations**: Motion One spring config `stiffness: 300, damping: 30` ≈ iOS default.
+- **Components**: check `ios/Intrada/Components/` as the visual reference for what
+  iOS-shaped variants should look like (SwiftUI on hold, still valid as a design guide).
+
+### SwiftUI shell rules (on hold)
+
+Preserved in `ios/Intrada/`. Not applicable to active development. See
+`specs/tauri-leptos-ios-shell.md` for context.
 
 ### Web-specific rules
 
@@ -197,9 +223,8 @@ Do not run `/speckit-*` slash commands. Historical SpecKit folders under
 `specs/` are reference only.
 
 ### Domain sensitivity override
-Changes to auth, FFI types crossing the BCS bridge, DB schema, or
-migrations go up at least one tier regardless of file count or apparent
-size.
+Changes to auth, Tauri plugin IPC contracts, DB schema, or migrations go
+up at least one tier regardless of file count or apparent size.
 
 ### Decision rule
 If unsure between tiers, go one tier lighter. Drift up if scope expands.
