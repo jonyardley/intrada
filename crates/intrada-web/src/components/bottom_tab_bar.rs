@@ -10,6 +10,9 @@ use leptos_router::hooks::use_location;
 #[component]
 pub fn BottomTabBar() -> impl IntoView {
     let location = use_location();
+    // Prevents the spring animation firing on initial render when the
+    // first tab is already active. Only animate after the user taps.
+    let has_tapped = RwSignal::new(false);
 
     let is_library_active = move || {
         let path = location.pathname.get();
@@ -31,6 +34,10 @@ pub fn BottomTabBar() -> impl IntoView {
         path.starts_with("/analytics")
     };
 
+    let spring = "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center";
+    let active = "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center";
+    let inactive = "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center";
+
     view! {
         <nav
             class="fixed inset-x-0 bottom-0 z-50 h-16 glass-chrome border-t border-border-default pb-safe sm:hidden"
@@ -43,13 +50,13 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/"
                     attr:class=move || {
                         if is_library_active() {
-                            "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center"
+                            if has_tapped.get() { spring } else { active }
                         } else {
-                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            inactive
                         }
                     }
                     attr:aria-current=move || if is_library_active() { Some("page") } else { None }
-                    on:click=move |_| haptics::haptic_selection()
+                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
                     // Music note icon (SVG)
                     <svg
@@ -69,13 +76,13 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/sessions"
                     attr:class=move || {
                         if is_sessions_active() {
-                            "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center"
+                            if has_tapped.get() { spring } else { active }
                         } else {
-                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            inactive
                         }
                     }
                     attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
-                    on:click=move |_| haptics::haptic_selection()
+                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
                     // Clock/timer icon (SVG)
                     <svg
@@ -99,13 +106,13 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/routines"
                     attr:class=move || {
                         if is_routines_active() {
-                            "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center"
+                            if has_tapped.get() { spring } else { active }
                         } else {
-                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            inactive
                         }
                     }
                     attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
-                    on:click=move |_| haptics::haptic_selection()
+                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
                     // List/template icon (SVG)
                     <svg
@@ -129,13 +136,13 @@ pub fn BottomTabBar() -> impl IntoView {
                     href="/analytics"
                     attr:class=move || {
                         if is_analytics_active() {
-                            "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center"
+                            if has_tapped.get() { spring } else { active }
                         } else {
-                            "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center"
+                            inactive
                         }
                     }
                     attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
-                    on:click=move |_| haptics::haptic_selection()
+                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
                     // Chart/bar-chart icon (SVG)
                     <svg

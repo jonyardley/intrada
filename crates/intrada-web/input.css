@@ -2,10 +2,9 @@
 @source "./src/**/*.rs";
 
 /* Dark base background on html prevents white flash during View Transitions.
-   The app renders its gradient on a fixed <div>, but the <html> element itself
-   defaults to white in browsers — visible when the transition cross-fades. */
+   Matches gray-950 (the gradient's start colour) to minimise any bleed-through. */
 html {
-  background-color: oklch(10% 0.04 281);
+  background-color: oklch(15.6% 0.011 261.692);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -469,6 +468,11 @@ html {
    producing a black flash during the slide. */
 header[role="banner"] {
   view-transition-name: app-header;
+}
+/* Header is hidden on iOS so its view-transition-name is unused there —
+   suppress it explicitly to avoid a dangling named capture group. */
+[data-platform="ios"] header[role="banner"] {
+  view-transition-name: none;
 }
 nav[aria-label="Mobile navigation"] {
   view-transition-name: app-tab-bar;
