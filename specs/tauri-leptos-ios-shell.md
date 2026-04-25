@@ -113,25 +113,34 @@ today.
 - `identifier`: `com.intrada.app` (reuses the SwiftUI shell's bundle ID — preserves TestFlight history, Match signing certs, and App Store Connect record)
 - `build.frontendDist`: `../../intrada-web/dist`
 - `build.devUrl`: `http://localhost:8080` (Trunk's default, served by `trunk serve`)
-- `build.beforeBuildCommand`: `cd ../../intrada-web && trunk build --release`
-- `build.beforeDevCommand`: `cd ../../intrada-web && trunk serve --no-autoreload`
-- `app.security.csp`: locked-down CSP that allows Clerk CDN + the API origin
+- `app.security.csp`: `null` in Phase 0 (deferred — see §15 follow-ups). Phase 1
+  adds a locked-down CSP allowing Clerk CDN + API origin once the look-and-feel
+  toolkit is in place and we can test it without breaking auth/Tailwind/WASM.
 - iOS minimum deployment target: 17.0 (matches current SwiftUI shell)
 
+**Note on `beforeBuildCommand` / `beforeDevCommand`**: deliberately *not* used
+in `tauri.conf.json`. The justfile (`ios-dev` / `ios-build` recipes)
+orchestrates Trunk + Tauri instead. Reasons: (a) we need to bind Trunk to
+`0.0.0.0` so the simulator can reach it, which is awkward to express in a
+nested `cd` command in JSON; (b) we want the same orchestration to also kill
+stale processes and pick a simulator interactively; (c) keeping the Tauri
+config minimal makes platform-specific overrides easier later.
+
 ### Dev loop
-- `cd crates/intrada-mobile/src-tauri && cargo tauri ios dev` — builds and
-  launches on simulator with HMR.
-- `just ios-dev` — wrap that as a recipe to keep parity with current `just`
-  recipes.
+- `just ios-dev` — kills stale processes, starts Trunk on `0.0.0.0:8080`,
+  picks an iPhone simulator (interactively if multiple), runs
+  `cargo tauri ios dev <SimName>`.
+- `cargo tauri ios dev "<SimName>"` from `crates/intrada-mobile/src-tauri/`
+  works too if you've already started Trunk yourself.
 
 ### Environment variables
 Reuse the existing compile-time injection from `intrada-web`:
 - `INTRADA_API_URL`
 - `CLERK_PUBLISHABLE_KEY`
 
-These need to be present in the `trunk build` step that Tauri invokes
-(`beforeBuildCommand`). The current `ios.yml` does not need these because the
-SwiftUI shell links a static Rust library; the new pipeline will.
+These are read from the developer's shell environment or a `.env` file at the
+repo root (the justfile uses `set dotenv-load`). CI sets them in the workflow
+env block; local dev needs explicit setup.
 
 ### Authentication path (v1)
 Clerk-JS continues to load inside the WebView via the existing
@@ -503,12 +512,19 @@ PR.
    list-or-detail-pane-aware from the start is far cheaper than retrofitting.
    Adds ~2–3 days to Phase 1 plus an exit-criterion clause.
 5. ~~**iOS-conditional CSS**~~ — **Resolved 2026-04-25**: runtime platform
-   flag on `<html data-platform="ios">`, injected by Tauri via
-   `app.windows[].initializationScript`. CSS uses `[data-platform="ios"]`
+   flag on `<html data-platform="ios">`. CSS uses `[data-platform="ios"]`
    selectors. Single bundle for web and iOS; web E2E coverage stays valid;
    iPhone Safari users keep desktop-style behaviour (e.g. text selection in
    notes) instead of getting iOS reset rules applied just because the
    viewport is small. Leaves room for `data-platform="android"` later.
+
+   **Implementation note**: originally planned to inject via Tauri's
+   `app.windows[].initializationScript` JSON config, but that property was
+   removed from the Tauri 2 schema (see §15 issue 3). Actual implementation
+   uses `setup` + `eval` in `lib.rs`, scoped to `#[cfg(target_os = "ios")]`.
+   Slight timing caveat: `eval` runs after the WebView loads, so there's a
+   theoretical first-paint flash before the attribute is set. Revisit in
+   Phase 1 when iOS CSS is actually wired up.
 6. ~~**MusicKit timing**~~ — **Resolved 2026-04-25**: deferred to post-cutover
    fast-follow. Tracked in [#299](https://github.com/jonyardley/intrada/issues/299).
    v1 ships without it; not a parity regression (SwiftUI shell doesn't have it
@@ -640,7 +656,28 @@ in order. Captured so the setup path is predictable for future contributors.
 - **Fix**: Kill stale `xcodebuild` and `trunk serve` processes at the start of
   the `ios-dev` recipe before starting new ones.
 
-### 11. `just ios dev` / `just ios` recipe not found
+### 11. Empty `tauri.ios.conf.json` after Q5 implementation moved to Rust
+- **Symptom**: After issue 3 was fixed by moving the platform-flag injection
+  into `lib.rs`, `tauri.ios.conf.json` was left as `{}` — an empty file with
+  no purpose.
+- **Cause**: The file existed solely to inject `initializationScript`. With
+  that gone, no iOS-specific config is needed yet.
+- **Fix**: Deleted `tauri.ios.conf.json`. Tauri merges platform-specific config
+  files only if they exist; absence is fine. Re-create when iOS-specific
+  overrides are actually needed (e.g. iOS minimum deployment target, plugin
+  config that differs by platform).
+
+---
+
+### Phase 0 review follow-ups (filed 2026-04-25)
+- [#303](https://github.com/jonyardley/intrada/issues/303) — Add explicit CSP
+  to `tauri.conf.json` (deferred to Phase 1).
+- [#304](https://github.com/jonyardley/intrada/issues/304) — Register
+  `intrada://` URL scheme for the deep-link plugin (currently a no-op).
+
+---
+
+### 12. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
 - **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
   with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the

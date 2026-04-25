@@ -61,9 +61,23 @@ First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
 cargo install tauri-cli --version "^2" --locked   # Tauri CLI
 brew install cocoapods                             # CocoaPods (required by Tauri iOS)
+# Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
 cd crates/intrada-mobile/src-tauri
 cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
 ```
+
+If you're forking this repo, update `bundle.iOS.developmentTeam` in
+`crates/intrada-mobile/src-tauri/tauri.conf.json` to your own Apple Team ID
+(find it at developer.apple.com → Membership, or Xcode → Settings → Accounts).
+
+`just ios-dev` reads `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY` from your
+shell or a `.env` file at the repo root (the justfile uses `set dotenv-load`).
+Without them set, the build will use defaults and Clerk auth won't work.
+
+**Development security warning**: `just ios-dev` binds the Trunk dev server to
+`0.0.0.0:8080` so the iOS simulator can reach it via the host's LAN IP.
+Anyone on your Wi-Fi network can reach it (and the proxied `/api/`) while it's
+running. Don't run `ios-dev` on public/untrusted Wi-Fi.
 
 **SwiftUI shell commands (on hold — do not use for active development):**
 `just ios-swift-check`, `just ios-smoke-test`, `just ios-preview-check`, `just typegen`
@@ -155,9 +169,14 @@ visual parity is required — users should not be able to tell which platform th
 
 ### iOS native-feel rules (Leptos shell in Tauri WKWebView)
 
+> Most of these rules describe **target state for Phase 1+** (look-and-feel
+> toolkit). Phase 0 just ships the unstyled web app inside Tauri. Implement
+> these as you build features.
+
 These rules apply when building or modifying views/components that will run
 inside the Tauri iOS shell. Gate iOS-only CSS with `[data-platform="ios"]`
-(injected by `tauri.ios.conf.json`) — never with raw media queries alone.
+(set on `<html>` from `lib.rs` `setup` hook on iOS) — never with raw media
+queries alone.
 
 - **CSS reset**: `-webkit-touch-callout: none`, `-webkit-tap-highlight-color: transparent`,
   `-webkit-user-select: none` on chrome (not text content), `touch-action: manipulation`
