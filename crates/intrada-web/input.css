@@ -1,6 +1,12 @@
 @import 'tailwindcss';
 @source "./src/**/*.rs";
 
+/* Dark base background on html prevents white flash during View Transitions.
+   Matches gray-950 (the gradient's start colour) to minimise any bleed-through. */
+html {
+  background-color: oklch(15.6% 0.011 261.692);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Design Tokens
    ═══════════════════════════════════════════════════════════════════════
@@ -449,23 +455,76 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   View Transitions (Phase 1c — deferred)
-   @view-transition { navigation: auto } only fires for cross-document
-   (multi-page) navigations, NOT for Leptos Router's history.pushState
-   calls. Same-document SPA transitions require document.startViewTransition()
-   to be called explicitly around the DOM update. That wiring is deferred
-   to Phase 1c where we integrate it with Leptos's routing signals.
-
-   The animation rules below are kept so they're ready when Phase 1c lands.
+   View Transitions (Phase 1c)
+   Leptos Router adds class="router-outlet-0" to <html> during a route
+   transition (transition=true on <Routes>), and "router-back" when the
+   browser back button is used. We target those classes for directional
+   slide+fade animations.
    ═══════════════════════════════════════════════════════════════════════ */
 
-::view-transition-old(root) {
-  animation-duration: 180ms;
-  animation-timing-function: ease-in;
+/* Give persistent chrome their own capture groups with animation:none.
+   The background gradient is left INSIDE the root capture — naming it
+   separately caused the html dark background to show in the root snapshot,
+   producing a black flash during the slide. */
+header[role="banner"] {
+  view-transition-name: app-header;
 }
-::view-transition-new(root) {
-  animation-duration: 180ms;
-  animation-timing-function: ease-out;
+/* Header is hidden on iOS so its view-transition-name is unused there —
+   suppress it explicitly to avoid a dangling named capture group. */
+[data-platform="ios"] header[role="banner"] {
+  view-transition-name: none;
+}
+nav[aria-label="Mobile navigation"] {
+  view-transition-name: app-tab-bar;
+}
+::view-transition-old(app-header),
+::view-transition-new(app-header),
+::view-transition-old(app-tab-bar),
+::view-transition-new(app-tab-bar) {
+  animation: none;
+}
+
+html.router-outlet-0::view-transition-old(root) {
+  animation: 220ms ease-in both vt-slide-out-left;
+}
+html.router-outlet-0::view-transition-new(root) {
+  animation: 220ms ease-out both vt-slide-in-right;
+}
+html.router-outlet-0.router-back::view-transition-old(root) {
+  animation: 220ms ease-in both vt-slide-out-right;
+}
+html.router-outlet-0.router-back::view-transition-new(root) {
+  animation: 220ms ease-out both vt-slide-in-left;
+}
+
+@keyframes vt-slide-out-left {
+  to { opacity: 0; transform: translateX(-16px); }
+}
+@keyframes vt-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+}
+@keyframes vt-slide-out-right {
+  to { opacity: 0; transform: translateX(16px); }
+}
+@keyframes vt-slide-in-left {
+  from { opacity: 0; transform: translateX(-16px); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tab spring animation (Phase 1c)
+   Applied only to the active tab — CSS animation fires when the class
+   is added (tab becomes active). No JS required.
+   Uses a spring-like cubic-bezier (slight overshoot = iOS feel).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes tab-spring {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+
+@utility tab-spring {
+  animation: tab-spring 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 
@@ -488,9 +547,28 @@
   overscroll-behavior: none;
 }
 
-/* Push header content below Dynamic Island / status bar */
-[data-platform="ios"] header {
-  padding-top: env(safe-area-inset-top);
+/* Hide the web header on iOS — tab bar handles all primary navigation. */
+[data-platform="ios"] header[role="banner"] {
+  display: none;
+}
+
+/* Hide the web footer on iOS — attribution is a desktop convention. */
+[data-platform="ios"] footer[role="contentinfo"] {
+  display: none;
+}
+
+/* Tab bar: grow height to accommodate safe area so icons aren't compressed.
+   h-16 (64px) is the icon area; safe-area-inset-bottom (≈34px on iPhone 16)
+   extends below for the home indicator. */
+[data-platform="ios"] nav[aria-label="Mobile navigation"] {
+  height: calc(4rem + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Main content: clear Dynamic Island at top, full tab bar height at bottom. */
+[data-platform="ios"] main {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
 }
 
 /* No text selection on navigation chrome — preserve it on readable content */
