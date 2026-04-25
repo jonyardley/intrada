@@ -631,7 +631,16 @@ in order. Captured so the setup path is predictable for future contributors.
 - **Fix**: Replace `mapfile -t ARRAY < <(...)` with a `while IFS= read -r line;
   do ARRAY+=("$line"); done < <(...)` loop, which is bash 3.2 compatible.
 
-### 10. `just ios dev` / `just ios` recipe not found
+### 10. DerivedData build.db locked — two concurrent xcodebuild processes
+- **Symptom**: `unable to attach DB: database is locked. Possibly there are
+  two concurrent builds running in the same filesystem location.`
+- **Cause**: A previous failed run left an xcodebuild or Xcode process running.
+  Re-running `just ios-dev` starts a second xcodebuild against the same
+  DerivedData directory.
+- **Fix**: Kill stale `xcodebuild` and `trunk serve` processes at the start of
+  the `ios-dev` recipe before starting new ones.
+
+### 11. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
 - **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
   with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the
