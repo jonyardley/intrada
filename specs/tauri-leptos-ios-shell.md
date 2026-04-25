@@ -617,9 +617,10 @@ in order. Captured so the setup path is predictable for future contributors.
   installed Xcode version doesn't ship with.
 - **Fix**: Install the iOS Simulator runtime in Xcode → Settings → Platforms →
   iOS Simulator. Even with the simulator installed, `cargo tauri ios dev`
-  prefers a connected physical device — so always pass
-  `--target aarch64-apple-ios-sim` explicitly. The `ios-dev` justfile recipe
-  now hardcodes this flag.
+  prefers a connected physical device. Pass the simulator name as the
+  positional `[DEVICE]` argument (not `--target`, which doesn't exist). The
+  `ios-dev` justfile recipe now detects the first available iPhone simulator
+  via `xcrun simctl list devices available` and passes its name explicitly.
 
 ### 9. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`

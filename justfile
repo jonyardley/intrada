@@ -95,7 +95,13 @@ ios-dev:
     echo "Starting trunk dev server..."
     trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (simulator)..."
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --target aarch64-apple-ios-sim
+    SIM=$(xcrun simctl list devices available 2>/dev/null | grep -E "^\s+iPhone" | head -1 | sed -E 's/^\s+(iPhone[^(]+).*/\1/' | sed 's/[[:space:]]*$//')
+    if [ -z "$SIM" ]; then
+        echo "❌ No iPhone simulator found. Install one in Xcode → Settings → Platforms → iOS Simulator"
+        exit 1
+    fi
+    echo "  Using simulator: $SIM"
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM"
     wait
 
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
