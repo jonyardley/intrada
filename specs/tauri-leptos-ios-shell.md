@@ -622,7 +622,16 @@ in order. Captured so the setup path is predictable for future contributors.
   `ios-dev` justfile recipe now detects the first available iPhone simulator
   via `xcrun simctl list devices available` and passes its name explicitly.
 
-### 9. `just ios dev` / `just ios` recipe not found
+### 9. `mapfile: command not found` in ios-dev recipe
+- **Symptom**: `mapfile: command not found`, recipe exits with code 127.
+- **Cause**: `mapfile` (aka `readarray`) was added in bash 4. macOS ships
+  bash 3.2 at `/bin/bash` due to GPL licensing. The justfile recipe shebang
+  `#!/usr/bin/env bash` resolves to 3.2 unless Homebrew bash is installed and
+  first on PATH.
+- **Fix**: Replace `mapfile -t ARRAY < <(...)` with a `while IFS= read -r line;
+  do ARRAY+=("$line"); done < <(...)` loop, which is bash 3.2 compatible.
+
+### 10. `just ios dev` / `just ios` recipe not found
 - **Symptom**: `just ios dev` → `Justfile does not contain recipe 'ios'`
 - **Cause**: Two issues. First, `just ios dev` (space) invokes recipe `ios`
   with argument `dev` — the recipe is named `ios-dev` (hyphen). Second, the
