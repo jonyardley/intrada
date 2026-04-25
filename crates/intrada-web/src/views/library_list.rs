@@ -13,7 +13,7 @@ pub fn LibraryListView() -> impl IntoView {
     view! {
         <div class="space-y-6">
             // Hero section with CTA
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div class="library-hero flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <PageHeading
                     text="Welcome to Intrada"
                     subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
@@ -44,7 +44,7 @@ pub fn LibraryListView() -> impl IntoView {
                     {move || {
                         if is_loading.get() {
                             view! {
-                                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <ul class="library-list grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <SkeletonItemCard />
                                     <SkeletonItemCard />
                                     <SkeletonItemCard />
@@ -67,7 +67,7 @@ pub fn LibraryListView() -> impl IntoView {
                                 }.into_any()
                             } else {
                                 view! {
-                                    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
+                                    <ul class="library-list grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
                                         {vm.items.into_iter().map(|item| {
                                             view! {
                                                 <LibraryItemCard item=item />
