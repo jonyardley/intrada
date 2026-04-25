@@ -546,9 +546,16 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   overscroll-behavior: none;
 }
 
-/* Push header content below Dynamic Island / status bar */
-[data-platform="ios"] header {
-  padding-top: env(safe-area-inset-top);
+/* Hide the web header on iOS — tab bar handles all primary navigation.
+   Native iOS apps don't have a top header bar. The safe-area top padding
+   moves to the main content area instead. */
+[data-platform="ios"] header[role="banner"] {
+  display: none;
+}
+
+/* Push main content below Dynamic Island / status bar (was on header) */
+[data-platform="ios"] main {
+  padding-top: max(env(safe-area-inset-top), 1rem);
 }
 
 /* No text selection on navigation chrome — preserve it on readable content */
