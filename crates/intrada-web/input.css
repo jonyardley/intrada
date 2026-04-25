@@ -546,16 +546,28 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   overscroll-behavior: none;
 }
 
-/* Hide the web header on iOS — tab bar handles all primary navigation.
-   Native iOS apps don't have a top header bar. The safe-area top padding
-   moves to the main content area instead. */
+/* Hide the web header on iOS — tab bar handles all primary navigation. */
 [data-platform="ios"] header[role="banner"] {
   display: none;
 }
 
-/* Push main content below Dynamic Island / status bar (was on header) */
+/* Hide the web footer on iOS — attribution is a desktop convention. */
+[data-platform="ios"] footer[role="contentinfo"] {
+  display: none;
+}
+
+/* Tab bar: grow height to accommodate safe area so icons aren't compressed.
+   h-16 (64px) is the icon area; safe-area-inset-bottom (≈34px on iPhone 16)
+   extends below for the home indicator. */
+[data-platform="ios"] nav[aria-label="Mobile navigation"] {
+  height: calc(4rem + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Main content: clear Dynamic Island at top, full tab bar height at bottom. */
 [data-platform="ios"] main {
   padding-top: max(env(safe-area-inset-top), 1rem);
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
 }
 
 /* No text selection on navigation chrome — preserve it on readable content */
