@@ -28,7 +28,7 @@ design/           # Pencil design system (intrada.pen)
 docs/             # Product roadmap (single source of truth)
 e2e/              # Playwright E2E tests
 ios/Intrada/      # SwiftUI shell using CoreFfi (BCS bridge)
-specs/            # SpecKit design artifacts
+specs/            # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
 ## Tech Stack
@@ -167,11 +167,60 @@ visual parity is required — users should not be able to tell which platform th
 
 ## Workflow
 
-### Before starting work
+Match ceremony to scope. Default to less. Escalate only when work demands it.
+
+### Tier 1 — Just do it
+Bug fixes, copy/text changes, style tweaks, renames, lint/clippy fixes,
+single-file refactors, dependency bumps, doc updates.
+
+No Plan mode, no spec doc. Read enough to confirm the change, make it,
+verify, ship.
+
+### Tier 2 — Plan mode (default for feature work)
+New component/view following existing patterns, new API endpoint following
+established conventions, adding a field to an existing model, new screen
+in existing navigation.
+
+For UI work: Pencil design first (see Pencil Design Workflow below), then
+Plan mode, then implement. For non-UI work: Plan mode, then implement.
+No spec doc.
+
+### Tier 3 — Lightweight spec (rare; architectural only)
+Net-new top-level features, Crux core / FFI bridge changes, auth or DB
+schema changes, multi-week work spanning core + web + iOS.
+
+Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
+approach, key decisions, open questions). Then Pencil for UI work, then
+Plan mode, then implement.
+
+Do not run `/speckit-*` slash commands. Historical SpecKit folders under
+`specs/` are reference only.
+
+### Domain sensitivity override
+Changes to auth, FFI types crossing the BCS bridge, DB schema, or
+migrations go up at least one tier regardless of file count or apparent
+size.
+
+### Decision rule
+If unsure between tiers, go one tier lighter. Drift up if scope expands.
+
+### Examples
+
+| Task | Tier | Why |
+|------|------|-----|
+| Fix typo in a label | 1 | Trivial copy change |
+| Bump a dependency with no API change | 1 | Dep bump |
+| New "Recently practiced" view following existing list patterns | 2 | New view, established patterns |
+| Refactor `intrada-core/src/practice/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
+| Tweak retry backoff in `auth.rs` | 2 | Sensitivity override from Tier 1 |
+| Add `notes` field to a piece (touches FFI + DB) | 3 | Override: FFI + schema |
+| New auth provider | 3 | Auth + multi-crate |
+| Migrate persistence layer | 3 | Architectural |
+
+### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-3. Run SpecKit: `/speckit-specify` → `/speckit-plan` → `/speckit-tasks`.
-4. For UI work: design in `design/intrada.pen` after specify, before plan.
+3. Never push to main. Always a feature branch + PR.
 
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.
