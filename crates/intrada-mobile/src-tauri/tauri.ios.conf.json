@@ -1,9 +1,1 @@
-{
-  "app": {
-    "windows": [
-      {
-        "initializationScript": "document.documentElement.setAttribute('data-platform', 'ios');"
-      }
-    ]
-  }
-}
+{}
