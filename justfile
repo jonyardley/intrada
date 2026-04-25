@@ -79,22 +79,67 @@ typegen:
 
 
 # ─────────────────────────────────────────────
-# iOS
+# iOS — Tauri/Leptos shell (active)
+# ─────────────────────────────────────────────
+# First-time setup:
+#   cargo install tauri-cli --version "^2" --locked
+#   brew install cocoapods
+#   cd crates/intrada-mobile/src-tauri && cargo tauri ios init
+
+# Start the Tauri iOS dev session on simulator.
+# Runs trunk serve (web) in background, then tauri ios dev.
+ios-dev:
+    #!/usr/bin/env bash
+    set -e
+    trap 'kill 0' EXIT
+    pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
+    pkill -f "trunk serve" 2>/dev/null || true
+    sleep 0.3
+    echo "Starting trunk dev server..."
+    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    echo "Starting Tauri iOS dev (simulator)..."
+    SIMS=()
+    while IFS= read -r line; do SIMS+=("$line"); done < <(
+        xcrun simctl list devices available 2>/dev/null \
+            | grep "iPhone" \
+            | awk -F'(' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' \
+            | sort -u
+    )
+    if [ ${#SIMS[@]} -eq 0 ]; then
+        echo "❌ No iPhone simulator found. Install one in Xcode → Settings → Platforms → iOS Simulator"
+        exit 1
+    elif [ ${#SIMS[@]} -eq 1 ]; then
+        SIM="${SIMS[0]}"
+    elif command -v fzf &>/dev/null; then
+        SIM=$(printf '%s\n' "${SIMS[@]}" | fzf --prompt="Select simulator: ")
+    else
+        echo "Select simulator:"
+        select SIM in "${SIMS[@]}"; do [ -n "$SIM" ] && break; done
+    fi
+    echo "  Using: $SIM"
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM"
+    wait
+
+# Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
+ios-build:
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios build
+
+# ─────────────────────────────────────────────
+# iOS — SwiftUI shell (ON HOLD)
+# See specs/tauri-leptos-ios-shell.md. Do not use for active development.
 # ─────────────────────────────────────────────
 
 # Full iOS build: Rust (device debug), types, UniFFI bindings, Xcode project
-# This is the main command for day-to-day iOS development.
-# Automatically invalidates Xcode's incremental cache since generated types change.
-ios:
+ios-swiftui:
     bash scripts/build-ios.sh --device --debug
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
-# Full build + open Xcode
-ios-dev: ios
+# Full build + open Xcode (SwiftUI)
+ios-swiftui-dev: ios-swiftui
     open ios/Intrada.xcodeproj
 
-# Release build for device (CI/TestFlight)
+# Release build for device CI (SwiftUI — on hold)
 ios-release:
     bash scripts/build-ios.sh --device
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true

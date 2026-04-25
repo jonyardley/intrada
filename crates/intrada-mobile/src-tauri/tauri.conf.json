@@ -1,0 +1,28 @@
+{
+  "productName": "Intrada",
+  "version": "0.1.0",
+  "identifier": "com.intrada.app",
+  "build": {
+    "frontendDist": "../../intrada-web/dist",
+    "devUrl": "http://localhost:8080"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Intrada",
+        "width": 375,
+        "height": 812
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "iOS": {
+      "developmentTeam": "9S5FG4LQAF"
+    }
+  }
+}

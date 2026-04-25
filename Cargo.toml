@@ -1,5 +1,12 @@
 [workspace]
-members = ["crates/*"]
+members = [
+  "crates/intrada-core",
+  "crates/intrada-api",
+  "crates/intrada-web",
+  "crates/shared",
+  "crates/shared_types",
+  "crates/intrada-mobile/src-tauri",
+]
 resolver = "2"
 package.rust-version = "1.75"
 
