@@ -167,8 +167,7 @@ visual parity is required — users should not be able to tell which platform th
 
 ## Workflow
 
-Match ceremony to scope. Default to less. Escalate only when the work demands
-it. The goal is a good outcome first time, not maximum process.
+Match ceremony to scope. Default to less. Escalate only when work demands it.
 
 ### Tier 1 — Just do it
 Bug fixes, copy/text changes, style tweaks, renames, lint/clippy fixes,
@@ -177,40 +176,51 @@ single-file refactors, dependency bumps, doc updates.
 No Plan mode, no spec doc. Read enough to confirm the change, make it,
 verify, ship.
 
-### Tier 2 — Plan mode only (default for most feature work)
+### Tier 2 — Plan mode (default for feature work)
 New component/view following existing patterns, new API endpoint following
-established conventions, adding a field to a model, new screen in existing
-navigation, anything touching 2-4 focused files.
+established conventions, adding a field to an existing model, new screen
+in existing navigation.
 
-Use Plan mode to align on approach before coding. For UI work, design in
-`design/intrada.pen` after the plan, before implementing. No spec doc.
+For UI work: Pencil design first (see Pencil Design Workflow below), then
+Plan mode, then implement. For non-UI work: Plan mode, then implement.
+No spec doc.
 
-### Tier 3 — Lightweight spec (rare; reserve for architectural work)
+### Tier 3 — Lightweight spec (rare; architectural only)
 Net-new top-level features, Crux core / FFI bridge changes, auth or DB
-schema changes, multi-week work spanning core + web + iOS, anything that
-can't be described in three sentences.
+schema changes, multi-week work spanning core + web + iOS.
 
-Write ONE markdown doc in `specs/<feature>.md` — ~100-200 lines covering:
-problem, proposed approach, key decisions, open questions. Get alignment,
-then Pencil design (UI work), then Plan mode, then implement.
+Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
+approach, key decisions, open questions). Then Pencil for UI work, then
+Plan mode, then implement.
 
-Do not run the SpecKit `/speckit-*` commands. They produce multi-file
-spec/plan/tasks artifacts calibrated for multi-engineer teams; on a solo
-project they add 1-3 hours of markdown overhead per feature without
-qualitative benefit. Historical SpecKit folders under `specs/` are kept
-as reference but are no longer the workflow.
+Do not run `/speckit-*` slash commands. Historical SpecKit folders under
+`specs/` are reference only.
+
+### Domain sensitivity override
+Changes to auth, FFI types crossing the BCS bridge, DB schema, or
+migrations go up at least one tier regardless of file count or apparent
+size.
 
 ### Decision rule
-If unsure between tiers, go one tier lighter. Drift up if scope expands
-during the work — don't pre-emptively over-spec.
+If unsure between tiers, go one tier lighter. Drift up if scope expands.
 
-### Always (regardless of tier)
+### Examples
+
+| Task | Tier | Why |
+|------|------|-----|
+| Fix typo in a label | 1 | Trivial copy change |
+| Bump a dependency with no API change | 1 | Dep bump |
+| New "Recently practiced" view following existing list patterns | 2 | New view, established patterns |
+| Refactor `intrada-core/src/practice/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
+| Tweak retry backoff in `auth.rs` | 2 | Sensitivity override from Tier 1 |
+| Add `notes` field to a piece (touches FFI + DB) | 3 | Override: FFI + schema |
+| New auth provider | 3 | Auth + multi-crate |
+| Migrate persistence layer | 3 | Architectural |
+
+### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-3. UI work designs in `design/intrada.pen` before implementation.
-4. Pre-push: `cargo fmt && cargo clippy` must pass.
-5. After Swift/generated changes: `just ios-swift-check`.
-6. Never push to main. Always a feature branch + PR.
+3. Never push to main. Always a feature branch + PR.
 
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.
