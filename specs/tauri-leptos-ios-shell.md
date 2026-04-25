@@ -1,6 +1,6 @@
 # Tauri 2 + Leptos iOS Shell
 
-> Status: **Draft / proposed**
+> Status: **Phase 0 in progress**
 > Author: Jon Yardley
 > Created: 2026-04-25
 > Tier: 3 (architectural)
