@@ -97,11 +97,17 @@ ios-dev:
     echo "Starting Tauri iOS dev (simulator)..."
     SIMS=()
     while IFS= read -r line; do SIMS+=("$line"); done < <(
-        xcrun simctl list devices available 2>/dev/null \
-        | grep -E "^\s+iPhone" \
-        | sed -E 's/^\s+(iPhone[^(]+).*/\1/' \
-        | sed 's/[[:space:]]*$//' \
-        | sort -u
+        xcrun simctl list devices available -j 2>/dev/null | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+names = set()
+for devices in data['devices'].values():
+    for d in devices:
+        if 'iPhone' in d['name'] and d.get('isAvailable', False):
+            names.add(d['name'])
+for name in sorted(names):
+    print(name)
+"
     )
     if [ ${#SIMS[@]} -eq 0 ]; then
         echo "❌ No iPhone simulator found. Install one in Xcode → Settings → Platforms → iOS Simulator"
