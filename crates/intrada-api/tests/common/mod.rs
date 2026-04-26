@@ -13,15 +13,21 @@ use intrada_api::state::{AppState, Db};
 /// Create a fresh Axum router backed by a temporary SQLite database file.
 /// Each call returns an isolated database — tests don't share state.
 pub async fn setup_test_app() -> Router {
-    setup_test_app_inner(None).await
+    setup_test_app_inner(None, "http://localhost:3000").await
 }
 
 /// Create a test router with auth enabled using the given `AuthConfig`.
 pub async fn setup_test_app_with_auth(auth_config: AuthConfig) -> Router {
-    setup_test_app_inner(Some(auth_config)).await
+    setup_test_app_inner(Some(auth_config), "http://localhost:3000").await
 }
 
-async fn setup_test_app_inner(auth_config: Option<AuthConfig>) -> Router {
+/// Create a test router with a custom allowed-origin string (supports
+/// comma-separated values to exercise multi-origin CORS).
+pub async fn setup_test_app_with_origin(allowed_origin: &str) -> Router {
+    setup_test_app_inner(None, allowed_origin).await
+}
+
+async fn setup_test_app_inner(auth_config: Option<AuthConfig>, allowed_origin: &str) -> Router {
     let tmp_dir = std::env::temp_dir();
     let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
 
@@ -41,7 +47,7 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>) -> Router {
 
     let state = AppState::new(
         Db::new(db, conn),
-        "http://localhost:3000".to_string(),
+        allowed_origin.to_string(),
         auth_config,
         None,
     );
