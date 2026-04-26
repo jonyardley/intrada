@@ -541,10 +541,16 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* SF Pro system font stack + disable double-tap-to-zoom across the whole page.
-   overscroll-behavior is intentionally NOT set here — native iOS apps have
-   the elastic bounce at scroll edges, and WKWebView has no pull-to-refresh
-   gesture to disable. */
+/* SF Pro system font stack + disable double-tap-to-zoom. body is fixed
+   to viewport height with overflow hidden — the actual scroll happens in
+   <main> below. This is required because Tauri's WKWebView doesn't bounce
+   the body element, but inner overflow:auto regions DO bounce natively. */
+[data-platform="ios"] html,
+[data-platform="ios"] body {
+  height: 100%;
+  overflow: hidden;
+}
+
 [data-platform="ios"] body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   touch-action: manipulation;
@@ -579,10 +585,28 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Main content: clear Dynamic Island at top, full tab bar height at bottom. */
+/* Main is the scroll container on iOS. Fills viewport height with native
+   overscroll bouncing. Padding clears Dynamic Island at top and tab bar
+   at bottom. The wrapping <div class="relative z-0 min-h-screen"> ensures
+   main has a defined height to fill. */
 [data-platform="ios"] main {
+  height: 100%;
+  overflow-y: auto;
   padding-top: max(env(safe-area-inset-top), 1rem);
   padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
+}
+
+/* The wrapper div between body and main needs to fill body so main has
+   a defined 100% height to inherit. */
+[data-platform="ios"] body > div.relative {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-platform="ios"] body > div.relative > main {
+  flex: 1;
+  min-height: 0;
 }
 
 /* No text selection on navigation chrome — preserve it on readable content */

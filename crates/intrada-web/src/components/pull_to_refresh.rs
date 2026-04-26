@@ -4,9 +4,21 @@ use leptos::prelude::*;
 const PULL_THRESHOLD: f64 = 80.0;
 const MAX_PULL: f64 = 120.0;
 
+/// Returns the scrollTop of the closest ancestor scroll container (`<main>`).
+/// On iOS our scroll container is `<main>` (body is fixed); on other platforms
+/// the body scrolls so we fall back to `window.scrollY`.
+fn scroll_top() -> f64 {
+    document()
+        .query_selector("main")
+        .ok()
+        .flatten()
+        .map(|el| el.scroll_top() as f64)
+        .unwrap_or_else(|| window().scroll_y().unwrap_or(0.0))
+}
+
 /// Wraps content with iOS-style pull-to-refresh.
 ///
-/// Listens for touch/pointer pulls when the page is scrolled to top.
+/// Listens for touch/pointer pulls when the scroll container is at the top.
 /// Past `PULL_THRESHOLD` the on_refresh callback fires; the spinner
 /// stays visible while `is_refreshing` is true.
 ///
@@ -21,11 +33,11 @@ pub fn PullToRefresh(
     let pointer_start_y = RwSignal::new(None::<f64>);
 
     let on_pointerdown = move |ev: ev::PointerEvent| {
-        // Only respond to touch (not mouse), and only when at the top of the page
+        // Only respond to touch (not mouse), and only when at the top of the scroll
         if ev.pointer_type() != "touch" {
             return;
         }
-        if window().scroll_y().unwrap_or(0.0) > 0.0 {
+        if scroll_top() > 0.0 {
             return;
         }
         pointer_start_y.set(Some(ev.client_y() as f64));
@@ -37,7 +49,7 @@ pub fn PullToRefresh(
             return;
         };
         // Bail if user has scrolled away from the top mid-drag
-        if window().scroll_y().unwrap_or(0.0) > 0.0 {
+        if scroll_top() > 0.0 {
             pointer_start_y.set(None);
             pull_distance.set(0.0);
             return;
