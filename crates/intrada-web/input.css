@@ -541,12 +541,24 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* SF Pro system font stack, disable root rubber-band scroll,
-   and disable double-tap-to-zoom across the whole page (native apps don't zoom) */
+/* SF Pro system font stack + disable double-tap-to-zoom across the whole page.
+   overscroll-behavior is intentionally NOT set here — native iOS apps have
+   the elastic bounce at scroll edges, and WKWebView has no pull-to-refresh
+   gesture to disable. */
 [data-platform="ios"] body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
-  overscroll-behavior: none;
   touch-action: manipulation;
+}
+
+/* Universal press feedback — subtle dim on tap. Native iOS dims any
+   tappable element when pressed; pairs with the haptic feedback already
+   wired through. 80ms is fast enough to feel instant, slow enough to be
+   perceptible. */
+[data-platform="ios"] button:active,
+[data-platform="ios"] a:active,
+[data-platform="ios"] [role="button"]:active {
+  opacity: 0.6;
+  transition: opacity 80ms ease-out;
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */
