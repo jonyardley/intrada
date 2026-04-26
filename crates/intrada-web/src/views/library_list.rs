@@ -3,14 +3,30 @@ use leptos_router::components::A;
 
 use intrada_core::ViewModel;
 
-use crate::components::{LibraryItemCard, PageHeading, SkeletonItemCard};
-use intrada_web::types::IsLoading;
+use crate::components::{LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard};
+use intrada_web::core_bridge::init_core;
+use intrada_web::types::{IsLoading, IsSubmitting};
 
 #[component]
 pub fn LibraryListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
+    let is_refreshing = RwSignal::new(false);
+
+    let on_refresh = Callback::new(move |_| {
+        is_refreshing.set(true);
+        init_core(&view_model, &is_loading, &is_submitting);
+        // Hide spinner after a short delay — the data updates reactively;
+        // this gives the user a perceptible "did something" beat.
+        leptos::task::spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(600).await;
+            is_refreshing.set(false);
+        });
+    });
+
     view! {
+        <PullToRefresh on_refresh=on_refresh is_refreshing=is_refreshing>
         <div class="space-y-6">
             // Hero section with CTA
             <div class="library-hero flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -81,5 +97,6 @@ pub fn LibraryListView() -> impl IntoView {
                 </div>
             </section>
         </div>
+        </PullToRefresh>
     }
 }
