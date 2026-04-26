@@ -541,10 +541,12 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* SF Pro system font stack + disable root rubber-band scroll */
+/* SF Pro system font stack, disable root rubber-band scroll,
+   and disable double-tap-to-zoom across the whole page (native apps don't zoom) */
 [data-platform="ios"] body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */
