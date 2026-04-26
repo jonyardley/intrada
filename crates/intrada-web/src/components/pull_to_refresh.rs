@@ -13,7 +13,6 @@ fn scroll_top() -> f64 {
         .ok()
         .flatten()
         .map(|el| el.scroll_top() as f64)
-        .filter(|&top| top >= 0.0)
         .unwrap_or_else(|| window().scroll_y().unwrap_or(0.0))
 }
 
