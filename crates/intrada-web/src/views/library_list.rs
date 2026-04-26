@@ -17,12 +17,15 @@ pub fn LibraryListView() -> impl IntoView {
     let on_refresh = Callback::new(move |_| {
         is_refreshing.set(true);
         init_core(&view_model, &is_loading, &is_submitting);
-        // Hide spinner after a short delay — the data updates reactively;
-        // this gives the user a perceptible "did something" beat.
-        leptos::task::spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(600).await;
+    });
+
+    // Hide the refresh spinner once the load actually completes. Watches
+    // is_loading rather than using a fixed delay so the spinner accurately
+    // reflects the network round-trip.
+    Effect::new(move |_| {
+        if is_refreshing.get() && !is_loading.get() {
             is_refreshing.set(false);
-        });
+        }
     });
 
     view! {
