@@ -290,6 +290,81 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0043_recreate_lesson_photos_lesson_id_index",
         "CREATE INDEX IF NOT EXISTS idx_lesson_photos_lesson_id ON lesson_photos(lesson_id);",
     ),
+    // Drop FK on routine_entries.routine_id — same Turso failure mode as
+    // lesson_photos (see #294). Orphan safety: delete_routine and
+    // update_routine already delete child rows explicitly.
+    (
+        "0044_create_routine_entries_new",
+        "CREATE TABLE IF NOT EXISTS routine_entries_new (
+            id TEXT PRIMARY KEY NOT NULL,
+            routine_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            item_title TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            position INTEGER NOT NULL
+        );",
+    ),
+    (
+        "0045_copy_routine_entries_to_new",
+        "INSERT INTO routine_entries_new (id, routine_id, item_id, item_title, item_type, position)
+         SELECT id, routine_id, item_id, item_title, item_type, position FROM routine_entries;",
+    ),
+    (
+        "0046_drop_old_routine_entries",
+        "DROP TABLE routine_entries;",
+    ),
+    (
+        "0047_rename_routine_entries_new",
+        "ALTER TABLE routine_entries_new RENAME TO routine_entries;",
+    ),
+    (
+        "0048_recreate_routine_entries_routine_id_index",
+        "CREATE INDEX IF NOT EXISTS idx_routine_entries_routine_id ON routine_entries(routine_id);",
+    ),
+    // Drop FK on setlist_entries.session_id — same Turso failure mode.
+    // Orphan safety: delete_session already deletes child rows explicitly.
+    // New schema must include every column added across 0006 + 0019-0025
+    // (score, intention, rep_target, rep_count, rep_target_reached,
+    // rep_history, planned_duration_secs, achieved_tempo).
+    (
+        "0049_create_setlist_entries_new",
+        "CREATE TABLE IF NOT EXISTS setlist_entries_new (
+            id TEXT PRIMARY KEY NOT NULL,
+            session_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            item_title TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            duration_secs INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            notes TEXT,
+            score INTEGER,
+            intention TEXT,
+            rep_target INTEGER,
+            rep_count INTEGER,
+            rep_target_reached INTEGER,
+            rep_history TEXT,
+            planned_duration_secs INTEGER,
+            achieved_tempo INTEGER
+        );",
+    ),
+    (
+        "0050_copy_setlist_entries_to_new",
+        "INSERT INTO setlist_entries_new (id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo)
+         SELECT id, session_id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo FROM setlist_entries;",
+    ),
+    (
+        "0051_drop_old_setlist_entries",
+        "DROP TABLE setlist_entries;",
+    ),
+    (
+        "0052_rename_setlist_entries_new",
+        "ALTER TABLE setlist_entries_new RENAME TO setlist_entries;",
+    ),
+    (
+        "0053_recreate_setlist_entries_session_id_index",
+        "CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
