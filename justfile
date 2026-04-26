@@ -162,7 +162,11 @@ ios-dev-device:
     fi
     echo "  Dev server: http://$LAN_IP:8080"
     echo "Starting trunk dev server..."
-    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    # Override INTRADA_API_URL with the LAN IP so the WASM (compiled into the
+    # device) can reach Trunk over Wi-Fi. localhost won't work — the device's
+    # localhost is itself, not the Mac. build.rs detects the env change and
+    # rebuilds. The Trunk proxy then forwards /api/* to localhost:3001.
+    INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
     echo "Starting Tauri iOS dev (device)..."
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --host "$LAN_IP" "$DEVICE"
     wait

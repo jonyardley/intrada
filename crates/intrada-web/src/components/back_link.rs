@@ -7,7 +7,7 @@ use super::{Icon, IconName};
 #[component]
 pub fn BackLink(label: &'static str, href: String) -> impl IntoView {
     view! {
-        <A href=href attr:class="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-primary motion-safe:transition-colors">
+        <A href=href attr:class="back-link mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-primary motion-safe:transition-colors">
             <Icon name=IconName::ArrowLeft class="w-4 h-4" />
             {label}
         </A>
