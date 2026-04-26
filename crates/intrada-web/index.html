@@ -10,6 +10,16 @@
     <link data-trunk rel="rust" data-wasm-opt="z" href="Cargo.toml" />
     <link data-trunk rel="css" href="tailwind-output.css" />
     <script>
+      // Set data-platform="ios" early so [data-platform="ios"] CSS applies
+      // before first paint — no flicker. Tauri WebView always serves pages
+      // from the tauri:// protocol; in a regular browser it's http(s):.
+      // Replaces the lib.rs setup-hook eval which was racing page load on
+      // device.
+      if (location.protocol === 'tauri:') {
+        document.documentElement.setAttribute('data-platform', 'ios');
+      }
+    </script>
+    <script>
       // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
       // Skip if already defined (E2E tests inject a mock via addInitScript)
       if (!window.__intrada_auth) window.__intrada_auth = {
