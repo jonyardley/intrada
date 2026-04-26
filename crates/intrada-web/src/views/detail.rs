@@ -27,7 +27,7 @@ pub fn DetailView() -> impl IntoView {
     let show_delete_confirm = RwSignal::new(false);
 
     view! {
-        <div class="space-y-4">
+        <div class="detail-view space-y-4">
             <BackLink label="Back to Library" href="/".to_string() />
 
             {move || {

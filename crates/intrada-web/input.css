@@ -658,6 +658,57 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
+   iOS Detail View (Phase 2b)
+   Native iOS styling for the library detail screen — flatter cards,
+   prominent title, accent-coloured back link, full-width action buttons.
+   All rules scoped under [data-platform="ios"] .detail-view.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* iOS-style back link: accent colour, larger touch target */
+[data-platform="ios"] .back-link {
+  color: var(--color-accent-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+[data-platform="ios"] .back-link svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Title: larger, iOS large-title feel */
+[data-platform="ios"] .detail-view h2 {
+  font-size: 1.75rem;
+  line-height: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Cards within detail view: flatter, sharper border */
+[data-platform="ios"] .detail-view .glass-card {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--color-border-default);
+}
+
+/* Action buttons: full-width vertical stack at bottom */
+[data-platform="ios"] .detail-view > .flex.flex-col.sm\:flex-row {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+[data-platform="ios"] .detail-view > .flex.flex-col.sm\:flex-row > a,
+[data-platform="ios"] .detail-view > .flex.flex-col.sm\:flex-row > button {
+  width: 100%;
+  justify-content: center;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  font-size: 1rem;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    Metronome Loading Animation (audit #17)
    ═══════════════════════════════════════════════════════════════════════ */
 
