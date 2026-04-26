@@ -6,20 +6,30 @@ mod sessions;
 
 use axum::http::{header, HeaderValue, Method};
 use axum::Router;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
 use crate::state::AppState;
 
 pub fn api_router(state: AppState) -> Router {
+    // ALLOWED_ORIGIN supports comma-separated values so a single API server
+    // can serve multiple frontends. In particular, the Tauri iOS WebView
+    // page origin is `tauri://localhost` (not the devUrl), so local dev
+    // needs both `http://localhost:8080` (web) and `tauri://localhost` (iOS).
+    let origins: Vec<HeaderValue> = state
+        .allowed_origin
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            s.parse::<HeaderValue>()
+                .unwrap_or_else(|_| panic!("Invalid ALLOWED_ORIGIN value: {s}"))
+        })
+        .collect();
+
     let cors = CorsLayer::new()
-        .allow_origin(
-            state
-                .allowed_origin
-                .parse::<HeaderValue>()
-                .expect("Invalid ALLOWED_ORIGIN value"),
-        )
+        .allow_origin(AllowOrigin::list(origins))
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
