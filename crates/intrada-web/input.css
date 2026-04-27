@@ -556,15 +556,65 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   touch-action: manipulation;
 }
 
-/* Universal press feedback — subtle dim on tap. Native iOS dims any
-   tappable element when pressed; pairs with the haptic feedback already
-   wired through. 80ms is fast enough to feel instant, slow enough to be
-   perceptible. */
+/* Universal press feedback — subtle dim + scale-down on tap. Native iOS
+   does both for snappier "pressed" feel; pairs with the haptic feedback
+   already wired through. 80ms is fast enough to feel instant. */
 [data-platform="ios"] button:active,
 [data-platform="ios"] a:active,
 [data-platform="ios"] [role="button"]:active {
   opacity: 0.6;
-  transition: opacity 80ms ease-out;
+  transform: scale(0.97);
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
+}
+
+/* Larger, more prominent page heading on iOS — emulates the iOS
+   "large title" pattern (without the collapse-on-scroll JS, which is
+   nice-to-have follow-up). */
+[data-platform="ios"] .page-heading,
+[data-platform="ios"] h2.font-heading {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  letter-spacing: -0.02em;
+}
+
+/* Tighter form label-input spacing on iOS — desktop's mb-1 (4px) feels
+   stretched on a phone. Form labels get smaller, denser. */
+[data-platform="ios"] .form-label {
+  margin-bottom: 0.125rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+/* On iOS, the back link is just a chevron-and-arrow icon — text label
+   would duplicate the destination context (the user knows where they
+   came from). The label stays for screen readers via the alt text. */
+[data-platform="ios"] .back-link .back-link-label {
+  display: none;
+}
+[data-platform="ios"] .back-link {
+  width: 2.5rem;
+  height: 2.5rem;
+  justify-content: center;
+}
+[data-platform="ios"] .back-link svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Empty state styling — increased icon prominence and tighter typography
+   so empty screens feel iOS-shaped (large icon + heading + body + CTA). */
+[data-platform="ios"] .empty-state {
+  padding-top: 4rem;
+}
+[data-platform="ios"] .empty-state-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  opacity: 0.5;
+}
+[data-platform="ios"] .empty-state-title {
+  font-size: 1.0625rem;
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */

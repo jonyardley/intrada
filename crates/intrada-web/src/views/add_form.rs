@@ -156,7 +156,7 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         // Tempo: marking + BPM on one row (shared)
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <TextField id="add-tempo-marking" label="Tempo Marking" value=tempo_marking placeholder="e.g. Allegro" field_name="tempo_marking" errors=errors />
-                            <TextField id="add-bpm" label="BPM" value=bpm input_type="number" placeholder="1-400" field_name="bpm" errors=errors />
+                            <TextField id="add-bpm" label="BPM" value=bpm input_type="number" input_mode="numeric" placeholder="1-400" field_name="bpm" errors=errors />
                         </div>
 
                         // Notes (optional — shared)
