@@ -789,9 +789,12 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 }
 
 .pull-to-refresh-indicator {
-  /* Hidden above viewport by default; component sets translateY inline. */
+  /* Start hidden above viewport. On devices with a notch / Dynamic Island,
+     the safe-area inset adds to the offset so the indicator clears the
+     notch when pulled into view. env() falls back to 0 when unsupported,
+     which matches the original web behavior. */
   position: fixed;
-  top: -2.5rem;
+  top: calc(env(safe-area-inset-top, 0px) - 3.5rem);
   left: 50%;
   margin-left: -1rem;
   width: 2rem;
