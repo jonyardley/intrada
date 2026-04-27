@@ -547,7 +547,7 @@ html.router-outlet-0.router-back::view-transition-new(root) {
    the body element, but inner overflow:auto regions DO bounce natively. */
 [data-platform="ios"] html,
 [data-platform="ios"] body {
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -585,28 +585,16 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Main is the scroll container on iOS. Fills viewport height with native
-   overscroll bouncing. Padding clears Dynamic Island at top and tab bar
-   at bottom. The wrapping <div class="relative z-0 min-h-screen"> ensures
-   main has a defined height to fill. */
+/* Main is the scroll container on iOS — pulled out of document flow with
+   position: fixed so the wrapping <div class="min-h-screen"> can't fight
+   it. inset:0 fills the viewport. Inner overflow:auto bounces natively
+   in WKWebView (the body itself doesn't bounce in Tauri). */
 [data-platform="ios"] main {
-  height: 100%;
+  position: fixed;
+  inset: 0;
   overflow-y: auto;
   padding-top: max(env(safe-area-inset-top), 1rem);
   padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
-}
-
-/* The wrapper div between body and main needs to fill body so main has
-   a defined 100% height to inherit. */
-[data-platform="ios"] body > div.relative {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-[data-platform="ios"] body > div.relative > main {
-  flex: 1;
-  min-height: 0;
 }
 
 /* No text selection on navigation chrome — preserve it on readable content */
