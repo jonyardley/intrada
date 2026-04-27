@@ -93,16 +93,17 @@ pub fn PullToRefresh(
     // Circle circumference for r=10: 2 * π * 10 ≈ 62.83. Used for stroke
     // dasharray. As pull progresses, dashoffset shrinks from the full
     // circumference (empty) to 0 (full circle visible).
-    const CIRCUMFERENCE: f64 = 62.83;
+    let circumference: f64 = 2.0 * std::f64::consts::PI * 10.0;
     let progress_offset = move || {
-        if is_refreshing.get() {
+        let offset = if is_refreshing.get() {
             // While refreshing, show ~75% of the arc (rest is the gap that
             // creates the spinning visual when combined with rotation)
-            CIRCUMFERENCE * 0.25
+            circumference * 0.25
         } else {
             let progress = (pull_distance.get() / PULL_THRESHOLD).min(1.0);
-            CIRCUMFERENCE * (1.0 - progress)
-        }
+            circumference * (1.0 - progress)
+        };
+        format!("{offset:.2}")
     };
 
     view! {
@@ -127,7 +128,7 @@ pub fn PullToRefresh(
                         cy="12"
                         r="10"
                         fill="none"
-                        stroke="var(--color-border-default)"
+                        stroke="var(--color-border-card)"
                         stroke-width="2"
                     />
                     // Progress arc — fills as user pulls; full circle on release.
@@ -140,7 +141,7 @@ pub fn PullToRefresh(
                         stroke="var(--color-accent-text)"
                         stroke-width="2"
                         stroke-linecap="round"
-                        stroke-dasharray=CIRCUMFERENCE
+                        stroke-dasharray=circumference.to_string()
                         stroke-dashoffset=progress_offset
                         transform="rotate(-90 12 12)"
                     />
