@@ -17,6 +17,16 @@
       // device.
       if (location.protocol === 'tauri:') {
         document.documentElement.setAttribute('data-platform', 'ios');
+        // Native iOS apps don't have pinch-zoom on the page. Override the
+        // viewport meta to disable it inside the Tauri WebView only —
+        // regular browser users keep their accessibility zoom.
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+          viewport.setAttribute(
+            'content',
+            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+          );
+        }
       }
     </script>
     <script>
