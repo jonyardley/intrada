@@ -7,8 +7,11 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-# Build dependencies — this is the caching Docker layer
-RUN cargo chef cook --release --recipe-path recipe.json
+# Build dependencies — this is the caching Docker layer.
+# --bin intrada-api scopes to only intrada-api's dependency graph, excluding
+# crates/intrada-mobile's Tauri/GTK chain (gdk-sys etc.) which doesn't build
+# in this minimal Rust container.
+RUN cargo chef cook --release --recipe-path recipe.json --bin intrada-api
 # Build application
 COPY . .
 RUN cargo build --release --bin intrada-api
