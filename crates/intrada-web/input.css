@@ -674,6 +674,23 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   display: none;
 }
 
+/* Week strip — iOS uses swipe gestures for date navigation (Apple Calendar /
+   Health pattern), not chevron buttons. The swipe is already wired in the
+   component. Hide chevrons + centre the month label. Today button becomes
+   plain accent text (no pill background) — matches the Apple nav-bar Today
+   button styling. */
+[data-platform="ios"] .week-strip-nav {
+  display: none;
+}
+[data-platform="ios"] .week-strip-header {
+  justify-content: center;
+}
+[data-platform="ios"] .week-strip-today {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
 /* Grouped list container — single column, one rounded card wrapping all rows */
 [data-platform="ios"] .library-list {
   display: block;

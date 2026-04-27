@@ -124,10 +124,13 @@ pub fn WeekStrip(
             on:pointerdown=handle_pointer_down
             on:pointerup=handle_pointer_up
         >
-            // Header: arrows + month label + today button
-            <div class="flex items-center justify-between mb-2">
+            // Header: arrows + month label + today button.
+            // On iOS, chevrons are hidden (swipe is the gesture) and the
+            // Today button sheds its pill background to look like a plain
+            // accent-text nav bar action — see week-strip.* CSS in input.css.
+            <div class="week-strip-header flex items-center justify-between mb-2">
                 <button
-                    class="p-1 rounded-lg hover:bg-surface-hover transition-colors text-muted hover:text-secondary"
+                    class="week-strip-nav p-1 rounded-lg hover:bg-surface-hover transition-colors text-muted hover:text-secondary"
                     aria-label="Previous week"
                     on:click=move |_| on_prev_week.run(())
                 >
@@ -138,7 +141,7 @@ pub fn WeekStrip(
                     {if !is_current_week {
                         Some(view! {
                             <button
-                                class="text-xs font-medium text-accent-text hover:text-accent-text/80 \
+                                class="week-strip-today text-xs font-medium text-accent-text hover:text-accent-text/80 \
                                        bg-accent-focus/10 hover:bg-accent-focus/20 px-2 py-0.5 rounded-full \
                                        transition-colors"
                                 aria-label="Jump to today"
@@ -152,7 +155,7 @@ pub fn WeekStrip(
                     }}
                 </div>
                 <button
-                    class="p-1 rounded-lg hover:bg-surface-hover transition-colors text-muted hover:text-secondary"
+                    class="week-strip-nav p-1 rounded-lg hover:bg-surface-hover transition-colors text-muted hover:text-secondary"
                     aria-label="Next week"
                     on:click=move |_| on_next_week.run(())
                 >
