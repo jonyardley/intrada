@@ -35,7 +35,7 @@ pub fn TextField(
             <input
                 id=id
                 type=input_type
-                inputmode=input_mode
+                inputmode=input_mode.unwrap_or("")
                 class="input-base"
                 placeholder=placeholder.unwrap_or("")
                 bind:value=value

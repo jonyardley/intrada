@@ -569,8 +569,7 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 
 /* Larger, more prominent page heading on iOS — emulates the iOS
    "large title" pattern (without the collapse-on-scroll JS, which is
-   nice-to-have follow-up). */
-[data-platform="ios"] .page-heading,
+   nice-to-have follow-up). Targets the PageHeading component's <h2>. */
 [data-platform="ios"] h2.font-heading {
   font-size: 1.875rem;
   line-height: 2.25rem;
@@ -587,20 +586,13 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   color: var(--color-text-muted);
 }
 
-/* On iOS, the back link is just a chevron-and-arrow icon — text label
-   would duplicate the destination context (the user knows where they
-   came from). The label stays for screen readers via the alt text. */
+/* On iOS, the back link is just a chevron — text label would duplicate
+   the destination context (user knows where they came from). The label
+   stays in the DOM (visually hidden) for screen readers.
+   Note: more back-link styling lives in the iOS Detail View block below.
+   The two are merged with the .back-link-label hide added here. */
 [data-platform="ios"] .back-link .back-link-label {
   display: none;
-}
-[data-platform="ios"] .back-link {
-  width: 2.5rem;
-  height: 2.5rem;
-  justify-content: center;
-}
-[data-platform="ios"] .back-link svg {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 
 /* Empty state styling — increased icon prominence and tighter typography
@@ -740,18 +732,20 @@ html.router-outlet-0.router-back::view-transition-new(root) {
    All rules scoped under [data-platform="ios"] .detail-view.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* iOS-style back link: accent colour, larger touch target */
+/* iOS-style back link: chevron-only icon target (label hidden separately
+   above), accent-coloured, 44px square touch target per iOS HIG. */
 [data-platform="ios"] .back-link {
   color: var(--color-accent-text);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  margin-bottom: 0.75rem;
-  padding: 0.25rem 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  padding: 0;
 }
 
 [data-platform="ios"] .back-link svg {
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Title: larger, iOS large-title feel */
