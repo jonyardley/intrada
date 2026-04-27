@@ -27,6 +27,42 @@
             'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
           );
         }
+
+        // Native iOS press feedback: visual press appears on touchstart but
+        // cancels as soon as a scroll begins. CSS :active alone can't do this
+        // — it stays "active" while finger is down even during scroll.
+        // We add .is-pressed on touchstart and remove on movement > threshold
+        // or on touchend / touchcancel. CSS targets .is-pressed instead of
+        // :active for iOS press styling.
+        (function () {
+          let pressed = null;
+          let startY = 0;
+          let startX = 0;
+          const THRESHOLD = 6;
+          const release = () => {
+            if (pressed) {
+              pressed.classList.remove('is-pressed');
+              pressed = null;
+            }
+          };
+          document.addEventListener('touchstart', (e) => {
+            const t = e.target.closest('button, a, [role="button"]');
+            if (!t) return;
+            release();
+            pressed = t;
+            startY = e.touches[0].clientY;
+            startX = e.touches[0].clientX;
+            t.classList.add('is-pressed');
+          }, { passive: true });
+          document.addEventListener('touchmove', (e) => {
+            if (!pressed) return;
+            const dy = Math.abs(e.touches[0].clientY - startY);
+            const dx = Math.abs(e.touches[0].clientX - startX);
+            if (dy > THRESHOLD || dx > THRESHOLD) release();
+          }, { passive: true });
+          document.addEventListener('touchend', release, { passive: true });
+          document.addEventListener('touchcancel', release, { passive: true });
+        })();
       }
     </script>
     <script>

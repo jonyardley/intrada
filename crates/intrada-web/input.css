@@ -556,12 +556,11 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   touch-action: manipulation;
 }
 
-/* Universal press feedback — subtle dim + scale-down on tap. Native iOS
-   does both for snappier "pressed" feel; pairs with the haptic feedback
-   already wired through. 80ms is fast enough to feel instant. */
-[data-platform="ios"] button:active,
-[data-platform="ios"] a:active,
-[data-platform="ios"] [role="button"]:active {
+/* Native iOS press feedback. The .is-pressed class is set/cleared by the
+   touchstart/move/end handler in index.html — so it cancels when the user
+   starts scrolling instead of staying stuck during the gesture (which is
+   what plain CSS :active does on touch devices and which feels wrong). */
+[data-platform="ios"] .is-pressed {
   opacity: 0.6;
   transform: scale(0.97);
   transition: opacity 80ms ease-out, transform 80ms ease-out;
@@ -805,15 +804,18 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   opacity: 0;
 }
 
-.pull-spinner {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 9999px;
-  border: 2px solid var(--color-border-default);
-  border-top-color: var(--color-accent-text);
+.pull-spinner-svg {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
-.pull-spinner.spinning {
+/* Smooth fill as the user pulls — interpolates the dashoffset change */
+.pull-spinner-svg circle:nth-child(2) {
+  transition: stroke-dashoffset 80ms linear;
+}
+
+/* Spin while refresh is in flight */
+.pull-spinner-svg.spinning {
   animation: pull-spin 700ms linear infinite;
 }
 

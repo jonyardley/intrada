@@ -31,12 +31,16 @@ pub fn LibraryListView() -> impl IntoView {
     view! {
         <PullToRefresh on_refresh=on_refresh is_refreshing=is_refreshing>
         <div class="space-y-6">
-            // Hero section with CTA
-            <div class="library-hero flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <PageHeading
-                    text="Welcome to Intrada"
-                    subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
-                />
+            // Hero text (hidden on iOS) + Add CTA (always visible).
+            // The CTA sits OUTSIDE the .library-hero so it stays accessible
+            // when the hero text is hidden on iOS.
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div class="library-hero">
+                    <PageHeading
+                        text="Welcome to Intrada"
+                        subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
+                    />
+                </div>
                 <A href="/library/new" attr:class="cta-link shrink-0">
                     "Add Item"
                 </A>

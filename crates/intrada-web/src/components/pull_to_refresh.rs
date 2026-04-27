@@ -83,10 +83,25 @@ pub fn PullToRefresh(
     };
 
     let spinner_class = move || {
-        if is_refreshing.get() || pull_distance.get() >= PULL_THRESHOLD {
-            "pull-spinner spinning"
+        if is_refreshing.get() {
+            "pull-spinner-svg spinning"
         } else {
-            "pull-spinner"
+            "pull-spinner-svg"
+        }
+    };
+
+    // Circle circumference for r=10: 2 * π * 10 ≈ 62.83. Used for stroke
+    // dasharray. As pull progresses, dashoffset shrinks from the full
+    // circumference (empty) to 0 (full circle visible).
+    const CIRCUMFERENCE: f64 = 62.83;
+    let progress_offset = move || {
+        if is_refreshing.get() {
+            // While refreshing, show ~75% of the arc (rest is the gap that
+            // creates the spinning visual when combined with rotation)
+            CIRCUMFERENCE * 0.25
+        } else {
+            let progress = (pull_distance.get() / PULL_THRESHOLD).min(1.0);
+            CIRCUMFERENCE * (1.0 - progress)
         }
     };
 
@@ -99,7 +114,37 @@ pub fn PullToRefresh(
             on:pointercancel=on_pointerup
         >
             <div class="pull-to-refresh-indicator" style=indicator_style>
-                <div class=spinner_class></div>
+                <svg
+                    class=spinner_class
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                    aria-hidden="true"
+                >
+                    // Track ring (background)
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        stroke="var(--color-border-default)"
+                        stroke-width="2"
+                    />
+                    // Progress arc — fills as user pulls; full circle on release.
+                    // Rotated -90deg so the start point is at 12 o'clock.
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        stroke="var(--color-accent-text)"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-dasharray=CIRCUMFERENCE
+                        stroke-dashoffset=progress_offset
+                        transform="rotate(-90 12 12)"
+                    />
+                </svg>
             </div>
             {children()}
         </div>
