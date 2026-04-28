@@ -964,12 +964,20 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 
 .bottom-sheet-cancel {
   justify-self: start;
+  /* iOS minimum touch target — was 0.25rem 0 padding which gave a ~20px tap
+     zone on a destructive nav action. 44px min-height + horizontal padding
+     keeps the target generous without visually bulking the button (no
+     background, the chrome is just text). */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  margin-left: -0.5rem;
   color: var(--color-accent-text);
   font-size: 1rem;
   font-weight: 400;
   background: none;
   border: none;
-  padding: 0.25rem 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
