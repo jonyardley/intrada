@@ -123,26 +123,22 @@ pub fn SessionsListView() -> impl IntoView {
                 </A>
             </div>
 
-            // Week strip navigator
+            // Week strip navigator. Pass signals (not values) so WeekStrip
+            // stays mounted across week changes — its internal track
+            // animation depends on persistent component state, and a remount
+            // on every navigation would make the post-snap reset to centred
+            // visibly bounce (see week_strip.rs for the full picture).
             <div class="mb-6">
-                {move || {
-                    let ws = week_start.get();
-                    let sel = selected_date.get();
-                    let dates: HashSet<NaiveDate> = session_dates_three_weeks.get();
-                    let is_current = week_offset.get() == 0;
-                    view! {
-                        <WeekStrip
-                            week_start=ws
-                            selected_date=sel
-                            session_dates=dates
-                            on_day_click=on_day_click
-                            on_prev_week=on_prev_week
-                            on_next_week=on_next_week
-                            on_today=on_today
-                            is_current_week=is_current
-                        />
-                    }
-                }}
+                <WeekStrip
+                    week_start=week_start
+                    selected_date=selected_date.into()
+                    session_dates=session_dates_three_weeks
+                    on_day_click=on_day_click
+                    on_prev_week=on_prev_week
+                    on_next_week=on_next_week
+                    on_today=on_today
+                    is_current_week=Signal::derive(move || week_offset.get() == 0)
+                />
             </div>
 
             // Session cards for selected day

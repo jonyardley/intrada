@@ -1293,20 +1293,20 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <Card>
                         <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — with practices on 3 days (selected: Wednesday)"</p>
                         <WeekStrip
-                            week_start=NaiveDate::from_ymd_opt(2026, 3, 2).unwrap()
-                            selected_date=Some(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap())
-                            session_dates={
+                            week_start=Signal::derive(|| NaiveDate::from_ymd_opt(2026, 3, 2).unwrap())
+                            selected_date=Signal::derive(|| Some(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap()))
+                            session_dates=Signal::derive(|| {
                                 let mut s = HashSet::new();
                                 s.insert(NaiveDate::from_ymd_opt(2026, 3, 2).unwrap());
                                 s.insert(NaiveDate::from_ymd_opt(2026, 3, 4).unwrap());
                                 s.insert(NaiveDate::from_ymd_opt(2026, 3, 6).unwrap());
                                 s
-                            }
+                            })
                             on_day_click=Callback::new(|_| {})
                             on_prev_week=Callback::new(|_| {})
                             on_next_week=Callback::new(|_| {})
                             on_today=Callback::new(|_| {})
-                            is_current_week=true
+                            is_current_week=Signal::derive(|| true)
                         />
                     </Card>
 
@@ -1314,14 +1314,14 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <Card>
                         <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — empty week (no practices, no selection)"</p>
                         <WeekStrip
-                            week_start=NaiveDate::from_ymd_opt(2026, 2, 23).unwrap()
-                            selected_date=None
-                            session_dates=HashSet::new()
+                            week_start=Signal::derive(|| NaiveDate::from_ymd_opt(2026, 2, 23).unwrap())
+                            selected_date=Signal::derive(|| None)
+                            session_dates=Signal::derive(HashSet::new)
                             on_day_click=Callback::new(|_| {})
                             on_prev_week=Callback::new(|_| {})
                             on_next_week=Callback::new(|_| {})
                             on_today=Callback::new(|_| {})
-                            is_current_week=false
+                            is_current_week=Signal::derive(|| false)
                         />
                     </Card>
 
@@ -1329,19 +1329,19 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <Card>
                         <p class="text-xs font-medium text-muted uppercase mb-3">"WeekStrip — dual-month label (Feb – Mar 2026)"</p>
                         <WeekStrip
-                            week_start=NaiveDate::from_ymd_opt(2026, 2, 23).unwrap()
-                            selected_date=Some(NaiveDate::from_ymd_opt(2026, 2, 25).unwrap())
-                            session_dates={
+                            week_start=Signal::derive(|| NaiveDate::from_ymd_opt(2026, 2, 23).unwrap())
+                            selected_date=Signal::derive(|| Some(NaiveDate::from_ymd_opt(2026, 2, 25).unwrap()))
+                            session_dates=Signal::derive(|| {
                                 let mut s = HashSet::new();
                                 s.insert(NaiveDate::from_ymd_opt(2026, 2, 24).unwrap());
                                 s.insert(NaiveDate::from_ymd_opt(2026, 3, 1).unwrap());
                                 s
-                            }
+                            })
                             on_day_click=Callback::new(|_| {})
                             on_prev_week=Callback::new(|_| {})
                             on_next_week=Callback::new(|_| {})
                             on_today=Callback::new(|_| {})
-                            is_current_week=false
+                            is_current_week=Signal::derive(|| false)
                         />
                     </Card>
 
