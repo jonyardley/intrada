@@ -9,9 +9,10 @@ use intrada_core::{
 };
 
 use crate::components::{
-    Button, ButtonVariant, Card, Icon, IconName, PageHeading, SkeletonCardList, WeekStrip,
+    Button, ButtonVariant, ContextMenu, ContextMenuAction, GroupedList, GroupedListRow, Icon,
+    IconName, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
 };
-use intrada_web::core_bridge::process_effects;
+use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::helpers::{
     auto_select_day, format_time_short, get_week_start, group_sessions_by_date, sessions_for_week,
 };
@@ -115,13 +116,25 @@ pub fn SessionsListView() -> impl IntoView {
 
     view! {
         <div>
-            // Page header with "New Session" CTA
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                <PageHeading text="Practice" subtitle="Review your session history and track how your sessions build over time." />
-                <A href="/sessions/new" attr:class="cta-link shrink-0">
-                    "New Session"
-                </A>
-            </div>
+            // PageHeading owns the title-row layout — title on left, the
+            // "New Session" trailing action on right, subtitle below
+            // both. The cta-link's icon/label children are CSS-swapped
+            // per platform: web shows the "New Session" pill, iOS shows
+            // the "+" icon-only nav action.
+            <PageHeading
+                text="Practice"
+                subtitle="Review your session history and track how your sessions build over time."
+                trailing=Box::new(|| view! {
+                    <A
+                        href="/sessions/new"
+                        attr:class="cta-link cta-link--page-add shrink-0"
+                        attr:aria-label="New Session"
+                    >
+                        <Icon name=IconName::Plus class="cta-link-icon" />
+                        <span class="cta-link-label">"New Session"</span>
+                    </A>
+                }.into_any())
+            />
 
             // Week strip navigator. Pass signals (not values) so WeekStrip
             // stays mounted across week changes — its internal track
@@ -159,17 +172,24 @@ pub fn SessionsListView() -> impl IntoView {
                     let core = core.clone();
                     let session_count = sessions.len();
                     view! {
-                        <div class="space-y-3">
+                        <GroupedList aria_label="Practice sessions">
                             {sessions.into_iter().map(|session| {
+                                // Per-row clone — the GroupedListRow's
+                                // Children closure is FnOnce and would
+                                // otherwise try to move `core` out of the
+                                // surrounding FnMut map closure.
+                                let core_for_row = core.clone();
                                 view! {
-                                    <SessionRow
-                                        session=session.clone()
-                                        core=core.clone()
-                                        view_model=view_model
-                                    />
+                                    <GroupedListRow>
+                                        <SessionRow
+                                            session=session.clone()
+                                            core=core_for_row
+                                            view_model=view_model
+                                        />
+                                    </GroupedListRow>
                                 }
                             }).collect::<Vec<_>>()}
-                        </div>
+                        </GroupedList>
                         <p class="text-sm text-muted mt-4">
                             {format!("{} session{}", session_count, if session_count == 1 { "" } else { "s" })}
                         </p>
@@ -199,6 +219,8 @@ pub(crate) fn SessionRow(
     let confirm_delete = RwSignal::new(false);
 
     let id_for_delete = session.id.clone();
+    let id_for_swipe = session.id.clone();
+    let id_for_menu_delete = session.id.clone();
     let started_at = session.started_at.clone();
     let total_duration = session.total_duration_display.clone();
     let completion_status = session.completion_status.clone();
@@ -207,88 +229,121 @@ pub(crate) fn SessionRow(
     let entry_count = session.entries.len();
     let entries = session.entries.clone();
 
+    // Direct-delete used by the iOS swipe gesture and the long-press
+    // context menu's Delete action — skips the in-row confirmation banner.
+    // The gesture itself is the deliberate confirmation, matching native
+    // UISwipeActionsConfiguration / UIContextMenuInteraction behaviour.
+    let core_for_gesture = core.clone();
+    let direct_delete = Callback::new(move |session_id: String| {
+        let event = Event::Session(SessionEvent::DeleteSession { id: session_id });
+        let effects = {
+            let core_ref = core_for_gesture.borrow();
+            core_ref.process_event(event)
+        };
+        process_effects_with_core(
+            &core_for_gesture,
+            effects,
+            &view_model,
+            &is_loading,
+            &is_submitting,
+        );
+    });
+
+    let menu_actions = vec![ContextMenuAction {
+        label: "Delete".to_string(),
+        destructive: true,
+        on_select: Callback::new(move |_| {
+            direct_delete.run(id_for_menu_delete.clone());
+        }),
+    }];
+
     view! {
-        <Card>
-            {move || {
-                if confirm_delete.get() {
-                    let core_del = core.clone();
-                    let id_del = id_for_delete.clone();
-                    view! {
-                        <div>
-                            <p class="text-sm text-danger-text mb-3">"Delete this session? This cannot be undone."</p>
-                            <div class="flex gap-2">
-                                <Button
-                                    variant=ButtonVariant::Danger
-                                    loading=Signal::derive(move || is_submitting.get())
-                                    on_click=Callback::new(move |_| {
-                                        let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
-                                        let core_ref = core_del.borrow();
-                                        let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    })
-                                >
-                                    {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
-                                </Button>
-                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                    confirm_delete.set(false);
-                                })>
-                                    "Cancel"
-                                </Button>
-                            </div>
+        {move || {
+            if confirm_delete.get() {
+                let core_del = core.clone();
+                let id_del = id_for_delete.clone();
+                view! {
+                    <div class="p-card sm:p-card-comfortable">
+                        <p class="text-sm text-danger-text mb-3">"Delete this session? This cannot be undone."</p>
+                        <div class="flex gap-2">
+                            <Button
+                                variant=ButtonVariant::Danger
+                                loading=Signal::derive(move || is_submitting.get())
+                                on_click=Callback::new(move |_| {
+                                    let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
+                                    let core_ref = core_del.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                })
+                            >
+                                {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
+                            </Button>
+                            <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                confirm_delete.set(false);
+                            })>
+                                "Cancel"
+                            </Button>
                         </div>
-                    }.into_any()
-                } else {
-                    let started_at = started_at.clone();
-                    let total_duration = total_duration.clone();
-                    let completion_status = completion_status.clone();
-                    let session_notes = session_notes.clone();
-                    let session_intention = session_intention.clone();
-                    let entries = entries.clone();
-                    view! {
-                        <div class="space-y-3">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                        <span class="text-sm font-medium text-primary">
-                                            {total_duration}
-                                        </span>
-                                        <span class="text-xs text-muted">
-                                            {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
-                                        </span>
-                                        {if completion_status == CompletionStatus::EndedEarly {
-                                            Some(view! {
-                                                <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
-                                                    "Ended Early"
-                                                </span>
-                                            })
-                                        } else {
-                                            None
-                                        }}
-                                        <span class="text-xs text-faint">{format_time_short(&started_at)}</span>
+                    </div>
+                }.into_any()
+            } else {
+                let started_at = started_at.clone();
+                let total_duration = total_duration.clone();
+                let completion_status = completion_status.clone();
+                let session_notes = session_notes.clone();
+                let session_intention = session_intention.clone();
+                let entries = entries.clone();
+                let menu_actions = menu_actions.clone();
+                let id_for_swipe = id_for_swipe.clone();
+                view! {
+                    <ContextMenu actions=menu_actions>
+                        <SwipeActions on_delete=Callback::new(move |_| {
+                            direct_delete.run(id_for_swipe.clone());
+                        })>
+                            <div class="p-card sm:p-card-comfortable space-y-3">
+                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                            <span class="text-sm font-medium text-primary">
+                                                {total_duration}
+                                            </span>
+                                            <span class="text-xs text-muted">
+                                                {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
+                                            </span>
+                                            {if completion_status == CompletionStatus::EndedEarly {
+                                                Some(view! {
+                                                    <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
+                                                        "Ended Early"
+                                                    </span>
+                                                })
+                                            } else {
+                                                None
+                                            }}
+                                            <span class="text-xs text-faint">{format_time_short(&started_at)}</span>
+                                        </div>
+                                        {session_intention.map(|intention| {
+                                            view! {
+                                                <p class="text-xs text-muted italic mt-1">{intention}</p>
+                                            }
+                                        })}
+                                        {session_notes.map(|n| {
+                                            view! {
+                                                <p class="text-sm text-secondary mt-1">{n}</p>
+                                            }
+                                        })}
                                     </div>
-                                    {session_intention.map(|intention| {
-                                        view! {
-                                            <p class="text-xs text-muted italic mt-1">{intention}</p>
-                                        }
-                                    })}
-                                    {session_notes.map(|n| {
-                                        view! {
-                                            <p class="text-sm text-secondary mt-1">{n}</p>
-                                        }
-                                    })}
+                                    <div class="flex gap-2 sm:ml-4">
+                                        <button
+                                            class="text-xs text-danger-text hover:text-danger-hover font-medium"
+                                            on:click=move |_| { confirm_delete.set(true); }
+                                        >
+                                            "Delete"
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="flex gap-2 sm:ml-4">
-                                    <button
-                                        class="text-xs text-danger-text hover:text-danger-hover font-medium"
-                                        on:click=move |_| { confirm_delete.set(true); }
-                                    >
-                                        "Delete"
-                                    </button>
-                                </div>
-                            </div>
-                            // Entry details with scores
-                            <div class="mt-1 pt-2 space-y-1.5">
-                                {entries.into_iter().map(|entry| {
+                                // Entry details with scores
+                                <div class="mt-1 pt-2 space-y-1.5">
+                                    {entries.into_iter().map(|entry| {
                                     let (status_icon, status_color) = match entry.status {
                                         EntryStatus::Completed => (IconName::Check, "text-success-text"),
                                         EntryStatus::Skipped => (IconName::Ban, "text-warning-text"),
@@ -343,21 +398,22 @@ pub(crate) fn SessionRow(
                                                             <span class="text-muted truncate max-w-[120px]" title={title}>{n}</span>
                                                         }
                                                     })}
+                                                    </div>
                                                 </div>
+                                                {entry_intention.map(|intention| {
+                                                    view! {
+                                                        <p class="text-muted italic ml-5 mt-0.5">{intention}</p>
+                                                    }
+                                                })}
                                             </div>
-                                            {entry_intention.map(|intention| {
-                                                view! {
-                                                    <p class="text-muted italic ml-5 mt-0.5">{intention}</p>
-                                                }
-                                            })}
-                                        </div>
-                                    }
-                                }).collect::<Vec<_>>()}
+                                        }
+                                    }).collect::<Vec<_>>()}
+                                </div>
                             </div>
-                        </div>
-                    }.into_any()
-                }
-            }}
-        </Card>
+                        </SwipeActions>
+                    </ContextMenu>
+                }.into_any()
+            }
+        }}
     }
 }

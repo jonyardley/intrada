@@ -19,6 +19,7 @@ pub enum IconName {
     ChevronUp,
     Clock,
     Minus,
+    Plus,
     RotateCcw,
     Star,
     X,
@@ -91,6 +92,11 @@ pub fn Icon(
         .into_any(),
         IconName::Minus => view! {
             <path d="M5 12h14" />
+        }
+        .into_any(),
+        IconName::Plus => view! {
+            <path d="M5 12h14" />
+            <path d="M12 5v14" />
         }
         .into_any(),
         IconName::RotateCcw => view! {

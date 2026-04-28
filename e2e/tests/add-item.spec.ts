@@ -30,7 +30,7 @@ test.describe("add library item", () => {
 
     // Should redirect to library and show the new item
     await expect(
-      page.getByRole("heading", { name: "Welcome to Intrada" })
+      page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Moonlight Sonata" })

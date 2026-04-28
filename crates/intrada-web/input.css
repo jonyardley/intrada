@@ -662,17 +662,67 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   font-size: max(16px, 1em);
 }
 
+/* iOS form input chrome — wider horizontal padding (16px) to match the
+   inset-grouped row gutters in iOS Settings/Mail; slightly more vertical
+   breathing room. The defaults (10/12) read as cramped next to the
+   GroupedList row padding once the strip is grouped. */
+[data-platform="ios"] .input-base {
+  padding: 0.6875rem 1rem; /* 11px 16px */
+}
+
+/* Page-header "Add" CTAs on iOS: the full-width purple bar under each
+   page heading was the most web-app-y signal the audit flagged. iOS
+   apps (Calendar, Notes, Reminders, Mail) put primary "Add" actions in
+   the trailing nav-bar position as a compact accent-coloured "+" icon
+   target — no background, no text label, ~44pt square.
+
+   `<PageHeading>`'s trailing slot lays the action out on the title's
+   row on every platform; the `.cta-link--page-add` modifier swaps the
+   chrome on iOS only. We render BOTH the "+" icon and the text label
+   at every callsite; CSS hides whichever doesn't apply, so the markup
+   stays accessible (screen readers still read the label) and the web
+   layout is unchanged. */
+.cta-link-icon {
+  display: none;
+}
+
+.cta-link-label {
+  display: inline;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add {
+  /* Strip pill chrome — becomes a plain accent-colour icon target. */
+  background: transparent;
+  background-color: transparent;
+  color: var(--color-accent-text);
+  box-shadow: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add:hover {
+  background-color: var(--color-surface-hover);
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-icon {
+  display: block;
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-label {
+  display: none;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    iOS Library List (Phase 2b)
    Transforms the web grid of glass cards into a native iOS grouped list.
    All rules scoped to [data-platform="ios"].
    ═══════════════════════════════════════════════════════════════════════ */
-
-/* Hide the desktop hero intro — iOS doesn't need an onboarding explanation */
-[data-platform="ios"] .library-hero {
-  display: none;
-}
 
 /* Week strip — iOS uses swipe gestures for date navigation (Apple Calendar /
    Health pattern), not chevron buttons. The swipe is already wired in the
@@ -964,12 +1014,20 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 
 .bottom-sheet-cancel {
   justify-self: start;
+  /* iOS minimum touch target — was 0.25rem 0 padding which gave a ~20px tap
+     zone on a destructive nav action. 44px min-height + horizontal padding
+     keeps the target generous without visually bulking the button (no
+     background, the chrome is just text). */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  margin-left: -0.5rem;
   color: var(--color-accent-text);
   font-size: 1rem;
   font-weight: 400;
   background: none;
   border: none;
-  padding: 0.25rem 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -996,6 +1054,72 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
      allows the flex item to shrink below its content's intrinsic size. */
   flex: 1 1 0;
   min-height: 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   GroupedList — iOS-style inset-grouped list container
+
+   On web/Android: a flex column of cards-with-gaps, indistinguishable
+   from the prior <Card>-per-row pattern.
+   On iOS: the container becomes ONE rounded card and rows are stripped
+   of their own chrome and separated by hairline rules — matches the
+   UITableView .grouped idiom from Settings, Mail, Music, etc.
+
+   Padding lives on the inner row content (callsite responsibility), not
+   on the row itself — keeps SwipeActions's swipe-row content / action
+   button flush to the row edge with no inset gap.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.grouped-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grouped-list-row {
+  background-color: var(--color-surface-fallback);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg);
+  /* Clip the inner SwipeActions track so a swipe-revealed action button
+     doesn't poke past the rounded row corners. */
+  overflow: hidden;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .grouped-list-row {
+    background-color: var(--color-surface-primary);
+    backdrop-filter: blur(12px);
+  }
+}
+
+[data-platform="ios"] .grouped-list {
+  display: block;
+  gap: 0;
+  background-color: var(--color-surface-primary);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+[data-platform="ios"] .grouped-list-row {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  /* The container provides the radius+clip; rows can leave overflow
+     visible so e.g. context-menu portals aren't hampered. */
+  overflow: visible;
+}
+
+[data-platform="ios"] .grouped-list-row + .grouped-list-row {
+  border-top: 1px solid var(--color-border-default);
 }
 
 

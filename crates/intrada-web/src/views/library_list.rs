@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{
-    BottomSheet, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
+    BottomSheet, Icon, IconName, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
@@ -69,29 +69,36 @@ pub fn LibraryListView() -> impl IntoView {
     view! {
         <PullToRefresh on_refresh=on_refresh is_refreshing=is_refreshing>
         <div class="space-y-6">
-            // Hero text (hidden on iOS) + Add CTA (always visible).
-            // The CTA sits OUTSIDE the .library-hero so it stays accessible
-            // when the hero text is hidden on iOS.
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div class="library-hero">
-                    <PageHeading
-                        text="Welcome to Intrada"
-                        subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
-                    />
-                </div>
-                <button
-                    type="button"
-                    class="cta-link shrink-0"
-                    on:click=move |_| open_add_sheet.run(())
-                >
-                    "Add Item"
-                </button>
-            </div>
+            // Page heading matches the other top-level tabs (Practice,
+            // Routines, Analytics). The "Add Item" trailing action lives
+            // in PageHeading's trailing slot so it sits at the title's
+            // level, not floating below the subtitle.
+            //
+            // The cta-link's icon/label children are CSS-swapped per
+            // platform: web shows the "Add Item" pill, iOS shows the
+            // "+" icon-only nav action.
+            <PageHeading
+                text="Library"
+                subtitle="Your pieces and exercises."
+                trailing=Box::new(move || view! {
+                    <button
+                        type="button"
+                        class="cta-link cta-link--page-add shrink-0"
+                        aria-label="Add Item"
+                        on:click=move |_| open_add_sheet.run(())
+                    >
+                        <Icon name=IconName::Plus class="cta-link-icon" />
+                        <span class="cta-link-label">"Add Item"</span>
+                    </button>
+                }.into_any())
+            />
 
-            // Library section header
-            <section aria-labelledby="library-heading">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 id="library-heading" class="text-lg font-semibold text-primary">"Library"</h2>
+            // Library items section. The page-level <PageHeading> above
+            // already supplies the visible "Library" title, so the
+            // section just carries an aria-label for screen readers and
+            // an inline item count.
+            <section aria-label="Library items">
+                <div class="flex justify-end mb-4">
                     <span class="text-sm text-muted">
                         {move || {
                             let count = view_model.get().items.len();

@@ -73,7 +73,7 @@ test.describe("detail view", () => {
 
     // Should redirect to library
     await expect(
-      page.getByRole("heading", { name: "Welcome to Intrada" })
+      page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
 
     // Hanon No. 1 should be gone
