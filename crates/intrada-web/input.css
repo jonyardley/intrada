@@ -1016,11 +1016,14 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 .swipe-row-content {
   position: relative;
   z-index: 1;
-  background: inherit;
-  /* Spring back to closed/open snap when not actively dragging. iOS-feeling
-     curve. Inline `transition: none` from the JS overrides this during
-     active touch drags so the content tracks the finger 1:1. */
-  transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* No background needed — the action button is parked off-screen at rest
+     (see .swipe-row-action below), so there's nothing behind to bleed
+     through. Lets the row preserve the library-list's glass surface. */
+  transform: translateX(var(--swipe-x, 0px));
+  /* `--swipe-duration` defaults to the spring snap. JS sets it to 0s on the
+     parent .swipe-row during an active drag so content tracks the finger
+     1:1; on release we restore the spring. */
+  transition: transform var(--swipe-duration, 280ms) cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
 }
 
@@ -1028,7 +1031,13 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   position: absolute;
   top: 0;
   bottom: 0;
-  right: 0;
+  /* Parked completely off-screen to the right of the row at rest. Both
+     left:100% and the same translateX as the content slide it left in
+     lock-step with the swipe — the action only enters the visible row
+     bounds (clipped by .swipe-row's overflow:hidden) when the user is
+     actively swiping. Eliminates the bleed-through that any "behind the
+     content" approach has against translucent row backgrounds. */
+  left: 100%;
   width: 88px;
   display: flex;
   align-items: center;
@@ -1040,8 +1049,9 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   border: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  /* Sits behind the content; revealed as content translates left. */
-  z-index: 0;
+  transform: translateX(var(--swipe-x, 0px));
+  transition: transform var(--swipe-duration, 280ms) cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
 }
 
 .swipe-row-action--destructive:hover {
