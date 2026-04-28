@@ -1290,6 +1290,41 @@ html:not([data-platform="ios"]) .context-menu {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Week strip — iOS Calendar–style 3-page peek (issue #328)
+   Frame clips the track; track holds three side-by-side pages
+   (prev | current | next), each one frame-width. Default transform
+   centres the current page; finger-drag slides the track 1:1, and a
+   release past threshold snaps to the adjacent edge before the parent
+   re-mounts WeekStrip on the new week_start.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.week-strip-frame {
+  overflow: hidden;
+}
+
+.week-strip-track {
+  display: flex;
+  width: 300%;
+  transform: translateX(-33.333%);
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.week-strip-page {
+  flex: 0 0 33.333%;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week-strip-track {
+    transition: none;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    TextField clear button (audit Tier 1)
    ═══════════════════════════════════════════════════════════════════════ */
 

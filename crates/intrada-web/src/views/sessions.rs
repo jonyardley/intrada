@@ -44,9 +44,26 @@ pub fn SessionsListView() -> impl IntoView {
         group_sessions_by_date(&vm.sessions)
     });
 
-    // Derived: which dates in the current week have sessions
+    // Derived: which dates in the current week have sessions (used for auto-select)
     let session_dates_in_week =
         Signal::derive(move || sessions_for_week(&grouped_sessions.get(), week_start.get()));
+
+    // Derived: session dates across prev/current/next weeks. The week strip
+    // renders all 3 pages side-by-side for the iOS Calendar peek gesture, so
+    // it needs practice dots for the adjacent weeks too — otherwise dots
+    // would only pop in after the snap completes.
+    let session_dates_three_weeks = Signal::derive(move || {
+        let grouped = grouped_sessions.get();
+        let ws = week_start.get();
+        let prev = sessions_for_week(&grouped, ws - chrono::Duration::days(7));
+        let curr = sessions_for_week(&grouped, ws);
+        let next = sessions_for_week(&grouped, ws + chrono::Duration::days(7));
+        let mut all = HashSet::new();
+        all.extend(prev);
+        all.extend(curr);
+        all.extend(next);
+        all
+    });
 
     // Auto-select effect: when selected_date is None (initial load or week change),
     // pick the best day based on auto-select logic.
@@ -74,14 +91,22 @@ pub fn SessionsListView() -> impl IntoView {
         selected_date.set(Some(date));
     });
 
+    // When navigating weeks via swipe or chevron, keep the selected
+    // day-of-week (e.g. Mon → Mon of the new week) so the highlight stays
+    // visually anchored — matches iOS Calendar and avoids a "selection
+    // pop" right after the swipe completes.
     let on_prev_week = Callback::new(move |()| {
         week_offset.update(|o| *o -= 1);
-        selected_date.set(None); // triggers auto-select
+        if let Some(sel) = selected_date.get_untracked() {
+            selected_date.set(Some(sel - chrono::Duration::days(7)));
+        }
     });
 
     let on_next_week = Callback::new(move |()| {
         week_offset.update(|o| *o += 1);
-        selected_date.set(None); // triggers auto-select
+        if let Some(sel) = selected_date.get_untracked() {
+            selected_date.set(Some(sel + chrono::Duration::days(7)));
+        }
     });
 
     let on_today = Callback::new(move |()| {
@@ -111,26 +136,22 @@ pub fn SessionsListView() -> impl IntoView {
                 }.into_any())
             />
 
-            // Week strip navigator
+            // Week strip navigator. Pass signals (not values) so WeekStrip
+            // stays mounted across week changes — its internal track
+            // animation depends on persistent component state, and a remount
+            // on every navigation would make the post-snap reset to centred
+            // visibly bounce (see week_strip.rs for the full picture).
             <div class="mb-6">
-                {move || {
-                    let ws = week_start.get();
-                    let sel = selected_date.get();
-                    let dates: HashSet<NaiveDate> = session_dates_in_week.get();
-                    let is_current = week_offset.get() == 0;
-                    view! {
-                        <WeekStrip
-                            week_start=ws
-                            selected_date=sel
-                            session_dates=dates
-                            on_day_click=on_day_click
-                            on_prev_week=on_prev_week
-                            on_next_week=on_next_week
-                            on_today=on_today
-                            is_current_week=is_current
-                        />
-                    }
-                }}
+                <WeekStrip
+                    week_start=week_start
+                    selected_date=selected_date.into()
+                    session_dates=session_dates_three_weeks
+                    on_day_click=on_day_click
+                    on_prev_week=on_prev_week
+                    on_next_week=on_next_week
+                    on_today=on_today
+                    is_current_week=Signal::derive(move || week_offset.get() == 0)
+                />
             </div>
 
             // Session cards for selected day
