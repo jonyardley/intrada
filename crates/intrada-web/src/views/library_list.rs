@@ -93,10 +93,12 @@ pub fn LibraryListView() -> impl IntoView {
                 }.into_any())
             />
 
-            // Library section header
-            <section aria-labelledby="library-heading">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 id="library-heading" class="text-lg font-semibold text-primary">"Library"</h2>
+            // Library items section. The page-level <PageHeading> above
+            // already supplies the visible "Library" title, so the
+            // section just carries an aria-label for screen readers and
+            // an inline item count.
+            <section aria-label="Library items">
+                <div class="flex justify-end mb-4">
                     <span class="text-sm text-muted">
                         {move || {
                             let count = view_model.get().items.len();
