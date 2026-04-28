@@ -140,8 +140,24 @@ pub fn WeekStrip(
     // -1 = snapping left (about to commit prev), 1 = snapping right (next),
     // 0 = idle / dragging.
     let snap_target = RwSignal::new(0i32);
+    // True for the brief window between a horizontal drag releasing and
+    // the synthesized click event firing on the day-cell button. Without
+    // this, a swipe that snaps back (or even commits) also fires a click
+    // on whichever day was under the finger when it landed, changing the
+    // selected date as a side-effect of swiping.
+    let suppress_next_click = RwSignal::new(false);
 
     let frame_ref = NodeRef::<leptos::html::Div>::new();
+
+    // Day-cell click goes through this wrapper so the strip can swallow
+    // the click that the browser synthesizes after a swipe gesture.
+    let day_click = Callback::new(move |date: NaiveDate| {
+        if suppress_next_click.get_untracked() {
+            suppress_next_click.set(false);
+            return;
+        }
+        on_day_click.run(date);
+    });
 
     let handle_pointer_down = move |ev: PointerEvent| {
         if snap_target.get_untracked() != 0 {
@@ -159,6 +175,10 @@ pub fn WeekStrip(
         drag_offset.set(0.0);
         gesture_committed.set(false);
         gesture_abandoned.set(false);
+        // Clear any stale suppression flag from a prior swipe that didn't
+        // produce a click — otherwise the next legitimate tap would be
+        // silently swallowed.
+        suppress_next_click.set(false);
         // Cache the frame width at gesture start; we re-measure on release
         // too in case it wasn't ready yet.
         if let Some(el) = frame_ref.get_untracked() {
@@ -214,6 +234,14 @@ pub fn WeekStrip(
         let abandoned = gesture_abandoned.get_untracked();
         gesture_committed.set(false);
         gesture_abandoned.set(false);
+
+        // Any horizontal swipe (committed past GESTURE_COMMIT_PX) means the
+        // user did NOT mean to tap the day under their finger — swallow the
+        // synthesized click that follows. Even snap-backs need this, since
+        // the click still fires on the original button.
+        if committed && !abandoned {
+            suppress_next_click.set(true);
+        }
 
         // Re-measure frame width on release — covers the case where the ref
         // wasn't ready at pointer down (e.g. very first interaction after
@@ -379,7 +407,7 @@ pub fn WeekStrip(
                                     day_abbrev=abbrev
                                     is_selected=false
                                     has_sessions=has_sessions
-                                    on_click=on_day_click
+                                    on_click=day_click
                                 />
                             }
                         }).collect::<Vec<_>>()}
@@ -395,7 +423,7 @@ pub fn WeekStrip(
                                     day_abbrev=abbrev
                                     is_selected=is_selected
                                     has_sessions=has_sessions
-                                    on_click=on_day_click
+                                    on_click=day_click
                                 />
                             }
                         }).collect::<Vec<_>>()}
@@ -410,7 +438,7 @@ pub fn WeekStrip(
                                     day_abbrev=abbrev
                                     is_selected=false
                                     has_sessions=has_sessions
-                                    on_click=on_day_click
+                                    on_click=day_click
                                 />
                             }
                         }).collect::<Vec<_>>()}
