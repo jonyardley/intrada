@@ -15,7 +15,7 @@ test.describe("navigation", () => {
     // Navigate back to Library via header nav
     await page.getByRole("link", { name: "Library" }).click();
     await expect(
-      page.getByRole("heading", { name: "Welcome to Intrada" })
+      page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
   });
 
@@ -38,7 +38,7 @@ test.describe("navigation", () => {
     // Back link returns to library
     await page.getByRole("link", { name: "Back to Library" }).click();
     await expect(
-      page.getByRole("heading", { name: "Welcome to Intrada" })
+      page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
   });
 
@@ -63,7 +63,7 @@ test.describe("navigation", () => {
       /bottom-sheet--open/
     );
     await expect(
-      page.getByRole("heading", { name: "Welcome to Intrada" })
+      page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
   });
 

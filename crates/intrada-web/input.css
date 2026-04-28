@@ -676,27 +676,18 @@ html.router-outlet-0.router-back::view-transition-new(root) {
    the trailing nav-bar position as a compact accent-coloured "+" icon
    target — no background, no text label, ~44pt square.
 
-   We render BOTH the "+" icon and the text label at every callsite;
-   CSS hides whichever doesn't apply to the platform, so the markup
+   `<PageHeading>`'s trailing slot lays the action out on the title's
+   row on every platform; the `.cta-link--page-add` modifier swaps the
+   chrome on iOS only. We render BOTH the "+" icon and the text label
+   at every callsite; CSS hides whichever doesn't apply, so the markup
    stays accessible (screen readers still read the label) and the web
-   layout is unchanged. The companion .page-header-row class flips the
-   parent flex from column to row on iOS so the heading and the icon
-   sit on the same line.
-
-   The `.cta-link-icon` / `.cta-link-label` defaults sit at the bottom
-   of this stylesheet so the `[data-platform="ios"]` overrides win on
-   source order without needing `!important`. */
+   layout is unchanged. */
 .cta-link-icon {
   display: none;
 }
 
 .cta-link-label {
   display: inline;
-}
-
-[data-platform="ios"] .page-header-row {
-  flex-direction: row;
-  align-items: center;
 }
 
 [data-platform="ios"] .cta-link.cta-link--page-add {
@@ -732,11 +723,6 @@ html.router-outlet-0.router-back::view-transition-new(root) {
    Transforms the web grid of glass cards into a native iOS grouped list.
    All rules scoped to [data-platform="ios"].
    ═══════════════════════════════════════════════════════════════════════ */
-
-/* Hide the desktop hero intro — iOS doesn't need an onboarding explanation */
-[data-platform="ios"] .library-hero {
-  display: none;
-}
 
 /* Week strip — iOS uses swipe gestures for date navigation (Apple Calendar /
    Health pattern), not chevron buttons. The swipe is already wired in the

@@ -69,31 +69,29 @@ pub fn LibraryListView() -> impl IntoView {
     view! {
         <PullToRefresh on_refresh=on_refresh is_refreshing=is_refreshing>
         <div class="space-y-6">
-            // Hero text (hidden on iOS) + Add CTA (always visible).
-            // The CTA sits OUTSIDE the .library-hero so it stays accessible
-            // when the hero text is hidden on iOS.
+            // Page heading matches the other top-level tabs (Practice,
+            // Routines, Analytics). The "Add Item" trailing action lives
+            // in PageHeading's trailing slot so it sits at the title's
+            // level, not floating below the subtitle.
             //
-            // .page-header-row keeps heading + CTA on one line on iOS;
-            // the cta-link's icon / label children are CSS-swapped per
+            // The cta-link's icon/label children are CSS-swapped per
             // platform: web shows the "Add Item" pill, iOS shows the
-            // icon-only nav action.
-            <div class="page-header-row flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div class="library-hero">
-                    <PageHeading
-                        text="Welcome to Intrada"
-                        subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
-                    />
-                </div>
-                <button
-                    type="button"
-                    class="cta-link cta-link--page-add shrink-0"
-                    aria-label="Add Item"
-                    on:click=move |_| open_add_sheet.run(())
-                >
-                    <Icon name=IconName::Plus class="cta-link-icon" />
-                    <span class="cta-link-label">"Add Item"</span>
-                </button>
-            </div>
+            // "+" icon-only nav action.
+            <PageHeading
+                text="Library"
+                subtitle="Your pieces and exercises."
+                trailing=Box::new(move || view! {
+                    <button
+                        type="button"
+                        class="cta-link cta-link--page-add shrink-0"
+                        aria-label="Add Item"
+                        on:click=move |_| open_add_sheet.run(())
+                    >
+                        <Icon name=IconName::Plus class="cta-link-icon" />
+                        <span class="cta-link-label">"Add Item"</span>
+                    </button>
+                }.into_any())
+            />
 
             // Library section header
             <section aria-labelledby="library-heading">
