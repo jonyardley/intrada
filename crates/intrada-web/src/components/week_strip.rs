@@ -25,47 +25,42 @@ pub fn DayCell(
     let date_number = date.day();
     let aria_label = date.format("%A, %-d %B %Y").to_string();
 
-    // Build class strings from design tokens
-    let container_class = if is_selected {
-        "flex flex-col items-center justify-center py-1 px-1 rounded-lg cursor-pointer \
-         bg-accent-focus/15 ring-2 ring-accent-focus transition-colors min-w-0"
-    } else {
-        "flex flex-col items-center justify-center py-1 px-1 rounded-lg cursor-pointer \
-         hover:bg-surface-hover transition-colors min-w-0"
-    };
-
-    let date_text_class = if is_selected {
-        "text-xs font-medium text-accent-text"
-    } else {
-        "text-xs font-medium text-secondary"
-    };
-
+    // iOS Calendar pattern: day name on top (no highlight), date number
+    // inside a fixed-size circle that fills with the accent colour when
+    // selected. Avoids the previous full-cell ring which crowded the
+    // strip's bottom border.
     let day_label_class = if is_selected {
-        "text-xs text-accent-text"
+        "text-xs font-medium text-accent-text"
     } else {
         "text-xs text-muted"
     };
 
+    let date_circle_class = if is_selected {
+        "flex items-center justify-center w-7 h-7 mt-0.5 rounded-full \
+         bg-accent text-primary text-sm font-semibold transition-colors"
+    } else {
+        "flex items-center justify-center w-7 h-7 mt-0.5 rounded-full \
+         text-sm font-medium text-primary transition-colors"
+    };
+
+    let dot_class = if has_sessions {
+        "mt-0.5 w-1.5 h-1.5 rounded-full bg-warm-accent shadow-[0_0_4px_var(--color-warm-accent)]"
+    } else {
+        // Invisible placeholder keeps row height stable.
+        "mt-0.5 w-1.5 h-1.5 rounded-full"
+    };
+
     view! {
         <button
-            class=container_class
+            class="flex flex-col items-center justify-start py-1 px-0.5 cursor-pointer min-w-0"
             role="button"
             aria-label=aria_label
             aria-pressed=is_selected.to_string()
             on:click=move |_| on_click.run(date)
         >
             <span class=day_label_class>{day_abbrev}</span>
-            <span class=date_text_class>{date_number}</span>
-            {if has_sessions {
-                Some(view! {
-                    <span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-warm-accent shadow-[0_0_4px_var(--color-warm-accent)]" aria-hidden="true"></span>
-                })
-            } else {
-                // Invisible placeholder to maintain consistent height
-                Some(view! {
-                    <span class="mt-0.5 w-1.5 h-1.5 rounded-full" aria-hidden="true"></span>
-                })
-            }}
+            <span class=date_circle_class>{date_number}</span>
+            <span class=dot_class aria-hidden="true"></span>
         </button>
     }
 }
@@ -101,7 +96,15 @@ pub fn WeekStrip(
     const GESTURE_COMMIT_PX: f64 = 6.0;
     /// Threshold (as fraction of frame width) past which a release commits
     /// to navigating to the adjacent page rather than snapping back.
-    const PAGE_SWIPE_RATIO: f64 = 0.25;
+    /// Tuned looser than iOS Calendar — at 25% on a 360px viewport the user
+    /// has to drag ~90px which feels reluctant.
+    const PAGE_SWIPE_RATIO: f64 = 0.18;
+    /// Velocity (px / ms) at release that auto-commits regardless of
+    /// distance. ~0.5 px/ms = 500 px/sec — a deliberate flick.
+    const VELOCITY_COMMIT_PX_PER_MS: f64 = 0.5;
+    /// Fallback frame width if the ref hasn't measured yet — we'd rather
+    /// commit a borderline swipe than ignore it because of a 0-width race.
+    const FRAME_WIDTH_FALLBACK: f64 = 320.0;
     /// Spring animation duration (ms) — kept in sync with the CSS
     /// transition value below so the deferred parent navigation lands
     /// after the visual snap completes.
@@ -124,6 +127,11 @@ pub fn WeekStrip(
     let pointer_start_y = RwSignal::new(0.0_f64);
     let frame_width = RwSignal::new(0.0_f64);
     let drag_offset = RwSignal::new(0.0_f64);
+    // Most-recent move sample for velocity at release.
+    let last_move_x = RwSignal::new(0.0_f64);
+    let last_move_t = RwSignal::new(0.0_f64);
+    let prev_move_x = RwSignal::new(0.0_f64);
+    let prev_move_t = RwSignal::new(0.0_f64);
     let gesture_committed = RwSignal::new(false);
     // True once the user has moved far enough vertically that we've decided
     // this is a scroll, not a swipe. Stops further drag handling for this
@@ -140,13 +148,19 @@ pub fn WeekStrip(
             // Mid-snap animation, ignore — parent will re-mount us shortly.
             return;
         }
-        pointer_start_x.set(ev.client_x() as f64);
+        let x = ev.client_x() as f64;
+        let t = ev.time_stamp();
+        pointer_start_x.set(x);
         pointer_start_y.set(ev.client_y() as f64);
+        prev_move_x.set(x);
+        prev_move_t.set(t);
+        last_move_x.set(x);
+        last_move_t.set(t);
         drag_offset.set(0.0);
         gesture_committed.set(false);
         gesture_abandoned.set(false);
-        // Cache the frame width once at gesture start so we can compute
-        // the page-snap threshold against it without measuring per-move.
+        // Cache the frame width at gesture start; we re-measure on release
+        // too in case it wasn't ready yet.
         if let Some(el) = frame_ref.get_untracked() {
             let rect = el.get_bounding_client_rect();
             frame_width.set(rect.width());
@@ -171,6 +185,14 @@ pub fn WeekStrip(
             gesture_committed.set(true);
         }
 
+        // Roll the velocity window: keep only the previous + current sample
+        // so release velocity reflects the most recent ~16ms, not the whole
+        // gesture (which would be diluted by an initial slow drag).
+        prev_move_x.set(last_move_x.get_untracked());
+        prev_move_t.set(last_move_t.get_untracked());
+        last_move_x.set(ev.client_x() as f64);
+        last_move_t.set(ev.time_stamp());
+
         drag_offset.set(dx);
     };
 
@@ -193,14 +215,56 @@ pub fn WeekStrip(
         gesture_committed.set(false);
         gesture_abandoned.set(false);
 
-        let frame_w = frame_width.get_untracked();
+        // Re-measure frame width on release — covers the case where the ref
+        // wasn't ready at pointer down (e.g. very first interaction after
+        // mount). Falls back to a sensible default if still unavailable.
+        let frame_w = match frame_ref.get_untracked() {
+            Some(el) => {
+                let w = el.get_bounding_client_rect().width();
+                if w > 0.0 {
+                    w
+                } else {
+                    let cached = frame_width.get_untracked();
+                    if cached > 0.0 {
+                        cached
+                    } else {
+                        FRAME_WIDTH_FALLBACK
+                    }
+                }
+            }
+            None => {
+                let cached = frame_width.get_untracked();
+                if cached > 0.0 {
+                    cached
+                } else {
+                    FRAME_WIDTH_FALLBACK
+                }
+            }
+        };
         let threshold = frame_w * PAGE_SWIPE_RATIO;
 
-        if !abandoned && committed && dx.abs() > threshold && frame_w > 0.0 {
+        // Velocity (px/ms) from the last two move samples — high enough
+        // means the user flicked, so commit even if dx fell short.
+        let dt = (last_move_t.get_untracked() - prev_move_t.get_untracked()).max(1.0);
+        let velocity = (last_move_x.get_untracked() - prev_move_x.get_untracked()) / dt;
+        let flick_commit =
+            velocity.abs() >= VELOCITY_COMMIT_PX_PER_MS && dx.abs() > GESTURE_COMMIT_PX;
+
+        let distance_commit = dx.abs() > threshold;
+
+        if !abandoned && committed && (distance_commit || flick_commit) {
             // Snap to the edge page first — animation drives the visual
             // commit. After SNAP_DURATION_MS we fire the parent callback
             // which re-renders this component on the new week_start.
-            let direction = if dx < 0.0 { 1 } else { -1 };
+            //
+            // For a velocity-only commit we use the flick direction; for a
+            // distance commit we use the drag direction (they usually agree).
+            let direction_basis = if flick_commit && !distance_commit {
+                velocity
+            } else {
+                dx
+            };
+            let direction = if direction_basis < 0.0 { 1 } else { -1 };
             snap_target.set(direction);
             drag_offset.set(0.0);
             // iOS Calendar fires a subtle selection tick at commit.
