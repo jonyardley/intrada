@@ -263,6 +263,24 @@ If unsure between tiers, go one tier lighter. Drift up if scope expands.
 | New auth provider | 3 | Auth + multi-crate |
 | Migrate persistence layer | 3 | Architectural |
 
+### Optional skills (Superpowers, opt-in only)
+
+The [Superpowers](https://github.com/obra/superpowers) plugin provides ~14 auto-triggering skills + a methodology. We don't adopt it whole — its "always TDD, multi-stage subagent review, formal plans for everything" philosophy conflicts with the tier system above. But three of its skills are useful **when invoked deliberately**:
+
+- **`test-driven-development`** — opt in for **non-UI Tier 2 / all Tier 3** work. Skip for visual / gesture / styling work where verification is on-device. The "watch the test fail before writing the code" discipline is what's valuable; the "delete code written before tests" rule is too strict for our pace.
+- **`requesting-code-review`** — opt in **before opening any Tier 3 PR**, and for Tier 2 PRs touching auth / DB / FFI. Acts as a pre-flight checklist: does the diff match the spec, are tests passing, are there obvious quality issues. Cheaper than discovering them post-merge.
+- **`using-git-worktrees`** — opt in when **two or more PR branches are in flight at once** (e.g., the recent #329 / #330 / #331 sequence). Prevents the rebase-conflict tangles that happen when squash-merges land while you're still working on the next branch.
+
+**Do NOT enable** the rest of the methodology by default — `brainstorming`, `writing-plans`, `subagent-driven-development`, `executing-plans`, `finishing-a-development-branch`, `systematic-debugging`. Those collapse the tier system into one-size-fits-all heavyweight ceremony, which we explicitly don't want.
+
+If you're unsure whether a skill applies, default to the tier system. The skills are sharper tools for specific situations, not replacements for "match ceremony to scope".
+
+**Install (Claude Code):** `/plugin install superpowers@claude-plugins-official`
+
+**Invoke selectively:** Tell the agent which skill to apply (e.g., "use test-driven-development for this"). Superpowers' default behaviour is to auto-trigger skills based on context — when invoking a single skill deliberately, also tell it to skip the others (e.g., "use just test-driven-development, no plan or subagent review needed").
+
+**Re-evaluate** after the next 3 PRs that use any of these skills: did they catch a real issue, or did they add ceremony for its own sake? Expand scope, drop a skill, or trial another from the Superpowers set based on what we observe.
+
 ### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
