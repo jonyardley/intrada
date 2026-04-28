@@ -21,7 +21,7 @@ gloo-net = { version = "0.7", features = ["http", "json"] }
 gloo-timers = { version = "0.4", features = ["futures"] }
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
-web-sys = { version = "0.3", features = ["Window", "Storage", "ClipboardEvent", "DataTransfer", "PointerEvent", "Element", "DomRect", "HtmlElement", "TouchEvent", "Touch", "TouchList", "AddEventListenerOptions"] }
+web-sys = { version = "0.3", features = ["Window", "Storage", "ClipboardEvent", "DataTransfer", "PointerEvent", "Element", "DomRect", "HtmlElement", "TouchEvent", "Touch", "TouchList", "AddEventListenerOptions", "ScrollIntoViewOptions", "ScrollLogicalPosition", "ScrollBehavior"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
