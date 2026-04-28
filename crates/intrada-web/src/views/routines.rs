@@ -6,8 +6,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, RoutineEvent, RoutineView, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, Card, ContextMenu, ContextMenuAction, PageHeading, SkeletonCardList,
-    SwipeActions,
+    Button, ButtonVariant, ContextMenu, ContextMenuAction, GroupedList, GroupedListRow,
+    PageHeading, SkeletonCardList, SwipeActions,
 };
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -47,16 +47,19 @@ pub fn RoutinesListView() -> impl IntoView {
                         </div>
                     }.into_any()
                 } else {
+                    let routine_count = vm.routines.len();
                     view! {
-                        <div class="space-y-3">
-                            {vm.routines.iter().map(|routine| {
+                        <GroupedList aria_label="Saved routines">
+                            {vm.routines.into_iter().map(|routine| {
                                 view! {
-                                    <RoutineRow routine=routine.clone() />
+                                    <GroupedListRow>
+                                        <RoutineRow routine=routine />
+                                    </GroupedListRow>
                                 }
                             }).collect::<Vec<_>>()}
-                        </div>
+                        </GroupedList>
                         <p class="text-sm text-muted mt-4">
-                            {format!("{} routine{}", vm.routines.len(), if vm.routines.len() == 1 { "" } else { "s" })}
+                            {format!("{} routine{}", routine_count, if routine_count == 1 { "" } else { "s" })}
                         </p>
                     }.into_any()
                 }
@@ -123,47 +126,46 @@ fn RoutineRow(routine: RoutineView) -> impl IntoView {
     ];
 
     view! {
-        <Card>
-            {move || {
-                if confirm_delete.get() {
-                    let core_del = core.clone();
-                    let id_del = id_for_delete.clone();
-                    view! {
-                        <div>
-                            <p class="text-sm text-danger-text mb-3">"Delete this routine? This cannot be undone."</p>
-                            <div class="flex gap-2">
-                                <Button
-                                    variant=ButtonVariant::Danger
-                                    loading=Signal::derive(move || is_submitting.get())
-                                    on_click=Callback::new(move |_| {
-                                        let event = Event::Routine(RoutineEvent::DeleteRoutine { id: id_del.clone() });
-                                        let core_ref = core_del.borrow();
-                                        let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    })
-                                >
-                                    {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
-                                </Button>
-                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                    confirm_delete.set(false);
-                                })>
-                                    "Cancel"
-                                </Button>
-                            </div>
-                        </div>
-                    }.into_any()
-                } else {
-                    let name = name.clone();
-                    let entries = entries.clone();
-                    let edit_href = edit_href.clone();
-                    let menu_actions = menu_actions.clone();
-                    let id_for_swipe = id_for_swipe.clone();
-                    view! {
-                        <ContextMenu actions=menu_actions>
-                            <SwipeActions on_delete=Callback::new(move |_| {
-                                direct_delete.run(id_for_swipe.clone());
+        {move || {
+            if confirm_delete.get() {
+                let core_del = core.clone();
+                let id_del = id_for_delete.clone();
+                view! {
+                    <div class="p-card sm:p-card-comfortable">
+                        <p class="text-sm text-danger-text mb-3">"Delete this routine? This cannot be undone."</p>
+                        <div class="flex gap-2">
+                            <Button
+                                variant=ButtonVariant::Danger
+                                loading=Signal::derive(move || is_submitting.get())
+                                on_click=Callback::new(move |_| {
+                                    let event = Event::Routine(RoutineEvent::DeleteRoutine { id: id_del.clone() });
+                                    let core_ref = core_del.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                })
+                            >
+                                {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
+                            </Button>
+                            <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                confirm_delete.set(false);
                             })>
-                                <div class="space-y-3">
+                                "Cancel"
+                            </Button>
+                        </div>
+                    </div>
+                }.into_any()
+            } else {
+                let name = name.clone();
+                let entries = entries.clone();
+                let edit_href = edit_href.clone();
+                let menu_actions = menu_actions.clone();
+                let id_for_swipe = id_for_swipe.clone();
+                view! {
+                    <ContextMenu actions=menu_actions>
+                        <SwipeActions on_delete=Callback::new(move |_| {
+                            direct_delete.run(id_for_swipe.clone());
+                        })>
+                            <div class="p-card sm:p-card-comfortable space-y-3">
                                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <div class="flex-1 min-w-0">
                                             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -196,12 +198,11 @@ fn RoutineRow(routine: RoutineView) -> impl IntoView {
                                             }
                                         }).collect::<Vec<_>>()}
                                     </div>
-                                </div>
-                            </SwipeActions>
-                        </ContextMenu>
-                    }.into_any()
-                }
-            }}
-        </Card>
+                            </div>
+                        </SwipeActions>
+                    </ContextMenu>
+                }.into_any()
+            }
+        }}
     }
 }
