@@ -163,8 +163,12 @@ pub fn WeekStrip(
                 </button>
             </div>
 
-            // Day cells row
-            <div class="grid grid-cols-7 gap-1">
+            // Day cells row. The `week-strip-days` class triggers a brief
+            // fade-and-slide-in animation on every (re)mount — and the
+            // parent re-mounts WeekStrip whenever week_start / selected_date
+            // / session_dates change, so the row visibly reacts to user
+            // navigation rather than swapping silently.
+            <div class="week-strip-days grid grid-cols-7 gap-1">
                 {dates.into_iter().map(|date| {
                     let abbrev = day_abbrev(date.weekday());
                     let is_selected = selected_date == Some(date);
