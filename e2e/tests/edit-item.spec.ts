@@ -13,11 +13,12 @@ test.describe("edit library item", () => {
     ).toBeVisible();
 
     // Click Edit link
-    await page.getByRole("link", { name: "Edit" }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
 
     // Should be on the edit form
+    // Sheet is open with "Edit Item" in its nav title
     await expect(
-      page.getByRole("heading", { name: "Edit Library Item" })
+      page.getByRole("heading", { name: "Edit Item" })
     ).toBeVisible();
 
     // Fields should be pre-populated
@@ -38,9 +39,10 @@ test.describe("edit library item", () => {
 
     // Navigate to piece detail then edit
     await page.getByRole("heading", { name: "Clair de Lune" }).click();
-    await page.getByRole("link", { name: "Edit" }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
+    // Sheet is open with "Edit Item" in its nav title
     await expect(
-      page.getByRole("heading", { name: "Edit Library Item" })
+      page.getByRole("heading", { name: "Edit Item" })
     ).toBeVisible();
 
     // Clear and change the title
@@ -61,16 +63,22 @@ test.describe("edit library item", () => {
 
     // Navigate to piece detail then edit
     await page.getByRole("heading", { name: "Clair de Lune" }).click();
-    await page.getByRole("link", { name: "Edit" }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
+    // Sheet is open with "Edit Item" in its nav title
     await expect(
-      page.getByRole("heading", { name: "Edit Library Item" })
+      page.getByRole("heading", { name: "Edit Item" })
     ).toBeVisible();
 
-    // Change the title but cancel
+    // Change the title but cancel via the sheet's Cancel button (in the
+    // sheet nav). .first() because the form also has a Cancel button at
+    // the bottom; either works but the nav button comes first in the DOM.
     await page.locator("#edit-title").fill("CHANGED TITLE");
-    await page.getByRole("link", { name: "Cancel" }).click();
+    await page.getByRole("button", { name: "Cancel" }).first().click();
 
-    // Should be back on the detail page with the ORIGINAL title
+    // Sheet should close and detail page still shows the ORIGINAL title
+    await expect(page.locator(".bottom-sheet")).not.toHaveClass(
+      /bottom-sheet--open/
+    );
     await expect(
       page.getByRole("heading", { name: "Clair de Lune", level: 2 })
     ).toBeVisible();

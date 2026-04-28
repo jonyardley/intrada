@@ -13,8 +13,11 @@ test.describe("detail view", () => {
     ).toBeVisible();
     await expect(page.getByText("Claude Debussy")).toBeVisible();
 
-    // Type badge
-    await expect(page.getByText("Piece", { exact: true })).toBeVisible();
+    // Type badge — scope to <main> to avoid matching the "Piece" tab button
+    // inside the (DOM-present-but-off-screen) Edit sheet's TypeTabs.
+    await expect(
+      page.getByRole("main").getByText("Piece", { exact: true })
+    ).toBeVisible();
 
     // Key, Tempo, Notes
     await expect(page.getByText("Db Major")).toBeVisible();
@@ -23,12 +26,20 @@ test.describe("detail view", () => {
       page.getByText("Third movement of Suite bergamasque")
     ).toBeVisible();
 
-    // Tags
-    await expect(page.getByText("impressionist")).toBeVisible();
-    await expect(page.getByText("piano")).toBeVisible();
+    // Tags — scope to <main> to skip the duplicate TagInput inside the
+    // off-screen Edit sheet (which is mounted but translated out of view).
+    await expect(
+      page.getByRole("main").getByText("impressionist")
+    ).toBeVisible();
+    await expect(page.getByRole("main").getByText("piano")).toBeVisible();
 
-    // Action buttons (Edit and Delete — "Log Session" removed in setlist model)
-    await expect(page.getByRole("link", { name: "Edit" })).toBeVisible();
+    // Action buttons (Edit and Delete — "Log Session" removed in setlist model).
+    // Edit is now a <button> that opens an inline BottomSheet (iOS-native
+    // pattern); .first() because the sheet's Cancel button below also
+    // matches role=button when it's later opened.
+    await expect(
+      page.getByRole("button", { name: "Edit" })
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Delete" })
     ).toBeVisible();
@@ -49,8 +60,9 @@ test.describe("detail view", () => {
       page.getByText("Are you sure you want to delete this item?")
     ).toBeVisible();
 
-    // Cancel — should dismiss confirmation
-    await page.getByRole("button", { name: "Cancel" }).click();
+    // Cancel — should dismiss confirmation. Scope to <main> because the
+    // off-screen Edit sheet also has Cancel buttons (sheet nav + form).
+    await page.getByRole("main").getByRole("button", { name: "Cancel" }).click();
     await expect(
       page.getByText("Are you sure you want to delete this item?")
     ).not.toBeVisible();

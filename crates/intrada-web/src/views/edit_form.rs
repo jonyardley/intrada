@@ -18,13 +18,27 @@ use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::{validate_library_form, FormData};
 
 #[component]
-pub fn EditLibraryItemForm() -> impl IntoView {
+pub fn EditLibraryItemForm(
+    /// When provided, edit this item ID directly (sheet mode). When None,
+    /// fall back to reading from URL params (route mode).
+    #[prop(optional, into)]
+    item_id: Option<String>,
+    /// When rendered inside a BottomSheet, drop the back-link / page heading
+    /// / card chrome — the sheet provides its own. Cancel + Save call
+    /// `on_dismiss` instead of navigating.
+    #[prop(optional)]
+    in_sheet: bool,
+    /// Fired when the user successfully saves or cancels. Required when
+    /// `in_sheet` is true; ignored otherwise (route mode navigates instead).
+    #[prop(optional, into)]
+    on_dismiss: Option<Callback<()>>,
+) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
     let params = use_params_map();
-    let id = params.read().get("id").unwrap_or_default();
+    let id = item_id.unwrap_or_else(|| params.read().get("id").unwrap_or_default());
     let navigate = use_navigate();
 
     // Find item to pre-populate — use get_untracked() since we only need
@@ -38,47 +52,59 @@ pub fn EditLibraryItemForm() -> impl IntoView {
 
     // If item not found and still loading, show skeleton then re-check
     if item.is_none() {
-        let id = id.clone();
+        let id_for_loading = id.clone();
+        let loading_inner = move || {
+            if is_loading.get() {
+                view! {
+                    <div class="space-y-4 animate-pulse">
+                        <SkeletonLine width="w-1/3" height="h-6" />
+                        <SkeletonLine width="w-full" height="h-10" />
+                        <SkeletonLine width="w-full" height="h-10" />
+                        <SkeletonLine width="w-2/3" height="h-10" />
+                        <SkeletonBlock height="h-24" />
+                    </div>
+                }
+                .into_any()
+            } else {
+                // Check if item appeared after loading completed
+                let id = id_for_loading.clone();
+                let item_found = view_model.get().items.iter().any(|i| i.id == id);
+                if item_found && !in_sheet {
+                    // Data loaded — redirect to self to re-render with item data
+                    let url = format!("/library/{}/edit", id);
+                    let navigate = use_navigate();
+                    navigate(
+                        &url,
+                        NavigateOptions {
+                            replace: true,
+                            ..Default::default()
+                        },
+                    );
+                    ().into_any()
+                } else {
+                    view! {
+                        <div class="text-center py-8">
+                            <p class="text-secondary mb-4">"Item not found."</p>
+                            <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                                "← Back to Library"
+                            </A>
+                        </div>
+                    }
+                    .into_any()
+                }
+            }
+        };
+        if in_sheet {
+            return view! { <div>{loading_inner}</div> }.into_any();
+        }
         return view! {
             <div class="sm:max-w-2xl sm:mx-auto">
                 <BackLink label="Cancel" href="/".to_string() />
                 <PageHeading text="Edit Library Item" />
-                {move || {
-                    if is_loading.get() {
-                        view! {
-                            <Card>
-                                <div class="space-y-4 animate-pulse">
-                                    <SkeletonLine width="w-1/3" height="h-6" />
-                                    <SkeletonLine width="w-full" height="h-10" />
-                                    <SkeletonLine width="w-full" height="h-10" />
-                                    <SkeletonLine width="w-2/3" height="h-10" />
-                                    <SkeletonBlock height="h-24" />
-                                </div>
-                            </Card>
-                        }.into_any()
-                    } else {
-                        // Check if item appeared after loading completed
-                        let item_found = view_model.get().items.iter().any(|i| i.id == id);
-                        if item_found {
-                            // Data loaded — redirect to self to re-render with item data
-                            let url = format!("/library/{}/edit", id);
-                            let navigate = use_navigate();
-                            navigate(&url, NavigateOptions { replace: true, ..Default::default() });
-                            ().into_any()
-                        } else {
-                            view! {
-                                <div class="text-center py-8">
-                                    <p class="text-secondary mb-4">"Item not found."</p>
-                                    <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
-                                        "← Back to Library"
-                                    </A>
-                                </div>
-                            }.into_any()
-                        }
-                    }
-                }}
+                <Card>{loading_inner}</Card>
             </div>
-        }.into_any();
+        }
+        .into_any();
     }
 
     let item = item.expect("item confirmed Some above");
@@ -111,16 +137,10 @@ pub fn EditLibraryItemForm() -> impl IntoView {
 
     let cancel_href = back_href.clone();
 
-    view! {
-        <div class="sm:max-w-2xl sm:mx-auto">
-            <BackLink label="Cancel" href=back_href />
-
-            <PageHeading text="Edit Library Item" />
-
-            <Card>
-                <form
-                    class="space-y-4"
-                    on:submit={
+    let form_view = view! {
+        <form
+            class="space-y-4"
+            on:submit={
                         let item_id = item_id.clone();
                         move |ev: ev::SubmitEvent| {
                             ev.prevent_default();
@@ -192,8 +212,12 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                             let core_ref = core.borrow();
                             let effects = core_ref.process_event(event);
                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                            let detail_url = format!("/library/{}", item_id);
-                            navigate(&detail_url, NavigateOptions { replace: true, ..Default::default() });
+                            if let Some(cb) = on_dismiss {
+                                cb.run(());
+                            } else {
+                                let detail_url = format!("/library/{}", item_id);
+                                navigate(&detail_url, NavigateOptions { replace: true, ..Default::default() });
+                            }
                         }
                     }
                 >
@@ -247,13 +271,28 @@ pub fn EditLibraryItemForm() -> impl IntoView {
                                 let cancel_href = cancel_href.clone();
                                 let navigate = navigate.clone();
                                 Callback::new(move |_| {
-                                    navigate(&cancel_href, NavigateOptions::default());
+                                    if let Some(cb) = on_dismiss {
+                                        cb.run(());
+                                    } else {
+                                        navigate(&cancel_href, NavigateOptions::default());
+                                    }
                                 })
                             }>"Cancel"</Button>
                         </div>
                     </div>
                 </form>
-            </Card>
-        </div>
-    }.into_any()
+    };
+
+    if in_sheet {
+        form_view.into_any()
+    } else {
+        view! {
+            <div class="sm:max-w-2xl sm:mx-auto">
+                <BackLink label="Cancel" href=back_href />
+                <PageHeading text="Edit Library Item" />
+                <Card>{form_view}</Card>
+            </div>
+        }
+        .into_any()
+    }
 }

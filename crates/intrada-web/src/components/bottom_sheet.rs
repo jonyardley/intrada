@@ -237,6 +237,11 @@ pub fn BottomSheet(
                     </div>
                 })}
                 <div class="bottom-sheet-body">
+                    // NOTE: children stay mounted even when the sheet is
+                    // closed (just translated off-screen). Tests querying
+                    // page-wide for elements that also exist inside the
+                    // sheet (e.g. "Cancel" button) need to scope to <main>
+                    // to avoid matching the off-screen sheet contents.
                     {children()}
                 </div>
             </div>
