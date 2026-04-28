@@ -34,7 +34,7 @@ pub fn AppHeader() -> impl IntoView {
 
     view! {
         <header class="glass-chrome border-b border-border-default" role="banner">
-            <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+            <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-card sm:py-card-comfortable flex items-center justify-between">
                 <div>
                     <A href="/" attr:class="no-underline">
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>

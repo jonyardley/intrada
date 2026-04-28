@@ -104,7 +104,7 @@ pub fn DetailView() -> impl IntoView {
                         <Card>
                             <div class="flex items-start justify-between gap-3 mb-6">
                                 <div>
-                                    <h2 class="text-2xl font-bold text-primary">{title}</h2>
+                                    <h2 class="text-2xl font-bold text-primary font-heading">{title}</h2>
                                     {if !subtitle.is_empty() {
                                         Some(view! {
                                             <p class="text-lg text-muted mt-1">{subtitle.clone()}</p>
