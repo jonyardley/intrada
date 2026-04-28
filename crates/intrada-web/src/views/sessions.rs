@@ -90,11 +90,17 @@ pub fn SessionsListView() -> impl IntoView {
 
     view! {
         <div>
-            // Page header with "New Session" CTA
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+            // Page header with "New Session" CTA. The .page-header-row
+            // class lets iOS flip this from column to row so the heading
+            // and the trailing "+" icon button sit on one line — matches
+            // iOS Calendar / Notes / Reminders. The cta-link's icon /
+            // label children are CSS-swapped per platform: web shows the
+            // "New Session" pill, iOS shows the icon-only nav action.
+            <div class="page-header-row flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
                 <PageHeading text="Practice" subtitle="Review your session history and track how your sessions build over time." />
-                <A href="/sessions/new" attr:class="cta-link shrink-0">
-                    "New Session"
+                <A href="/sessions/new" attr:class="cta-link cta-link--page-add shrink-0" attr:aria-label="New Session">
+                    <Icon name=IconName::Plus class="cta-link-icon" />
+                    <span class="cta-link-label">"New Session"</span>
                 </A>
             </div>
 

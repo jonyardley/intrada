@@ -670,17 +670,60 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   padding: 0.6875rem 1rem; /* 11px 16px */
 }
 
-/* Primary action CTAs ("New Session", "Add Item") on iOS shouldn't
-   stretch to fill flex-col parents. The default web/Android behaviour
-   produces a full-width purple bar under the page heading — the most
-   web-app-y signal the audit flagged. align-self: flex-end shrinks the
-   button to its content width and pushes it to the trailing edge,
-   matching the iOS nav-bar trailing-action convention.
+/* Page-header "Add" CTAs on iOS: the full-width purple bar under each
+   page heading was the most web-app-y signal the audit flagged. iOS
+   apps (Calendar, Notes, Reminders, Mail) put primary "Add" actions in
+   the trailing nav-bar position as a compact accent-coloured "+" icon
+   target — no background, no text label, ~44pt square.
 
-   No effect on cta-link inside non-flex parents (empty states), which
-   stay centred via their own .text-center wrappers. */
-[data-platform="ios"] .cta-link {
-  align-self: flex-end;
+   We render BOTH the "+" icon and the text label at every callsite;
+   CSS hides whichever doesn't apply to the platform, so the markup
+   stays accessible (screen readers still read the label) and the web
+   layout is unchanged. The companion .page-header-row class flips the
+   parent flex from column to row on iOS so the heading and the icon
+   sit on the same line.
+
+   The `.cta-link-icon` / `.cta-link-label` defaults sit at the bottom
+   of this stylesheet so the `[data-platform="ios"]` overrides win on
+   source order without needing `!important`. */
+.cta-link-icon {
+  display: none;
+}
+
+.cta-link-label {
+  display: inline;
+}
+
+[data-platform="ios"] .page-header-row {
+  flex-direction: row;
+  align-items: center;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add {
+  /* Strip pill chrome — becomes a plain accent-colour icon target. */
+  background: transparent;
+  background-color: transparent;
+  color: var(--color-accent-text);
+  box-shadow: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add:hover {
+  background-color: var(--color-surface-hover);
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-icon {
+  display: block;
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-label {
+  display: none;
 }
 
 

@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{
-    BottomSheet, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
+    BottomSheet, Icon, IconName, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
@@ -72,7 +72,12 @@ pub fn LibraryListView() -> impl IntoView {
             // Hero text (hidden on iOS) + Add CTA (always visible).
             // The CTA sits OUTSIDE the .library-hero so it stays accessible
             // when the hero text is hidden on iOS.
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            //
+            // .page-header-row keeps heading + CTA on one line on iOS;
+            // the cta-link's icon / label children are CSS-swapped per
+            // platform: web shows the "Add Item" pill, iOS shows the
+            // icon-only nav action.
+            <div class="page-header-row flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div class="library-hero">
                     <PageHeading
                         text="Welcome to Intrada"
@@ -81,10 +86,12 @@ pub fn LibraryListView() -> impl IntoView {
                 </div>
                 <button
                     type="button"
-                    class="cta-link shrink-0"
+                    class="cta-link cta-link--page-add shrink-0"
+                    aria-label="Add Item"
                     on:click=move |_| open_add_sheet.run(())
                 >
-                    "Add Item"
+                    <Icon name=IconName::Plus class="cta-link-icon" />
+                    <span class="cta-link-label">"Add Item"</span>
                 </button>
             </div>
 
