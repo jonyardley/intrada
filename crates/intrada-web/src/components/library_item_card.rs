@@ -1,12 +1,21 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
+use leptos_router::hooks::use_navigate;
+use leptos_router::NavigateOptions;
 
 use intrada_core::LibraryItemView;
 
-use crate::components::TypeBadge;
+use crate::components::{ContextMenu, ContextMenuAction, SwipeActions, TypeBadge};
 
 #[component]
-pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
+pub fn LibraryItemCard(
+    item: LibraryItemView,
+    /// Optional swipe-to-delete callback. When provided (typically in the
+    /// library list on iOS), wraps the card in a SwipeActions container
+    /// that reveals a trailing Delete action on left-swipe.
+    #[prop(optional, into)]
+    on_delete: Option<Callback<String>>,
+) -> impl IntoView {
     let LibraryItemView {
         id,
         title,
@@ -33,10 +42,10 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
         (None, None) => None,
     };
 
-    view! {
-        <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
-            <A href=href attr:class="block p-card sm:p-card-comfortable">
-                <div class="flex items-start justify-between gap-3">
+    let id_for_delete = id.clone();
+    let body = view! {
+        <A href=href attr:class="block p-card sm:p-card-comfortable">
+            <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         // Identity cluster: title + composer tightly grouped (audit #12)
                         <h3 class="text-base font-semibold text-primary truncate">{title}</h3>
@@ -100,6 +109,52 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
                     <TypeBadge item_type=item_type />
                 </div>
             </A>
-        </li>
+    };
+
+    if let Some(cb) = on_delete {
+        let id_for_swipe = id_for_delete.clone();
+        let id_for_edit = id_for_delete.clone();
+        let id_for_menu_delete = id_for_delete;
+        let cb_for_menu_delete = cb;
+        let edit_href = format!("/library/{id_for_edit}/edit");
+
+        // Long-press context menu offering Edit and Delete shortcuts.
+        // Edit navigates to the route; Delete reuses the same callback as
+        // the swipe-to-delete so behaviour stays consistent.
+        let menu_actions = vec![
+            ContextMenuAction {
+                label: "Edit".to_string(),
+                destructive: false,
+                on_select: Callback::new(move |_| {
+                    let navigate = use_navigate();
+                    navigate(&edit_href, NavigateOptions::default());
+                }),
+            },
+            ContextMenuAction {
+                label: "Delete".to_string(),
+                destructive: true,
+                on_select: Callback::new(move |_| {
+                    cb_for_menu_delete.run(id_for_menu_delete.clone());
+                }),
+            },
+        ];
+
+        view! {
+            <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
+                <ContextMenu actions=menu_actions>
+                    <SwipeActions on_delete=Callback::new(move |_| cb.run(id_for_swipe.clone()))>
+                        {body}
+                    </SwipeActions>
+                </ContextMenu>
+            </li>
+        }
+        .into_any()
+    } else {
+        view! {
+            <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
+                {body}
+            </li>
+        }
+        .into_any()
     }
 }
