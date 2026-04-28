@@ -662,17 +662,67 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   font-size: max(16px, 1em);
 }
 
+/* iOS form input chrome — wider horizontal padding (16px) to match the
+   inset-grouped row gutters in iOS Settings/Mail; slightly more vertical
+   breathing room. The defaults (10/12) read as cramped next to the
+   GroupedList row padding once the strip is grouped. */
+[data-platform="ios"] .input-base {
+  padding: 0.6875rem 1rem; /* 11px 16px */
+}
+
+/* Page-header "Add" CTAs on iOS: the full-width purple bar under each
+   page heading was the most web-app-y signal the audit flagged. iOS
+   apps (Calendar, Notes, Reminders, Mail) put primary "Add" actions in
+   the trailing nav-bar position as a compact accent-coloured "+" icon
+   target — no background, no text label, ~44pt square.
+
+   `<PageHeading>`'s trailing slot lays the action out on the title's
+   row on every platform; the `.cta-link--page-add` modifier swaps the
+   chrome on iOS only. We render BOTH the "+" icon and the text label
+   at every callsite; CSS hides whichever doesn't apply, so the markup
+   stays accessible (screen readers still read the label) and the web
+   layout is unchanged. */
+.cta-link-icon {
+  display: none;
+}
+
+.cta-link-label {
+  display: inline;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add {
+  /* Strip pill chrome — becomes a plain accent-colour icon target. */
+  background: transparent;
+  background-color: transparent;
+  color: var(--color-accent-text);
+  box-shadow: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-platform="ios"] .cta-link.cta-link--page-add:hover {
+  background-color: var(--color-surface-hover);
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-icon {
+  display: block;
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+[data-platform="ios"] .cta-link--page-add .cta-link-label {
+  display: none;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    iOS Library List (Phase 2b)
    Transforms the web grid of glass cards into a native iOS grouped list.
    All rules scoped to [data-platform="ios"].
    ═══════════════════════════════════════════════════════════════════════ */
-
-/* Hide the desktop hero intro — iOS doesn't need an onboarding explanation */
-[data-platform="ios"] .library-hero {
-  display: none;
-}
 
 /* Week strip — iOS uses swipe gestures for date navigation (Apple Calendar /
    Health pattern), not chevron buttons. The swipe is already wired in the

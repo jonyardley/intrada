@@ -91,13 +91,25 @@ pub fn SessionsListView() -> impl IntoView {
 
     view! {
         <div>
-            // Page header with "New Session" CTA
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
-                <PageHeading text="Practice" subtitle="Review your session history and track how your sessions build over time." />
-                <A href="/sessions/new" attr:class="cta-link shrink-0">
-                    "New Session"
-                </A>
-            </div>
+            // PageHeading owns the title-row layout — title on left, the
+            // "New Session" trailing action on right, subtitle below
+            // both. The cta-link's icon/label children are CSS-swapped
+            // per platform: web shows the "New Session" pill, iOS shows
+            // the "+" icon-only nav action.
+            <PageHeading
+                text="Practice"
+                subtitle="Review your session history and track how your sessions build over time."
+                trailing=Box::new(|| view! {
+                    <A
+                        href="/sessions/new"
+                        attr:class="cta-link cta-link--page-add shrink-0"
+                        attr:aria-label="New Session"
+                    >
+                        <Icon name=IconName::Plus class="cta-link-icon" />
+                        <span class="cta-link-label">"New Session"</span>
+                    </A>
+                }.into_any())
+            />
 
             // Week strip navigator
             <div class="mb-6">

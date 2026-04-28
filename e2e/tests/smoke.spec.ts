@@ -5,7 +5,7 @@ test("app renders with library list", async ({ page }) => {
 
   // Verify page heading is visible
   await expect(
-    page.getByRole("heading", { name: "Welcome to Intrada" })
+    page.getByRole("heading", { name: "Library" })
   ).toBeVisible();
 
   // Verify library list renders with stub data items
