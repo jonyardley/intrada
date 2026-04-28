@@ -894,7 +894,12 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   bottom: 0;
   left: 0;
   right: 0;
-  max-height: 92vh;
+  /* Fixed height (large detent, ~iOS UISheetPresentationController.large)
+     so the flex column lays out predictably and the body has a defined
+     space to grow into. Using `height` rather than `max-height` because
+     `flex: 1 1 0` on body needs a parent with a determinate height.
+     Tall enough for forms; backdrop dim still shows ~8vh of context. */
+  height: 92vh;
   z-index: 1001;
   background: var(--color-surface-fallback);
   border: 1px solid var(--color-border-card);
