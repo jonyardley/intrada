@@ -32,7 +32,7 @@ pub fn RoutinesListView() -> impl IntoView {
                             <svg class="empty-state-icon mx-auto mb-4 w-16 h-16 text-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
                             </svg>
-                            <p class="empty-state-title text-base font-semibold text-secondary">"No saved routines yet"</p>
+                            <p class="empty-state-title text-base font-semibold text-secondary">"No saved routines yet."</p>
                             <p class="text-sm text-faint mt-2 max-w-xs mx-auto">"Save a setlist as a routine when building a session or from the session summary."</p>
                             <div class="mt-6">
                                 <A href="/sessions/new" attr:class="cta-link">

@@ -1,29 +1,43 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use intrada_core::ViewModel;
+use intrada_core::{Event, ViewModel};
 
 use crate::components::{LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard};
-use intrada_web::core_bridge::init_core;
-use intrada_web::types::{IsLoading, IsSubmitting};
+use intrada_web::core_bridge::process_effects_with_core;
+use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 #[component]
 pub fn LibraryListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
+    let core = expect_context::<SharedCore>();
     let is_refreshing = RwSignal::new(false);
 
     let on_refresh = Callback::new(move |_| {
+        // Skip if the initial app load is still in flight — the global
+        // skeleton already covers that case.
+        if is_loading.get_untracked() {
+            return;
+        }
+        let effects = {
+            let core_ref = core.borrow();
+            core_ref.process_event(Event::RefetchItems)
+        };
+        // Use the with-core variant: this callback is invoked from a raw JS
+        // touch event listener (no Leptos owner), so the expect_context inside
+        // plain process_effects would panic.
+        process_effects_with_core(&core, effects, &view_model, &is_loading, &is_submitting);
         is_refreshing.set(true);
-        init_core(&view_model, &is_loading, &is_submitting);
     });
 
-    // Hide the refresh spinner once the load actually completes. Watches
-    // is_loading rather than using a fixed delay so the spinner accurately
-    // reflects the network round-trip.
+    // Clear the refresh spinner when the in-flight refetch completes.
+    // Tied to is_submitting (per-mutation) rather than is_loading
+    // (whole-app initial load) so a stuck initial load can't leave the
+    // refresh spinner orphaned.
     Effect::new(move |_| {
-        if is_refreshing.get() && !is_loading.get() {
+        if is_refreshing.get() && !is_submitting.get() {
             is_refreshing.set(false);
         }
     });

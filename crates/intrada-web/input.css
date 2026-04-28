@@ -806,45 +806,51 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 }
 
 .pull-to-refresh-indicator {
-  /* Start hidden above viewport. On devices with a notch / Dynamic Island,
-     the safe-area inset adds to the offset so the indicator clears the
-     notch when pulled into view. env() falls back to 0 when unsupported,
-     which matches the original web behavior. */
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) - 3.5rem);
+  /* Anchored just above the content edge — sits in the empty space opened
+     up by the bounce, matching native UIRefreshControl placement.
+     Per-spoke opacity hides the indicator at rest (all spokes at 0 when
+     pull_distance == 0), so position can be straightforward without
+     compounding safe-area offsets. */
+  position: absolute;
+  top: -3rem;
   left: 50%;
   margin-left: -1rem;
   width: 2rem;
   height: 2rem;
-  z-index: 100;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  opacity: 0;
+  /* No background — native iOS UIActivityIndicatorView sits directly on the
+     content, just the spokes themselves with no chrome. */
 }
 
 .pull-spinner-svg {
   width: 1.5rem;
   height: 1.5rem;
+  /* Spokes inherit currentColor via fill="currentColor" — drives all 12
+     spoke colours from one place so theme changes are easy. */
+  color: rgba(255, 255, 255, 0.95);
 }
 
-/* Smooth fill as the user pulls — interpolates the dashoffset change */
-.pull-spinner-svg circle:nth-child(2) {
-  transition: stroke-dashoffset 80ms linear;
-}
-
-/* Spin while refresh is in flight */
+/* Smooth rotation at native-iOS-feeling speed (~80 RPM). Step-based
+   rotation is technically authentic for older iOS but reads as jerky on a
+   small viewport — modern iOS apps render this smoothly at this size. */
 .pull-spinner-svg.spinning {
-  animation: pull-spin 700ms linear infinite;
+  animation: pull-spin 0.75s linear infinite;
 }
 
 @keyframes pull-spin {
   to { transform: rotate(360deg); }
 }
 
-/* Hide the indicator entirely on non-iOS — pull gesture is touch-only */
-:not([data-platform="ios"]) .pull-to-refresh-indicator {
+/* Hide the indicator entirely on non-iOS — pull gesture is touch-only.
+   Anchored on `html:not(...)` rather than just `:not(...)` because the
+   bare descendant form matches *any* ancestor without the attribute, and
+   on iOS body/div ancestors don't have data-platform='ios' even though
+   <html> does — so the rule was incorrectly hiding the indicator on iOS too. */
+html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   display: none;
 }
 
