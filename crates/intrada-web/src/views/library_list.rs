@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, ViewModel};
+use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{
     BottomSheet, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
@@ -20,6 +20,24 @@ pub fn LibraryListView() -> impl IntoView {
 
     let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
     let close_add_sheet = Callback::new(move |_| add_sheet_open.set(false));
+
+    // Swipe-to-delete handler — invoked from each row's SwipeActions when
+    // the user full-swipes or taps the revealed Delete button.
+    let core_for_delete = core.clone();
+    let on_delete_item = Callback::new(move |id: String| {
+        let event = Event::Item(ItemEvent::Delete { id });
+        let effects = {
+            let core_ref = core_for_delete.borrow();
+            core_ref.process_event(event)
+        };
+        process_effects_with_core(
+            &core_for_delete,
+            effects,
+            &view_model,
+            &is_loading,
+            &is_submitting,
+        );
+    });
 
     let on_refresh = Callback::new(move |_| {
         // Skip if the initial app load is still in flight — the global
@@ -124,7 +142,7 @@ pub fn LibraryListView() -> impl IntoView {
                                     <ul class="library-list grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
                                         {vm.items.into_iter().map(|item| {
                                             view! {
-                                                <LibraryItemCard item=item />
+                                                <LibraryItemCard item=item on_delete=on_delete_item />
                                             }
                                         }).collect::<Vec<_>>()}
                                     </ul>

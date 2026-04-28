@@ -3,10 +3,17 @@ use leptos_router::components::A;
 
 use intrada_core::LibraryItemView;
 
-use crate::components::TypeBadge;
+use crate::components::{SwipeActions, TypeBadge};
 
 #[component]
-pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
+pub fn LibraryItemCard(
+    item: LibraryItemView,
+    /// Optional swipe-to-delete callback. When provided (typically in the
+    /// library list on iOS), wraps the card in a SwipeActions container
+    /// that reveals a trailing Delete action on left-swipe.
+    #[prop(optional, into)]
+    on_delete: Option<Callback<String>>,
+) -> impl IntoView {
     let LibraryItemView {
         id,
         title,
@@ -33,10 +40,10 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
         (None, None) => None,
     };
 
-    view! {
-        <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
-            <A href=href attr:class="block p-card sm:p-card-comfortable">
-                <div class="flex items-start justify-between gap-3">
+    let id_for_delete = id.clone();
+    let body = view! {
+        <A href=href attr:class="block p-card sm:p-card-comfortable">
+            <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         // Identity cluster: title + composer tightly grouped (audit #12)
                         <h3 class="text-base font-semibold text-primary truncate">{title}</h3>
@@ -100,6 +107,24 @@ pub fn LibraryItemCard(item: LibraryItemView) -> impl IntoView {
                     <TypeBadge item_type=item_type />
                 </div>
             </A>
-        </li>
+    };
+
+    if let Some(cb) = on_delete {
+        let id = id_for_delete;
+        view! {
+            <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
+                <SwipeActions on_delete=Callback::new(move |_| cb.run(id.clone()))>
+                    {body}
+                </SwipeActions>
+            </li>
+        }
+        .into_any()
+    } else {
+        view! {
+            <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
+                {body}
+            </li>
+        }
+        .into_any()
     }
 }
