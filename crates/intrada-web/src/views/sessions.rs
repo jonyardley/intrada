@@ -90,14 +90,22 @@ pub fn SessionsListView() -> impl IntoView {
         selected_date.set(Some(date));
     });
 
+    // When navigating weeks via swipe or chevron, keep the selected
+    // day-of-week (e.g. Mon → Mon of the new week) so the highlight stays
+    // visually anchored — matches iOS Calendar and avoids a "selection
+    // pop" right after the swipe completes.
     let on_prev_week = Callback::new(move |()| {
         week_offset.update(|o| *o -= 1);
-        selected_date.set(None); // triggers auto-select
+        if let Some(sel) = selected_date.get_untracked() {
+            selected_date.set(Some(sel - chrono::Duration::days(7)));
+        }
     });
 
     let on_next_week = Callback::new(move |()| {
         week_offset.update(|o| *o += 1);
-        selected_date.set(None); // triggers auto-select
+        if let Some(sel) = selected_date.get_untracked() {
+            selected_date.set(Some(sel + chrono::Duration::days(7)));
+        }
     });
 
     let on_today = Callback::new(move |()| {

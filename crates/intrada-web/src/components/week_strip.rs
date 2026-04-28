@@ -401,11 +401,19 @@ pub fn WeekStrip(
                         {prev_dates.into_iter().map(|date| {
                             let abbrev = day_abbrev(date.weekday());
                             let has_sessions = session_dates.contains(&date);
+                            // Highlight the same weekday as `selected_date` so
+                            // when the strip slides to prev, the visible
+                            // selection lines up with what the new "current"
+                            // page will show after the parent re-mount —
+                            // prevents a visible selection-pop on swap.
+                            let is_selected = selected_date
+                                .map(|sel| date == sel - Duration::days(7))
+                                .unwrap_or(false);
                             view! {
                                 <DayCell
                                     date=date
                                     day_abbrev=abbrev
-                                    is_selected=false
+                                    is_selected=is_selected
                                     has_sessions=has_sessions
                                     on_click=day_click
                                 />
@@ -432,11 +440,14 @@ pub fn WeekStrip(
                         {next_dates.into_iter().map(|date| {
                             let abbrev = day_abbrev(date.weekday());
                             let has_sessions = session_dates.contains(&date);
+                            let is_selected = selected_date
+                                .map(|sel| date == sel + Duration::days(7))
+                                .unwrap_or(false);
                             view! {
                                 <DayCell
                                     date=date
                                     day_abbrev=abbrev
-                                    is_selected=false
+                                    is_selected=is_selected
                                     has_sessions=has_sessions
                                     on_click=day_click
                                 />
