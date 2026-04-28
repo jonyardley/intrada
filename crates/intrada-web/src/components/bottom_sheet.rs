@@ -47,6 +47,12 @@ pub fn BottomSheet(
     let dismiss_haptic_armed = RwSignal::new(false);
 
     let sheet_ref = NodeRef::<leptos::html::Div>::new();
+    // Drag handle gets its own ref so the swipe-to-dismiss listener attaches
+    // only to it, not the whole sheet. Putting the touch listener on the
+    // entire sheet intercepts every touchmove inside the body and blocks
+    // the form's own scroll — user can't scroll long forms because every
+    // drag becomes a dismiss attempt.
+    let handle_ref = NodeRef::<leptos::html::Div>::new();
 
     // Dismissal helper used by Cancel, backdrop, Escape, and swipe-end.
     // Wrapped as a Callback (Copy) so it can be shared across many closures
@@ -75,11 +81,11 @@ pub fn BottomSheet(
         on_keydown.forget();
     });
 
-    // Wire touch handlers for swipe-down-to-dismiss. Drag-handle area gets
-    // these via the same node_ref; touchmove must be non-passive to allow
-    // preventDefault when we're taking over the gesture.
+    // Wire touch handlers for swipe-down-to-dismiss. Attached to the handle
+    // only — see the handle_ref doc comment for why. touchmove is non-passive
+    // so we can preventDefault when taking over the gesture.
     Effect::new(move || {
-        let Some(el) = sheet_ref.get() else {
+        let Some(el) = handle_ref.get() else {
             return;
         };
 
@@ -210,7 +216,13 @@ pub fn BottomSheet(
                 role="dialog"
                 aria-modal="true"
             >
-                <div class="bottom-sheet-handle" aria-hidden="true"></div>
+                <div
+                    class="bottom-sheet-handle-area"
+                    node_ref=handle_ref
+                    aria-hidden="true"
+                >
+                    <div class="bottom-sheet-handle"></div>
+                </div>
                 {move || nav_title.get_value().map(|title| view! {
                     <div class="bottom-sheet-nav">
                         <button

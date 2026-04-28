@@ -908,6 +908,11 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   transition: transform 350ms cubic-bezier(0.32, 0.72, 0, 1);
   display: flex;
   flex-direction: column;
+  /* Clip children to the sheet bounds so the scrollable body can't render
+     past the rounded top corners or below the safe-area padding. Without
+     this, the body's natural height can leak past the sheet's max-height
+     and the overflow-y on the body has nothing to clip against. */
+  overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
 
   @supports (backdrop-filter: blur(1px)) {
@@ -920,14 +925,27 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   transform: translateY(0);
 }
 
+/* Wraps the visible handle pill in a wider/taller hit area (1.5rem tall) so
+   the swipe-to-dismiss gesture is grabbable without precise targeting.
+   Touch listeners attach to this wrapper, not the whole sheet, so the body
+   below stays scrollable. */
+.bottom-sheet-handle-area {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.625rem 0;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
 .bottom-sheet-handle {
   width: 36px;
   height: 5px;
   background: var(--color-text-muted);
   opacity: 0.35;
   border-radius: 2.5px;
-  margin: 0.5rem auto 0.25rem;
-  flex-shrink: 0;
 }
 
 .bottom-sheet-nav {
@@ -966,6 +984,11 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   padding: 1rem 1.25rem 1.5rem;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  flex: 1 1 auto;
+  /* flex: 1 1 0 — basis 0 forces the body to claim only the leftover
+     space (sheet height minus handle + nav + safe-area), regardless of
+     content size. With basis: auto, content height influences the box
+     and the scroll container can fail to constrain. min-height: 0
+     allows the flex item to shrink below its content's intrinsic size. */
+  flex: 1 1 0;
   min-height: 0;
 }
