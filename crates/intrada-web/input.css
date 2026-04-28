@@ -1000,6 +1000,72 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
+   GroupedList — iOS-style inset-grouped list container
+
+   On web/Android: a flex column of cards-with-gaps, indistinguishable
+   from the prior <Card>-per-row pattern.
+   On iOS: the container becomes ONE rounded card and rows are stripped
+   of their own chrome and separated by hairline rules — matches the
+   UITableView .grouped idiom from Settings, Mail, Music, etc.
+
+   Padding lives on the inner row content (callsite responsibility), not
+   on the row itself — keeps SwipeActions's swipe-row content / action
+   button flush to the row edge with no inset gap.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.grouped-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grouped-list-row {
+  background-color: var(--color-surface-fallback);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg);
+  /* Clip the inner SwipeActions track so a swipe-revealed action button
+     doesn't poke past the rounded row corners. */
+  overflow: hidden;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .grouped-list-row {
+    background-color: var(--color-surface-primary);
+    backdrop-filter: blur(12px);
+  }
+}
+
+[data-platform="ios"] .grouped-list {
+  display: block;
+  gap: 0;
+  background-color: var(--color-surface-primary);
+  border: 1px solid var(--color-border-card);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+[data-platform="ios"] .grouped-list-row {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  /* The container provides the radius+clip; rows can leave overflow
+     visible so e.g. context-menu portals aren't hampered. */
+  overflow: visible;
+}
+
+[data-platform="ios"] .grouped-list-row + .grouped-list-row {
+  border-top: 1px solid var(--color-border-default);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
    SwipeActions — iOS-style swipe-to-reveal trailing action on list rows
    ═══════════════════════════════════════════════════════════════════════ */
 
