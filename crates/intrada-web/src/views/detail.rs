@@ -7,9 +7,10 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemEvent, ViewModel};
 
 use crate::components::{
-    parse_target_bpm, BackLink, Button, ButtonVariant, Card, FieldLabel, SkeletonBlock,
-    SkeletonLine, TempoProgressChart, TypeBadge,
+    parse_target_bpm, BackLink, BottomSheet, Button, ButtonVariant, Card, FieldLabel,
+    SkeletonBlock, SkeletonLine, TempoProgressChart, TypeBadge,
 };
+use crate::views::EditLibraryItemForm;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{format_date_short, format_datetime_short};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -25,6 +26,8 @@ pub fn DetailView() -> impl IntoView {
     let navigate = use_navigate();
 
     let show_delete_confirm = RwSignal::new(false);
+    let edit_sheet_open = RwSignal::new(false);
+    let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
 
     view! {
         <div class="detail-view space-y-4">
@@ -55,7 +58,7 @@ pub fn DetailView() -> impl IntoView {
                     } = item;
 
                     let tempo_for_history = tempo.clone();
-                    let edit_href = format!("/library/{}/edit", item_id);
+                    let id_for_edit_sheet = item_id.clone();
                     let id_for_delete = item_id.clone();
                     let type_for_badge = item_type;
                     let core_for_delete = core.clone();
@@ -249,9 +252,13 @@ pub fn DetailView() -> impl IntoView {
 
                         // Action buttons (FR-009, FR-011)
                         <div class="flex flex-col sm:flex-row gap-3">
-                            <A href=edit_href attr:class="cta-link">
+                            <button
+                                type="button"
+                                class="cta-link"
+                                on:click=move |_| edit_sheet_open.set(true)
+                            >
                                 "Edit"
-                            </A>
+                            </button>
                             <Button
                                 variant=ButtonVariant::DangerOutline
                                 disabled=Signal::derive(move || is_submitting.get())
@@ -260,6 +267,18 @@ pub fn DetailView() -> impl IntoView {
                                 "Delete"
                             </Button>
                         </div>
+
+                        <BottomSheet
+                            open=edit_sheet_open
+                            on_close=close_edit_sheet
+                            nav_title="Edit Item".to_string()
+                        >
+                            <EditLibraryItemForm
+                                item_id=id_for_edit_sheet.clone()
+                                in_sheet=true
+                                on_dismiss=close_edit_sheet
+                            />
+                        </BottomSheet>
                     }.into_any()
                 } else if is_loading.get() {
                     // Data still loading — show skeleton placeholder
