@@ -1016,12 +1016,22 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 .swipe-row-content {
   position: relative;
   z-index: 1;
-  background: inherit;
+  /* Must be opaque, otherwise the destructive action button behind it
+     bleeds through on every row at rest. Match the library-list surface
+     so the row visually looks unchanged at rest. `inherit` doesn't work
+     because the iOS list <li> is intentionally transparent (rows draw on
+     the parent <ul>'s blurred surface). */
+  background: var(--color-surface-fallback);
   /* Spring back to closed/open snap when not actively dragging. iOS-feeling
      curve. Inline `transition: none` from the JS overrides this during
      active touch drags so the content tracks the finger 1:1. */
   transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
+
+  @supports (backdrop-filter: blur(1px)) {
+    background: var(--color-surface-primary);
+    backdrop-filter: blur(12px);
+  }
 }
 
 .swipe-row-action {
