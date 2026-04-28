@@ -43,9 +43,26 @@ pub fn SessionsListView() -> impl IntoView {
         group_sessions_by_date(&vm.sessions)
     });
 
-    // Derived: which dates in the current week have sessions
+    // Derived: which dates in the current week have sessions (used for auto-select)
     let session_dates_in_week =
         Signal::derive(move || sessions_for_week(&grouped_sessions.get(), week_start.get()));
+
+    // Derived: session dates across prev/current/next weeks. The week strip
+    // renders all 3 pages side-by-side for the iOS Calendar peek gesture, so
+    // it needs practice dots for the adjacent weeks too — otherwise dots
+    // would only pop in after the snap completes.
+    let session_dates_three_weeks = Signal::derive(move || {
+        let grouped = grouped_sessions.get();
+        let ws = week_start.get();
+        let prev = sessions_for_week(&grouped, ws - chrono::Duration::days(7));
+        let curr = sessions_for_week(&grouped, ws);
+        let next = sessions_for_week(&grouped, ws + chrono::Duration::days(7));
+        let mut all = HashSet::new();
+        all.extend(prev);
+        all.extend(curr);
+        all.extend(next);
+        all
+    });
 
     // Auto-select effect: when selected_date is None (initial load or week change),
     // pick the best day based on auto-select logic.
@@ -103,7 +120,7 @@ pub fn SessionsListView() -> impl IntoView {
                 {move || {
                     let ws = week_start.get();
                     let sel = selected_date.get();
-                    let dates: HashSet<NaiveDate> = session_dates_in_week.get();
+                    let dates: HashSet<NaiveDate> = session_dates_three_weeks.get();
                     let is_current = week_offset.get() == 0;
                     view! {
                         <WeekStrip

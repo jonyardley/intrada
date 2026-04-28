@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
-use chrono::{Datelike, NaiveDate};
+use chrono::{Datelike, Duration, NaiveDate};
 use leptos::prelude::*;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 use web_sys::PointerEvent;
 
 use crate::components::{Icon, IconName};
+use intrada_web::haptics::haptic_selection;
 use intrada_web::helpers::{day_abbrev, get_month_label, get_week_dates};
 
 /// A single day cell in the week strip.
@@ -84,44 +87,82 @@ pub fn WeekStrip(
     /// Whether the strip is already showing the current week (hides the Today button)
     is_current_week: bool,
 ) -> impl IntoView {
-    let dates = get_week_dates(week_start);
-    let week_end = dates[6];
+    let prev_week_start = week_start - Duration::days(7);
+    let next_week_start = week_start + Duration::days(7);
+    let prev_dates = get_week_dates(prev_week_start);
+    let current_dates = get_week_dates(week_start);
+    let next_dates = get_week_dates(next_week_start);
+    let week_end = current_dates[6];
     let month_label = get_month_label(week_start, week_end);
 
-    /// Minimum horizontal distance (px) to recognise a swipe gesture.
-    const SWIPE_THRESHOLD_PX: f64 = 50.0;
     /// Minimum movement (px) before we commit to either a horizontal swipe
-    /// or a vertical scroll. Below this we don't translate the row — keeps
-    /// taps from triggering a sub-pixel drag visual.
+    /// or a vertical scroll. Below this we don't translate the track —
+    /// keeps taps from triggering a sub-pixel drag visual.
     const GESTURE_COMMIT_PX: f64 = 6.0;
+    /// Threshold (as fraction of frame width) past which a release commits
+    /// to navigating to the adjacent page rather than snapping back.
+    const PAGE_SWIPE_RATIO: f64 = 0.25;
+    /// Spring animation duration (ms) — kept in sync with the CSS
+    /// transition value below so the deferred parent navigation lands
+    /// after the visual snap completes.
+    const SNAP_DURATION_MS: i32 = 320;
 
-    // Live drag state. drag_offset drives the days-row transform during
-    // the gesture; gesture_committed latches once the user's first
-    // significant move is horizontal (so vertical scrolls fall through
-    // without ever moving the row).
+    // 3-page architecture: track holds [prev, current, next] side-by-side,
+    // each page exactly 1/3 of the track width = 100% of the visible frame.
+    // Default position translates the track so the middle (current) page
+    // is centred in the frame.
+    //
+    // During an active drag, drag_offset (in px) is added to the centred
+    // position so the user can see prev/next peeking in from the sides.
+    //
+    // On release past threshold, snap_target moves the track to the
+    // chosen edge (prev or next centered) WITH a transition; once the
+    // animation completes we call the parent's navigation callback,
+    // which re-renders WeekStrip on the new week_start so its track
+    // re-mounts at the centred default with the new "current" content.
     let pointer_start_x = RwSignal::new(0.0_f64);
     let pointer_start_y = RwSignal::new(0.0_f64);
+    let frame_width = RwSignal::new(0.0_f64);
     let drag_offset = RwSignal::new(0.0_f64);
     let gesture_committed = RwSignal::new(false);
+    // True once the user has moved far enough vertically that we've decided
+    // this is a scroll, not a swipe. Stops further drag handling for this
+    // gesture without losing the start coordinates.
+    let gesture_abandoned = RwSignal::new(false);
+    // -1 = snapping left (about to commit prev), 1 = snapping right (next),
+    // 0 = idle / dragging.
+    let snap_target = RwSignal::new(0i32);
+
+    let frame_ref = NodeRef::<leptos::html::Div>::new();
 
     let handle_pointer_down = move |ev: PointerEvent| {
+        if snap_target.get_untracked() != 0 {
+            // Mid-snap animation, ignore — parent will re-mount us shortly.
+            return;
+        }
         pointer_start_x.set(ev.client_x() as f64);
         pointer_start_y.set(ev.client_y() as f64);
         drag_offset.set(0.0);
         gesture_committed.set(false);
+        gesture_abandoned.set(false);
+        // Cache the frame width once at gesture start so we can compute
+        // the page-snap threshold against it without measuring per-move.
+        if let Some(el) = frame_ref.get_untracked() {
+            let rect = el.get_bounding_client_rect();
+            frame_width.set(rect.width());
+        }
     };
 
     let handle_pointer_move = move |ev: PointerEvent| {
+        if snap_target.get_untracked() != 0 || gesture_abandoned.get_untracked() {
+            return;
+        }
         let dx = ev.client_x() as f64 - pointer_start_x.get_untracked();
         let dy = ev.client_y() as f64 - pointer_start_y.get_untracked();
 
         if !gesture_committed.get_untracked() {
-            // Decide once whether this is a horizontal swipe or a vertical
-            // scroll. If the first significant move is vertical, abandon —
-            // the page can scroll and we won't move the row.
             if dy.abs() > GESTURE_COMMIT_PX && dy.abs() > dx.abs() {
-                pointer_start_x.set(0.0);
-                pointer_start_y.set(0.0);
+                gesture_abandoned.set(true);
                 return;
             }
             if dx.abs() < GESTURE_COMMIT_PX {
@@ -133,39 +174,77 @@ pub fn WeekStrip(
         drag_offset.set(dx);
     };
 
-    let handle_pointer_up = move |ev: PointerEvent| {
-        let dx = ev.client_x() as f64 - pointer_start_x.get_untracked();
-        let dy = ev.client_y() as f64 - pointer_start_y.get_untracked();
-        let abs_dx = dx.abs();
-        let abs_dy = dy.abs();
-
-        // Reset drag state. If we committed past threshold, the parent
-        // re-renders WeekStrip on the new week_start — the new instance
-        // mounts with drag_offset = 0 (no transform) and the CSS mount
-        // animation plays from there.
-        let committed = gesture_committed.get_untracked();
+    let handle_pointer_cancel = move |_ev: PointerEvent| {
+        if snap_target.get_untracked() != 0 {
+            return;
+        }
         gesture_committed.set(false);
+        gesture_abandoned.set(false);
         drag_offset.set(0.0);
+    };
 
-        if committed && abs_dx > SWIPE_THRESHOLD_PX && abs_dx > abs_dy {
-            if dx < 0.0 {
-                on_next_week.run(());
-            } else {
-                on_prev_week.run(());
+    let handle_pointer_up = move |ev: PointerEvent| {
+        if snap_target.get_untracked() != 0 {
+            return;
+        }
+        let dx = ev.client_x() as f64 - pointer_start_x.get_untracked();
+        let committed = gesture_committed.get_untracked();
+        let abandoned = gesture_abandoned.get_untracked();
+        gesture_committed.set(false);
+        gesture_abandoned.set(false);
+
+        let frame_w = frame_width.get_untracked();
+        let threshold = frame_w * PAGE_SWIPE_RATIO;
+
+        if !abandoned && committed && dx.abs() > threshold && frame_w > 0.0 {
+            // Snap to the edge page first — animation drives the visual
+            // commit. After SNAP_DURATION_MS we fire the parent callback
+            // which re-renders this component on the new week_start.
+            let direction = if dx < 0.0 { 1 } else { -1 };
+            snap_target.set(direction);
+            drag_offset.set(0.0);
+            // iOS Calendar fires a subtle selection tick at commit.
+            haptic_selection();
+
+            let cb: Closure<dyn Fn()> = Closure::new(move || {
+                if direction < 0 {
+                    on_prev_week.run(());
+                } else {
+                    on_next_week.run(());
+                }
+                // Reset in case we're not unmounted (defensive).
+                snap_target.set(0);
+            });
+            if let Some(window) = web_sys::window() {
+                let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                    cb.as_ref().unchecked_ref(),
+                    SNAP_DURATION_MS,
+                );
             }
+            cb.forget();
+        } else {
+            // Snap back to centre via CSS transition.
+            drag_offset.set(0.0);
         }
     };
 
-    // Inline style on the days row: track the finger 1:1 during the drag,
-    // CSS transition handles the snap-back when not actively dragging.
-    let days_style = move || {
+    // Inline style for the track. Default centred at -33.333% (one page-
+    // width from the left so the middle page is in the frame). During
+    // drag, finger-tracked offset added; during snap, full-page shift.
+    let track_style = move || {
+        let snap = snap_target.get();
         let dx = drag_offset.get();
         let active = gesture_committed.get();
-        if active {
-            format!("transform: translateX({dx}px); transition: none;")
-        } else if dx.abs() > 0.5 {
-            format!("transform: translateX({dx}px);")
+
+        if snap != 0 {
+            // Animating to the chosen edge — let the CSS transition handle.
+            let pct = if snap < 0 { 0.0 } else { -66.666 };
+            format!("transform: translateX({pct}%);")
+        } else if active {
+            // 1:1 with finger, no transition.
+            format!("transform: translateX(calc(-33.333% + {dx}px)); transition: none;")
         } else {
+            // Centred / snapping back to centre.
             String::new()
         }
     };
@@ -177,7 +256,7 @@ pub fn WeekStrip(
             on:pointerdown=handle_pointer_down
             on:pointermove=handle_pointer_move
             on:pointerup=handle_pointer_up
-            on:pointercancel=handle_pointer_up
+            on:pointercancel=handle_pointer_cancel
         >
             // Header: arrows + month label + today button.
             // On iOS, chevrons are hidden (swipe is the gesture) and the
@@ -218,29 +297,61 @@ pub fn WeekStrip(
                 </button>
             </div>
 
-            // Day cells row. Two layers of motion:
-            //   1. `style=days_style` translates the row 1:1 with the finger
-            //      during an active horizontal drag, then snaps back via the
-            //      CSS transition on release short of threshold.
-            //   2. The `week-strip-days` class fires a brief fade-and-slide-
-            //      in animation on (re)mount — visible when the parent
-            //      replaces this WeekStrip with a new week.
-            <div class="week-strip-days grid grid-cols-7 gap-1" style=days_style>
-                {dates.into_iter().map(|date| {
-                    let abbrev = day_abbrev(date.weekday());
-                    let is_selected = selected_date == Some(date);
-                    let has_sessions = session_dates.contains(&date);
-                    let on_click = on_day_click;
-                    view! {
-                        <DayCell
-                            date=date
-                            day_abbrev=abbrev
-                            is_selected=is_selected
-                            has_sessions=has_sessions
-                            on_click=on_click
-                        />
-                    }
-                }).collect::<Vec<_>>()}
+            // 3-page track: [prev | current | next] side-by-side, each page
+            // takes the full frame width. Track is translated -33.333% so the
+            // current page sits in the visible frame; during drag, the
+            // `track_style` closure adds the finger offset; on release past
+            // threshold the track snaps to the adjacent page edge, then the
+            // parent's nav callback re-mounts WeekStrip on the new week_start.
+            <div class="week-strip-frame" node_ref=frame_ref>
+                <div class="week-strip-track" style=track_style>
+                    <div class="week-strip-page">
+                        {prev_dates.into_iter().map(|date| {
+                            let abbrev = day_abbrev(date.weekday());
+                            let has_sessions = session_dates.contains(&date);
+                            view! {
+                                <DayCell
+                                    date=date
+                                    day_abbrev=abbrev
+                                    is_selected=false
+                                    has_sessions=has_sessions
+                                    on_click=on_day_click
+                                />
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                    <div class="week-strip-page">
+                        {current_dates.into_iter().map(|date| {
+                            let abbrev = day_abbrev(date.weekday());
+                            let is_selected = selected_date == Some(date);
+                            let has_sessions = session_dates.contains(&date);
+                            view! {
+                                <DayCell
+                                    date=date
+                                    day_abbrev=abbrev
+                                    is_selected=is_selected
+                                    has_sessions=has_sessions
+                                    on_click=on_day_click
+                                />
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                    <div class="week-strip-page">
+                        {next_dates.into_iter().map(|date| {
+                            let abbrev = day_abbrev(date.weekday());
+                            let has_sessions = session_dates.contains(&date);
+                            view! {
+                                <DayCell
+                                    date=date
+                                    day_abbrev=abbrev
+                                    is_selected=false
+                                    has_sessions=has_sessions
+                                    on_click=on_day_click
+                                />
+                            }
+                        }).collect::<Vec<_>>()}
+                    </div>
+                </div>
             </div>
         </div>
     }
