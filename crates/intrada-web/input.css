@@ -662,6 +662,27 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   font-size: max(16px, 1em);
 }
 
+/* iOS form input chrome — wider horizontal padding (16px) to match the
+   inset-grouped row gutters in iOS Settings/Mail; slightly more vertical
+   breathing room. The defaults (10/12) read as cramped next to the
+   GroupedList row padding once the strip is grouped. */
+[data-platform="ios"] .input-base {
+  padding: 0.6875rem 1rem; /* 11px 16px */
+}
+
+/* Primary action CTAs ("New Session", "Add Item") on iOS shouldn't
+   stretch to fill flex-col parents. The default web/Android behaviour
+   produces a full-width purple bar under the page heading — the most
+   web-app-y signal the audit flagged. align-self: flex-end shrinks the
+   button to its content width and pushes it to the trailing edge,
+   matching the iOS nav-bar trailing-action convention.
+
+   No effect on cta-link inside non-flex parents (empty states), which
+   stay centred via their own .text-center wrappers. */
+[data-platform="ios"] .cta-link {
+  align-self: flex-end;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    iOS Library List (Phase 2b)
