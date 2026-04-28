@@ -1,9 +1,11 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
+use leptos_router::hooks::use_navigate;
+use leptos_router::NavigateOptions;
 
 use intrada_core::LibraryItemView;
 
-use crate::components::{SwipeActions, TypeBadge};
+use crate::components::{ContextMenu, ContextMenuAction, SwipeActions, TypeBadge};
 
 #[component]
 pub fn LibraryItemCard(
@@ -110,12 +112,40 @@ pub fn LibraryItemCard(
     };
 
     if let Some(cb) = on_delete {
-        let id = id_for_delete;
+        let id_for_swipe = id_for_delete.clone();
+        let id_for_edit = id_for_delete.clone();
+        let id_for_menu_delete = id_for_delete;
+        let cb_for_menu_delete = cb;
+        let edit_href = format!("/library/{id_for_edit}/edit");
+
+        // Long-press context menu offering Edit and Delete shortcuts.
+        // Edit navigates to the route; Delete reuses the same callback as
+        // the swipe-to-delete so behaviour stays consistent.
+        let menu_actions = vec![
+            ContextMenuAction {
+                label: "Edit".to_string(),
+                destructive: false,
+                on_select: Callback::new(move |_| {
+                    let navigate = use_navigate();
+                    navigate(&edit_href, NavigateOptions::default());
+                }),
+            },
+            ContextMenuAction {
+                label: "Delete".to_string(),
+                destructive: true,
+                on_select: Callback::new(move |_| {
+                    cb_for_menu_delete.run(id_for_menu_delete.clone());
+                }),
+            },
+        ];
+
         view! {
             <li class="glass-card hover:bg-surface-hover motion-safe:transition-colors">
-                <SwipeActions on_delete=Callback::new(move |_| cb.run(id.clone()))>
-                    {body}
-                </SwipeActions>
+                <ContextMenu actions=menu_actions>
+                    <SwipeActions on_delete=Callback::new(move |_| cb.run(id_for_swipe.clone()))>
+                        {body}
+                    </SwipeActions>
+                </ContextMenu>
             </li>
         }
         .into_any()
