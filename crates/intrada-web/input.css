@@ -556,15 +556,56 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   touch-action: manipulation;
 }
 
-/* Universal press feedback — subtle dim on tap. Native iOS dims any
-   tappable element when pressed; pairs with the haptic feedback already
-   wired through. 80ms is fast enough to feel instant, slow enough to be
-   perceptible. */
-[data-platform="ios"] button:active,
-[data-platform="ios"] a:active,
-[data-platform="ios"] [role="button"]:active {
+/* Native iOS press feedback. The .is-pressed class is set/cleared by the
+   touchstart/move/end handler in index.html — so it cancels when the user
+   starts scrolling instead of staying stuck during the gesture (which is
+   what plain CSS :active does on touch devices and which feels wrong). */
+[data-platform="ios"] .is-pressed {
   opacity: 0.6;
-  transition: opacity 80ms ease-out;
+  transform: scale(0.97);
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
+}
+
+/* Larger, more prominent page heading on iOS — emulates the iOS
+   "large title" pattern (without the collapse-on-scroll JS, which is
+   nice-to-have follow-up). Targets the PageHeading component's <h2>. */
+[data-platform="ios"] h2.font-heading {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  letter-spacing: -0.02em;
+}
+
+/* Tighter form label-input spacing on iOS — desktop's mb-1 (4px) feels
+   stretched on a phone. Form labels get smaller, denser. */
+[data-platform="ios"] .form-label {
+  margin-bottom: 0.125rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+/* On iOS, the back link is just a chevron — text label would duplicate
+   the destination context (user knows where they came from). The label
+   stays in the DOM (visually hidden) for screen readers.
+   Note: more back-link styling lives in the iOS Detail View block below.
+   The two are merged with the .back-link-label hide added here. */
+[data-platform="ios"] .back-link .back-link-label {
+  display: none;
+}
+
+/* Empty state styling — increased icon prominence and tighter typography
+   so empty screens feel iOS-shaped (large icon + heading + body + CTA). */
+[data-platform="ios"] .empty-state {
+  padding-top: 4rem;
+}
+[data-platform="ios"] .empty-state-icon {
+  width: 4.5rem;
+  height: 4.5rem;
+  opacity: 0.5;
+}
+[data-platform="ios"] .empty-state-title {
+  font-size: 1.0625rem;
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */
@@ -633,6 +674,23 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   display: none;
 }
 
+/* Week strip — iOS uses swipe gestures for date navigation (Apple Calendar /
+   Health pattern), not chevron buttons. The swipe is already wired in the
+   component. Hide chevrons + centre the month label. Today button becomes
+   plain accent text (no pill background) — matches the Apple nav-bar Today
+   button styling. */
+[data-platform="ios"] .week-strip-nav {
+  display: none;
+}
+[data-platform="ios"] .week-strip-header {
+  justify-content: center;
+}
+[data-platform="ios"] .week-strip-today {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
 /* Grouped list container — single column, one rounded card wrapping all rows */
 [data-platform="ios"] .library-list {
   display: block;
@@ -690,18 +748,20 @@ html.router-outlet-0.router-back::view-transition-new(root) {
    All rules scoped under [data-platform="ios"] .detail-view.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* iOS-style back link: accent colour, larger touch target */
+/* iOS-style back link: chevron-only icon target (label hidden separately
+   above), accent-coloured, 44px square touch target per iOS HIG. */
 [data-platform="ios"] .back-link {
   color: var(--color-accent-text);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  margin-bottom: 0.75rem;
-  padding: 0.25rem 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  padding: 0;
 }
 
 [data-platform="ios"] .back-link svg {
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Title: larger, iOS large-title feel */
@@ -746,39 +806,51 @@ html.router-outlet-0.router-back::view-transition-new(root) {
 }
 
 .pull-to-refresh-indicator {
-  /* Hidden above viewport by default; component sets translateY inline. */
-  position: fixed;
-  top: -2.5rem;
+  /* Anchored just above the content edge — sits in the empty space opened
+     up by the bounce, matching native UIRefreshControl placement.
+     Per-spoke opacity hides the indicator at rest (all spokes at 0 when
+     pull_distance == 0), so position can be straightforward without
+     compounding safe-area offsets. */
+  position: absolute;
+  top: -3rem;
   left: 50%;
   margin-left: -1rem;
   width: 2rem;
   height: 2rem;
-  z-index: 100;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  opacity: 0;
+  /* No background — native iOS UIActivityIndicatorView sits directly on the
+     content, just the spokes themselves with no chrome. */
 }
 
-.pull-spinner {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 9999px;
-  border: 2px solid var(--color-border-default);
-  border-top-color: var(--color-accent-text);
+.pull-spinner-svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  /* Spokes inherit currentColor via fill="currentColor" — drives all 12
+     spoke colours from one place so theme changes are easy. */
+  color: rgba(255, 255, 255, 0.95);
 }
 
-.pull-spinner.spinning {
-  animation: pull-spin 700ms linear infinite;
+/* Smooth rotation at native-iOS-feeling speed (~80 RPM). Step-based
+   rotation is technically authentic for older iOS but reads as jerky on a
+   small viewport — modern iOS apps render this smoothly at this size. */
+.pull-spinner-svg.spinning {
+  animation: pull-spin 0.75s linear infinite;
 }
 
 @keyframes pull-spin {
   to { transform: rotate(360deg); }
 }
 
-/* Hide the indicator entirely on non-iOS — pull gesture is touch-only */
-:not([data-platform="ios"]) .pull-to-refresh-indicator {
+/* Hide the indicator entirely on non-iOS — pull gesture is touch-only.
+   Anchored on `html:not(...)` rather than just `:not(...)` because the
+   bare descendant form matches *any* ancestor without the attribute, and
+   on iOS body/div ancestors don't have data-platform='ios' even though
+   <html> does — so the rule was incorrectly hiding the indicator on iOS too. */
+html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   display: none;
 }
 

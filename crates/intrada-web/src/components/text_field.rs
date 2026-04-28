@@ -16,6 +16,10 @@ pub fn TextField(
     field_name: &'static str,
     errors: RwSignal<HashMap<String, String>>,
     #[prop(default = "text")] input_type: &'static str,
+    /// Hints to mobile browsers what kind of soft keyboard to show.
+    /// e.g. "numeric", "decimal", "tel", "email", "url".
+    #[prop(optional)]
+    input_mode: Option<&'static str>,
 ) -> impl IntoView {
     let error_id = format!("{id}-error");
     let has_error = move || errors.get().contains_key(field_name);
@@ -31,6 +35,7 @@ pub fn TextField(
             <input
                 id=id
                 type=input_type
+                inputmode=input_mode.unwrap_or("")
                 class="input-base"
                 placeholder=placeholder.unwrap_or("")
                 bind:value=value

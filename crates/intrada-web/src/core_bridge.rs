@@ -104,8 +104,15 @@ pub fn init_core(
                     let core_ref = core_handle.borrow();
                     match core_ref.resolve(&mut request, result) {
                         Ok(new_effects) => {
-                            process_effects_inner(new_effects, &vm, &loading, &submitting);
-                            vm.set(core_ref.view());
+                            drop(core_ref);
+                            process_effects_inner(
+                                core_handle.clone(),
+                                new_effects,
+                                &vm,
+                                &loading,
+                                &submitting,
+                            );
+                            vm.set(core_handle.borrow().view());
                         }
                         Err(e) => {
                             web_sys::console::error_1(&format!("resolve error: {e:?}").into());
@@ -141,21 +148,41 @@ pub fn process_effects(
     is_loading: &IsLoading,
     is_submitting: &IsSubmitting,
 ) {
-    // If HTTP effects are present and we're past initial load, mark submitting.
+    let shared = leptos::prelude::expect_context::<SharedCore>();
     let has_http = effects.iter().any(|e| matches!(e, Effect::Http(_)));
     if has_http && !is_loading.get_untracked() {
         is_submitting.set(true);
     }
-
-    process_effects_inner(effects, view_model, is_loading, is_submitting);
+    process_effects_inner(shared, effects, view_model, is_loading, is_submitting);
     view_model.set(core.view());
+}
+
+/// Same as `process_effects`, but takes `SharedCore` explicitly so it can be
+/// safely called from contexts without a Leptos owner (e.g., raw JS event
+/// callbacks attached via `addEventListener`). The owner-scoped version above
+/// uses `expect_context` internally, which panics outside an owner.
+pub fn process_effects_with_core(
+    core: &SharedCore,
+    effects: Vec<Effect>,
+    view_model: &RwSignal<ViewModel>,
+    is_loading: &IsLoading,
+    is_submitting: &IsSubmitting,
+) {
+    let has_http = effects.iter().any(|e| matches!(e, Effect::Http(_)));
+    if has_http && !is_loading.get_untracked() {
+        is_submitting.set(true);
+    }
+    process_effects_inner(core.clone(), effects, view_model, is_loading, is_submitting);
+    view_model.set(core.borrow().view());
 }
 
 /// Internal effect processor. Spawns async tasks for HTTP effects.
 ///
-/// Does NOT call `view_model.set(core.view())` — callers are responsible
-/// for updating the view model after this returns.
+/// Takes `SharedCore` as a parameter (rather than via `expect_context`) so it
+/// works correctly when invoked from outside a Leptos owner — `spawn_local`
+/// closures otherwise can't access context.
 fn process_effects_inner(
+    core: SharedCore,
     effects: Vec<Effect>,
     view_model: &RwSignal<ViewModel>,
     is_loading: &IsLoading,
@@ -165,7 +192,7 @@ fn process_effects_inner(
         match effect {
             Effect::Render(_) => {}
             Effect::Http(mut request) => {
-                let core = leptos::prelude::expect_context::<SharedCore>();
+                let core = core.clone();
                 let vm = *view_model;
                 let loading = *is_loading;
                 let submitting = *is_submitting;
@@ -176,10 +203,15 @@ fn process_effects_inner(
                         Ok(new_effects) => {
                             let has_more_http =
                                 new_effects.iter().any(|e| matches!(e, Effect::Http(_)));
-                            process_effects_inner(new_effects, &vm, &loading, &submitting);
-                            vm.set(core_ref.view());
-                            // Clear submitting once the HTTP chain ends
-                            // (but not if we're still in initial loading).
+                            drop(core_ref);
+                            process_effects_inner(
+                                core.clone(),
+                                new_effects,
+                                &vm,
+                                &loading,
+                                &submitting,
+                            );
+                            vm.set(core.borrow().view());
                             if !has_more_http && !loading.get_untracked() {
                                 submitting.set(false);
                             }
