@@ -90,14 +90,47 @@ pub fn WeekStrip(
 
     /// Minimum horizontal distance (px) to recognise a swipe gesture.
     const SWIPE_THRESHOLD_PX: f64 = 50.0;
+    /// Minimum movement (px) before we commit to either a horizontal swipe
+    /// or a vertical scroll. Below this we don't translate the row — keeps
+    /// taps from triggering a sub-pixel drag visual.
+    const GESTURE_COMMIT_PX: f64 = 6.0;
 
-    // Swipe gesture state
+    // Live drag state. drag_offset drives the days-row transform during
+    // the gesture; gesture_committed latches once the user's first
+    // significant move is horizontal (so vertical scrolls fall through
+    // without ever moving the row).
     let pointer_start_x = RwSignal::new(0.0_f64);
     let pointer_start_y = RwSignal::new(0.0_f64);
+    let drag_offset = RwSignal::new(0.0_f64);
+    let gesture_committed = RwSignal::new(false);
 
     let handle_pointer_down = move |ev: PointerEvent| {
         pointer_start_x.set(ev.client_x() as f64);
         pointer_start_y.set(ev.client_y() as f64);
+        drag_offset.set(0.0);
+        gesture_committed.set(false);
+    };
+
+    let handle_pointer_move = move |ev: PointerEvent| {
+        let dx = ev.client_x() as f64 - pointer_start_x.get_untracked();
+        let dy = ev.client_y() as f64 - pointer_start_y.get_untracked();
+
+        if !gesture_committed.get_untracked() {
+            // Decide once whether this is a horizontal swipe or a vertical
+            // scroll. If the first significant move is vertical, abandon —
+            // the page can scroll and we won't move the row.
+            if dy.abs() > GESTURE_COMMIT_PX && dy.abs() > dx.abs() {
+                pointer_start_x.set(0.0);
+                pointer_start_y.set(0.0);
+                return;
+            }
+            if dx.abs() < GESTURE_COMMIT_PX {
+                return;
+            }
+            gesture_committed.set(true);
+        }
+
+        drag_offset.set(dx);
     };
 
     let handle_pointer_up = move |ev: PointerEvent| {
@@ -105,15 +138,35 @@ pub fn WeekStrip(
         let dy = ev.client_y() as f64 - pointer_start_y.get_untracked();
         let abs_dx = dx.abs();
         let abs_dy = dy.abs();
-        // Only trigger if horizontal swipe exceeds threshold and is more horizontal than vertical
-        if abs_dx > SWIPE_THRESHOLD_PX && abs_dx > abs_dy {
+
+        // Reset drag state. If we committed past threshold, the parent
+        // re-renders WeekStrip on the new week_start — the new instance
+        // mounts with drag_offset = 0 (no transform) and the CSS mount
+        // animation plays from there.
+        let committed = gesture_committed.get_untracked();
+        gesture_committed.set(false);
+        drag_offset.set(0.0);
+
+        if committed && abs_dx > SWIPE_THRESHOLD_PX && abs_dx > abs_dy {
             if dx < 0.0 {
-                // Swipe left → next week
                 on_next_week.run(());
             } else {
-                // Swipe right → previous week
                 on_prev_week.run(());
             }
+        }
+    };
+
+    // Inline style on the days row: track the finger 1:1 during the drag,
+    // CSS transition handles the snap-back when not actively dragging.
+    let days_style = move || {
+        let dx = drag_offset.get();
+        let active = gesture_committed.get();
+        if active {
+            format!("transform: translateX({dx}px); transition: none;")
+        } else if dx.abs() > 0.5 {
+            format!("transform: translateX({dx}px);")
+        } else {
+            String::new()
         }
     };
 
@@ -122,7 +175,9 @@ pub fn WeekStrip(
             class="pb-3 mb-2 border-b border-border-default"
             style="touch-action: pan-y;"
             on:pointerdown=handle_pointer_down
+            on:pointermove=handle_pointer_move
             on:pointerup=handle_pointer_up
+            on:pointercancel=handle_pointer_up
         >
             // Header: arrows + month label + today button.
             // On iOS, chevrons are hidden (swipe is the gesture) and the
@@ -163,12 +218,14 @@ pub fn WeekStrip(
                 </button>
             </div>
 
-            // Day cells row. The `week-strip-days` class triggers a brief
-            // fade-and-slide-in animation on every (re)mount — and the
-            // parent re-mounts WeekStrip whenever week_start / selected_date
-            // / session_dates change, so the row visibly reacts to user
-            // navigation rather than swapping silently.
-            <div class="week-strip-days grid grid-cols-7 gap-1">
+            // Day cells row. Two layers of motion:
+            //   1. `style=days_style` translates the row 1:1 with the finger
+            //      during an active horizontal drag, then snaps back via the
+            //      CSS transition on release short of threshold.
+            //   2. The `week-strip-days` class fires a brief fade-and-slide-
+            //      in animation on (re)mount — visible when the parent
+            //      replaces this WeekStrip with a new week.
+            <div class="week-strip-days grid grid-cols-7 gap-1" style=days_style>
                 {dates.into_iter().map(|date| {
                     let abbrev = day_abbrev(date.weekday());
                     let is_selected = selected_date == Some(date);
