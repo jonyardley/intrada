@@ -1198,3 +1198,54 @@ html:not([data-platform="ios"]) .context-menu {
     transition: none;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TextField clear button (audit Tier 1)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Wraps <input> + the absolute clear button. Lets the button overlay the
+   right edge of the input without affecting layout. */
+.input-wrapper {
+  position: relative;
+}
+
+/* Inputs inside .input-wrapper need extra right padding so user-typed
+   text doesn't run under the clear button's tap area. The clear button
+   width + a comfortable visual gap. */
+.input-base--with-clear {
+  padding-right: 2.25rem;
+}
+
+.input-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* Slightly larger hit area than the visible circle so it's easy to tap
+     on touch devices. Uses an inset shadow trick rather than padding so
+     the visible circle stays 1.5rem. */
+  box-shadow: 0 0 0 0.5rem transparent;
+}
+
+.input-clear:hover {
+  background: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.input-clear:active {
+  transform: translateY(-50%) scale(0.92);
+}

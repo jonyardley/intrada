@@ -7,11 +7,12 @@ use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
-    Autocomplete, AutocompleteTextField, BackLink, Button, ButtonVariant, Card, DayCell,
-    DropIndicator, FieldLabel, FormFieldError, LibraryItemCard, LineChart, PageHeading,
-    ProgressRing, RoutineSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
-    SkeletonItemCard, SkeletonLine, StatCard, TagInput, TempoProgressChart, TextArea, TextField,
-    Toast, ToastVariant, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button, ButtonVariant, Card,
+    ContextMenu, ContextMenuAction, DayCell, DropIndicator, FieldLabel, FormFieldError,
+    LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm, SetlistEntryRow,
+    SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, SwipeActions,
+    TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant, TransitionPrompt,
+    TypeBadge, TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -852,6 +853,39 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             // ══════════════════════════════════════════════════════════
+            // COMPONENTS — iOS Gesture Primitives
+            // ══════════════════════════════════════════════════════════
+
+            // ── BottomSheet ───────────────────────────────────────────
+            <section id="bottom-sheet">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Bottom Sheet"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"iOS-style modal sheet (UISheetPresentationController feel). Slides up from the bottom over a dimmed backdrop, ~92vh tall. Drag handle, swipe-down to dismiss with elastic resistance, light haptic on cross-threshold, Cancel button + backdrop tap + Escape all dismiss. Renders into <body> via Portal so positioning is viewport-anchored. Used in production for the library Add Item and Edit forms."</p>
+                    <BottomSheetDemo />
+                </Card>
+            </section>
+
+            // ── SwipeActions ──────────────────────────────────────────
+            <section id="swipe-actions">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Swipe Actions"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"iOS-style swipe-to-reveal trailing action (UISwipeActionsConfiguration feel). Touch-only; gesture is hidden on non-iOS. Direction discrimination ensures vertical scrolls fall through. Half-open snap reveals the action button; full-swipe past 200px commits without a button tap (light haptic on threshold). Used in production for library and routine row Delete."</p>
+                    <p class="text-xs text-faint mb-4">"On iOS device: swipe the row left."</p>
+                    <SwipeActionsDemo />
+                </Card>
+            </section>
+
+            // ── ContextMenu ───────────────────────────────────────────
+            <section id="context-menu">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Context Menu"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"iOS-style long-press context menu (UIContextMenuInteraction feel). ~500ms hold without significant movement triggers; medium haptic on activation. Menu floats anchored to the touch point, clamped to viewport edges, with backdrop blur + dim. Tap outside / Escape / select an action dismisses. Used in production for library and routine row Edit / Delete shortcuts."</p>
+                    <p class="text-xs text-faint mb-4">"On iOS device: long-press the row below."</p>
+                    <ContextMenuDemo />
+                </Card>
+            </section>
+
+            // ══════════════════════════════════════════════════════════
             // COMPONENTS — Forms
             // ══════════════════════════════════════════════════════════
 
@@ -1513,6 +1547,112 @@ pub fn DesignCatalogue() -> impl IntoView {
                     </div>
                 </Card>
             </section>
+        </div>
+    }
+}
+
+/// Catalogue demo: BottomSheet open/close trigger.
+#[component]
+fn BottomSheetDemo() -> impl IntoView {
+    let open = RwSignal::new(false);
+    let close = Callback::new(move |_| open.set(false));
+    view! {
+        <div class="space-y-3">
+            <Button
+                variant=ButtonVariant::Primary
+                on_click=Callback::new(move |_| open.set(true))
+            >
+                "Open Sheet"
+            </Button>
+            <BottomSheet
+                open=open
+                on_close=close
+                nav_title="Demo Sheet".to_string()
+            >
+                <div class="space-y-3">
+                    <p class="text-sm text-secondary">
+                        "Tap Cancel in the nav bar, drag the handle down, or tap outside to dismiss."
+                    </p>
+                    <p class="text-sm text-muted">
+                        "On iOS the swipe gesture also fires a light haptic when crossing the dismiss threshold."
+                    </p>
+                </div>
+            </BottomSheet>
+        </div>
+    }
+}
+
+/// Catalogue demo: SwipeActions wrapping a fake row.
+#[component]
+fn SwipeActionsDemo() -> impl IntoView {
+    let deleted = RwSignal::new(false);
+    let on_delete = Callback::new(move |_| deleted.set(true));
+    view! {
+        <div class="border border-border-default rounded-lg overflow-hidden">
+            <Show
+                when=move || !deleted.get()
+                fallback=move || view! {
+                    <div class="p-card text-sm text-faint text-center">
+                        "Row deleted. Refresh the page to reset."
+                    </div>
+                }
+            >
+                <SwipeActions on_delete=on_delete>
+                    <div class="p-card flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-primary">"Sample Row"</p>
+                            <p class="text-xs text-muted">"Swipe me left on iOS"</p>
+                        </div>
+                        <span class="text-xs text-faint">"›"</span>
+                    </div>
+                </SwipeActions>
+            </Show>
+        </div>
+    }
+}
+
+/// Catalogue demo: ContextMenu wrapping a fake row.
+#[component]
+fn ContextMenuDemo() -> impl IntoView {
+    let last_action = RwSignal::new(String::new());
+    let actions = vec![
+        ContextMenuAction {
+            label: "Edit".to_string(),
+            destructive: false,
+            on_select: Callback::new(move |_| last_action.set("Edit selected".to_string())),
+        },
+        ContextMenuAction {
+            label: "Duplicate".to_string(),
+            destructive: false,
+            on_select: Callback::new(move |_| last_action.set("Duplicate selected".to_string())),
+        },
+        ContextMenuAction {
+            label: "Delete".to_string(),
+            destructive: true,
+            on_select: Callback::new(move |_| last_action.set("Delete selected".to_string())),
+        },
+    ];
+    view! {
+        <div class="space-y-3">
+            <ContextMenu actions=actions>
+                <div class="p-card border border-border-default rounded-lg flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-primary">"Sample Row"</p>
+                        <p class="text-xs text-muted">"Long-press me on iOS"</p>
+                    </div>
+                    <span class="text-xs text-faint">"›"</span>
+                </div>
+            </ContextMenu>
+            {move || {
+                let action = last_action.get();
+                if action.is_empty() {
+                    None
+                } else {
+                    Some(view! {
+                        <p class="text-xs text-accent-text">{action}</p>
+                    })
+                }
+            }}
         </div>
     }
 }
