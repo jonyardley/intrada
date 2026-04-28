@@ -217,20 +217,21 @@ pub fn SwipeActions(
         touchcancel.forget();
     });
 
-    let content_style = move || {
+    // Drive both content AND action via two CSS custom properties on the
+    // row: --swipe-x (the offset) and --swipe-duration (snap on idle, 0s
+    // during active drag so the row tracks the finger 1:1).
+    let row_style = move || {
         let x = translate_x.get();
         let active = touch_start_x.get().is_some();
-        if active {
-            // Drive 1:1 with finger during active gesture, no transition.
-            format!("transform: translateX({x}px); transition: none;")
-        } else {
-            // Snapped — let CSS handle the spring.
-            format!("transform: translateX({x}px);")
-        }
+        let duration = if active { "0s" } else { "280ms" };
+        format!("--swipe-x: {x}px; --swipe-duration: {duration};")
     };
 
     view! {
-        <div class="swipe-row" node_ref=row_ref>
+        <div class="swipe-row" node_ref=row_ref style=row_style>
+            <div class="swipe-row-content">
+                {children()}
+            </div>
             <button
                 type="button"
                 class="swipe-row-action swipe-row-action--destructive"
@@ -243,9 +244,6 @@ pub fn SwipeActions(
             >
                 {move || label.get_value()}
             </button>
-            <div class="swipe-row-content" style=content_style>
-                {children()}
-            </div>
         </div>
     }
 }
