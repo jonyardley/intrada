@@ -42,16 +42,26 @@ test.describe("navigation", () => {
     ).toBeVisible();
   });
 
-  test("add item page is reachable and has cancel link", async ({ page }) => {
+  test("add item opens bottom sheet and cancel dismisses it", async ({
+    page,
+  }) => {
     await page.goto("/");
 
-    await page.getByRole("link", { name: "Add Item" }).first().click();
+    // CTA opens the Add Item bottom sheet (iOS-native modal pattern)
+    await page.getByRole("button", { name: "Add Item" }).first().click();
+
+    // Sheet has its own nav-bar title "Add Item" and a Cancel button
     await expect(
-      page.getByRole("heading", { name: "Add Library Item" })
+      page.getByRole("heading", { name: "Add Item" })
     ).toBeVisible();
 
-    // Cancel navigates back to library
-    await page.getByRole("link", { name: "Cancel" }).click();
+    // Cancel button in the sheet nav dismisses it — sheet slides off-screen
+    // (transform), so we check the open class is removed rather than DOM
+    // visibility (the element is still technically in the DOM).
+    await page.getByRole("button", { name: "Cancel" }).first().click();
+    await expect(page.locator(".bottom-sheet")).not.toHaveClass(
+      /bottom-sheet--open/
+    );
     await expect(
       page.getByRole("heading", { name: "Welcome to Intrada" })
     ).toBeVisible();

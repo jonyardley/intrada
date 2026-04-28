@@ -17,7 +17,17 @@ use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::{validate_library_form, FormData};
 
 #[component]
-pub fn AddLibraryItemForm() -> impl IntoView {
+pub fn AddLibraryItemForm(
+    /// When rendered inside a BottomSheet (vs as a standalone route), drop
+    /// the back-link / page heading / card chrome — the sheet provides its
+    /// own. Cancel + Save call `on_dismiss` instead of navigating.
+    #[prop(optional)]
+    in_sheet: bool,
+    /// Fired when the user successfully saves or cancels. Required when
+    /// `in_sheet` is true; ignored otherwise (route mode navigates instead).
+    #[prop(optional, into)]
+    on_dismiss: Option<Callback<()>>,
+) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
@@ -44,17 +54,14 @@ pub fn AddLibraryItemForm() -> impl IntoView {
     let all_tags_signal = Signal::derive(move || unique_tags(&view_model.get().items));
     let all_composers_signal = Signal::derive(move || unique_composers(&view_model.get().items));
 
-    view! {
-        <div class="sm:max-w-2xl sm:mx-auto">
-            <BackLink label="Cancel" href="/".to_string() />
+    let dismiss_save = on_dismiss;
+    let dismiss_cancel = on_dismiss;
 
-            <PageHeading text="Add Library Item" />
-
-            <Card>
-                <form
-                    class="space-y-4"
-                    on:submit=move |ev: ev::SubmitEvent| {
-                        ev.prevent_default();
+    let form_body = view! {
+        <form
+            class="space-y-4"
+            on:submit=move |ev: ev::SubmitEvent| {
+                ev.prevent_default();
 
                         let current_tab = active_tab.get();
 
@@ -119,7 +126,11 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                         let core_ref = core.borrow();
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        navigate("/", NavigateOptions { replace: true, ..Default::default() });
+                        if let Some(cb) = dismiss_save {
+                            cb.run(());
+                        } else {
+                            navigate("/", NavigateOptions { replace: true, ..Default::default() });
+                        }
                     }
                 >
                     // Tab bar — interactive mode (FR-001)
@@ -175,12 +186,29 @@ pub fn AddLibraryItemForm() -> impl IntoView {
                                 {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
                             </Button>
                             <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                navigate_cancel("/", NavigateOptions::default());
+                                if let Some(cb) = dismiss_cancel {
+                                    cb.run(());
+                                } else {
+                                    navigate_cancel("/", NavigateOptions::default());
+                                }
                             })>"Cancel"</Button>
                         </div>
                     </div>
                 </form>
-            </Card>
-        </div>
+    };
+
+    if in_sheet {
+        // Inside a BottomSheet: the sheet provides nav chrome; we just need
+        // the form body.
+        form_body.into_any()
+    } else {
+        view! {
+            <div class="sm:max-w-2xl sm:mx-auto">
+                <BackLink label="Cancel" href="/".to_string() />
+                <PageHeading text="Add Library Item" />
+                <Card>{form_body}</Card>
+            </div>
+        }
+        .into_any()
     }
 }

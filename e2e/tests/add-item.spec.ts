@@ -4,10 +4,11 @@ test.describe("add library item", () => {
   test("add a piece with all fields", async ({ page }) => {
     await page.goto("/");
 
-    // Navigate to add form — use .first() because the library page has an
-    // "Add Item" CTA in the header and a second one in the empty state;
-    // Playwright's strict mode rejects ambiguous matches.
-    await page.getByRole("link", { name: "Add Item" }).first().click();
+    // Open Add Item sheet — the CTA is now a button that opens a
+    // BottomSheet over the library list (iOS-native pattern). .first()
+    // because the library page has an "Add Item" CTA in the header and a
+    // second one in the empty state.
+    await page.getByRole("button", { name: "Add Item" }).first().click();
 
     // Piece tab should be active by default
     await expect(page.getByRole("tab", { name: "Piece" })).toHaveAttribute(

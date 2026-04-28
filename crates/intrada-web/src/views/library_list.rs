@@ -1,9 +1,11 @@
 use leptos::prelude::*;
-use leptos_router::components::A;
 
 use intrada_core::{Event, ViewModel};
 
-use crate::components::{LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard};
+use crate::components::{
+    BottomSheet, LibraryItemCard, PageHeading, PullToRefresh, SkeletonItemCard,
+};
+use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -14,6 +16,10 @@ pub fn LibraryListView() -> impl IntoView {
     let is_submitting = expect_context::<IsSubmitting>();
     let core = expect_context::<SharedCore>();
     let is_refreshing = RwSignal::new(false);
+    let add_sheet_open = RwSignal::new(false);
+
+    let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
+    let close_add_sheet = Callback::new(move |_| add_sheet_open.set(false));
 
     let on_refresh = Callback::new(move |_| {
         // Skip if the initial app load is still in flight — the global
@@ -55,9 +61,13 @@ pub fn LibraryListView() -> impl IntoView {
                         subtitle="Organize your music library, track your practice pieces and exercises, and build better practice habits."
                     />
                 </div>
-                <A href="/library/new" attr:class="cta-link shrink-0">
+                <button
+                    type="button"
+                    class="cta-link shrink-0"
+                    on:click=move |_| open_add_sheet.run(())
+                >
                     "Add Item"
-                </A>
+                </button>
             </div>
 
             // Library section header
@@ -99,9 +109,13 @@ pub fn LibraryListView() -> impl IntoView {
                                         <p class="empty-state-title text-base font-semibold text-secondary">"No items in your library yet"</p>
                                         <p class="text-sm text-faint mt-2 max-w-xs mx-auto">"Add a piece or exercise to get started."</p>
                                         <div class="mt-6">
-                                            <A href="/library/new" attr:class="cta-link">
+                                            <button
+                                                type="button"
+                                                class="cta-link"
+                                                on:click=move |_| open_add_sheet.run(())
+                                            >
                                                 "Add Item"
-                                            </A>
+                                            </button>
                                         </div>
                                     </div>
                                 }.into_any()
@@ -122,5 +136,13 @@ pub fn LibraryListView() -> impl IntoView {
             </section>
         </div>
         </PullToRefresh>
+
+        <BottomSheet
+            open=add_sheet_open
+            on_close=close_add_sheet
+            nav_title="Add Item".to_string()
+        >
+            <AddLibraryItemForm in_sheet=true on_dismiss=close_add_sheet />
+        </BottomSheet>
     }
 }
