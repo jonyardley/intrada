@@ -12,8 +12,10 @@ use intrada_web::types::ItemType;
 /// - When `on_change` is `None`, the control is display-only (edit form).
 ///
 /// Web: pill-style toggle with accent fill on active segment.
-/// iOS (`[data-platform="ios"]`): UISegmentedControl-style with a sliding
-/// neutral thumb — no accent fill, monochrome text with weight bump.
+/// iOS (`[data-platform="ios"]`): UISegmentedControl-style — rounded-rect
+/// track with an accent-filled thumb that slides between segments. Active
+/// text bumps to weight 600; inactive stays muted. `selection` haptic on
+/// every change.
 #[component]
 pub fn TypeTabs(
     active: Signal<ItemType>,

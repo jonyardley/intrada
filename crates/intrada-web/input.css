@@ -1379,9 +1379,10 @@ html:not([data-platform="ios"]) .context-menu {
    TypeTabs — iOS UISegmentedControl-style variant
    Web default: pill toggle with accent fill per segment (existing Tailwind
    classes handle this; .type-tabs-thumb is hidden).
-   iOS: rounded-rect track + sliding neutral thumb that animates between
-   segments via CSS transform on --thumb-x. No accent fill on iOS — the
-   thumb elevation + font-weight carry the active state.
+   iOS: rounded-rect track + an accent-filled thumb that slides between
+   segments via CSS transform on --thumb-x. Brand colour carries the
+   active state; the iOS-spring transition + monochrome inactive text
+   keep the control feeling native.
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* On web, the thumb is purely decorative and must not affect layout. */
