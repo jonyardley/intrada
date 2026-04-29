@@ -6,8 +6,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, RoutineEvent, RoutineView, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, ContextMenu, ContextMenuAction, GroupedList, GroupedListRow,
-    PageHeading, SkeletonCardList, SwipeActions,
+    Button, ButtonVariant, ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow,
+    IconName, PageHeading, SkeletonCardList, SwipeActions,
 };
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -33,18 +33,15 @@ pub fn RoutinesListView() -> impl IntoView {
 
                 if vm.routines.is_empty() {
                     view! {
-                        <div class="empty-state text-center py-12 px-4 sm:px-6 lg:px-0">
-                            <svg class="empty-state-icon mx-auto mb-4 w-16 h-16 text-faint" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
-                            </svg>
-                            <p class="empty-state-title text-base font-semibold text-secondary">"No saved routines yet."</p>
-                            <p class="text-sm text-faint mt-2 max-w-xs mx-auto">"Save a setlist as a routine when building a session or from the session summary."</p>
-                            <div class="mt-6">
-                                <A href="/sessions/new" attr:class="cta-link">
-                                    "New Session"
-                                </A>
-                            </div>
-                        </div>
+                        <EmptyState
+                            icon=IconName::ListChecks
+                            title="No saved routines yet"
+                            body="Save a setlist as a routine when building a session or from the session summary."
+                        >
+                            <A href="/sessions/new" attr:class="cta-link">
+                                "New Session"
+                            </A>
+                        </EmptyState>
                     }.into_any()
                 } else {
                     let routine_count = vm.routines.len();

@@ -48,3 +48,4 @@ ios/build/
 ios/DerivedData/
 ios/Gemfile.lock
 crates/intrada-web/test-results/
+design/images/generated-*.png

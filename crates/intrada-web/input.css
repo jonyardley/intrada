@@ -594,18 +594,38 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   display: none;
 }
 
-/* Empty state styling — increased icon prominence and tighter typography
-   so empty screens feel iOS-shaped (large icon + heading + body + CTA). */
+/* Empty state — base layout shared by web and iOS. The wrapper centres
+   the icon, title, body, and optional CTA stack. */
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+}
+
+/* Empty state styling on iOS — large SF-Symbol-scale glyph with the
+   spacing rhythm of Apple's first-party "no content" screens (Reminders,
+   Notes, Mail). Title bumps to body-emphasised (17pt), body sits at
+   secondary weight, CTA gets extra breathing room above. */
 [data-platform="ios"] .empty-state {
   padding-top: 4rem;
 }
 [data-platform="ios"] .empty-state-icon {
-  width: 4.5rem;
-  height: 4.5rem;
-  opacity: 0.5;
+  width: 5rem;
+  height: 5rem;
+  opacity: 0.4;
 }
 [data-platform="ios"] .empty-state-title {
   font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+[data-platform="ios"] .empty-state-body {
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  max-width: 18rem;
+}
+[data-platform="ios"] .empty-state-cta {
+  margin-top: 1.5rem;
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */

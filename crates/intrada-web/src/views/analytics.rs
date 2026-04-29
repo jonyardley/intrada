@@ -5,7 +5,9 @@ use intrada_core::ViewModel;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use crate::components::{Card, Icon, IconName, LineChart, PageHeading, SkeletonBlock, StatCard};
+use crate::components::{
+    Card, EmptyState, Icon, IconName, LineChart, PageHeading, SkeletonBlock, StatCard,
+};
 use intrada_web::core_bridge::init_core;
 use intrada_web::types::{IsLoading, IsSubmitting};
 
@@ -45,7 +47,15 @@ pub fn AnalyticsPage() -> impl IntoView {
                         <AnalyticsDashboard analytics=analytics />
                     }.into_any(),
                     None => view! {
-                        <EmptyState />
+                        <EmptyState
+                            icon=IconName::BarChart
+                            title="No session data yet"
+                            body="Complete some sessions to see your analytics. Track your progress, streaks, and most practised items."
+                        >
+                            <A href="/sessions/new" attr:class="cta-link">
+                                "Start a Session"
+                            </A>
+                        </EmptyState>
                     }.into_any(),
                 }
             }}
@@ -445,34 +455,6 @@ fn ErrorState(#[prop(into)] message: String) -> impl IntoView {
             >
                 "Retry"
             </button>
-        </div>
-    }
-}
-
-/// Empty state when no practices exist at all.
-#[component]
-fn EmptyState() -> impl IntoView {
-    view! {
-        <div class="text-center py-16">
-            // Chart icon
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-16 w-16 mx-auto text-faint mb-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-            >
-                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-            </svg>
-            <h3 class="text-lg font-semibold text-secondary mb-2">"No session data yet"</h3>
-            <p class="text-sm text-muted mb-6 max-w-sm mx-auto">
-                "Complete some sessions to see your analytics. Track your progress, streaks, and most practised items."
-            </p>
-            <A
-                href="/sessions/new"
-                attr:class="cta-link"
-            >
-                "Start a Session"
-            </A>
         </div>
     }
 }
