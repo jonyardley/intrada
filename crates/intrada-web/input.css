@@ -716,9 +716,56 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   display: none;
 }
 
-/* Tab bar: grow height to accommodate safe area so icons aren't compressed.
-   h-16 (64px) is the icon area; safe-area-inset-bottom (≈34px on iPhone 16)
-   extends below for the home indicator. */
+/* Mobile tab bar — iOS 26 Liquid Glass approximation, pure CSS.
+   Applied to the nav element directly (not gated to data-platform=ios)
+   so mobile Safari and Android Chrome get the same look as the Tauri
+   iOS shell. The bar is `sm:hidden` so this only fires when it's
+   actually visible.
+
+   Real Liquid Glass uses GPU refraction (SVG feDisplacementMap chained
+   into backdrop-filter) which WebKit doesn't support. What we *can*
+   get on WebKit: heavier blur + saturation boost so underlying colours
+   bleed through vibrantly, a faint top-of-bar light gradient, and a
+   specular hairline that reads as light catching the rim. Together
+   these are noticeably closer to UITabBar than the previous flat 12px
+   blur. The native-UIToolbar route is tracked separately if we ever
+   need true refraction. */
+nav[aria-label="Mobile navigation"] {
+  background-color: oklch(15.6% 0.011 261.692 / 50%);
+  background-image: linear-gradient(
+    to bottom,
+    oklch(100% 0 0 / 5%) 0%,
+    oklch(100% 0 0 / 0%) 70%
+  );
+
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+
+  /* Replace the Tailwind border-t with a layered shadow: an inset
+     specular highlight inside the top edge, plus a hairline outside
+     to separate the bar from content scrolling beneath. */
+  border-top: 0;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 8%),
+    0 -1px 0 oklch(100% 0 0 / 4%);
+}
+
+/* Reduced-motion users: drop the saturation boost (still get blur for
+   legibility, but no colour shift). Keeps the WCAG "Animation from
+   interactions" intent — the bar shouldn't shimmer as content scrolls
+   past. */
+@media (prefers-reduced-motion: reduce) {
+  nav[aria-label="Mobile navigation"] {
+    -webkit-backdrop-filter: blur(40px);
+    backdrop-filter: blur(40px);
+  }
+}
+
+/* Tab bar height on iOS — bump to accommodate the home-indicator
+   safe-area so icons aren't compressed. Mobile Safari + Android handle
+   the safe-area via the existing pb-safe utility, but the Tauri shell
+   needs the explicit height bump because pb-safe alone shrinks the
+   icon area inside the fixed h-16. */
 [data-platform="ios"] nav[aria-label="Mobile navigation"] {
   height: calc(4rem + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
