@@ -1397,9 +1397,9 @@ html:not([data-platform="ios"]) .context-menu {
 }
 
 /* Sliding thumb — absolutely fills one half of the track inner area.
-   Uses surface-hover (white/22) on top of surface-input track (white/10)
-   for a clear ~2x lightness contrast between active and inactive halves,
-   matching the elevation jump UISegmentedControl uses in dark mode. */
+   Uses the brand accent indigo so the selection state reads at a glance
+   (a neutral-on-neutral thumb on this dark palette was too subtle). The
+   sliding shape + iOS spring still drive the native interaction feel. */
 [data-platform="ios"] .type-tabs-thumb {
   display: block;
   position: absolute;
@@ -1407,11 +1407,11 @@ html:not([data-platform="ios"]) .context-menu {
   bottom: 2px;
   left: 2px;
   width: calc(50% - 2px);
-  background: var(--color-surface-hover);
+  background: var(--color-accent);
   border-radius: 7px;
   box-shadow:
     0 1px 3px oklch(0% 0 0 / 35%),
-    0 0 0 0.5px oklch(100% 0 0 / 12%);
+    0 0 0 0.5px oklch(100% 0 0 / 14%);
   transform: translateX(var(--thumb-x, 0%));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   pointer-events: none;
