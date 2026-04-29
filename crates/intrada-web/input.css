@@ -1443,9 +1443,19 @@ html:not([data-platform="ios"]) .context-menu {
   font-weight: 600;
 }
 
+/* Touch focus must be invisible — the Tailwind `focus:ring-2` utilities
+   on the button class still fire on tap and read as a blue glow on iOS,
+   which is exactly the web-y focus-state issue we want to avoid. Override
+   any inherited :focus ring; only show a ring for keyboard navigation. */
+[data-platform="ios"] .type-tabs-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
 [data-platform="ios"] .type-tabs-btn:focus-visible {
   outline: 2px solid var(--color-accent-focus);
   outline-offset: -2px;
+  box-shadow: none;
 }
 
 /* Display-only mode (edit form): cursor and hover state stripped */
