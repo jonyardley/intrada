@@ -628,6 +628,31 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   margin-top: 1.5rem;
 }
 
+/* Error banner dismiss button — circular tinted hit area with an X
+   icon, replacing the previous "Dismiss" text link. Shared by web and
+   iOS so the visual language stays consistent across platforms. The
+   28px touch size is below the 44px iOS recommendation but the inset
+   tap-padding extends the effective hit area. */
+.error-banner-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: -2px;
+  padding: 6px;
+  border-radius: 9999px;
+  color: var(--color-danger-text);
+  background-color: color-mix(in oklab, var(--color-danger-text) 12%, transparent);
+  transition: background-color 120ms ease-out, transform 80ms ease-out;
+}
+.error-banner-dismiss:hover {
+  background-color: color-mix(in oklab, var(--color-danger-text) 20%, transparent);
+}
+.error-banner-dismiss:active {
+  transform: scale(0.92);
+}
+
 /* iOS notification banner — global error toast slides down from the top
    safe-area edge instead of pushing content. Stays put while the page
    scrolls underneath, like a UNUserNotification banner. The web variant
@@ -653,9 +678,32 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   }
 }
 
+/* Slide-out — the dismissing class is applied on click, then the JS
+   timer fires ClearError after this animation completes. forwards
+   keeps the banner translated off-screen in case the unmount lags. */
+[data-platform="ios"] .error-banner.is-dismissing {
+  animation: error-banner-slide-out 280ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* Web slide-out — collapses height + fades. No fixed positioning to
+   reverse, so we shrink the alert in place. */
+.error-banner.is-dismissing {
+  animation: error-banner-fade-out 220ms ease-out forwards;
+}
+
 @keyframes error-banner-slide-in {
   from { transform: translateY(-100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes error-banner-slide-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-100%); opacity: 0; }
+}
+
+@keyframes error-banner-fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
 }
 
 /* Hide the web header on iOS — tab bar handles all primary navigation. */
