@@ -1396,7 +1396,10 @@ html:not([data-platform="ios"]) .context-menu {
   gap: 0;
 }
 
-/* Sliding thumb — absolutely fills one half of the track inner area */
+/* Sliding thumb — absolutely fills one half of the track inner area.
+   Uses surface-hover (white/22) on top of surface-input track (white/10)
+   for a clear ~2x lightness contrast between active and inactive halves,
+   matching the elevation jump UISegmentedControl uses in dark mode. */
 [data-platform="ios"] .type-tabs-thumb {
   display: block;
   position: absolute;
@@ -1404,11 +1407,11 @@ html:not([data-platform="ios"]) .context-menu {
   bottom: 2px;
   left: 2px;
   width: calc(50% - 2px);
-  background: var(--color-surface-primary);
+  background: var(--color-surface-hover);
   border-radius: 7px;
   box-shadow:
-    0 1px 3px oklch(0% 0 0 / 30%),
-    0 0 0 0.5px oklch(100% 0 0 / 8%);
+    0 1px 3px oklch(0% 0 0 / 35%),
+    0 0 0 0.5px oklch(100% 0 0 / 12%);
   transform: translateX(var(--thumb-x, 0%));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   pointer-events: none;
