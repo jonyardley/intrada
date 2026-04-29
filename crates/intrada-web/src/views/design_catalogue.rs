@@ -8,12 +8,13 @@ use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, Tem
 
 use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
-    ButtonVariant, Card, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
-    DropIndicator, EmptyState, FieldLabel, FormFieldError, IconName, InlineTypeIndicator,
-    LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm, SectionLabel,
-    SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard,
-    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
-    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize, CircularButtonVariant,
+    ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow, DropIndicator, EmptyState,
+    FieldLabel, FormFieldError, IconName, InlineTypeIndicator, LibraryItemCard, LineChart,
+    PageHeading, ProgressRing, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock,
+    SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput,
+    TempoProgressChart, TextArea, TextField, Toast, ToastVariant, TransitionPrompt, TypeBadge,
+    TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -722,12 +723,19 @@ pub fn DesignCatalogue() -> impl IntoView {
             // ── Stat Cards ────────────────────────────────────────────
             <section id="stat-card">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Stat Card"</h3>
-                <p class="text-xs text-faint mb-3">"Compact padding (12px) so the stat value dominates."</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <p class="text-xs font-medium text-muted uppercase mb-2">"Classic — glass-card chrome"</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
                     <StatCard title="Sessions" value="12".to_string() subtitle="This month" />
                     <StatCard title="Avg Score" value="3.8".to_string() subtitle="Out of 5" />
+                </div>
+                <p class="text-xs font-medium text-muted uppercase mb-2">"2026 refresh \u{2014} inset accent bar + tone"</p>
+                <p class="text-xs text-faint mb-3">"Whisper-soft surface, gradient bar inset on the left, value text in the matching tone signals the stat's category at a glance."</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <StatCard title="Day Streak" value="12".to_string() bar=AccentBar::Gold tone=StatTone::Accent />
+                    <StatCard title="Hrs This Week" value="8.5".to_string() bar=AccentBar::Blue tone=StatTone::WarmAccent />
+                    <StatCard title="Pieces Learned" value="23".to_string() bar=AccentBar::Gold />
                 </div>
             </section>
 
@@ -785,6 +793,47 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 <Button variant=ButtonVariant::Primary loading=Signal::derive(|| true)>"Saving..."</Button>
                                 <Button variant=ButtonVariant::Success loading=Signal::derive(|| true)>"Completing..."</Button>
                                 <Button variant=ButtonVariant::Secondary loading=Signal::derive(|| true)>"Loading..."</Button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Hero (2026 refresh \u{2014} full-width CTA)"</p>
+                            <p class="text-xs text-faint mb-2">"Larger 48px / text-base / weight-600 sizing for the primary action on a screen (Add to Library, Start Practice). Default size stays Small for inline use."</p>
+                            <div class="space-y-3">
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Add to Library"</Button>
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Start Practice"</Button>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Circular Button ───────────────────────────────────────
+            <section id="circular-button">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Circular Button"</h3>
+                <p class="text-xs text-faint mb-3">"Round icon-only action used for player controls in the 2026 refresh. 56px primary anchors the row; 44px secondary sits beside it. Light haptic on press, scale feedback on :active."</p>
+                <Card>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Player controls (medium primary + small secondary)"</p>
+                            <div class="flex items-center justify-center gap-6">
+                                <CircularButton icon=IconName::Plus aria_label="Play" />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Reset" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"All variants"</p>
+                            <div class="flex items-center justify-center gap-4">
+                                <CircularButton icon=IconName::Plus aria_label="Primary medium" />
+                                <CircularButton icon=IconName::Plus aria_label="Primary small" size=CircularButtonSize::Small />
+                                <CircularButton icon=IconName::Plus aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=IconName::Plus aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Disabled"</p>
+                            <div class="flex items-center justify-center gap-4">
+                                <CircularButton icon=IconName::Plus aria_label="Disabled primary" disabled=Signal::derive(|| true) />
+                                <CircularButton icon=IconName::Plus aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
                             </div>
                         </div>
                     </div>

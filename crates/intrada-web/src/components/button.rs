@@ -12,6 +12,20 @@ pub enum ButtonVariant {
     DangerOutline,
 }
 
+/// Size variants for the shared Button component.
+///
+/// `Small` (default) is the inline button used today across forms,
+/// toolbars, and row actions — 44px min, text-sm. `Hero` is the larger
+/// 48px / text-base / weight-600 CTA used by the 2026 refresh for
+/// full-width primary actions like "Add to Library", "Start Practice",
+/// "Finish Session".
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum ButtonSize {
+    #[default]
+    Small,
+    Hero,
+}
+
 impl ButtonVariant {
     fn classes(self) -> &'static str {
         match self {
@@ -37,19 +51,28 @@ pub fn Button(
     #[prop(default = "button")] button_type: &'static str,
     #[prop(optional, into)] disabled: Signal<bool>,
     #[prop(optional, into)] loading: Signal<bool>,
+    /// Size of the button. Defaults to `Small` (current inline behaviour).
+    /// `Hero` bumps padding, font size, and weight for full-width CTAs.
+    #[prop(optional)]
+    size: ButtonSize,
     children: Children,
 ) -> impl IntoView {
     let is_disabled = Signal::derive(move || disabled.get() || loading.get());
+    let size_class = match size {
+        ButtonSize::Small => "",
+        ButtonSize::Hero => " btn-hero",
+    };
 
     view! {
         <button
             type=button_type
             class=move || {
                 let base = variant.classes();
+                let with_size = format!("{base}{size_class}");
                 if is_disabled.get() {
-                    format!("{base} opacity-50 cursor-not-allowed")
+                    format!("{with_size} opacity-50 cursor-not-allowed")
                 } else {
-                    base.to_string()
+                    with_size
                 }
             }
             disabled=is_disabled
