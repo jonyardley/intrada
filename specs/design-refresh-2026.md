@@ -40,6 +40,7 @@ Page padding becomes `[12, 20, 0, 20]` (12 top, 20 horizontal, content extends t
 - **TextArea**: same form treatment as TextField, height 100px.
 - **Button (primary)**: 48–52px height, 16–17px font weight 600. Accent fill, white text. Radius 12.
 - **StatCard**: gains the inset accent gradient bar (gold or blue), value text uses accent colour.
+  - **Tone deviation from Pencil**: Pencil's Analytics frame fills stat values with `--color-accent` (`#6346E5`, deep saturated indigo). The web variant uses `--color-accent-text` (`~#A5AAFC`, lighter purple) for legibility on dark backgrounds — the deep accent reads muddy at small numeric sizes on actual hardware. Same trade for `--color-warm-accent-text` vs `--color-warm-accent`. Intentional deviation.
 - **TypeBadge**: keep for the Add Piece type-selector (boxed pill); deprecate inline use in favour of InlineTypeIndicator.
 - **BottomTabBar**: minor — confirm active colour is `#A5AAFC` (it already is, post-PR #347).
 
