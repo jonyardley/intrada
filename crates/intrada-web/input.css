@@ -1373,3 +1373,82 @@ html:not([data-platform="ios"]) .context-menu {
 .input-clear:active {
   transform: translateY(-50%) scale(0.92);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TypeTabs — iOS UISegmentedControl-style variant
+   Web default: pill toggle with accent fill per segment (existing Tailwind
+   classes handle this; .type-tabs-thumb is hidden).
+   iOS: rounded-rect track + sliding neutral thumb that animates between
+   segments via CSS transform on --thumb-x. No accent fill on iOS — the
+   thumb elevation + font-weight carry the active state.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* On web, the thumb is purely decorative and must not affect layout. */
+.type-tabs-thumb {
+  display: none;
+}
+
+/* iOS segmented control track */
+[data-platform="ios"] .type-tabs {
+  border-radius: 9px;
+  padding: 2px;
+  gap: 0;
+}
+
+/* Sliding thumb — absolutely fills one half of the track inner area */
+[data-platform="ios"] .type-tabs-thumb {
+  display: block;
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  background: var(--color-surface-primary);
+  border-radius: 7px;
+  box-shadow:
+    0 1px 3px oklch(0% 0 0 / 30%),
+    0 0 0 0.5px oklch(100% 0 0 / 8%);
+  transform: translateX(var(--thumb-x, 0%));
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-platform="ios"] .type-tabs-thumb {
+    transition: none;
+  }
+}
+
+/* Buttons sit above the thumb; transparent bg replaces the web pill fill.
+   Explicit width:50% + flex:none avoids inline-flex ambiguity that would
+   give unequal halves (and misalign the sliding thumb). */
+[data-platform="ios"] .type-tabs-btn {
+  position: relative;
+  z-index: 10;
+  background: transparent;
+  border-radius: 7px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color 0.15s ease;
+  width: 50%;
+  flex: none;
+}
+
+[data-platform="ios"] .type-tabs-btn[aria-selected="true"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+[data-platform="ios"] .type-tabs-btn:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: -2px;
+}
+
+/* Display-only mode (edit form): cursor and hover state stripped */
+[data-platform="ios"] .type-tabs-btn[aria-disabled="true"] {
+  cursor: default;
+}
