@@ -8,7 +8,7 @@ test.describe("routines page", () => {
     await expect(
       page.getByRole("heading", { name: "Routines" })
     ).toBeVisible();
-    await expect(page.getByText("No saved routines yet.")).toBeVisible();
+    await expect(page.getByText("No saved routines yet")).toBeVisible();
 
     // Should have a link to create a session
     await expect(
@@ -65,7 +65,7 @@ test.describe("routines page", () => {
     await page.getByRole("button", { name: "Confirm Delete" }).click();
 
     // Should show empty state
-    await expect(page.getByText("No saved routines yet.")).toBeVisible();
+    await expect(page.getByText("No saved routines yet")).toBeVisible();
   });
 
   test("save routine from session builder", async ({ page }) => {
