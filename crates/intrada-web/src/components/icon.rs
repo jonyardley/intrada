@@ -11,14 +11,18 @@ pub enum IconName {
     ArrowLeft,
     ArrowRight,
     Ban,
+    BarChart,
     Calendar,
+    CalendarDays,
     Check,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
     ChevronUp,
     Clock,
+    ListChecks,
     Minus,
+    Music,
     Plus,
     RotateCcw,
     Star,
@@ -58,11 +62,31 @@ pub fn Icon(
             <path d="m4.9 4.9 14.2 14.2" />
         }
         .into_any(),
+        IconName::BarChart => view! {
+            <path d="M3 3v18h18" />
+            <path d="M18 17V9" />
+            <path d="M13 17V5" />
+            <path d="M8 17v-3" />
+        }
+        .into_any(),
         IconName::Calendar => view! {
             <path d="M8 2v4" />
             <path d="M16 2v4" />
             <rect width="18" height="18" x="3" y="4" rx="2" />
             <path d="M3 10h18" />
+        }
+        .into_any(),
+        IconName::CalendarDays => view! {
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <rect width="18" height="18" x="3" y="4" rx="2" />
+            <path d="M3 10h18" />
+            <path d="M8 14h.01" />
+            <path d="M12 14h.01" />
+            <path d="M16 14h.01" />
+            <path d="M8 18h.01" />
+            <path d="M12 18h.01" />
+            <path d="M16 18h.01" />
         }
         .into_any(),
         IconName::Check => view! {
@@ -90,8 +114,22 @@ pub fn Icon(
             <polyline points="12 6 12 12 16 14" />
         }
         .into_any(),
+        IconName::ListChecks => view! {
+            <path d="m3 17 2 2 4-4" />
+            <path d="m3 7 2 2 4-4" />
+            <path d="M13 6h8" />
+            <path d="M13 12h8" />
+            <path d="M13 18h8" />
+        }
+        .into_any(),
         IconName::Minus => view! {
             <path d="M5 12h14" />
+        }
+        .into_any(),
+        IconName::Music => view! {
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
         }
         .into_any(),
         IconName::Plus => view! {

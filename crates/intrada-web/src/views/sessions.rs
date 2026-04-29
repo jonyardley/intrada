@@ -9,8 +9,8 @@ use intrada_core::{
 };
 
 use crate::components::{
-    Button, ButtonVariant, ContextMenu, ContextMenuAction, GroupedList, GroupedListRow, Icon,
-    IconName, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
+    Button, ButtonVariant, ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow,
+    Icon, IconName, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
 };
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::helpers::{
@@ -166,7 +166,15 @@ pub fn SessionsListView() -> impl IntoView {
 
                 if sessions.is_empty() {
                     view! {
-                        <p class="empty-text">"No sessions on this day"</p>
+                        <EmptyState
+                            icon=IconName::CalendarDays
+                            title="No sessions on this day"
+                            body="Start a practice session to see it here."
+                        >
+                            <A href="/sessions/new" attr:class="cta-link">
+                                "New Session"
+                            </A>
+                        </EmptyState>
                     }.into_any()
                 } else {
                     let core = core.clone();

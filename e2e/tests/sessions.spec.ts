@@ -11,9 +11,12 @@ test.describe("sessions page", () => {
     // Week strip is visible with day cells
     await expect(page.getByText("No sessions on this day")).toBeVisible();
 
-    // Should have a "New Session" link
+    // Empty state CTA — scope to the empty-state container so we don't
+    // pick up the page-header "+" New Session action which has the same
+    // accessible name.
+    const emptyState = page.locator(".empty-state");
     await expect(
-      page.getByRole("link", { name: "New Session" })
+      emptyState.getByRole("link", { name: "New Session" })
     ).toBeVisible();
 
     // Should have a "Show all sessions" link
@@ -25,8 +28,10 @@ test.describe("sessions page", () => {
   test("create a session via the setlist flow", async ({ page }) => {
     await page.goto("/sessions");
 
-    // Click "New Session" to go to the setlist builder
-    await page.getByRole("link", { name: "New Session" }).click();
+    // Click the page-header "New Session" CTA to go to the setlist builder.
+    // Use the aria-label to disambiguate from the empty-state CTA which
+    // shares the same accessible name.
+    await page.getByLabel("New Session").click();
 
     // Should see the preset selection page
     await expect(

@@ -8,11 +8,11 @@ use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, Tem
 
 use crate::components::{
     Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button, ButtonVariant, Card,
-    ContextMenu, ContextMenuAction, DayCell, DropIndicator, FieldLabel, FormFieldError,
-    LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm, SetlistEntryRow,
-    SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, SwipeActions,
-    TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant, TransitionPrompt,
-    TypeBadge, TypeTabs, WeekStrip,
+    ContextMenu, ContextMenuAction, DayCell, DropIndicator, EmptyState, FieldLabel, FormFieldError,
+    IconName, LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm,
+    SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard,
+    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
+    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -862,6 +862,54 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <p class="text-xs text-faint mb-4">"iOS-style modal sheet (UISheetPresentationController feel). Slides up from the bottom over a dimmed backdrop, ~92vh tall. Drag handle, swipe-down to dismiss with elastic resistance, light haptic on cross-threshold, Cancel button + backdrop tap + Escape all dismiss. Renders into <body> via Portal so positioning is viewport-anchored. Used in production for the library Add Item and Edit forms."</p>
                     <BottomSheetDemo />
+                </Card>
+            </section>
+
+            // ── EmptyState ────────────────────────────────────────────
+            <section id="empty-state">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Empty State"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"Centred icon + title + body + optional CTA, used wherever a list/section can legitimately have no rows. iOS scales the glyph up to ~80pt (SF-Symbol size) and tightens typography; web stays at the smaller default."</p>
+                    <div class="space-y-6">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Library"</p>
+                            <EmptyState
+                                icon=IconName::Music
+                                title="No items in your library yet"
+                                body="Add a piece or exercise to get started."
+                            >
+                                <button type="button" class="cta-link">"Add Item"</button>
+                            </EmptyState>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Routines"</p>
+                            <EmptyState
+                                icon=IconName::ListChecks
+                                title="No saved routines yet"
+                                body="Save a setlist as a routine when building a session."
+                            >
+                                <button type="button" class="cta-link">"New Session"</button>
+                            </EmptyState>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Sessions"</p>
+                            <EmptyState
+                                icon=IconName::CalendarDays
+                                title="No sessions on this day"
+                                body="Start a practice session to see it here."
+                            >
+                                <button type="button" class="cta-link">"New Session"</button>
+                            </EmptyState>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"No CTA — Analytics"</p>
+                            <EmptyState
+                                icon=IconName::BarChart
+                                title="No session data yet"
+                                body="Complete some sessions to see your analytics."
+                            />
+                        </div>
+                    </div>
                 </Card>
             </section>
 
