@@ -21,7 +21,7 @@ pub fn ErrorBanner() -> impl IntoView {
             view_model.get().error.map(|err| {
                 let core = core.clone();
                 view! {
-                    <div class="mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
+                    <div class="error-banner mb-6 rounded-lg bg-danger-surface border border-danger-text/20 p-4" role="alert">
                         <div class="flex items-start justify-between gap-3">
                             <p class="text-sm text-danger-text">
                                 <span class="font-medium">"Error: "</span>{err}

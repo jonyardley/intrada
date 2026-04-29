@@ -217,6 +217,7 @@ pub fn SessionSummary() -> impl IntoView {
                                                             </label>
                                                             <input
                                                                 type="number"
+                                                                inputmode="numeric"
                                                                 id=tempo_input_id
                                                                 placeholder="1\u{2013}500"
                                                                 class="input-base mt-1"
