@@ -7,9 +7,10 @@ use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
-    Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button, ButtonVariant, Card,
-    ContextMenu, ContextMenuAction, DayCell, DropIndicator, EmptyState, FieldLabel, FormFieldError,
-    IconName, LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm,
+    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
+    ButtonVariant, Card, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
+    DropIndicator, EmptyState, FieldLabel, FormFieldError, IconName, InlineTypeIndicator,
+    LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm, SectionLabel,
     SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard,
     SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
     TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
@@ -615,6 +616,77 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <p class="text-xs text-faint text-center">"input-base"</p>
                         <p class="text-xs text-faint text-center">"Border + bg + focus ring + sizing"</p>
                     </div>
+                </div>
+            </section>
+
+            // ══════════════════════════════════════════════════════════
+            // 2026 REFRESH — New primitives (signature design language)
+            // ══════════════════════════════════════════════════════════
+
+            // ── Section Label ─────────────────────────────────────────
+            <section id="section-label">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Section Label"</h3>
+                <p class="text-xs text-faint mb-3">"Uppercase 11px label that anchors grouped content. Place above any list, card group, or chart row."</p>
+                <Card>
+                    <SectionLabel text="Recent Activity" />
+                    <p class="text-sm text-secondary mt-2">"…content lives below the label."</p>
+                </Card>
+            </section>
+
+            // ── Inline Type Indicator ─────────────────────────────────
+            <section id="inline-type-indicator">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Inline Type Indicator"</h3>
+                <p class="text-xs text-faint mb-3">"Dot + label combo for in-row use. The boxed TypeBadge above is for surfaces where type is the primary content (form mode toggles); use this inline variant inside list rows where the boxed badge would compete with the row's accent bar."</p>
+                <Card>
+                    <div class="flex flex-col gap-3">
+                        <InlineTypeIndicator item_type=ItemType::Piece />
+                        <InlineTypeIndicator item_type=ItemType::Exercise />
+                    </div>
+                </Card>
+            </section>
+
+            // ── Accent Row ────────────────────────────────────────────
+            <section id="accent-row">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Accent Row"</h3>
+                <p class="text-xs text-faint mb-3">"List-row primitive with optional 4px gradient bar on the left. Use sparingly — bars earn their keep on mixed-type lists (library, setlists). For uniform lists, pass `bar=AccentBar::None` so they don't flatten into noise."</p>
+                <div class="space-y-2">
+                    <AccentRow bar=AccentBar::Gold>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"Clair de Lune"</span>
+                            <span class="text-xs text-muted">"Debussy"</span>
+                        </div>
+                        <InlineTypeIndicator item_type=ItemType::Piece />
+                    </AccentRow>
+                    <AccentRow bar=AccentBar::Blue>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"Hanon Exercise No.1"</span>
+                            <span class="text-xs text-muted">"Hanon"</span>
+                        </div>
+                        <InlineTypeIndicator item_type=ItemType::Exercise />
+                    </AccentRow>
+                    <AccentRow bar=AccentBar::None>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"No-bar variant"</span>
+                            <span class="text-xs text-muted">"For uniform-type lists"</span>
+                        </div>
+                    </AccentRow>
+                </div>
+            </section>
+
+            // ── Detail Group ──────────────────────────────────────────
+            <section id="detail-group">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Detail Group"</h3>
+                <p class="text-xs text-faint mb-3">"Card containing a section label + grouped rows + the inset 4px bar. The signature container of the 2026 refresh — used for DETAILS / RECENT SESSIONS / NOTES on the Piece Detail page. DetailRow renders standard label/value pairs."</p>
+                <div class="space-y-3">
+                    <DetailGroup label="Details" bar=AccentBar::Gold>
+                        <DetailRow label="Difficulty">"Intermediate"</DetailRow>
+                        <DetailRow label="Key">"D♭ Major"</DetailRow>
+                        <DetailRow label="Time Signature">"9/8"</DetailRow>
+                        <DetailRow label="Added">"12 Apr 2026"</DetailRow>
+                    </DetailGroup>
+                    <DetailGroup label="Notes" bar=AccentBar::Blue>
+                        <p class="text-sm text-secondary leading-relaxed">"Focus on the arpeggiated left hand in the opening section. Keep dynamics very soft, pp throughout the first page."</p>
+                    </DetailGroup>
                 </div>
             </section>
 

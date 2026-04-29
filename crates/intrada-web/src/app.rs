@@ -99,7 +99,7 @@ pub fn App() -> impl IntoView {
     view! {
         <Router>
             // Fixed gradient background — stays behind all content, does not scroll
-            <div class="fixed inset-0 -z-10 bg-linear-to-br from-gray-950 via-indigo-950 to-purple-950"></div>
+            <div class="fixed inset-0 -z-10 bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"></div>
 
             <Show
                 when=move || auth_loading.get()

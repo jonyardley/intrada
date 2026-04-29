@@ -1,10 +1,23 @@
 @import 'tailwindcss';
 @source "./src/**/*.rs";
 
+/* Self-hosted Inter Variable — one woff2 covers all weights.
+   font-display: swap so text renders immediately in the system fallback
+   stack and re-flows when Inter loads (avoids the FOIT "flash of
+   invisible text" pause). */
+@font-face {
+  font-family: 'InterVariable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2-variations');
+}
+
 /* Dark base background on html prevents white flash during View Transitions.
-   Matches gray-950 (the gradient's start colour) to minimise any bleed-through. */
+   Matches the gradient's start colour (#111827 / gray-900) so any
+   bleed-through during route transitions reads as part of the page. */
 html {
-  background-color: oklch(15.6% 0.011 261.692);
+  background-color: #111827;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -25,10 +38,18 @@ html {
      during practice sessions (audit #5). */
   --color-surface-primary: oklch(100% 0 0 / 12%);       /* white/12 — glass cards */
   --color-surface-secondary: oklch(100% 0 0 / 5%);      /* white/5  — subtle cards, skeletons */
+  --color-surface-faint: oklch(100% 0 0 / 3%);          /* white/3  — list rows in 2026 refresh (whisper-soft cards) */
   --color-surface-chrome: oklch(15.6% 0.011 261.692 / 60%); /* gray-900/60 — header, tab bar */
-  --color-surface-fallback: oklch(25.7% 0.09 281.288 / 80%); /* indigo-950/80 — no-blur fallback */
+  --color-surface-fallback: #111827CC;                   /* gray-900/80 — no-blur fallback (was indigo, now neutral to match new background) */
   --color-surface-hover: oklch(100% 0 0 / 22%);         /* white/22 — hover states */
   --color-surface-input: oklch(100% 0 0 / 10%);         /* white/10 — form inputs */
+
+  /* ── Background gradient (2026 refresh) ──
+     Neutral dark gradient — drops the previous purple cast in favour of
+     gray-900 → near-black. Used directly as Tailwind tokens too via
+     `bg-[var(--color-bg-gradient-top)]` if needed. */
+  --color-bg-gradient-top: #111827;                      /* gray-900 */
+  --color-bg-gradient-bottom: #0A0F1A;                   /* near-black with slight blue tint */
 
   /* ── Accent colours (warm indigo) ──
      Shifted toward blue-violet with reduced chroma for a warmer,
@@ -132,10 +153,23 @@ html {
   --spacing-section: 3rem;             /* 48px — between catalogue sections */
   --spacing-section-lg: 4rem;          /* 64px — major section breaks */
 
+  /* ── Accent bar gradients (2026 refresh) ──
+     The 4px gradient bar inset on the left of AccentRow / DetailGroup
+     cards is the signature visual of the new design. Two variants:
+       - Gold: maps to "piece" content (warm, authoritative)
+       - Blue: maps to "exercise" content (cool, technical)
+     Both as CSS gradient strings so callers can use them in
+     `background-image:` without rebuilding the gradient each time. */
+  --bar-gradient-gold: linear-gradient(180deg, #D4A050 0%, #B8860B 100%);
+  --bar-gradient-blue: linear-gradient(180deg, #6B9FD4 0%, #4A7AB8 100%);
+
   /* ── Typography ──
      Heading font: Source Serif 4 — a clean transitional serif that
-     signals "music space" without sacrificing readability (audit #9). */
+     signals "music space" without sacrificing readability (audit #9).
+     Body font: Inter (self-hosted via @font-face above). System fallback
+     keeps the layout stable if Inter is slow to load. */
   --font-heading: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-body: 'InterVariable', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
 
   /* ── Semantic text colour aliases ──
      Use these instead of raw gray-N colours. They map to the
@@ -146,6 +180,14 @@ html {
   --color-label: var(--color-text-label);           /* gray-200 — form labels */
   --color-muted: var(--color-text-muted);           /* gray-400 — hints, captions */
   --color-faint: var(--color-text-faint);           /* gray-500 — timestamps, metadata */
+}
+
+/* Default body font — Inter Variable with system fallback. Set on `body`
+   not `html` so Tailwind's `font-sans` utility (which targets html) can
+   still be overridden where needed. Tailwind v4's @theme exports
+   --font-sans automatically; we override it here via the body element. */
+body {
+  font-family: var(--font-body);
 }
 
 
@@ -263,6 +305,138 @@ html {
 /* Contain scroll overscroll within a region — stops rubber-band propagating to root */
 @utility scroll-contain {
   overscroll-behavior: contain;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   2026 Refresh — Primitive Components
+   ═══════════════════════════════════════════════════════════════════════
+   Visual primitives introduced by the 2026 design refresh. The signature
+   element is the 4px gradient bar inset on the left of cards / rows —
+   .accent-row and .detail-group both expose it via a pseudo-element.
+
+   Variants are class modifiers, not separate components, so the same
+   ::before rule applies regardless of which gradient the caller picks.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* AccentRow — list-row primitive with optional 4px gradient bar.
+   Defaults to the gold variant; modifier classes swap or remove the bar.
+   `clip` (overflow:hidden) keeps the bar within the rounded corners. */
+.accent-row {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background-color: var(--color-surface-faint);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+}
+.accent-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--bar-gradient-gold);
+}
+.accent-row--blue::before {
+  background: var(--bar-gradient-blue);
+}
+.accent-row--no-bar::before {
+  display: none;
+}
+
+/* InlineTypeIndicator — 6px coloured dot + label. Replaces the boxed
+   TypeBadge for in-row use. Two variants matching the Pencil colour
+   tokens for Piece (accent indigo) and Exercise (warm gold). */
+.inline-type-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;       /* 12px */
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.inline-type-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.inline-type-indicator--piece {
+  color: var(--color-accent-text);
+}
+.inline-type-indicator--piece .inline-type-indicator-dot {
+  background-color: var(--color-accent);
+}
+.inline-type-indicator--exercise {
+  color: var(--color-warm-accent-text);
+}
+.inline-type-indicator--exercise .inline-type-indicator-dot {
+  background-color: var(--color-warm-accent);
+}
+
+/* SectionLabel — uppercase letter-spaced label sitting above grouped
+   content (DETAILS / RECENT ACTIVITY / NOTES / THIS WEEK). Pairs with
+   DetailGroup but also works standalone above any list. */
+.section-label {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;     /* 11px */
+  font-weight: 600;
+  letter-spacing: 0.0625rem; /* 1px */
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* DetailGroup — card containing a SectionLabel + grouped rows + the
+   inset accent bar. Padding is asymmetric — extra 4px on the left
+   to accommodate the bar without crowding the content. */
+.detail-group {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 12px 20px;
+  border-radius: 10px;
+  background-color: var(--color-surface-faint);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+}
+.detail-group::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 4px;
+  background: var(--bar-gradient-gold);
+}
+.detail-group--blue::before {
+  background: var(--bar-gradient-blue);
+}
+.detail-group--no-bar::before {
+  display: none;
+}
+
+/* Detail row — label/value pair inside a DetailGroup. Used for the
+   "Difficulty / Key / Time Signature / Added" rows on the Piece Detail
+   page. Label = secondary, value = primary weight 500. */
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;    /* 15px */
+}
+.detail-row-label {
+  color: var(--color-text-secondary);
+}
+.detail-row-value {
+  color: var(--color-text-primary);
+  font-weight: 500;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
