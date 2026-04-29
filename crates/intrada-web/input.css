@@ -40,7 +40,7 @@ html {
   --color-surface-secondary: oklch(100% 0 0 / 5%);      /* white/5  — subtle cards, skeletons */
   --color-surface-faint: oklch(100% 0 0 / 3%);          /* white/3  — list rows in 2026 refresh (whisper-soft cards) */
   --color-surface-chrome: oklch(15.6% 0.011 261.692 / 60%); /* gray-900/60 — header, tab bar */
-  --color-surface-fallback: #111827CC;                   /* gray-900/80 — no-blur fallback (was indigo, now neutral to match new background) */
+  --color-surface-fallback: oklch(20.6% 0.024 263 / 80%); /* gray-900/80 — no-blur fallback (neutral, was indigo) */
   --color-surface-hover: oklch(100% 0 0 / 22%);         /* white/22 — hover states */
   --color-surface-input: oklch(100% 0 0 / 10%);         /* white/10 — form inputs */
 

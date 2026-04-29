@@ -30,6 +30,12 @@ impl AccentBar {
 /// setlist builder) and detail-page sections. For uniform lists (session
 /// history, all routines), pass `bar=AccentBar::None` so the bars don't
 /// flatten into noise.
+///
+/// Layout contract: the row is a 60px-min flexbox with `align-items:
+/// center` and 16px horizontal padding (no vertical padding — content
+/// is vertically centred). Children own their internal layout —
+/// typically a `flex flex-col flex-1` text column on the left followed
+/// by indicators and a chevron on the right.
 #[component]
 pub fn AccentRow(
     children: Children,
