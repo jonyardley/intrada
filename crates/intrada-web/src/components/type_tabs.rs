@@ -3,12 +3,19 @@ use leptos::prelude::*;
 use leptos::web_sys;
 use wasm_bindgen::JsCast;
 
+use intrada_web::haptics::haptic_selection;
 use intrada_web::types::ItemType;
 
-/// Horizontal toggle switch for selecting between Piece and Exercise types.
+/// Horizontal toggle for selecting between Piece and Exercise types.
 ///
-/// - When `on_change` is `Some`, the switch is interactive (add form).
-/// - When `on_change` is `None`, the switch is display-only (edit form).
+/// - When `on_change` is `Some`, the control is interactive (add form).
+/// - When `on_change` is `None`, the control is display-only (edit form).
+///
+/// Web: pill-style toggle with accent fill on active segment.
+/// iOS (`[data-platform="ios"]`): UISegmentedControl-style — rounded-rect
+/// track with an accent-filled thumb that slides between segments. Active
+/// text bumps to weight 600; inactive stays muted. `selection` haptic on
+/// every change.
 #[component]
 pub fn TypeTabs(
     active: Signal<ItemType>,
@@ -16,22 +23,34 @@ pub fn TypeTabs(
 ) -> impl IntoView {
     let is_interactive = on_change.is_some();
 
-    // Helper to build class strings — pill-style segmented control
+    // Drives the sliding thumb position via CSS custom property.
+    // On web the thumb is hidden (display:none); on iOS it slides.
+    let thumb_style = move || {
+        let offset = if active.get() == ItemType::Piece {
+            "0%"
+        } else {
+            "100%"
+        };
+        format!("--thumb-x: {offset}")
+    };
+
+    // Build button classes. Web: individual pill fill. iOS: transparent bg
+    // (overridden by .type-tabs-btn CSS); aria-selected drives font weight.
     let tab_class = move |tab: ItemType| {
         let is_active = active.get() == tab;
-        let base = "relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-accent-focus focus:ring-offset-0";
+        let base = "type-tabs-btn relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-accent-focus focus:ring-offset-0";
         if is_active {
             format!("{base} bg-accent text-primary shadow-sm")
         } else if is_interactive {
             format!("{base} text-muted hover:text-primary cursor-pointer")
         } else {
-            // Display-only inactive
             format!("{base} text-faint cursor-default")
         }
     };
 
     let handle_click = move |tab: ItemType| {
         if let Some(cb) = on_change {
+            haptic_selection();
             cb.run(tab);
         }
     };
@@ -48,7 +67,6 @@ pub fn TypeTabs(
                     ItemType::Piece => ItemType::Exercise,
                     ItemType::Exercise => ItemType::Piece,
                 };
-                // Move focus to the other tab button
                 if let Some(target) = ev.target() {
                     if let Some(el) = target.dyn_ref::<web_sys::HtmlElement>() {
                         if let Some(parent) = el.parent_element() {
@@ -66,6 +84,7 @@ pub fn TypeTabs(
                     }
                 }
                 if let Some(cb) = on_change {
+                    haptic_selection();
                     cb.run(new_tab);
                 }
             }
@@ -122,9 +141,14 @@ pub fn TypeTabs(
         <div
             role="tablist"
             aria-label="Item type"
-            class="inline-flex items-center rounded-full bg-surface-input p-1 gap-1"
+            class="type-tabs relative inline-flex items-center rounded-full bg-surface-input p-1 gap-1"
+            style=thumb_style
             on:keydown=handle_keydown
         >
+            // Decorative sliding thumb — hidden on web, visible + animated on iOS.
+            // Sits behind the buttons (z-0 vs buttons' z-10).
+            <div class="type-tabs-thumb" aria-hidden="true" />
+
             <button
                 type="button"
                 role="tab"

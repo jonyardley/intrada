@@ -1373,3 +1373,96 @@ html:not([data-platform="ios"]) .context-menu {
 .input-clear:active {
   transform: translateY(-50%) scale(0.92);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TypeTabs — iOS UISegmentedControl-style variant
+   Web default: pill toggle with accent fill per segment (existing Tailwind
+   classes handle this; .type-tabs-thumb is hidden).
+   iOS: rounded-rect track + an accent-filled thumb that slides between
+   segments via CSS transform on --thumb-x. Brand colour carries the
+   active state; the iOS-spring transition + monochrome inactive text
+   keep the control feeling native.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* On web, the thumb is purely decorative and must not affect layout. */
+.type-tabs-thumb {
+  display: none;
+}
+
+/* iOS segmented control track */
+[data-platform="ios"] .type-tabs {
+  border-radius: 9px;
+  padding: 2px;
+  gap: 0;
+}
+
+/* Sliding thumb — absolutely fills one half of the track inner area.
+   Uses the brand accent indigo so the selection state reads at a glance
+   (a neutral-on-neutral thumb on this dark palette was too subtle). The
+   sliding shape + iOS spring still drive the native interaction feel. */
+[data-platform="ios"] .type-tabs-thumb {
+  display: block;
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  background: var(--color-accent);
+  border-radius: 7px;
+  box-shadow:
+    0 1px 3px oklch(0% 0 0 / 35%),
+    0 0 0 0.5px oklch(100% 0 0 / 14%);
+  transform: translateX(var(--thumb-x, 0%));
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-platform="ios"] .type-tabs-thumb {
+    transition: none;
+  }
+}
+
+/* Buttons sit above the thumb; transparent bg replaces the web pill fill.
+   Explicit width:50% + flex:none avoids inline-flex ambiguity that would
+   give unequal halves (and misalign the sliding thumb). */
+[data-platform="ios"] .type-tabs-btn {
+  position: relative;
+  z-index: 10;
+  background: transparent;
+  border-radius: 7px;
+  padding: 5px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: color 0.15s ease;
+  width: 50%;
+  flex: none;
+}
+
+[data-platform="ios"] .type-tabs-btn[aria-selected="true"] {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* Touch focus must be invisible — the Tailwind `focus:ring-2` utilities
+   on the button class still fire on tap and read as a blue glow on iOS,
+   which is exactly the web-y focus-state issue we want to avoid. Override
+   any inherited :focus ring; only show a ring for keyboard navigation. */
+[data-platform="ios"] .type-tabs-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+[data-platform="ios"] .type-tabs-btn:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* Display-only mode (edit form): cursor and hover state stripped */
+[data-platform="ios"] .type-tabs-btn[aria-disabled="true"] {
+  cursor: default;
+}
