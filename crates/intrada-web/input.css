@@ -512,7 +512,10 @@ body {
   background-color: var(--color-accent-hover);
 }
 .circular-button:active {
-  transform: scale(0.95);
+  /* Match the iOS global .is-pressed scale (0.97) so web/Android click
+     and iOS touch press feel identical. The iOS .is-pressed handler
+     also dims to opacity 0.6; web/Android keeps full opacity. */
+  transform: scale(0.97);
 }
 .circular-button:focus-visible {
   outline: 2px solid var(--color-accent-focus);

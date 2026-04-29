@@ -816,24 +816,24 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Player controls (medium primary + small secondary)"</p>
                             <div class="flex items-center justify-center gap-6">
-                                <CircularButton icon=IconName::Plus aria_label="Play" />
+                                <CircularButton icon=IconName::Play aria_label="Play" />
                                 <CircularButton icon=IconName::RotateCcw aria_label="Reset" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
                             </div>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"All variants"</p>
                             <div class="flex items-center justify-center gap-4">
-                                <CircularButton icon=IconName::Plus aria_label="Primary medium" />
-                                <CircularButton icon=IconName::Plus aria_label="Primary small" size=CircularButtonSize::Small />
-                                <CircularButton icon=IconName::Plus aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
-                                <CircularButton icon=IconName::Plus aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=IconName::Play aria_label="Primary medium" />
+                                <CircularButton icon=IconName::Pause aria_label="Primary small" size=CircularButtonSize::Small />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
                             </div>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Disabled"</p>
                             <div class="flex items-center justify-center gap-4">
-                                <CircularButton icon=IconName::Plus aria_label="Disabled primary" disabled=Signal::derive(|| true) />
-                                <CircularButton icon=IconName::Plus aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
+                                <CircularButton icon=IconName::Play aria_label="Disabled primary" disabled=Signal::derive(|| true) />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
                             </div>
                         </div>
                     </div>
