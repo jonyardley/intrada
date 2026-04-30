@@ -439,6 +439,117 @@ body {
   font-weight: 500;
 }
 
+/* StatCard — refresh variant. The surface drops from white/12 to the
+   whisper-soft white/3, an inset gradient bar appears on the left, and
+   the value text can carry an accent / warm-accent tone (signals the
+   stat's category at a glance: streak = accent, hours = gold, etc).
+   The classic glass-card variant is still available — opt in by setting
+   `bar` on the Leptos component. */
+.stat-card-faint {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background-color: var(--color-surface-faint);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+}
+.stat-card-faint::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 4px;
+  background: var(--bar-gradient-gold);
+}
+.stat-card-faint--blue::before {
+  background: var(--bar-gradient-blue);
+}
+.stat-card-faint--no-bar::before {
+  display: none;
+}
+.stat-card-faint-value {
+  font-family: var(--font-body);
+  font-size: 1.25rem;       /* 20px */
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+.stat-card-faint-value--accent {
+  color: var(--color-accent-text);
+}
+.stat-card-faint-value--warm {
+  color: var(--color-warm-accent-text);
+}
+.stat-card-faint-label {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;     /* 11px */
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+/* CircularButton — round icon-only action used for player controls
+   (play/pause 56px primary, reset/skip 44px secondary). Matches the
+   iOS UIButton round style — solid fill, no border, gentle press
+   feedback. The secondary variant uses a low-opacity surface so the
+   primary play button visually anchors the row. */
+.circular-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--color-text-primary);
+  background-color: var(--color-accent);
+  width: 56px;
+  height: 56px;
+  transition: background-color 120ms ease-out, transform 80ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.circular-button:hover {
+  background-color: var(--color-accent-hover);
+}
+.circular-button:active {
+  /* Match the iOS global .is-pressed scale (0.97) so web/Android click
+     and iOS touch press feel identical. The iOS .is-pressed handler
+     also dims to opacity 0.6; web/Android keeps full opacity. */
+  transform: scale(0.97);
+}
+.circular-button:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 2px;
+}
+.circular-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.circular-button--small {
+  width: 44px;
+  height: 44px;
+}
+.circular-button--secondary {
+  background-color: var(--color-surface-input);
+  color: var(--color-text-secondary);
+}
+.circular-button--secondary:hover {
+  background-color: var(--color-surface-hover);
+}
+
+/* Hero CTA — the larger Button size for full-width primary actions
+   (Add to Library, Start Practice, Finish Session). The default Button
+   stays at 44px / text-sm for inline use; this class layers over the
+   variant base to bump padding, font size, and weight. */
+.btn-hero {
+  min-height: 48px;
+  padding-top: 0.875rem;
+  padding-bottom: 0.875rem;
+  font-size: 1rem;          /* 16px */
+  font-weight: 600;
+  border-radius: 12px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Typography Utilities
    ═══════════════════════════════════════════════════════════════════════
