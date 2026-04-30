@@ -550,6 +550,45 @@ body {
   border-radius: 12px;
 }
 
+/* Search bar — visual primitive sitting above filterable lists.
+   Currently non-functional (no search logic wired up); the input is
+   present so the screen matches the 2026 refresh designs. The font
+   size is 16px to suppress iOS zoom-on-focus. */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  height: 44px;
+  padding: 0 0.875rem;
+  border-radius: 12px;
+  background-color: var(--color-surface-secondary);
+}
+.search-bar-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.search-bar-input {
+  flex: 1 1 0%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--color-text-primary);
+  min-width: 0;
+}
+.search-bar-input::placeholder {
+  color: var(--color-text-muted);
+}
+/* Hide WebKit's built-in search input X — we'll build a proper clear
+   affordance when the search logic actually lands. */
+.search-bar-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Typography Utilities
    ═══════════════════════════════════════════════════════════════════════

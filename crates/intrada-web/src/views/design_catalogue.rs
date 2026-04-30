@@ -742,18 +742,11 @@ pub fn DesignCatalogue() -> impl IntoView {
             // ── Library Item Cards ────────────────────────────────────
             <section id="library-item-card">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Item Card"</h3>
-                <p class="text-xs text-faint mb-3">"Content grouped semantically: [title + composer] — [key/tempo] — [tags]."</p>
-                <ul class="space-y-3">
-                    <p class="text-xs font-medium text-muted uppercase">"Full metadata (piece)"</p>
+                <p class="text-xs text-faint mb-3">"Compact 60px AccentRow — gold bar for pieces, blue for exercises. Title + composer/subtitle on the left, InlineTypeIndicator + chevron on the right. Key / tempo / tags now live on the detail page so the list reads at a glance."</p>
+                <ul class="space-y-2 list-none p-0">
                     <LibraryItemCard item=sample_piece />
-
-                    <p class="text-xs font-medium text-muted uppercase mt-6">"Full metadata (exercise)"</p>
                     <LibraryItemCard item=sample_exercise />
-
-                    <p class="text-xs font-medium text-muted uppercase mt-6">"Minimal (no subtitle, tags, key, or tempo)"</p>
                     <LibraryItemCard item=sample_minimal />
-
-                    <p class="text-xs font-medium text-muted uppercase mt-6">"Long title + many tags"</p>
                     <LibraryItemCard item=sample_long_title />
                 </ul>
             </section>
