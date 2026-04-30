@@ -380,7 +380,10 @@ body {
 
 /* SectionLabel — uppercase letter-spaced label sitting above grouped
    content (DETAILS / RECENT ACTIVITY / NOTES / THIS WEEK). Pairs with
-   DetailGroup but also works standalone above any list. */
+   DetailGroup but also works standalone above any list. The
+   margin-bottom only applies in normal block flow — DetailGroup uses
+   `gap: 12px` on its flex parent which supersedes margin between items
+   so this doesn't double-up. */
 .section-label {
   font-family: var(--font-body);
   font-size: 0.6875rem;     /* 11px */
@@ -388,6 +391,7 @@ body {
   letter-spacing: 0.0625rem; /* 1px */
   text-transform: uppercase;
   color: var(--color-text-muted);
+  margin-bottom: 0.75rem;   /* 12px — matches the old .card-title spacing */
 }
 
 /* DetailGroup — card containing a SectionLabel + grouped rows + the
@@ -407,9 +411,7 @@ body {
 .detail-group::before {
   content: '';
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 0;
+  inset: 0 auto 0 0;
   width: 4px;
   background: var(--bar-gradient-gold);
 }
@@ -460,9 +462,7 @@ body {
 .stat-card-faint::before {
   content: '';
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 0;
+  inset: 0 auto 0 0;
   width: 4px;
   background: var(--bar-gradient-gold);
 }

@@ -6,7 +6,8 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 
 use crate::components::{
-    Card, EmptyState, Icon, IconName, LineChart, PageHeading, SkeletonBlock, StatCard,
+    AccentBar, Card, EmptyState, Icon, IconName, LineChart, PageHeading, SectionLabel,
+    SkeletonBlock, StatCard, StatTone,
 };
 use intrada_web::core_bridge::init_core;
 use intrada_web::types::{IsLoading, IsSubmitting};
@@ -77,19 +78,45 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
     } = analytics;
 
     let streak_display = format!("{}", streak.current_days);
+    // Weekly hours formatted as a single decimal — matches the Pencil
+    // "8.5" style. Whole-hour values render as "5", not "5.0".
+    let hours_decimal = weekly.total_minutes as f64 / 60.0;
+    let hours_display = if hours_decimal.fract() == 0.0 {
+        format!("{:.0}", hours_decimal)
+    } else {
+        format!("{:.1}", hours_decimal)
+    };
+    let items_display = format!("{}", weekly.items_covered);
 
     view! {
         <div class="space-y-6">
-            // ── Streak stat card (single, no longer in 3-column grid) ──
-            <StatCard
-                title="Streak"
-                value=streak_display
-                subtitle="days"
-            />
+            // ── Top stat row — three StatCard refresh variants. The
+            // tone of the value text (accent purple / warm gold / white)
+            // mirrors the gradient bar on the left of each card so a
+            // stat's category reads at a glance.
+            <div class="grid grid-cols-3 gap-3">
+                <StatCard
+                    title="Day Streak"
+                    value=streak_display
+                    bar=AccentBar::Gold
+                    tone=StatTone::Accent
+                />
+                <StatCard
+                    title="Hrs This Week"
+                    value=hours_display
+                    bar=AccentBar::Blue
+                    tone=StatTone::WarmAccent
+                />
+                <StatCard
+                    title="Items This Week"
+                    value=items_display
+                    bar=AccentBar::Gold
+                />
+            </div>
 
             // ── Weekly Summary Card ──────────────────────────────
             <Card>
-                <h3 class="card-title">"This Week"</h3>
+                <SectionLabel text="This Week" />
                 <WeekComparisonRow weekly=weekly.clone() />
                 // ── Neglected + Score Changes (2-col on desktop, stacked on mobile)
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -100,7 +127,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US2: Practice History Chart ──────────────────────
             <Card>
-                <h3 class="card-title">"Practice History (28 days)"</h3>
+                <SectionLabel text="Practice History (28 days)" />
                 {if daily_totals.iter().all(|d| d.minutes == 0) {
                     view! {
                         <p class="text-sm text-muted text-center py-8">
@@ -120,7 +147,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US3: Most Practised Items ────────────────────────
             <Card>
-                <h3 class="card-title">"Most Practised"</h3>
+                <SectionLabel text="Most Practised" />
                 {if top_items.is_empty() {
                     view! {
                         <p class="text-sm text-muted text-center py-4">
@@ -173,7 +200,7 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
 
             // ── US4: Score Trends ────────────────────────────────
             <Card>
-                <h3 class="card-title">"Score Trends"</h3>
+                <SectionLabel text="Score Trends" />
                 {if score_trends.is_empty() {
                     view! {
                         <p class="text-sm text-muted text-center py-4">
