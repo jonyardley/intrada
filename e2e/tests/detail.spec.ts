@@ -4,8 +4,14 @@ test.describe("detail view", () => {
   test("displays all fields for a stub piece", async ({ page }) => {
     await page.goto("/");
 
-    // Navigate to Clair de Lune detail
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
+    // Navigate to Clair de Lune detail. Library rows are no longer
+    // headings post-2026-refresh — they're links inside <li>s, with
+    // title + subtitle + type indicator combined into the link's
+    // accessible name. Match by visible text instead of role=heading.
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Clair de Lune")
+      .click();
 
     // Title and composer
     await expect(
@@ -48,8 +54,11 @@ test.describe("detail view", () => {
   test("delete item with confirmation", async ({ page }) => {
     await page.goto("/");
 
-    // Navigate to Hanon No. 1
-    await page.getByRole("heading", { name: "Hanon No. 1" }).click();
+    // Navigate to Hanon No. 1 (library rows are now links, not headings).
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Hanon No. 1")
+      .click();
     await expect(
       page.getByRole("heading", { name: "Hanon No. 1", level: 2 })
     ).toBeVisible();
@@ -76,9 +85,12 @@ test.describe("detail view", () => {
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
 
-    // Hanon No. 1 should be gone
+    // Hanon No. 1 should be gone (no longer a heading post-refresh —
+    // assert against the list contents directly).
     await expect(
-      page.getByRole("heading", { name: "Hanon No. 1" })
+      page
+        .getByRole("list", { name: "Library items" })
+        .getByText("Hanon No. 1")
     ).not.toBeVisible();
 
     // Only 1 item remaining

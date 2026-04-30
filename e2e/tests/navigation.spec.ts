@@ -24,8 +24,12 @@ test.describe("navigation", () => {
   }) => {
     await page.goto("/");
 
-    // Click the first stub item (Clair de Lune)
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
+    // Click the first stub item (Clair de Lune). Library rows are
+    // links, not headings, post-2026-refresh.
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Clair de Lune")
+      .click();
 
     // Should show the detail view with the item title
     await expect(
