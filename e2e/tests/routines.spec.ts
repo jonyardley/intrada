@@ -32,40 +32,19 @@ test.describe("routines page", () => {
     // Should show the routine name
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
 
-    // Should show the item count badge
-    await expect(page.getByText("2 items")).toBeVisible();
+    // Type-breakdown meta line replaces the previous "N items" badge —
+    // STUB_ROUTINE has one piece + one exercise.
+    await expect(page.getByText("1 piece · 1 exercise")).toBeVisible();
 
-    // Should show Edit and Delete controls
-    await expect(page.getByRole("link", { name: "Edit" })).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Delete" })
-    ).toBeVisible();
-  });
-
-  test("delete routine with confirmation", async ({ page, mockApi }) => {
-    mockApi.routines = createSeedRoutinesWithStub();
-
-    await page.goto("/routines");
-    await expect(page.getByText("Morning Warm-up")).toBeVisible();
-
-    // Click Delete — should show confirmation
-    await page.getByRole("button", { name: "Delete" }).click();
-    await expect(
-      page.getByText("Delete this routine? This cannot be undone.")
-    ).toBeVisible();
-
-    // Cancel — should dismiss
-    await page.getByRole("button", { name: "Cancel" }).click();
-    await expect(
-      page.getByText("Delete this routine? This cannot be undone.")
-    ).not.toBeVisible();
-
-    // Delete again and confirm
-    await page.getByRole("button", { name: "Delete" }).click();
-    await page.getByRole("button", { name: "Confirm Delete" }).click();
-
-    // Should show empty state
-    await expect(page.getByText("No saved routines yet")).toBeVisible();
+    // The whole row is a tap target linking to the edit screen — Edit /
+    // Delete affordances live in the swipe gesture and long-press
+    // context menu, not inline buttons. We verify the link target here;
+    // gesture-based actions are validated at the core/event layer.
+    const row = page.getByRole("link").filter({ hasText: "Morning Warm-up" });
+    await expect(row).toHaveAttribute(
+      "href",
+      /\/routines\/[A-Z0-9]+\/edit$/
+    );
   });
 
   test("save routine from session builder", async ({ page }) => {
