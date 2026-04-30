@@ -7,12 +7,14 @@ use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, TempoHistoryEntry};
 
 use crate::components::{
-    Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button, ButtonVariant, Card,
-    ContextMenu, ContextMenuAction, DayCell, DropIndicator, EmptyState, FieldLabel, FormFieldError,
-    IconName, LibraryItemCard, LineChart, PageHeading, ProgressRing, RoutineSaveForm,
-    SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard,
-    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
-    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
+    ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize, CircularButtonVariant,
+    ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow, DropIndicator, EmptyState,
+    FieldLabel, FormFieldError, IconName, InlineTypeIndicator, LibraryItemCard, LineChart,
+    PageHeading, ProgressRing, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock,
+    SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput,
+    TempoProgressChart, TextArea, TextField, Toast, ToastVariant, TransitionPrompt, TypeBadge,
+    TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -619,6 +621,77 @@ pub fn DesignCatalogue() -> impl IntoView {
             </section>
 
             // ══════════════════════════════════════════════════════════
+            // 2026 REFRESH — New primitives (signature design language)
+            // ══════════════════════════════════════════════════════════
+
+            // ── Section Label ─────────────────────────────────────────
+            <section id="section-label">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Section Label"</h3>
+                <p class="text-xs text-faint mb-3">"Uppercase 11px label that anchors grouped content. Place above any list, card group, or chart row."</p>
+                <Card>
+                    <SectionLabel text="Recent Activity" />
+                    <p class="text-sm text-secondary mt-2">"…content lives below the label."</p>
+                </Card>
+            </section>
+
+            // ── Inline Type Indicator ─────────────────────────────────
+            <section id="inline-type-indicator">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Inline Type Indicator"</h3>
+                <p class="text-xs text-faint mb-3">"Dot + label combo for in-row use. The boxed TypeBadge above is for surfaces where type is the primary content (form mode toggles); use this inline variant inside list rows where the boxed badge would compete with the row's accent bar."</p>
+                <Card>
+                    <div class="flex flex-col gap-3">
+                        <InlineTypeIndicator item_type=ItemType::Piece />
+                        <InlineTypeIndicator item_type=ItemType::Exercise />
+                    </div>
+                </Card>
+            </section>
+
+            // ── Accent Row ────────────────────────────────────────────
+            <section id="accent-row">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Accent Row"</h3>
+                <p class="text-xs text-faint mb-3">"List-row primitive with optional 4px gradient bar on the left. Use sparingly — bars earn their keep on mixed-type lists (library, setlists). For uniform lists, pass `bar=AccentBar::None` so they don't flatten into noise."</p>
+                <div class="space-y-2">
+                    <AccentRow bar=AccentBar::Gold>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"Clair de Lune"</span>
+                            <span class="text-xs text-muted">"Debussy"</span>
+                        </div>
+                        <InlineTypeIndicator item_type=ItemType::Piece />
+                    </AccentRow>
+                    <AccentRow bar=AccentBar::Blue>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"Hanon Exercise No.1"</span>
+                            <span class="text-xs text-muted">"Hanon"</span>
+                        </div>
+                        <InlineTypeIndicator item_type=ItemType::Exercise />
+                    </AccentRow>
+                    <AccentRow bar=AccentBar::None>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"No-bar variant"</span>
+                            <span class="text-xs text-muted">"For uniform-type lists"</span>
+                        </div>
+                    </AccentRow>
+                </div>
+            </section>
+
+            // ── Detail Group ──────────────────────────────────────────
+            <section id="detail-group">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Detail Group"</h3>
+                <p class="text-xs text-faint mb-3">"Card containing a section label + grouped rows + the inset 4px bar. The signature container of the 2026 refresh — used for DETAILS / RECENT SESSIONS / NOTES on the Piece Detail page. DetailRow renders standard label/value pairs."</p>
+                <div class="space-y-3">
+                    <DetailGroup label="Details" bar=AccentBar::Gold>
+                        <DetailRow label="Difficulty">"Intermediate"</DetailRow>
+                        <DetailRow label="Key">"D♭ Major"</DetailRow>
+                        <DetailRow label="Time Signature">"9/8"</DetailRow>
+                        <DetailRow label="Added">"12 Apr 2026"</DetailRow>
+                    </DetailGroup>
+                    <DetailGroup label="Notes" bar=AccentBar::Blue>
+                        <p class="text-sm text-secondary leading-relaxed">"Focus on the arpeggiated left hand in the opening section. Keep dynamics very soft, pp throughout the first page."</p>
+                    </DetailGroup>
+                </div>
+            </section>
+
+            // ══════════════════════════════════════════════════════════
             // COMPONENTS — Containers
             // ══════════════════════════════════════════════════════════
 
@@ -650,12 +723,19 @@ pub fn DesignCatalogue() -> impl IntoView {
             // ── Stat Cards ────────────────────────────────────────────
             <section id="stat-card">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Stat Card"</h3>
-                <p class="text-xs text-faint mb-3">"Compact padding (12px) so the stat value dominates."</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <p class="text-xs font-medium text-muted uppercase mb-2">"Classic — glass-card chrome"</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
                     <StatCard title="Sessions" value="12".to_string() subtitle="This month" />
                     <StatCard title="Avg Score" value="3.8".to_string() subtitle="Out of 5" />
+                </div>
+                <p class="text-xs font-medium text-muted uppercase mb-2">"2026 refresh \u{2014} inset accent bar + tone"</p>
+                <p class="text-xs text-faint mb-3">"Whisper-soft surface, gradient bar inset on the left, value text in the matching tone signals the stat's category at a glance."</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <StatCard title="Day Streak" value="12".to_string() bar=AccentBar::Gold tone=StatTone::Accent />
+                    <StatCard title="Hrs This Week" value="8.5".to_string() bar=AccentBar::Blue tone=StatTone::WarmAccent />
+                    <StatCard title="Pieces Learned" value="23".to_string() bar=AccentBar::Gold />
                 </div>
             </section>
 
@@ -713,6 +793,47 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 <Button variant=ButtonVariant::Primary loading=Signal::derive(|| true)>"Saving..."</Button>
                                 <Button variant=ButtonVariant::Success loading=Signal::derive(|| true)>"Completing..."</Button>
                                 <Button variant=ButtonVariant::Secondary loading=Signal::derive(|| true)>"Loading..."</Button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Hero (2026 refresh \u{2014} full-width CTA)"</p>
+                            <p class="text-xs text-faint mb-2">"Larger 48px / text-base / weight-600 sizing for the primary action on a screen (Add to Library, Start Practice). Default size stays Small for inline use."</p>
+                            <div class="space-y-3">
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Add to Library"</Button>
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Start Practice"</Button>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Circular Button ───────────────────────────────────────
+            <section id="circular-button">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Circular Button"</h3>
+                <p class="text-xs text-faint mb-3">"Round icon-only action used for player controls in the 2026 refresh. 56px primary anchors the row; 44px secondary sits beside it. Light haptic on press, scale feedback on :active."</p>
+                <Card>
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Player controls (medium primary + small secondary)"</p>
+                            <div class="flex items-center justify-center gap-6">
+                                <CircularButton icon=IconName::Play aria_label="Play" />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Reset" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"All variants"</p>
+                            <div class="flex items-center justify-center gap-4">
+                                <CircularButton icon=IconName::Play aria_label="Primary medium" />
+                                <CircularButton icon=IconName::Pause aria_label="Primary small" size=CircularButtonSize::Small />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Disabled"</p>
+                            <div class="flex items-center justify-center gap-4">
+                                <CircularButton icon=IconName::Play aria_label="Disabled primary" disabled=Signal::derive(|| true) />
+                                <CircularButton icon=IconName::RotateCcw aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
                             </div>
                         </div>
                     </div>

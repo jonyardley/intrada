@@ -23,6 +23,8 @@ pub enum IconName {
     ListChecks,
     Minus,
     Music,
+    Pause,
+    Play,
     Plus,
     RotateCcw,
     Star,
@@ -130,6 +132,18 @@ pub fn Icon(
             <path d="M9 18V5l12-2v13" />
             <circle cx="6" cy="18" r="3" />
             <circle cx="18" cy="16" r="3" />
+        }
+        .into_any(),
+        // Play and Pause are filled icons (override the parent SVG's
+        // fill="none") so they read as solid player controls — the
+        // outlined versions look like media-stop or empty boxes.
+        IconName::Pause => view! {
+            <rect width="4" height="16" x="6" y="4" fill="currentColor" stroke="none" />
+            <rect width="4" height="16" x="14" y="4" fill="currentColor" stroke="none" />
+        }
+        .into_any(),
+        IconName::Play => view! {
+            <polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none" />
         }
         .into_any(),
         IconName::Plus => view! {
