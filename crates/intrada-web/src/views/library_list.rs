@@ -94,6 +94,20 @@ pub fn LibraryListView() -> impl IntoView {
                 }.into_any())
             />
 
+            // Visual search bar — non-functional placeholder for v1 of
+            // the 2026 refresh. Real client-side search needs design +
+            // UX work beyond a textbox; the input is here so the screen
+            // matches the Pencil reference. Tracked as #TODO follow-up.
+            <div class="search-bar">
+                <Icon name=IconName::Search class="search-bar-icon" />
+                <input
+                    type="search"
+                    class="search-bar-input"
+                    placeholder="Search pieces..."
+                    aria-label="Search library"
+                />
+            </div>
+
             // Library items section. The page-level <PageHeading> above
             // already supplies the visible "Library" title, so the
             // section just carries an aria-label for screen readers and
@@ -117,7 +131,7 @@ pub fn LibraryListView() -> impl IntoView {
                     {move || {
                         if is_loading.get() {
                             view! {
-                                <ul class="library-list grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <ul class="space-y-2 list-none p-0">
                                     <SkeletonItemCard />
                                     <SkeletonItemCard />
                                     <SkeletonItemCard />
@@ -144,7 +158,7 @@ pub fn LibraryListView() -> impl IntoView {
                                 }.into_any()
                             } else {
                                 view! {
-                                    <ul class="library-list grid grid-cols-1 sm:grid-cols-2 gap-3" role="list" aria-label="Library items">
+                                    <ul class="space-y-2 list-none p-0" role="list" aria-label="Library items">
                                         {vm.items.into_iter().map(|item| {
                                             view! {
                                                 <LibraryItemCard item=item on_delete=on_delete_item />

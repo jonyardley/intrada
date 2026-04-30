@@ -7,7 +7,11 @@ test.describe("edit library item", () => {
     await page.goto("/");
 
     // Navigate to Clair de Lune detail
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
+    // Library rows are links, not headings, post-2026-refresh.
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Clair de Lune")
+      .click();
     await expect(
       page.getByRole("heading", { name: "Clair de Lune", level: 2 })
     ).toBeVisible();
@@ -38,7 +42,11 @@ test.describe("edit library item", () => {
     await page.goto("/");
 
     // Navigate to piece detail then edit
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
+    // Library rows are links, not headings, post-2026-refresh.
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Clair de Lune")
+      .click();
     await page.getByRole("button", { name: "Edit" }).click();
     // Sheet is open with "Edit Item" in its nav title
     await expect(
@@ -62,7 +70,11 @@ test.describe("edit library item", () => {
     await page.goto("/");
 
     // Navigate to piece detail then edit
-    await page.getByRole("heading", { name: "Clair de Lune" }).click();
+    // Library rows are links, not headings, post-2026-refresh.
+    await page
+      .getByRole("list", { name: "Library items" })
+      .getByText("Clair de Lune")
+      .click();
     await page.getByRole("button", { name: "Edit" }).click();
     // Sheet is open with "Edit Item" in its nav title
     await expect(

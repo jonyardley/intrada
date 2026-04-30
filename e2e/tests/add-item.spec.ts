@@ -28,12 +28,16 @@ test.describe("add library item", () => {
     // Submit the form
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Should redirect to library and show the new item
+    // Should redirect to library and show the new item. Library rows
+    // are spans/links post-2026-refresh, not headings — assert against
+    // the list contents directly.
     await expect(
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Moonlight Sonata" })
+      page
+        .getByRole("list", { name: "Library items" })
+        .getByText("Moonlight Sonata")
     ).toBeVisible();
 
     // Should now have 3 items (2 stub + 1 new)
@@ -60,9 +64,11 @@ test.describe("add library item", () => {
     // Submit
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Should appear in library list
+    // Should appear in library list (rows are now links, not headings).
     await expect(
-      page.getByRole("heading", { name: "Chromatic Scale" })
+      page
+        .getByRole("list", { name: "Library items" })
+        .getByText("Chromatic Scale")
     ).toBeVisible();
   });
 
