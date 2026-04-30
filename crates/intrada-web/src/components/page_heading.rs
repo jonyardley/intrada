@@ -2,9 +2,10 @@ use leptos::prelude::*;
 
 /// Shared page-level heading with consistent styling.
 ///
-/// Uses the serif heading font (Source Serif 4) to signal "music space"
-/// (audit #9). When a `subtitle` is provided, a description paragraph is
-/// rendered beneath the heading.
+/// Uses Source Serif 4 to signal "music space" (audit #9), bumped to
+/// the 34px iOS large-title scale by the 2026 refresh — see the
+/// `.page-title` utility in `input.css`. When a `subtitle` is
+/// provided, a description paragraph renders beneath the heading.
 ///
 /// An optional `trailing` slot sits on the title's row at the trailing
 /// edge — used for nav-bar-style page actions (e.g. an "Add" button).
@@ -23,7 +24,7 @@ pub fn PageHeading(
     view! {
         <div>
             <div class=format!("flex items-center justify-between gap-3 {row_mb}")>
-                <h2 class="text-2xl font-bold text-primary font-heading">{text}</h2>
+                <h2 class="page-title">{text}</h2>
                 {trailing.map(|t| t())}
             </div>
             {subtitle.map(|sub| view! {

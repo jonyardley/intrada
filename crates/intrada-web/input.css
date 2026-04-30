@@ -596,6 +596,20 @@ body {
    prefer these utilities over ad-hoc Tailwind class strings.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* Page title — top-level page heading used by `<PageHeading>`.
+   2026 refresh moved this from `text-2xl` (24px) on web / `text-3xl`
+   (30px) on iOS to a single 34px Source Serif weight 700 across every
+   surface, matching the iOS UINavigationBar large-title scale that
+   the Pencil designs use as the page anchor. */
+@utility page-title {
+  font-family: var(--font-heading);
+  font-size: 2.125rem;        /* 34px */
+  line-height: 2.5rem;        /* 40px */
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
 /* Card / subsection heading — e.g. "Practice History", "Most Practised". */
 @utility card-title {
   font-size: 0.875rem; /* text-sm */
@@ -888,15 +902,6 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   opacity: 0.6;
   transform: scale(0.97);
   transition: opacity 80ms ease-out, transform 80ms ease-out;
-}
-
-/* Larger, more prominent page heading on iOS — emulates the iOS
-   "large title" pattern (without the collapse-on-scroll JS, which is
-   nice-to-have follow-up). Targets the PageHeading component's <h2>. */
-[data-platform="ios"] h2.font-heading {
-  font-size: 1.875rem;
-  line-height: 2.25rem;
-  letter-spacing: -0.02em;
 }
 
 /* Tighter form label-input spacing on iOS — desktop's mb-1 (4px) feels
