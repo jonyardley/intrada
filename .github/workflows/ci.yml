@@ -6,18 +6,26 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs when a new commit lands on the same PR. Don't cancel
+# main-branch runs — those gate deploys, so we want every commit's build to
+# complete and produce its own deploy.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   RUST_VERSION: "1.89.0"
 
 jobs:
-  # Detects which paths changed in the PR — used by api-docker-build to skip
-  # when only frontend/iOS files changed (the docker build can't break in those
-  # cases). Runs cheaply (~5s) on every event.
+  # Detects which paths changed in the PR — used to skip jobs whose inputs
+  # haven't changed. Always-true on main pushes (so deploys see every job).
+  # Runs cheaply (~5s) on every event.
   changes:
     name: Path Changes
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -31,6 +39,13 @@ jobs:
               - 'crates/intrada-api/**'
               - 'crates/intrada-core/**'
               - '.github/workflows/ci.yml'
+            web:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/intrada-web/**'
+              - 'crates/intrada-core/**'
+              - 'e2e/**'
+              - '.github/workflows/ci.yml'
 
   test:
     name: Test
@@ -43,9 +58,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
+      # nextest runs the same assertions as `cargo test` but with a smarter
+      # scheduler — typically 40–50% faster. Doc tests are run separately
+      # below since nextest doesn't execute them.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       # intrada-mobile (Tauri 2) requires GTK/glib system libs not present on
       # Ubuntu runners — it's an iOS-only host with no meaningful unit tests.
-      - run: cargo test --workspace --exclude intrada-mobile
+      - run: cargo nextest run --workspace --exclude intrada-mobile
+      - name: Doc tests
+        run: cargo test --doc --workspace --exclude intrada-mobile
 
   clippy:
     name: Clippy
@@ -69,6 +92,8 @@ jobs:
   wasm-build:
     name: WASM Build
     runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -80,7 +105,15 @@ jobs:
           prefix-key: "wasm"
           cache-on-failure: true
       - uses: jetli/trunk-action@v0.5.1
+      # Tailwind v4 standalone binary doesn't change between runs — cache it.
+      - name: Cache Tailwind CSS binary
+        id: tailwind-cache
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/bin/tailwindcss
+          key: tailwindcss-v4.1.18-linux-x64
       - name: Install Tailwind CSS v4 standalone CLI
+        if: steps.tailwind-cache.outputs.cache-hit != 'true'
         run: |
           curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-linux-x64
           chmod +x tailwindcss-linux-x64
@@ -101,6 +134,8 @@ jobs:
   wasm-test:
     name: WASM Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
