@@ -2,15 +2,25 @@ use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
-use intrada_core::{EntryStatus, Event, SessionEvent, ViewModel};
+use intrada_core::{EntryStatus, Event, ItemKind, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
-    Button, ButtonVariant, Card, Icon, IconName, ProgressRing, SetlistEntryRow, TransitionPrompt,
-    TypeBadge,
+    Button, ButtonSize, ButtonVariant, Card, Icon, IconName, InlineTypeIndicator, ProgressRing,
+    SetlistEntryRow, TransitionPrompt,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
+
+/// Map an `ItemKind` from core into the `ItemType` enum used by
+/// `<InlineTypeIndicator>` (the two enums are duplicated for FFI/typegen
+/// reasons; see `crates/intrada-web/src/types.rs`).
+fn item_kind_to_type(kind: ItemKind) -> ItemType {
+    match kind {
+        ItemKind::Piece => ItemType::Piece,
+        ItemKind::Exercise => ItemType::Exercise,
+    }
+}
 
 /// Active session timer: shows current item, elapsed time, progress, and controls.
 #[component]
@@ -109,43 +119,49 @@ pub fn SessionTimer() -> impl IntoView {
                                 None
                             }}
 
-                            // Current item card
-                            <Card>
-                                <div class="text-center space-y-3">
-                                    <p class="text-xs text-muted uppercase tracking-wider">
-                                        {format!("Item {} of {}", position + 1, total)}
-                                    </p>
-                                    <h2 class="text-2xl font-bold text-primary">{current_title}</h2>
-                                    // Entry-level intention (below the item title) — hidden in focus mode
-                                    {if !in_focus {
-                                        current_entry_intention.map(|intention| view! {
-                                            <p class="text-sm text-muted">{intention}</p>
-                                        })
-                                    } else {
-                                        None
-                                    }}
-                                    <TypeBadge item_type=current_type />
-                                    // Timer: progress ring when planned duration exists, digital only otherwise
-                                    {match planned_duration {
-                                        Some(planned_secs) => view! {
-                                            <div class="mt-4">
-                                                <ProgressRing
-                                                    elapsed_secs=elapsed_secs
-                                                    planned_duration_secs=planned_secs
-                                                />
-                                            </div>
-                                        }.into_any(),
-                                        None => view! {
-                                            <p class="text-4xl sm:text-6xl font-mono font-bold text-primary mt-4">
-                                                {move || {
-                                                    let secs = elapsed_secs.get();
-                                                    format!("{:02}:{:02}", secs / 60, secs % 60)
-                                                }}
-                                            </p>
-                                        }.into_any(),
-                                    }}
+                            // Current item — hero block. No Card chrome
+                            // here: 2026 refresh leans on type + scale to
+                            // anchor the screen rather than a glass surface.
+                            <div class="text-center space-y-3 py-2">
+                                <p class="text-xs text-muted uppercase tracking-wider">
+                                    {format!("Item {} of {}", position + 1, total)}
+                                </p>
+                                <h2 class="text-2xl font-bold text-primary font-heading">{current_title}</h2>
+                                // Entry-level intention (below the item title) — hidden in focus mode
+                                {if !in_focus {
+                                    current_entry_intention.map(|intention| view! {
+                                        <p class="text-sm text-muted">{intention}</p>
+                                    })
+                                } else {
+                                    None
+                                }}
+                                <div class="flex justify-center">
+                                    <InlineTypeIndicator item_type=item_kind_to_type(current_type) />
                                 </div>
-                            </Card>
+                                // Timer: progress ring when planned duration exists,
+                                // bare digital otherwise. The digital variant uses Inter
+                                // weight 300 (light) at 48px/56px — the elegant practice-
+                                // timer look from the Pencil reference rather than the
+                                // alarm-clock font-mono bold of the previous design.
+                                {match planned_duration {
+                                    Some(planned_secs) => view! {
+                                        <div class="mt-4">
+                                            <ProgressRing
+                                                elapsed_secs=elapsed_secs
+                                                planned_duration_secs=planned_secs
+                                            />
+                                        </div>
+                                    }.into_any(),
+                                    None => view! {
+                                        <p class="mt-4 text-5xl sm:text-6xl font-light tracking-tight text-primary tabular-nums">
+                                            {move || {
+                                                let secs = elapsed_secs.get();
+                                                format!("{:02}:{:02}", secs / 60, secs % 60)
+                                            }}
+                                        </p>
+                                    }.into_any(),
+                                }}
+                            </div>
 
                             // Rep counter section
                             {if show_counter {
@@ -272,57 +288,72 @@ pub fn SessionTimer() -> impl IntoView {
                                 None
                             }}
 
-                            // Controls
-                            <div class="flex flex-wrap gap-3 justify-center">
+                            // Controls — primary action (Next / Finish) is
+                            // a full-width hero CTA matching the Pencil
+                            // reference. Skip + End Early stay as secondary
+                            // / destructive sized buttons in a row beneath.
+                            <div class="space-y-3">
                                 {if is_last {
                                     view! {
-                                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                                            let now = chrono::Utc::now();
-                                            let event = Event::Session(SessionEvent::FinishSession { now });
-                                            let core_ref = core_finish.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
-                                            duration_elapsed.set(false);
-                                        })>
+                                        <Button
+                                            variant=ButtonVariant::Primary
+                                            size=ButtonSize::Hero
+                                            attr:class="w-full"
+                                            on_click=Callback::new(move |_| {
+                                                let now = chrono::Utc::now();
+                                                let event = Event::Session(SessionEvent::FinishSession { now });
+                                                let core_ref = core_finish.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                elapsed_secs.set(0);
+                                                duration_elapsed.set(false);
+                                            })
+                                        >
                                             "Finish Session"
                                         </Button>
                                     }.into_any()
                                 } else {
                                     view! {
-                                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                                            let now = chrono::Utc::now();
-                                            let event = Event::Session(SessionEvent::NextItem { now });
-                                            let core_ref = core_next.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
-                                            duration_elapsed.set(false);
-                                        })>
+                                        <Button
+                                            variant=ButtonVariant::Primary
+                                            size=ButtonSize::Hero
+                                            attr:class="w-full"
+                                            on_click=Callback::new(move |_| {
+                                                let now = chrono::Utc::now();
+                                                let event = Event::Session(SessionEvent::NextItem { now });
+                                                let core_ref = core_next.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                elapsed_secs.set(0);
+                                                duration_elapsed.set(false);
+                                            })
+                                        >
                                             "Next Item"
                                         </Button>
                                     }.into_any()
                                 }}
-                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                    let now = chrono::Utc::now();
-                                    let event = Event::Session(SessionEvent::SkipItem { now });
-                                    let core_ref = core_skip.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    elapsed_secs.set(0);
-                                })>
-                                    "Skip"
-                                </Button>
-                                <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
-                                    let now = chrono::Utc::now();
-                                    let event = Event::Session(SessionEvent::EndSessionEarly { now });
-                                    let core_ref = core_end.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    elapsed_secs.set(0);
-                                })>
-                                    "End Early"
-                                </Button>
+                                <div class="flex flex-wrap gap-3 justify-center">
+                                    <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                        let now = chrono::Utc::now();
+                                        let event = Event::Session(SessionEvent::SkipItem { now });
+                                        let core_ref = core_skip.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                        elapsed_secs.set(0);
+                                    })>
+                                        "Skip"
+                                    </Button>
+                                    <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
+                                        let now = chrono::Utc::now();
+                                        let event = Event::Session(SessionEvent::EndSessionEarly { now });
+                                        let core_ref = core_end.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                        elapsed_secs.set(0);
+                                    })>
+                                        "End Early"
+                                    </Button>
+                                </div>
                             </div>
 
                             // Focus mode toggle — reveals/hides nav, intentions, completed items
