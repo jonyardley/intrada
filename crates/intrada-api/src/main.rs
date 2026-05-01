@@ -3,13 +3,39 @@ use intrada_api::migrations;
 use intrada_api::routes;
 use intrada_api::state::{AppState, Db};
 use intrada_api::storage::R2Client;
+use tracing_subscriber::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
-        )
+    // Sentry first, so panics + tracing events from startup are captured.
+    // No-op when SENTRY_DSN is unset (local dev without Sentry).
+    let _sentry_guard = std::env::var("SENTRY_DSN").ok().map(|dsn| {
+        sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                release: option_env!("GIT_SHA").map(Into::into),
+                environment: Some(
+                    if cfg!(debug_assertions) {
+                        "development"
+                    } else {
+                        "production"
+                    }
+                    .into(),
+                ),
+                traces_sample_rate: 0.1,
+                send_default_pii: false,
+                ..Default::default()
+            },
+        ))
+    });
+
+    let env_filter =
+        tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_subscriber::fmt::layer())
+        .with(sentry::integrations::tracing::layer())
         .init();
 
     let database_url = std::env::var("TURSO_DATABASE_URL").expect("TURSO_DATABASE_URL must be set");

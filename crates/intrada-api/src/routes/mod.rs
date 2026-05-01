@@ -6,6 +6,7 @@ mod sessions;
 
 use axum::http::{header, HeaderValue, Method};
 use axum::Router;
+use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::Level;
@@ -41,6 +42,11 @@ pub fn api_router(state: AppState) -> Router {
         .nest("/api", api_routes())
         .layer(cors)
         .layer(trace)
+        // Sentry layers: per-request hub + HTTP transaction (route-aware via
+        // the `tower-axum-matched-path` feature). NewSentryLayer must wrap
+        // SentryHttpLayer so each request gets an isolated hub.
+        .layer(SentryHttpLayer::new().enable_transaction())
+        .layer(NewSentryLayer::new_from_top())
         .with_state(state)
 }
 

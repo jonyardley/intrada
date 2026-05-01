@@ -4,6 +4,35 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Intrada</title>
+
+    <!-- Sentry browser SDK. Loaded synchronously in <head> so it's ready
+         before any other script runs — catches errors from the inline
+         scripts below (data-platform setup, press feedback, Clerk bridge)
+         and from the WASM panic hook. The DSN is public by design (Sentry's
+         security model expects it embedded in client code); environment is
+         tagged at runtime so dev/prod/ios events are filterable in the UI. -->
+    <script src="https://browser.sentry-cdn.com/10.51.0/bundle.tracing.min.js"
+            integrity="sha384-PLfi4Yv8UxpzFBe4XEbS8M1qAx+z/qs3jf7AY1XQorhPeW9SM5VarsX3+Is0NPNf"
+            crossorigin="anonymous"></script>
+    <script>
+      // Skip on plain-http localhost (web dev) to match the api/mobile
+      // opt-in pattern and save event quota. iOS production WebView is also
+      // hosted at `tauri://localhost`, so the protocol check matters.
+      (function () {
+        if (!window.Sentry) return;
+        var isWebDev = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+          && location.protocol !== 'tauri:';
+        if (isWebDev) return;
+        Sentry.init({
+          dsn: "https://2a33748d4de845f26e3711629e47b38f@o4511313186979840.ingest.de.sentry.io/4511313298980944",
+          environment: location.protocol === 'tauri:' ? 'ios' : 'production',
+          tracesSampleRate: 0.1,
+          sendDefaultPii: false,
+          integrations: [Sentry.browserTracingIntegration()],
+        });
+      })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet" />

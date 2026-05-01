@@ -16,5 +16,10 @@ tauri-plugin-deep-link = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# Sentry: Rust-side panics in the Tauri host. WebView errors are captured
+# separately by the browser SDK loaded in intrada-web/index.html.
+# DSN is baked at compile time via SENTRY_DSN_MOBILE — unset = no init.
+sentry = { version = "0.48", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls"] }
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
