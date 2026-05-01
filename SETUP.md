@@ -206,7 +206,55 @@ fly logs | grep R2
 R2 is optional locally. Without the env vars, the API starts with photo upload
 disabled. To test photos locally, add the R2 variables to your `.env` file.
 
-## 5. CI/CD Pipeline (GitHub Actions)
+## 5. Sentry (Error reporting + APM)
+
+One Sentry project per surface. DSNs are public (Sentry's security model expects
+them embedded in client code), but the Rust SDK reads them via env vars so
+projects can be swapped without code changes.
+
+### Projects
+
+| Surface | Sentry platform | DSN delivery |
+|---------|----------------|--------------|
+| `intrada-api` | Rust | `SENTRY_DSN` env var (Fly secret) |
+| `intrada-mobile` | Rust | `SENTRY_DSN_MOBILE` env var, baked at compile time via `option_env!` |
+| `intrada-web` | Browser JavaScript | inlined in `crates/intrada-web/index.html` |
+
+Each project tags events with `environment = development | production | ios`
+(determined at runtime), and `release = $GIT_SHA` when set at build time.
+Performance tracing is sampled at 10% (`traces_sample_rate = 0.1`).
+
+### Set the API DSN as a Fly.io secret
+
+```bash
+fly secrets set SENTRY_DSN="https://...@...ingest.de.sentry.io/..." -a intrada-api
+```
+
+The API will pick it up on next deploy. Without it, Sentry init is a no-op.
+
+### Set the mobile DSN locally
+
+Add to your `.env` file at the repo root:
+
+```
+SENTRY_DSN_MOBILE=https://...@...ingest.de.sentry.io/...
+```
+
+`just ios-dev` will pick it up via `set dotenv-load`. Changing the value
+triggers a rebuild thanks to `cargo:rerun-if-env-changed` in `build.rs`.
+
+### Web DSN
+
+The web DSN is inlined in `crates/intrada-web/index.html`. To swap projects,
+edit that file directly. There is no `.env` value for it.
+
+### Verifying
+
+After the next deploy, trigger a test event from each surface (e.g. visit a
+404 route, force a panic in a debug build) and confirm it appears in the
+matching Sentry project's Issues tab.
+
+## 6. CI/CD Pipeline (GitHub Actions)
 
 The single workflow `.github/workflows/ci.yml` handles both CI and deployment:
 
@@ -239,7 +287,7 @@ fly tokens create deploy -a intrada-api
 
 Add the output as the `FLY_API_TOKEN` secret in GitHub Actions.
 
-## 6. Local Development
+## 7. Local Development
 
 ### Prerequisites
 
@@ -332,3 +380,7 @@ Use this when setting up from scratch:
 - [ ] `fly logs | grep R2` shows "R2 photo storage configured"
 - [ ] Frontend deployed to Cloudflare Workers
 - [ ] Frontend CORS requests to API work
+- [ ] Sentry projects created (api, web, mobile)
+- [ ] `SENTRY_DSN` set on Fly.io
+- [ ] Web DSN inlined in `crates/intrada-web/index.html`
+- [ ] Test event sent from each surface, visible in matching Sentry project

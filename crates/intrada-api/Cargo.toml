@@ -34,6 +34,10 @@ rust-s3 = { version = "0.37", default-features = false, features = ["tokio-rustl
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Sentry: server-side error reporting + APM. Init from SENTRY_DSN env var.
+# rustls (not native-tls) to match the rest of the API stack.
+sentry = { version = "0.48", default-features = false, features = ["backtrace", "contexts", "panic", "tracing", "tower-axum-matched-path", "reqwest", "rustls"] }
+
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
