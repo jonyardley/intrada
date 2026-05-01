@@ -4,16 +4,38 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::hooks::use_params_map;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, ItemEvent, ViewModel};
+use intrada_core::{Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
-    parse_target_bpm, BackLink, BottomSheet, Button, ButtonVariant, Card, FieldLabel,
-    SkeletonBlock, SkeletonLine, TempoProgressChart, TypeBadge,
+    parse_target_bpm, AccentBar, BackLink, BottomSheet, Button, ButtonVariant, Card, DetailGroup,
+    DetailRow, Icon, IconName, InlineTypeIndicator, SkeletonBlock, SkeletonLine, StatCard,
+    StatTone, TempoProgressChart,
 };
 use crate::views::EditLibraryItemForm;
 use intrada_web::core_bridge::process_effects;
-use intrada_web::helpers::{format_date_short, format_datetime_short};
-use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+use intrada_web::helpers::format_date_short;
+use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
+
+/// Format total practice time as the "2h 15m" / "45m" pattern Pencil uses.
+fn format_total_practice(minutes: u32) -> String {
+    let hours = minutes / 60;
+    let mins = minutes % 60;
+    if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else {
+        format!("{}m", mins)
+    }
+}
+
+/// Map an `ItemKind` from core into the `ItemType` enum used by
+/// `<InlineTypeIndicator>` (the two enums are duplicated for FFI/typegen
+/// reasons; see `crates/intrada-web/src/types.rs`).
+fn item_kind_to_type(kind: ItemKind) -> ItemType {
+    match kind {
+        ItemKind::Piece => ItemType::Piece,
+        ItemKind::Exercise => ItemType::Exercise,
+    }
+}
 
 #[component]
 pub fn DetailView() -> impl IntoView {
@@ -30,8 +52,21 @@ pub fn DetailView() -> impl IntoView {
     let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
 
     view! {
-        <div class="detail-view space-y-4">
-            <BackLink label="Back to Library" href="/".to_string() />
+        <div class="detail-view space-y-5">
+            // ── Nav row: back link on the left, Edit on the right ──
+            // Edit lives here as the trailing nav action (matching the
+            // Pencil reference and iOS UINavigationBar idiom). The
+            // bottom action row keeps Delete only.
+            <div class="flex items-center justify-between -mb-2">
+                <BackLink label="Library" href="/".to_string() />
+                <button
+                    type="button"
+                    class="text-sm font-medium text-accent-text hover:text-accent-hover"
+                    on:click=move |_| edit_sheet_open.set(true)
+                >
+                    "Edit"
+                </button>
+            </div>
 
             {move || {
                 // Reactively find item — re-runs when ViewModel updates after fetch
@@ -52,20 +87,22 @@ pub fn DetailView() -> impl IntoView {
                         notes,
                         tags,
                         created_at,
-                        updated_at,
+                        updated_at: _,
                         practice,
                         latest_achieved_tempo: _,
                     } = item;
 
+                    let indicator_type = item_kind_to_type(item_type);
+                    let tempo_for_stats = tempo.clone();
                     let tempo_for_history = tempo.clone();
-                    let id_for_edit_sheet = item_id.clone();
                     let id_for_delete = item_id.clone();
-                    let type_for_badge = item_type;
                     let core_for_delete = core.clone();
                     let navigate_for_delete = navigate.clone();
 
                     view! {
-                        // Delete confirmation banner (FR-011)
+                        // Delete confirmation banner — kept here even though
+                        // the trigger moved to the bottom of the page; this
+                        // banner appears just below the nav row when active.
                         {move || {
                             if show_delete_confirm.get() {
                                 let id_del = id_for_delete.clone();
@@ -100,173 +137,153 @@ pub fn DetailView() -> impl IntoView {
                             }
                         }}
 
-                        // Detail card
-                        <Card>
-                            <div class="flex items-start justify-between gap-3 mb-6">
-                                <div>
-                                    <h2 class="text-2xl font-bold text-primary font-heading">{title}</h2>
-                                    {if !subtitle.is_empty() {
-                                        Some(view! {
-                                            <p class="text-lg text-muted mt-1">{subtitle.clone()}</p>
-                                        })
-                                    } else {
-                                        None
-                                    }}
-                                </div>
-                                <TypeBadge item_type=type_for_badge.clone() />
+                        // ── Hero block — title + composer + type ─────
+                        // Title is the page anchor at 34px Source Serif
+                        // (the .page-title utility). Composer + Inline-
+                        // TypeIndicator sit beneath in a single row.
+                        <div>
+                            <h2 class="page-title">{title}</h2>
+                            <div class="flex items-center gap-3 mt-2">
+                                {if !subtitle.is_empty() {
+                                    Some(view! {
+                                        <span class="text-base text-secondary">{subtitle.clone()}</span>
+                                    })
+                                } else {
+                                    None
+                                }}
+                                <InlineTypeIndicator item_type=indicator_type />
                             </div>
+                        </div>
 
-                            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                                {key.map(|k| {
-                                    view! {
-                                        <div>
-                                            <FieldLabel text="Key" />
-                                            <dd class="mt-1 text-sm text-secondary">{k}</dd>
-                                        </div>
-                                    }
-                                })}
-                                {tempo.map(|t| {
-                                    view! {
-                                        <div>
-                                            <FieldLabel text="Tempo" />
-                                            <dd class="mt-1 text-sm text-secondary">{t}</dd>
-                                        </div>
-                                    }
-                                })}
-                            </dl>
-
-                            {notes.map(|n| {
-                                view! {
-                                    <div class="mb-6">
-                                        <FieldLabel text="Notes" />
-                                        <dd class="text-sm text-secondary whitespace-pre-wrap">{n}</dd>
-                                    </div>
-                                }
-                            })}
-
-                            {if !tags.is_empty() {
-                                Some(view! {
-                                    <div class="mb-6">
-                                        <FieldLabel text="Tags" />
-                                        <dd class="flex flex-wrap gap-1.5">
-                                            {tags.into_iter().map(|tag| {
-                                                view! {
-                                                    <span class="inline-flex items-center rounded-full border border-border-default px-2.5 py-0.5 text-xs text-muted">
-                                                        {tag}
-                                                    </span>
-                                                }
-                                            }).collect::<Vec<_>>()}
-                                        </dd>
-                                    </div>
-                                })
-                            } else {
-                                None
-                            }}
-
-                            <div class="mt-2 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-faint">
-                                <div>
-                                    <span class="font-medium">"Created: "</span>{format_datetime_short(&created_at)}
-                                </div>
-                                <div>
-                                    <span class="font-medium">"Updated: "</span>{format_datetime_short(&updated_at)}
-                                </div>
-                            </div>
-                        </Card>
-
-                        // Practice summary
-                        {practice.map(|p| {
-                            let has_scores = !p.score_history.is_empty();
-                            let has_tempo_history = !p.tempo_history.is_empty();
-                            let target_tempo = tempo_for_history.clone();
+                        // ── Stats row (only when there's practice data) ──
+                        // Three StatCard refresh variants — Total Practice
+                        // (warm gold), Sessions (accent purple), Target BPM
+                        // (warm gold). Mirrors Pencil's M3 Piece Detail.
+                        {practice.as_ref().map(|p| {
+                            let total_practice = format_total_practice(p.total_minutes);
+                            let session_count_str = format!("{}", p.session_count);
+                            let target_bpm = parse_target_bpm(&tempo_for_stats)
+                                .map(|b| format!("{}", b))
+                                .unwrap_or_else(|| "\u{2014}".to_string()); // em-dash for "no target"
                             view! {
-                                <Card>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <h3 class="text-sm font-semibold text-primary mb-1">"Practice Summary"</h3>
-                                            <p class="text-sm text-secondary">
-                                                {format!(
-                                                    "{} session{}, {} min total",
-                                                    p.session_count,
-                                                    if p.session_count == 1 { "" } else { "s" },
-                                                    p.total_minutes
-                                                )}
-                                            </p>
-                                        </div>
-
-                                        {p.latest_score.map(|score| {
-                                            view! {
-                                                <div class="flex items-center gap-3">
-                                                    <span class="text-sm text-muted">"Current confidence:"</span>
-                                                    <span class="text-2xl font-bold text-accent-text">
-                                                        {format!("{}/5", score)}
-                                                    </span>
-                                                </div>
-                                            }
-                                        })}
-
-                                        {if has_scores {
-                                            let history = p.score_history;
-                                            view! {
-                                                <div>
-                                                    <h4 class="field-label mb-2">"Score History"</h4>
-                                                    <div class="space-y-1.5">
-                                                        {history.into_iter().map(|entry| {
-                                                            let display_date = format_date_short(&entry.session_date);
-                                                            view! {
-                                                                <div class="flex items-center justify-between text-sm">
-                                                                    <span class="text-muted">{display_date}</span>
-                                                                    <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
-                                                                        {format!("{}/5", entry.score)}
-                                                                    </span>
-                                                                </div>
-                                                            }
-                                                        }).collect::<Vec<_>>()}
-                                                    </div>
-                                                </div>
-                                            }.into_any()
-                                        } else {
-                                            view! {
-                                                <p class="text-xs text-faint">"No confidence scores recorded yet"</p>
-                                            }.into_any()
-                                        }}
-
-                                        {if has_tempo_history {
-                                            let target = parse_target_bpm(&target_tempo);
-                                            view! {
-                                                <div>
-                                                    <h4 class="field-label mb-2">"Tempo Progress"</h4>
-                                                    <TempoProgressChart
-                                                        entries=p.tempo_history
-                                                        target_bpm=target
-                                                        latest_tempo=p.latest_tempo
-                                                    />
-                                                </div>
-                                            }.into_any()
-                                        } else {
-                                            ().into_any()
-                                        }}
-                                    </div>
-                                </Card>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <StatCard
+                                        title="Total Practice"
+                                        value=total_practice
+                                        bar=AccentBar::Gold
+                                    />
+                                    <StatCard
+                                        title="Sessions"
+                                        value=session_count_str
+                                        bar=AccentBar::Blue
+                                        tone=StatTone::Accent
+                                    />
+                                    <StatCard
+                                        title="Target BPM"
+                                        value=target_bpm
+                                        bar=AccentBar::Gold
+                                        tone=StatTone::WarmAccent
+                                    />
+                                </div>
                             }
                         })}
 
-                        // Action buttons (FR-009, FR-011)
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <button
-                                type="button"
-                                class="cta-link"
-                                on:click=move |_| edit_sheet_open.set(true)
-                            >
-                                "Edit"
-                            </button>
-                            <Button
-                                variant=ButtonVariant::DangerOutline
-                                disabled=Signal::derive(move || is_submitting.get())
-                                on_click=Callback::new(move |_| { show_delete_confirm.set(true); })
-                            >
-                                "Delete"
-                            </Button>
-                        </div>
+                        // ── DETAILS group ─────────────────────────────
+                        <DetailGroup label="Details" bar=AccentBar::Gold>
+                            {key.map(|k| view! {
+                                <DetailRow label="Key">{k}</DetailRow>
+                            })}
+                            {tempo.map(|t| view! {
+                                <DetailRow label="Tempo">{t}</DetailRow>
+                            })}
+                            <DetailRow label="Added">{format_date_short(&created_at)}</DetailRow>
+                        </DetailGroup>
+
+                        // ── NOTES group (if notes exist) ──────────────
+                        {notes.map(|n| view! {
+                            <DetailGroup label="Notes" bar=AccentBar::Blue>
+                                <p class="text-sm text-secondary leading-relaxed whitespace-pre-wrap">{n}</p>
+                            </DetailGroup>
+                        })}
+
+                        // ── Score history & Tempo progress (if data) ──
+                        // Each rendered as its own DetailGroup so the
+                        // chart/list inherits the inset accent-bar chrome.
+                        {practice.as_ref().and_then(|p| {
+                            (!p.score_history.is_empty()).then(|| {
+                                let history = p.score_history.clone();
+                                view! {
+                                    <DetailGroup label="Score History" bar=AccentBar::Blue>
+                                        <div class="space-y-1.5">
+                                            {history.into_iter().map(|entry| {
+                                                let display_date = format_date_short(&entry.session_date);
+                                                view! {
+                                                    <div class="flex items-center justify-between text-sm">
+                                                        <span class="text-muted">{display_date}</span>
+                                                        <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text">
+                                                            {format!("{}/5", entry.score)}
+                                                        </span>
+                                                    </div>
+                                                }
+                                            }).collect::<Vec<_>>()}
+                                        </div>
+                                    </DetailGroup>
+                                }
+                            })
+                        })}
+
+                        {practice.as_ref().and_then(|p| {
+                            (!p.tempo_history.is_empty()).then(|| {
+                                let target = parse_target_bpm(&tempo_for_history);
+                                let entries = p.tempo_history.clone();
+                                let latest = p.latest_tempo;
+                                view! {
+                                    <DetailGroup label="Tempo Progress" bar=AccentBar::Gold>
+                                        <TempoProgressChart
+                                            entries=entries
+                                            target_bpm=target
+                                            latest_tempo=latest
+                                        />
+                                    </DetailGroup>
+                                }
+                            })
+                        })}
+
+                        // ── Tags (if any) ─────────────────────────────
+                        {(!tags.is_empty()).then(|| view! {
+                            <DetailGroup label="Tags" bar=AccentBar::Blue>
+                                <div class="flex flex-wrap gap-1.5">
+                                    {tags.into_iter().map(|tag| view! {
+                                        <span class="inline-flex items-center rounded-full border border-border-default px-2.5 py-0.5 text-xs text-muted">
+                                            {tag}
+                                        </span>
+                                    }).collect::<Vec<_>>()}
+                                </div>
+                            </DetailGroup>
+                        })}
+
+                        // ── Hero CTA: Start Practice ──────────────────
+                        // Links into the session builder with no item
+                        // pre-selection wired up yet — that's a follow-up.
+                        // For now it gets the user to the right place.
+                        <A
+                            href="/sessions/new"
+                            attr:class="block"
+                        >
+                            <span class="inline-flex items-center justify-center gap-2 w-full rounded-lg bg-accent text-primary btn-hero hover:bg-accent-hover motion-safe:transition-colors">
+                                <Icon name=IconName::Play class="w-4 h-4" />
+                                "Start Practice"
+                            </span>
+                        </A>
+
+                        // ── Delete (destructive, de-emphasised) ───────
+                        <Button
+                            variant=ButtonVariant::DangerOutline
+                            disabled=Signal::derive(move || is_submitting.get())
+                            on_click=Callback::new(move |_| { show_delete_confirm.set(true); })
+                        >
+                            "Delete"
+                        </Button>
 
                         <BottomSheet
                             open=edit_sheet_open
@@ -274,7 +291,7 @@ pub fn DetailView() -> impl IntoView {
                             nav_title="Edit Item".to_string()
                         >
                             <EditLibraryItemForm
-                                item_id=id_for_edit_sheet.clone()
+                                item_id=item_id.clone()
                                 in_sheet=true
                                 on_dismiss=close_edit_sheet
                             />
@@ -285,17 +302,11 @@ pub fn DetailView() -> impl IntoView {
                     view! {
                         <Card>
                             <div class="space-y-4 animate-pulse">
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="flex-1 space-y-3">
-                                        <SkeletonLine width="w-2/3" height="h-7" />
-                                        <SkeletonLine width="w-1/2" height="h-5" />
-                                    </div>
-                                    <SkeletonLine width="w-16" height="h-6" />
+                                <div class="space-y-3">
+                                    <SkeletonLine width="w-2/3" height="h-9" />
+                                    <SkeletonLine width="w-1/2" height="h-5" />
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <SkeletonLine width="w-3/4" />
-                                    <SkeletonLine width="w-1/2" />
-                                </div>
+                                <SkeletonBlock height="h-20" />
                                 <SkeletonBlock height="h-20" />
                             </div>
                         </Card>

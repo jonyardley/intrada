@@ -39,8 +39,11 @@ test.describe("navigation", () => {
     // Should show composer as subtitle
     await expect(page.getByText("Claude Debussy")).toBeVisible();
 
-    // Back link returns to library
-    await page.getByRole("link", { name: "Back to Library" }).click();
+    // Back link returns to library — label is just the source name now
+    // (iOS UINavigationBar convention, matches Pencil), not the verbose
+    // "Back to Library" used in the pre-refresh detail view. Scope to
+    // <main> to disambiguate from the desktop nav's "Library" tab link.
+    await page.getByRole("main").getByRole("link", { name: "Library" }).click();
     await expect(
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
