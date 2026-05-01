@@ -41,8 +41,9 @@ test.describe("navigation", () => {
 
     // Back link returns to library — label is just the source name now
     // (iOS UINavigationBar convention, matches Pencil), not the verbose
-    // "Back to Library" used in the pre-refresh detail view.
-    await page.getByRole("link", { name: "Library" }).click();
+    // "Back to Library" used in the pre-refresh detail view. Scope to
+    // <main> to disambiguate from the desktop nav's "Library" tab link.
+    await page.getByRole("main").getByRole("link", { name: "Library" }).click();
     await expect(
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
