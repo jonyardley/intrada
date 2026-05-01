@@ -265,12 +265,12 @@ pub fn EditLibraryItemForm(
                                 variant=ButtonVariant::Primary
                                 button_type="submit"
                                 size=ButtonSize::Hero
+                                full_width=true
                                 loading=Signal::derive(move || is_submitting.get())
-                                attr:class="w-full"
                             >
                                 {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
                             </Button>
-                            <Button variant=ButtonVariant::Secondary attr:class="w-full" on_click={
+                            <Button variant=ButtonVariant::Secondary full_width=true on_click={
                                 let cancel_href = cancel_href.clone();
                                 let navigate = navigate.clone();
                                 Callback::new(move |_| {

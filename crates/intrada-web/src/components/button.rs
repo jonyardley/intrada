@@ -55,6 +55,13 @@ pub fn Button(
     /// `Hero` bumps padding, font size, and weight for full-width CTAs.
     #[prop(optional)]
     size: ButtonSize,
+    /// When true, the button stretches to fill its container instead of
+    /// sizing to its content. Use this rather than `attr:class="w-full"`
+    /// — Leptos's attr forwarding doesn't merge classes through a
+    /// closure-based `class` prop, so the attr override silently
+    /// replaces the entire class string and the button renders unstyled.
+    #[prop(optional)]
+    full_width: bool,
     children: Children,
 ) -> impl IntoView {
     let is_disabled = Signal::derive(move || disabled.get() || loading.get());
@@ -62,17 +69,18 @@ pub fn Button(
         ButtonSize::Small => "",
         ButtonSize::Hero => " btn-hero",
     };
+    let width_class = if full_width { " w-full" } else { "" };
 
     view! {
         <button
             type=button_type
             class=move || {
                 let base = variant.classes();
-                let with_size = format!("{base}{size_class}");
+                let with_size_width = format!("{base}{size_class}{width_class}");
                 if is_disabled.get() {
-                    format!("{with_size} opacity-50 cursor-not-allowed")
+                    format!("{with_size_width} opacity-50 cursor-not-allowed")
                 } else {
-                    with_size
+                    with_size_width
                 }
             }
             disabled=is_disabled

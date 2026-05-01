@@ -317,7 +317,7 @@ pub fn SessionTimer() -> impl IntoView {
                                         <Button
                                             variant=ButtonVariant::Primary
                                             size=ButtonSize::Hero
-                                            attr:class="w-full"
+                                            full_width=true
                                             on_click=Callback::new(move |_| {
                                                 let now = chrono::Utc::now();
                                                 let event = Event::Session(SessionEvent::FinishSession { now });
@@ -336,7 +336,7 @@ pub fn SessionTimer() -> impl IntoView {
                                         <Button
                                             variant=ButtonVariant::Primary
                                             size=ButtonSize::Hero
-                                            attr:class="w-full"
+                                            full_width=true
                                             on_click=Callback::new(move |_| {
                                                 let now = chrono::Utc::now();
                                                 let event = Event::Session(SessionEvent::NextItem { now });
