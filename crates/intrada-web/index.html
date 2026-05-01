@@ -15,19 +15,22 @@
             integrity="sha384-PLfi4Yv8UxpzFBe4XEbS8M1qAx+z/qs3jf7AY1XQorhPeW9SM5VarsX3+Is0NPNf"
             crossorigin="anonymous"></script>
     <script>
-      if (window.Sentry) {
+      // Skip on plain-http localhost (web dev) to match the api/mobile
+      // opt-in pattern and save event quota. iOS production WebView is also
+      // hosted at `tauri://localhost`, so the protocol check matters.
+      (function () {
+        if (!window.Sentry) return;
+        var isWebDev = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+          && location.protocol !== 'tauri:';
+        if (isWebDev) return;
         Sentry.init({
           dsn: "https://2a33748d4de845f26e3711629e47b38f@o4511313186979840.ingest.de.sentry.io/4511313298980944",
-          environment: (function () {
-            if (location.protocol === 'tauri:') return 'ios';
-            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'development';
-            return 'production';
-          })(),
+          environment: location.protocol === 'tauri:' ? 'ios' : 'production',
           tracesSampleRate: 0.1,
           sendDefaultPii: false,
           integrations: [Sentry.browserTracingIntegration()],
         });
-      }
+      })();
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
