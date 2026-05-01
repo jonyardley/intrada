@@ -26,7 +26,10 @@
         Sentry.init({
           dsn: "https://2a33748d4de845f26e3711629e47b38f@o4511313186979840.ingest.de.sentry.io/4511313298980944",
           environment: location.protocol === 'tauri:' ? 'ios' : 'production',
-          tracesSampleRate: 0.1,
+          // Bumped from 0.1 → 1.0 while traffic is single-digit-user (just
+          // @jonyardley testing). Dial back to 0.1 (or 0.01) once real
+          // traffic arrives — every transaction counts against quota.
+          tracesSampleRate: 1.0,
           sendDefaultPii: false,
           integrations: [Sentry.browserTracingIntegration()],
         });
