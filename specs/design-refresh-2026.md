@@ -1,6 +1,11 @@
 # Design Refresh 2026
 
-> Status: Plan. No code yet. Last updated 2026-04-29.
+> Status: Phases 0-2, 3a-3e, 4, 5 shipped. Phase 3c (Practice/Active session)
+> deferred pending routing decision. Last updated 2026-05-01.
+>
+> Shipped PRs: #348 (phases 0+1), #349 (phase 2), #350 (3a Routines),
+> #351 (3b Library), #352 (3c PageHeading), #353 (3d Analytics),
+> #354 (3e Detail), #355 (phase 4 Forms), this PR (phase 5 cleanup).
 
 ## Problem
 
