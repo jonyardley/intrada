@@ -21,7 +21,10 @@ pub fn run() {
                     }
                     .into(),
                 ),
-                traces_sample_rate: 0.1,
+                // Mobile host has no auto-instrumented transactions today,
+                // so this is mostly moot — kept aligned with api/web for when
+                // we add manual spans. See main.rs for the rationale.
+                traces_sample_rate: 1.0,
                 send_default_pii: false,
                 ..Default::default()
             },

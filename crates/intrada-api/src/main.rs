@@ -22,7 +22,10 @@ async fn main() {
                     }
                     .into(),
                 ),
-                traces_sample_rate: 0.1,
+                // Bumped from 0.1 → 1.0 while traffic is single-digit-user
+                // (just @jonyardley testing). Dial back to 0.1 (or 0.01) once
+                // real traffic arrives — every transaction counts against quota.
+                traces_sample_rate: 1.0,
                 send_default_pii: false,
                 ..Default::default()
             },
