@@ -5,7 +5,7 @@ use leptos_router::NavigateOptions;
 use intrada_core::{SessionStatusView, ViewModel};
 
 use crate::app::FocusMode;
-use crate::components::{PageHeading, SessionTimer};
+use crate::components::{Icon, IconName, SessionTimer};
 
 /// Active session view: wraps the SessionTimer, redirects when session state changes.
 #[component]
@@ -60,17 +60,44 @@ pub fn SessionActiveView() -> impl IntoView {
         }
     });
 
+    let focus_signal = focus_mode.0;
+    let title_class = move || {
+        if focus_signal.get() {
+            "focus-fade focus-fade--hidden"
+        } else {
+            "focus-fade"
+        }
+    };
+    let toggle_aria = move || {
+        if focus_signal.get() {
+            "Exit focus mode"
+        } else {
+            "Enter focus mode"
+        }
+    };
+
     view! {
         <div>
-            // Page heading fades + collapses in focus mode rather than
-            // hard-cutting. Always rendered so the transition has a
-            // before/after to interpolate between.
-            <div class=move || if focus_mode.get() {
-                "focus-fade focus-fade--hidden"
-            } else {
-                "focus-fade"
-            }>
-                <PageHeading text="Practice" />
+            // Top row: page title (fades in focus mode) + persistent
+            // focus-toggle icon button on the trailing edge. The row's
+            // min-height keeps the button anchored even when the title
+            // collapses, so the user always has a way back out of focus.
+            <div class="flex items-center justify-between gap-3 mb-6 min-h-[44px]">
+                <div class=title_class>
+                    <h2 class="page-title">"Practice"</h2>
+                </div>
+                <button
+                    type="button"
+                    class="icon-nav-button"
+                    aria-label=toggle_aria
+                    on:click=move |_| focus_signal.set(!focus_signal.get_untracked())
+                >
+                    {move || if focus_signal.get() {
+                        view! { <Icon name=IconName::ChevronDown class="w-5 h-5" /> }
+                    } else {
+                        view! { <Icon name=IconName::ChevronUp class="w-5 h-5" /> }
+                    }}
+                </button>
             </div>
             <SessionTimer />
         </div>

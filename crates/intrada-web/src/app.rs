@@ -32,9 +32,6 @@ impl FocusMode {
     pub fn get(&self) -> bool {
         self.0.get()
     }
-    pub fn get_untracked(&self) -> bool {
-        self.0.get_untracked()
-    }
     pub fn set(&self, val: bool) {
         self.0.set(val);
     }

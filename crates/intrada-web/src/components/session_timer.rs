@@ -66,7 +66,10 @@ pub fn SessionTimer() -> impl IntoView {
     });
 
     view! {
-        <div class="space-y-4">
+        // space-y-6 between major zones — hero, optional rep card,
+        // primary CTA, sub-actions. The wider gap separates concerns
+        // visually so the user can read the screen at a glance.
+        <div class="space-y-6">
             {move || {
                 let vm = view_model.get();
                 match vm.active_session {
@@ -170,10 +173,13 @@ pub fn SessionTimer() -> impl IntoView {
                                 }}
                             </div>
 
-                            // Rep counter — open layout (no Card chrome) so
-                            // it visually sits in the same hero zone as the
-                            // timer above. Light typography matches the
-                            // timer's elegant practice-clock style.
+                            // Rep counter — its own contained card so it
+                            // reads as a distinct contextual module sitting
+                            // between the timer hero and the primary CTA.
+                            // Header row carries SectionLabel + an X icon-
+                            // nav-button (replacing the previous text-styled
+                            // "Hide counter" link, which read like body
+                            // copy).
                             {if show_counter {
                                 let target = rep_target.unwrap_or(0);
                                 let count = rep_count.unwrap_or(0);
@@ -195,16 +201,25 @@ pub fn SessionTimer() -> impl IntoView {
                                 };
 
                                 view! {
-                                    <div class="space-y-3 py-2">
-                                        <div class="text-center space-y-2">
-                                            <SectionLabel text="Consecutive Reps" />
+                                    <div class="rounded-xl bg-surface-secondary p-4 space-y-3">
+                                        // Header row — label left, X close right
+                                        <div class="flex items-center justify-between -mt-1 -mr-1">
+                                            <span class="section-label" style="margin-bottom:0">"Consecutive Reps"</span>
+                                            <button
+                                                type="button"
+                                                class="icon-nav-button"
+                                                aria-label="Hide rep counter"
+                                                on:click=move |_| {
+                                                    rep_dismissed_at_position.set(Some(position));
+                                                }
+                                            >
+                                                <Icon name=IconName::X class="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div class="text-center space-y-2 pt-1">
                                             <p class=count_class>
                                                 {format!("{} / {}", count, target)}
                                             </p>
-                                            // Progress bar — uses the existing
-                                            // progress-track surface token; fill
-                                            // colour shifts to warm-accent at
-                                            // target.
                                             <div class="w-full h-1.5 rounded-full bg-progress-track overflow-hidden">
                                                 <div
                                                     class=bar_fill_class
@@ -220,8 +235,8 @@ pub fn SessionTimer() -> impl IntoView {
                                         } else {
                                             // Missed left (de-emphasised),
                                             // Got it right (primary success) —
-                                            // matches iOS's "destructive on
-                                            // left, primary on right" idiom.
+                                            // iOS "destructive on left,
+                                            // primary on right" idiom.
                                             view! {
                                                 <div class="flex gap-3 justify-center">
                                                     <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
@@ -243,21 +258,6 @@ pub fn SessionTimer() -> impl IntoView {
                                                 </div>
                                             }.into_any()
                                         }}
-
-                                        // Hide counter link — sets the
-                                        // dismissed-at-position signal so
-                                        // the counter stays hidden until
-                                        // the next item.
-                                        <div class="text-center">
-                                            <button
-                                                class="text-xs text-muted hover:text-secondary motion-safe:transition-colors"
-                                                on:click=move |_| {
-                                                    rep_dismissed_at_position.set(Some(position));
-                                                }
-                                            >
-                                                "Hide counter"
-                                            </button>
-                                        </div>
                                     </div>
                                 }.into_any()
                             } else {
@@ -345,61 +345,45 @@ pub fn SessionTimer() -> impl IntoView {
                                         </Button>
                                     }.into_any()
                                 }}
-                                // End Early left (destructive), Skip right
-                                // (mid-emphasis). iOS convention puts
-                                // destructive actions on the leading edge so
-                                // the muscle-memory primary lands on the right.
-                                <div class="flex flex-wrap gap-3 justify-center">
-                                    <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
-                                        let now = chrono::Utc::now();
-                                        let event = Event::Session(SessionEvent::EndSessionEarly { now });
-                                        let core_ref = core_end.borrow();
-                                        let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                        elapsed_secs.set(0);
-                                    })>
+                                // Sub-actions — compact pill buttons
+                                // sitting below the primary hero CTA. End
+                                // Early on the left (destructive, leading
+                                // edge per iOS convention) with the danger
+                                // surface tint; Skip on the right with the
+                                // neutral surface tint. Visually clear
+                                // controls but lighter weight than the hero
+                                // button above so the primary action keeps
+                                // the focus.
+                                <div class="flex items-center justify-center gap-3">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium bg-danger-surface text-danger-text hover:brightness-110 motion-safe:transition-all"
+                                        on:click=move |_| {
+                                            let now = chrono::Utc::now();
+                                            let event = Event::Session(SessionEvent::EndSessionEarly { now });
+                                            let core_ref = core_end.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            elapsed_secs.set(0);
+                                        }
+                                    >
                                         "End Early"
-                                    </Button>
-                                    <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                        let now = chrono::Utc::now();
-                                        let event = Event::Session(SessionEvent::SkipItem { now });
-                                        let core_ref = core_skip.borrow();
-                                        let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                        elapsed_secs.set(0);
-                                    })>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium bg-surface-secondary text-secondary hover:bg-surface-hover motion-safe:transition-colors"
+                                        on:click=move |_| {
+                                            let now = chrono::Utc::now();
+                                            let event = Event::Session(SessionEvent::SkipItem { now });
+                                            let core_ref = core_skip.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            elapsed_secs.set(0);
+                                        }
+                                    >
                                         "Skip"
-                                    </Button>
+                                    </button>
                                 </div>
-                            </div>
-
-                            // Focus mode toggle — reveals/hides nav, intentions, completed items
-                            <div class="text-center">
-                                <button
-                                    class="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary motion-safe:transition-colors"
-                                    on:click=move |_| {
-                                        focus_mode.set(!focus_mode.get_untracked());
-                                    }
-                                    aria-label=move || if in_focus { "Show more details" } else { "Return to focused view" }
-                                >
-                                    {if in_focus {
-                                        view! {
-                                            // Down chevron — "show more"
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                            </svg>
-                                            <span>"Show more"</span>
-                                        }.into_any()
-                                    } else {
-                                        view! {
-                                            // Up chevron — "focus"
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-                                            </svg>
-                                            <span>"Focus"</span>
-                                        }.into_any()
-                                    }}
-                                </button>
                             </div>
 
                             // Completed items — fades + collapses in focus

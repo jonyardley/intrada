@@ -308,6 +308,35 @@ body {
   overscroll-behavior: contain;
 }
 
+/* Icon-only nav button — small circular hit area for meta-controls
+   like the active-session focus toggle and the rep-counter X dismiss.
+   Reads as nav chrome rather than as body content (which is what the
+   text-styled <button> versions used to look like). */
+.icon-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  color: var(--color-text-muted);
+  background-color: transparent;
+  transition: background-color 120ms ease-out, color 120ms ease-out, transform 80ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.icon-nav-button:hover {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+.icon-nav-button:active {
+  transform: scale(0.94);
+}
+.icon-nav-button:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 2px;
+}
+
 /* Focus-mode fade — used by the active session view to animate elements
    in/out when the user toggles focus mode rather than hard-cutting them.
    Combines opacity + transform + max-height so the surrounding layout
