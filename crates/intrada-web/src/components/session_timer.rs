@@ -189,13 +189,19 @@ pub fn SessionTimer() -> impl IntoView {
                                 } else {
                                     0.0
                                 };
+                                // "Target reached" celebrates with accent
+                                // purple — the app's "you achieved
+                                // something" colour (Day Streak uses it in
+                                // Analytics). Warm-accent gold reads as
+                                // warning in the iOS palette and didn't
+                                // fit a positive completion moment.
                                 let count_class = if reached {
-                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-warm-accent-text"
+                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-accent-text"
                                 } else {
                                     "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-primary"
                                 };
                                 let bar_fill_class = if reached {
-                                    "h-full rounded-full bg-warm-accent motion-safe:transition-all motion-safe:duration-300"
+                                    "h-full rounded-full bg-accent motion-safe:transition-all motion-safe:duration-300"
                                 } else {
                                     "h-full rounded-full bg-success motion-safe:transition-all motion-safe:duration-300"
                                 };
@@ -230,7 +236,7 @@ pub fn SessionTimer() -> impl IntoView {
 
                                         {if reached {
                                             view! {
-                                                <p class="text-sm font-medium text-warm-accent-text text-center">"Target reached"</p>
+                                                <p class="text-sm font-medium text-accent-text text-center">"Target reached"</p>
                                             }.into_any()
                                         } else {
                                             // Missed left (de-emphasised),
@@ -345,44 +351,41 @@ pub fn SessionTimer() -> impl IntoView {
                                         </Button>
                                     }.into_any()
                                 }}
-                                // Sub-actions — compact pill buttons
-                                // sitting below the primary hero CTA. End
-                                // Early on the left (destructive, leading
-                                // edge per iOS convention) with the danger
-                                // surface tint; Skip on the right with the
-                                // neutral surface tint. Visually clear
-                                // controls but lighter weight than the hero
-                                // button above so the primary action keeps
-                                // the focus.
+                                // Sub-actions — proper Button components
+                                // (44px standard size). They're clearly
+                                // subordinate to the hero CTA above by
+                                // virtue of the hero's heavier presence
+                                // (52px / 17px / drop shadow), not by
+                                // shrinking these to look like text. End
+                                // Early on the leading edge per iOS
+                                // convention.
                                 <div class="flex items-center justify-center gap-3">
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium bg-danger-surface text-danger-text hover:brightness-110 motion-safe:transition-all"
-                                        on:click=move |_| {
+                                    <Button
+                                        variant=ButtonVariant::DangerOutline
+                                        on_click=Callback::new(move |_| {
                                             let now = chrono::Utc::now();
                                             let event = Event::Session(SessionEvent::EndSessionEarly { now });
                                             let core_ref = core_end.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
-                                        }
+                                        })
                                     >
                                         "End Early"
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium bg-surface-secondary text-secondary hover:bg-surface-hover motion-safe:transition-colors"
-                                        on:click=move |_| {
+                                    </Button>
+                                    <Button
+                                        variant=ButtonVariant::Secondary
+                                        on_click=Callback::new(move |_| {
                                             let now = chrono::Utc::now();
                                             let event = Event::Session(SessionEvent::SkipItem { now });
                                             let core_ref = core_skip.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                             elapsed_secs.set(0);
-                                        }
+                                        })
                                     >
                                         "Skip"
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
 

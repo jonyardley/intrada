@@ -594,16 +594,20 @@ body {
 }
 
 /* Hero CTA — the larger Button size for full-width primary actions
-   (Add to Library, Start Practice, Finish Session). The default Button
-   stays at 44px / text-sm for inline use; this class layers over the
-   variant base to bump padding, font size, and weight. */
+   (Add to Library, Start Practice, Finish Session). Goes 100% wide
+   by default so callers don't have to remember `attr:class="w-full"`
+   (which wouldn't reliably propagate through the Button component
+   anyway). 52px / 17px / weight 600 hits the iOS UIButton "Filled"
+   prominent style — clearly the heaviest control on the screen. */
 .btn-hero {
-  min-height: 48px;
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-  font-size: 1rem;          /* 16px */
+  width: 100%;
+  min-height: 52px;
+  padding-top: 0.9375rem;
+  padding-bottom: 0.9375rem;
+  font-size: 1.0625rem;     /* 17px — iOS body */
   font-weight: 600;
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%), 0 4px 12px rgb(0 0 0 / 14%);
 }
 
 /* Search bar — visual primitive sitting above filterable lists.
