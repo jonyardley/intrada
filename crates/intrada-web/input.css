@@ -337,30 +337,38 @@ body {
   outline-offset: 2px;
 }
 
-/* Focus-mode fade — used by the active session view to animate elements
-   in/out when the user toggles focus mode rather than hard-cutting them.
-   Combines opacity + transform + max-height so the surrounding layout
-   reflows smoothly. The 1000px upper bound is generous enough for any
-   element this is applied to today (intentions, completed-items list,
-   single nav rows). */
+/* Focus-mode fade — used by the active session view to animate
+   elements in/out when the user toggles focus mode. Uses the
+   `grid-template-rows: 1fr → 0fr` pattern to animate the actual
+   content height smoothly. The previous max-height pattern jumped at
+   the tail because max-height (1000px) was much larger than the
+   actual content for most of the transition, so the visible reflow
+   happened in a sudden snap at the end.
+
+   Requires a single child element — the wrapper grid clips it via
+   overflow: hidden / min-height: 0 on the child. Animating
+   grid-template-rows is supported in Chrome 120+ / Safari 17.4+ /
+   Firefox 124+ — covers the Tauri WKWebView (iOS 17+ for the app)
+   and modern desktop browsers. */
 .focus-fade {
-  transition:
-    opacity 250ms cubic-bezier(0.32, 0.72, 0, 1),
-    transform 250ms cubic-bezier(0.32, 0.72, 0, 1),
-    max-height 300ms cubic-bezier(0.32, 0.72, 0, 1),
-    margin 300ms cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 1000px;
+  display: grid;
+  grid-template-rows: 1fr;
   opacity: 1;
   transform: translateY(0);
-  overflow: hidden;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 .focus-fade--hidden {
-  max-height: 0;
+  grid-template-rows: 0fr;
   opacity: 0;
-  transform: translateY(-8px);
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
+  transform: translateY(-4px);
   pointer-events: none;
+}
+.focus-fade > * {
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
