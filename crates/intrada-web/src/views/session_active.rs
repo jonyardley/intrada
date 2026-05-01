@@ -62,9 +62,16 @@ pub fn SessionActiveView() -> impl IntoView {
 
     view! {
         <div>
-            <Show when=move || !focus_mode.get()>
+            // Page heading fades + collapses in focus mode rather than
+            // hard-cutting. Always rendered so the transition has a
+            // before/after to interpolate between.
+            <div class=move || if focus_mode.get() {
+                "focus-fade focus-fade--hidden"
+            } else {
+                "focus-fade"
+            }>
                 <PageHeading text="Practice" />
-            </Show>
+            </div>
             <SessionTimer />
         </div>
     }
