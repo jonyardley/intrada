@@ -16,8 +16,10 @@ RUN cargo chef cook --release --recipe-path recipe.json --bin intrada-api
 COPY . .
 RUN cargo build --release --bin intrada-api
 
-# Runtime image — no Rust toolchain needed
-FROM debian:bookworm-slim AS runtime
+# Runtime image — no Rust toolchain needed.
+# Trixie matches the cargo-chef builder's glibc (binary built against glibc 2.38+
+# crashes on bookworm's 2.36 with `version `GLIBC_2.38' not found`).
+FROM debian:trixie-slim AS runtime
 WORKDIR /app
 # Install CA certificates for HTTPS connections to Turso
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
