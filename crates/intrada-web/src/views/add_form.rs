@@ -8,8 +8,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{CreateItem, Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
-    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, TagInput, TextArea,
-    TextField, TypeTabs,
+    AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card, PageHeading,
+    TagInput, TextArea, TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tempo, unique_composers, unique_tags};
@@ -176,16 +176,20 @@ pub fn AddLibraryItemForm(
                         // Tags — chip-based input with autocomplete
                         <TagInput id="add-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
-                        // Buttons
-                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        // Buttons — hero-size primary (full-width on mobile,
+                        // matches Pencil "Add to Library" CTA) with the
+                        // Cancel as a secondary text-style affordance below.
+                        <div class="flex flex-col gap-3 pt-2">
                             <Button
                                 variant=ButtonVariant::Primary
                                 button_type="submit"
+                                size=ButtonSize::Hero
                                 loading=Signal::derive(move || is_submitting.get())
+                                attr:class="w-full"
                             >
                                 {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
                             </Button>
-                            <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                            <Button variant=ButtonVariant::Secondary attr:class="w-full" on_click=Callback::new(move |_| {
                                 if let Some(cb) = dismiss_cancel {
                                     cb.run(());
                                 } else {

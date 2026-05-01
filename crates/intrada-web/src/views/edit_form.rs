@@ -9,8 +9,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemEvent, UpdateItem, ViewModel};
 
 use crate::components::{
-    AutocompleteTextField, BackLink, Button, ButtonVariant, Card, PageHeading, SkeletonBlock,
-    SkeletonLine, TagInput, TextArea, TextField, TypeTabs,
+    AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card, PageHeading,
+    SkeletonBlock, SkeletonLine, TagInput, TextArea, TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tempo, parse_tempo_display, unique_composers, unique_tags};
@@ -258,16 +258,19 @@ pub fn EditLibraryItemForm(
                         // Tags — chip-based input with autocomplete
                         <TagInput id="edit-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
-                        // Buttons
-                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        // Buttons — hero-size primary stacked over a
+                        // full-width secondary Cancel on mobile.
+                        <div class="flex flex-col gap-3 pt-2">
                             <Button
                                 variant=ButtonVariant::Primary
                                 button_type="submit"
+                                size=ButtonSize::Hero
                                 loading=Signal::derive(move || is_submitting.get())
+                                attr:class="w-full"
                             >
                                 {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
                             </Button>
-                            <Button variant=ButtonVariant::Secondary on_click={
+                            <Button variant=ButtonVariant::Secondary attr:class="w-full" on_click={
                                 let cancel_href = cancel_href.clone();
                                 let navigate = navigate.clone();
                                 Callback::new(move |_| {
