@@ -31,21 +31,26 @@ pub fn LibraryListView() -> impl IntoView {
     let is_refreshing = RwSignal::new(false);
     let add_sheet_open = RwSignal::new(false);
 
-    // Default to Pieces — the dominant case in a music-practice library.
-    // Pencil's `NEW DESIGN - Library` (k9mpoW) shows Pieces selected by
-    // default. There's no "All" tab in the design.
-    let active_type = RwSignal::new(ItemKind::Piece);
+    // Default to All so the user sees their whole library on first load.
+    // `None` = no kind filter; `Some(kind)` filters to that kind.
+    let active_filter: RwSignal<Option<ItemKind>> = RwSignal::new(None);
     let query = RwSignal::new(String::new());
 
     // Filtered view: by tab first, then by query (title / composer / tag,
     // case-insensitive, substring match). Empty query passes through.
-    let filtered_items = Signal::derive(move || {
+    // Memo (not Signal::derive) so the filter runs once per dependency
+    // change and caches for re-reads in the same render cycle (count span,
+    // list, and empty-state branches all read it).
+    let filtered_items = Memo::new(move |_| {
         let vm = view_model.get();
-        let kind = active_type.get();
+        let kind = active_filter.get();
         let q = query.get().trim().to_lowercase();
         vm.items
             .into_iter()
-            .filter(|item| item.item_type == kind)
+            .filter(|item| match &kind {
+                None => true,
+                Some(k) => &item.item_type == k,
+            })
             .filter(|item| q.is_empty() || matches_query(item, &q))
             .collect::<Vec<_>>()
     });
@@ -145,11 +150,11 @@ pub fn LibraryListView() -> impl IntoView {
                 />
             </div>
 
-            // Type tabs — Pieces / Exercises. Underline-style; matches the
-            // Pencil refresh frame. Default active = Pieces.
+            // Type tabs — All / Pieces / Exercises. Underline-style with a
+            // sliding accent indicator. Default active = All.
             <LibraryTypeTabs
-                active=Signal::derive(move || active_type.get())
-                on_change=Callback::new(move |kind| active_type.set(kind))
+                active=Signal::derive(move || active_filter.get())
+                on_change=Callback::new(move |kind| active_filter.set(kind))
             />
 
             // Library items section. The page-level <PageHeading> above
@@ -207,11 +212,16 @@ pub fn LibraryListView() -> impl IntoView {
                                 }.into_any()
                             } else if filtered.is_empty() {
                                 let q = query.get();
-                                let kind_label = match active_type.get() {
-                                    ItemKind::Piece => "pieces",
-                                    ItemKind::Exercise => "exercises",
+                                let kind_label = match active_filter.get() {
+                                    None => "items",
+                                    Some(ItemKind::Piece) => "pieces",
+                                    Some(ItemKind::Exercise) => "exercises",
                                 };
                                 let (title, body) = if q.trim().is_empty() {
+                                    // Reachable when the user filters to a kind
+                                    // they have none of (e.g. all-pieces library
+                                    // → Exercises tab). All-tab + empty list is
+                                    // covered by the truly-empty branch above.
                                     (
                                         format!("No {kind_label} yet"),
                                         "Switch tabs to see your other items, or add a new one."

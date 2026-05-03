@@ -31,8 +31,7 @@ test.describe("add library item", () => {
 
     // Should redirect to library and show the new item. Library rows
     // are spans/links post-2026-refresh, not headings — assert against
-    // the list contents directly. Library defaults to the Pieces tab,
-    // so the new piece is visible without switching.
+    // the list contents directly.
     await expect(
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
@@ -42,12 +41,12 @@ test.describe("add library item", () => {
         .getByText("Moonlight Sonata")
     ).toBeVisible();
 
-    // Default tab is Pieces — should show 2 piece rows (stub piece + new).
-    // Stub data is 1 piece + 1 exercise; the exercise lives behind the other tab.
+    // Should now have 3 items (2 stub + 1 new) — All tab is the default
+    // and shows everything.
     const items = page
       .getByRole("list", { name: "Library items" })
       .locator("li");
-    await expect(items).toHaveCount(2);
+    await expect(items).toHaveCount(3);
   });
 
   test("add an exercise", async ({ page }) => {
@@ -67,9 +66,8 @@ test.describe("add library item", () => {
     // Submit
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Library defaults to Pieces tab; the new exercise lives behind the
-    // Exercises tab. Switch tabs, then assert against the list contents.
-    await page.getByRole("tab", { name: "Exercises" }).click();
+    // Should appear in library list — All tab is the default, no tab
+    // switch needed.
     await expect(
       page
         .getByRole("list", { name: "Library items" })

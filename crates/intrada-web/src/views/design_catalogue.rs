@@ -27,7 +27,7 @@ pub fn DesignCatalogue() -> impl IntoView {
     // ── Sample data ────────────────────────────────────────────────────
 
     let type_tab_active = RwSignal::new(ItemType::Piece);
-    let library_tab_active = RwSignal::new(ItemKind::Piece);
+    let library_tab_active: RwSignal<Option<ItemKind>> = RwSignal::new(None);
     let sample_text = RwSignal::new(String::new());
     let sample_text_hint = RwSignal::new(String::new());
     let sample_text_required = RwSignal::new(String::new());
@@ -875,7 +875,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="library-type-tabs">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Type Tabs"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-3">"Underline-style 2-tab toggle used by the Library to filter Pieces / Exercises. Distinct from TypeTabs (segmented pill) above; matches the Pencil refresh frame for the Library screen."</p>
+                    <p class="text-xs text-faint mb-3">"Three-tab underline toggle (All / Pieces / Exercises) used by the Library. The accent indicator slides between tabs on selection. Distinct from TypeTabs (segmented pill) above; matches the Pencil refresh frame for the Library screen."</p>
                     <LibraryTypeTabs
                         active=Signal::derive(move || library_tab_active.get())
                         on_change=Callback::new(move |k| library_tab_active.set(k))
