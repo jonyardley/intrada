@@ -6,7 +6,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 
 use crate::components::{
-    AccentBar, Card, EmptyState, Icon, IconName, LineChart, PageHeading, SectionLabel,
+    AccentBar, AccentRow, Card, EmptyState, Icon, IconName, LineChart, PageHeading, SectionLabel,
     SkeletonBlock, StatCard, StatTone,
 };
 use intrada_web::core_bridge::init_core;
@@ -159,8 +159,12 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                         </p>
                     }.into_any()
                 } else {
+                    // Each row is an AccentRow with bar=None — token
+                    // consistency with the rest of the refresh, but no
+                    // gold/blue stripe (the list is uniform "top items"
+                    // with rank as the differentiator, not type).
                     view! {
-                        <ul class="space-y-2">
+                        <ul class="space-y-2 list-none p-0">
                             {top_items.into_iter().enumerate().map(|(i, item)| {
                                 let hours = item.total_minutes / 60;
                                 let mins = item.total_minutes % 60;
@@ -170,26 +174,28 @@ fn AnalyticsDashboard(analytics: AnalyticsView) -> impl IntoView {
                                     format!("{}m", mins)
                                 };
                                 view! {
-                                    <li class="flex items-center justify-between py-1.5 border-b border-border-default/50 last:border-0">
-                                        <div class="flex items-center gap-2 min-w-0">
-                                            <span class="text-xs text-faint w-5 text-right shrink-0">
+                                    <li>
+                                        <AccentRow bar=AccentBar::None>
+                                            <span class="text-xs font-medium text-faint w-5 text-right shrink-0 tabular-nums">
                                                 {format!("{}.", i + 1)}
                                             </span>
-                                            <span class="text-sm text-primary truncate">
-                                                {item.item_title.clone()}
-                                            </span>
-                                            <span class="text-xs text-faint shrink-0">
-                                                {item.item_type.to_string()}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center gap-3 shrink-0 ml-2">
-                                            <span class="text-xs text-muted">
-                                                {format!("{} sessions", item.session_count)}
-                                            </span>
-                                            <span class="text-sm font-medium text-accent-text">
+                                            <div class="flex flex-col flex-1 min-w-0 gap-0.5">
+                                                <span class="text-sm font-semibold text-primary truncate">
+                                                    {item.item_title.clone()}
+                                                </span>
+                                                <span class="text-xs text-muted">
+                                                    {format!(
+                                                        "{} \u{00B7} {} session{}",
+                                                        item.item_type,
+                                                        item.session_count,
+                                                        if item.session_count == 1 { "" } else { "s" }
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <span class="text-sm font-medium text-accent-text shrink-0 tabular-nums">
                                                 {time}
                                             </span>
-                                        </div>
+                                        </AccentRow>
                                     </li>
                                 }
                             }).collect::<Vec<_>>()}

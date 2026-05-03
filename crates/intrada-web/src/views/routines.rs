@@ -20,7 +20,24 @@ pub fn RoutinesListView() -> impl IntoView {
 
     view! {
         <div>
-            <PageHeading text="Routines" subtitle="Save and reuse your favourite practice structures." />
+            <PageHeading
+                text="Routines"
+                subtitle="Save and reuse your favourite practice structures."
+                trailing=Box::new(move || view! {
+                    // Trailing + action mirrors the Library page heading.
+                    // Navigates to the session builder (where routines are
+                    // born — see the Save-as-Routine flow). On iOS the
+                    // cta-link--page-add modifier collapses to icon-only.
+                    <A
+                        href="/sessions/new"
+                        attr:class="cta-link cta-link--page-add shrink-0"
+                        attr:aria-label="New Routine"
+                    >
+                        <Icon name=IconName::Plus class="cta-link-icon" />
+                        <span class="cta-link-label">"New Routine"</span>
+                    </A>
+                }.into_any())
+            />
 
             {move || {
                 if is_loading.get() {
