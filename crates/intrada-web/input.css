@@ -1951,3 +1951,50 @@ html:not([data-platform="ios"]) .context-menu {
 [data-platform="ios"] .type-tabs-btn[aria-disabled="true"] {
   cursor: default;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Underline tabs — used by `<LibraryTypeTabs>` for filtering the Library.
+   Visually distinct from `.type-tabs` (segmented control). 24px gap, no
+   background; the active tab carries a 3px accent underline. Pencil
+   reference: NEW DESIGN - Library (k9mpoW).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tabs-underline {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  height: 36px;
+}
+
+.tabs-underline-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.5rem 0;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.tabs-underline-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.tabs-underline-btn--active {
+  color: var(--color-text-primary);
+  font-weight: 700;
+  border-bottom-color: var(--color-accent);
+}
+
+.tabs-underline-btn:focus {
+  outline: none;
+}
+
+.tabs-underline-btn:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 4px;
+  border-radius: 2px;
+}

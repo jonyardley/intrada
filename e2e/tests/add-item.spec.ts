@@ -10,11 +10,12 @@ test.describe("add library item", () => {
     // second one in the empty state.
     await page.getByRole("button", { name: "Add Item" }).first().click();
 
-    // Piece tab should be active by default
-    await expect(page.getByRole("tab", { name: "Piece" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
+    // Piece tab should be active by default. exact: true — the Library page
+    // behind the sheet has its own "Pieces" tab; substring match would
+    // resolve to two elements.
+    await expect(
+      page.getByRole("tab", { name: "Piece", exact: true })
+    ).toHaveAttribute("aria-selected", "true");
 
     // Fill in the form
     await page.locator("#add-title").fill("Moonlight Sonata");
@@ -30,7 +31,8 @@ test.describe("add library item", () => {
 
     // Should redirect to library and show the new item. Library rows
     // are spans/links post-2026-refresh, not headings — assert against
-    // the list contents directly.
+    // the list contents directly. Library defaults to the Pieces tab,
+    // so the new piece is visible without switching.
     await expect(
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
@@ -40,11 +42,12 @@ test.describe("add library item", () => {
         .getByText("Moonlight Sonata")
     ).toBeVisible();
 
-    // Should now have 3 items (2 stub + 1 new)
+    // Default tab is Pieces — should show 2 piece rows (stub piece + new).
+    // Stub data is 1 piece + 1 exercise; the exercise lives behind the other tab.
     const items = page
       .getByRole("list", { name: "Library items" })
       .locator("li");
-    await expect(items).toHaveCount(3);
+    await expect(items).toHaveCount(2);
   });
 
   test("add an exercise", async ({ page }) => {
@@ -64,7 +67,9 @@ test.describe("add library item", () => {
     // Submit
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Should appear in library list (rows are now links, not headings).
+    // Library defaults to Pieces tab; the new exercise lives behind the
+    // Exercises tab. Switch tabs, then assert against the list contents.
+    await page.getByRole("tab", { name: "Exercises" }).click();
     await expect(
       page
         .getByRole("list", { name: "Library items" })

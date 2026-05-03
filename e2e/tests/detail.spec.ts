@@ -54,7 +54,9 @@ test.describe("detail view", () => {
   test("delete item with confirmation", async ({ page }) => {
     await page.goto("/");
 
-    // Navigate to Hanon No. 1 (library rows are now links, not headings).
+    // Navigate to Hanon No. 1 (an exercise — Library defaults to Pieces tab,
+    // so switch tabs first). Rows are links post-2026-refresh, not headings.
+    await page.getByRole("tab", { name: "Exercises" }).click();
     await page
       .getByRole("list", { name: "Library items" })
       .getByText("Hanon No. 1")
@@ -85,18 +87,19 @@ test.describe("detail view", () => {
       page.getByRole("heading", { name: "Library" })
     ).toBeVisible();
 
-    // Hanon No. 1 should be gone (no longer a heading post-refresh —
-    // assert against the list contents directly).
+    // Switch to the Exercises tab — Hanon was an exercise. After deletion
+    // the tab should be empty (asserting against the filtered view, not the
+    // default Pieces tab where Hanon would always have been hidden).
+    await page.getByRole("tab", { name: "Exercises" }).click();
     await expect(
       page
         .getByRole("list", { name: "Library items" })
         .getByText("Hanon No. 1")
     ).not.toBeVisible();
 
-    // Only 1 item remaining
-    const items = page
-      .getByRole("list", { name: "Library items" })
-      .locator("li");
-    await expect(items).toHaveCount(1);
+    // Exercises tab is now empty — empty-state appears in place of the list.
+    await expect(
+      page.getByRole("list", { name: "Library items" })
+    ).not.toBeVisible();
   });
 });

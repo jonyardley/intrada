@@ -1,14 +1,26 @@
+use leptos::ev;
 use leptos::prelude::*;
+use leptos::web_sys;
+use wasm_bindgen::JsCast;
 
-use intrada_core::{Event, ItemEvent, ViewModel};
+use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, ViewModel};
 
 use crate::components::{
-    BottomSheet, EmptyState, Icon, IconName, LibraryItemCard, PageHeading, PullToRefresh,
-    SkeletonItemCard,
+    BottomSheet, EmptyState, Icon, IconName, LibraryItemCard, LibraryTypeTabs, PageHeading,
+    PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+
+/// Case-insensitive substring match over title, subtitle (composer), and tags.
+/// Caller must lowercase `q` once before calling — keeps the per-item cost to
+/// just the per-field lowercase + contains.
+fn matches_query(item: &LibraryItemView, q: &str) -> bool {
+    item.title.to_lowercase().contains(q)
+        || item.subtitle.to_lowercase().contains(q)
+        || item.tags.iter().any(|t| t.to_lowercase().contains(q))
+}
 
 #[component]
 pub fn LibraryListView() -> impl IntoView {
@@ -18,6 +30,25 @@ pub fn LibraryListView() -> impl IntoView {
     let core = expect_context::<SharedCore>();
     let is_refreshing = RwSignal::new(false);
     let add_sheet_open = RwSignal::new(false);
+
+    // Default to Pieces — the dominant case in a music-practice library.
+    // Pencil's `NEW DESIGN - Library` (k9mpoW) shows Pieces selected by
+    // default. There's no "All" tab in the design.
+    let active_type = RwSignal::new(ItemKind::Piece);
+    let query = RwSignal::new(String::new());
+
+    // Filtered view: by tab first, then by query (title / composer / tag,
+    // case-insensitive, substring match). Empty query passes through.
+    let filtered_items = Signal::derive(move || {
+        let vm = view_model.get();
+        let kind = active_type.get();
+        let q = query.get().trim().to_lowercase();
+        vm.items
+            .into_iter()
+            .filter(|item| item.item_type == kind)
+            .filter(|item| q.is_empty() || matches_query(item, &q))
+            .collect::<Vec<_>>()
+    });
 
     let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
     let close_add_sheet = Callback::new(move |_| add_sheet_open.set(false));
@@ -94,10 +125,8 @@ pub fn LibraryListView() -> impl IntoView {
                 }.into_any())
             />
 
-            // Visual search bar — non-functional placeholder for v1 of
-            // the 2026 refresh. Real client-side search needs design +
-            // UX work beyond a textbox; the input is here so the screen
-            // matches the Pencil reference. Tracked as #TODO follow-up.
+            // Search bar — title / composer / tag, case-insensitive,
+            // substring match. Empty query falls through (tab still filters).
             <div class="search-bar">
                 <Icon name=IconName::Search class="search-bar-icon" />
                 <input
@@ -105,18 +134,33 @@ pub fn LibraryListView() -> impl IntoView {
                     class="search-bar-input"
                     placeholder="Search pieces..."
                     aria-label="Search library"
+                    prop:value=move || query.get()
+                    on:input=move |ev: ev::Event| {
+                        if let Some(target) = ev.target() {
+                            if let Some(input) = target.dyn_ref::<web_sys::HtmlInputElement>() {
+                                query.set(input.value());
+                            }
+                        }
+                    }
                 />
             </div>
+
+            // Type tabs — Pieces / Exercises. Underline-style; matches the
+            // Pencil refresh frame. Default active = Pieces.
+            <LibraryTypeTabs
+                active=Signal::derive(move || active_type.get())
+                on_change=Callback::new(move |kind| active_type.set(kind))
+            />
 
             // Library items section. The page-level <PageHeading> above
             // already supplies the visible "Library" title, so the
             // section just carries an aria-label for screen readers and
-            // an inline item count.
-            <section aria-label="Library items">
+            // an inline item count (reflects the *filtered* total).
+            <section id="library-list" aria-label="Library items">
                 <div class="flex justify-end mb-4">
                     <span class="text-sm text-muted">
                         {move || {
-                            let count = view_model.get().items.len();
+                            let count = filtered_items.get().len();
                             if count == 1 {
                                 "1 item".to_string()
                             } else {
@@ -140,6 +184,11 @@ pub fn LibraryListView() -> impl IntoView {
                             }.into_any()
                         } else {
                             let vm = view_model.get();
+                            let filtered = filtered_items.get();
+                            // Three empty states:
+                            //  1. truly empty library  — onboarding CTA
+                            //  2. tab + non-empty query  — "no matches"
+                            //  3. tab with no items but a non-empty other tab — neutral message
                             if vm.items.is_empty() {
                                 view! {
                                     <EmptyState
@@ -156,10 +205,35 @@ pub fn LibraryListView() -> impl IntoView {
                                         </button>
                                     </EmptyState>
                                 }.into_any()
+                            } else if filtered.is_empty() {
+                                let q = query.get();
+                                let kind_label = match active_type.get() {
+                                    ItemKind::Piece => "pieces",
+                                    ItemKind::Exercise => "exercises",
+                                };
+                                let (title, body) = if q.trim().is_empty() {
+                                    (
+                                        format!("No {kind_label} yet"),
+                                        "Switch tabs to see your other items, or add a new one."
+                                            .to_string(),
+                                    )
+                                } else {
+                                    (
+                                        "No matching items".to_string(),
+                                        format!("No {kind_label} match \u{201C}{}\u{201D}.", q.trim()),
+                                    )
+                                };
+                                view! {
+                                    <EmptyState
+                                        icon=IconName::Search
+                                        title=title
+                                        body=body
+                                    />
+                                }.into_any()
                             } else {
                                 view! {
                                     <ul class="space-y-2 list-none p-0" role="list" aria-label="Library items">
-                                        {vm.items.into_iter().map(|item| {
+                                        {filtered.into_iter().map(|item| {
                                             view! {
                                                 <LibraryItemCard item=item on_delete=on_delete_item />
                                             }
