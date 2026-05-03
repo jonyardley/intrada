@@ -792,8 +792,8 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Hero (2026 refresh \u{2014} full-width CTA)"</p>
                             <p class="text-xs text-faint mb-2">"Larger 48px / text-base / weight-600 sizing for the primary action on a screen (Add to Library, Start Practice). Default size stays Small for inline use."</p>
                             <div class="space-y-3">
-                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Add to Library"</Button>
-                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero attr:class="w-full">"Start Practice"</Button>
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero full_width=true>"Add to Library"</Button>
+                                <Button variant=ButtonVariant::Primary size=ButtonSize::Hero full_width=true>"Start Practice"</Button>
                             </div>
                         </div>
                     </div>

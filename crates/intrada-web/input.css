@@ -308,6 +308,69 @@ body {
   overscroll-behavior: contain;
 }
 
+/* Icon-only nav button — small circular hit area for meta-controls
+   like the active-session focus toggle and the rep-counter X dismiss.
+   Reads as nav chrome rather than as body content (which is what the
+   text-styled <button> versions used to look like). */
+.icon-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  color: var(--color-text-muted);
+  background-color: transparent;
+  transition: background-color 120ms ease-out, color 120ms ease-out, transform 80ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.icon-nav-button:hover {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-text-secondary);
+}
+.icon-nav-button:active {
+  transform: scale(0.94);
+}
+.icon-nav-button:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 2px;
+}
+
+/* Focus-mode fade — used by the active session view to animate
+   elements in/out when the user toggles focus mode. Uses the
+   `grid-template-rows: 1fr → 0fr` pattern to animate the actual
+   content height smoothly. The previous max-height pattern jumped at
+   the tail because max-height (1000px) was much larger than the
+   actual content for most of the transition, so the visible reflow
+   happened in a sudden snap at the end.
+
+   Requires a single child element — the wrapper grid clips it via
+   overflow: hidden / min-height: 0 on the child. Animating
+   grid-template-rows is supported in Chrome 120+ / Safari 17.4+ /
+   Firefox 124+ — covers the Tauri WKWebView (iOS 17+ for the app)
+   and modern desktop browsers. */
+.focus-fade {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.focus-fade--hidden {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+.focus-fade > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    2026 Refresh — Primitive Components
    ═══════════════════════════════════════════════════════════════════════
@@ -539,16 +602,20 @@ body {
 }
 
 /* Hero CTA — the larger Button size for full-width primary actions
-   (Add to Library, Start Practice, Finish Session). The default Button
-   stays at 44px / text-sm for inline use; this class layers over the
-   variant base to bump padding, font size, and weight. */
+   (Add to Library, Start Practice, Finish Session). Goes 100% wide
+   by default so callers don't have to remember `attr:class="w-full"`
+   (which wouldn't reliably propagate through the Button component
+   anyway). 52px / 17px / weight 600 hits the iOS UIButton "Filled"
+   prominent style — clearly the heaviest control on the screen. */
 .btn-hero {
-  min-height: 48px;
-  padding-top: 0.875rem;
-  padding-bottom: 0.875rem;
-  font-size: 1rem;          /* 16px */
+  width: 100%;
+  min-height: 52px;
+  padding-top: 0.9375rem;
+  padding-bottom: 0.9375rem;
+  font-size: 1.0625rem;     /* 17px — iOS body */
   font-weight: 600;
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%), 0 4px 12px rgb(0 0 0 / 14%);
 }
 
 /* Search bar — visual primitive sitting above filterable lists.

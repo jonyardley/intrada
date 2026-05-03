@@ -2,15 +2,25 @@ use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
-use intrada_core::{EntryStatus, Event, SessionEvent, ViewModel};
+use intrada_core::{EntryStatus, Event, ItemKind, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
-    Button, ButtonVariant, Card, Icon, IconName, ProgressRing, SetlistEntryRow, TransitionPrompt,
-    TypeBadge,
+    Button, ButtonSize, ButtonVariant, Icon, IconName, InlineTypeIndicator, ProgressRing,
+    SectionLabel, SetlistEntryRow, TransitionPrompt,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
+
+/// Map an `ItemKind` from core into the `ItemType` enum used by
+/// `<InlineTypeIndicator>` (the two enums are duplicated for FFI/typegen
+/// reasons; see `crates/intrada-web/src/types.rs`).
+fn item_kind_to_type(kind: ItemKind) -> ItemType {
+    match kind {
+        ItemKind::Piece => ItemType::Piece,
+        ItemKind::Exercise => ItemType::Exercise,
+    }
+}
 
 /// Active session timer: shows current item, elapsed time, progress, and controls.
 #[component]
@@ -23,8 +33,11 @@ pub fn SessionTimer() -> impl IntoView {
 
     let elapsed_secs = RwSignal::new(0u32);
     let interval_id: RwSignal<Option<i32>> = RwSignal::new(None);
-    // UI-only visibility signal for the rep counter (does not affect domain state)
-    let rep_counter_visible = RwSignal::new(false);
+    // Position the user manually dismissed the rep counter at. Tied to
+    // position rather than a plain bool so the counter naturally
+    // reappears on the next item — fixes the prior bug where a sticky
+    // auto-show effect re-revealed the counter immediately after dismiss.
+    let rep_dismissed_at_position = RwSignal::new(Option::<usize>::None);
     // Tracks whether the current item's planned duration has elapsed (drives TransitionPrompt)
     let duration_elapsed = RwSignal::new(false);
 
@@ -53,7 +66,10 @@ pub fn SessionTimer() -> impl IntoView {
     });
 
     view! {
-        <div class="space-y-4">
+        // space-y-6 between major zones — hero, optional rep card,
+        // primary CTA, sub-actions. The wider gap separates concerns
+        // visually so the user can read the screen at a glance.
+        <div class="space-y-6">
             {move || {
                 let vm = view_model.get();
                 match vm.active_session {
@@ -88,66 +104,82 @@ pub fn SessionTimer() -> impl IntoView {
                         let rep_count = active.current_rep_count;
                         let rep_target_reached = active.current_rep_target_reached;
                         let has_rep_state = rep_target.is_some();
-                        // Auto-show counter when entry has rep state from building phase;
-                        // auto-hide when navigating to an item without rep state.
-                        if has_rep_state && !rep_counter_visible.get_untracked() {
-                            rep_counter_visible.set(true);
-                        } else if !has_rep_state && rep_counter_visible.get_untracked() {
-                            rep_counter_visible.set(false);
-                        }
-                        let show_counter = rep_counter_visible.get_untracked() || has_rep_state;
+                        // Counter is visible when the entry carries rep state AND the
+                        // user hasn't dismissed it for this position. The dismissed
+                        // position resets on item change so the counter naturally
+                        // returns on the next item.
+                        let show_counter =
+                            has_rep_state && rep_dismissed_at_position.get() != Some(position);
 
                         let in_focus = focus_mode.get();
+                        let session_intention_class = if in_focus {
+                            "focus-fade focus-fade--hidden"
+                        } else {
+                            "focus-fade"
+                        };
+                        let entry_intention_class = session_intention_class;
+                        let completed_class = session_intention_class;
 
                         view! {
-                            // Session intention (above the current item card) — hidden in focus mode
-                            {if !in_focus {
-                                session_intention.map(|intention| view! {
+                            // Session intention (above the current item card) —
+                            // fades + slides + collapses in focus mode rather
+                            // than hard-cutting. Always rendered so the
+                            // transition has something to animate.
+                            {session_intention.map(|intention| view! {
+                                <div class=session_intention_class>
                                     <p class="text-sm text-secondary text-center italic">{intention}</p>
-                                })
-                            } else {
-                                None
-                            }}
-
-                            // Current item card
-                            <Card>
-                                <div class="text-center space-y-3">
-                                    <p class="text-xs text-muted uppercase tracking-wider">
-                                        {format!("Item {} of {}", position + 1, total)}
-                                    </p>
-                                    <h2 class="text-2xl font-bold text-primary">{current_title}</h2>
-                                    // Entry-level intention (below the item title) — hidden in focus mode
-                                    {if !in_focus {
-                                        current_entry_intention.map(|intention| view! {
-                                            <p class="text-sm text-muted">{intention}</p>
-                                        })
-                                    } else {
-                                        None
-                                    }}
-                                    <TypeBadge item_type=current_type />
-                                    // Timer: progress ring when planned duration exists, digital only otherwise
-                                    {match planned_duration {
-                                        Some(planned_secs) => view! {
-                                            <div class="mt-4">
-                                                <ProgressRing
-                                                    elapsed_secs=elapsed_secs
-                                                    planned_duration_secs=planned_secs
-                                                />
-                                            </div>
-                                        }.into_any(),
-                                        None => view! {
-                                            <p class="text-4xl sm:text-6xl font-mono font-bold text-primary mt-4">
-                                                {move || {
-                                                    let secs = elapsed_secs.get();
-                                                    format!("{:02}:{:02}", secs / 60, secs % 60)
-                                                }}
-                                            </p>
-                                        }.into_any(),
-                                    }}
                                 </div>
-                            </Card>
+                            })}
 
-                            // Rep counter section
+                            // Current item — hero block. No Card chrome
+                            // here: 2026 refresh leans on type + scale to
+                            // anchor the screen rather than a glass surface.
+                            <div class="text-center space-y-3 py-2">
+                                <p class="text-xs text-muted uppercase tracking-wider">
+                                    {format!("Item {} of {}", position + 1, total)}
+                                </p>
+                                <h2 class="text-2xl font-bold text-primary font-heading">{current_title}</h2>
+                                // Entry-level intention — fades with focus mode
+                                {current_entry_intention.map(|intention| view! {
+                                    <div class=entry_intention_class>
+                                        <p class="text-sm text-muted">{intention}</p>
+                                    </div>
+                                })}
+                                <div class="flex justify-center">
+                                    <InlineTypeIndicator item_type=item_kind_to_type(current_type) />
+                                </div>
+                                // Timer: progress ring when planned duration exists,
+                                // bare digital otherwise. The digital variant uses Inter
+                                // weight 300 (light) at 48px/56px — the elegant practice-
+                                // timer look from the Pencil reference rather than the
+                                // alarm-clock font-mono bold of the previous design.
+                                {match planned_duration {
+                                    Some(planned_secs) => view! {
+                                        <div class="mt-4">
+                                            <ProgressRing
+                                                elapsed_secs=elapsed_secs
+                                                planned_duration_secs=planned_secs
+                                            />
+                                        </div>
+                                    }.into_any(),
+                                    None => view! {
+                                        <p class="mt-4 text-5xl sm:text-6xl font-light tracking-tight text-primary tabular-nums">
+                                            {move || {
+                                                let secs = elapsed_secs.get();
+                                                format!("{:02}:{:02}", secs / 60, secs % 60)
+                                            }}
+                                        </p>
+                                    }.into_any(),
+                                }}
+                            </div>
+
+                            // Rep counter — its own contained card so it
+                            // reads as a distinct contextual module sitting
+                            // between the timer hero and the primary CTA.
+                            // Header row carries SectionLabel + an X icon-
+                            // nav-button (replacing the previous text-styled
+                            // "Hide counter" link, which read like body
+                            // copy).
                             {if show_counter {
                                 let target = rep_target.unwrap_or(0);
                                 let count = rep_count.unwrap_or(0);
@@ -157,89 +189,92 @@ pub fn SessionTimer() -> impl IntoView {
                                 } else {
                                     0.0
                                 };
+                                // "Target reached" celebrates with accent
+                                // purple — the app's "you achieved
+                                // something" colour (Day Streak uses it in
+                                // Analytics). Warm-accent gold reads as
+                                // warning in the iOS palette and didn't
+                                // fit a positive completion moment.
+                                let count_class = if reached {
+                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-accent-text"
+                                } else {
+                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-primary"
+                                };
+                                let bar_fill_class = if reached {
+                                    "h-full rounded-full bg-accent motion-safe:transition-all motion-safe:duration-300"
+                                } else {
+                                    "h-full rounded-full bg-success motion-safe:transition-all motion-safe:duration-300"
+                                };
 
                                 view! {
-                                    <Card>
-                                        <div class="space-y-4">
-                                            // Counter display + progress bar
-                                            <div class="text-center space-y-2">
-                                                <p class="text-xs text-muted uppercase tracking-wider">"Consecutive Reps"</p>
-                                                {if reached {
-                                                    view! {
-                                                        <p class="text-4xl font-mono font-bold text-warm-accent-text">
-                                                            {format!("{} / {}", count, target)}
-                                                        </p>
-                                                    }.into_any()
-                                                } else {
-                                                    view! {
-                                                        <p class="text-4xl font-mono font-bold text-primary">
-                                                            {format!("{} / {}", count, target)}
-                                                        </p>
-                                                    }.into_any()
-                                                }}
-                                                // Progress bar
-                                                <div class="w-full h-2 rounded-full bg-surface-secondary overflow-hidden">
-                                                    <div
-                                                        class={if reached {
-                                                            "h-full rounded-full bg-warm-accent motion-safe:transition-all motion-safe:duration-300"
-                                                        } else {
-                                                            "h-full rounded-full bg-success motion-safe:transition-all motion-safe:duration-300"
-                                                        }}
-                                                        style=format!("width: {}%", progress_pct)
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {if reached {
-                                                // Achievement state — target reached
-                                                view! {
-                                                    <p class="text-sm font-semibold text-warm-accent-text text-center">"Target reached!"</p>
-                                                }.into_any()
-                                            } else {
-                                                // Active counting buttons
-                                                view! {
-                                                    <div class="flex gap-3 justify-center">
-                                                        <Button variant=ButtonVariant::Success on_click=Callback::new(move |_| {
-                                                            let event = Event::Session(SessionEvent::RepGotIt);
-                                                            let core_ref = core_got_it.borrow();
-                                                            let effects = core_ref.process_event(event);
-                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                        })>
-                                                            "Got it"
-                                                        </Button>
-                                                        <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                                            let event = Event::Session(SessionEvent::RepMissed);
-                                                            let core_ref = core_missed.borrow();
-                                                            let effects = core_ref.process_event(event);
-                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                        })>
-                                                            "Missed"
-                                                        </Button>
-                                                    </div>
-                                                }.into_any()
-                                            }}
-
-                                            // Hide counter link (UI-only toggle, preserves rep state)
-                                            <div class="text-center">
-                                                <button
-                                                    class="text-xs text-muted hover:text-secondary motion-safe:transition-colors"
-                                                    on:click=move |_| {
-                                                        rep_counter_visible.set(false);
-                                                    }
-                                                >
-                                                    "Hide counter"
-                                                </button>
+                                    <div class="rounded-xl bg-surface-secondary p-4 space-y-3">
+                                        // Header row — label left, X close right
+                                        <div class="flex items-center justify-between -mt-1 -mr-1">
+                                            <span class="section-label" style="margin-bottom:0">"Consecutive Reps"</span>
+                                            <button
+                                                type="button"
+                                                class="icon-nav-button"
+                                                aria-label="Hide rep counter"
+                                                on:click=move |_| {
+                                                    rep_dismissed_at_position.set(Some(position));
+                                                }
+                                            >
+                                                <Icon name=IconName::X class="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div class="text-center space-y-2 pt-1">
+                                            <p class=count_class>
+                                                {format!("{} / {}", count, target)}
+                                            </p>
+                                            <div class="w-full h-1.5 rounded-full bg-progress-track overflow-hidden">
+                                                <div
+                                                    class=bar_fill_class
+                                                    style=format!("width: {}%", progress_pct)
+                                                />
                                             </div>
                                         </div>
-                                    </Card>
+
+                                        {if reached {
+                                            view! {
+                                                <p class="text-sm font-medium text-accent-text text-center">"Target reached"</p>
+                                            }.into_any()
+                                        } else {
+                                            // Missed left (de-emphasised),
+                                            // Got it right (primary success) —
+                                            // iOS "destructive on left,
+                                            // primary on right" idiom.
+                                            view! {
+                                                <div class="flex gap-3 justify-center">
+                                                    <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                                                        let event = Event::Session(SessionEvent::RepMissed);
+                                                        let core_ref = core_missed.borrow();
+                                                        let effects = core_ref.process_event(event);
+                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                    })>
+                                                        "Missed"
+                                                    </Button>
+                                                    <Button variant=ButtonVariant::Success on_click=Callback::new(move |_| {
+                                                        let event = Event::Session(SessionEvent::RepGotIt);
+                                                        let core_ref = core_got_it.borrow();
+                                                        let effects = core_ref.process_event(event);
+                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                    })>
+                                                        "Got it"
+                                                    </Button>
+                                                </div>
+                                            }.into_any()
+                                        }}
+                                    </div>
                                 }.into_any()
                             } else {
                                 // Counter hidden — show enable/show button
                                 view! {
                                     <div class="text-center">
                                         <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                            rep_counter_visible.set(true);
-                                            // Only dispatch InitRepCounter when no rep state exists yet
+                                            // Re-show by clearing the dismissed
+                                            // position. If no rep state exists,
+                                            // dispatch InitRepCounter to seed it.
+                                            rep_dismissed_at_position.set(None);
                                             if !has_rep_state {
                                                 let event = Event::Session(SessionEvent::InitRepCounter);
                                                 let core_ref = core_init_rep.borrow();
@@ -272,93 +307,96 @@ pub fn SessionTimer() -> impl IntoView {
                                 None
                             }}
 
-                            // Controls
-                            <div class="flex flex-wrap gap-3 justify-center">
+                            // Controls — primary action (Next / Finish) is
+                            // a full-width hero CTA matching the Pencil
+                            // reference. Skip + End Early stay as secondary
+                            // / destructive sized buttons in a row beneath.
+                            <div class="space-y-3">
                                 {if is_last {
                                     view! {
-                                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                                            let now = chrono::Utc::now();
-                                            let event = Event::Session(SessionEvent::FinishSession { now });
-                                            let core_ref = core_finish.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
-                                            duration_elapsed.set(false);
-                                        })>
+                                        <Button
+                                            variant=ButtonVariant::Primary
+                                            size=ButtonSize::Hero
+                                            full_width=true
+                                            on_click=Callback::new(move |_| {
+                                                let now = chrono::Utc::now();
+                                                let event = Event::Session(SessionEvent::FinishSession { now });
+                                                let core_ref = core_finish.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                elapsed_secs.set(0);
+                                                duration_elapsed.set(false);
+                                            })
+                                        >
                                             "Finish Session"
                                         </Button>
                                     }.into_any()
                                 } else {
                                     view! {
-                                        <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                                            let now = chrono::Utc::now();
-                                            let event = Event::Session(SessionEvent::NextItem { now });
-                                            let core_ref = core_next.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
-                                            duration_elapsed.set(false);
-                                        })>
+                                        <Button
+                                            variant=ButtonVariant::Primary
+                                            size=ButtonSize::Hero
+                                            full_width=true
+                                            on_click=Callback::new(move |_| {
+                                                let now = chrono::Utc::now();
+                                                let event = Event::Session(SessionEvent::NextItem { now });
+                                                let core_ref = core_next.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                elapsed_secs.set(0);
+                                                duration_elapsed.set(false);
+                                            })
+                                        >
                                             "Next Item"
                                         </Button>
                                     }.into_any()
                                 }}
-                                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                    let now = chrono::Utc::now();
-                                    let event = Event::Session(SessionEvent::SkipItem { now });
-                                    let core_ref = core_skip.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    elapsed_secs.set(0);
-                                })>
-                                    "Skip"
-                                </Button>
-                                <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
-                                    let now = chrono::Utc::now();
-                                    let event = Event::Session(SessionEvent::EndSessionEarly { now });
-                                    let core_ref = core_end.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    elapsed_secs.set(0);
-                                })>
-                                    "End Early"
-                                </Button>
+                                // Sub-actions — proper Button components
+                                // (44px standard size). They're clearly
+                                // subordinate to the hero CTA above by
+                                // virtue of the hero's heavier presence
+                                // (52px / 17px / drop shadow), not by
+                                // shrinking these to look like text. End
+                                // Early on the leading edge per iOS
+                                // convention.
+                                <div class="flex items-center justify-center gap-3">
+                                    <Button
+                                        variant=ButtonVariant::DangerOutline
+                                        on_click=Callback::new(move |_| {
+                                            let now = chrono::Utc::now();
+                                            let event = Event::Session(SessionEvent::EndSessionEarly { now });
+                                            let core_ref = core_end.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            elapsed_secs.set(0);
+                                        })
+                                    >
+                                        "End Early"
+                                    </Button>
+                                    <Button
+                                        variant=ButtonVariant::Secondary
+                                        on_click=Callback::new(move |_| {
+                                            let now = chrono::Utc::now();
+                                            let event = Event::Session(SessionEvent::SkipItem { now });
+                                            let core_ref = core_skip.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            elapsed_secs.set(0);
+                                        })
+                                    >
+                                        "Skip"
+                                    </Button>
+                                </div>
                             </div>
 
-                            // Focus mode toggle — reveals/hides nav, intentions, completed items
-                            <div class="text-center">
-                                <button
-                                    class="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary motion-safe:transition-colors"
-                                    on:click=move |_| {
-                                        focus_mode.set(!focus_mode.get_untracked());
-                                    }
-                                    aria-label=move || if in_focus { "Show more details" } else { "Return to focused view" }
-                                >
-                                    {if in_focus {
-                                        view! {
-                                            // Down chevron — "show more"
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                            </svg>
-                                            <span>"Show more"</span>
-                                        }.into_any()
-                                    } else {
-                                        view! {
-                                            // Up chevron — "focus"
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
-                                            </svg>
-                                            <span>"Focus"</span>
-                                        }.into_any()
-                                    }}
-                                </button>
-                            </div>
-
-                            // Completed items — hidden in focus mode
-                            {if !in_focus && !completed_entries.is_empty() {
-                                Some(view! {
+                            // Completed items — fades + collapses in focus
+                            // mode rather than hard-cutting. SectionLabel
+                            // matches the rest of the 2026 refresh
+                            // grouped-content language.
+                            {(!completed_entries.is_empty()).then(|| view! {
+                                <div class=completed_class>
                                     <div class="mt-4">
-                                        <h4 class="card-title">"Completed"</h4>
+                                        <SectionLabel text="Completed" />
                                         <div class="space-y-1">
                                             {completed_entries.into_iter().map(|entry| {
                                                 view! {
@@ -367,10 +405,8 @@ pub fn SessionTimer() -> impl IntoView {
                                             }).collect::<Vec<_>>()}
                                         </div>
                                     </div>
-                                })
-                            } else {
-                                None
-                            }}
+                                </div>
+                            })}
                         }.into_any()
                     }
                     None => {
