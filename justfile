@@ -4,8 +4,8 @@ set dotenv-load
 default:
     @just --list
 
-# Start both API and web dev servers concurrently
 # Kills any stale processes first so port conflicts don't serve old builds.
+# Start both API and web dev servers concurrently
 dev:
     #!/usr/bin/env bash
     set -e
@@ -40,9 +40,9 @@ dev-web:
 test:
     cargo test --workspace
 
-# Run clippy
+# Run clippy with -D warnings (matches CI)
 lint:
-    cargo clippy --workspace
+    cargo clippy --workspace -- -D warnings
 
 # Format code
 fmt:
@@ -51,7 +51,7 @@ fmt:
 # Check everything (test + lint + format check)
 check:
     cargo test --workspace
-    cargo clippy --workspace
+    cargo clippy --workspace -- -D warnings
     cargo fmt --all -- --check
 
 # Seed development data (API must be running)
@@ -62,16 +62,27 @@ seed:
 build:
     trunk build --config crates/intrada-web/Trunk.toml
 
-# Run E2E tests (builds WASM first)
+# Kills any stale trunk-serve on 8080 — Playwright spins up its own preview
+# server, so a leftover trunk would either steal the port or serve old WASM.
+# Run E2E tests (builds WASM first).
 e2e: build
-    cd e2e && npm ci && npx playwright test --project=chromium
+    #!/usr/bin/env bash
+    set -e
+    pkill -f "trunk serve" 2>/dev/null || true
+    sleep 0.3
+    cd e2e
+    # `npm install` is idempotent against an existing lockfile and skips
+    # work when node_modules is already in sync. `npm ci` reinstalls every
+    # time, which adds ~10s to a green run.
+    npm install
+    npx playwright test --project=chromium
 
 # ─────────────────────────────────────────────
 # Type Generation
 # ─────────────────────────────────────────────
 
-# Regenerate Swift types from Rust core (run after changing intrada-core types)
 # Automatically invalidates Xcode's incremental cache to avoid stale-type build errors.
+# Regenerate Swift types from Rust core (run after changing intrada-core types).
 typegen:
     cargo build -p shared_types
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
@@ -86,8 +97,11 @@ typegen:
 #   brew install cocoapods
 #   cd crates/intrada-mobile/src-tauri && cargo tauri ios init
 
-# Start the Tauri iOS dev session on simulator.
 # Runs trunk serve (web) in background, then tauri ios dev.
+# Pre-boots the simulator before handing off to tauri so `simctl install`
+# doesn't race against a Shutdown sim (the "Unable to lookup in current
+# state: Shutdown" 405 error).
+# Start the Tauri iOS dev session on simulator.
 ios-dev:
     #!/usr/bin/env bash
     set -e
@@ -117,12 +131,30 @@ ios-dev:
         select SIM in "${SIMS[@]}"; do [ -n "$SIM" ] && break; done
     fi
     echo "  Using: $SIM"
+    SIM_UDID=$(xcrun simctl list devices available -j | python3 -c "
+    import json, sys
+    name = sys.argv[1]
+    data = json.load(sys.stdin)
+    for runtime, devices in data['devices'].items():
+        for d in devices:
+            if d['name'] == name and d['isAvailable']:
+                print(d['udid'])
+                sys.exit(0)
+    " "$SIM")
+    if [ -z "$SIM_UDID" ]; then
+        echo "❌ Could not resolve UDID for simulator: $SIM"
+        exit 1
+    fi
+    echo "  Booting simulator (UDID: $SIM_UDID)..."
+    # bootstatus -b boots the device if shutdown then waits for full boot.
+    # Idempotent — no-op if already booted. Avoids the install-before-boot race.
+    xcrun simctl bootstatus "$SIM_UDID" -b
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM"
     wait
 
-# Start the Tauri iOS dev session on a connected physical device.
 # Device must be connected via USB and trusted. Requires Wi-Fi for the
 # dev server (device can't reach localhost — uses the host's LAN IP).
+# Start the Tauri iOS dev session on a connected physical device.
 ios-dev-device:
     #!/usr/bin/env bash
     set -e
@@ -176,49 +208,84 @@ ios-build:
     cd crates/intrada-mobile/src-tauri && cargo tauri ios build
 
 # ─────────────────────────────────────────────
+# Diagnostics & cleanup
+# ─────────────────────────────────────────────
+
+# Helps diagnose "Address already in use" errors when a previous dev session
+# didn't shut down cleanly. Pair with `dev` / `dev-api` / `dev-web` which
+# already pkill stale processes — use this when those scripts can't reach
+# the holder (e.g. a foreign process holding the port).
+# Show what's listening on the dev ports we use (8080 trunk, 3001 API).
+ports:
+    #!/usr/bin/env bash
+    for PORT in 8080 3001; do
+        echo "Port $PORT:"
+        lsof -nP -iTCP:$PORT -sTCP:LISTEN 2>/dev/null || echo "  (free)"
+        echo
+    done
+
+# Use when a stale build cache is suspected — trunk's incremental cache is
+# usually reliable, but a `git clean`-equivalent is occasionally useful when
+# diagnosing weird wasm-bindgen mismatches after a major dep bump.
+# Remove the trunk build output for the web app.
+web-clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rm -rf crates/intrada-web/dist
+    echo "✓ Removed crates/intrada-web/dist"
+
+# ─────────────────────────────────────────────
 # iOS — SwiftUI shell (ON HOLD)
 # See specs/tauri-leptos-ios-shell.md. Do not use for active development.
 # ─────────────────────────────────────────────
 
 # Full iOS build: Rust (device debug), types, UniFFI bindings, Xcode project
+[group('ios-swiftui (on hold)')]
 ios-swiftui:
     bash scripts/build-ios.sh --device --debug
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Full build + open Xcode (SwiftUI)
+[group('ios-swiftui (on hold)')]
 ios-swiftui-dev: ios-swiftui
     open ios/Intrada.xcodeproj
 
 # Release build for device CI (SwiftUI — on hold)
+[group('ios-swiftui (on hold)')]
 ios-release:
     bash scripts/build-ios.sh --device
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Release build for device + simulator (CI)
+[group('ios-swiftui (on hold)')]
 ios-release-all:
     bash scripts/build-ios.sh
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Simulator debug build
+[group('ios-swiftui (on hold)')]
 ios-sim:
     bash scripts/build-ios.sh --sim --debug
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Generate Swift types + UniFFI bindings only (no Rust cross-compilation)
+[group('ios-swiftui (on hold)')]
 ios-types:
     bash scripts/build-ios.sh --types
     @rm -rf ~/Library/Developer/Xcode/DerivedData/Intrada-*/Build/Intermediates.noindex 2>/dev/null || true
     cd ios && xcodegen generate
 
 # Regenerate Xcode project from project.yml (no Rust build)
+[group('ios-swiftui (on hold)')]
 ios-project:
     cd ios && xcodegen generate
 
 # Build for simulator, regenerate project, and run in simulator
+[group('ios-swiftui (on hold)')]
 ios-run: ios-sim
     #!/usr/bin/env bash
     set -euo pipefail
@@ -259,6 +326,7 @@ ios-run: ios-sim
     fi
 
 # Build for device without code signing (CI-style check)
+[group('ios-swiftui (on hold)')]
 ios-check: ios-release
     #!/usr/bin/env bash
     set -euo pipefail
@@ -273,10 +341,11 @@ ios-check: ios-release
         COMPILER_INDEX_STORE_ENABLE=NO \
         | xcpretty --color 2>/dev/null || true
 
-# Quick Swift-only build check (no Rust cross-compilation)
 # Use after modifying any Swift files to catch compile errors fast (~30s vs ~5min)
 # Pass --clean to force a clean build (slower but avoids stale cache false positives)
 # Automatically falls back to device target if simulator SDK is unavailable.
+# Quick Swift-only build check (no Rust cross-compilation).
+[group('ios-swiftui (on hold)')]
 ios-swift-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -375,9 +444,10 @@ ios-swift-check *ARGS:
         fi
     fi
 
-# SwiftUI preview validation — checks all preview providers compile
-# Pass --clean to force a clean build
+# Pass --clean to force a clean build.
 # Falls back to device target if simulator SDK is unavailable.
+# SwiftUI preview validation — checks all preview providers compile.
+[group('ios-swiftui (on hold)')]
 ios-preview-check *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -438,9 +508,10 @@ ios-preview-check *ARGS:
     fi
     echo "✓ iOS preview check passed"
 
-# Smoke test: build for sim, install, launch, verify app doesn't crash on startup
 # Catches runtime errors (missing environment objects, bad modifier ordering, etc.)
 # Requires a prior `just ios-sim` or `just ios` build and simulator runtimes installed.
+# Smoke test: build for sim, install, launch, verify app doesn't crash on startup.
+[group('ios-swiftui (on hold)')]
 ios-smoke-test:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -511,6 +582,7 @@ ios-smoke-test:
     echo "✓ iOS smoke test passed"
 
 # Nuclear clean — removes every iOS artifact to guarantee a fresh build
+[group('ios-swiftui (on hold)')]
 ios-clean:
     #!/usr/bin/env bash
     set -euo pipefail
