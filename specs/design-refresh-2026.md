@@ -117,6 +117,48 @@ Order chosen by surface area, smallest first to validate the pattern:
 - Liquid Glass for non-tab-bar surfaces (would need refraction WebKit doesn't support)
 - Light mode (no Pencil frames; we're dark-mode-only today)
 
+## Deferred follow-ups
+
+Tracked here because each PR description noted them as out-of-scope but
+nothing else captures the full picture. Filed as GitHub issues where
+they're actionable. Crossed-out items are done.
+
+### Behavioural / data-model gaps
+
+These all need core + API changes before the visual work can complete.
+Pencil shows them but the data isn't carried today.
+
+| Gap | Pencil surface | Source PR | Issue |
+|-----|----------------|-----------|-------|
+| `RoutineEntryView.duration_secs` (per-entry duration) | Routines list "3 pieces · 20 min" subtitle | #350 | #373 |
+| `LibraryItemView.difficulty` (1–5) + DifficultyDots component | Add Piece form, Piece Detail | #354, #355 | #372 |
+| `LibraryItemView.time_signature` | Piece Detail Details group | #354 | #372 |
+| Per-item recent sessions (date + duration) | Piece Detail "Recent Sessions" group | #354 | #373 |
+| Cumulative "Pieces Learned" count | Analytics top stat | #353 | #373 |
+| Active-session pause/resume (`SessionEvent::Pause/Resume`) | Practice CircularButton play/pause | #357 | #371 |
+| Mid-session notes (per-entry, captured during) | Practice notes textarea | #357 | #371 |
+| Active-session item tempo display (join with library) | Practice tempo line under timer | #357 | #371 |
+
+### Visual polish skipped to keep PRs focused
+
+Atomic, low-priority. Batched in #374.
+
+- Routines: `+` icon in page header (source PR #350)
+- Library: type-tab filtering (Pieces / Exercises segmented control above the list — Pencil shows it) (source PR #351, scoped into #370)
+- Library: actual search filtering wired to the visual placeholder input (source PR #351, scoped into #370)
+- Forms: TYPE selector restyle as filled segmented buttons per Pencil (source PR #355)
+- Analytics: convert Most Practised list rows to `AccentRow` no-bar for token consistency (source PR #353)
+
+### Routing / navigation
+
+- **Practice tab routing decision** — Pencil shows the Practice tab as the active-session state, today it shows session history. Should the tab default to active-session-when-one-exists, or stay on history? Open question, batched in #374; defer until the active-session work merges (#357 is the visual-only rebuild).
+- **Pre-select current item** when navigating from Detail's "Start Practice" hero CTA into `/sessions/new` (source PR #354, batched in #374)
+
+### Tracked elsewhere (not part of this refresh)
+
+- **Icon library migration** — #345
+- **iOS native interaction polish** umbrella — #317
+
 ## Risks
 
 - **Inter font weight mismatch**: every text element gets visually heavier. Mitigate by testing Phase 0 on iOS sim before merging — system fallback should keep the layout stable if Inter is slow to load.
