@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use web_sys::{Element, HtmlElement, PointerEvent};
+use web_sys::{HtmlElement, PointerEvent};
 
 /// Transient state for an in-progress drag operation.
 #[derive(Clone, Debug)]
@@ -22,6 +22,12 @@ pub struct DragState {
     /// surrounding rows by exactly one slot when the dragged row passes
     /// them — gives the iOS UITableView reorder feel.
     pub source_height: f64,
+    /// Snapshot of `(entry_index, midpoint_y)` for every row at drag-start,
+    /// captured BEFORE any transforms are applied. The hover-index calculation
+    /// uses these static positions throughout the drag — reading live
+    /// `getBoundingClientRect` values would drift, since the source row's
+    /// transformed rect moves with the finger.
+    pub natural_midpoints: Vec<(usize, f64)>,
     /// Whether the 5px movement threshold has been exceeded.
     pub committed: bool,
 }
@@ -56,11 +62,9 @@ const DRAG_THRESHOLD_PX: f64 = 5.0;
 /// # Arguments
 ///
 /// * `on_reorder` – callback invoked with `(entry_id, new_position)` when a valid drop occurs.
-/// * `item_count` – reactive signal of the current item count (for clamping).
 /// * `container_ref` – `NodeRef` of the container element whose children are the draggable rows.
 pub fn use_drag_reorder(
     on_reorder: Callback<(String, usize)>,
-    item_count: Signal<usize>,
     container_ref: NodeRef<leptos::html::Div>,
 ) -> DragReorderReturn {
     let drag_state: RwSignal<Option<DragState>> = RwSignal::new(None);
@@ -139,16 +143,16 @@ pub fn use_drag_reorder(
                         s.committed = true;
                     }
 
-                    // Compute hover index from container children bounding rects.
-                    // Pass the source_index so we can adjust for the "gap" left by
-                    // the dragged item (avoids off-by-one when dragging downward).
-                    let new_hover = compute_hover_index(
-                        &container_ref,
+                    // Compute hover index against the snapshot of natural row
+                    // midpoints captured at pointer-down. Using a static
+                    // snapshot avoids drift: reading live
+                    // `getBoundingClientRect` would include the source row's
+                    // own transform, making its midpoint chase the finger.
+                    s.hover_index = compute_hover_index_from_snapshot(
+                        &s.natural_midpoints,
                         s.current_y,
-                        item_count.get_untracked(),
                         s.source_index,
                     );
-                    s.hover_index = new_hover;
                 });
             });
 
@@ -207,9 +211,11 @@ pub fn use_drag_reorder(
     // --- Pointer down (called from DragHandle via Callback) ---
     let on_pointer_down = Callback::new(
         move |(entry_id, source_index, ev): (String, usize, PointerEvent)| {
-            // Pointer capture is set by DragHandle on its button element (currentTarget).
-            // Measure the source row's height so siblings can shift by one slot.
-            let source_height = measure_source_row_height(&container_ref, source_index);
+            // Pointer capture is set by DragHandle on its button element
+            // (currentTarget). Snapshot the natural row geometry now —
+            // before any drag transforms are applied — so the move-handler
+            // can compute hover indices against static positions.
+            let snapshot = snapshot_row_geometry(&container_ref, source_index);
 
             drag_state.set(Some(DragState {
                 dragged_entry_id: entry_id,
@@ -218,7 +224,8 @@ pub fn use_drag_reorder(
                 current_y: ev.client_y() as f64,
                 source_index,
                 hover_index: source_index,
-                source_height,
+                source_height: snapshot.source_height,
+                natural_midpoints: snapshot.midpoints,
                 committed: false,
             }));
         },
@@ -235,105 +242,88 @@ pub fn use_drag_reorder(
     }
 }
 
-/// Look up the offsetHeight of the row at `source_index` inside the container,
-/// keyed by `data-entry-index`. Falls back to 56px (a reasonable compact-row
-/// height) if the lookup fails — preserves drag UX even if the DOM is in
-/// flux at pointer-down.
-fn measure_source_row_height(
-    container_ref: &NodeRef<leptos::html::Div>,
-    source_index: usize,
-) -> f64 {
-    const FALLBACK_HEIGHT_PX: f64 = 56.0;
-    let Some(container) = container_ref.get_untracked() else {
-        return FALLBACK_HEIGHT_PX;
-    };
-    let element: &Element = &container;
-    let children = element.children();
-    for i in 0..children.length() {
-        if let Some(child) = children.item(i) {
-            if let Some(idx_str) = child.get_attribute("data-entry-index") {
-                if idx_str
-                    .parse::<usize>()
-                    .map(|idx| idx == source_index)
-                    .unwrap_or(false)
-                {
-                    if let Ok(html) = child.dyn_into::<HtmlElement>() {
-                        return html.offset_height() as f64;
-                    }
-                }
-            }
-        }
-    }
-    FALLBACK_HEIGHT_PX
+/// Snapshot of row geometry captured at pointer-down: natural midpoints for
+/// hover-index calculation plus the source row's height for sibling reflow.
+struct RowGeometrySnapshot {
+    /// `(entry_index, midpoint_y)` for each row keyed by `data-entry-index`.
+    midpoints: Vec<(usize, f64)>,
+    /// `offsetHeight` of the source row, with a sensible fallback.
+    source_height: f64,
 }
 
-/// Compute the hover index based on the pointer's Y position and the container's children.
+/// Walk the container's children once and collect each row's natural midpoint
+/// plus the source row's height. Called at pointer-down before any drag
+/// transforms are applied, so the rects are unaffected by translateY.
 ///
-/// We look at each child row's bounding rect midpoint. The hover index is the position
-/// where the dragged item would be inserted (i.e., the first row whose midpoint is below
-/// the pointer's Y).
-///
-/// The `source_index` parameter is used to handle the off-by-one issue when dragging
-/// downward: because the dragged item will be *removed* from its source position before
-/// being inserted, all indices after source shift up by one. We adjust so the returned
-/// hover_index is the final insertion position in the *post-removal* list.
-fn compute_hover_index(
+/// Falls back to a 56px source height (compact-row default) if the source row
+/// can't be measured — preserves drag UX even if the DOM is in flux.
+fn snapshot_row_geometry(
     container_ref: &NodeRef<leptos::html::Div>,
-    pointer_y: f64,
-    count: usize,
     source_index: usize,
-) -> usize {
-    if count == 0 {
-        return 0;
-    }
+) -> RowGeometrySnapshot {
+    const FALLBACK_HEIGHT_PX: f64 = 56.0;
 
-    let Some(container) = container_ref.get() else {
-        return 0;
+    let Some(container) = container_ref.get_untracked() else {
+        return RowGeometrySnapshot {
+            midpoints: Vec::new(),
+            source_height: FALLBACK_HEIGHT_PX,
+        };
     };
+    let children = container.children();
 
-    let element: &Element = &container;
-    let children = element.children();
-
-    if children.length() == 0 {
-        return 0;
-    }
-
-    // Walk through children and collect midpoints of entry rows
-    // (identified by `data-entry-index` attribute).
-    let mut midpoints: Vec<(usize, f64)> = Vec::new();
+    let mut midpoints = Vec::with_capacity(children.length() as usize);
+    let mut source_height = FALLBACK_HEIGHT_PX;
 
     for i in 0..children.length() {
-        if let Some(child) = children.item(i) {
-            if let Some(idx_str) = child.get_attribute("data-entry-index") {
-                if let Ok(idx) = idx_str.parse::<usize>() {
-                    let rect = child.get_bounding_client_rect();
-                    let mid = rect.top() + rect.height() / 2.0;
-                    midpoints.push((idx, mid));
-                }
+        let Some(child) = children.item(i) else {
+            continue;
+        };
+        let Some(idx_str) = child.get_attribute("data-entry-index") else {
+            continue;
+        };
+        let Ok(idx) = idx_str.parse::<usize>() else {
+            continue;
+        };
+        let rect = child.get_bounding_client_rect();
+        let mid = rect.top() + rect.height() / 2.0;
+        midpoints.push((idx, mid));
+        if idx == source_index {
+            if let Ok(html) = child.dyn_into::<HtmlElement>() {
+                source_height = html.offset_height() as f64;
             }
         }
     }
 
-    if midpoints.is_empty() {
+    RowGeometrySnapshot {
+        midpoints,
+        source_height,
+    }
+}
+
+/// Compute the hover (insertion) index from a static midpoints snapshot.
+///
+/// Walks the snapshot in DOM order; the insertion point is the position before
+/// the first row whose midpoint sits below the pointer. The result is then
+/// adjusted for the "gap" left by the source row when it's removed: if the
+/// visual target is past the source, decrement so the returned index is the
+/// position in the post-removal list.
+fn compute_hover_index_from_snapshot(
+    snapshot: &[(usize, f64)],
+    pointer_y: f64,
+    source_index: usize,
+) -> usize {
+    if snapshot.is_empty() {
         return 0;
     }
 
-    // Find the visual insertion point: the position before the first item
-    // whose midpoint is below the pointer.
-    let mut visual_index = midpoints.len(); // default: after all items
-    for (i, (_idx, mid)) in midpoints.iter().enumerate() {
+    let mut visual_index = snapshot.len();
+    for (i, (_idx, mid)) in snapshot.iter().enumerate() {
         if pointer_y < *mid {
             visual_index = i;
             break;
         }
     }
 
-    // Adjust for the "gap" left by the dragged item.
-    // When the source item is removed, items after it shift up by one.
-    // If the visual target is *after* the source, we need to subtract one
-    // to get the correct insertion index in the post-removal list.
-    // If visual_index == source_index or source_index + 1, it's a no-op
-    // (dropping the item back roughly where it was).
     if visual_index > source_index {
         visual_index.saturating_sub(1)
     } else {

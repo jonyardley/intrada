@@ -72,15 +72,6 @@ fn ReviewSheetBody() -> impl IntoView {
 
     let setlist_container_ref = NodeRef::<leptos::html::Div>::new();
 
-    let item_count = Signal::derive(move || {
-        view_model
-            .get()
-            .building_setlist
-            .as_ref()
-            .map(|s| s.entries.len())
-            .unwrap_or(0)
-    });
-
     // The reorder callback is invoked from a window-level pointer event
     // listener inside `use_drag_reorder` — that runs outside any Leptos
     // owner, so the standard `process_effects` (which calls expect_context)
@@ -101,7 +92,7 @@ fn ReviewSheetBody() -> impl IntoView {
         );
     });
 
-    let drag = use_drag_reorder(on_reorder, item_count, setlist_container_ref);
+    let drag = use_drag_reorder(on_reorder, setlist_container_ref);
     let dragged_id = drag.dragged_id;
     let drag_source_index = drag.source_index;
     let drag_hover_index = drag.hover_index;
