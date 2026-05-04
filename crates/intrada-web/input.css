@@ -1644,6 +1644,30 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   /* Empty grid cell — keeps title centred when only Cancel is on the left. */
 }
 
+.bottom-sheet-action {
+  /* Trailing nav action — iOS Mail-compose pattern (Cancel | Title | Send).
+     Mirrors .bottom-sheet-cancel but justified end and bolder weight to
+     mark it as the primary action. */
+  justify-self: end;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  margin-right: -0.5rem;
+  color: var(--color-accent-text);
+  font-size: 1rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-sheet-action:disabled {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
 .bottom-sheet-body {
   padding: 1rem 1.25rem 1.5rem;
   overflow-y: auto;

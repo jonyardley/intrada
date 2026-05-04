@@ -47,36 +47,26 @@ test.describe("routines page", () => {
     );
   });
 
-  test("save routine from session builder", async ({ page }) => {
+  // Skipped: "Save as Routine" UI was removed from the session review
+  // sheet during the strip-back — see #390 for the planned re-introduction
+  // alongside the broader routines revisit.
+  test.skip("save routine from session builder", async ({ page }) => {
     await page.goto("/sessions/new");
-
-    // Click "Custom Session" to enter the setlist builder
     await page.getByRole("button", { name: "Custom Session" }).click();
-
-    // Add an item to the setlist
     await page.getByText("Clair de Lune").click();
-
-    // Open the review sheet — Save as Routine + Start Session live inside it
     await page.getByRole("button", { name: "Review session" }).click();
     const reviewSheet = page.getByRole("dialog");
-
-    // Expand the "Save as Routine" form
     await reviewSheet.getByRole("button", { name: "Save as Routine" }).click();
-
-    // Enter a routine name and save
     await reviewSheet.getByPlaceholder("e.g. Morning Warm-up").fill("My New Routine");
     await reviewSheet.getByRole("button", { name: "Save" }).click();
 
-    // Verify the routine appears on the routines page
     await page.goto("/routines");
     await expect(page.getByText("My New Routine")).toBeVisible();
   });
 
-  // Skipped: "Load routine" UI was intentionally removed from the new
-  // builder for #388 ("Routines load is out of scope here per design
-  // conversation"). The RoutineLoader component is still in the module
-  // tree pending the planned routines revisit — re-enable this test when
-  // that lands.
+  // Skipped: "Load routine" UI was removed from the builder during #388
+  // and the strip-back kept it out — see #390. The RoutineLoader component
+  // is still in the module tree pending the routines revisit.
   test.skip("load routine into session builder", async ({ page, mockApi }) => {
     mockApi.routines = createSeedRoutinesWithStub();
 
@@ -91,7 +81,7 @@ test.describe("routines page", () => {
     await expect(
       page
         .getByRole("dialog")
-        .getByRole("button", { name: "Start Session" })
+        .getByRole("button", { name: "Start", exact: true })
     ).toBeEnabled();
   });
 });

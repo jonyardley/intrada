@@ -49,7 +49,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Review session" }).click();
     const reviewSheet = page.getByRole("dialog");
     await reviewSheet
-      .getByRole("button", { name: "Start Session" })
+      .getByRole("button", { name: "Start", exact: true })
       .click();
 
     // Should be on the active session page with the timer
@@ -86,7 +86,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Review session" }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Start Session" })
+      .getByRole("button", { name: "Start", exact: true })
       .click();
 
     // Should show first item
@@ -144,7 +144,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Review session" }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Start Session" })
+      .getByRole("button", { name: "Start", exact: true })
       .click();
 
     // First item
@@ -184,7 +184,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Review session" }).click();
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Start Session" })
+      .getByRole("button", { name: "Start", exact: true })
       .click();
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
