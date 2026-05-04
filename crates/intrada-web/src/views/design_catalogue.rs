@@ -1370,20 +1370,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 <span class="text-sm text-muted">"Loading..."</span>
                             </div>
                         </div>
-                        <div>
-                            <p class="text-xs font-medium text-muted uppercase mb-3">"Metronome (practice context)"</p>
-                            <p class="text-xs text-faint mb-3">"Musical loading for practice flows."</p>
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 flex items-center justify-center">
-                                    <svg width="24" height="32" viewBox="0 0 24 32" class="metronome-loading text-warm-accent-text">
-                                        <line x1="12" y1="4" x2="12" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                                        <circle cx="12" cy="6" r="3" fill="currentColor" />
-                                        <rect x="8" y="26" width="8" height="4" rx="1" fill="currentColor" opacity="0.5" />
-                                    </svg>
-                                </div>
-                                <span class="text-sm text-muted">"Preparing session..."</span>
-                            </div>
-                        </div>
                     </div>
                 </Card>
             </section>

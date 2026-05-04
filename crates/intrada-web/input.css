@@ -1575,21 +1575,6 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Metronome Loading Animation (audit #17)
-   ═══════════════════════════════════════════════════════════════════════ */
-
-@keyframes metronome-tick {
-  0%, 100% { transform: rotate(-18deg); }
-  50% { transform: rotate(18deg); }
-}
-
-@utility metronome-loading {
-  animation: metronome-tick 1s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════
    BottomSheet — iOS-style modal sheet (UISheetPresentationController feel)
    ═══════════════════════════════════════════════════════════════════════ */
 

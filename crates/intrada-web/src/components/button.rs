@@ -1,6 +1,7 @@
 use intrada_web::haptics;
 use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::components::A;
 
 /// Visual variants for the shared Button component.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -38,12 +39,38 @@ impl ButtonVariant {
     }
 }
 
+/// Build the class string used by both [`Button`] and [`LinkButton`] so the
+/// two components can't drift on padding / radius / focus styling. Returns
+/// an owned String because the disabled state appends a tail.
+fn button_classes(
+    variant: ButtonVariant,
+    size: ButtonSize,
+    full_width: bool,
+    disabled: bool,
+) -> String {
+    let base = variant.classes();
+    let size_class = match size {
+        ButtonSize::Small => "",
+        ButtonSize::Hero => " btn-hero",
+    };
+    let width_class = if full_width { " w-full" } else { "" };
+    let disabled_class = if disabled {
+        " opacity-50 cursor-not-allowed"
+    } else {
+        ""
+    };
+    format!("{base}{size_class}{width_class}{disabled_class}")
+}
+
 /// Shared button component with consistent styling per variant.
 ///
 /// When `disabled` is true, the button is visually dimmed, shows a
 /// `not-allowed` cursor, and ignores click events.
 /// When `loading` is true, a small spinner is prepended to the label
 /// and the button is also treated as disabled.
+///
+/// For nav-style CTAs that should render as an anchor (e.g. "Start
+/// Practice" on the detail page), use [`LinkButton`] instead.
 #[component]
 pub fn Button(
     variant: ButtonVariant,
@@ -65,24 +92,13 @@ pub fn Button(
     children: Children,
 ) -> impl IntoView {
     let is_disabled = Signal::derive(move || disabled.get() || loading.get());
-    let size_class = match size {
-        ButtonSize::Small => "",
-        ButtonSize::Hero => " btn-hero",
-    };
-    let width_class = if full_width { " w-full" } else { "" };
+
+    let class_fn = move || button_classes(variant, size, full_width, is_disabled.get());
 
     view! {
         <button
             type=button_type
-            class=move || {
-                let base = variant.classes();
-                let with_size_width = format!("{base}{size_class}{width_class}");
-                if is_disabled.get() {
-                    format!("{with_size_width} opacity-50 cursor-not-allowed")
-                } else {
-                    with_size_width
-                }
-            }
+            class=class_fn
             disabled=is_disabled
             on:click=move |ev| {
                 if !is_disabled.get() {
@@ -110,5 +126,33 @@ pub fn Button(
             }}
             {children()}
         </button>
+    }
+}
+
+/// Anchor-styled-as-button: renders as a router `<A>` link with the same
+/// visual chrome as [`Button`]. Use for full-width nav CTAs that navigate
+/// rather than fire an action — e.g. "Start Practice" on the detail page,
+/// "New Session" in an empty state.
+///
+/// Mode is enforced at the type level: `LinkButton` doesn't accept
+/// `disabled` / `loading` / `on_click` because those are `<button>`
+/// concerns. If you need any of those, use [`Button`] instead.
+#[component]
+pub fn LinkButton(
+    variant: ButtonVariant,
+    #[prop(into)] href: String,
+    /// Size of the button — see [`Button`] for the scale.
+    #[prop(optional)]
+    size: ButtonSize,
+    /// When true, the link stretches to fill its container.
+    #[prop(optional)]
+    full_width: bool,
+    children: Children,
+) -> impl IntoView {
+    let class = button_classes(variant, size, full_width, false);
+    view! {
+        <A href=href attr:class=class>
+            {children()}
+        </A>
     }
 }

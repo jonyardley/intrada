@@ -56,7 +56,7 @@ pub use back_link::BackLink;
 pub use bottom_sheet::BottomSheet;
 pub use bottom_tab_bar::BottomTabBar;
 pub use builder_item_row::BuilderItemRow;
-pub use button::{Button, ButtonSize, ButtonVariant};
+pub use button::{Button, ButtonSize, ButtonVariant, LinkButton};
 pub use card::Card;
 pub use circular_button::{CircularButton, CircularButtonSize, CircularButtonVariant};
 pub use context_menu::{ContextMenu, ContextMenuAction};

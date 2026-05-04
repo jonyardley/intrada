@@ -57,7 +57,13 @@ pub fn TextField(
                     id=id
                     type=input_type
                     inputmode=input_mode.unwrap_or("")
-                    class="input-base input-base--with-clear"
+                    class=move || {
+                        if has_error() {
+                            "input-base input-base--with-clear input-error"
+                        } else {
+                            "input-base input-base--with-clear"
+                        }
+                    }
                     placeholder=placeholder.unwrap_or("")
                     bind:value=value
                     required=required
