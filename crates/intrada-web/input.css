@@ -224,21 +224,6 @@ body {
   }
 }
 
-/* Active glass card — indicates "currently practicing this item."
-   Bright accent border with subtle glow, distinct from hover
-   (audit #14). */
-@utility glass-card-active {
-  background-color: var(--color-surface-fallback);
-  border: 2px solid var(--color-accent-focus);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-lg), 0 0 12px oklch(66% 0.17 274 / 20%);
-
-  @supports (backdrop-filter: blur(1px)) {
-    background-color: var(--color-surface-primary);
-    backdrop-filter: blur(12px);
-  }
-}
-
 /* Glassmorphism chrome — header and bottom tab bar.
    Uses gray-900 instead of indigo for a neutral navigation feel. */
 @utility glass-chrome {
@@ -281,15 +266,6 @@ body {
   box-shadow: 0 0 0 2px var(--color-danger-text);
   &:focus {
     box-shadow: 0 0 0 2px var(--color-danger-text);
-  }
-}
-
-/* Form input success state — green box-shadow ring for validated
-   fields (audit #19). */
-@utility input-success {
-  box-shadow: 0 0 0 2px var(--color-success-text);
-  &:focus {
-    box-shadow: 0 0 0 2px var(--color-success-text);
   }
 }
 
