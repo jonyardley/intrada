@@ -63,13 +63,21 @@ pub fn TagInput(
     });
 
     let error_id = format!("{id}-error");
+    let has_error = move || errors.get().contains_key(field_name);
 
     view! {
         <div>
             <label class="form-label" for=id>
                 "Tags"
             </label>
-            <div class="w-full rounded-lg border border-border-input bg-surface-input px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-accent-focus focus-within:ring-1 focus-within:ring-accent-focus">
+            <div class=move || {
+                let base = "w-full rounded-lg border border-border-input bg-surface-input px-2 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-accent-focus focus-within:ring-1 focus-within:ring-accent-focus";
+                if has_error() {
+                    format!("{base} input-error")
+                } else {
+                    base.to_string()
+                }
+            }>
                 // Render tag chips
                 {move || {
                     tags.get().into_iter().map(|tag| {
