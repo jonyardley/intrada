@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use intrada_core::{Event, SessionEvent, ViewModel};
 
 use crate::components::{BottomSheet, SetlistEntryRow};
-use intrada_web::core_bridge::process_effects;
+use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -81,14 +81,24 @@ fn ReviewSheetBody() -> impl IntoView {
             .unwrap_or(0)
     });
 
+    // The reorder callback is invoked from a window-level pointer event
+    // listener inside `use_drag_reorder` — that runs outside any Leptos
+    // owner, so the standard `process_effects` (which calls expect_context)
+    // would panic. Use the `_with_core` variant that takes the SharedCore
+    // explicitly.
     let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
         let event = Event::Session(SessionEvent::ReorderSetlist {
             entry_id,
             new_position,
         });
-        let core_ref = core_drag.borrow();
-        let effects = core_ref.process_event(event);
-        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        let effects = core_drag.borrow().process_event(event);
+        process_effects_with_core(
+            &core_drag,
+            effects,
+            &view_model,
+            &is_loading,
+            &is_submitting,
+        );
     });
 
     let drag = use_drag_reorder(on_reorder, item_count, setlist_container_ref);
