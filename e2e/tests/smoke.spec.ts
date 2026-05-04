@@ -8,7 +8,8 @@ test("app renders with library list", async ({ page }) => {
     page.getByRole("heading", { name: "Library" })
   ).toBeVisible();
 
-  // Verify library list renders with stub data items
+  // Verify library list renders with stub data items (All tab is the
+  // default — both stub items visible without switching tabs).
   await expect(
     page.getByRole("list", { name: "Library items" })
   ).toBeVisible();

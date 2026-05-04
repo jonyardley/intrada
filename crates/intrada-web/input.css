@@ -1951,3 +1951,79 @@ html:not([data-platform="ios"]) .context-menu {
 [data-platform="ios"] .type-tabs-btn[aria-disabled="true"] {
   cursor: default;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Underline tabs — used by `<LibraryTypeTabs>` for filtering the Library.
+   Visually distinct from `.type-tabs` (segmented control). Equal-width
+   tabs share the row; a 3px accent indicator slides beneath the active
+   one via translateX. Pencil reference: NEW DESIGN - Library (k9mpoW).
+
+   `--tab-count` is the single source of truth for the indicator width.
+   Defaults to 3; override on the parent if a future surface adopts a
+   different count.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.tabs-underline {
+  --tab-count: 3;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  /* Each tab takes 1/--tab-count of the row, so the indicator (also
+     1/--tab-count wide) slides by 100% of its own width per step.
+     JS-free positioning. */
+}
+
+.tabs-underline-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / var(--tab-count));
+  height: 3px;
+  background: var(--color-accent);
+  border-radius: 1.5px;
+  transform: translateX(var(--thumb-x, 0%));
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabs-underline-indicator {
+    transition: none;
+  }
+}
+
+.tabs-underline-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 0.5rem 0;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.tabs-underline-btn:hover {
+  color: var(--color-text-primary);
+}
+
+.tabs-underline-btn--active {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.tabs-underline-btn:focus {
+  outline: none;
+}
+
+.tabs-underline-btn:focus-visible {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 4px;
+  border-radius: 2px;
+}

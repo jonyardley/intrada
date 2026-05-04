@@ -93,7 +93,8 @@ test.describe("detail view", () => {
         .getByText("Hanon No. 1")
     ).not.toBeVisible();
 
-    // Only 1 item remaining
+    // Only 1 item remaining (All tab still shows everything; Hanon was
+    // the only exercise and is now deleted).
     const items = page
       .getByRole("list", { name: "Library items" })
       .locator("li");

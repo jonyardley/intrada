@@ -10,11 +10,12 @@ test.describe("add library item", () => {
     // second one in the empty state.
     await page.getByRole("button", { name: "Add Item" }).first().click();
 
-    // Piece tab should be active by default
-    await expect(page.getByRole("tab", { name: "Piece" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
+    // Piece tab should be active by default. exact: true — the Library page
+    // behind the sheet has its own "Pieces" tab; substring match would
+    // resolve to two elements.
+    await expect(
+      page.getByRole("tab", { name: "Piece", exact: true })
+    ).toHaveAttribute("aria-selected", "true");
 
     // Fill in the form
     await page.locator("#add-title").fill("Moonlight Sonata");
@@ -40,7 +41,8 @@ test.describe("add library item", () => {
         .getByText("Moonlight Sonata")
     ).toBeVisible();
 
-    // Should now have 3 items (2 stub + 1 new)
+    // Should now have 3 items (2 stub + 1 new) — All tab is the default
+    // and shows everything.
     const items = page
       .getByRole("list", { name: "Library items" })
       .locator("li");
@@ -64,7 +66,8 @@ test.describe("add library item", () => {
     // Submit
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Should appear in library list (rows are now links, not headings).
+    // Should appear in library list — All tab is the default, no tab
+    // switch needed.
     await expect(
       page
         .getByRole("list", { name: "Library items" })
