@@ -10,26 +10,23 @@ build reusable routines, and view analytics. Organised around three pillars:
 **Plan** (library, routines), **Practice** (focus mode, timers, scoring),
 **Track** (analytics, insights).
 
-**Platform priority**: The Leptos shell (`crates/intrada-web`) is the primary
-channel — it runs as both the web app and the iOS app (via Tauri 2 in
-`crates/intrada-mobile`). New features ship on both platforms simultaneously.
-The SwiftUI shell (`ios/Intrada/`) is on hold; see `specs/tauri-leptos-ios-shell.md`.
+**Platform**: The Leptos shell (`crates/intrada-web`) is the single UI codebase
+— it ships as both the web app (Cloudflare Workers) and the iOS app (Tauri 2
+WKWebView host in `crates/intrada-mobile`). New features ship on both platforms
+simultaneously.
 
 ## Project Structure
 
 ```text
 crates/
   intrada-core/          # Pure Crux core — business logic, no I/O
-  intrada-web/           # Leptos 0.8 CSR + WASM — primary UI shell (web + iOS)
+  intrada-web/           # Leptos 0.8 CSR + WASM — UI shell (web + iOS)
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
   intrada-mobile/        # Tauri 2 iOS host — wraps intrada-web in WKWebView
     src-tauri/           #   Rust host, tauri.conf.json, Swift plugins
-  shared/                # [ON HOLD] UniFFI bindings for SwiftUI shell
-  shared_types/          # [ON HOLD] Facet typegen → Swift types for SwiftUI shell
 design/                  # Pencil design system (intrada.pen)
 docs/                    # Product roadmap (single source of truth)
 e2e/                     # Playwright E2E tests
-ios/Intrada/             # [ON HOLD] SwiftUI shell — see specs/tauri-leptos-ios-shell.md
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
@@ -44,7 +41,6 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 - **DB**: Turso (managed libsql/SQLite) via HTTP
 - **E2E**: Playwright
 - **CI/CD**: GitHub Actions → Cloudflare Workers (web) + Fly.io (API)
-- **[ON HOLD]** Swift 6.0, SwiftUI, UniFFI (BCS bridge) — see `specs/tauri-leptos-ios-shell.md`
 
 ## Commands
 
@@ -79,9 +75,6 @@ Without them set, the build will use defaults and Clerk auth won't work.
 Anyone on your Wi-Fi network can reach it (and the proxied `/api/`) while it's
 running. Don't run `ios-dev` on public/untrusted Wi-Fi.
 
-**SwiftUI shell commands (on hold — do not use for active development):**
-`just ios-swift-check`, `just ios-smoke-test`, `just ios-preview-check`, `just typegen`
-
 ## Architecture (Non-Negotiables)
 
 ### Crux capabilities pattern
@@ -94,9 +87,9 @@ User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Sh
    all JSON serialization. Shells never understand domain types.
 2. **Shells are dumb pipes.** Receive `HttpRequest` (URL, method, headers, bytes),
    return `HttpResponse`. No domain type imports.
-3. **All types auto-generated.** `facet` typegen → Swift types from Rust. Zero
-   hand-maintained type definitions in shells. Define in Rust + `derive(Facet)`.
-4. **No hardcoded type names in scripts.** Everything flows from Rust via typegen.
+3. **One UI codebase.** The Leptos shell talks to the core via `wasm-bindgen` —
+   no typegen step. Domain types live in Rust and the WASM consumer uses them
+   directly.
 
 ### State boundary
 
@@ -108,18 +101,6 @@ User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Sh
 
 Domain state flows through `Event` → `Model` → `ViewModel`. Never store domain
 data in shell-local state. UI-only state stays in Leptos signals.
-
-### Type generation (SwiftUI shell — on hold)
-
-`crates/shared_types` pipelines `facet` derive macros → Swift package with BCS.
-This is only needed for the SwiftUI shell. The Tauri/Leptos shell uses
-`wasm-bindgen` — no typegen step required.
-
-`crates/shared` and `crates/shared_types` still compile in CI to keep the
-SwiftUI reactivation path green. Do not delete them.
-
-**NEVER use `serde_repr`** on types in ViewModel or FFI traffic if the SwiftUI
-shell is ever reactivated — causes byte-width mismatch in the BCS byte stream.
 
 ### Other patterns
 
@@ -151,27 +132,24 @@ in prod), `ALLOWED_ORIGIN` (default `http://localhost:8080`), `PORT` (default 30
 ### Web (compile-time)
 `CLERK_PUBLISHABLE_KEY`, `INTRADA_API_URL` (default `https://intrada-api.fly.dev`)
 
-## Design System Rules (Both Platforms)
+## Design System Rules
 
-Both platforms share the same dark-on-dark glassmorphism aesthetic. Cross-platform
-visual parity is required — users should not be able to tell which platform they're on.
+The Leptos shell uses a dark-on-dark glassmorphism aesthetic. Web and iOS run
+the same UI codebase; iOS-specific look-and-feel is layered on with platform
+gating (see iOS native-feel rules below).
 
-### Hierarchy: Tokens → Utilities/Modifiers → Components → Views
+### Hierarchy: Tokens → Utilities → Components → Views
 
 1. **Tokens first**: Every colour traces to a named token. Never use raw colours
-   (`text-gray-400`, `.white`, `.indigo`). Web: `input.css`. iOS: `DesignSystem/Tokens/`.
-2. **Reuse before creating**: Check existing components before building new markup.
-   Web: `intrada-web/src/components/`. iOS: `ios/Intrada/Components/`.
-3. **Design catalogue**: New components get a showcase entry.
-   Web: `views/design_catalogue.rs`. iOS: `#Preview` blocks.
-4. **Spacing tokens only**: `p-card`/`Spacing.card` (16), `p-card-compact`/
-   `Spacing.cardCompact` (12), `p-card-comfortable`/`Spacing.cardComfortable` (24).
+   (`text-gray-400`). Source: `crates/intrada-web/style/input.css`.
+2. **Reuse before creating**: Check existing components before building new
+   markup. Source: `crates/intrada-web/src/components/`.
+3. **Design catalogue**: New components get a showcase entry in
+   `views/design_catalogue.rs`.
+4. **Spacing tokens only**: `p-card` (16), `p-card-compact` (12),
+   `p-card-comfortable` (24).
 
 ### iOS native-feel rules (Leptos shell in Tauri WKWebView)
-
-> Most of these rules describe **target state for Phase 1+** (look-and-feel
-> toolkit). Phase 0 just ships the unstyled web app inside Tauri. Implement
-> these as you build features.
 
 These rules apply when building or modifying views/components that will run
 inside the Tauri iOS shell. Gate iOS-only CSS with `[data-platform="ios"]`
@@ -192,13 +170,6 @@ queries alone.
   viewport-driven visibility). Build it before the view, not as a retrofit.
 - **Typography**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui`.
 - **Animations**: Motion One spring config `stiffness: 300, damping: 30` ≈ iOS default.
-- **Components**: check `ios/Intrada/Components/` as the visual reference for what
-  iOS-shaped variants should look like (SwiftUI on hold, still valid as a design guide).
-
-### SwiftUI shell rules (on hold)
-
-Preserved in `ios/Intrada/`. Not applicable to active development. See
-`specs/tauri-leptos-ios-shell.md` for context.
 
 ### Web-specific rules
 

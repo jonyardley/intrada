@@ -163,7 +163,7 @@ R2 configured, the API starts normally but photo upload/delete endpoints return 
 
 ### Enable public access
 
-Photos are served directly from R2 to the iOS app. You need a public URL:
+Photos are served directly from R2 to the app. You need a public URL:
 
 1. Open the bucket → **Settings** → **Public access**
 2. Either:
