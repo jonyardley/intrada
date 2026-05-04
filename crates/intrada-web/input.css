@@ -888,6 +888,37 @@ body {
   }
 }
 
+/* Page-header add button — circular icon-only "+" used as the trailing
+   action on top-level list pages (Library, Practice, Routines). One
+   pattern across web + iOS so the page chrome reads consistently
+   regardless of platform. The full-width pill `cta-link` is still used
+   inside empty states / inline CTAs. */
+@utility page-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-accent-text);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 150ms ease;
+  }
+}
+
+@utility page-add-button-icon {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Badges — pill-shaped status / metadata indicators
    ═══════════════════════════════════════════════════════════════════════
@@ -1399,52 +1430,12 @@ nav[aria-label="Mobile navigation"] {
   padding: 0.6875rem 1rem; /* 11px 16px */
 }
 
-/* Page-header "Add" CTAs on iOS: the full-width purple bar under each
-   page heading was the most web-app-y signal the audit flagged. iOS
-   apps (Calendar, Notes, Reminders, Mail) put primary "Add" actions in
-   the trailing nav-bar position as a compact accent-coloured "+" icon
-   target — no background, no text label, ~44pt square.
-
-   `<PageHeading>`'s trailing slot lays the action out on the title's
-   row on every platform; the `.cta-link--page-add` modifier swaps the
-   chrome on iOS only. We render BOTH the "+" icon and the text label
-   at every callsite; CSS hides whichever doesn't apply, so the markup
-   stays accessible (screen readers still read the label) and the web
-   layout is unchanged. */
-.cta-link-icon {
-  display: none;
-}
-
-.cta-link-label {
-  display: inline;
-}
-
-[data-platform="ios"] .cta-link.cta-link--page-add {
-  /* Strip pill chrome — becomes a plain accent-colour icon target. */
-  background: transparent;
-  background-color: transparent;
-  color: var(--color-accent-text);
-  box-shadow: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-[data-platform="ios"] .cta-link.cta-link--page-add:hover {
-  background-color: var(--color-surface-hover);
-}
-
-[data-platform="ios"] .cta-link--page-add .cta-link-icon {
-  display: block;
-  width: 1.625rem;
-  height: 1.625rem;
-}
-
-[data-platform="ios"] .cta-link--page-add .cta-link-label {
-  display: none;
-}
+/* Page-header trailing add CTAs are now `<PageAddButton>` — a
+   circular icon-only "+" target. See `.page-add-button` above.
+   Earlier this slot used a `.cta-link--page-add` modifier that
+   shipped a full-width pill on web + collapsed to icon-only on iOS;
+   that platform split was retired in favour of one consistent
+   pattern across web + iOS. */
 
 
 /* ═══════════════════════════════════════════════════════════════════════

@@ -10,7 +10,7 @@ use intrada_core::{
 
 use crate::components::{
     ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow, Icon, IconName,
-    PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
+    PageAddButton, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
 };
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::helpers::{
@@ -117,22 +117,13 @@ pub fn SessionsListView() -> impl IntoView {
     view! {
         <div>
             // PageHeading owns the title-row layout — title on left, the
-            // "New Session" trailing action on right, subtitle below
-            // both. The cta-link's icon/label children are CSS-swapped
-            // per platform: web shows the "New Session" pill, iOS shows
-            // the "+" icon-only nav action.
+            // "New Session" trailing action on right, subtitle below both.
+            // PageAddButton renders the same circular "+" everywhere.
             <PageHeading
                 text="Practice"
                 subtitle="Review your session history and track how your sessions build over time."
                 trailing=Box::new(|| view! {
-                    <A
-                        href="/sessions/new"
-                        attr:class="cta-link cta-link--page-add shrink-0"
-                        attr:aria-label="New Session"
-                    >
-                        <Icon name=IconName::Plus class="cta-link-icon" />
-                        <span class="cta-link-label">"New Session"</span>
-                    </A>
+                    <PageAddButton href="/sessions/new" aria_label="New Session" />
                 }.into_any())
             />
 
