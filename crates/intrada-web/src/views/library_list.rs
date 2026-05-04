@@ -212,25 +212,35 @@ pub fn LibraryListView() -> impl IntoView {
                                 }.into_any()
                             } else if filtered.is_empty() {
                                 let q = query.get();
-                                let kind_label = match active_filter.get() {
-                                    None => "items",
-                                    Some(ItemKind::Piece) => "pieces",
-                                    Some(ItemKind::Exercise) => "exercises",
-                                };
-                                let (title, body) = if q.trim().is_empty() {
-                                    // Reachable when the user filters to a kind
-                                    // they have none of (e.g. all-pieces library
-                                    // → Exercises tab). All-tab + empty list is
-                                    // covered by the truly-empty branch above.
-                                    (
-                                        format!("No {kind_label} yet"),
-                                        "Switch tabs to see your other items, or add a new one."
-                                            .to_string(),
-                                    )
+                                let trimmed = q.trim();
+                                let (title, body) = if trimmed.is_empty() {
+                                    // Empty filter and no query — the user
+                                    // filtered to a kind they have none of.
+                                    // All-tab + non-empty items is always
+                                    // non-empty (truly-empty branch covers
+                                    // the rest), so None is unreachable here.
+                                    match active_filter.get() {
+                                        Some(ItemKind::Piece) => (
+                                            "No pieces yet".to_string(),
+                                            "Switch tabs to see your other items, or add a new one.".to_string(),
+                                        ),
+                                        Some(ItemKind::Exercise) => (
+                                            "No exercises yet".to_string(),
+                                            "Switch tabs to see your other items, or add a new one.".to_string(),
+                                        ),
+                                        None => unreachable!(
+                                            "All-tab + empty query is handled by the truly-empty branch"
+                                        ),
+                                    }
                                 } else {
+                                    let kind_label = match active_filter.get() {
+                                        None => "items",
+                                        Some(ItemKind::Piece) => "pieces",
+                                        Some(ItemKind::Exercise) => "exercises",
+                                    };
                                     (
                                         "No matching items".to_string(),
-                                        format!("No {kind_label} match \u{201C}{}\u{201D}.", q.trim()),
+                                        format!("No {kind_label} match \u{201C}{trimmed}\u{201D}."),
                                     )
                                 };
                                 view! {

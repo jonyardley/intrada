@@ -74,6 +74,10 @@ pub fn LibraryTypeTabs(
         let target_index = match ev.key().as_str() {
             "ArrowLeft" if current > 0 => current - 1,
             "ArrowRight" if current + 1 < N_TABS => current + 1,
+            // Home/End jump to the first/last tab. Per WAI-ARIA tabs
+            // pattern, the tablist deliberately captures these keys when
+            // focus is on a tab — accepting that they no longer scroll
+            // the page in this narrow context.
             "Home" => 0,
             "End" => N_TABS - 1,
             _ => return,
@@ -171,10 +175,12 @@ fn data_tab_value(kind: &Option<ItemKind>) -> &'static str {
     }
 }
 
+// Scoped to `button` so a future sibling element with a `data-tab` attr
+// (e.g. extending the indicator) can't accidentally match.
 fn data_tab_selector(kind: &Option<ItemKind>) -> &'static str {
     match kind {
-        None => "[data-tab='all']",
-        Some(ItemKind::Piece) => "[data-tab='piece']",
-        Some(ItemKind::Exercise) => "[data-tab='exercise']",
+        None => "button[data-tab='all']",
+        Some(ItemKind::Piece) => "button[data-tab='piece']",
+        Some(ItemKind::Exercise) => "button[data-tab='exercise']",
     }
 }
