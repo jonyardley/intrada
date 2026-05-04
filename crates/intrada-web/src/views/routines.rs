@@ -6,8 +6,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemKind, RoutineEvent, RoutineView, ViewModel};
 
 use crate::components::{
-    AccentBar, AccentRow, ContextMenu, ContextMenuAction, EmptyState, Icon, IconName, PageHeading,
-    SkeletonCardList, SwipeActions,
+    AccentBar, AccentRow, ContextMenu, ContextMenuAction, EmptyState, Icon, IconName,
+    PageAddButton, PageHeading, SkeletonCardList, SwipeActions,
 };
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -26,16 +26,8 @@ pub fn RoutinesListView() -> impl IntoView {
                 trailing=Box::new(move || view! {
                     // Trailing + action mirrors the Library page heading.
                     // Navigates to the session builder (where routines are
-                    // born — see the Save-as-Routine flow). On iOS the
-                    // cta-link--page-add modifier collapses to icon-only.
-                    <A
-                        href="/sessions/new"
-                        attr:class="cta-link cta-link--page-add shrink-0"
-                        attr:aria-label="New Routine"
-                    >
-                        <Icon name=IconName::Plus class="cta-link-icon" />
-                        <span class="cta-link-label">"New Routine"</span>
-                    </A>
+                    // born — see the Save-as-Routine flow).
+                    <PageAddButton href="/sessions/new" aria_label="New Routine" />
                 }.into_any())
             />
 

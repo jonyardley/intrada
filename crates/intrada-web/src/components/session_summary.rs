@@ -46,15 +46,13 @@ pub fn SessionSummary() -> impl IntoView {
                             // Summary header
                             <Card>
                                 <div class="text-center space-y-2">
-                                    <h2 class="text-2xl font-bold text-primary">"Session Complete!"</h2>
+                                    <h2 class="page-title">"Session Complete!"</h2>
                                     <p class="text-lg text-secondary">
                                         {format!("Total: {}", total_duration)}
                                     </p>
                                     {if completion_status == CompletionStatus::EndedEarly {
                                         Some(view! {
-                                            <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
-                                                "Ended Early"
-                                            </span>
+                                            <span class="badge badge--warning">"Ended Early"</span>
                                         })
                                     } else {
                                         None

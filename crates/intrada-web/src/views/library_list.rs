@@ -6,8 +6,8 @@ use wasm_bindgen::JsCast;
 use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, ViewModel};
 
 use crate::components::{
-    BottomSheet, EmptyState, Icon, IconName, LibraryItemCard, LibraryTypeTabs, PageHeading,
-    PullToRefresh, SkeletonItemCard,
+    BottomSheet, EmptyState, Icon, IconName, LibraryItemCard, LibraryTypeTabs, PageAddButton,
+    PageHeading, PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
@@ -109,24 +109,16 @@ pub fn LibraryListView() -> impl IntoView {
             // Page heading matches the other top-level tabs (Practice,
             // Routines, Analytics). The "Add Item" trailing action lives
             // in PageHeading's trailing slot so it sits at the title's
-            // level, not floating below the subtitle.
-            //
-            // The cta-link's icon/label children are CSS-swapped per
-            // platform: web shows the "Add Item" pill, iOS shows the
-            // "+" icon-only nav action.
+            // level, not floating below the subtitle. Uses PageAddButton
+            // (circular "+") for consistency across all top-level pages.
             <PageHeading
                 text="Library"
                 subtitle="Your pieces and exercises."
                 trailing=Box::new(move || view! {
-                    <button
-                        type="button"
-                        class="cta-link cta-link--page-add shrink-0"
-                        aria-label="Add Item"
-                        on:click=move |_| open_add_sheet.run(())
-                    >
-                        <Icon name=IconName::Plus class="cta-link-icon" />
-                        <span class="cta-link-label">"Add Item"</span>
-                    </button>
+                    <PageAddButton
+                        aria_label="Add Item"
+                        on_click=Callback::new(move |_| open_add_sheet.run(()))
+                    />
                 }.into_any())
             />
 

@@ -1,14 +1,36 @@
 use leptos::prelude::*;
 use web_sys::PointerEvent;
 
-use intrada_core::SetlistEntryView;
+use intrada_core::ItemKind;
 
 use crate::components::{DragHandle, Icon, IconName, TypeBadge};
 
 /// A single entry in the setlist (building or active phase).
+///
+/// Takes the minimum data needed to render — id + title + type, plus an
+/// optional duration string and position number for surfaces that need
+/// them. Decoupled from any specific entry view-model so this row primitive
+/// can be reused by routine entries (which have a smaller shape than
+/// session entries) without padding callsites with default fields.
 #[component]
 pub fn SetlistEntryRow(
-    entry: SetlistEntryView,
+    /// Stable id for the entry — used as the payload for remove / move /
+    /// drag callbacks.
+    #[prop(into)]
+    id: String,
+    /// Title shown in the row.
+    #[prop(into)]
+    item_title: String,
+    /// Type — drives the trailing TypeBadge colouring.
+    item_type: ItemKind,
+    /// Optional duration string ("5 min", "10 min · 3 reps"). Hidden when
+    /// empty or "0s".
+    #[prop(default = String::new(), into)]
+    duration_display: String,
+    /// Position in the list — only rendered when `compact = false`. When
+    /// shown, displays as `position + 1` left of the title.
+    #[prop(default = 0)]
+    position: usize,
     #[prop(default = None)] on_remove: Option<Callback<String>>,
     #[prop(default = None)] on_move_up: Option<Callback<String>>,
     #[prop(default = None)] on_move_down: Option<Callback<String>>,
@@ -31,10 +53,10 @@ pub fn SetlistEntryRow(
     compact: bool,
 ) -> impl IntoView {
     let show = show_controls;
-    let entry_id = entry.id.clone();
-    let entry_id_up = entry.id.clone();
-    let entry_id_down = entry.id.clone();
-    let entry_id_drag = entry.id.clone();
+    let id_for_remove = id.clone();
+    let id_for_up = id.clone();
+    let id_for_down = id.clone();
+    let id_for_drag = id;
 
     view! {
         <div
@@ -57,7 +79,7 @@ pub fn SetlistEntryRow(
             {on_drag_pointer_down.map(|cb| {
                 view! {
                     <DragHandle
-                        entry_id=entry_id_drag.clone()
+                        entry_id=id_for_drag.clone()
                         index=index
                         on_pointer_down=cb
                     />
@@ -66,28 +88,28 @@ pub fn SetlistEntryRow(
 
             {(!compact).then(|| view! {
                 <span class="text-sm font-mono text-faint w-6 text-right">
-                    {entry.position + 1}
+                    {position + 1}
                 </span>
             })}
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-primary truncate">{entry.item_title}</span>
+                    <span class="text-sm font-medium text-primary truncate">{item_title}</span>
                     {if !compact {
-                        Some(view! { <TypeBadge item_type=entry.item_type.clone() /> })
+                        Some(view! { <TypeBadge item_type=item_type.clone() /> })
                     } else {
                         None
                     }}
                 </div>
-                {if !entry.duration_display.is_empty() && entry.duration_display != "0s" {
+                {if !duration_display.is_empty() && duration_display != "0s" {
                     Some(view! {
-                        <span class="text-xs text-muted">{entry.duration_display}</span>
+                        <span class="text-xs text-muted">{duration_display}</span>
                     })
                 } else {
                     None
                 }}
             </div>
             {if compact {
-                Some(view! { <TypeBadge item_type=entry.item_type /> })
+                Some(view! { <TypeBadge item_type=item_type /> })
             } else {
                 None
             }}
@@ -95,7 +117,7 @@ pub fn SetlistEntryRow(
                 Some(view! {
                     <div class="flex gap-1">
                         {on_move_up.map(|cb| {
-                            let id = entry_id_up.clone();
+                            let id = id_for_up.clone();
                             view! {
                                 <button
                                     class="p-1 text-faint hover:text-secondary"
@@ -107,7 +129,7 @@ pub fn SetlistEntryRow(
                             }
                         })}
                         {on_move_down.map(|cb| {
-                            let id = entry_id_down.clone();
+                            let id = id_for_down.clone();
                             view! {
                                 <button
                                     class="p-1 text-faint hover:text-secondary"
@@ -119,7 +141,7 @@ pub fn SetlistEntryRow(
                             }
                         })}
                         {on_remove.map(|cb| {
-                            let id = entry_id.clone();
+                            let id = id_for_remove.clone();
                             view! {
                                 <button
                                     class="p-1 text-danger-text hover:text-danger-hover"

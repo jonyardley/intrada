@@ -888,6 +888,115 @@ body {
   }
 }
 
+/* Page-header add button — circular icon-only "+" used as the trailing
+   action on top-level list pages (Library, Practice, Routines). One
+   pattern across web + iOS so the page chrome reads consistently
+   regardless of platform. The full-width pill `cta-link` is still used
+   inside empty states / inline CTAs. */
+@utility page-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-accent-text);
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    background-color: var(--color-surface-hover);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 150ms ease;
+  }
+}
+
+@utility page-add-button-icon {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Badges — pill-shaped status / metadata indicators
+   ═══════════════════════════════════════════════════════════════════════
+   Replaces ~10 hand-rolled `inline-flex items-center rounded-md px-2 py-0.5
+   text-xs font-medium ...` sites. Default is the dense xs size used inside
+   list rows; pair with `.badge--lg` for the bigger TypeBadge / pill style
+   used in headers and forms. Colour variants cover the common semantic
+   cases (piece, exercise, warning, accent-on-soft, muted).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md, 0.375rem);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Larger pill variant (TypeBadge style — used in detail headers, forms). */
+@utility badge--lg {
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Piece — accent-derived (indigo). Pairs with the gold AccentBar in
+   row contexts; the badge itself stays accent-purple. */
+@utility badge--piece {
+  background-color: var(--color-badge-piece-bg);
+  color: var(--color-badge-piece-text);
+}
+
+/* Exercise — warm-accent-derived (gold). */
+@utility badge--exercise {
+  background-color: var(--color-badge-exercise-bg);
+  color: var(--color-badge-exercise-text);
+}
+
+/* Warning — amber surface + text + ring. Used for "Ended Early" etc. */
+@utility badge--warning {
+  background-color: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-warning) 20%, transparent);
+}
+
+/* Accent — used for completion / score indicators ("4/5"). Sits on a
+   piece-bg fill with an accent-focus ring so it reads as "achievement"
+   rather than "type tag". */
+@utility badge--accent {
+  background-color: var(--color-badge-piece-bg);
+  color: var(--color-accent-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent-focus) 20%, transparent);
+}
+
+/* Warm-accent — gold tone. Used for "rep target reached" etc. */
+@utility badge--warm {
+  background-color: var(--color-warm-accent-surface);
+  color: var(--color-warm-accent-text);
+}
+
+/* Muted — neutral surface, for rep counts / tempo / item counts where
+   the badge is just a chip of metadata, not a status. */
+@utility badge--muted {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+}
+
+/* Monospace variant — keeps numerics tabular, used by rep counters and
+   tempo readouts so 1/1/1 doesn't jitter against 8/3/8. */
+@utility badge--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Drag-and-Drop Utilities
    ═══════════════════════════════════════════════════════════════════════ */
@@ -1321,52 +1430,12 @@ nav[aria-label="Mobile navigation"] {
   padding: 0.6875rem 1rem; /* 11px 16px */
 }
 
-/* Page-header "Add" CTAs on iOS: the full-width purple bar under each
-   page heading was the most web-app-y signal the audit flagged. iOS
-   apps (Calendar, Notes, Reminders, Mail) put primary "Add" actions in
-   the trailing nav-bar position as a compact accent-coloured "+" icon
-   target — no background, no text label, ~44pt square.
-
-   `<PageHeading>`'s trailing slot lays the action out on the title's
-   row on every platform; the `.cta-link--page-add` modifier swaps the
-   chrome on iOS only. We render BOTH the "+" icon and the text label
-   at every callsite; CSS hides whichever doesn't apply, so the markup
-   stays accessible (screen readers still read the label) and the web
-   layout is unchanged. */
-.cta-link-icon {
-  display: none;
-}
-
-.cta-link-label {
-  display: inline;
-}
-
-[data-platform="ios"] .cta-link.cta-link--page-add {
-  /* Strip pill chrome — becomes a plain accent-colour icon target. */
-  background: transparent;
-  background-color: transparent;
-  color: var(--color-accent-text);
-  box-shadow: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-[data-platform="ios"] .cta-link.cta-link--page-add:hover {
-  background-color: var(--color-surface-hover);
-}
-
-[data-platform="ios"] .cta-link--page-add .cta-link-icon {
-  display: block;
-  width: 1.625rem;
-  height: 1.625rem;
-}
-
-[data-platform="ios"] .cta-link--page-add .cta-link-label {
-  display: none;
-}
+/* Page-header trailing add CTAs are now `<PageAddButton>` — a
+   circular icon-only "+" target. See `.page-add-button` above.
+   Earlier this slot used a `.cta-link--page-add` modifier that
+   shipped a full-width pill on web + collapsed to icon-only on iOS;
+   that platform split was retired in favour of one consistent
+   pattern across web + iOS. */
 
 
 /* ═══════════════════════════════════════════════════════════════════════

@@ -149,6 +149,31 @@ gating (see iOS native-feel rules below).
 4. **Spacing tokens only**: `p-card` (16), `p-card-compact` (12),
    `p-card-comfortable` (24).
 
+### Don't deviate from the system unless you're explicitly redesigning
+
+Hand-rolled markup that duplicates an existing primitive is the #1 source of
+visual drift in this codebase. Before writing UI code:
+
+- **Grep first.** If you're about to write `inline-flex items-center rounded-md
+  px-2 py-0.5 text-xs font-medium`, `text-2xl font-bold text-primary`,
+  `rounded-lg bg-surface-secondary px-3 py-2`, or any other shape that already
+  appears in the codebase — stop and use the existing utility/component instead.
+- **Extend, don't clone.** If a primitive *almost* fits, add a variant prop
+  (e.g. `compact: bool` on `SetlistEntryRow`) or a new utility class once, in
+  the shared place. Don't ship a parallel one-off.
+- **Known primitives to reach for**: `AccentRow`, `SetlistEntryRow` (with
+  `compact` mode for review-sheet style rows), `BuilderItemRow`, `BottomSheet`
+  (with `nav_action_label` for the iOS Mail-compose pattern), `Button`,
+  `Card`, `DetailGroup`, `GroupedList`, `EmptyState`, `TypeBadge`,
+  `InlineTypeIndicator`, `LibraryTypeTabs`, `TypeTabs`. Typography utilities:
+  `page-title`, `card-title`, `section-title`, `field-label`, `form-label`.
+  Spacing: `p-card`, `p-card-compact`, `p-card-comfortable`.
+
+Deviation is only acceptable when **explicitly redesigning** a surface — and
+that should be a deliberate, flagged conversation (Pencil first, then Plan
+mode), not an accident inside an unrelated feature PR. A redesign produces
+*updated tokens / primitives*, not a hand-rolled clone in a single view.
+
 ### iOS native-feel rules (Leptos shell in Tauri WKWebView)
 
 These rules apply when building or modifying views/components that will run

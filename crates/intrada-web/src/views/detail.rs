@@ -220,7 +220,7 @@ pub fn DetailView() -> impl IntoView {
                                                 view! {
                                                     <div class="flex items-center justify-between text-sm">
                                                         <span class="text-muted">{display_date}</span>
-                                                        <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text">
+                                                        <span class="badge badge--accent">
                                                             {format!("{}/5", entry.score)}
                                                         </span>
                                                     </div>
