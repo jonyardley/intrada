@@ -56,38 +56,42 @@ test.describe("routines page", () => {
     // Add an item to the setlist
     await page.getByText("Clair de Lune").click();
 
+    // Open the review sheet — Save as Routine + Start Session live inside it
+    await page.getByRole("button", { name: "Review session" }).click();
+    const reviewSheet = page.getByRole("dialog");
+
     // Expand the "Save as Routine" form
-    await page.getByRole("button", { name: "Save as Routine" }).click();
+    await reviewSheet.getByRole("button", { name: "Save as Routine" }).click();
 
     // Enter a routine name and save
-    const routineNameInput = page.getByPlaceholder("e.g. Morning Warm-up");
-    await routineNameInput.fill("My New Routine");
-    await page.getByRole("button", { name: "Save" }).click();
+    await reviewSheet.getByPlaceholder("e.g. Morning Warm-up").fill("My New Routine");
+    await reviewSheet.getByRole("button", { name: "Save" }).click();
 
     // Verify the routine appears on the routines page
     await page.goto("/routines");
     await expect(page.getByText("My New Routine")).toBeVisible();
   });
 
-  test("load routine into session builder", async ({ page, mockApi }) => {
+  // Skipped: "Load routine" UI was intentionally removed from the new
+  // builder for #388 ("Routines load is out of scope here per design
+  // conversation"). The RoutineLoader component is still in the module
+  // tree pending the planned routines revisit — re-enable this test when
+  // that lands.
+  test.skip("load routine into session builder", async ({ page, mockApi }) => {
     mockApi.routines = createSeedRoutinesWithStub();
 
     await page.goto("/sessions/new");
-
-    // Click "Custom Session" to enter the setlist builder
     await page.getByRole("button", { name: "Custom Session" }).click();
 
-    // Should see the saved routine in the "Saved Routines" section
     await expect(page.getByText("Saved Routines")).toBeVisible();
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
-
-    // Load the routine
     await page.getByRole("button", { name: "Load" }).click();
 
-    // Setlist should now have the routine's entries (items also appear in library list)
-    // Check that the Start Session button is enabled (proves items were loaded)
+    await page.getByRole("button", { name: "Review session" }).click();
     await expect(
-      page.getByRole("button", { name: "Start Session" })
+      page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Start Session" })
     ).toBeEnabled();
   });
 });
