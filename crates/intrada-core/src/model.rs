@@ -48,8 +48,6 @@ impl Model {
 /// exposed to shells via the `ViewModel`. Using an enum instead of a
 /// String gives compile-time safety in both Rust and generated Swift code.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum SessionStatusView {
     #[default]
     Idle,
@@ -60,7 +58,6 @@ pub enum SessionStatusView {
 
 /// Serializable view state sent to shells for rendering.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ViewModel {
     pub items: Vec<LibraryItemView>,
     pub sessions: Vec<PracticeSessionView>,
@@ -77,7 +74,6 @@ pub struct ViewModel {
 
 /// Represents a lesson for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LessonView {
     pub id: String,
     pub date: String,
@@ -91,7 +87,6 @@ pub struct LessonView {
 
 /// Photo metadata for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LessonPhotoView {
     pub id: String,
     pub url: String,
@@ -126,7 +121,6 @@ pub fn lesson_to_view(lesson: &Lesson) -> LessonView {
 
 /// Represents a routine for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct RoutineView {
     pub id: String,
     pub name: String,
@@ -136,7 +130,6 @@ pub struct RoutineView {
 
 /// Represents a single entry within a routine for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct RoutineEntryView {
     pub id: String,
     pub item_id: String,
@@ -147,7 +140,6 @@ pub struct RoutineEntryView {
 
 /// Flattened representation of a piece or exercise for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryItemView {
     pub id: String,
     pub item_type: ItemKind,
@@ -165,7 +157,6 @@ pub struct LibraryItemView {
 
 /// Practice summary for a library item.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemPracticeSummary {
     pub session_count: usize,
     pub total_minutes: u32,
@@ -177,7 +168,6 @@ pub struct ItemPracticeSummary {
 
 /// A single score data point for an item's progress history.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScoreHistoryEntry {
     pub session_date: String,
     pub score: u8,
@@ -186,7 +176,6 @@ pub struct ScoreHistoryEntry {
 
 /// A single tempo data point for an item's tempo progress history.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoHistoryEntry {
     pub session_date: String,
     pub tempo: u16,
@@ -195,7 +184,6 @@ pub struct TempoHistoryEntry {
 
 /// A completed practice session in history view.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeSessionView {
     pub id: String,
     pub started_at: String,
@@ -209,7 +197,6 @@ pub struct PracticeSessionView {
 
 /// A single entry within a session view.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetlistEntryView {
     pub id: String,
     pub item_id: String,
@@ -232,7 +219,6 @@ pub struct SetlistEntryView {
 
 /// View for the in-progress active session.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSessionView {
     pub current_item_title: String,
     pub current_item_type: ItemKind,
@@ -251,7 +237,6 @@ pub struct ActiveSessionView {
 
 /// View for the building phase setlist.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BuildingSetlistView {
     pub entries: Vec<SetlistEntryView>,
     pub item_count: usize,
@@ -261,7 +246,6 @@ pub struct BuildingSetlistView {
 
 /// View for the end-of-session summary.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SummaryView {
     pub total_duration_display: String,
     pub completion_status: CompletionStatus,

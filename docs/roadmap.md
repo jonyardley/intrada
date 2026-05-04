@@ -39,19 +39,11 @@ which cut across the layers. Features are placed on a rolling horizon: **Now** (
 | Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
 | Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
 | Practice consistency calendar (#65) — week strip, comeback framing, session dots | Done |
-| iOS native shell (#187) — Crux/UniFFI/BCS bridge, SwiftUI, CI pipeline | Done (on hold — see below) |
-| iOS cleanup (#202) — removed dead code and legacy networking layer | Done (on hold) |
-| iOS design system (#194) — tokens, shared components, modifiers, navigation | Done (on hold) |
 | Tauri/Leptos iOS shell — Phase 0 (#302) — scaffold, CI, CLAUDE.md, simulator running | Done |
+| SwiftUI shell removed — committed to single Leptos UI codebase across web + iOS | Done |
 | Remove category field (#211) — exercises use tags only, simplified subtitle logic | Done |
 | Use mutate response (#148) — updates/deletes use API response directly, no re-fetch | Done |
 | Filter clause sync (#152) — extracted subquery constants to prevent user isolation drift | Done |
-| iOS library (#195) — browse, search & manage repertoire on iOS | Done |
-| iOS session builder (#196) — tap-to-queue setlist construction | Done |
-| iOS active session (#197) — focus mode, timer, scoring, rep counter, pause/resume | Done |
-| iOS session summary & history (#198) — post-session review, save, history list, detail view | Done |
-| iOS routines (#199) — browse, create, edit, delete, load into builder, save as routine | Done |
-| iOS analytics (#201) — practice insights dashboard, weekly summary, charts, trends | Done |
 
 ---
 

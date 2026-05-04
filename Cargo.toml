@@ -3,8 +3,6 @@ members = [
   "crates/intrada-core",
   "crates/intrada-api",
   "crates/intrada-web",
-  "crates/shared",
-  "crates/shared_types",
   "crates/intrada-mobile/src-tauri",
 ]
 resolver = "2"
@@ -13,7 +11,6 @@ package.rust-version = "1.75"
 [workspace.dependencies]
 crux_core = "0.17.0"
 crux_http = "0.16.0"
-facet = { version = "=0.31", features = ["chrono", "ulid"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ulid = "1"

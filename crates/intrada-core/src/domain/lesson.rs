@@ -9,7 +9,6 @@ use crate::validation;
 
 /// A record of a single teaching session.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Lesson {
     pub id: String,
     pub date: String,
@@ -21,7 +20,6 @@ pub struct Lesson {
 
 /// Photo metadata for a lesson. Binary data lives in R2; core only sees metadata.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LessonPhoto {
     pub id: String,
     pub url: String,
@@ -29,8 +27,6 @@ pub struct LessonPhoto {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum LessonEvent {
     FetchLessons,
     FetchLesson { id: String },

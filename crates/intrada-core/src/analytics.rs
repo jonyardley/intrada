@@ -17,9 +17,7 @@ use crate::domain::session::PracticeSession;
 
 /// Directional comparison indicator for week-over-week metrics.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[serde(rename_all = "lowercase")]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Direction {
     Up,
     Down,
@@ -29,7 +27,6 @@ pub enum Direction {
 
 /// A library item not practised within the 14-day lookback window.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct NeglectedItem {
     pub item_id: String,
     pub item_title: String,
@@ -39,7 +36,6 @@ pub struct NeglectedItem {
 
 /// An item whose score changed during the current week.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScoreChange {
     pub item_id: String,
     pub item_title: String,
@@ -54,7 +50,6 @@ pub struct ScoreChange {
 
 /// Top-level analytics container, added to the existing `ViewModel`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AnalyticsView {
     pub weekly_summary: WeeklySummary,
     pub streak: PracticeStreak,
@@ -68,7 +63,6 @@ pub struct AnalyticsView {
 /// Aggregated stats for the current and previous ISO weeks (Monday–Sunday),
 /// with directional comparison indicators.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct WeeklySummary {
     pub total_minutes: u32,
     pub session_count: usize,
@@ -84,14 +78,12 @@ pub struct WeeklySummary {
 
 /// Consecutive-day practice count.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeStreak {
     pub current_days: u32,
 }
 
 /// One entry per day for the 28-day history chart.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct DailyPracticeTotal {
     pub date: String,
     pub minutes: u32,
@@ -99,7 +91,6 @@ pub struct DailyPracticeTotal {
 
 /// Per-item aggregation for the "most practised" list.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemRanking {
     pub item_id: String,
     pub item_title: String,
@@ -110,7 +101,6 @@ pub struct ItemRanking {
 
 /// Score progression for a single item.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemScoreTrend {
     pub item_id: String,
     pub item_title: String,
@@ -120,7 +110,6 @@ pub struct ItemScoreTrend {
 
 /// Single data point in a score trend.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScorePoint {
     pub date: String,
     pub score: u8,

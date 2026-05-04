@@ -106,13 +106,11 @@ Order chosen by surface area, smallest first to validate the pattern:
 
 1. **Accent-bar colour mapping** — gold or blue per row. Pencil shows alternation. Should it map to *type* (gold = piece, blue = exercise — strongest signal), to *recency*, or stay alternating-by-position (purely cosmetic)? **Default: map to type.**
 2. **Inter hosting** — local `@font-face` (one extra ~150KB woff2 in the bundle) or Google Fonts CDN (one less network hop on cold start, privacy footprint)? **Default: local @font-face.**
-3. **iOS-only vs cross-platform** — these designs are mobile frames (375×812). Desktop (≥sm) needs the same tokens but the layouts naturally diverge (no tab bar, wider cards, multi-column lists). Approach: tokens + primitives apply universally; layouts re-flow per breakpoint as today. **No desktop-specific Pencil frames yet — we're inferring.**
-4. **SwiftUI shell** — ON HOLD per CLAUDE.md. Update its tokens too in Phase 0 (cheap, future-proofs the on-hold path) or leave? **Default: leave; document the divergence.**
+3. **Mobile vs desktop** — these designs are mobile frames (375×812). Desktop (≥sm) needs the same tokens but the layouts naturally diverge (no tab bar, wider cards, multi-column lists). Approach: tokens + primitives apply universally; layouts re-flow per breakpoint as today. **No desktop-specific Pencil frames yet — we're inferring.**
 
 ## Out of scope
 
 - Crux core / API / DB — no behaviour changes
-- SwiftUI shell beyond optional token swap
 - Icon library migration (#345) — independent track
 - Liquid Glass for non-tab-bar surfaces (would need refraction WebKit doesn't support)
 - Light mode (no Pencil frames; we're dark-mode-only today)
