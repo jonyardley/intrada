@@ -5,7 +5,7 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::{Event, SessionEvent, SessionStatusView, ViewModel};
 
-use crate::components::{BackLink, Button, ButtonVariant, Card, PageHeading, SetlistBuilder};
+use crate::components::{BackLink, Button, ButtonVariant, PageHeading, SetlistBuilder};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -88,93 +88,92 @@ pub fn SessionNewView() -> impl IntoView {
             {move || {
                 let vm = view_model.get();
                 if vm.session_status == SessionStatusView::Active {
-                    // Active session exists — show recovery banner
+                    // Active session exists — flat recovery banner. The Card
+                    // chrome that used to wrap this competed with the rest of
+                    // a flat page; the destructive Discard button is enough
+                    // visual weight on its own.
                     let core_a = core_abandon.clone();
                     let nav = navigate_resume.clone();
                     Some(view! {
-                        <Card>
-                            <div class="space-y-3">
-                                <p class="text-sm text-secondary">
-                                    "You have a session in progress."
-                                </p>
-                                <div class="flex gap-3">
-                                    <Button
-                                        variant=ButtonVariant::Primary
-                                        on_click=Callback::new(move |_| {
-                                            nav(
-                                                "/sessions/active",
-                                                NavigateOptions {
-                                                    replace: true,
-                                                    ..Default::default()
-                                                },
-                                            );
-                                        })
-                                    >
-                                        "Resume Session"
-                                    </Button>
-                                    <Button
-                                        variant=ButtonVariant::Danger
-                                        on_click=Callback::new(move |_| {
-                                            let event = Event::Session(SessionEvent::AbandonSession);
-                                            let core_ref = core_a.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                        })
-                                    >
-                                        "Discard Session"
-                                    </Button>
-                                </div>
+                        <div class="space-y-3">
+                            <p class="text-sm text-secondary">
+                                "You have a session in progress."
+                            </p>
+                            <div class="flex gap-3">
+                                <Button
+                                    variant=ButtonVariant::Primary
+                                    on_click=Callback::new(move |_| {
+                                        nav(
+                                            "/sessions/active",
+                                            NavigateOptions {
+                                                replace: true,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    })
+                                >
+                                    "Resume Session"
+                                </Button>
+                                <Button
+                                    variant=ButtonVariant::Danger
+                                    on_click=Callback::new(move |_| {
+                                        let event = Event::Session(SessionEvent::AbandonSession);
+                                        let core_ref = core_a.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                    })
+                                >
+                                    "Discard Session"
+                                </Button>
                             </div>
-                        </Card>
+                        </div>
                     })
                 } else {
                     None
                 }
             }}
 
-            // Preset buttons — shown when idle (before building starts)
+            // Preset buttons — shown when idle (before building starts).
+            // Flat layout, no Card chrome (matches the builder page that
+            // follows when the user picks a preset / Custom Session).
             <Show when=move || view_model.get().session_status == SessionStatusView::Idle>
-                <Card>
-                    <div class="space-y-4">
-                        <p class="field-label">
-                            "Quick Start"
-                        </p>
-                        <div class="flex gap-3">
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=Callback::new(move |e: ev::MouseEvent| preset_10.run(e))
-                            >
-                                "10 min"
-                            </Button>
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=Callback::new(move |e: ev::MouseEvent| preset_15.run(e))
-                            >
-                                "15 min"
-                            </Button>
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=Callback::new(move |e: ev::MouseEvent| preset_20.run(e))
-                            >
-                                "20 min"
-                            </Button>
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=Callback::new(move |e: ev::MouseEvent| preset_30.run(e))
-                            >
-                                "30 min"
-                            </Button>
-                        </div>
-                        <div class="flex justify-center">
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=start_custom
-                            >
-                                "Custom Session"
-                            </Button>
-                        </div>
+                <div class="space-y-4">
+                    <label class="field-label">"Quick Start"</label>
+                    <div class="flex gap-3">
+                        <Button
+                            variant=ButtonVariant::Secondary
+                            on_click=Callback::new(move |e: ev::MouseEvent| preset_10.run(e))
+                        >
+                            "10 min"
+                        </Button>
+                        <Button
+                            variant=ButtonVariant::Secondary
+                            on_click=Callback::new(move |e: ev::MouseEvent| preset_15.run(e))
+                        >
+                            "15 min"
+                        </Button>
+                        <Button
+                            variant=ButtonVariant::Secondary
+                            on_click=Callback::new(move |e: ev::MouseEvent| preset_20.run(e))
+                        >
+                            "20 min"
+                        </Button>
+                        <Button
+                            variant=ButtonVariant::Secondary
+                            on_click=Callback::new(move |e: ev::MouseEvent| preset_30.run(e))
+                        >
+                            "30 min"
+                        </Button>
                     </div>
-                </Card>
+                    <div class="flex justify-center">
+                        <Button
+                            variant=ButtonVariant::Secondary
+                            on_click=start_custom
+                        >
+                            "Custom Session"
+                        </Button>
+                    </div>
+                </div>
             </Show>
 
             // Only show the setlist builder when in building state

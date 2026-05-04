@@ -11,14 +11,8 @@ use intrada_core::ItemKind;
 #[component]
 pub fn TypeBadge(item_type: ItemKind) -> impl IntoView {
     let (classes, display) = match item_type {
-        ItemKind::Piece => (
-            "inline-flex items-center rounded-full bg-badge-piece-bg px-3 py-1 text-sm font-medium text-badge-piece-text",
-            "Piece",
-        ),
-        ItemKind::Exercise => (
-            "inline-flex items-center rounded-full bg-badge-exercise-bg px-3 py-1 text-sm font-medium text-badge-exercise-text",
-            "Exercise",
-        ),
+        ItemKind::Piece => ("badge badge--lg badge--piece", "Piece"),
+        ItemKind::Exercise => ("badge badge--lg badge--exercise", "Exercise"),
     };
 
     view! {

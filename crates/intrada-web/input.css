@@ -889,6 +889,84 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Badges — pill-shaped status / metadata indicators
+   ═══════════════════════════════════════════════════════════════════════
+   Replaces ~10 hand-rolled `inline-flex items-center rounded-md px-2 py-0.5
+   text-xs font-medium ...` sites. Default is the dense xs size used inside
+   list rows; pair with `.badge--lg` for the bigger TypeBadge / pill style
+   used in headers and forms. Colour variants cover the common semantic
+   cases (piece, exercise, warning, accent-on-soft, muted).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md, 0.375rem);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Larger pill variant (TypeBadge style — used in detail headers, forms). */
+@utility badge--lg {
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Piece — accent-derived (indigo). Pairs with the gold AccentBar in
+   row contexts; the badge itself stays accent-purple. */
+@utility badge--piece {
+  background-color: var(--color-badge-piece-bg);
+  color: var(--color-badge-piece-text);
+}
+
+/* Exercise — warm-accent-derived (gold). */
+@utility badge--exercise {
+  background-color: var(--color-badge-exercise-bg);
+  color: var(--color-badge-exercise-text);
+}
+
+/* Warning — amber surface + text + ring. Used for "Ended Early" etc. */
+@utility badge--warning {
+  background-color: var(--color-warning-surface);
+  color: var(--color-warning-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-warning) 20%, transparent);
+}
+
+/* Accent — used for completion / score indicators ("4/5"). Sits on a
+   piece-bg fill with an accent-focus ring so it reads as "achievement"
+   rather than "type tag". */
+@utility badge--accent {
+  background-color: var(--color-badge-piece-bg);
+  color: var(--color-accent-text);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-accent-focus) 20%, transparent);
+}
+
+/* Warm-accent — gold tone. Used for "rep target reached" etc. */
+@utility badge--warm {
+  background-color: var(--color-warm-accent-surface);
+  color: var(--color-warm-accent-text);
+}
+
+/* Muted — neutral surface, for rep counts / tempo / item counts where
+   the badge is just a chip of metadata, not a status. */
+@utility badge--muted {
+  background-color: var(--color-surface-secondary);
+  color: var(--color-text-muted);
+}
+
+/* Monospace variant — keeps numerics tabular, used by rep counters and
+   tempo readouts so 1/1/1 doesn't jitter against 8/3/8. */
+@utility badge--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Drag-and-Drop Utilities
    ═══════════════════════════════════════════════════════════════════════ */
 

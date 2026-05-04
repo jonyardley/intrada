@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use leptos::ev;
 use leptos::prelude::*;
 use leptos_router::components::A;
@@ -5,10 +7,12 @@ use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
 use intrada_core::validation::MAX_ROUTINE_NAME;
-use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
+use intrada_core::{
+    EntryStatus, Event, RoutineEntry, RoutineEntryView, RoutineEvent, SetlistEntryView, ViewModel,
+};
 
 use crate::components::{
-    BackLink, Button, ButtonVariant, Card, DragHandle, DropIndicator, PageHeading, SkeletonBlock,
+    BackLink, BuilderItemRow, Button, ButtonVariant, PageHeading, SetlistEntryRow, SkeletonBlock,
     SkeletonLine,
 };
 use intrada_web::core_bridge::process_effects;
@@ -43,13 +47,11 @@ pub fn RoutineEditView() -> impl IntoView {
                 {move || {
                     if is_loading.get() {
                         view! {
-                            <Card>
-                                <div class="space-y-4 animate-pulse">
-                                    <SkeletonLine width="w-1/3" height="h-6" />
-                                    <SkeletonLine width="w-full" height="h-10" />
-                                    <SkeletonBlock height="h-32" />
-                                </div>
-                            </Card>
+                            <div class="space-y-4 animate-pulse">
+                                <SkeletonLine width="w-1/3" height="h-6" />
+                                <SkeletonLine width="w-full" height="h-10" />
+                                <SkeletonBlock height="h-32" />
+                            </div>
                         }.into_any()
                     } else {
                         // Check if routine appeared after loading completed
@@ -99,8 +101,31 @@ pub fn RoutineEditView() -> impl IntoView {
 
     let drag = use_drag_reorder(on_reorder, entries_container_ref);
     let dragged_id = drag.dragged_id;
+    let drag_source_index = drag.source_index;
     let drag_hover_index = drag.hover_index;
+    let drag_live_offset_y = drag.live_offset_y;
+    let drag_source_height = drag.source_height;
     let on_drag_pointer_down = drag.on_pointer_down;
+
+    // Toggle handler — adds the item if not present, removes if it is.
+    // Mirrors the setlist builder's on_toggle semantics so the row
+    // primitive (BuilderItemRow) can be reused.
+    let on_toggle_item = Callback::new(move |item_id: String| {
+        let vm = view_model.get_untracked();
+        let already_in = entries.get_untracked().iter().any(|e| e.item_id == item_id);
+        if already_in {
+            entries.update(|e| e.retain(|x| x.item_id != item_id));
+        } else if let Some(item) = vm.items.iter().find(|i| i.id == item_id) {
+            let new_entry = RoutineEntryView {
+                id: ulid::Ulid::new().to_string(),
+                item_id: item.id.clone(),
+                item_title: item.title.clone(),
+                item_type: item.item_type.clone(),
+                position: entries.get_untracked().len(),
+            };
+            entries.update(|e| e.push(new_entry));
+        }
+    });
 
     view! {
         <div class="sm:max-w-2xl sm:mx-auto">
@@ -109,221 +134,191 @@ pub fn RoutineEditView() -> impl IntoView {
             <PageHeading text="Edit Routine" />
 
             <div class="space-y-6">
-                // Name field
-                <Card>
-                    <form class="space-y-4" on:submit={
-                        let routine_id = routine_id.clone();
-                        let navigate = navigate.clone();
-                        move |ev: ev::SubmitEvent| {
-                            ev.prevent_default();
+                // Name + entries form — flat, no Card chrome (matches the
+                // session builder / review-sheet vocabulary).
+                <form class="space-y-4" on:submit={
+                    let routine_id = routine_id.clone();
+                    let navigate = navigate.clone();
+                    move |ev: ev::SubmitEvent| {
+                        ev.prevent_default();
 
-                            let trimmed = name.get_untracked().trim().to_string();
-                            if trimmed.is_empty() {
-                                name_error.set(Some("Name is required".to_string()));
-                                return;
-                            }
-                            if trimmed.len() > MAX_ROUTINE_NAME {
-                                name_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
-                                return;
-                            }
-                            name_error.set(None);
-
-                            let current_entries = entries.get_untracked();
-                            if current_entries.is_empty() {
-                                name_error.set(Some("Routine must have at least one entry".to_string()));
-                                return;
-                            }
-
-                            // Build RoutineEntry Vec from the view entries
-                            let routine_entries: Vec<RoutineEntry> = current_entries
-                                .into_iter()
-                                .enumerate()
-                                .map(|(pos, e)| RoutineEntry {
-                                    id: e.id,
-                                    item_id: e.item_id,
-                                    item_title: e.item_title,
-                                    item_type: e.item_type,
-                                    position: pos,
-                                })
-                                .collect();
-
-                            let event = Event::Routine(RoutineEvent::UpdateRoutine {
-                                id: routine_id.clone(),
-                                name: trimmed,
-                                entries: routine_entries,
-                            });
-                            let core_ref = core_save.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                            navigate("/routines", NavigateOptions { replace: true, ..Default::default() });
+                        let trimmed = name.get_untracked().trim().to_string();
+                        if trimmed.is_empty() {
+                            name_error.set(Some("Name is required".to_string()));
+                            return;
                         }
-                    }>
-                        <div>
-                            <label for="routine-name" class="form-label">"Routine Name"</label>
-                            <input
-                                id="routine-name"
-                                type="text"
-                                class="input-base"
-                                placeholder="e.g. Morning Warm-up"
-                                bind:value=name
-                            />
-                        </div>
-                        {move || name_error.get().map(|msg| view! {
-                            <p class="text-xs text-danger-text">{msg}</p>
-                        })}
+                        if trimmed.len() > MAX_ROUTINE_NAME {
+                            name_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
+                            return;
+                        }
+                        name_error.set(None);
 
-                        // Current entries with drag handle + reorder/remove (T021, T022)
-                        <div>
-                            <h4 class="text-sm font-medium text-secondary mb-2">"Entries"</h4>
-                            {move || {
-                                let current = entries.get();
-                                if current.is_empty() {
-                                    view! {
-                                        <p class="text-sm text-muted text-center py-4">"No entries. Add items from your library below."</p>
-                                    }.into_any()
-                                } else {
-                                    let len = current.len();
-                                    view! {
-                                        <div node_ref=entries_container_ref aria-roledescription="sortable">
-                                            {current.into_iter().enumerate().map(|(idx, entry)| {
-                                                let entry_id = entry.id.clone();
-                                                let entry_id_up = entry.id.clone();
-                                                let entry_id_down = entry.id.clone();
+                        let current_entries = entries.get_untracked();
+                        if current_entries.is_empty() {
+                            name_error.set(Some("Routine must have at least one entry".to_string()));
+                            return;
+                        }
 
-                                                // Drag state for this entry
-                                                let eid = entry.id.clone();
-                                                let is_dragging_this = Signal::derive(move || {
-                                                    dragged_id.get().as_deref() == Some(eid.as_str())
-                                                });
+                        // Build RoutineEntry Vec from the view entries
+                        let routine_entries: Vec<RoutineEntry> = current_entries
+                            .into_iter()
+                            .enumerate()
+                            .map(|(pos, e)| RoutineEntry {
+                                id: e.id,
+                                item_id: e.item_id,
+                                item_title: e.item_title,
+                                item_type: e.item_type,
+                                position: pos,
+                            })
+                            .collect();
 
-                                                // Drop indicator before this entry
-                                                let drop_before_visible = Signal::derive(move || {
-                                                    drag_hover_index.get() == Some(idx)
-                                                });
+                        let event = Event::Routine(RoutineEvent::UpdateRoutine {
+                            id: routine_id.clone(),
+                            name: trimmed,
+                            entries: routine_entries,
+                        });
+                        let core_ref = core_save.borrow();
+                        let effects = core_ref.process_event(event);
+                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        navigate("/routines", NavigateOptions { replace: true, ..Default::default() });
+                    }
+                }>
+                    <div>
+                        <label for="routine-name" class="form-label">"Routine name"</label>
+                        <input
+                            id="routine-name"
+                            type="text"
+                            class="input-base"
+                            placeholder="e.g. Morning Warm-up"
+                            bind:value=name
+                        />
+                    </div>
+                    {move || name_error.get().map(|msg| view! {
+                        <p class="text-xs text-danger-text">{msg}</p>
+                    })}
 
-                                                // Drop indicator after last entry
-                                                let is_last = idx == len - 1;
-                                                let drop_after_visible = Signal::derive(move || {
-                                                    is_last && drag_hover_index.get() == Some(len)
-                                                });
+                    // Entries — uses SetlistEntryRow compact mode and the
+                    // same wrapper-transform reflow as the review sheet.
+                    <div>
+                        <label class="form-label">"Entries"</label>
+                        {move || {
+                            let current = entries.get();
+                            if current.is_empty() {
+                                view! {
+                                    <p class="text-sm text-muted text-center py-4">"No entries. Add items from your library below."</p>
+                                }.into_any()
+                            } else {
+                                view! {
+                                    <div node_ref=entries_container_ref aria-roledescription="sortable" class="flex flex-col">
+                                        {current.into_iter().enumerate().map(|(idx, entry)| {
+                                            let entry_id_for_remove = entry.id.clone();
+                                            let eid = entry.id.clone();
+                                            let is_dragging_this = Signal::derive(move || {
+                                                dragged_id.get().as_deref() == Some(eid.as_str())
+                                            });
 
-                                                view! {
-                                                    <DropIndicator visible=drop_before_visible />
-                                                    <div
-                                                        class=move || {
-                                                            if is_dragging_this.get() {
-                                                                "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 drag-active ring-2 ring-accent-focus"
-                                                            } else {
-                                                                "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2"
-                                                            }
-                                                        }
-                                                        data-entry-index=idx.to_string()
-                                                    >
-                                                        <div class="flex items-center gap-2">
-                                                            // Drag handle (leftmost)
-                                                            <DragHandle
-                                                                entry_id=entry.id.clone()
-                                                                index=idx
-                                                                on_pointer_down=on_drag_pointer_down
-                                                            />
-                                                            <span class="text-xs text-faint w-5 text-center">{idx + 1}</span>
-                                                            <span class="text-sm text-primary">{entry.item_title}</span>
-                                                            <span class="text-xs text-faint">{entry.item_type.to_string()}</span>
-                                                        </div>
-                                                        <div class="flex items-center gap-1">
-                                                            // Up/down arrow buttons always visible (FR-012)
-                                                            {if idx > 0 {
-                                                                Some(view! {
-                                                                    <button
-                                                                        type="button"
-                                                                        class="text-xs text-muted hover:text-primary p-1"
-                                                                        title="Move up"
-                                                                        on:click=move |_| {
-                                                                            entries.update(|e| {
-                                                                                if let Some(pos) = e.iter().position(|x| x.id == entry_id_up) {
-                                                                                    if pos > 0 {
-                                                                                        e.swap(pos, pos - 1);
-                                                                                    }
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    >
-                                                                        "\u{2191}"
-                                                                    </button>
-                                                                })
-                                                            } else {
-                                                                None
-                                                            }}
-                                                            {if idx < len - 1 {
-                                                                Some(view! {
-                                                                    <button
-                                                                        type="button"
-                                                                        class="text-xs text-muted hover:text-primary p-1"
-                                                                        title="Move down"
-                                                                        on:click=move |_| {
-                                                                            entries.update(|e| {
-                                                                                if let Some(pos) = e.iter().position(|x| x.id == entry_id_down) {
-                                                                                    if pos < e.len() - 1 {
-                                                                                        e.swap(pos, pos + 1);
-                                                                                    }
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    >
-                                                                        "\u{2193}"
-                                                                    </button>
-                                                                })
-                                                            } else {
-                                                                None
-                                                            }}
-                                                            <button
-                                                                type="button"
-                                                                class="text-xs text-danger-text hover:text-danger-hover p-1"
-                                                                title="Remove"
-                                                                on:click=move |_| {
-                                                                    entries.update(|e| {
-                                                                        e.retain(|x| x.id != entry_id);
-                                                                    });
-                                                                }
-                                                            >
-                                                                "\u{2715}"
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    {if is_last {
-                                                        Some(view! { <DropIndicator visible=drop_after_visible /> })
-                                                    } else {
-                                                        None
-                                                    }}
+                                            let on_remove = Callback::new(move |_: String| {
+                                                let id = entry_id_for_remove.clone();
+                                                entries.update(|e| e.retain(|x| x.id != id));
+                                            });
+
+                                            // Routine entries have no per-entry duration today,
+                                            // so populate the wider SetlistEntryView with defaults
+                                            // for the unused fields. SetlistEntryRow only reads
+                                            // item_title / item_type / duration_display in
+                                            // compact mode, so the defaults don't surface.
+                                            let setlist_entry = SetlistEntryView {
+                                                id: entry.id.clone(),
+                                                item_id: entry.item_id.clone(),
+                                                item_title: entry.item_title.clone(),
+                                                item_type: entry.item_type.clone(),
+                                                position: idx,
+                                                duration_display: String::new(),
+                                                status: EntryStatus::NotAttempted,
+                                                notes: None,
+                                                score: None,
+                                                intention: None,
+                                                rep_target: None,
+                                                rep_count: None,
+                                                rep_target_reached: None,
+                                                rep_history: None,
+                                                planned_duration_secs: None,
+                                                planned_duration_display: None,
+                                                achieved_tempo: None,
+                                            };
+
+                                            // Wrapper transform: source row tracks the finger,
+                                            // displaced rows slide by source_height. Same logic
+                                            // as session_review_sheet.
+                                            let row_style = move || {
+                                                let Some(src) = drag_source_index.get() else {
+                                                    return String::new();
+                                                };
+                                                if idx == src {
+                                                    let off = drag_live_offset_y.get();
+                                                    return format!(
+                                                        "transform: translateY({off}px) scale(1.02); transition: none; position: relative; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.35);"
+                                                    );
                                                 }
-                                            }).collect::<Vec<_>>()}
-                                        </div>
-                                    }.into_any()
-                                }
-                            }}
-                        </div>
+                                                let Some(hov) = drag_hover_index.get() else {
+                                                    return String::new();
+                                                };
+                                                let h = drag_source_height.get();
+                                                let displaced_down = hov > src && idx > src && idx <= hov;
+                                                let displaced_up = hov < src && idx >= hov && idx < src;
+                                                if displaced_down {
+                                                    format!(
+                                                        "transform: translateY(-{h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                                                    )
+                                                } else if displaced_up {
+                                                    format!(
+                                                        "transform: translateY({h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                                                    )
+                                                } else {
+                                                    "transform: translateY(0); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);".to_string()
+                                                }
+                                            };
 
-                        // Save / Cancel buttons
-                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                            <Button
-                                variant=ButtonVariant::Primary
-                                button_type="submit"
-                                loading=Signal::derive(move || is_submitting.get())
-                            >
-                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save Changes" }}
-                            </Button>
-                            <Button variant=ButtonVariant::Secondary on_click={
-                                let navigate = navigate.clone();
-                                Callback::new(move |_| {
-                                    navigate("/routines", NavigateOptions::default());
-                                })
-                            }>"Cancel"</Button>
-                        </div>
-                    </form>
-                </Card>
+                                            view! {
+                                                <div style=row_style data-entry-index=idx.to_string()>
+                                                    <SetlistEntryRow
+                                                        entry=setlist_entry
+                                                        on_remove=Some(on_remove)
+                                                        show_controls=true
+                                                        is_dragging_this=is_dragging_this
+                                                        on_drag_pointer_down=Some(on_drag_pointer_down)
+                                                        index=idx
+                                                        compact=true
+                                                    />
+                                                </div>
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                    </div>
+                                }.into_any()
+                            }
+                        }}
+                    </div>
 
-                // Add from Library (T014: whole row is clickable)
-                <Card>
+                    // Save / Cancel buttons
+                    <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                        <Button
+                            variant=ButtonVariant::Primary
+                            button_type="submit"
+                            loading=Signal::derive(move || is_submitting.get())
+                        >
+                            {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save Changes" }}
+                        </Button>
+                        <Button variant=ButtonVariant::Secondary on_click={
+                            let navigate = navigate.clone();
+                            Callback::new(move |_| {
+                                navigate("/routines", NavigateOptions::default());
+                            })
+                        }>"Cancel"</Button>
+                    </div>
+                </form>
+
+                // Add from Library — flat, uses BuilderItemRow.
+                <div>
                     <h3 class="section-title">"Add from Library"</h3>
                     {move || {
                         let vm = view_model.get();
@@ -332,8 +327,7 @@ pub fn RoutineEditView() -> impl IntoView {
                                 <p class="text-sm text-muted">"No library items available."</p>
                             }.into_any()
                         } else {
-                            // Collect item IDs already in the routine to dim them
-                            let added_ids: std::collections::HashSet<String> = entries
+                            let added_ids: HashSet<String> = entries
                                 .get()
                                 .iter()
                                 .map(|e| e.item_id.clone())
@@ -341,49 +335,24 @@ pub fn RoutineEditView() -> impl IntoView {
                             view! {
                                 <div class="space-y-2">
                                     {vm.items.iter().map(|item| {
-                                        let already_added = added_ids.contains(&item.id);
-                                        let title = item.title.clone();
-                                        let item_type = item.item_type.clone();
-                                        let id_for_entry = item.id.clone();
-                                        let title_for_entry = item.title.clone();
-                                        let type_for_entry = item.item_type.clone();
+                                        let item_id_clone = item.id.clone();
+                                        let added_ids_for_signal = added_ids.clone();
+                                        let is_selected = Signal::derive(move || {
+                                            added_ids_for_signal.contains(&item_id_clone)
+                                        });
                                         view! {
-                                            <div
-                                                class={if already_added {
-                                                    "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 opacity-50"
-                                                } else {
-                                                    "flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
-                                                }}
-                                                on:click=move |_| {
-                                                    let new_entry = RoutineEntryView {
-                                                        id: ulid::Ulid::new().to_string(),
-                                                        item_id: id_for_entry.clone(),
-                                                        item_title: title_for_entry.clone(),
-                                                        item_type: type_for_entry.clone(),
-                                                        position: entries.get_untracked().len(),
-                                                    };
-                                                    entries.update(|e| e.push(new_entry));
-                                                }
-                                            >
-                                                <div class="flex items-center gap-2">
-                                                    <span class="text-sm text-primary">{title}</span>
-                                                    <span class="text-xs text-faint">{item_type.to_string()}</span>
-                                                </div>
-                                                <span class={if already_added {
-                                                    "text-xs font-medium text-muted"
-                                                } else {
-                                                    "text-xs font-medium text-accent-text"
-                                                }}>
-                                                    {if already_added { "Added" } else { "+ Add" }}
-                                                </span>
-                                            </div>
+                                            <BuilderItemRow
+                                                item=item.clone()
+                                                is_selected=is_selected
+                                                on_toggle=on_toggle_item
+                                            />
                                         }
                                     }).collect::<Vec<_>>()}
                                 </div>
                             }.into_any()
                         }
                     }}
-                </Card>
+                </div>
             </div>
         </div>
     }.into_any()

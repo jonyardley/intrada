@@ -9,10 +9,10 @@ use intrada_core::{
 };
 
 use crate::components::{
-    Button, ButtonVariant, ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow,
-    Icon, IconName, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
+    ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow, Icon, IconName,
+    PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
 };
-use intrada_web::core_bridge::{process_effects, process_effects_with_core};
+use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::helpers::{
     auto_select_day, format_time_short, get_week_start, group_sessions_by_date, sessions_for_week,
 };
@@ -224,9 +224,7 @@ pub(crate) fn SessionRow(
 ) -> impl IntoView {
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
-    let confirm_delete = RwSignal::new(false);
 
-    let id_for_delete = session.id.clone();
     let id_for_swipe = session.id.clone();
     let id_for_menu_delete = session.id.clone();
     let started_at = session.started_at.clone();
@@ -266,47 +264,13 @@ pub(crate) fn SessionRow(
     }];
 
     view! {
-        {move || {
-            if confirm_delete.get() {
-                let core_del = core.clone();
-                let id_del = id_for_delete.clone();
-                view! {
-                    <div class="p-card sm:p-card-comfortable">
-                        <p class="text-sm text-danger-text mb-3">"Delete this session? This cannot be undone."</p>
-                        <div class="flex gap-2">
-                            <Button
-                                variant=ButtonVariant::Danger
-                                loading=Signal::derive(move || is_submitting.get())
-                                on_click=Callback::new(move |_| {
-                                    let event = Event::Session(SessionEvent::DeleteSession { id: id_del.clone() });
-                                    let core_ref = core_del.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                })
-                            >
-                                {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
-                            </Button>
-                            <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                                confirm_delete.set(false);
-                            })>
-                                "Cancel"
-                            </Button>
-                        </div>
-                    </div>
-                }.into_any()
-            } else {
-                let started_at = started_at.clone();
-                let total_duration = total_duration.clone();
-                let completion_status = completion_status.clone();
-                let session_notes = session_notes.clone();
-                let session_intention = session_intention.clone();
-                let entries = entries.clone();
-                let menu_actions = menu_actions.clone();
-                let id_for_swipe = id_for_swipe.clone();
-                view! {
-                    <ContextMenu actions=menu_actions>
-                        <SwipeActions on_delete=Callback::new(move |_| {
-                            direct_delete.run(id_for_swipe.clone());
+        // Delete is reachable via swipe-left (mobile) and long-press → context
+        // menu. No inline confirmation banner — the gesture itself is the
+        // deliberate confirmation, matching native UISwipeActionsConfiguration
+        // / UIContextMenuInteraction behaviour and the Routines pattern.
+        <ContextMenu actions=menu_actions>
+            <SwipeActions on_delete=Callback::new(move |_| {
+                direct_delete.run(id_for_swipe.clone());
                         })>
                             <div class="p-card sm:p-card-comfortable space-y-3">
                                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -320,9 +284,7 @@ pub(crate) fn SessionRow(
                                             </span>
                                             {if completion_status == CompletionStatus::EndedEarly {
                                                 Some(view! {
-                                                    <span class="inline-flex items-center rounded-md bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning-text ring-1 ring-warning/20 ring-inset">
-                                                        "Ended Early"
-                                                    </span>
+                                                    <span class="badge badge--warning">"Ended Early"</span>
                                                 })
                                             } else {
                                                 None
@@ -340,14 +302,11 @@ pub(crate) fn SessionRow(
                                             }
                                         })}
                                     </div>
-                                    <div class="flex gap-2 sm:ml-4">
-                                        <button
-                                            class="text-xs text-danger-text hover:text-danger-hover font-medium"
-                                            on:click=move |_| { confirm_delete.set(true); }
-                                        >
-                                            "Delete"
-                                        </button>
-                                    </div>
+                                    // Delete is reachable via swipe-left (mobile) and
+                                    // long-press → context menu (mobile + desktop).
+                                    // The previous inline text-button on the row was a
+                                    // duplicate affordance; the gesture-based ones match
+                                    // the iOS pattern used elsewhere (Routines, Library).
                                 </div>
                                 // Entry details with scores
                                 <div class="mt-1 pt-2 space-y-1.5">
@@ -375,27 +334,27 @@ pub(crate) fn SessionRow(
                                                 <div class="flex items-center gap-2 shrink-0 ml-2">
                                                     {entry_rep_target.map(|target| {
                                                         let count = entry_rep_count.unwrap_or(0);
-                                                        let (color, bg) = if entry_rep_reached {
-                                                            ("text-warm-accent-text", "bg-warm-accent-surface")
+                                                        let class = if entry_rep_reached {
+                                                            "badge badge--mono badge--warm"
                                                         } else {
-                                                            ("text-muted", "bg-surface-secondary")
+                                                            "badge badge--mono badge--muted"
                                                         };
                                                         view! {
-                                                            <span class={format!("inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-mono {} {}", color, bg)}>
+                                                            <span class=class>
                                                                 {format!("{}/{}", count, target)}
                                                             </span>
                                                         }
                                                     })}
                                                     {entry_achieved_tempo.map(|tempo| {
                                                         view! {
-                                                            <span class="inline-flex items-center rounded-md bg-surface-secondary px-1.5 py-0.5 text-xs font-medium text-muted">
+                                                            <span class="badge badge--muted">
                                                                 {format!("\u{266A} {} BPM", tempo)}
                                                             </span>
                                                         }
                                                     })}
                                                     {entry.score.map(|s| {
                                                         view! {
-                                                            <span class="inline-flex items-center rounded-md bg-badge-piece-bg px-1.5 py-0.5 text-xs font-medium text-accent-text ring-1 ring-accent-focus/20 ring-inset">
+                                                            <span class="badge badge--accent">
                                                                 {format!("{}/5", s)}
                                                             </span>
                                                         }
@@ -418,10 +377,7 @@ pub(crate) fn SessionRow(
                                     }).collect::<Vec<_>>()}
                                 </div>
                             </div>
-                        </SwipeActions>
-                    </ContextMenu>
-                }.into_any()
-            }
-        }}
+        </SwipeActions>
+        </ContextMenu>
     }
 }

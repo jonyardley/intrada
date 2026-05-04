@@ -37,7 +37,7 @@ pub fn RoutineLoader() -> impl IntoView {
                                     <div class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover">
                                         <div class="flex items-center gap-2">
                                             <span class="text-sm text-primary font-medium">{name}</span>
-                                            <span class="inline-flex items-center rounded-full bg-badge-piece-bg px-2 py-0.5 text-xs font-medium text-accent-text">
+                                            <span class="badge badge--accent">
                                                 {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
                                             </span>
                                         </div>
