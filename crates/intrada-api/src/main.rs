@@ -106,7 +106,18 @@ async fn main() {
         }
     };
 
-    let state = AppState::new(Db::new(db, conn), allowed_origin, auth_config, r2);
+    let shared_db = Db::new(db, conn);
+
+    // Background liveness probe. Keeps the shared libsql session warm so
+    // Turso's silent idle-rot (machine suspend / network blip / idle
+    // timeout) doesn't surface as a 5xx on the next user request.
+    // Companion to `/health`'s on-demand reconnect (#290) — heartbeat
+    // catches rot before a probe lands; per-request retry (#291, still
+    // open) is the belt-and-suspenders for the narrow window between
+    // heartbeat ticks.
+    shared_db.spawn_heartbeat();
+
+    let state = AppState::new(shared_db, allowed_origin, auth_config, r2);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

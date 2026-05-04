@@ -8,7 +8,7 @@ use axum::http::{header, HeaderValue, Method};
 use axum::Router;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnResponse, TraceLayer};
 use tracing::Level;
 
 use crate::state::AppState;
@@ -36,7 +36,14 @@ pub fn api_router(state: AppState) -> Router {
 
     let trace = TraceLayer::new_for_http()
         .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-        .on_response(DefaultOnResponse::new().level(Level::INFO));
+        .on_response(DefaultOnResponse::new().level(Level::INFO))
+        // Lower the on_failure event (default ERROR → WARN). Without this,
+        // every 5xx generates a generic `tracing::error!("response failed")`
+        // alongside the actual handler error from `error.rs`, which Sentry
+        // captures as a separate, content-free issue. WARN keeps the log
+        // line for local visibility but doesn't trip Sentry's default
+        // ERROR-only event capture.
+        .on_failure(DefaultOnFailure::new().level(Level::WARN));
 
     Router::new()
         .nest("/api", api_routes())

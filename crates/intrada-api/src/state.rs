@@ -1,10 +1,19 @@
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use libsql::{Connection, Database};
 
 use crate::auth::AuthConfig;
 use crate::error::ApiError;
 use crate::storage::R2Client;
+
+/// Heartbeat interval for the background liveness probe.
+///
+/// Turso's hosted libsql sessions silently rot on idle (timeout exact
+/// value undocumented; we've seen rot well under 5 minutes after
+/// machine suspend). Pinging every 30s keeps the session warm so a
+/// real user request rarely lands on a dead connection.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Shared, self-healing database handle.
 ///
@@ -42,6 +51,45 @@ impl Db {
         let fresh = self.db.connect()?;
         *self.conn.write().expect("db connection lock poisoned") = fresh.clone();
         Ok(fresh)
+    }
+
+    /// Spawn a background task that pings the connection every
+    /// `HEARTBEAT_INTERVAL` and reconnects on failure. Runs for the
+    /// lifetime of the tokio runtime — no shutdown signal is needed
+    /// today (the task dies with the runtime). Caller doesn't need to
+    /// hold the returned `JoinHandle` unless they want explicit cancel.
+    pub fn spawn_heartbeat(&self) -> tokio::task::JoinHandle<()> {
+        let db = self.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+            // Skip the first tick — `tokio::time::interval` fires
+            // immediately by default, but startup already proved the
+            // connection works.
+            interval.tick().await;
+            loop {
+                interval.tick().await;
+                if db.conn().query("SELECT 1", ()).await.is_ok() {
+                    continue;
+                }
+                tracing::warn!("DB heartbeat failed; reconnecting");
+                match db.reconnect() {
+                    Ok(fresh) => match fresh.query("SELECT 1", ()).await {
+                        Ok(_) => tracing::info!("DB heartbeat reconnect succeeded"),
+                        // WARN not ERROR — the next interval will retry,
+                        // and a real user request hitting this in the
+                        // window will surface a proper error itself.
+                        // Logging at ERROR here would double-fire Sentry
+                        // for the same incident.
+                        Err(err) => {
+                            tracing::warn!(?err, "DB heartbeat: query failing after reconnect")
+                        }
+                    },
+                    Err(err) => {
+                        tracing::warn!(?err, "DB heartbeat: failed to rebuild connection")
+                    }
+                }
+            }
+        })
     }
 }
 
