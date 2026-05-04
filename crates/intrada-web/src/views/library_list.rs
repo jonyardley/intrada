@@ -148,6 +148,23 @@ pub fn LibraryListView() -> impl IntoView {
                         }
                     }
                 />
+                <Show when=move || !query.get().is_empty()>
+                    <button
+                        type="button"
+                        class="search-bar-clear"
+                        aria-label="Clear search"
+                        // mousedown fires before the input loses focus, so we
+                        // can clear without blurring (which would hide the
+                        // clear button before our click fires on iOS).
+                        on:mousedown=move |ev| {
+                            ev.prevent_default();
+                            query.set(String::new());
+                        }
+                        on:touchstart=move |_| query.set(String::new())
+                    >
+                        "×"
+                    </button>
+                </Show>
             </div>
 
             // Type tabs — All / Pieces / Exercises. Underline-style with a
