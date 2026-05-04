@@ -199,6 +199,13 @@ pub fn WeekStrip(
     };
 
     let handle_pointer_move = move |ev: PointerEvent| {
+        // On desktop, pointermove fires on hover (no button pressed). Without
+        // this guard, hovering across the strip would translate the track —
+        // the bug users described as "the mouse catches the calendar slider".
+        // Touch is unaffected: touch pointermove only fires while pressed.
+        if ev.buttons() == 0 {
+            return;
+        }
         if snap_target.get_untracked() != 0 || gesture_abandoned.get_untracked() {
             return;
         }
