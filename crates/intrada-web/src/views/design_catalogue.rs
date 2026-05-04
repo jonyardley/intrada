@@ -13,8 +13,8 @@ use crate::components::{
     FieldLabel, FormFieldError, IconName, InlineTypeIndicator, LibraryItemCard, LibraryTypeTabs,
     LineChart, PageHeading, ProgressRing, RoutineSaveForm, SectionLabel, SetlistEntryRow,
     SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone,
-    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, Toast, ToastVariant,
-    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge,
+    TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -254,7 +254,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#type-badge" class="text-accent-text hover:text-primary">"Type Badge"</a></li>
                             <li><a href="#type-tabs" class="text-accent-text hover:text-primary">"Type Tabs"</a></li>
                             <li><a href="#library-type-tabs" class="text-accent-text hover:text-primary">"Library Type Tabs"</a></li>
-                            <li><a href="#toast" class="text-accent-text hover:text-primary">"Toast"</a></li>
                             <li><a href="#error-banner" class="text-accent-text hover:text-primary">"Error Banner"</a></li>
                             <li><a href="#progress" class="text-accent-text hover:text-primary">"Progress Bar"</a></li>
                         </ul>
@@ -540,13 +539,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <p class="text-xs text-faint text-center">"Glassmorphism + fallback + border + shadow"</p>
                     </div>
                     <div class="space-y-2">
-                        <div class="glass-card-active p-4">
-                            <p class="text-sm text-secondary">"Active card — currently practicing"</p>
-                        </div>
-                        <p class="text-xs text-faint text-center">"glass-card-active"</p>
-                        <p class="text-xs text-faint text-center">"Accent border + glow for active practice item"</p>
-                    </div>
-                    <div class="space-y-2">
                         <div class="glass-chrome border border-border-default p-4">
                             <p class="text-sm text-secondary">"Content inside glass-chrome"</p>
                         </div>
@@ -659,10 +651,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div class="border-b border-border-default my-3"></div>
                         <p class="text-xs text-faint">"Footer-style content in the card."</p>
                     </Card>
-                    <div class="glass-card-active p-4 sm:p-6">
-                        <h3 class="text-lg font-semibold text-primary mb-2">"Active card"</h3>
-                        <p class="text-sm text-muted">"Currently practicing this item. Accent border + subtle glow."</p>
-                    </div>
                 </div>
             </section>
 
@@ -825,17 +813,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                         on_change=Callback::new(move |k| library_tab_active.set(k))
                     />
                 </Card>
-            </section>
-
-            // ── Toast Notifications ──────────────────────────────────
-            <section id="toast">
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Toast Notifications"</h3>
-                <div class="space-y-3">
-                    <Toast variant=ToastVariant::Info>"Session auto-saved"</Toast>
-                    <Toast variant=ToastVariant::Success>"5 correct in a row!"</Toast>
-                    <Toast variant=ToastVariant::Warning>"Session timer paused — are you still there?"</Toast>
-                    <Toast variant=ToastVariant::Danger>"Failed to save session. Please check your connection."</Toast>
-                </div>
             </section>
 
             // ── Error Banner ──────────────────────────────────────────
@@ -1107,11 +1084,6 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <label class="block text-sm font-medium text-text-label mb-1">"Error"</label>
                             <input type="text" class="input-base input-error" value="" readonly />
                             <p class="text-xs text-danger-text mt-1">"Title is required"</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-text-label mb-1">"Success"</label>
-                            <input type="text" class="input-base input-success" value="Clair de Lune" readonly />
-                            <p class="text-xs text-success-text mt-1">"Looks good!"</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-text-label mb-1">"Disabled"</label>
