@@ -650,11 +650,38 @@ body {
 .search-bar-input::placeholder {
   color: var(--color-text-muted);
 }
-/* Hide WebKit's built-in search input X — we'll build a proper clear
-   affordance when the search logic actually lands. */
+/* Hide WebKit's built-in search input X — we render our own .search-bar-clear
+   button so it works consistently across browsers and styles to the design. */
 .search-bar-input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
+}
+
+/* Clear (×) button rendered to the right of .search-bar-input when the
+   query is non-empty. Same visual language as .input-clear but sized to
+   sit inside the .search-bar's 44px row without crowding. */
+.search-bar-clear {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.search-bar-clear:hover {
+  background: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+.search-bar-clear:active {
+  transform: scale(0.92);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
