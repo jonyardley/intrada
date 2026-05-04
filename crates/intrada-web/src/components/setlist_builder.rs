@@ -1,16 +1,31 @@
-use leptos::prelude::*;
+use std::collections::HashSet;
 
-use intrada_core::{Event, RoutineEvent, SessionEvent, ViewModel};
+use leptos::ev;
+use leptos::prelude::*;
+use leptos::web_sys;
+use wasm_bindgen::JsCast;
+
+use intrada_core::{Event, ItemKind, LibraryItemView, SessionEvent, ViewModel};
 
 use crate::components::{
-    Button, ButtonVariant, Card, DropIndicator, Icon, IconName, RoutineLoader, RoutineSaveForm,
-    SetlistEntryRow,
+    BuilderItemRow, Button, ButtonVariant, Icon, IconName, LibraryTypeTabs, SessionReviewSheet,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Setlist builder component: shows library items to add, current setlist, and controls.
+/// Case-insensitive substring match over title, subtitle, and tags.
+fn matches_query(item: &LibraryItemView, q: &str) -> bool {
+    item.title.to_lowercase().contains(q)
+        || item.subtitle.to_lowercase().contains(q)
+        || item.tags.iter().any(|t| t.to_lowercase().contains(q))
+}
+
+/// Setlist builder: library list with type-tab filter + search at the top,
+/// a sticky bottom toolbar showing item count + total minutes, and a
+/// "Review session" CTA that opens the [`SessionReviewSheet`].
+///
+/// The sheet is where reordering, intention, per-entry options and the
+/// Start Session CTA live — picking items happens here on the library page.
 #[component]
 pub fn SetlistBuilder() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -18,489 +33,211 @@ pub fn SetlistBuilder() -> impl IntoView {
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
 
-    let core_setlist = core.clone();
-    let core_actions = core.clone();
-    let core_library = core.clone();
-    let core_routine_save = core.clone();
-    let core_drag = core.clone();
-    let core_session_intention = core.clone();
+    let core_toggle = core.clone();
+    let core_cancel = core.clone();
 
-    // --- Drag-and-drop setup ---
-    let setlist_container_ref = NodeRef::<leptos::html::Div>::new();
+    // Library list filter state.
+    let active_filter: RwSignal<Option<ItemKind>> = RwSignal::new(None);
+    let query = RwSignal::new(String::new());
 
-    let item_count = Signal::derive(move || {
-        let vm = view_model.get();
-        vm.building_setlist
+    // Sheet open state — owned here so the toolbar can open it.
+    let review_open = RwSignal::new(false);
+    let close_review = Callback::new(move |_| review_open.set(false));
+    let open_review = move |_| review_open.set(true);
+
+    // Set of item ids currently in the setlist — used to render the toggle
+    // state on each library row.
+    let selected_ids = Memo::new(move |_| {
+        view_model
+            .get()
+            .building_setlist
             .as_ref()
-            .map(|s| s.entries.len())
-            .unwrap_or(0)
+            .map(|s| {
+                s.entries
+                    .iter()
+                    .map(|e| e.item_id.clone())
+                    .collect::<HashSet<String>>()
+            })
+            .unwrap_or_default()
     });
 
-    let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
-        let event = Event::Session(SessionEvent::ReorderSetlist {
-            entry_id,
-            new_position,
-        });
-        let core_ref = core_drag.borrow();
+    // Filtered library items: tab → query.
+    let filtered_items = Memo::new(move |_| {
+        let vm = view_model.get();
+        let kind = active_filter.get();
+        let q = query.get().trim().to_lowercase();
+        vm.items
+            .into_iter()
+            .filter(|i| match &kind {
+                None => true,
+                Some(k) => &i.item_type == k,
+            })
+            .filter(|i| q.is_empty() || matches_query(i, &q))
+            .collect::<Vec<_>>()
+    });
+
+    // Toggle handler — adds the item if not present, removes it if it is.
+    let on_toggle = Callback::new(move |item_id: String| {
+        let vm = view_model.get();
+        let entry_for_item = vm
+            .building_setlist
+            .as_ref()
+            .and_then(|s| s.entries.iter().find(|e| e.item_id == item_id))
+            .map(|e| e.id.clone());
+
+        let event = match entry_for_item {
+            Some(entry_id) => Event::Session(SessionEvent::RemoveFromSetlist { entry_id }),
+            None => Event::Session(SessionEvent::AddToSetlist { item_id }),
+        };
+        let core_ref = core_toggle.borrow();
         let effects = core_ref.process_event(event);
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
     });
 
-    let drag = use_drag_reorder(on_reorder, item_count, setlist_container_ref);
-    let dragged_id = drag.dragged_id;
-    let drag_hover_index = drag.hover_index;
-    let on_drag_pointer_down = drag.on_pointer_down;
+    // Bottom-toolbar summary: item count + planned minutes.
+    let summary = Signal::derive(move || {
+        let vm = view_model.get();
+        match &vm.building_setlist {
+            Some(s) => {
+                let count = s.entries.len();
+                let total: u32 = s
+                    .entries
+                    .iter()
+                    .map(|e| {
+                        e.planned_duration_secs
+                            .unwrap_or(intrada_core::validation::DEFAULT_PLANNED_DURATION_SECS)
+                    })
+                    .sum::<u32>()
+                    / 60;
+                (count, total)
+            }
+            None => (0, 0),
+        }
+    });
 
-    // Session intention signal — local UI state, dispatches to core on change
-    let session_intention_value = RwSignal::new(String::new());
+    let setlist_empty = Signal::derive(move || summary.get().0 == 0);
 
     view! {
-        <div class="space-y-6">
-            // Session-level intention
-            <Card>
-                <div>
-                    <label class="form-label" for="session-intention">
-                        "Practice Intention"
-                    </label>
-                    <p class="hint-text">"Optional — set a focus for your practice"</p>
-                    <input
-                        id="session-intention"
-                        type="text"
-                        class="input-base"
-                        placeholder="What will you focus on today?"
-                        bind:value=session_intention_value
-                        on:input=move |_| {
-                            let value = session_intention_value.get();
-                            let intention = if value.is_empty() { None } else { Some(value) };
-                            let event = Event::Session(SessionEvent::SetSessionIntention { intention });
-                            let core_ref = core_session_intention.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        }
-                    />
-                </div>
-            </Card>
-
-            // Current setlist
-            <Card>
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="section-title">"Your Setlist"</h3>
-                    {move || {
-                        let vm = view_model.get();
-                        vm.building_setlist.as_ref().and_then(|s| s.target_duration_mins).map(|target| {
-                            let total: u32 = vm.building_setlist.as_ref()
-                                .map(|s| s.entries.iter().map(|e| e.planned_duration_secs.unwrap_or(intrada_core::validation::DEFAULT_PLANNED_DURATION_SECS)).sum::<u32>() / 60)
-                                .unwrap_or(0);
-                            view! {
-                                <span class="text-xs font-medium text-muted">
-                                    {format!("{total} / {target} min")}
-                                </span>
+        <div class="space-y-4 pb-32">
+            // Search bar with built-in clear button (mirrors the library
+            // list's affordance — clear the query without clearing tabs).
+            <div class="search-bar">
+                <Icon name=IconName::Search class="search-bar-icon" />
+                <input
+                    type="search"
+                    class="search-bar-input"
+                    placeholder="Search library..."
+                    aria-label="Search library"
+                    prop:value=move || query.get()
+                    on:input=move |ev: ev::Event| {
+                        if let Some(target) = ev.target() {
+                            if let Some(input) = target.dyn_ref::<web_sys::HtmlInputElement>() {
+                                query.set(input.value());
                             }
-                        })
-                    }}
-                </div>
-                {move || {
-                    let vm = view_model.get();
-                    match vm.building_setlist {
-                        Some(ref setlist) if !setlist.entries.is_empty() => {
-                            let core_remove = core_setlist.clone();
-                            let core_up = core.clone();
-                            let core_down = core.clone();
-                            let entries = setlist.entries.clone();
-                            let entry_count = entries.len();
-                            let core_entry_intention = core.clone();
-                            let core_rep_target = core.clone();
-                            let core_duration = core.clone();
-                            view! {
-                                <div node_ref=setlist_container_ref aria-roledescription="sortable">
-                                    {entries.into_iter().enumerate().map(|(idx, entry)| {
-                                        let core_r = core_remove.clone();
-                                        let core_u = core_up.clone();
-                                        let core_d = core_down.clone();
-                                        let core_ei = core_entry_intention.clone();
-                                        let core_rt = core_rep_target.clone();
-                                        let core_dur = core_duration.clone();
-                                        let on_remove = Callback::new(move |entry_id: String| {
-                                            let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
-                                            let core_ref = core_r.borrow();
-                                            let effects = core_ref.process_event(event);
-                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                        });
-                                        let on_move_up = if idx > 0 {
-                                            let core_mu = core_u.clone();
-                                            Some(Callback::new(move |entry_id: String| {
-                                                let event = Event::Session(SessionEvent::ReorderSetlist { entry_id, new_position: idx - 1 });
-                                                let core_ref = core_mu.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            }))
-                                        } else {
-                                            None
-                                        };
-                                        let on_move_down = if idx < entry_count - 1 {
-                                            let core_md = core_d.clone();
-                                            Some(Callback::new(move |entry_id: String| {
-                                                let event = Event::Session(SessionEvent::ReorderSetlist { entry_id, new_position: idx + 1 });
-                                                let core_ref = core_md.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            }))
-                                        } else {
-                                            None
-                                        };
-
-                                        // Drag state for this entry
-                                        let eid = entry.id.clone();
-                                        let is_dragging_this = Signal::derive(move || {
-                                            dragged_id.get().as_deref() == Some(eid.as_str())
-                                        });
-
-                                        // Drop indicator before this entry (visible when hover_index == idx)
-                                        let drop_before_visible = Signal::derive(move || {
-                                            drag_hover_index.get() == Some(idx)
-                                        });
-
-                                        // Drop indicator after the last entry
-                                        let is_last = idx == entry_count - 1;
-                                        let drop_after_visible = Signal::derive(move || {
-                                            is_last && drag_hover_index.get() == Some(entry_count)
-                                        });
-
-                                        // Per-entry intention signal
-                                        let entry_intention_id = entry.id.clone();
-                                        let entry_intention_value = RwSignal::new(
-                                            entry.intention.clone().unwrap_or_default()
-                                        );
-
-                                        // Per-entry rep target state
-                                        let entry_rep_target_id = entry.id.clone();
-                                        let entry_rep_target_id_clear = entry.id.clone();
-                                        let has_rep_target = entry.rep_target.is_some();
-                                        let current_rep_target = entry.rep_target.unwrap_or(intrada_core::validation::DEFAULT_REP_TARGET);
-                                        let rep_target_value = RwSignal::new(current_rep_target.to_string());
-                                        let core_rt_enable = core_rt.clone();
-                                        let core_rt_clear = core_rt.clone();
-
-                                        // Per-entry planned duration state
-                                        let entry_duration_id = entry.id.clone();
-                                        let entry_duration_id_clear = entry.id.clone();
-                                        let has_planned_duration = entry.planned_duration_secs.is_some();
-                                        let current_duration_mins = entry.planned_duration_secs.map(|s| s / 60).unwrap_or(5);
-                                        let duration_value = RwSignal::new(current_duration_mins.to_string());
-                                        let core_dur_set = core_dur.clone();
-                                        let core_dur_clear = core_dur.clone();
-
-                                        view! {
-                                            <DropIndicator visible=drop_before_visible />
-                                            <SetlistEntryRow
-                                                entry=entry
-                                                on_remove=Some(on_remove)
-                                                on_move_up=on_move_up
-                                                on_move_down=on_move_down
-                                                is_dragging_this=is_dragging_this
-                                                on_drag_pointer_down=Some(on_drag_pointer_down)
-                                                index=idx
-                                            />
-                                            <div class="ml-9 mb-3 space-y-2">
-                                                <input
-                                                    type="text"
-                                                    class="input-base text-xs"
-                                                    placeholder="What will you focus on?"
-                                                    bind:value=entry_intention_value
-                                                    on:input=move |_| {
-                                                        let value = entry_intention_value.get();
-                                                        let intention = if value.is_empty() { None } else { Some(value) };
-                                                        let event = Event::Session(SessionEvent::SetEntryIntention {
-                                                            entry_id: entry_intention_id.clone(),
-                                                            intention,
-                                                        });
-                                                        let core_ref = core_ei.borrow();
-                                                        let effects = core_ref.process_event(event);
-                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                    }
-                                                />
-                                                // Entry options: rep target + duration controls
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    // Rep target control
-                                                    {if has_rep_target {
-                                                        view! {
-                                                            <div class="flex items-center gap-1.5 rounded-lg bg-surface-secondary px-2.5 py-1.5">
-                                                                <span class="text-xs text-muted">"Reps:"</span>
-                                                                <select
-                                                                    class="input-base text-xs w-14 py-0.5 px-1"
-                                                                    on:change=move |ev| {
-                                                                        let value = leptos::prelude::event_target_value(&ev);
-                                                                        rep_target_value.set(value.clone());
-                                                                        if let Ok(target) = value.parse::<u8>() {
-                                                                            let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                                entry_id: entry_rep_target_id.clone(),
-                                                                                target: Some(target),
-                                                                            });
-                                                                            let core_ref = core_rt_enable.borrow();
-                                                                            let effects = core_ref.process_event(event);
-                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    {(intrada_core::validation::MIN_REP_TARGET..=intrada_core::validation::MAX_REP_TARGET)
-                                                                        .map(|n| {
-                                                                            let selected = n == current_rep_target;
-                                                                            view! {
-                                                                                <option value=n.to_string() selected=selected>{n.to_string()}</option>
-                                                                            }
-                                                                        })
-                                                                        .collect::<Vec<_>>()}
-                                                                </select>
-                                                                <button
-                                                                    class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
-                                                                    title="Remove rep target"
-                                                                    on:click=move |_| {
-                                                                        let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                            entry_id: entry_rep_target_id_clear.clone(),
-                                                                            target: None,
-                                                                        });
-                                                                        let core_ref = core_rt_clear.borrow();
-                                                                        let effects = core_ref.process_event(event);
-                                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                    }
-                                                                >
-                                                                    <Icon name=IconName::X class="w-3.5 h-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        }.into_any()
-                                                    } else {
-                                                        view! {
-                                                            <button
-                                                                class="rounded-lg border border-border-default px-2.5 py-1.5 text-xs text-muted hover:text-accent-text hover:border-accent-text/30 motion-safe:transition-colors"
-                                                                on:click=move |_| {
-                                                                    let event = Event::Session(SessionEvent::SetRepTarget {
-                                                                        entry_id: entry_rep_target_id.clone(),
-                                                                        target: Some(intrada_core::validation::DEFAULT_REP_TARGET),
-                                                                    });
-                                                                    let core_ref = core_rt_enable.borrow();
-                                                                    let effects = core_ref.process_event(event);
-                                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                }
-                                                            >
-                                                                "+ Reps"
-                                                            </button>
-                                                        }.into_any()
-                                                    }}
-                                                    // Planned duration control
-                                                    {if has_planned_duration {
-                                                        view! {
-                                                            <div class="flex items-center gap-1.5 rounded-lg bg-surface-secondary px-2.5 py-1.5">
-                                                                <span class="text-xs text-muted">"Duration:"</span>
-                                                                <select
-                                                                    class="input-base text-xs w-18 py-0.5 px-1"
-                                                                    on:change=move |ev| {
-                                                                        let value = leptos::prelude::event_target_value(&ev);
-                                                                        duration_value.set(value.clone());
-                                                                        if let Ok(mins) = value.parse::<u32>() {
-                                                                            let secs = mins * 60;
-                                                                            let event = Event::Session(SessionEvent::SetEntryDuration {
-                                                                                entry_id: entry_duration_id.clone(),
-                                                                                duration_secs: Some(secs),
-                                                                            });
-                                                                            let core_ref = core_dur_set.borrow();
-                                                                            let effects = core_ref.process_event(event);
-                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                        }
-                                                                    }
-                                                                >
-                                                                    {(1u32..=60)
-                                                                        .map(|n| {
-                                                                            let selected = n == current_duration_mins;
-                                                                            let label = format!("{n} min");
-                                                                            view! {
-                                                                                <option value=n.to_string() selected=selected>{label}</option>
-                                                                            }
-                                                                        })
-                                                                        .collect::<Vec<_>>()}
-                                                                </select>
-                                                                <button
-                                                                    class="text-xs text-muted hover:text-danger-text motion-safe:transition-colors"
-                                                                    title="Remove planned duration"
-                                                                    on:click=move |_| {
-                                                                        let event = Event::Session(SessionEvent::SetEntryDuration {
-                                                                            entry_id: entry_duration_id_clear.clone(),
-                                                                            duration_secs: None,
-                                                                        });
-                                                                        let core_ref = core_dur_clear.borrow();
-                                                                        let effects = core_ref.process_event(event);
-                                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                    }
-                                                                >
-                                                                    <Icon name=IconName::X class="w-3.5 h-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        }.into_any()
-                                                    } else {
-                                                        view! {
-                                                            <button
-                                                                class="rounded-lg border border-border-default px-2.5 py-1.5 text-xs text-muted hover:text-accent-text hover:border-accent-text/30 motion-safe:transition-colors"
-                                                                on:click=move |_| {
-                                                                    let event = Event::Session(SessionEvent::SetEntryDuration {
-                                                                        entry_id: entry_duration_id.clone(),
-                                                                        duration_secs: Some(intrada_core::validation::DEFAULT_PLANNED_DURATION_SECS),
-                                                                    });
-                                                                    let core_ref = core_dur_set.borrow();
-                                                                    let effects = core_ref.process_event(event);
-                                                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                }
-                                                            >
-                                                                "+ Duration"
-                                                            </button>
-                                                        }.into_any()
-                                                    }}
-                                                </div>
-                                            </div>
-                                            {if is_last {
-                                                Some(view! { <DropIndicator visible=drop_after_visible /> })
-                                            } else {
-                                                None
-                                            }}
-                                        }
-                                    }).collect::<Vec<_>>()}
-                                </div>
-                            }.into_any()
-                        }
-                        _ => {
-                            view! {
-                                <p class="text-sm text-muted text-center py-4">
-                                    "No items added yet. Select items from your library below."
-                                </p>
-                            }.into_any()
                         }
                     }
-                }}
-            </Card>
-
-            // Error display (above buttons so it's visible without scrolling)
-            {move || {
-                let vm = view_model.get();
-                vm.error.map(|err| {
-                    view! {
-                        <p class="text-sm text-danger-text">{err}</p>
-                    }
-                })
-            }}
-
-            // Action buttons
-            <div class="flex gap-3">
-                {
-                    let core_start = core_actions.clone();
-                    let core_cancel = core_actions.clone();
-                    let setlist_empty = Signal::derive(move || {
-                        let vm = view_model.get();
-                        match &vm.building_setlist {
-                            Some(setlist) => setlist.entries.is_empty(),
-                            None => true,
+                />
+                <Show when=move || !query.get().is_empty()>
+                    <button
+                        type="button"
+                        class="search-bar-clear"
+                        aria-label="Clear search"
+                        on:mousedown=move |ev| {
+                            ev.prevent_default();
+                            query.set(String::new());
                         }
-                    });
-                    view! {
-                        <Button
-                            variant=ButtonVariant::Primary
-                            disabled=setlist_empty
-                            on_click=Callback::new(move |_| {
-                                let now = chrono::Utc::now();
-                                let event = Event::Session(SessionEvent::StartSession { now });
-                                let core_ref = core_start.borrow();
-                                let effects = core_ref.process_event(event);
-                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                            })
-                        >
-                            "Start Session"
-                        </Button>
-                        <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                            let event = Event::Session(SessionEvent::CancelBuilding);
-                            let core_ref = core_cancel.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        })>
-                            "Cancel"
-                        </Button>
-                    }
-                }
+                        on:touchstart=move |_| query.set(String::new())
+                    >"×"</button>
+                </Show>
             </div>
 
-            // Save as Routine (only when setlist has entries)
-            {move || {
-                let vm = view_model.get();
-                let has_entries = matches!(&vm.building_setlist, Some(setlist) if !setlist.entries.is_empty());
-                if has_entries {
-                    let core_save_routine = core_routine_save.clone();
-                    Some(view! {
-                        <RoutineSaveForm on_save=Callback::new(move |name: String| {
-                            let event = Event::Routine(RoutineEvent::SaveBuildingAsRoutine { name });
-                            let core_ref = core_save_routine.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        }) />
-                    })
-                } else {
-                    None
-                }
-            }}
+            // Type tabs — All / Pieces / Exercises.
+            <LibraryTypeTabs
+                active=Signal::derive(move || active_filter.get())
+                on_change=Callback::new(move |kind| active_filter.set(kind))
+            />
 
-            // Load saved routines
-            <RoutineLoader />
-
-            // Library items to add (T013: whole row is clickable)
-            <Card>
-                <h3 class="section-title">"Library Items"</h3>
+            // Library list — tap a row to add/remove from the setlist.
+            <div class="space-y-2">
                 {move || {
-                    let vm = view_model.get();
-                    // Collect item IDs already in the setlist so we can hide them
-                    let added_ids: std::collections::HashSet<&str> = vm
-                        .building_setlist
-                        .as_ref()
-                        .map(|s| s.entries.iter().map(|e| e.item_id.as_str()).collect())
-                        .unwrap_or_default();
-                    let available: Vec<_> = vm.items.iter().filter(|i| !added_ids.contains(i.id.as_str())).collect();
-                    if available.is_empty() {
+                    let items = filtered_items.get();
+                    if items.is_empty() {
+                        let vm = view_model.get();
                         let msg = if vm.items.is_empty() {
-                            "No library items available."
+                            "No library items yet. Add a piece or exercise first."
                         } else {
-                            "All library items have been added."
+                            "No matches."
                         };
                         view! {
-                            <p class="text-sm text-muted">{msg}</p>
+                            <p class="text-sm text-muted text-center py-6">{msg}</p>
                         }.into_any()
                     } else {
-                        let core_add = core_library.clone();
                         view! {
                             <div class="space-y-2">
-                                {available.into_iter().map(|item| {
+                                {items.into_iter().map(|item| {
                                     let item_id = item.id.clone();
-                                    let title = item.title.clone();
-                                    let item_type = item.item_type.clone();
-                                    let core_a = core_add.clone();
+                                    let is_selected = Signal::derive(move || selected_ids.get().contains(&item_id));
                                     view! {
-                                        <div
-                                            class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover cursor-pointer"
-                                            on:click=move |_| {
-                                                let event = Event::Session(SessionEvent::AddToSetlist { item_id: item_id.clone() });
-                                                let core_ref = core_a.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            }
-                                        >
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-sm text-primary">{title}</span>
-                                                <span class="text-xs text-faint">{item_type.to_string()}</span>
-                                            </div>
-                                            <span class="text-xs font-medium text-accent-text">
-                                                "+ Add"
-                                            </span>
-                                        </div>
+                                        <BuilderItemRow item=item is_selected=is_selected on_toggle=on_toggle />
                                     }
                                 }).collect::<Vec<_>>()}
                             </div>
                         }.into_any()
                     }
                 }}
-            </Card>
+            </div>
+
+            // Cancel — kept here so the user can back out without leaving
+            // the page; primary navigation away is "Start Session" inside
+            // the sheet.
+            <div class="flex justify-center pt-2">
+                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
+                    let event = Event::Session(SessionEvent::CancelBuilding);
+                    let core_ref = core_cancel.borrow();
+                    let effects = core_ref.process_event(event);
+                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                })>
+                    "Cancel"
+                </Button>
+            </div>
         </div>
+
+        // Sticky bottom toolbar — count + duration + Review CTA.
+        // Tappable area extends across the count column so the user can
+        // also expand the sheet by tapping the summary text.
+        <div class="builder-toolbar" role="toolbar" aria-label="Setlist summary">
+            <button
+                type="button"
+                class="builder-toolbar-summary"
+                on:click=open_review
+                disabled=move || setlist_empty.get()
+            >
+                {move || {
+                    let (count, total) = summary.get();
+                    if count == 0 {
+                        view! {
+                            <span class="text-sm text-muted">"Tap items to build your setlist"</span>
+                        }.into_any()
+                    } else {
+                        let plural = if count == 1 { "item" } else { "items" };
+                        view! {
+                            <span class="builder-toolbar-summary-text">
+                                <span class="text-sm font-medium text-primary">{format!("{count} {plural} · {total} min")}</span>
+                                <span class="text-xs text-muted">"Tap to review setlist"</span>
+                            </span>
+                        }.into_any()
+                    }
+                }}
+            </button>
+            <Button
+                variant=ButtonVariant::Primary
+                disabled=setlist_empty
+                on_click=Callback::new(move |_| review_open.set(true))
+            >
+                "Review session"
+            </Button>
+        </div>
+
+        <SessionReviewSheet open=review_open.into() on_close=close_review />
     }
 }
