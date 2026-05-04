@@ -7,9 +7,9 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
-    parse_target_bpm, AccentBar, BackLink, BottomSheet, Button, ButtonVariant, Card, DetailGroup,
-    DetailRow, Icon, IconName, InlineTypeIndicator, SkeletonBlock, SkeletonLine, StatCard,
-    StatTone, TempoProgressChart,
+    parse_target_bpm, AccentBar, BackLink, BottomSheet, Button, ButtonSize, ButtonVariant, Card,
+    DetailGroup, DetailRow, Icon, IconName, InlineTypeIndicator, SkeletonBlock, SkeletonLine,
+    StatCard, StatTone, TempoProgressChart,
 };
 use crate::views::EditLibraryItemForm;
 use intrada_web::core_bridge::process_effects;
@@ -266,15 +266,15 @@ pub fn DetailView() -> impl IntoView {
                         // Links into the session builder with no item
                         // pre-selection wired up yet — that's a follow-up.
                         // For now it gets the user to the right place.
-                        <A
+                        <Button
+                            variant=ButtonVariant::Primary
+                            size=ButtonSize::Hero
+                            full_width=true
                             href="/sessions/new"
-                            attr:class="block"
                         >
-                            <span class="inline-flex items-center justify-center gap-2 w-full rounded-lg bg-accent text-primary btn-hero hover:bg-accent-hover motion-safe:transition-colors">
-                                <Icon name=IconName::Play class="w-4 h-4" />
-                                "Start Practice"
-                            </span>
-                        </A>
+                            <Icon name=IconName::Play class="w-4 h-4" />
+                            "Start Practice"
+                        </Button>
 
                         // ── Delete (destructive, de-emphasised) ───────
                         <Button

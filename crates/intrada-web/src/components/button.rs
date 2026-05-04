@@ -1,6 +1,7 @@
 use intrada_web::haptics;
 use leptos::ev;
 use leptos::prelude::*;
+use leptos_router::components::A;
 
 /// Visual variants for the shared Button component.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -44,6 +45,12 @@ impl ButtonVariant {
 /// `not-allowed` cursor, and ignores click events.
 /// When `loading` is true, a small spinner is prepended to the label
 /// and the button is also treated as disabled.
+///
+/// Pass `href` to render as a router `<A>` link instead of a `<button>`
+/// — useful for full-width nav CTAs like "Start Practice" on the detail
+/// page or "New Session" in the empty state. Link mode ignores
+/// `disabled`, `loading`, `button_type`, and `on_click` (those are
+/// `<button>`-specific concerns).
 #[component]
 pub fn Button(
     variant: ButtonVariant,
@@ -62,6 +69,10 @@ pub fn Button(
     /// replaces the entire class string and the button renders unstyled.
     #[prop(optional)]
     full_width: bool,
+    /// When set, render as a router `<A>` link with this href instead of
+    /// a `<button>`. Mutually exclusive with `on_click` semantically.
+    #[prop(optional, into)]
+    href: Option<String>,
     children: Children,
 ) -> impl IntoView {
     let is_disabled = Signal::derive(move || disabled.get() || loading.get());
@@ -71,18 +82,30 @@ pub fn Button(
     };
     let width_class = if full_width { " w-full" } else { "" };
 
+    let class_fn = move || {
+        let base = variant.classes();
+        let with_size_width = format!("{base}{size_class}{width_class}");
+        if is_disabled.get() {
+            format!("{with_size_width} opacity-50 cursor-not-allowed")
+        } else {
+            with_size_width
+        }
+    };
+
+    if let Some(href) = href {
+        // Link variant — disabled / loading / on_click don't apply.
+        return view! {
+            <A href=href attr:class=class_fn>
+                {children()}
+            </A>
+        }
+        .into_any();
+    }
+
     view! {
         <button
             type=button_type
-            class=move || {
-                let base = variant.classes();
-                let with_size_width = format!("{base}{size_class}{width_class}");
-                if is_disabled.get() {
-                    format!("{with_size_width} opacity-50 cursor-not-allowed")
-                } else {
-                    with_size_width
-                }
-            }
+            class=class_fn
             disabled=is_disabled
             on:click=move |ev| {
                 if !is_disabled.get() {
@@ -111,4 +134,5 @@ pub fn Button(
             {children()}
         </button>
     }
+    .into_any()
 }

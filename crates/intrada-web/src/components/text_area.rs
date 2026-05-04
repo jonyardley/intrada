@@ -30,7 +30,13 @@ pub fn TextArea(
             <textarea
                 id=id
                 rows=rows_str
-                class="input-base"
+                class=move || {
+                    if has_error() {
+                        "input-base input-error"
+                    } else {
+                        "input-base"
+                    }
+                }
                 bind:value=value
                 aria-describedby=error_id.clone()
                 aria-invalid=move || if has_error() { "true" } else { "false" }
