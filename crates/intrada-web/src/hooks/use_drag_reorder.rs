@@ -54,6 +54,51 @@ pub struct DragReorderReturn {
     pub on_pointer_down: Callback<(String, usize, PointerEvent)>,
 }
 
+impl DragReorderReturn {
+    /// Build the inline `style` value for a row at position `idx` based on
+    /// the current drag state. Encapsulates the "source row tracks the
+    /// finger; rows between source and hover translate by source_height"
+    /// logic so consumers don't reimplement it. Used as
+    /// `style=drag.row_style_for(idx)`.
+    ///
+    /// Returns an empty string when no drag is in progress (which clears
+    /// any previous transform on release).
+    pub fn row_style_for(&self, idx: usize) -> impl Fn() -> String + Copy {
+        let source_index = self.source_index;
+        let hover_index = self.hover_index;
+        let live_offset_y = self.live_offset_y;
+        let source_height = self.source_height;
+        move || {
+            let Some(src) = source_index.get() else {
+                return String::new();
+            };
+            if idx == src {
+                let off = live_offset_y.get();
+                return format!(
+                    "transform: translateY({off}px) scale(1.02); transition: none; position: relative; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.35);"
+                );
+            }
+            let Some(hov) = hover_index.get() else {
+                return String::new();
+            };
+            let h = source_height.get();
+            let displaced_down = hov > src && idx > src && idx <= hov;
+            let displaced_up = hov < src && idx >= hov && idx < src;
+            if displaced_down {
+                format!(
+                    "transform: translateY(-{h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                )
+            } else if displaced_up {
+                format!(
+                    "transform: translateY({h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                )
+            } else {
+                "transform: translateY(0); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);".to_string()
+            }
+        }
+    }
+}
+
 /// Movement threshold in pixels before drag is committed.
 const DRAG_THRESHOLD_PX: f64 = 5.0;
 

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use leptos::ev;
 use leptos::prelude::*;
@@ -7,9 +8,7 @@ use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
 use intrada_core::validation::MAX_ROUTINE_NAME;
-use intrada_core::{
-    EntryStatus, Event, RoutineEntry, RoutineEntryView, RoutineEvent, SetlistEntryView, ViewModel,
-};
+use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
 
 use crate::components::{
     BackLink, BuilderItemRow, Button, ButtonVariant, PageHeading, SetlistEntryRow, SkeletonBlock,
@@ -81,7 +80,7 @@ pub fn RoutineEditView() -> impl IntoView {
     let routine_id = routine.id.clone();
     let name = RwSignal::new(routine.name.clone());
     let entries: RwSignal<Vec<RoutineEntryView>> = RwSignal::new(routine.entries.clone());
-    let name_error = RwSignal::new(Option::<String>::None);
+    let form_error = RwSignal::new(Option::<String>::None);
 
     let core_save = core;
 
@@ -101,10 +100,6 @@ pub fn RoutineEditView() -> impl IntoView {
 
     let drag = use_drag_reorder(on_reorder, entries_container_ref);
     let dragged_id = drag.dragged_id;
-    let drag_source_index = drag.source_index;
-    let drag_hover_index = drag.hover_index;
-    let drag_live_offset_y = drag.live_offset_y;
-    let drag_source_height = drag.source_height;
     let on_drag_pointer_down = drag.on_pointer_down;
 
     // Toggle handler — adds the item if not present, removes if it is.
@@ -144,18 +139,18 @@ pub fn RoutineEditView() -> impl IntoView {
 
                         let trimmed = name.get_untracked().trim().to_string();
                         if trimmed.is_empty() {
-                            name_error.set(Some("Name is required".to_string()));
+                            form_error.set(Some("Name is required".to_string()));
                             return;
                         }
                         if trimmed.len() > MAX_ROUTINE_NAME {
-                            name_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
+                            form_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
                             return;
                         }
-                        name_error.set(None);
+                        form_error.set(None);
 
                         let current_entries = entries.get_untracked();
                         if current_entries.is_empty() {
-                            name_error.set(Some("Routine must have at least one entry".to_string()));
+                            form_error.set(Some("Routine must have at least one entry".to_string()));
                             return;
                         }
 
@@ -193,7 +188,7 @@ pub fn RoutineEditView() -> impl IntoView {
                             bind:value=name
                         />
                     </div>
-                    {move || name_error.get().map(|msg| view! {
+                    {move || form_error.get().map(|msg| view! {
                         <p class="text-xs text-danger-text">{msg}</p>
                     })}
 
@@ -222,67 +217,13 @@ pub fn RoutineEditView() -> impl IntoView {
                                                 entries.update(|e| e.retain(|x| x.id != id));
                                             });
 
-                                            // Routine entries have no per-entry duration today,
-                                            // so populate the wider SetlistEntryView with defaults
-                                            // for the unused fields. SetlistEntryRow only reads
-                                            // item_title / item_type / duration_display in
-                                            // compact mode, so the defaults don't surface.
-                                            let setlist_entry = SetlistEntryView {
-                                                id: entry.id.clone(),
-                                                item_id: entry.item_id.clone(),
-                                                item_title: entry.item_title.clone(),
-                                                item_type: entry.item_type.clone(),
-                                                position: idx,
-                                                duration_display: String::new(),
-                                                status: EntryStatus::NotAttempted,
-                                                notes: None,
-                                                score: None,
-                                                intention: None,
-                                                rep_target: None,
-                                                rep_count: None,
-                                                rep_target_reached: None,
-                                                rep_history: None,
-                                                planned_duration_secs: None,
-                                                planned_duration_display: None,
-                                                achieved_tempo: None,
-                                            };
-
-                                            // Wrapper transform: source row tracks the finger,
-                                            // displaced rows slide by source_height. Same logic
-                                            // as session_review_sheet.
-                                            let row_style = move || {
-                                                let Some(src) = drag_source_index.get() else {
-                                                    return String::new();
-                                                };
-                                                if idx == src {
-                                                    let off = drag_live_offset_y.get();
-                                                    return format!(
-                                                        "transform: translateY({off}px) scale(1.02); transition: none; position: relative; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.35);"
-                                                    );
-                                                }
-                                                let Some(hov) = drag_hover_index.get() else {
-                                                    return String::new();
-                                                };
-                                                let h = drag_source_height.get();
-                                                let displaced_down = hov > src && idx > src && idx <= hov;
-                                                let displaced_up = hov < src && idx >= hov && idx < src;
-                                                if displaced_down {
-                                                    format!(
-                                                        "transform: translateY(-{h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
-                                                    )
-                                                } else if displaced_up {
-                                                    format!(
-                                                        "transform: translateY({h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
-                                                    )
-                                                } else {
-                                                    "transform: translateY(0); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);".to_string()
-                                                }
-                                            };
-
                                             view! {
-                                                <div style=row_style data-entry-index=idx.to_string()>
+                                                <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
                                                     <SetlistEntryRow
-                                                        entry=setlist_entry
+                                                        id=entry.id.clone()
+                                                        item_title=entry.item_title.clone()
+                                                        item_type=entry.item_type.clone()
+                                                        position=idx
                                                         on_remove=Some(on_remove)
                                                         show_controls=true
                                                         is_dragging_this=is_dragging_this
@@ -327,18 +268,20 @@ pub fn RoutineEditView() -> impl IntoView {
                                 <p class="text-sm text-muted">"No library items available."</p>
                             }.into_any()
                         } else {
-                            let added_ids: HashSet<String> = entries
-                                .get()
-                                .iter()
-                                .map(|e| e.item_id.clone())
-                                .collect();
+                            // Wrap in Arc so each per-row Signal::derive clones
+                            // a cheap pointer rather than the whole HashSet.
+                            // Arc rather than Rc because Signal::derive's closure
+                            // bound requires Send + Sync.
+                            let added_ids: Arc<HashSet<String>> = Arc::new(
+                                entries.get().iter().map(|e| e.item_id.clone()).collect(),
+                            );
                             view! {
                                 <div class="space-y-2">
                                     {vm.items.iter().map(|item| {
                                         let item_id_clone = item.id.clone();
-                                        let added_ids_for_signal = added_ids.clone();
+                                        let added_ids = added_ids.clone();
                                         let is_selected = Signal::derive(move || {
-                                            added_ids_for_signal.contains(&item_id_clone)
+                                            added_ids.contains(&item_id_clone)
                                         });
                                         view! {
                                             <BuilderItemRow

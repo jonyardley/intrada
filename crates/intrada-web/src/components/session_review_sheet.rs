@@ -94,10 +94,6 @@ fn ReviewSheetBody() -> impl IntoView {
 
     let drag = use_drag_reorder(on_reorder, setlist_container_ref);
     let dragged_id = drag.dragged_id;
-    let drag_source_index = drag.source_index;
-    let drag_hover_index = drag.hover_index;
-    let drag_live_offset_y = drag.live_offset_y;
-    let drag_source_height = drag.source_height;
     let on_drag_pointer_down = drag.on_pointer_down;
 
     // Local intention signal seeded from VM each open.
@@ -166,49 +162,18 @@ fn ReviewSheetBody() -> impl IntoView {
                                         dragged_id.get().as_deref() == Some(eid.as_str())
                                     });
 
-                                    // Compute the transform for this row based on drag state.
-                                    //   - If I'm the dragged row: translateY(live_offset) — rides the finger.
-                                    //   - If I sit between source and hover: translateY(±source_height) — slides to make space.
-                                    //   - Otherwise: translateY(0).
-                                    // The dragged row gets transition:none so it tracks the pointer with no lag;
-                                    // siblings transition for a smooth slide.
-                                    let row_style = move || {
-                                        let Some(src) = drag_source_index.get() else {
-                                            return String::new();
-                                        };
-                                        if idx == src {
-                                            let off = drag_live_offset_y.get();
-                                            return format!(
-                                                "transform: translateY({off}px) scale(1.02); transition: none; position: relative; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.35);"
-                                            );
-                                        }
-                                        let Some(hov) = drag_hover_index.get() else {
-                                            return String::new();
-                                        };
-                                        let h = drag_source_height.get();
-                                        let displaced_down = hov > src && idx > src && idx <= hov;
-                                        let displaced_up = hov < src && idx >= hov && idx < src;
-                                        if displaced_down {
-                                            format!(
-                                                "transform: translateY(-{h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
-                                            )
-                                        } else if displaced_up {
-                                            format!(
-                                                "transform: translateY({h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
-                                            )
-                                        } else {
-                                            "transform: translateY(0); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);".to_string()
-                                        }
-                                    };
-
                                     view! {
-                                        // data-entry-index here too — the hook walks
-                                        // container.children to find midpoints; since
-                                        // the wrapper now sits between, the inner
-                                        // row's attribute isn't reachable.
-                                        <div style=row_style data-entry-index=idx.to_string()>
+                                        // data-entry-index on the wrapper so the hook
+                                        // walks container.children to find midpoints.
+                                        // row_style_for encapsulates the source / displaced
+                                        // / static transform logic.
+                                        <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
                                             <SetlistEntryRow
-                                                entry=entry
+                                                id=entry.id.clone()
+                                                item_title=entry.item_title.clone()
+                                                item_type=entry.item_type.clone()
+                                                duration_display=entry.duration_display.clone()
+                                                position=entry.position
                                                 on_remove=Some(on_remove)
                                                 show_controls=true
                                                 is_dragging_this=is_dragging_this

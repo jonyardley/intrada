@@ -400,7 +400,14 @@ pub fn SessionTimer() -> impl IntoView {
                                         <div class="space-y-1">
                                             {completed_entries.into_iter().map(|entry| {
                                                 view! {
-                                                    <SetlistEntryRow entry=entry show_controls=false />
+                                                    <SetlistEntryRow
+                                                        id=entry.id.clone()
+                                                        item_title=entry.item_title.clone()
+                                                        item_type=entry.item_type.clone()
+                                                        duration_display=entry.duration_display.clone()
+                                                        position=entry.position
+                                                        show_controls=false
+                                                    />
                                                 }
                                             }).collect::<Vec<_>>()}
                                         </div>

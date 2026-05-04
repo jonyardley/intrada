@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
-use intrada_core::{EntryStatus, ItemKind, LibraryItemView, SetlistEntryView, TempoHistoryEntry};
+use intrada_core::{ItemKind, LibraryItemView, TempoHistoryEntry};
 
 use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
@@ -218,64 +218,8 @@ pub fn DesignCatalogue() -> impl IntoView {
     });
     let tag_errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
-    // SetlistEntryRow sample data
-    let entry_full = SetlistEntryView {
-        id: "entry-1".to_string(),
-        item_id: "item-1".to_string(),
-        item_title: "Clair de Lune".to_string(),
-        item_type: ItemKind::Piece,
-        position: 0,
-        duration_display: "5m 32s".to_string(),
-        status: EntryStatus::Completed,
-        notes: None,
-        score: Some(4),
-        intention: None,
-        rep_target: None,
-        rep_count: None,
-        rep_target_reached: None,
-        rep_history: None,
-        planned_duration_secs: None,
-        planned_duration_display: None,
-        achieved_tempo: None,
-    };
-    let entry_display = SetlistEntryView {
-        id: "entry-2".to_string(),
-        item_id: "item-2".to_string(),
-        item_title: "Hanon No. 1".to_string(),
-        item_type: ItemKind::Exercise,
-        position: 1,
-        duration_display: "3m 10s".to_string(),
-        status: EntryStatus::NotAttempted,
-        notes: None,
-        score: None,
-        intention: None,
-        rep_target: None,
-        rep_count: None,
-        rep_target_reached: None,
-        rep_history: None,
-        planned_duration_secs: None,
-        planned_duration_display: None,
-        achieved_tempo: None,
-    };
-    let entry_drag = SetlistEntryView {
-        id: "entry-3".to_string(),
-        item_id: "item-3".to_string(),
-        item_title: "Chromatic Scales".to_string(),
-        item_type: ItemKind::Exercise,
-        position: 2,
-        duration_display: "2m 05s".to_string(),
-        status: EntryStatus::NotAttempted,
-        notes: None,
-        score: None,
-        intention: None,
-        rep_target: None,
-        rep_count: None,
-        rep_target_reached: None,
-        rep_history: None,
-        planned_duration_secs: None,
-        planned_duration_display: None,
-        achieved_tempo: None,
-    };
+    // (Showcase: SetlistEntryRow sample data is inlined at the call sites
+    // below now that the component takes individual props.)
 
     view! {
         <div class="space-y-section">
@@ -1325,7 +1269,11 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With controls (remove, move up/down)"</p>
                             <SetlistEntryRow
-                                entry=entry_full
+                                id="entry-1"
+                                item_title="Clair de Lune"
+                                item_type=ItemKind::Piece
+                                duration_display="5m 32s"
+                                position=0
                                 on_remove=Some(Callback::new(|_: String| {}))
                                 on_move_up=Some(Callback::new(|_: String| {}))
                                 on_move_down=Some(Callback::new(|_: String| {}))
@@ -1335,14 +1283,22 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Display-only (no controls)"</p>
                             <SetlistEntryRow
-                                entry=entry_display
+                                id="entry-2"
+                                item_title="Hanon No. 1"
+                                item_type=ItemKind::Exercise
+                                duration_display="3m 10s"
+                                position=1
                                 show_controls=false
                             />
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Drag-active state"</p>
                             <SetlistEntryRow
-                                entry=entry_drag
+                                id="entry-3"
+                                item_title="Chromatic Scales"
+                                item_type=ItemKind::Exercise
+                                duration_display="2m 05s"
+                                position=2
                                 show_controls=false
                                 is_dragging_this=Signal::derive(|| true)
                             />
