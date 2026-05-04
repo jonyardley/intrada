@@ -23,6 +23,12 @@ pub fn SetlistEntryRow(
     /// The index of this entry in the list (used by drag handle).
     #[prop(default = 0)]
     index: usize,
+    /// Compact row style matching the Pencil session-builder review sheet:
+    /// flat row with bottom border, no card background, no position number,
+    /// title + meta stacked. Used in the review sheet; active session keeps
+    /// the default card-backed row.
+    #[prop(default = false)]
+    compact: bool,
 ) -> impl IntoView {
     let show = show_controls;
     let entry_id = entry.id.clone();
@@ -33,10 +39,16 @@ pub fn SetlistEntryRow(
     view! {
         <div
             class=move || {
-                if is_dragging_this.get() {
-                    "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3 drag-active ring-2 ring-accent-focus"
-                } else {
-                    "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3"
+                let dragging = is_dragging_this.get();
+                match (compact, dragging) {
+                    // Compact + dragging: keep full opacity (the row physically
+                    // tracks the finger via the parent wrapper's transform —
+                    // dimming would just look broken). Subtle bg lifts it off
+                    // the list under it.
+                    (true, true) => "flex items-center gap-2 py-1 border-b border-border-default bg-surface-secondary rounded-md",
+                    (true, false) => "flex items-center gap-2 py-1 border-b border-border-default",
+                    (false, true) => "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3 drag-active ring-2 ring-accent-focus",
+                    (false, false) => "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3",
                 }
             }
             data-entry-index=index.to_string()
@@ -52,13 +64,19 @@ pub fn SetlistEntryRow(
                 }
             })}
 
-            <span class="text-sm font-mono text-faint w-6 text-right">
-                {entry.position + 1}
-            </span>
+            {(!compact).then(|| view! {
+                <span class="text-sm font-mono text-faint w-6 text-right">
+                    {entry.position + 1}
+                </span>
+            })}
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-primary truncate">{entry.item_title}</span>
-                    <TypeBadge item_type=entry.item_type />
+                    {if !compact {
+                        Some(view! { <TypeBadge item_type=entry.item_type.clone() /> })
+                    } else {
+                        None
+                    }}
                 </div>
                 {if !entry.duration_display.is_empty() && entry.duration_display != "0s" {
                     Some(view! {
@@ -68,6 +86,11 @@ pub fn SetlistEntryRow(
                     None
                 }}
             </div>
+            {if compact {
+                Some(view! { <TypeBadge item_type=entry.item_type /> })
+            } else {
+                None
+            }}
             {if show {
                 Some(view! {
                     <div class="flex gap-1">

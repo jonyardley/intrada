@@ -86,8 +86,6 @@ pub fn RoutineEditView() -> impl IntoView {
     // --- Drag-and-drop setup for routine entries ---
     let entries_container_ref = NodeRef::<leptos::html::Div>::new();
 
-    let item_count = Signal::derive(move || entries.get().len());
-
     let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
         entries.update(|e| {
             if let Some(src_idx) = e.iter().position(|x| x.id == entry_id) {
@@ -99,7 +97,7 @@ pub fn RoutineEditView() -> impl IntoView {
         });
     });
 
-    let drag = use_drag_reorder(on_reorder, item_count, entries_container_ref);
+    let drag = use_drag_reorder(on_reorder, entries_container_ref);
     let dragged_id = drag.dragged_id;
     let drag_hover_index = drag.hover_index;
     let on_drag_pointer_down = drag.on_pointer_down;

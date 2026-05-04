@@ -33,11 +33,24 @@ pub fn BottomSheet(
     /// When provided, a Cancel button is also shown on the left.
     #[prop(optional, into)]
     nav_title: Option<String>,
+    /// Optional trailing-action label shown on the right of the nav bar
+    /// (the iOS Mail-compose pattern: Cancel | Title | Send). Requires
+    /// `nav_title` to be set.
+    #[prop(optional, into)]
+    nav_action_label: Option<String>,
+    /// Click handler for the nav-bar trailing action.
+    #[prop(optional, into)]
+    on_nav_action: Option<Callback<()>>,
+    /// Reactive disabled state for the trailing action.
+    #[prop(optional, into)]
+    nav_action_disabled: Option<Signal<bool>>,
     children: ChildrenFn,
 ) -> impl IntoView {
     // Stored so it can be cloned out of the Portal's Fn children closure
     // multiple times (Option<String> is moved otherwise).
     let nav_title = StoredValue::new(nav_title);
+    let nav_action_label = StoredValue::new(nav_action_label);
+    let nav_action_disabled = nav_action_disabled.unwrap_or_else(|| Signal::derive(|| false));
 
     // Live drag offset in px (positive = sheet pulled down). Drives the
     // sheet's transform during a touch drag. Snaps back to 0 or fires
@@ -233,7 +246,21 @@ pub fn BottomSheet(
                             "Cancel"
                         </button>
                         <h2 class="bottom-sheet-title">{title}</h2>
-                        <span class="bottom-sheet-nav-spacer"></span>
+                        {match (nav_action_label.get_value(), on_nav_action) {
+                            (Some(label), Some(handler)) => view! {
+                                <button
+                                    class="bottom-sheet-action"
+                                    type="button"
+                                    disabled=move || nav_action_disabled.get()
+                                    on:click=move |_| handler.run(())
+                                >
+                                    {label}
+                                </button>
+                            }.into_any(),
+                            _ => view! {
+                                <span class="bottom-sheet-nav-spacer"></span>
+                            }.into_any(),
+                        }}
                     </div>
                 })}
                 <div class="bottom-sheet-body">

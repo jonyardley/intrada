@@ -40,14 +40,17 @@ test.describe("sessions page", () => {
 
     // Click "Custom Session" to enter the setlist builder
     await page.getByRole("button", { name: "Custom Session" }).click();
-    await expect(page.getByText("Your Setlist")).toBeVisible();
+    await expect(page.getByPlaceholder("Search library...")).toBeVisible();
 
-    // Add "Clair de Lune" from the library items list
-    // (026-drag-drop-builder: whole library row is now the click target)
+    // Add "Clair de Lune" — tap the library row toggles selection
     await page.getByText("Clair de Lune").click();
 
-    // Start the session
-    await page.getByRole("button", { name: "Start Session" }).click();
+    // Open the review sheet, then start the session from inside it
+    await page.getByRole("button", { name: "Review session" }).click();
+    const reviewSheet = page.getByRole("dialog");
+    await reviewSheet
+      .getByRole("button", { name: "Start", exact: true })
+      .click();
 
     // Should be on the active session page with the timer
     // (Focus mode hides the heading, so check item indicator instead)
@@ -79,8 +82,12 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start the session
-    await page.getByRole("button", { name: "Start Session" }).click();
+    // Open the review sheet and start the session from inside it
+    await page.getByRole("button", { name: "Review session" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Start", exact: true })
+      .click();
 
     // Should show first item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
@@ -110,8 +117,12 @@ test.describe("sessions page", () => {
       page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
 
-    // Click Cancel
-    await page.getByRole("button", { name: "Cancel" }).click();
+    // Click Cancel — scoped to <main> to avoid matching the (closed but
+    // still mounted) bottom sheet's own Cancel button.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Cancel" })
+      .click();
 
     // Should redirect to sessions list
     await expect(
@@ -129,8 +140,12 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start session
-    await page.getByRole("button", { name: "Start Session" }).click();
+    // Open the review sheet and start the session from inside it
+    await page.getByRole("button", { name: "Review session" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Start", exact: true })
+      .click();
 
     // First item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
@@ -165,8 +180,12 @@ test.describe("sessions page", () => {
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
 
-    // Start session
-    await page.getByRole("button", { name: "Start Session" }).click();
+    // Open the review sheet and start the session from inside it
+    await page.getByRole("button", { name: "Review session" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Start", exact: true })
+      .click();
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
     // End early

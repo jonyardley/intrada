@@ -15,6 +15,7 @@ pub enum IconName {
     Calendar,
     CalendarDays,
     Check,
+    CheckCircle,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -94,6 +95,11 @@ pub fn Icon(
         .into_any(),
         IconName::Check => view! {
             <path d="M20 6 9 17l-5-5" />
+        }
+        .into_any(),
+        IconName::CheckCircle => view! {
+            <circle cx="12" cy="12" r="10" />
+            <path d="m9 12 2 2 4-4" />
         }
         .into_any(),
         IconName::ChevronDown => view! {

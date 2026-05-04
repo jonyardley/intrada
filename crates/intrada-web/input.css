@@ -685,6 +685,95 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Session builder — library row + sticky bottom toolbar
+   ═══════════════════════════════════════════════════════════════════════
+   The library list inside the session builder uses BuilderItemRow,
+   which wraps an AccentRow in a button so the entire row is a tap
+   target. The sticky toolbar at the bottom shows the running setlist
+   total + a Review CTA that expands the SessionReviewSheet.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Reset native button defaults so the AccentRow inside reads visually
+   identical to the library list rows. The button itself is full-width,
+   borderless, and inherits hover/active feedback from .accent-row. */
+.builder-row {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.builder-row:focus-visible .accent-row {
+  outline: 2px solid var(--color-accent-focus);
+  outline-offset: 2px;
+}
+
+/* Trailing affordance — checkmark when in setlist, plus when not.
+   The icon swap is driven by the parent component; this rule just
+   gives it a stable size + a subtle hit-area. */
+.builder-row-toggle {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Sticky toolbar pinned to the bottom of the viewport with safe-area
+   padding so it never sits under the iOS home indicator. The page
+   itself reserves space via `pb-32` on the builder root, so the
+   toolbar overlays the page bottom without occluding the last row.
+   On mobile we sit *above* the global BottomTabBar (h-16 = 64px).
+   On sm+ the tab bar is hidden, so we drop back to bottom: 0. */
+.builder-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 4rem;
+  z-index: 51;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem;
+  background: color-mix(in oklab, var(--color-surface-primary) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border-default);
+}
+@media (min-width: 640px) {
+  .builder-toolbar {
+    bottom: 0;
+  }
+}
+/* Summary side: fills the remaining space; the count + hint stack
+   vertically. Disabled state when the setlist is empty (read-only
+   prompt rather than a tappable affordance). */
+.builder-toolbar-summary {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.builder-toolbar-summary:disabled {
+  cursor: default;
+}
+.builder-toolbar-summary-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Typography Utilities
    ═══════════════════════════════════════════════════════════════════════
    Composite text styles for recurring patterns. Components should
@@ -1553,6 +1642,30 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 
 .bottom-sheet-nav-spacer {
   /* Empty grid cell — keeps title centred when only Cancel is on the left. */
+}
+
+.bottom-sheet-action {
+  /* Trailing nav action — iOS Mail-compose pattern (Cancel | Title | Send).
+     Mirrors .bottom-sheet-cancel but justified end and bolder weight to
+     mark it as the primary action. */
+  justify-self: end;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  margin-right: -0.5rem;
+  color: var(--color-accent-text);
+  font-size: 1rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-sheet-action:disabled {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
 }
 
 .bottom-sheet-body {
