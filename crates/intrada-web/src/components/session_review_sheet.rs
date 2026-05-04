@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, SessionEvent, ViewModel};
 
-use crate::components::{BottomSheet, DropIndicator, SetlistEntryRow};
+use crate::components::{BottomSheet, SetlistEntryRow};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -93,7 +93,10 @@ fn ReviewSheetBody() -> impl IntoView {
 
     let drag = use_drag_reorder(on_reorder, item_count, setlist_container_ref);
     let dragged_id = drag.dragged_id;
+    let drag_source_index = drag.source_index;
     let drag_hover_index = drag.hover_index;
+    let drag_live_offset_y = drag.live_offset_y;
+    let drag_source_height = drag.source_height;
     let on_drag_pointer_down = drag.on_pointer_down;
 
     // Local intention signal seeded from VM each open.
@@ -136,7 +139,6 @@ fn ReviewSheetBody() -> impl IntoView {
                 match vm.building_setlist {
                     Some(ref setlist) if !setlist.entries.is_empty() => {
                         let entries = setlist.entries.clone();
-                        let entry_count = entries.len();
                         let total_mins: u32 = setlist
                             .entries
                             .iter()
@@ -162,26 +164,58 @@ fn ReviewSheetBody() -> impl IntoView {
                                     let is_dragging_this = Signal::derive(move || {
                                         dragged_id.get().as_deref() == Some(eid.as_str())
                                     });
-                                    let drop_before_visible = Signal::derive(move || drag_hover_index.get() == Some(idx));
-                                    let is_last = idx == entry_count - 1;
-                                    let drop_after_visible = Signal::derive(move || is_last && drag_hover_index.get() == Some(entry_count));
+
+                                    // Compute the transform for this row based on drag state.
+                                    //   - If I'm the dragged row: translateY(live_offset) — rides the finger.
+                                    //   - If I sit between source and hover: translateY(±source_height) — slides to make space.
+                                    //   - Otherwise: translateY(0).
+                                    // The dragged row gets transition:none so it tracks the pointer with no lag;
+                                    // siblings transition for a smooth slide.
+                                    let row_style = move || {
+                                        let Some(src) = drag_source_index.get() else {
+                                            return String::new();
+                                        };
+                                        if idx == src {
+                                            let off = drag_live_offset_y.get();
+                                            return format!(
+                                                "transform: translateY({off}px) scale(1.02); transition: none; position: relative; z-index: 10; box-shadow: 0 8px 20px rgba(0,0,0,0.35);"
+                                            );
+                                        }
+                                        let Some(hov) = drag_hover_index.get() else {
+                                            return String::new();
+                                        };
+                                        let h = drag_source_height.get();
+                                        let displaced_down = hov > src && idx > src && idx <= hov;
+                                        let displaced_up = hov < src && idx >= hov && idx < src;
+                                        if displaced_down {
+                                            format!(
+                                                "transform: translateY(-{h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                                            )
+                                        } else if displaced_up {
+                                            format!(
+                                                "transform: translateY({h}px); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);"
+                                            )
+                                        } else {
+                                            "transform: translateY(0); transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);".to_string()
+                                        }
+                                    };
 
                                     view! {
-                                        <DropIndicator visible=drop_before_visible />
-                                        <SetlistEntryRow
-                                            entry=entry
-                                            on_remove=Some(on_remove)
-                                            show_controls=true
-                                            is_dragging_this=is_dragging_this
-                                            on_drag_pointer_down=Some(on_drag_pointer_down)
-                                            index=idx
-                                            compact=true
-                                        />
-                                        {if is_last {
-                                            Some(view! { <DropIndicator visible=drop_after_visible /> })
-                                        } else {
-                                            None
-                                        }}
+                                        // data-entry-index here too — the hook walks
+                                        // container.children to find midpoints; since
+                                        // the wrapper now sits between, the inner
+                                        // row's attribute isn't reachable.
+                                        <div style=row_style data-entry-index=idx.to_string()>
+                                            <SetlistEntryRow
+                                                entry=entry
+                                                on_remove=Some(on_remove)
+                                                show_controls=true
+                                                is_dragging_this=is_dragging_this
+                                                on_drag_pointer_down=Some(on_drag_pointer_down)
+                                                index=idx
+                                                compact=true
+                                            />
+                                        </div>
                                     }
                                 }).collect::<Vec<_>>()}
                             </div>

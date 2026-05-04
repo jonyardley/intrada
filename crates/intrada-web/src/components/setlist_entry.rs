@@ -41,8 +41,12 @@ pub fn SetlistEntryRow(
             class=move || {
                 let dragging = is_dragging_this.get();
                 match (compact, dragging) {
-                    (true, true) => "flex items-center gap-3 px-1 py-2.5 border-b border-border-default drag-active ring-2 ring-accent-focus rounded-md",
-                    (true, false) => "flex items-center gap-3 px-1 py-2.5 border-b border-border-default",
+                    // Compact + dragging: keep full opacity (the row physically
+                    // tracks the finger via the parent wrapper's transform —
+                    // dimming would just look broken). Subtle bg lifts it off
+                    // the list under it.
+                    (true, true) => "flex items-center gap-2 py-1 border-b border-border-default bg-surface-secondary rounded-md",
+                    (true, false) => "flex items-center gap-2 py-1 border-b border-border-default",
                     (false, true) => "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3 drag-active ring-2 ring-accent-focus",
                     (false, false) => "flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3",
                 }
