@@ -16,11 +16,12 @@ pub enum StatTone {
 /// A small stat display card for analytics metrics (e.g., streak, weekly total).
 ///
 /// Two visual modes:
-/// - **Classic** (`bar=AccentBar::None` or omit): the original glass-card
-///   chrome with compact padding. Used everywhere today.
-/// - **2026 refresh** (`bar=AccentBar::Gold | Blue`): whisper-soft
-///   surface with a 4px gradient bar inset on the left and the value
-///   text in the matching tone. Used by the new Piece Detail stat row.
+/// - **Classic** (`bar=AccentBar::None` or omit): plain `.card` chrome
+///   (the 2026 surface — whisper-soft + subtle shadow) with compact
+///   padding. Used everywhere today.
+/// - **2026 refresh** (`bar=AccentBar::Gold | Blue`): same surface plus
+///   a 4px gradient bar inset on the left and the value text in the
+///   matching tone. Used by the new Piece Detail stat row.
 #[component]
 pub fn StatCard(
     title: &'static str,
@@ -65,7 +66,7 @@ pub fn StatCard(
     } else {
         // Classic variant — unchanged from previous design system
         view! {
-            <div class="glass-card p-card-compact text-center">
+            <div class="card p-card-compact text-center">
                 <p class="field-label">{title}</p>
                 <p class="text-2xl font-bold text-primary mt-1">{value}</p>
                 {subtitle.map(|s| view! {

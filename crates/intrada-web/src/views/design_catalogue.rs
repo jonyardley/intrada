@@ -230,7 +230,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             </p>
 
             // ── Table of Contents ─────────────────────────────────────
-            <nav class="glass-card p-4 sm:p-6" aria-label="Catalogue navigation">
+            <nav class="card p-4 sm:p-6" aria-label="Catalogue navigation">
                 <h3 class="text-sm font-semibold text-primary mb-3">"Contents"</h3>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1">
                     <div>
@@ -247,7 +247,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <div>
                         <p class="text-xs font-medium text-muted uppercase mb-1">"Components"</p>
                         <ul class="space-y-0.5 text-sm">
-                            <li><a href="#glass-card" class="text-accent-text hover:text-primary">"Glass Card"</a></li>
+                            <li><a href="#card" class="text-accent-text hover:text-primary">"Card"</a></li>
                             <li><a href="#stat-card" class="text-accent-text hover:text-primary">"Stat Card"</a></li>
                             <li><a href="#library-item-card" class="text-accent-text hover:text-primary">"Library Item Card"</a></li>
                             <li><a href="#buttons" class="text-accent-text hover:text-primary">"Buttons"</a></li>
@@ -532,11 +532,11 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Composite Utilities"</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <div class="glass-card p-4">
-                            <p class="text-sm text-secondary">"Content inside glass-card"</p>
+                        <div class="card p-4">
+                            <p class="text-sm text-secondary">"Content inside card"</p>
                         </div>
-                        <p class="text-xs text-faint text-center">"glass-card"</p>
-                        <p class="text-xs text-faint text-center">"Glassmorphism + fallback + border + shadow"</p>
+                        <p class="text-xs text-faint text-center">"card"</p>
+                        <p class="text-xs text-faint text-center">"Whisper-soft surface + 1px shadow"</p>
                     </div>
                     <div class="space-y-2">
                         <div class="glass-chrome border border-border-default p-4">
@@ -633,12 +633,13 @@ pub fn DesignCatalogue() -> impl IntoView {
             // COMPONENTS — Containers
             // ══════════════════════════════════════════════════════════
 
-            // ── Glass Card ────────────────────────────────────────────
-            <section id="glass-card">
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Glass Card"</h3>
+            // ── Card ──────────────────────────────────────────────────
+            <section id="card">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Card"</h3>
+                <p class="text-xs text-faint mb-4">"The 2026 design surface — whisper-soft (white/3) with a subtle 1px shadow. Replaces the previous glassmorphism / backdrop-blur card; the flat tone reads cleaner alongside the 2026 session, summary, and detail surfaces. Same surface family as `.detail-group` and `.stat-card-faint`."</p>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card>
-                        <p class="text-sm text-secondary">"Default glass-card with standard padding."</p>
+                        <p class="text-sm text-secondary">"Default card with standard padding."</p>
                     </Card>
                     <Card>
                         <h3 class="text-lg font-semibold text-primary mb-2">"With heading"</h3>
@@ -657,7 +658,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             // ── Stat Cards ────────────────────────────────────────────
             <section id="stat-card">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Stat Card"</h3>
-                <p class="text-xs font-medium text-muted uppercase mb-2">"Classic — glass-card chrome"</p>
+                <p class="text-xs font-medium text-muted uppercase mb-2">"Classic — plain card surface"</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     <StatCard title="Current Streak" value="7 days".to_string() subtitle="Best: 14 days" />
                     <StatCard title="This Week" value="3h 45m".to_string() />
