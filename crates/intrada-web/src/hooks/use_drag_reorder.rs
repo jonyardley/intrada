@@ -3,6 +3,8 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, PointerEvent};
 
+use crate::haptics::{haptic_light, haptic_selection, haptic_success};
+
 /// Transient state for an in-progress drag operation.
 #[derive(Clone, Debug)]
 pub struct DragState {
@@ -169,6 +171,14 @@ pub fn use_drag_reorder(
     {
         let pointer_move_handler: Closure<dyn Fn(PointerEvent)> =
             Closure::new(move |ev: PointerEvent| {
+                // Capture the haptic-trigger conditions inside the update
+                // closure (so we can read pre/post state), then fire haptics
+                // AFTER drag_state.update() returns — calling into JS while
+                // holding a borrow on the RwSignal can deadlock under Leptos's
+                // signal scheduler.
+                let mut commit_haptic = false;
+                let mut selection_haptic = false;
+
                 drag_state.update(|state| {
                     let Some(s) = state.as_mut() else { return };
 
@@ -186,6 +196,7 @@ pub fn use_drag_reorder(
                             return;
                         }
                         s.committed = true;
+                        commit_haptic = true;
                     }
 
                     // Compute hover index against the snapshot of natural row
@@ -193,12 +204,28 @@ pub fn use_drag_reorder(
                     // snapshot avoids drift: reading live
                     // `getBoundingClientRect` would include the source row's
                     // own transform, making its midpoint chase the finger.
-                    s.hover_index = compute_hover_index_from_snapshot(
+                    let new_hover = compute_hover_index_from_snapshot(
                         &s.natural_midpoints,
                         s.current_y,
                         s.source_index,
                     );
+                    if new_hover != s.hover_index {
+                        // The dragged row has crossed a sibling's slot —
+                        // matches iOS UITableView's "tick" feedback when
+                        // entries reorder under the finger.
+                        selection_haptic = true;
+                        s.hover_index = new_hover;
+                    }
                 });
+
+                if commit_haptic {
+                    // Light "lift" haptic the first time the gesture passes the
+                    // 5px threshold and visually commits — same beat as iOS's
+                    // begin-dragging feedback.
+                    haptic_light();
+                } else if selection_haptic {
+                    haptic_selection();
+                }
             });
 
         let pointer_up_handler: Closure<dyn Fn(PointerEvent)> =
@@ -210,11 +237,22 @@ pub fn use_drag_reorder(
                     return;
                 }
 
-                if state.committed && state.hover_index != state.source_index {
+                let did_reorder = state.committed && state.hover_index != state.source_index;
+                if did_reorder {
                     on_reorder.run((state.dragged_entry_id.clone(), state.hover_index));
                 }
 
                 drag_state.set(None);
+
+                // Fire haptic AFTER state cleared + reorder dispatched so the
+                // sensation lands in sync with the row settling into its new
+                // slot. Light snap-back if released without a reorder, success
+                // tick if the order actually changed.
+                if did_reorder {
+                    haptic_success();
+                } else if state.committed {
+                    haptic_light();
+                }
             });
 
         let pointer_cancel_handler: Closure<dyn Fn(PointerEvent)> =
