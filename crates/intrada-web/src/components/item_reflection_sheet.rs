@@ -2,7 +2,9 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, ItemKind, SessionEvent};
 
-use crate::components::{BottomSheet, Button, ButtonSize, ButtonVariant, InlineTypeIndicator};
+use crate::components::{
+    BottomSheet, Button, ButtonSize, ButtonVariant, InlineTypeIndicator, RatingChips,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 use intrada_web::validation::validate_achieved_tempo_input;
@@ -199,40 +201,14 @@ pub fn ItemReflectionSheet(
                 </div>
 
                 <div class="border-t border-border-default pt-4 space-y-4">
-                    // Rating chips — 1..=5, toggleable. Same shape/markup as
-                    // the summary screen so the two surfaces feel like one
-                    // family.
+                    // Rating chips — local signal, no dispatch yet (the
+                    // sheet defers UpdateEntryScore until Continue/Skip).
                     <div>
                         <p class="text-sm text-secondary mb-2">"How did it go?"</p>
-                        <div class="flex items-center gap-2">
-                            {(1u8..=5).map(|n| {
-                                let class_fn = move || {
-                                    if score.get() == Some(n) {
-                                        "w-9 h-9 rounded-full text-sm font-semibold bg-accent text-primary shadow-md motion-safe:transition-all motion-safe:duration-150"
-                                    } else {
-                                        "w-9 h-9 rounded-full text-sm font-semibold bg-surface-primary text-primary/60 hover:bg-surface-hover hover:text-primary motion-safe:transition-all motion-safe:duration-150"
-                                    }
-                                };
-                                let aria_label = format!("Rate {} out of 5", n);
-                                let aria_pressed = move || if score.get() == Some(n) { "true" } else { "false" };
-                                view! {
-                                    <button
-                                        type="button"
-                                        class=class_fn
-                                        aria-label=aria_label
-                                        aria-pressed=aria_pressed
-                                        on:click=move |_| {
-                                            // Toggle off when re-tapping the
-                                            // currently-selected rating.
-                                            let new_score = if score.get_untracked() == Some(n) { None } else { Some(n) };
-                                            score.set(new_score);
-                                        }
-                                    >
-                                        {n.to_string()}
-                                    </button>
-                                }
-                            }).collect::<Vec<_>>()}
-                        </div>
+                        <RatingChips
+                            selected=score
+                            on_change=Callback::new(move |next: Option<u8>| score.set(next))
+                        />
                     </div>
 
                     // Tempo (BPM) — number input matching summary screen
