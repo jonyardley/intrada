@@ -77,7 +77,17 @@ pub fn ItemReflectionSheet(
     // Wrapped as a `Callback<bool>` so both Continue and Skip can call it
     // (Callbacks are Copy; a plain `move` closure with this many captures
     // is not, and would be moved into whichever handler ran first).
+    //
+    // Order matters: we close + advance FIRST, then dispatch the per-entry
+    // update events. The advance (NextItem / FinishSession) is what flips
+    // the just-completed entry's status to `Completed`; the core's
+    // UpdateEntryScore / Tempo / Notes handlers reject entries that aren't
+    // Completed (a safety invariant — you can't score a Pending entry).
+    // Dispatching update-then-advance would silently drop the data.
     let dispatch_advance = Callback::new(move |capture: bool| {
+        open.set(false);
+        on_advance.run(());
+
         if capture {
             if let Some(t) = target.get_untracked() {
                 let entry_id = t.entry_id;
@@ -118,8 +128,6 @@ pub fn ItemReflectionSheet(
                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
             }
         }
-        open.set(false);
-        on_advance.run(());
     });
 
     let on_continue = Callback::new(move |_| {
