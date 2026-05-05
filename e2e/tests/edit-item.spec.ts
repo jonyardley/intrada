@@ -57,7 +57,7 @@ test.describe("edit library item", () => {
     await page.locator("#edit-title").fill("Clair de Lune (Revised)");
 
     // Save
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Save Changes" }).click();
 
     // Should redirect back to detail with updated title
     await expect(

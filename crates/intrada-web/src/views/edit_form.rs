@@ -32,6 +32,11 @@ pub fn EditLibraryItemForm(
     /// `in_sheet` is true; ignored otherwise (route mode navigates instead).
     #[prop(optional, into)]
     on_dismiss: Option<Callback<()>>,
+    /// Optional ref to the underlying `<form>` element. The sheet that owns
+    /// this form passes one in so its nav-bar Save action can trigger
+    /// `requestSubmit()`. See `AddLibraryItemForm` for the same pattern.
+    #[prop(optional, into)]
+    form_ref: Option<NodeRef<leptos::html::Form>>,
 ) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
@@ -137,8 +142,11 @@ pub fn EditLibraryItemForm(
 
     let cancel_href = back_href.clone();
 
+    let form_ref = form_ref.unwrap_or_default();
+
     let form_view = view! {
         <form
+            node_ref=form_ref
             class="space-y-4"
             on:submit={
                         let item_id = item_id.clone();
@@ -258,9 +266,11 @@ pub fn EditLibraryItemForm(
                         // Tags — chip-based input with autocomplete
                         <TagInput id="edit-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
-                        // Buttons — hero-size primary stacked over a
-                        // full-width secondary Cancel on mobile.
-                        <div class="flex flex-col gap-3 pt-2">
+                        // Hero-size primary CTA — sheet's nav-bar Save also
+                        // triggers submit via requestSubmit() on the form ref.
+                        // Bottom Cancel only in route mode; sheet's nav
+                        // Cancel handles dismiss in sheet mode.
+                        <div class="flex flex-col pt-2">
                             <Button
                                 variant=ButtonVariant::Primary
                                 button_type="submit"
@@ -268,19 +278,23 @@ pub fn EditLibraryItemForm(
                                 full_width=true
                                 loading=Signal::derive(move || is_submitting.get())
                             >
-                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
+                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save Changes" }}
                             </Button>
-                            <Button variant=ButtonVariant::Secondary full_width=true on_click={
-                                let cancel_href = cancel_href.clone();
-                                let navigate = navigate.clone();
-                                Callback::new(move |_| {
-                                    if let Some(cb) = on_dismiss {
-                                        cb.run(());
-                                    } else {
-                                        navigate(&cancel_href, NavigateOptions::default());
-                                    }
-                                })
-                            }>"Cancel"</Button>
+                            {(!in_sheet).then(|| view! {
+                                <div class="mt-3">
+                                    <Button variant=ButtonVariant::Secondary full_width=true on_click={
+                                        let cancel_href = cancel_href.clone();
+                                        let navigate = navigate.clone();
+                                        Callback::new(move |_| {
+                                            if let Some(cb) = on_dismiss {
+                                                cb.run(());
+                                            } else {
+                                                navigate(&cancel_href, NavigateOptions::default());
+                                            }
+                                        })
+                                    }>"Cancel"</Button>
+                                </div>
+                            })}
                         </div>
                     </div>
                 </form>

@@ -277,12 +277,36 @@ pub fn LibraryListView() -> impl IntoView {
         </div>
         </PullToRefresh>
 
+        <AddItemSheet open=add_sheet_open on_close=close_add_sheet is_submitting=is_submitting />
+    }
+}
+
+/// Wraps `<AddLibraryItemForm>` inside a `<BottomSheet>` configured for the
+/// iOS Mail-compose pattern: Cancel on the left of the nav bar, Save on
+/// the right (triggers form submission via the form's NodeRef).
+#[component]
+fn AddItemSheet(
+    open: RwSignal<bool>,
+    on_close: Callback<()>,
+    is_submitting: IsSubmitting,
+) -> impl IntoView {
+    let form_ref = NodeRef::<leptos::html::Form>::new();
+    let on_save = Callback::new(move |_| {
+        if let Some(form) = form_ref.get() {
+            let _ = form.request_submit();
+        }
+    });
+    let submitting_signal = Signal::derive(move || is_submitting.get());
+    view! {
         <BottomSheet
-            open=add_sheet_open
-            on_close=close_add_sheet
+            open=open
+            on_close=on_close
             nav_title="Add Item".to_string()
+            nav_action_label="Save".to_string()
+            on_nav_action=on_save
+            nav_action_disabled=submitting_signal
         >
-            <AddLibraryItemForm in_sheet=true on_dismiss=close_add_sheet />
+            <AddLibraryItemForm in_sheet=true on_dismiss=on_close form_ref=form_ref />
         </BottomSheet>
     }
 }

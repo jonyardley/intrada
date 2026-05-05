@@ -27,6 +27,13 @@ pub fn AddLibraryItemForm(
     /// `in_sheet` is true; ignored otherwise (route mode navigates instead).
     #[prop(optional, into)]
     on_dismiss: Option<Callback<()>>,
+    /// Optional ref to the underlying `<form>` element. The sheet that owns
+    /// this form passes one in so its nav-bar Save action can trigger
+    /// `requestSubmit()` — the form's existing `on:submit` handler then
+    /// runs validation + dispatch. The bottom in-form button still works
+    /// the same; this just adds a second trigger.
+    #[prop(optional, into)]
+    form_ref: Option<NodeRef<leptos::html::Form>>,
 ) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
@@ -57,8 +64,14 @@ pub fn AddLibraryItemForm(
     let dismiss_save = on_dismiss;
     let dismiss_cancel = on_dismiss;
 
+    // Allow either an externally-passed form ref (sheet mode, so the
+    // sheet's nav Save can trigger requestSubmit) or our own internal one
+    // for route mode.
+    let form_ref = form_ref.unwrap_or_default();
+
     let form_body = view! {
         <form
+            node_ref=form_ref
             class="space-y-4"
             on:submit=move |ev: ev::SubmitEvent| {
                 ev.prevent_default();
@@ -176,10 +189,12 @@ pub fn AddLibraryItemForm(
                         // Tags — chip-based input with autocomplete
                         <TagInput id="add-tags" tags=tags available_tags=all_tags_signal field_name="tags" errors=errors />
 
-                        // Buttons — hero-size primary (full-width on mobile,
-                        // matches Pencil "Add to Library" CTA) with the
-                        // Cancel as a secondary text-style affordance below.
-                        <div class="flex flex-col gap-3 pt-2">
+                        // Hero-size primary CTA — Pencil "Add piece" frame
+                        // (MFuDt) shows this as the sticky bottom action.
+                        // The sheet's nav-bar Save provides a second submit
+                        // trigger that calls requestSubmit() on the form.
+                        // No bottom Cancel — sheet's nav Cancel handles it.
+                        <div class="flex flex-col pt-2">
                             <Button
                                 variant=ButtonVariant::Primary
                                 button_type="submit"
@@ -187,15 +202,22 @@ pub fn AddLibraryItemForm(
                                 full_width=true
                                 loading=Signal::derive(move || is_submitting.get())
                             >
-                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Save" }}
+                                {move || if is_submitting.get() { "Saving\u{2026}" } else { "Add to Library" }}
                             </Button>
-                            <Button variant=ButtonVariant::Secondary full_width=true on_click=Callback::new(move |_| {
-                                if let Some(cb) = dismiss_cancel {
-                                    cb.run(());
-                                } else {
-                                    navigate_cancel("/", NavigateOptions::default());
-                                }
-                            })>"Cancel"</Button>
+                            // Sheet mode: nav Cancel handles dismiss. Route
+                            // mode: keep the explicit Cancel so the user has
+                            // a way back without browser-back.
+                            {(!in_sheet).then(|| view! {
+                                <div class="mt-3">
+                                    <Button variant=ButtonVariant::Secondary full_width=true on_click=Callback::new(move |_| {
+                                        if let Some(cb) = dismiss_cancel {
+                                            cb.run(());
+                                        } else {
+                                            navigate_cancel("/", NavigateOptions::default());
+                                        }
+                                    })>"Cancel"</Button>
+                                </div>
+                            })}
                         </div>
                     </div>
                 </form>

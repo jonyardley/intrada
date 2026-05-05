@@ -285,17 +285,36 @@ pub fn DetailView() -> impl IntoView {
                             "Delete"
                         </Button>
 
-                        <BottomSheet
-                            open=edit_sheet_open
-                            on_close=close_edit_sheet
-                            nav_title="Edit Item".to_string()
-                        >
-                            <EditLibraryItemForm
-                                item_id=item_id.clone()
-                                in_sheet=true
-                                on_dismiss=close_edit_sheet
-                            />
-                        </BottomSheet>
+                        // Edit sheet — Mail-compose nav pattern (Cancel
+                        // | Edit Item | Save). Save triggers the form's
+                        // submit via the shared form ref; the bottom
+                        // "Save Changes" CTA in the form does the same.
+                        {
+                            let edit_form_ref = NodeRef::<leptos::html::Form>::new();
+                            let on_save_edit = Callback::new(move |_| {
+                                if let Some(form) = edit_form_ref.get() {
+                                    let _ = form.request_submit();
+                                }
+                            });
+                            let submitting_signal = Signal::derive(move || is_submitting.get());
+                            view! {
+                                <BottomSheet
+                                    open=edit_sheet_open
+                                    on_close=close_edit_sheet
+                                    nav_title="Edit Item".to_string()
+                                    nav_action_label="Save".to_string()
+                                    on_nav_action=on_save_edit
+                                    nav_action_disabled=submitting_signal
+                                >
+                                    <EditLibraryItemForm
+                                        item_id=item_id.clone()
+                                        in_sheet=true
+                                        on_dismiss=close_edit_sheet
+                                        form_ref=edit_form_ref
+                                    />
+                                </BottomSheet>
+                            }
+                        }
                     }.into_any()
                 } else if is_loading.get() {
                     // Data still loading — show skeleton placeholder
