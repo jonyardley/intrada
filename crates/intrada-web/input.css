@@ -138,11 +138,18 @@ html {
   --color-chart-bar: oklch(50.5% 0.24 274 / 40%);       /* accent/40 — bar fills */
 
   /* ── Radius tokens ── */
-  --radius-card: var(--radius-xl);
+  --radius-card: var(--radius-xl);     /* 12px — legacy chrome (grouped-list, sheets) */
+  --radius-surface: 10px;              /* 2026 surface family — card, detail-group, stat-card-faint, accent-row */
   --radius-button: var(--radius-lg);
   --radius-input: var(--radius-lg);
   --radius-badge: var(--radius-md);
   --radius-pill: 9999px;
+
+  /* ── Shadow tokens ──
+     `--shadow-card` is the subtle 1px elevation shared by the 2026
+     surface family (.card, .accent-row, .detail-group, .stat-card-faint).
+     The Tailwind `shadow-lg` is still used by interactive overlays. */
+  --shadow-card: 0 1px 4px rgb(0 0 0 / 9%);
 
   /* ── Spacing tokens (audit #7) ──
      Semantic spacing scale for component padding and gaps.
@@ -209,19 +216,18 @@ body {
    Use them in Leptos view! macros like any Tailwind class.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Glassmorphism card — the primary container style.
-   Fallback: solid dark indigo for browsers without backdrop-filter.
-   Enhanced: translucent white + blur when supported. */
-@utility glass-card {
-  background-color: var(--color-surface-fallback);
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-lg);
-
-  @supports (backdrop-filter: blur(1px)) {
-    background-color: var(--color-surface-primary);
-    backdrop-filter: blur(12px);
-  }
+/* Card — primary container surface for the 2026 design language.
+   Whisper-soft surface (white/3) with a subtle 1px shadow, matching
+   the `.detail-group` and `.stat-card-faint` siblings. No backdrop
+   blur, no border — the surface tone alone provides the containment.
+   The previous `.glass-card` glassmorphism variant has been removed;
+   the look was load-bearing in the old design language but reads
+   busy alongside the flatter session / summary / detail surfaces
+   that landed in 2026. */
+@utility card {
+  background-color: var(--color-surface-faint);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-card);
 }
 
 /* Glassmorphism chrome — header and bottom tab bar.
@@ -369,9 +375,9 @@ body {
   gap: 12px;
   min-height: 60px;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
   background-color: var(--color-surface-faint);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+  box-shadow: var(--shadow-card);
 }
 .accent-row::before {
   content: '';
@@ -444,9 +450,9 @@ body {
   flex-direction: column;
   gap: 12px;
   padding: 12px 16px 12px 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
   background-color: var(--color-surface-faint);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+  box-shadow: var(--shadow-card);
 }
 .detail-group::before {
   content: '';
@@ -481,12 +487,11 @@ body {
   font-weight: 500;
 }
 
-/* StatCard — refresh variant. The surface drops from white/12 to the
-   whisper-soft white/3, an inset gradient bar appears on the left, and
-   the value text can carry an accent / warm-accent tone (signals the
-   stat's category at a glance: streak = accent, hours = gold, etc).
-   The classic glass-card variant is still available — opt in by setting
-   `bar` on the Leptos component. */
+/* StatCard — refresh variant. Adds an inset gradient bar on the left
+   and lets the value text carry an accent / warm-accent tone (signals
+   the stat's category at a glance: streak = accent, hours = gold,
+   etc). The classic variant uses the plain `.card` surface — opt in
+   by setting `bar` on the Leptos component to get this refresh look. */
 .stat-card-faint {
   position: relative;
   overflow: hidden;
@@ -495,9 +500,9 @@ body {
   align-items: center;
   gap: 0.25rem;
   padding: 1rem;
-  border-radius: 10px;
+  border-radius: var(--radius-surface);
   background-color: var(--color-surface-faint);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 9%);
+  box-shadow: var(--shadow-card);
 }
 .stat-card-faint::before {
   content: '';
@@ -1467,12 +1472,6 @@ nav[aria-label="Mobile navigation"] {
   line-height: 2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-}
-
-/* Cards within detail view: flatter, sharper border */
-[data-platform="ios"] .detail-view .glass-card {
-  border-radius: var(--radius-card);
-  border: 1px solid var(--color-border-default);
 }
 
 /* Action buttons: full-width vertical stack at bottom */

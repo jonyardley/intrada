@@ -90,27 +90,23 @@ These tokens are referenced in SVG attributes via `var()` in `line_chart.rs`.
 
 These `@utility` classes combine multiple CSS properties into single class names. Use them in Leptos `view!` macros like any Tailwind class.
 
-### `glass-card`
+### `card`
 
-The primary container style. Uses glassmorphism with progressive enhancement.
+The primary container surface for the 2026 design language. Replaces the previous `glass-card` glassmorphism utility — see the historical-context comment in `input.css` for why.
 
 ```css
-@utility glass-card {
-  background-color: var(--color-surface-fallback);   /* solid fallback */
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-lg);
-
-  @supports (backdrop-filter: blur(1px)) {
-    background-color: var(--color-surface-primary);   /* translucent */
-    backdrop-filter: blur(12px);
-  }
+@utility card {
+  background-color: var(--color-surface-faint);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-card);
 }
 ```
 
-**Usage:** `<div class="glass-card p-4 sm:p-6">` — add padding and any additional classes alongside.
+**Usage:** `<div class="card p-card sm:p-card-comfortable">` — add padding and any additional classes alongside.
 
-**Components using this:** `Card`, `StatCard`
+**Surface family:** `card`, `accent-row`, `detail-group`, `stat-card-faint` all share `--color-surface-faint`, `--radius-surface` (10px), `--shadow-card`. The `accent-row` / `detail-group` / `stat-card-faint` variants layer a 4px gradient bar on top.
+
+**Components using this:** `Card`, `StatCard` (classic variant).
 
 ### `glass-chrome`
 
@@ -188,8 +184,8 @@ All components live in `crates/intrada-web/src/components/`.
 
 | Component | File | Props | Description |
 |-----------|------|-------|-------------|
-| `Card` | `card.rs` | `children` | Generic glassmorphism container. Uses `glass-card`. |
-| `StatCard` | `stat_card.rs` | `title`, `value`, `subtitle?` | Metric display card for analytics. Uses `glass-card`. |
+| `Card` | `card.rs` | `children` | Generic content container. Uses the `card` utility (whisper-soft surface, subtle shadow). |
+| `StatCard` | `stat_card.rs` | `title`, `value`, `subtitle?`, `bar?`, `tone?` | Metric display card for analytics. Classic variant uses the `card` utility; refresh variant adds a gradient accent bar. |
 | `LibraryItemCard` | `library_item_card.rs` | `item: LibraryItemView` | Library list item with title, metadata, tags, type badge. Uses token-based surface colours. |
 
 ### Form Components
@@ -229,13 +225,11 @@ All components live in `crates/intrada-web/src/components/`.
 
 ## Design Patterns
 
-### Glassmorphism (Progressive Enhancement)
+### Glassmorphism (Legacy — chrome only)
 
-All glassmorphism uses a two-tier approach:
-1. **Fallback:** Solid semi-transparent background (works everywhere)
-2. **Enhanced:** Translucent white/gray + `backdrop-filter: blur(12px)` via `@supports`
+The 2026 design language dropped glassmorphism for content surfaces in favour of the flat `card` family. The remaining glass-style surfaces are **chrome** (the app header / bottom tab bar via `glass-chrome`, plus the bottom sheet / context menu / grouped-list-row in iOS-feel mode), where the translucent + blur effect still earns its keep as a navigation cue.
 
-This is encapsulated in the `glass-card` and `glass-chrome` utilities.
+For all other surfaces, use the `card` utility or one of its accent-bar siblings (`accent-row`, `detail-group`, `stat-card-faint`).
 
 ### Motion Safety
 
@@ -264,7 +258,7 @@ bg-linear-to-br from-gray-950 via-indigo-950 to-purple-950
 
 ### When to use which token
 
-- **Adding a new card/container:** Use `glass-card` + padding classes
+- **Adding a new card/container:** Use the `card` utility + padding classes (or an accent-bar sibling: `accent-row`, `detail-group`, `stat-card-faint`)
 - **Adding a new form input:** Use `input-base` class
 - **Referencing colours in Rust/Leptos:** Use Tailwind classes like `text-text-muted`, `bg-surface-primary`, `border-border-default`
 - **Referencing colours in SVG attributes:** Use `var(--color-chart-*)` or `var(--color-*)` directly
