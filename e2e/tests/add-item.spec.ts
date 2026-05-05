@@ -27,7 +27,7 @@ test.describe("add library item", () => {
     await page.locator("#add-tags").fill("classical, beethoven, sonata");
 
     // Submit the form
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Add to Library" }).click();
 
     // Should redirect to library and show the new item. Library rows
     // are spans/links post-2026-refresh, not headings — assert against
@@ -64,7 +64,7 @@ test.describe("add library item", () => {
     await page.locator("#add-key").fill("C Major");
 
     // Submit
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Add to Library" }).click();
 
     // Should appear in library list — All tab is the default, no tab
     // switch needed.
@@ -88,7 +88,7 @@ test.describe("add library item", () => {
 
     // Fill title but leave composer empty, then try to submit
     await page.locator("#add-title").fill("Test Piece");
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Add to Library" }).click();
 
     // Should still be on the add form (native validation blocks submission)
     await expect(
@@ -103,7 +103,7 @@ test.describe("add library item", () => {
     await page.locator("#add-title").fill("Test Piece");
     await page.locator("#add-composer").fill("Test Composer");
     await page.locator("#add-bpm").fill("9999");
-    await page.getByRole("button", { name: "Save" }).click();
+    await page.getByRole("button", { name: "Add to Library" }).click();
 
     // Custom validation error for BPM should appear
     await expect(page.getByText("BPM must be between")).toBeVisible();
