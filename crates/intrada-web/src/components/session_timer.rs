@@ -330,6 +330,12 @@ pub fn SessionTimer() -> impl IntoView {
                                         // reflection sheet can pre-populate (and
                                         // dispatch Update* events against the right
                                         // entry id even after Next/Finish lands).
+                                        //
+                                        // Order: set `target` BEFORE flipping `open`.
+                                        // The sheet's seed effect runs on target
+                                        // change — flipping open first would let it
+                                        // see the previous item's target on first
+                                        // render.
                                         if let Some(entry) = entries.get(position) {
                                             reflection_target.set(Some(ItemReflectionTarget {
                                                 entry_id: entry.id.clone(),

@@ -10,11 +10,11 @@ use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
     ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize, CircularButtonVariant,
     ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow, DropIndicator, EmptyState,
-    FieldLabel, FormFieldError, IconName, InlineTypeIndicator, LibraryItemCard, LibraryTypeTabs,
-    LineChart, PageHeading, ProgressRing, RoutineSaveForm, SectionLabel, SetlistEntryRow,
-    SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone,
-    SwipeActions, TagInput, TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge,
-    TypeTabs, WeekStrip,
+    FieldLabel, FormFieldError, IconName, InlineTypeIndicator, ItemReflectionSheet,
+    ItemReflectionTarget, LibraryItemCard, LibraryTypeTabs, LineChart, PageHeading, ProgressRing,
+    RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
+    SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart,
+    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
 use intrada_web::types::ItemType;
 
@@ -276,6 +276,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <p class="text-xs font-medium text-muted uppercase mb-1">"Practice & Shell"</p>
                         <ul class="space-y-0.5 text-sm">
                             <li><a href="#navigation" class="text-accent-text hover:text-primary">"Navigation"</a></li>
+                            <li><a href="#item-reflection-sheet" class="text-accent-text hover:text-primary">"Item Reflection Sheet"</a></li>
                             <li><a href="#setlist-entry" class="text-accent-text hover:text-primary">"Setlist Entry"</a></li>
                             <li><a href="#drag-drop" class="text-accent-text hover:text-primary">"Drag & Drop"</a></li>
                             <li><a href="#routine-save" class="text-accent-text hover:text-primary">"Routine Save Form"</a></li>
@@ -911,6 +912,15 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <p class="text-xs text-faint mb-4">"iOS-style modal sheet (UISheetPresentationController feel). Slides up from the bottom over a dimmed backdrop, ~92vh tall. Drag handle, swipe-down to dismiss with elastic resistance, light haptic on cross-threshold, Cancel button + backdrop tap + Escape all dismiss. Renders into <body> via Portal so positioning is viewport-anchored. Used in production for the library Add Item and Edit forms."</p>
                     <BottomSheetDemo />
+                </Card>
+            </section>
+
+            // ── ItemReflectionSheet ───────────────────────────────────
+            <section id="item-reflection-sheet">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Item Reflection Sheet"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"Mid-session interstitial (Pencil hZfKR). Opens on Next/Finish tap during practice, captures self-rating + achieved tempo + notes for the just-completed item, then advances. Skip scoring is the escape hatch. Backdrop tap / swipe-down / Escape dismisses without advancing — user is back on the same item. Pre-populates from the entry's persisted values via a snapshot ItemReflectionTarget passed in from SessionTimer."</p>
+                    <ItemReflectionSheetDemo />
                 </Card>
             </section>
 
@@ -1668,6 +1678,47 @@ fn BottomSheetDemo() -> impl IntoView {
                     </p>
                 </div>
             </BottomSheet>
+        </div>
+    }
+}
+
+/// Catalogue demo: ItemReflectionSheet pre-seeded with a sample target.
+/// Uses StoredValue to keep a stable Signal handle for `target` across
+/// re-renders; the sheet's seed effect re-populates from `target` when the
+/// catalogue user re-opens it.
+#[component]
+fn ItemReflectionSheetDemo() -> impl IntoView {
+    let open = RwSignal::new(false);
+    let target = RwSignal::new(Some(ItemReflectionTarget {
+        entry_id: "demo-entry".to_string(),
+        initial_score: None,
+        initial_tempo: None,
+        initial_notes: None,
+    }));
+    let next_title = RwSignal::new(Some("Bach Prelude in G".to_string()));
+    let next_type = RwSignal::new(Some(ItemKind::Piece));
+    let position_label = RwSignal::new("Item 2 of 3".to_string());
+    let on_advance = Callback::new(move |_| {
+        // Catalogue stub: in production this fires NextItem / FinishSession
+        // from SessionTimer. Here we just close.
+        open.set(false);
+    });
+    view! {
+        <div class="space-y-3">
+            <Button
+                variant=ButtonVariant::Primary
+                on_click=Callback::new(move |_| open.set(true))
+            >
+                "Open Reflection Sheet"
+            </Button>
+            <ItemReflectionSheet
+                open=open
+                next_item_title=Signal::derive(move || next_title.get())
+                next_item_type=Signal::derive(move || next_type.get())
+                target=Signal::derive(move || target.get())
+                position_label=Signal::derive(move || position_label.get())
+                on_advance=on_advance
+            />
         </div>
     }
 }

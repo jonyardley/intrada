@@ -2332,6 +2332,119 @@ mod tests {
     }
 
     #[test]
+    fn test_update_entry_score_works_on_last_item_after_finish_session() {
+        // The last-item path through the reflection sheet: NextItem to the
+        // final item, FinishSession → transitions to Summary, then the sheet
+        // dispatches UpdateEntryScore. `transition_to_summary` clones entries
+        // into `summary.entries`, so the entry id must still resolve via
+        // `entry_for_update_mut`. Pinning this so a future refactor of the
+        // transition can't silently drop scoring on the last item.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+        let t2 = t1 + chrono::Duration::seconds(60);
+
+        // Advance to the last item, then finish the session
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        // Should be in Summary phase now
+        let last_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[1].status, EntryStatus::Completed);
+            s.entries[1].id.clone()
+        } else {
+            panic!("Expected Summary state after FinishSession");
+        };
+
+        // Score the last item — same code path the reflection sheet takes
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: last_entry_id,
+                score: Some(5),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[1].score, Some(5));
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_unknown_entry_id_is_silent_noop() {
+        // The sheet snapshots the entry id at open time. If the session is
+        // cleared (recovery, new session) before Continue, the id won't
+        // match anything in the new model. `entry_for_update_mut` returns
+        // None — the dispatch must be silent (no last_error, no panic).
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: "no-such-entry".to_string(),
+                score: Some(3),
+            }),
+        );
+
+        // Same shape for tempo
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: "no-such-entry".to_string(),
+                tempo: Some(120),
+            }),
+        );
+
+        // Score and tempo handlers don't surface an error for unknown ids
+        // (they're silent no-ops, matching the existing pattern).
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn test_update_entry_score_rejected_on_skipped_entry_in_active_phase() {
+        // SkipItem produces EntryStatus::Skipped, not Completed. The
+        // status gate in the handlers should reject scoring a skipped
+        // entry mid-session, just as it does in the summary phase.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(5);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem { now: t1 }),
+        );
+
+        let skipped_entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].status, EntryStatus::Skipped);
+            assert_eq!(a.current_index, 1, "Should have advanced past skipped item");
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state — second item should still be running");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: skipped_entry_id,
+                score: Some(3),
+            }),
+        );
+
+        // Score not applied — entry is Skipped, not Completed
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].score, None);
+            assert_eq!(a.entries[0].status, EntryStatus::Skipped);
+        }
+    }
+
+    #[test]
     fn test_update_entry_score_boundary_values() {
         let mut model = model_with_summary();
 

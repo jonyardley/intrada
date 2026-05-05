@@ -28,6 +28,16 @@ pub struct ItemReflectionTarget {
 /// Open this on tap of the primary "Next Item" / "Finish Session" CTA — the
 /// dispatch is deferred until the user hits Continue inside the sheet, or
 /// fired immediately on Skip without capturing reflection data.
+///
+/// Dismissal semantics:
+/// - **Continue** — captures reflection + advances.
+/// - **Skip scoring** — discards captured reflection + advances.
+/// - **Backdrop tap / swipe-down / Escape** — closes WITHOUT advancing.
+///   The user is back on the same item, timer still running, CTA still
+///   "Next Item" / "Finish Session". Re-tapping the CTA re-opens the sheet
+///   pre-populated from the entry's persisted values (any in-progress edits
+///   from the dismissed session are lost — there's no draft preservation).
+///   This matches iOS Mail-compose "swipe to dismiss draft" behaviour.
 #[component]
 pub fn ItemReflectionSheet(
     open: RwSignal<bool>,
@@ -78,12 +88,10 @@ pub fn ItemReflectionSheet(
     // (Callbacks are Copy; a plain `move` closure with this many captures
     // is not, and would be moved into whichever handler ran first).
     //
-    // Order matters: we close + advance FIRST, then dispatch the per-entry
-    // update events. The advance (NextItem / FinishSession) is what flips
-    // the just-completed entry's status to `Completed`; the core's
-    // UpdateEntryScore / Tempo / Notes handlers reject entries that aren't
-    // Completed (a safety invariant — you can't score a Pending entry).
-    // Dispatching update-then-advance would silently drop the data.
+    // Advance must run FIRST: `NextItem` / `FinishSession` is what flips
+    // the just-completed entry's status to `Completed`. The core's
+    // `UpdateEntryScore` / `Tempo` / `Notes` handlers gate on
+    // `entry.status == Completed` — update-then-advance would be a no-op.
     let dispatch_advance = Callback::new(move |capture: bool| {
         open.set(false);
         on_advance.run(());
