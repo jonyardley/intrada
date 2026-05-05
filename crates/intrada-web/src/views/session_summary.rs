@@ -4,7 +4,7 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::{SessionStatusView, ViewModel};
 
-use crate::components::{PageHeading, SessionSummary};
+use crate::components::SessionSummary;
 
 /// Session summary view: wraps SessionSummary, redirects after save/discard.
 #[component]
@@ -40,10 +40,8 @@ pub fn SessionSummaryView() -> impl IntoView {
         }
     });
 
-    view! {
-        <div>
-            <PageHeading text="Session Summary" />
-            <SessionSummary />
-        </div>
-    }
+    // No <PageHeading> wrapper here — the SessionSummary component renders
+    // its own "Session Complete" hero header (Pencil intent: a single
+    // celebratory anchor rather than a generic page title above it).
+    view! { <SessionSummary /> }
 }
