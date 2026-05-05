@@ -257,7 +257,7 @@ fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
 
     view! {
         <div class="relative z-0 min-h-screen text-primary flex items-center justify-center px-4">
-            <div class="glass-chrome rounded-2xl p-8 sm:p-12 max-w-sm w-full text-center">
+            <div class="card p-8 sm:p-12 max-w-sm w-full text-center">
                 <h1 class="page-title mb-2">"Intrada"</h1>
                 <p class="text-muted mb-8">"Your music practice companion"</p>
 

@@ -12,7 +12,6 @@ pub mod circular_button;
 pub mod context_menu;
 pub mod detail_group;
 pub mod drag_handle;
-pub mod drop_indicator;
 pub mod empty_state;
 pub mod error_banner;
 pub mod field_label;
@@ -63,7 +62,6 @@ pub use circular_button::{CircularButton, CircularButtonSize, CircularButtonVari
 pub use context_menu::{ContextMenu, ContextMenuAction};
 pub use detail_group::{DetailGroup, DetailRow};
 pub use drag_handle::DragHandle;
-pub use drop_indicator::DropIndicator;
 pub use empty_state::EmptyState;
 pub use error_banner::ErrorBanner;
 pub use field_label::FieldLabel;

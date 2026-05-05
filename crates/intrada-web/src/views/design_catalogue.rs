@@ -7,15 +7,19 @@ use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{ItemKind, LibraryItemView, TempoHistoryEntry};
 
 use crate::components::{
-    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, Button,
-    ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize, CircularButtonVariant,
-    ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow, DropIndicator, EmptyState,
-    FieldLabel, FormFieldError, IconName, InlineTypeIndicator, ItemReflectionSheet,
-    ItemReflectionTarget, LibraryItemCard, LibraryTypeTabs, LineChart, PageHeading, ProgressRing,
+    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
+    BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize,
+    CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
+    EmptyState, FieldLabel, FormFieldError, GroupedList, GroupedListRow, Icon, IconName,
+    InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget, LibraryItemCard,
+    LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing, PullToRefresh,
     RatingChips, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
     SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart,
     TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
+use wasm_bindgen::JsCast;
+
+use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::ItemType;
 
 /// Dev-only design catalogue at `/design`.
@@ -247,15 +251,25 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <div>
                         <p class="text-xs font-medium text-muted uppercase mb-1">"Components"</p>
                         <ul class="space-y-0.5 text-sm">
+                            <li><a href="#section-label" class="text-accent-text hover:text-primary">"Section Label"</a></li>
+                            <li><a href="#inline-type-indicator" class="text-accent-text hover:text-primary">"Inline Type Indicator"</a></li>
+                            <li><a href="#accent-row" class="text-accent-text hover:text-primary">"Accent Row"</a></li>
+                            <li><a href="#detail-group" class="text-accent-text hover:text-primary">"Detail Group"</a></li>
                             <li><a href="#card" class="text-accent-text hover:text-primary">"Card"</a></li>
                             <li><a href="#stat-card" class="text-accent-text hover:text-primary">"Stat Card"</a></li>
                             <li><a href="#library-item-card" class="text-accent-text hover:text-primary">"Library Item Card"</a></li>
+                            <li><a href="#builder-item-row" class="text-accent-text hover:text-primary">"Builder Item Row"</a></li>
                             <li><a href="#buttons" class="text-accent-text hover:text-primary">"Buttons"</a></li>
+                            <li><a href="#circular-button" class="text-accent-text hover:text-primary">"Circular Button"</a></li>
+                            <li><a href="#page-add-button" class="text-accent-text hover:text-primary">"Page Add Button"</a></li>
                             <li><a href="#type-badge" class="text-accent-text hover:text-primary">"Type Badge"</a></li>
                             <li><a href="#type-tabs" class="text-accent-text hover:text-primary">"Type Tabs"</a></li>
                             <li><a href="#library-type-tabs" class="text-accent-text hover:text-primary">"Library Type Tabs"</a></li>
                             <li><a href="#error-banner" class="text-accent-text hover:text-primary">"Error Banner"</a></li>
                             <li><a href="#progress" class="text-accent-text hover:text-primary">"Progress Bar"</a></li>
+                            <li><a href="#progress-ring" class="text-accent-text hover:text-primary">"Progress Ring"</a></li>
+                            <li><a href="#transition-prompt" class="text-accent-text hover:text-primary">"Transition Prompt"</a></li>
+                            <li><a href="#empty-state" class="text-accent-text hover:text-primary">"Empty State"</a></li>
                         </ul>
                     </div>
                     <div>
@@ -277,9 +291,15 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <p class="text-xs font-medium text-muted uppercase mb-1">"Practice & Shell"</p>
                         <ul class="space-y-0.5 text-sm">
                             <li><a href="#navigation" class="text-accent-text hover:text-primary">"Navigation"</a></li>
+                            <li><a href="#bottom-sheet" class="text-accent-text hover:text-primary">"Bottom Sheet"</a></li>
                             <li><a href="#item-reflection-sheet" class="text-accent-text hover:text-primary">"Item Reflection Sheet"</a></li>
+                            <li><a href="#session-review-sheet" class="text-accent-text hover:text-primary">"Session Review Sheet"</a></li>
+                            <li><a href="#pull-to-refresh" class="text-accent-text hover:text-primary">"Pull-to-Refresh"</a></li>
+                            <li><a href="#swipe-actions" class="text-accent-text hover:text-primary">"Swipe Actions"</a></li>
+                            <li><a href="#context-menu" class="text-accent-text hover:text-primary">"Context Menu"</a></li>
                             <li><a href="#setlist-entry" class="text-accent-text hover:text-primary">"Setlist Entry"</a></li>
-                            <li><a href="#drag-drop" class="text-accent-text hover:text-primary">"Drag & Drop"</a></li>
+                            <li><a href="#grouped-list" class="text-accent-text hover:text-primary">"Grouped List"</a></li>
+                            <li><a href="#drag-drop" class="text-accent-text hover:text-primary">"Drag-to-Reorder List"</a></li>
                             <li><a href="#routine-save" class="text-accent-text hover:text-primary">"Routine Save Form"</a></li>
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
@@ -545,7 +565,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <p class="text-sm text-secondary">"Content inside glass-chrome"</p>
                         </div>
                         <p class="text-xs text-faint text-center">"glass-chrome"</p>
-                        <p class="text-xs text-faint text-center">"Neutral chrome for nav bars"</p>
+                        <p class="text-xs text-faint text-center">"Navigation chrome only \u{2014} app header + tab bar. Content surfaces use `card`."</p>
                     </div>
                     <div class="space-y-2">
                         <input
@@ -681,11 +701,18 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Item Card"</h3>
                 <p class="text-xs text-faint mb-3">"Compact 60px AccentRow — gold bar for pieces, blue for exercises. Title + composer/subtitle on the left, InlineTypeIndicator + chevron on the right. Key / tempo / tags now live on the detail page so the list reads at a glance."</p>
                 <ul class="space-y-2 list-none p-0">
-                    <LibraryItemCard item=sample_piece />
-                    <LibraryItemCard item=sample_exercise />
+                    <LibraryItemCard item=sample_piece.clone() />
+                    <LibraryItemCard item=sample_exercise.clone() />
                     <LibraryItemCard item=sample_minimal />
                     <LibraryItemCard item=sample_long_title />
                 </ul>
+            </section>
+
+            // ── Builder Item Row ──────────────────────────────────────
+            <section id="builder-item-row">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Builder Item Row"</h3>
+                <p class="text-xs text-faint mb-3">"Library row used inside the session builder — same AccentRow chrome as LibraryItemCard, but tapping toggles setlist membership instead of navigating. The trailing icon swaps between \u{201C}+\u{201D} (idle) and a check-circle (selected)."</p>
+                <BuilderItemRowDemo piece=sample_piece exercise=sample_exercise />
             </section>
 
             // ══════════════════════════════════════════════════════════
@@ -765,6 +792,24 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 <CircularButton icon=IconName::Play aria_label="Disabled primary" disabled=Signal::derive(|| true) />
                                 <CircularButton icon=IconName::RotateCcw aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
                             </div>
+                        </div>
+                    </div>
+                </Card>
+            </section>
+
+            // ── Page Add Button ───────────────────────────────────────
+            <section id="page-add-button">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Page Add Button"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-3">"Trailing-action \u{201C}+\u{201D} for top-level list pages \u{2014} sits in `<PageHeading>`'s `trailing` slot. 2.75rem circular hit target meets WCAG 2.5.5 (44pt minimum), matches Apple's Calendar / Mail / Notes / Reminders idiom. Accepts either `href` (renders as a link) or `on_click` (renders as a button)."</p>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-3">
+                            <PageAddButton aria_label="Add Item (link)" href="/design#page-add-button".to_string() />
+                            <span class="text-xs text-muted">"`href` — renders as `<A>`"</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <PageAddButton aria_label="Open add sheet" on_click=Callback::new(|_| {}) />
+                            <span class="text-xs text-muted">"`on_click` — renders as `<button>`"</span>
                         </div>
                     </div>
                 </Card>
@@ -923,6 +968,24 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <p class="text-xs text-faint mb-4">"Mid-session interstitial (Pencil hZfKR). Opens on Next/Finish tap during practice, captures self-rating + achieved tempo + notes for the just-completed item, then advances. Skip scoring is the escape hatch. Backdrop tap / swipe-down / Escape dismisses without advancing — user is back on the same item. Pre-populates from the entry's persisted values via a snapshot ItemReflectionTarget passed in from SessionTimer."</p>
                     <ItemReflectionSheetDemo />
+                </Card>
+            </section>
+
+            // ── SessionReviewSheet ────────────────────────────────────
+            <section id="session-review-sheet">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Session Review Sheet"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"Mail-compose pattern (Cancel | Review session | Start) over the building setlist. The body shows the session intention input, the draggable setlist (compact SetlistEntryRow + use_drag_reorder), and the total duration. Live demo requires a building session in the view-model — open the Practice tab \u{2192} New Session \u{2192} add items \u{2192} \u{201C}Review session\u{201D}."</p>
+                    <p class="text-xs text-faint">"This is the production component used at `/sessions/new`."</p>
+                </Card>
+            </section>
+
+            // ── PullToRefresh ─────────────────────────────────────────
+            <section id="pull-to-refresh">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Pull-to-Refresh"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-4">"iOS-only pull gesture wrapping a scrollable region. Pulls past threshold fire a light haptic on iOS and invoke `on_refresh` on release. Hidden entirely on non-iOS via CSS \u{2014} the gesture only earns its keep on touch. Used in production wrapping the library list."</p>
+                    <PullToRefreshDemo />
                 </Card>
             </section>
 
@@ -1296,50 +1359,75 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 is_dragging_this=Signal::derive(|| true)
                             />
                         </div>
+                        <div>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"Compact mode (review sheet variant)"</p>
+                            <p class="text-xs text-faint mb-2">"Flat row with bottom border, no card background, title+meta stacked. Used inside the session review sheet."</p>
+                            <SetlistEntryRow
+                                id="entry-4"
+                                item_title="Bach Prelude in C"
+                                item_type=ItemKind::Piece
+                                duration_display="4 min"
+                                position=3
+                                show_controls=false
+                                compact=true
+                            />
+                            <SetlistEntryRow
+                                id="entry-5"
+                                item_title="Czerny Op. 740 No. 1"
+                                item_type=ItemKind::Exercise
+                                duration_display="3 min"
+                                position=4
+                                show_controls=false
+                                compact=true
+                            />
+                        </div>
                     </div>
                 </Card>
             </section>
 
-            // ── Drag Handle + Drop Indicator ──────────────────────────
-            <section id="drag-drop">
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Drag & Drop Primitives"</h3>
+            // ── Grouped List ──────────────────────────────────────────
+            <section id="grouped-list">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Grouped List"</h3>
                 <Card>
-                    <div class="space-y-4">
-                        <div>
-                            <p class="text-xs font-medium text-muted uppercase mb-2">"Drag Handle"</p>
-                            <p class="text-xs text-faint mb-2">"Six-dot grip icon, 44×44px touch target. Used inside SetlistEntryRow."</p>
-                            <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
-                                <div class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] cursor-grab text-faint">
-                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                                        <circle cx="5" cy="3" r="1.5" />
-                                        <circle cx="11" cy="3" r="1.5" />
-                                        <circle cx="5" cy="8" r="1.5" />
-                                        <circle cx="11" cy="8" r="1.5" />
-                                        <circle cx="5" cy="13" r="1.5" />
-                                        <circle cx="11" cy="13" r="1.5" />
-                                    </svg>
+                    <p class="text-xs text-faint mb-3">"iOS-style inset-grouped list. On web / Android: distinct cards-with-gaps. On iOS: a single rounded container with hairline rules between rows \u{2014} the UITableView `.grouped` idiom from Settings, Mail, Music. Same markup, platform CSS adapts."</p>
+                    <GroupedList aria_label="Sample grouped list">
+                        <GroupedListRow>
+                            <div class="flex items-center justify-between px-card py-3">
+                                <div>
+                                    <div class="text-sm font-medium text-primary">"Mon 12 May"</div>
+                                    <div class="text-xs text-muted">"3 items \u{2022} 45 min"</div>
                                 </div>
-                                <span class="text-sm text-secondary">"Drag me to reorder"</span>
+                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
                             </div>
-                        </div>
-                        <div>
-                            <p class="text-xs font-medium text-muted uppercase mb-2">"Drop Indicator"</p>
-                            <p class="text-xs text-faint mb-2">"Accent line between entries during drag. Always occupies layout space."</p>
-                            <div class="space-y-2">
-                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
-                                    <span class="text-sm text-secondary">"Entry above"</span>
+                        </GroupedListRow>
+                        <GroupedListRow>
+                            <div class="flex items-center justify-between px-card py-3">
+                                <div>
+                                    <div class="text-sm font-medium text-primary">"Sun 11 May"</div>
+                                    <div class="text-xs text-muted">"5 items \u{2022} 1h 12m"</div>
                                 </div>
-                                <DropIndicator visible=Signal::derive(|| true) />
-                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
-                                    <span class="text-sm text-secondary">"Entry below"</span>
-                                </div>
-                                <DropIndicator visible=Signal::derive(|| false) />
-                                <div class="flex items-center gap-3 rounded-lg bg-surface-secondary px-4 py-3">
-                                    <span class="text-sm text-secondary">"No indicator visible here"</span>
-                                </div>
+                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
                             </div>
-                        </div>
-                    </div>
+                        </GroupedListRow>
+                        <GroupedListRow>
+                            <div class="flex items-center justify-between px-card py-3">
+                                <div>
+                                    <div class="text-sm font-medium text-primary">"Sat 10 May"</div>
+                                    <div class="text-xs text-muted">"2 items \u{2022} 28 min"</div>
+                                </div>
+                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                            </div>
+                        </GroupedListRow>
+                    </GroupedList>
+                </Card>
+            </section>
+
+            // ── Drag-to-Reorder List ──────────────────────────────────
+            <section id="drag-drop">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Drag-to-Reorder List"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-3">"Live demo of the production drag-reorder pattern. Long-press the grip handle, drag, release to drop. Rows physically follow the finger via translateY transforms (the `use_drag_reorder` hook + `SetlistEntryRow` compact mode). On iOS this fires a light haptic at threshold and a success haptic on commit. The previous DropIndicator-line pattern was retired in PR #388."</p>
+                    <DragReorderDemo />
                 </Card>
             </section>
 
@@ -1645,7 +1733,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
-                            <span>"SetlistBuilder — Card + SetlistEntryRow + DragHandle + DropIndicator + RoutineLoader"</span>
+                            <span>"SetlistBuilder — SetlistEntryRow + DragHandle + use_drag_reorder hook"</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
@@ -1752,6 +1840,162 @@ fn RatingChipsDemo() -> impl IntoView {
                     None => "No selection".to_string(),
                 }}
             </p>
+        </div>
+    }
+}
+
+/// Catalogue demo: BuilderItemRow with two rows whose selection state
+/// toggles on tap. Mirrors the session-builder library list.
+#[component]
+fn BuilderItemRowDemo(piece: LibraryItemView, exercise: LibraryItemView) -> impl IntoView {
+    let piece_selected = RwSignal::new(false);
+    let exercise_selected = RwSignal::new(true);
+    let on_toggle_piece = Callback::new(move |_id: String| {
+        piece_selected.update(|v| *v = !*v);
+    });
+    let on_toggle_exercise = Callback::new(move |_id: String| {
+        exercise_selected.update(|v| *v = !*v);
+    });
+    view! {
+        <ul class="space-y-2 list-none p-0">
+            <li>
+                <BuilderItemRow
+                    item=piece
+                    is_selected=Signal::derive(move || piece_selected.get())
+                    on_toggle=on_toggle_piece
+                />
+            </li>
+            <li>
+                <BuilderItemRow
+                    item=exercise
+                    is_selected=Signal::derive(move || exercise_selected.get())
+                    on_toggle=on_toggle_exercise
+                />
+            </li>
+        </ul>
+    }
+}
+
+/// Catalogue demo: PullToRefresh wrapping a small scrollable region.
+/// On non-iOS the gesture chrome is hidden — the wrapped content just
+/// renders normally. On iOS, pull past threshold to fire the haptic +
+/// `on_refresh`. The demo simulates a refresh by toggling the spinner
+/// for a brief moment.
+#[component]
+fn PullToRefreshDemo() -> impl IntoView {
+    let is_refreshing = RwSignal::new(false);
+    let on_refresh = Callback::new(move |_| {
+        is_refreshing.set(true);
+        // Simulate ~800ms of work before resetting.
+        if let Some(window) = web_sys::window() {
+            let cb = wasm_bindgen::closure::Closure::<dyn FnMut()>::new(move || {
+                is_refreshing.set(false);
+            });
+            let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                cb.as_ref().unchecked_ref(),
+                800,
+            );
+            cb.forget();
+        }
+    });
+    view! {
+        <PullToRefresh
+            on_refresh=on_refresh
+            is_refreshing=Signal::derive(move || is_refreshing.get())
+        >
+            <div class="space-y-2 p-3">
+                <p class="text-sm text-secondary">"Pull down on this container (iOS only) to fire a refresh."</p>
+                <p class="text-xs text-muted">{move || if is_refreshing.get() { "Refreshing\u{2026}" } else { "Idle." }}</p>
+            </div>
+        </PullToRefresh>
+    }
+}
+
+/// Catalogue demo: live drag-reorder list using `use_drag_reorder` against a
+/// local `RwSignal<Vec<...>>`. Same shape as the production `SessionReviewSheet`
+/// list, just with shell-only state instead of dispatching `ReorderSetlist`.
+#[component]
+fn DragReorderDemo() -> impl IntoView {
+    #[derive(Clone)]
+    struct DemoEntry {
+        id: String,
+        title: String,
+        kind: ItemKind,
+        duration: String,
+    }
+
+    let entries = RwSignal::new(vec![
+        DemoEntry {
+            id: "demo-1".into(),
+            title: "Clair de Lune".into(),
+            kind: ItemKind::Piece,
+            duration: "10 min".into(),
+        },
+        DemoEntry {
+            id: "demo-2".into(),
+            title: "Hanon No. 1".into(),
+            kind: ItemKind::Exercise,
+            duration: "5 min".into(),
+        },
+        DemoEntry {
+            id: "demo-3".into(),
+            title: "Bach Prelude in G".into(),
+            kind: ItemKind::Piece,
+            duration: "8 min".into(),
+        },
+        DemoEntry {
+            id: "demo-4".into(),
+            title: "Chromatic Scales".into(),
+            kind: ItemKind::Exercise,
+            duration: "3 min".into(),
+        },
+    ]);
+
+    let container_ref = NodeRef::<leptos::html::Div>::new();
+
+    // Catalogue version: just mutate the local Vec in place. The real
+    // surfaces dispatch a Crux `ReorderSetlist` event; we don't need that
+    // here — the visual feel is what matters in the showcase.
+    let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
+        entries.update(|list| {
+            if let Some(from) = list.iter().position(|e| e.id == entry_id) {
+                let item = list.remove(from);
+                let dest = new_position.min(list.len());
+                list.insert(dest, item);
+            }
+        });
+    });
+
+    let drag = use_drag_reorder(on_reorder, container_ref);
+    let dragged_id = drag.dragged_id;
+    let on_drag_pointer_down = drag.on_pointer_down;
+
+    view! {
+        <div node_ref=container_ref aria-roledescription="sortable" class="flex flex-col">
+            {move || {
+                entries.get().into_iter().enumerate().map(|(idx, entry)| {
+                    let eid = entry.id.clone();
+                    let is_dragging_this = Signal::derive(move || {
+                        dragged_id.get().as_deref() == Some(eid.as_str())
+                    });
+                    view! {
+                        <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
+                            <SetlistEntryRow
+                                id=entry.id.clone()
+                                item_title=entry.title.clone()
+                                item_type=entry.kind.clone()
+                                duration_display=entry.duration.clone()
+                                position=idx
+                                show_controls=false
+                                is_dragging_this=is_dragging_this
+                                on_drag_pointer_down=Some(on_drag_pointer_down)
+                                index=idx
+                                compact=true
+                            />
+                        </div>
+                    }
+                }).collect::<Vec<_>>()
+            }}
         </div>
     }
 }

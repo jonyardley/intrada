@@ -11,11 +11,10 @@ use intrada_web::types::ItemType;
 /// - When `on_change` is `Some`, the control is interactive (add form).
 /// - When `on_change` is `None`, the control is display-only (edit form).
 ///
-/// Web: pill-style toggle with accent fill on active segment.
-/// iOS (`[data-platform="ios"]`): UISegmentedControl-style — rounded-rect
-/// track with an accent-filled thumb that slides between segments. Active
-/// text bumps to weight 600; inactive stays muted. `selection` haptic on
-/// every change.
+/// Cross-platform UISegmentedControl-style toggle — rounded-rect track
+/// with an accent-filled thumb that slides between segments via
+/// `--thumb-x`. Active text bumps to weight 600; inactive stays muted.
+/// `selection` haptic on every change (no-op on web).
 #[component]
 pub fn TypeTabs(
     active: Signal<ItemType>,
@@ -24,7 +23,6 @@ pub fn TypeTabs(
     let is_interactive = on_change.is_some();
 
     // Drives the sliding thumb position via CSS custom property.
-    // On web the thumb is hidden (display:none); on iOS it slides.
     let thumb_style = move || {
         let offset = if active.get() == ItemType::Piece {
             "0%"
@@ -34,17 +32,16 @@ pub fn TypeTabs(
         format!("--thumb-x: {offset}")
     };
 
-    // Build button classes. Web: individual pill fill. iOS: transparent bg
-    // (overridden by .type-tabs-btn CSS); aria-selected drives font weight.
-    let tab_class = move |tab: ItemType| {
-        let is_active = active.get() == tab;
-        let base = "type-tabs-btn relative z-10 flex-1 inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-full motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-accent-focus focus:ring-offset-0";
-        if is_active {
-            format!("{base} bg-accent text-primary shadow-sm")
-        } else if is_interactive {
-            format!("{base} text-muted hover:text-primary cursor-pointer")
+    // The track CSS (`.type-tabs-btn`) handles the active state via
+    // `[aria-selected="true"]`. The Leptos class only carries layout +
+    // interactive affordances — the thumb behind the buttons owns the
+    // accent fill.
+    let tab_class = move |_tab: ItemType| -> String {
+        let base = "type-tabs-btn inline-flex items-center justify-center";
+        if is_interactive {
+            format!("{base} cursor-pointer")
         } else {
-            format!("{base} text-faint cursor-default")
+            format!("{base} cursor-default")
         }
     };
 
