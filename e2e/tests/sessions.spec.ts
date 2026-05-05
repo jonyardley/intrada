@@ -94,8 +94,10 @@ test.describe("sessions page", () => {
     // Should show first item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
-    // Skip the first item
-    await page.getByRole("button", { name: "Skip" }).click();
+    // Skip the first item — `exact: true` so we don't also match the
+    // off-screen reflection sheet's "Skip scoring" button (sheet children
+    // stay mounted per BottomSheet's design).
+    await page.getByRole("button", { name: "Skip", exact: true }).click();
 
     // Should advance to second item
     await expect(page.getByText("Item 2 of 2")).toBeVisible();
