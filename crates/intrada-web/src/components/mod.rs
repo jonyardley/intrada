@@ -28,6 +28,7 @@ pub mod page_add_button;
 pub mod page_heading;
 pub mod progress_ring;
 pub mod pull_to_refresh;
+pub mod rating_chips;
 pub mod routine_loader;
 pub mod routine_save_form;
 pub mod section_label;
@@ -78,6 +79,7 @@ pub use page_add_button::PageAddButton;
 pub use page_heading::PageHeading;
 pub use progress_ring::ProgressRing;
 pub use pull_to_refresh::PullToRefresh;
+pub use rating_chips::RatingChips;
 // RoutineLoader is currently unused — kept around for the planned routine
 // flows revisit (see PR conversation). Re-export when something needs it.
 pub use routine_save_form::RoutineSaveForm;

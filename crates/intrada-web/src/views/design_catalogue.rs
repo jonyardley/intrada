@@ -12,7 +12,7 @@ use crate::components::{
     ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow, DropIndicator, EmptyState,
     FieldLabel, FormFieldError, IconName, InlineTypeIndicator, ItemReflectionSheet,
     ItemReflectionTarget, LibraryItemCard, LibraryTypeTabs, LineChart, PageHeading, ProgressRing,
-    RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
+    RatingChips, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
     SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart,
     TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
@@ -268,6 +268,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#tag-input" class="text-accent-text hover:text-primary">"Tag Input"</a></li>
                             <li><a href="#field-label" class="text-accent-text hover:text-primary">"Field Label"</a></li>
                             <li><a href="#form-field-error" class="text-accent-text hover:text-primary">"Form Field Error"</a></li>
+                            <li><a href="#rating-chips" class="text-accent-text hover:text-primary">"Rating Chips"</a></li>
                             <li><a href="#line-chart" class="text-accent-text hover:text-primary">"Line Chart"</a></li>
                             <li><a href="#tempo-chart" class="text-accent-text hover:text-primary">"Tempo Progress Chart"</a></li>
                         </ul>
@@ -1174,6 +1175,15 @@ pub fn DesignCatalogue() -> impl IntoView {
                 </Card>
             </section>
 
+            // ── Rating Chips ──────────────────────────────────────────
+            <section id="rating-chips">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Rating Chips"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-3">"1\u{2013}5 self-rating chips with toggle-to-clear. Re-tapping the selected chip fires `on_change(None)`. Used by the post-session summary and the mid-session reflection sheet."</p>
+                    <RatingChipsDemo />
+                </Card>
+            </section>
+
             // ── Navigation ────────────────────────────────────────────
             <section id="navigation">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Navigation"</h3>
@@ -1720,6 +1730,28 @@ fn ItemReflectionSheetDemo() -> impl IntoView {
                 position_label=Signal::derive(move || position_label.get())
                 on_advance=on_advance
             />
+        </div>
+    }
+}
+
+/// Catalogue demo: RatingChips with a local signal — re-tap clears the
+/// selection. Mirrors how both the summary screen and the reflection
+/// sheet wire it up.
+#[component]
+fn RatingChipsDemo() -> impl IntoView {
+    let score = RwSignal::new(Option::<u8>::None);
+    view! {
+        <div class="space-y-3">
+            <RatingChips
+                selected=score
+                on_change=Callback::new(move |next: Option<u8>| score.set(next))
+            />
+            <p class="text-xs text-muted">
+                {move || match score.get() {
+                    Some(n) => format!("Selected: {n}"),
+                    None => "No selection".to_string(),
+                }}
+            </p>
         </div>
     }
 }

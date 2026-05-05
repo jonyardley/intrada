@@ -4,7 +4,8 @@ use intrada_core::{CompletionStatus, EntryStatus, Event, RoutineEvent, SessionEv
 use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{
-    AccentBar, Button, ButtonVariant, Icon, IconName, RoutineSaveForm, StatCard, StatTone,
+    AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, RoutineSaveForm, StatCard,
+    StatTone,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -206,45 +207,30 @@ pub fn SessionSummary() -> impl IntoView {
                                                         }
                                                     />
                                                 </div>
-                                                // Score buttons — only for completed entries
+                                                // Score chips — only for completed entries.
+                                                // Toggle + dispatch logic lives in the parent
+                                                // because the source of truth is the view model
+                                                // entry, not a local signal.
                                                 {if is_completed {
                                                     let entry_id_score = entry_id_for_score.clone();
                                                     let core_score_btns = core_score_inner.clone();
+                                                    let on_change = Callback::new(move |new_score: Option<u8>| {
+                                                        let event = Event::Session(SessionEvent::UpdateEntryScore {
+                                                            entry_id: entry_id_score.clone(),
+                                                            score: new_score,
+                                                        });
+                                                        let core_ref = core_score_btns.borrow();
+                                                        let effects = core_ref.process_event(event);
+                                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                                    });
                                                     Some(view! {
                                                         <div class="flex items-center gap-2">
                                                             <span class="text-xs text-muted mr-1">"Confidence:"</span>
-                                                            {(1u8..=5).map(|n| {
-                                                                let entry_id_n = entry_id_score.clone();
-                                                                let core_n = core_score_btns.clone();
-                                                                let is_selected = current_score == Some(n);
-                                                                let btn_class = if is_selected {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-accent text-primary shadow-md motion-safe:transition-all motion-safe:duration-150"
-                                                                } else {
-                                                                    "w-9 h-9 rounded-full text-sm font-semibold bg-surface-primary text-primary/60 hover:bg-surface-hover hover:text-primary motion-safe:transition-all motion-safe:duration-150"
-                                                                };
-                                                                let aria_label = format!("Rate confidence {} out of 5", n);
-                                                                let aria_pressed = if is_selected { "true" } else { "false" };
-                                                                view! {
-                                                                    <button
-                                                                        class=btn_class
-                                                                        aria-label=aria_label
-                                                                        aria-pressed=aria_pressed
-                                                                        on:click=move |_| {
-                                                                            // Toggle: if same score is clicked, clear it
-                                                                            let new_score = if current_score == Some(n) { None } else { Some(n) };
-                                                                            let event = Event::Session(SessionEvent::UpdateEntryScore {
-                                                                                entry_id: entry_id_n.clone(),
-                                                                                score: new_score,
-                                                                            });
-                                                                            let core_ref = core_n.borrow();
-                                                                            let effects = core_ref.process_event(event);
-                                                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                                        }
-                                                                    >
-                                                                        {n.to_string()}
-                                                                    </button>
-                                                                }
-                                                            }).collect::<Vec<_>>()}
+                                                            <RatingChips
+                                                                selected=Signal::derive(move || current_score)
+                                                                on_change=on_change
+                                                                aria_label_prefix="Rate confidence"
+                                                            />
                                                         </div>
                                                     })
                                                 } else {
