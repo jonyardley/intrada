@@ -56,8 +56,10 @@ test.describe("sessions page", () => {
     // (Focus mode hides the heading, so check item indicator instead)
     await expect(page.getByText("Item 1 of 1")).toBeVisible();
 
-    // Finish the session (single item = "Finish Session" button)
+    // Finish the session (single item = "Finish Session" button) — opens
+    // the mid-session reflection sheet; skip the capture to advance.
     await page.getByRole("button", { name: "Finish Session" }).click();
+    await page.getByRole("button", { name: "Skip scoring" }).click();
 
     // Should be on the summary page
     await expect(page.getByText("Session Complete")).toBeVisible();
@@ -92,14 +94,17 @@ test.describe("sessions page", () => {
     // Should show first item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
-    // Skip the first item
-    await page.getByRole("button", { name: "Skip" }).click();
+    // Skip the first item — `exact: true` so we don't also match the
+    // off-screen reflection sheet's "Skip scoring" button (sheet children
+    // stay mounted per BottomSheet's design).
+    await page.getByRole("button", { name: "Skip", exact: true }).click();
 
     // Should advance to second item
     await expect(page.getByText("Item 2 of 2")).toBeVisible();
 
-    // Finish the session (last item)
+    // Finish the session (last item) — opens reflection sheet, skip to advance.
     await page.getByRole("button", { name: "Finish Session" }).click();
+    await page.getByRole("button", { name: "Skip scoring" }).click();
 
     // Summary should show both items
     await expect(page.getByText("Session Complete")).toBeVisible();
@@ -150,14 +155,18 @@ test.describe("sessions page", () => {
     // First item
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
-    // Next Item (not last, so button says "Next Item")
+    // Next Item (not last, so button says "Next Item") — opens reflection
+    // sheet; skip the capture to advance to the next item.
     await page.getByRole("button", { name: "Next Item" }).click();
+    await page.getByRole("button", { name: "Skip scoring" }).click();
 
     // Second item
     await expect(page.getByText("Item 2 of 2")).toBeVisible();
 
-    // Now it's the last item, so button says "Finish Session"
+    // Now it's the last item, so button says "Finish Session" — same flow:
+    // opens sheet, skip to advance to summary.
     await page.getByRole("button", { name: "Finish Session" }).click();
+    await page.getByRole("button", { name: "Skip scoring" }).click();
 
     // Summary
     await expect(page.getByText("Session Complete")).toBeVisible();

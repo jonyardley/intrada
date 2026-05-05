@@ -6,8 +6,8 @@ use intrada_core::{EntryStatus, Event, ItemKind, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
-    Button, ButtonSize, ButtonVariant, Icon, IconName, InlineTypeIndicator, ProgressRing,
-    SectionLabel, SetlistEntryRow, TransitionPrompt,
+    Button, ButtonSize, ButtonVariant, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet,
+    ItemReflectionTarget, ProgressRing, SectionLabel, SetlistEntryRow, TransitionPrompt,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
@@ -40,6 +40,14 @@ pub fn SessionTimer() -> impl IntoView {
     let rep_dismissed_at_position = RwSignal::new(Option::<usize>::None);
     // Tracks whether the current item's planned duration has elapsed (drives TransitionPrompt)
     let duration_elapsed = RwSignal::new(false);
+
+    // Reflection sheet state — opened on Next / Finish tap, captures the
+    // just-completed entry's score/tempo/notes before advancing.
+    let reflection_open = RwSignal::new(false);
+    let reflection_target = RwSignal::new(Option::<ItemReflectionTarget>::None);
+    let reflection_next_title = RwSignal::new(Option::<String>::None);
+    let reflection_next_type = RwSignal::new(Option::<ItemKind>::None);
+    let reflection_position_label = RwSignal::new(String::new());
 
     // Start the display timer
     {
@@ -74,9 +82,8 @@ pub fn SessionTimer() -> impl IntoView {
                 let vm = view_model.get();
                 match vm.active_session {
                     Some(ref active) => {
-                        let core_next = core.clone();
+                        let core_advance = core.clone();
                         let core_skip = core.clone();
-                        let core_finish = core.clone();
                         let core_end = core.clone();
                         let core_got_it = core.clone();
                         let core_missed = core.clone();
@@ -309,48 +316,57 @@ pub fn SessionTimer() -> impl IntoView {
 
                             // Controls — primary action (Next / Finish) is
                             // a full-width hero CTA matching the Pencil
-                            // reference. Skip + End Early stay as secondary
-                            // / destructive sized buttons in a row beneath.
+                            // reference. Tap opens the reflection sheet,
+                            // which captures self-rating + tempo + notes
+                            // before dispatching NextItem / FinishSession.
+                            // Skip + End Early stay as secondary /
+                            // destructive sized buttons in a row beneath.
                             <div class="space-y-3">
-                                {if is_last {
+                                {
+                                    let entries = active.entries.clone();
+                                    let next_title_for_sheet = active.next_item_title.clone();
+                                    let on_advance_tap = move || {
+                                        // Snapshot the just-completed entry so the
+                                        // reflection sheet can pre-populate (and
+                                        // dispatch Update* events against the right
+                                        // entry id even after Next/Finish lands).
+                                        //
+                                        // Order: set `target` BEFORE flipping `open`.
+                                        // The sheet's seed effect runs on target
+                                        // change — flipping open first would let it
+                                        // see the previous item's target on first
+                                        // render.
+                                        if let Some(entry) = entries.get(position) {
+                                            reflection_target.set(Some(ItemReflectionTarget {
+                                                entry_id: entry.id.clone(),
+                                                initial_score: entry.score,
+                                                initial_tempo: entry.achieved_tempo,
+                                                initial_notes: entry.notes.clone(),
+                                            }));
+                                        }
+                                        reflection_next_title.set(next_title_for_sheet.clone());
+                                        // Type of the next item — drives the badge in
+                                        // the sheet header. None on the last item.
+                                        reflection_next_type.set(
+                                            entries.get(position + 1).map(|e| e.item_type.clone())
+                                        );
+                                        reflection_position_label.set(
+                                            format!("Item {} of {}", position + 1, total)
+                                        );
+                                        reflection_open.set(true);
+                                    };
+                                    let label = if is_last { "Finish Session" } else { "Next Item" };
                                     view! {
                                         <Button
                                             variant=ButtonVariant::Primary
                                             size=ButtonSize::Hero
                                             full_width=true
-                                            on_click=Callback::new(move |_| {
-                                                let now = chrono::Utc::now();
-                                                let event = Event::Session(SessionEvent::FinishSession { now });
-                                                let core_ref = core_finish.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                elapsed_secs.set(0);
-                                                duration_elapsed.set(false);
-                                            })
+                                            on_click=Callback::new(move |_| on_advance_tap())
                                         >
-                                            "Finish Session"
+                                            {label}
                                         </Button>
                                     }.into_any()
-                                } else {
-                                    view! {
-                                        <Button
-                                            variant=ButtonVariant::Primary
-                                            size=ButtonSize::Hero
-                                            full_width=true
-                                            on_click=Callback::new(move |_| {
-                                                let now = chrono::Utc::now();
-                                                let event = Event::Session(SessionEvent::NextItem { now });
-                                                let core_ref = core_next.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                elapsed_secs.set(0);
-                                                duration_elapsed.set(false);
-                                            })
-                                        >
-                                            "Next Item"
-                                        </Button>
-                                    }.into_any()
-                                }}
+                                }
                                 // Sub-actions — proper Button components
                                 // (44px standard size). They're clearly
                                 // subordinate to the hero CTA above by
@@ -414,6 +430,42 @@ pub fn SessionTimer() -> impl IntoView {
                                     </div>
                                 </div>
                             })}
+
+                            // Reflection sheet — opened by Next/Finish tap.
+                            // On Continue: dispatches Update* events for the
+                            // just-completed entry, then advances the
+                            // session. On Skip: just advances. is_last is
+                            // re-read from the view model at advance time so
+                            // the dispatch matches the actual session state.
+                            {
+                                let on_advance = Callback::new(move |_| {
+                                    let now = chrono::Utc::now();
+                                    let vm = view_model.get_untracked();
+                                    let is_last_now = vm.active_session.as_ref().is_some_and(|a| {
+                                        a.current_position == a.total_items.saturating_sub(1)
+                                    });
+                                    let event = if is_last_now {
+                                        Event::Session(SessionEvent::FinishSession { now })
+                                    } else {
+                                        Event::Session(SessionEvent::NextItem { now })
+                                    };
+                                    let core_ref = core_advance.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                    elapsed_secs.set(0);
+                                    duration_elapsed.set(false);
+                                });
+                                view! {
+                                    <ItemReflectionSheet
+                                        open=reflection_open
+                                        next_item_title=Signal::derive(move || reflection_next_title.get())
+                                        next_item_type=Signal::derive(move || reflection_next_type.get())
+                                        target=Signal::derive(move || reflection_target.get())
+                                        position_label=Signal::derive(move || reflection_position_label.get())
+                                        on_advance=on_advance
+                                    />
+                                }
+                            }
                         }.into_any()
                     }
                     None => {

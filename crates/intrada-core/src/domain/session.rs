@@ -331,6 +331,21 @@ fn freeze_rep_state(entry: &mut SetlistEntry) {
     }
 }
 
+/// Find a setlist entry by id, mutably, regardless of which session phase
+/// the model is currently in. Returns `None` if not in an Active or Summary
+/// phase, or if the entry id is unknown.
+///
+/// Used by `UpdateEntryScore` / `UpdateEntryTempo` / `UpdateEntryNotes` so the
+/// mid-session reflection sheet can write per-entry data the moment the user
+/// completes an item, not just on the post-session summary screen.
+fn entry_for_update_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a mut SetlistEntry> {
+    match &mut model.session_status {
+        SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
+        SessionStatus::Summary(summary) => summary.entries.iter_mut().find(|e| e.id == entry_id),
+        SessionStatus::Idle | SessionStatus::Building(_) => None,
+    }
+}
+
 /// Transition from Active to Summary, computing final duration for the current item.
 fn transition_to_summary(
     active: &mut ActiveSession,
@@ -914,13 +929,14 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             ])
         }
 
-        // ── Summary Phase ──────────────────────────────────────────
+        // ── Entry Updates (Active or Summary) ──────────────────────
+        // These accept dispatches from both phases so the mid-session
+        // reflection sheet can record per-entry data the moment the user
+        // moves on to the next item, not just retroactively from the
+        // post-session summary screen. The core invariant is unchanged:
+        // only entries that have actually been Completed can be scored /
+        // tempo'd / noted.
         SessionEvent::UpdateEntryScore { entry_id, score } => {
-            let SessionStatus::Summary(ref mut summary) = model.session_status else {
-                // Silent no-op if not in summary state (consistent with existing pattern)
-                return crux_core::render::render();
-            };
-
             // Validate score range if present
             if let Some(s) = score {
                 if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
@@ -929,8 +945,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 }
             }
 
-            let Some(entry) = summary.entries.iter_mut().find(|e| e.id == entry_id) else {
-                // Silent no-op if entry not found
+            let Some(entry) = entry_for_update_mut(model, &entry_id) else {
+                // Silent no-op if not in a session phase that has entries,
+                // or if the entry id is unknown.
                 return crux_core::render::render();
             };
 
@@ -945,19 +962,13 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         SessionEvent::UpdateEntryTempo { entry_id, tempo } => {
-            let SessionStatus::Summary(ref mut summary) = model.session_status else {
-                // Silent no-op if not in summary state
-                return crux_core::render::render();
-            };
-
             // Validate tempo range if present
             if let Err(_e) = validation::validate_achieved_tempo(&tempo) {
                 // Silent no-op for out-of-range tempo
                 return crux_core::render::render();
             }
 
-            let Some(entry) = summary.entries.iter_mut().find(|e| e.id == entry_id) else {
-                // Silent no-op if entry not found
+            let Some(entry) = entry_for_update_mut(model, &entry_id) else {
                 return crux_core::render::render();
             };
 
@@ -972,17 +983,12 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         SessionEvent::UpdateEntryNotes { entry_id, notes } => {
-            let SessionStatus::Summary(ref mut summary) = model.session_status else {
-                model.last_error = Some("Not in summary state".to_string());
-                return crux_core::render::render();
-            };
-
             if let Err(e) = validation::validate_entry_notes(&notes) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            let Some(entry) = summary.entries.iter_mut().find(|e| e.id == entry_id) else {
+            let Some(entry) = entry_for_update_mut(model, &entry_id) else {
                 model.last_error = Some(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
@@ -1446,11 +1452,11 @@ mod tests {
         update(&mut model, Event::Session(SessionEvent::StartBuilding));
 
         let items = ["piece-1", "piece-2", "exercise-1"];
-        for i in 0..item_count.min(3) {
+        for item_id in items.iter().take(item_count.min(3)) {
             update(
                 &mut model,
                 Event::Session(SessionEvent::AddToSetlist {
-                    item_id: items[i].to_string(),
+                    item_id: (*item_id).to_string(),
                 }),
             );
         }
@@ -2193,10 +2199,13 @@ mod tests {
     }
 
     #[test]
-    fn test_update_entry_score_only_works_during_summary() {
+    fn test_update_entry_score_rejected_on_pending_entry() {
+        // The current item (the one in progress) has status NotAttempted
+        // until NextItem / SkipItem flips it. Scoring it would let the user
+        // rate work they haven't done — invariant: only Completed entries
+        // can be scored, regardless of session phase.
         let (mut model, _start) = model_with_active_session(2);
 
-        // In Active state, try to update score
         let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
             a.entries[0].id.clone()
         } else {
@@ -2206,13 +2215,233 @@ mod tests {
         update(
             &mut model,
             Event::Session(SessionEvent::UpdateEntryScore {
-                entry_id,
+                entry_id: entry_id.clone(),
                 score: Some(3),
             }),
         );
 
-        // Should still be in Active state, no crash, no error
-        assert!(matches!(model.session_status, SessionStatus::Active(_)));
+        // Score not set — entry is still NotAttempted
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].score, None);
+            assert_eq!(a.entries[0].status, EntryStatus::NotAttempted);
+        } else {
+            panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_works_mid_session_on_completed_entry() {
+        // The mid-session reflection sheet's flow: NextItem flips the
+        // just-completed entry to Completed, THEN the sheet dispatches
+        // UpdateEntryScore for that entry. Session is still Active (we're
+        // moving on to item 2, not finishing). The score should land.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+
+        // Advance — entry[0] becomes Completed, current_index moves to 1
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+
+        // Capture the just-completed entry id (still in Active phase)
+        let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].status, EntryStatus::Completed);
+            assert_eq!(a.current_index, 1);
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state — only one of two items advanced");
+        };
+
+        // Score the just-completed entry mid-session
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: entry_id.clone(),
+                score: Some(4),
+            }),
+        );
+
+        // Score persisted, session still Active
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].score, Some(4));
+        } else {
+            panic!("Expected Active state — session shouldn't have ended");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_tempo_works_mid_session_on_completed_entry() {
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+
+        let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id,
+                tempo: Some(120),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].achieved_tempo, Some(120));
+        }
+    }
+
+    #[test]
+    fn test_update_entry_notes_works_mid_session_on_completed_entry() {
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+
+        let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryNotes {
+                entry_id,
+                notes: Some("felt solid".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].notes.as_deref(), Some("felt solid"));
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_works_on_last_item_after_finish_session() {
+        // The last-item path through the reflection sheet: NextItem to the
+        // final item, FinishSession → transitions to Summary, then the sheet
+        // dispatches UpdateEntryScore. `transition_to_summary` clones entries
+        // into `summary.entries`, so the entry id must still resolve via
+        // `entry_for_update_mut`. Pinning this so a future refactor of the
+        // transition can't silently drop scoring on the last item.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+        let t2 = t1 + chrono::Duration::seconds(60);
+
+        // Advance to the last item, then finish the session
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        // Should be in Summary phase now
+        let last_entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[1].status, EntryStatus::Completed);
+            s.entries[1].id.clone()
+        } else {
+            panic!("Expected Summary state after FinishSession");
+        };
+
+        // Score the last item — same code path the reflection sheet takes
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: last_entry_id,
+                score: Some(5),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.entries[1].score, Some(5));
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn test_update_entry_score_unknown_entry_id_is_silent_noop() {
+        // The sheet snapshots the entry id at open time. If the session is
+        // cleared (recovery, new session) before Continue, the id won't
+        // match anything in the new model. `entry_for_update_mut` returns
+        // None — the dispatch must be silent (no last_error, no panic).
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: "no-such-entry".to_string(),
+                score: Some(3),
+            }),
+        );
+
+        // Same shape for tempo
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryTempo {
+                entry_id: "no-such-entry".to_string(),
+                tempo: Some(120),
+            }),
+        );
+
+        // Score and tempo handlers don't surface an error for unknown ids
+        // (they're silent no-ops, matching the existing pattern).
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn test_update_entry_score_rejected_on_skipped_entry_in_active_phase() {
+        // SkipItem produces EntryStatus::Skipped, not Completed. The
+        // status gate in the handlers should reject scoring a skipped
+        // entry mid-session, just as it does in the summary phase.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(5);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem { now: t1 }),
+        );
+
+        let skipped_entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].status, EntryStatus::Skipped);
+            assert_eq!(a.current_index, 1, "Should have advanced past skipped item");
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state — second item should still be running");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id: skipped_entry_id,
+                score: Some(3),
+            }),
+        );
+
+        // Score not applied — entry is Skipped, not Completed
+        if let SessionStatus::Active(ref a) = model.session_status {
+            assert_eq!(a.entries[0].score, None);
+            assert_eq!(a.entries[0].status, EntryStatus::Skipped);
+        }
     }
 
     #[test]
