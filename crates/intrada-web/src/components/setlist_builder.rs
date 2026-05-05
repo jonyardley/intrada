@@ -205,7 +205,7 @@ pub fn SetlistBuilder() -> impl IntoView {
         // Sticky bottom toolbar — count + duration + Review CTA.
         // Tappable area extends across the count column so the user can
         // also expand the sheet by tapping the summary text.
-        <div class="builder-toolbar" role="toolbar" aria-label="Setlist summary">
+        <div class="action-bar" role="toolbar" aria-label="Setlist summary">
             <button
                 type="button"
                 class="builder-toolbar-summary"

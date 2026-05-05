@@ -699,13 +699,14 @@ body {
   justify-content: center;
 }
 
-/* Sticky toolbar pinned to the bottom of the viewport with safe-area
-   padding so it never sits under the iOS home indicator. The page
-   itself reserves space via `pb-32` on the builder root, so the
-   toolbar overlays the page bottom without occluding the last row.
+/* Sticky bottom action bar — shared chrome between the session builder
+   ("Tap items… / Review session"), the session summary ("Save Session /
+   Discard"), and any future surface that needs a persistent footer
+   action. The page reserves space via `pb-32` (or similar) on its root
+   so the bar overlays the bottom edge without occluding content.
    On mobile we sit *above* the global BottomTabBar (h-16 = 64px).
    On sm+ the tab bar is hidden, so we drop back to bottom: 0. */
-.builder-toolbar {
+.action-bar {
   position: fixed;
   left: 0;
   right: 0;
@@ -721,7 +722,7 @@ body {
   border-top: 1px solid var(--color-border-default);
 }
 @media (min-width: 640px) {
-  .builder-toolbar {
+  .action-bar {
     bottom: 0;
   }
 }

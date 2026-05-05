@@ -3,7 +3,9 @@ use leptos::prelude::*;
 use intrada_core::{CompletionStatus, EntryStatus, Event, RoutineEvent, SessionEvent, ViewModel};
 use intrada_web::validation::validate_achieved_tempo_input;
 
-use crate::components::{Button, ButtonVariant, Card, Icon, IconName, RoutineSaveForm};
+use crate::components::{
+    AccentBar, Button, ButtonVariant, Icon, IconName, RoutineSaveForm, StatCard, StatTone,
+};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -26,7 +28,9 @@ pub fn SessionSummary() -> impl IntoView {
     let core_session_notes_outer = core;
 
     view! {
-        <div class="space-y-6">
+        // pb-32 reserves space for the sticky .action-bar at the bottom so
+        // the last section (Save-as-Routine button) isn't occluded.
+        <div class="space-y-6 pb-32">
             {move || {
                 let vm = view_model.get();
                 match vm.summary {
@@ -42,31 +46,73 @@ pub fn SessionSummary() -> impl IntoView {
                         let session_intention = summary.session_intention.clone();
                         let entries = summary.entries.clone();
 
-                        view! {
-                            // Summary header
-                            <Card>
-                                <div class="text-center space-y-2">
-                                    <h2 class="page-title">"Session Complete!"</h2>
-                                    <p class="text-lg text-secondary">
-                                        {format!("Total: {}", total_duration)}
-                                    </p>
-                                    {if completion_status == CompletionStatus::EndedEarly {
-                                        Some(view! {
-                                            <span class="badge badge--warning">"Ended Early"</span>
-                                        })
-                                    } else {
-                                        None
-                                    }}
-                                    {session_intention.map(|intention| view! {
-                                        <p class="text-sm text-secondary italic">{intention}</p>
-                                    })}
-                                </div>
-                            </Card>
+                        // Stat row figures: items practiced (any non-NotAttempted)
+                        // and average confidence across scored entries.
+                        let items_practiced = entries
+                            .iter()
+                            .filter(|e| e.status != EntryStatus::NotAttempted)
+                            .count();
+                        let scored: Vec<u8> = entries
+                            .iter()
+                            .filter_map(|e| e.score)
+                            .collect();
+                        let avg_score_display = if scored.is_empty() {
+                            "—".to_string()
+                        } else {
+                            let sum: u32 = scored.iter().map(|s| *s as u32).sum();
+                            let avg = sum as f64 / scored.len() as f64;
+                            format!("{avg:.1}")
+                        };
 
-                            // Entries breakdown
-                            <Card>
+                        view! {
+                            // Hero header — flat, no Card chrome (matches the
+                            // builder / review-sheet vocabulary). page-title
+                            // for the celebratory beat, subtitle for context.
+                            <div class="text-center space-y-2">
+                                <h2 class="page-title">"Session Complete"</h2>
+                                <p class="text-sm text-secondary">
+                                    "Great work! Review your session below."
+                                </p>
+                                {if completion_status == CompletionStatus::EndedEarly {
+                                    Some(view! {
+                                        <span class="badge badge--warning">"Ended Early"</span>
+                                    })
+                                } else {
+                                    None
+                                }}
+                                {session_intention.map(|intention| view! {
+                                    <p class="text-sm text-secondary italic">{intention}</p>
+                                })}
+                            </div>
+
+                            // Stat row — Duration / Items Practiced / Avg
+                            // Confidence. Uses the StatCard refresh variant
+                            // with inset accent bars per Pencil.
+                            <div class="grid grid-cols-3 gap-3">
+                                <StatCard
+                                    title="Duration"
+                                    value=total_duration
+                                    bar=AccentBar::Gold
+                                />
+                                <StatCard
+                                    title="Items"
+                                    value=items_practiced.to_string()
+                                    bar=AccentBar::Blue
+                                    tone=StatTone::Accent
+                                />
+                                <StatCard
+                                    title="Avg"
+                                    value=avg_score_display
+                                    subtitle="out of 5"
+                                    bar=AccentBar::Gold
+                                    tone=StatTone::WarmAccent
+                                />
+                            </div>
+
+                            // Items practiced — flat section with header,
+                            // each entry is its own surface-secondary card.
+                            <div class="space-y-3">
                                 <h3 class="section-title">"Items Practiced"</h3>
-                                <div class="space-y-3">
                                     {entries.into_iter().map(|entry| {
                                         let entry_id = entry.id.clone();
                                         let entry_id_for_score = entry.id.clone();
@@ -255,11 +301,10 @@ pub fn SessionSummary() -> impl IntoView {
                                             </div>
                                         }
                                     }).collect::<Vec<_>>()}
-                                </div>
-                            </Card>
+                            </div>
 
-                            // Practice notes
-                            <Card>
+                            // Session Notes — flat, no Card chrome.
+                            <div class="space-y-3">
                                 <h3 class="section-title">"Session Notes"</h3>
                                 <textarea
                                     rows="3"
@@ -275,9 +320,11 @@ pub fn SessionSummary() -> impl IntoView {
                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                     }
                                 />
-                            </Card>
+                            </div>
 
-                            // Save as Routine
+                            // Save as Routine — kept in place for now;
+                            // re-evaluate position when the routines flow
+                            // is reworked (see #390).
                             {
                                 let core_save_routine = core_routine_save.clone();
                                 view! {
@@ -290,27 +337,6 @@ pub fn SessionSummary() -> impl IntoView {
                                 }
                             }
 
-                            // Actions
-                            <div class="flex gap-3">
-                                <Button variant=ButtonVariant::Primary on_click=Callback::new(move |_| {
-                                    let now = chrono::Utc::now();
-                                    let event = Event::Session(SessionEvent::SaveSession { now });
-                                    let core_ref = core_save.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                })>
-                                    "Save Session"
-                                </Button>
-                                <Button variant=ButtonVariant::DangerOutline on_click=Callback::new(move |_| {
-                                    let event = Event::Session(SessionEvent::DiscardSession);
-                                    let core_ref = core_discard.borrow();
-                                    let effects = core_ref.process_event(event);
-                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                })>
-                                    "Discard"
-                                </Button>
-                            </div>
-
                             // Error display
                             {move || {
                                 let vm = view_model.get();
@@ -320,6 +346,39 @@ pub fn SessionSummary() -> impl IntoView {
                                     }
                                 })
                             }}
+
+                            // Sticky bottom action bar — Save Session
+                            // (primary, fills) + Discard (danger outline,
+                            // sized to its label). Same chrome as the
+                            // builder toolbar (.action-bar utility).
+                            <div class="action-bar" role="toolbar" aria-label="Session actions">
+                                <div class="flex-1">
+                                    <Button
+                                        variant=ButtonVariant::Primary
+                                        full_width=true
+                                        on_click=Callback::new(move |_| {
+                                            let now = chrono::Utc::now();
+                                            let event = Event::Session(SessionEvent::SaveSession { now });
+                                            let core_ref = core_save.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                        })
+                                    >
+                                        "Save Session"
+                                    </Button>
+                                </div>
+                                <Button
+                                    variant=ButtonVariant::DangerOutline
+                                    on_click=Callback::new(move |_| {
+                                        let event = Event::Session(SessionEvent::DiscardSession);
+                                        let core_ref = core_discard.borrow();
+                                        let effects = core_ref.process_event(event);
+                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                    })
+                                >
+                                    "Discard"
+                                </Button>
+                            </div>
                         }.into_any()
                     }
                     None => {

@@ -60,7 +60,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Should be on the summary page
-    await expect(page.getByText("Session Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete")).toBeVisible();
 
     // Save the session
     await page.getByRole("button", { name: "Save Session" }).click();
@@ -102,7 +102,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Summary should show both items
-    await expect(page.getByText("Session Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete")).toBeVisible();
     await expect(page.getByText("Items Practiced")).toBeVisible();
   });
 
@@ -160,7 +160,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "Finish Session" }).click();
 
     // Summary
-    await expect(page.getByText("Session Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete")).toBeVisible();
 
     // Save
     await page.getByRole("button", { name: "Save Session" }).click();
@@ -192,7 +192,7 @@ test.describe("sessions page", () => {
     await page.getByRole("button", { name: "End Early" }).click();
 
     // Should see summary with "Ended Early" indicator
-    await expect(page.getByText("Session Complete!")).toBeVisible();
+    await expect(page.getByText("Session Complete")).toBeVisible();
     await expect(page.getByText("Ended Early")).toBeVisible();
   });
 });
