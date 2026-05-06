@@ -10,16 +10,15 @@ use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
     BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize,
     CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
-    EmptyState, FieldLabel, FormFieldError, GroupedList, GroupedListRow, Icon, IconName,
-    InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget, LibraryItemCard,
-    LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing, PullToRefresh,
-    RatingChips, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
-    SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart,
-    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError, GroupedList,
+    GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget,
+    LibraryItemCard, LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing,
+    PullToRefresh, RatingChips, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock,
+    SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput,
+    TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
 use wasm_bindgen::JsCast;
 
-use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::ItemType;
 
 /// Dev-only design catalogue at `/design`.
@@ -1426,8 +1425,8 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="drag-drop">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Drag-to-Reorder List"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-3">"Live demo of the production drag-reorder pattern. Long-press the grip handle, drag, release to drop. Rows physically follow the finger via translateY transforms (the `use_drag_reorder` hook + `SetlistEntryRow` compact mode). On iOS this fires a light haptic at threshold and a success haptic on commit. The previous DropIndicator-line pattern was retired in PR #388."</p>
-                    <DragReorderDemo />
+                    <p class="text-xs text-faint mb-3">"`<EntryListEditor>` \u{2014} the shared drag-reorderable list used by `<SessionReviewSheet>` (session builder) and `<RoutineEditView>` (routine editor). Both call sites project their domain entries (`SetlistEntryView` / `RoutineEntryView`) into the minimal `EditorEntry` shape and pass through. Long-press the grip handle, drag, release to drop \u{2014} rows physically follow the finger via translateY transforms (the `use_drag_reorder` hook + `SetlistEntryRow` compact mode). On iOS this fires a light haptic at threshold and a success haptic on commit. The previous DropIndicator-line pattern was retired in PR #388."</p>
+                    <EntryListEditorDemo />
                 </Card>
             </section>
 
@@ -1911,51 +1910,34 @@ fn PullToRefreshDemo() -> impl IntoView {
     }
 }
 
-/// Catalogue demo: live drag-reorder list using `use_drag_reorder` against a
-/// local `RwSignal<Vec<...>>`. Same shape as the production `SessionReviewSheet`
-/// list, just with shell-only state instead of dispatching `ReorderSetlist`.
+/// Catalogue demo: EntryListEditor wired up against a local
+/// `RwSignal<Vec<EditorEntry>>` — same shape both production
+/// consumers (SessionReviewSheet, RoutineEditView) use, just with
+/// shell-only state instead of a Crux dispatch. Subsumes the
+/// hand-rolled `DragReorderDemo` that #403 added — same primitive,
+/// the abstraction now lives in `<EntryListEditor>`.
 #[component]
-fn DragReorderDemo() -> impl IntoView {
-    #[derive(Clone)]
-    struct DemoEntry {
-        id: String,
-        title: String,
-        kind: ItemKind,
-        duration: String,
-    }
-
+fn EntryListEditorDemo() -> impl IntoView {
     let entries = RwSignal::new(vec![
-        DemoEntry {
+        EditorEntry {
             id: "demo-1".into(),
-            title: "Clair de Lune".into(),
-            kind: ItemKind::Piece,
-            duration: "10 min".into(),
+            item_title: "Clair de Lune".into(),
+            item_type: ItemKind::Piece,
+            duration_display: Some("10 min".into()),
         },
-        DemoEntry {
+        EditorEntry {
             id: "demo-2".into(),
-            title: "Hanon No. 1".into(),
-            kind: ItemKind::Exercise,
-            duration: "5 min".into(),
+            item_title: "Hanon No. 1".into(),
+            item_type: ItemKind::Exercise,
+            duration_display: Some("5 min".into()),
         },
-        DemoEntry {
+        EditorEntry {
             id: "demo-3".into(),
-            title: "Bach Prelude in G".into(),
-            kind: ItemKind::Piece,
-            duration: "8 min".into(),
-        },
-        DemoEntry {
-            id: "demo-4".into(),
-            title: "Chromatic Scales".into(),
-            kind: ItemKind::Exercise,
-            duration: "3 min".into(),
+            item_title: "Bach Prelude in G".into(),
+            item_type: ItemKind::Piece,
+            duration_display: Some("8 min".into()),
         },
     ]);
-
-    let container_ref = NodeRef::<leptos::html::Div>::new();
-
-    // Catalogue version: just mutate the local Vec in place. The real
-    // surfaces dispatch a Crux `ReorderSetlist` event; we don't need that
-    // here — the visual feel is what matters in the showcase.
     let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
         entries.update(|list| {
             if let Some(from) = list.iter().position(|e| e.id == entry_id) {
@@ -1965,38 +1947,15 @@ fn DragReorderDemo() -> impl IntoView {
             }
         });
     });
-
-    let drag = use_drag_reorder(on_reorder, container_ref);
-    let dragged_id = drag.dragged_id;
-    let on_drag_pointer_down = drag.on_pointer_down;
-
+    let on_remove = Callback::new(move |entry_id: String| {
+        entries.update(|list| list.retain(|e| e.id != entry_id));
+    });
     view! {
-        <div node_ref=container_ref aria-roledescription="sortable" class="flex flex-col">
-            {move || {
-                entries.get().into_iter().enumerate().map(|(idx, entry)| {
-                    let eid = entry.id.clone();
-                    let is_dragging_this = Signal::derive(move || {
-                        dragged_id.get().as_deref() == Some(eid.as_str())
-                    });
-                    view! {
-                        <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
-                            <SetlistEntryRow
-                                id=entry.id.clone()
-                                item_title=entry.title.clone()
-                                item_type=entry.kind.clone()
-                                duration_display=entry.duration.clone()
-                                position=idx
-                                show_controls=false
-                                is_dragging_this=is_dragging_this
-                                on_drag_pointer_down=Some(on_drag_pointer_down)
-                                index=idx
-                                compact=true
-                            />
-                        </div>
-                    }
-                }).collect::<Vec<_>>()
-            }}
-        </div>
+        <EntryListEditor
+            entries=Signal::derive(move || entries.get())
+            on_reorder=on_reorder
+            on_remove=on_remove
+        />
     }
 }
 

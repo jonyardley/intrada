@@ -11,11 +11,10 @@ use intrada_core::validation::MAX_ROUTINE_NAME;
 use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
 
 use crate::components::{
-    BackLink, BuilderItemRow, Button, ButtonVariant, PageHeading, SetlistEntryRow, SkeletonBlock,
-    SkeletonLine,
+    BackLink, BuilderItemRow, Button, ButtonVariant, EditorEntry, EntryListEditor, PageHeading,
+    SkeletonBlock, SkeletonLine,
 };
 use intrada_web::core_bridge::process_effects;
-use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Edit page for a single routine — update name, reorder/remove entries, add from library.
@@ -84,9 +83,9 @@ pub fn RoutineEditView() -> impl IntoView {
 
     let core_save = core;
 
-    // --- Drag-and-drop setup for routine entries ---
-    let entries_container_ref = NodeRef::<leptos::html::Div>::new();
-
+    // Drag-and-drop reorder fires on the local signal; <EntryListEditor>
+    // owns the hook + container ref. Routine edits stay shell-side until
+    // the user hits Save (we don't dispatch a Crux event per drop).
     let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
         entries.update(|e| {
             if let Some(src_idx) = e.iter().position(|x| x.id == entry_id) {
@@ -98,9 +97,25 @@ pub fn RoutineEditView() -> impl IntoView {
         });
     });
 
-    let drag = use_drag_reorder(on_reorder, entries_container_ref);
-    let dragged_id = drag.dragged_id;
-    let on_drag_pointer_down = drag.on_pointer_down;
+    let on_remove_entry = Callback::new(move |entry_id: String| {
+        entries.update(|e| e.retain(|x| x.id != entry_id));
+    });
+
+    // Project `Vec<RoutineEntryView>` (5 fields) down to the minimal
+    // `Vec<EditorEntry>` shape the shared editor consumes. Routines
+    // don't carry planned durations, so `duration_display` is `None`.
+    let editor_entries = Signal::derive(move || {
+        entries
+            .get()
+            .into_iter()
+            .map(|e| EditorEntry {
+                id: e.id,
+                item_title: e.item_title,
+                item_type: e.item_type,
+                duration_display: None,
+            })
+            .collect::<Vec<_>>()
+    });
 
     // Toggle handler — adds the item if not present, removes if it is.
     // Mirrors the setlist builder's on_toggle semantics so the row
@@ -192,49 +207,25 @@ pub fn RoutineEditView() -> impl IntoView {
                         <p class="text-xs text-danger-text">{msg}</p>
                     })}
 
-                    // Entries — uses SetlistEntryRow compact mode and the
-                    // same wrapper-transform reflow as the review sheet.
+                    // Entries — shared <EntryListEditor> shape (drag-reorder
+                    // + compact rows + remove). Same primitive the session
+                    // review sheet uses; the only divergence is the local
+                    // signal vs Crux dispatch and that routines don't show
+                    // per-entry duration.
                     <div>
                         <label class="form-label">"Entries"</label>
                         {move || {
-                            let current = entries.get();
-                            if current.is_empty() {
+                            if entries.get().is_empty() {
                                 view! {
                                     <p class="text-sm text-muted text-center py-4">"No entries. Add items from your library below."</p>
                                 }.into_any()
                             } else {
                                 view! {
-                                    <div node_ref=entries_container_ref aria-roledescription="sortable" class="flex flex-col">
-                                        {current.into_iter().enumerate().map(|(idx, entry)| {
-                                            let entry_id_for_remove = entry.id.clone();
-                                            let eid = entry.id.clone();
-                                            let is_dragging_this = Signal::derive(move || {
-                                                dragged_id.get().as_deref() == Some(eid.as_str())
-                                            });
-
-                                            let on_remove = Callback::new(move |_: String| {
-                                                let id = entry_id_for_remove.clone();
-                                                entries.update(|e| e.retain(|x| x.id != id));
-                                            });
-
-                                            view! {
-                                                <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
-                                                    <SetlistEntryRow
-                                                        id=entry.id.clone()
-                                                        item_title=entry.item_title.clone()
-                                                        item_type=entry.item_type.clone()
-                                                        position=idx
-                                                        on_remove=Some(on_remove)
-                                                        show_controls=true
-                                                        is_dragging_this=is_dragging_this
-                                                        on_drag_pointer_down=Some(on_drag_pointer_down)
-                                                        index=idx
-                                                        compact=true
-                                                    />
-                                                </div>
-                                            }
-                                        }).collect::<Vec<_>>()}
-                                    </div>
+                                    <EntryListEditor
+                                        entries=editor_entries
+                                        on_reorder=on_reorder
+                                        on_remove=on_remove_entry
+                                    />
                                 }.into_any()
                             }
                         }}

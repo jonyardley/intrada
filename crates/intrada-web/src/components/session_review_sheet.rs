@@ -2,9 +2,8 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, SessionEvent, ViewModel};
 
-use crate::components::{BottomSheet, SetlistEntryRow};
+use crate::components::{BottomSheet, EditorEntry, EntryListEditor};
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
-use intrada_web::hooks::use_drag_reorder;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Bottom sheet that opens from the Review session CTA in the builder.
@@ -70,8 +69,6 @@ fn ReviewSheetBody() -> impl IntoView {
     let core_remove = core.clone();
     let core_drag = core.clone();
 
-    let setlist_container_ref = NodeRef::<leptos::html::Div>::new();
-
     // The reorder callback is invoked from a window-level pointer event
     // listener inside `use_drag_reorder` — that runs outside any Leptos
     // owner, so the standard `process_effects` (which calls expect_context)
@@ -92,9 +89,35 @@ fn ReviewSheetBody() -> impl IntoView {
         );
     });
 
-    let drag = use_drag_reorder(on_reorder, setlist_container_ref);
-    let dragged_id = drag.dragged_id;
-    let on_drag_pointer_down = drag.on_pointer_down;
+    let on_remove_entry = Callback::new(move |entry_id: String| {
+        let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
+        let core_ref = core_remove.borrow();
+        let effects = core_ref.process_event(event);
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+    });
+
+    // Project the building setlist's `Vec<SetlistEntryView>` (16 fields)
+    // down to the minimal `Vec<EditorEntry>` (4 fields) shape that the
+    // shared `<EntryListEditor>` consumes. Routines do the same with
+    // their `RoutineEntryView`.
+    let editor_entries = Signal::derive(move || {
+        view_model
+            .get()
+            .building_setlist
+            .as_ref()
+            .map(|s| {
+                s.entries
+                    .iter()
+                    .map(|e| EditorEntry {
+                        id: e.id.clone(),
+                        item_title: e.item_title.clone(),
+                        item_type: e.item_type.clone(),
+                        duration_display: Some(e.duration_display.clone()),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    });
 
     // Local intention signal seeded from VM each open.
     let session_intention_value = RwSignal::new(String::new());
@@ -135,7 +158,6 @@ fn ReviewSheetBody() -> impl IntoView {
                 let vm = view_model.get();
                 match vm.building_setlist {
                     Some(ref setlist) if !setlist.entries.is_empty() => {
-                        let entries = setlist.entries.clone();
                         let total_mins: u32 = setlist
                             .entries
                             .iter()
@@ -145,46 +167,12 @@ fn ReviewSheetBody() -> impl IntoView {
                                 )
                             })
                             .sum::<u32>() / 60;
-                        let core_r = core_remove.clone();
                         view! {
-                            <div node_ref=setlist_container_ref aria-roledescription="sortable" class="flex flex-col">
-                                {entries.into_iter().enumerate().map(|(idx, entry)| {
-                                    let core_r2 = core_r.clone();
-                                    let on_remove = Callback::new(move |entry_id: String| {
-                                        let event = Event::Session(SessionEvent::RemoveFromSetlist { entry_id });
-                                        let core_ref = core_r2.borrow();
-                                        let effects = core_ref.process_event(event);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    });
-
-                                    let eid = entry.id.clone();
-                                    let is_dragging_this = Signal::derive(move || {
-                                        dragged_id.get().as_deref() == Some(eid.as_str())
-                                    });
-
-                                    view! {
-                                        // data-entry-index on the wrapper so the hook
-                                        // walks container.children to find midpoints.
-                                        // row_style_for encapsulates the source / displaced
-                                        // / static transform logic.
-                                        <div style=drag.row_style_for(idx) data-entry-index=idx.to_string()>
-                                            <SetlistEntryRow
-                                                id=entry.id.clone()
-                                                item_title=entry.item_title.clone()
-                                                item_type=entry.item_type.clone()
-                                                duration_display=entry.duration_display.clone()
-                                                position=entry.position
-                                                on_remove=Some(on_remove)
-                                                show_controls=true
-                                                is_dragging_this=is_dragging_this
-                                                on_drag_pointer_down=Some(on_drag_pointer_down)
-                                                index=idx
-                                                compact=true
-                                            />
-                                        </div>
-                                    }
-                                }).collect::<Vec<_>>()}
-                            </div>
+                            <EntryListEditor
+                                entries=editor_entries
+                                on_reorder=on_reorder
+                                on_remove=on_remove_entry
+                            />
                             <div class="flex justify-end pt-2">
                                 <span class="text-xs font-medium text-muted">
                                     {format!("Total: {total_mins} min")}
