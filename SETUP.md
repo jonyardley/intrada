@@ -87,7 +87,7 @@ Migrations run automatically on server startup. Key tables:
 
 - `items` — unified library items (pieces and exercises, with kind, title, composer, category, key, tempo, tags)
 - `sessions` + `setlist_entries` — completed practice sessions with their entries
-- `routines` + `routine_entries` — reusable practice routines
+- `routines` + `routine_entries` — reusable practice **sets** (table names retained from when the concept was called "routines" pre-PR #407; rename was Rust-side only to avoid a DB migration)
 
 ## 3. Fly.io (API Server)
 

@@ -97,21 +97,21 @@ export interface Set {
   updated_at: string;
 }
 
-const STUB_SET_ID = "01JSTUB0000000000ROUTN00001";
+const STUB_SET_ID = "01JSTUB0000000000SETSE00001";
 
 export const STUB_SET: Set = {
   id: STUB_SET_ID,
   name: "Morning Warm-up",
   entries: [
     {
-      id: "01JSTUB0000000000RENTY00001",
+      id: "01JSTUB0000000000SENTY00001",
       item_id: STUB_EXERCISE_ID,
       item_title: "Hanon No. 1",
       item_type: "exercise",
       position: 0,
     },
     {
-      id: "01JSTUB0000000000RENTY00002",
+      id: "01JSTUB0000000000SENTY00002",
       item_id: STUB_PIECE_ID,
       item_title: "Clair de Lune",
       item_type: "piece",

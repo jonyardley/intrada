@@ -860,7 +860,7 @@ body {
 }
 
 /* Page-header add button — circular icon-only "+" used as the trailing
-   action on top-level list pages (Library, Practice, Routines). One
+   action on top-level list pages (Library, Practice, Sets). One
    pattern across web + iOS so the page chrome reads consistently
    regardless of platform. The full-width pill `cta-link` is still used
    inside empty states / inline CTAs. */
