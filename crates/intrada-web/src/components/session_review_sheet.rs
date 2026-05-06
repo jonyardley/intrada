@@ -1,20 +1,20 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, SessionEvent, ViewModel};
+use intrada_core::{Event, SessionEvent, SetEvent, ViewModel};
 
-use crate::components::{BottomSheet, EditorEntry, EntryListEditor};
+use crate::components::{BottomSheet, EditorEntry, EntryListEditor, SetSaveForm};
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Bottom sheet that opens from the Review session CTA in the builder.
-/// Stripped to the essentials per the Pencil `AYx23` design: session
-/// intention, drag-reorderable entry list with a per-row remove button,
-/// and a total. The Start action lives in the sheet's nav bar (right side,
-/// opposite Cancel) — iOS Mail-compose pattern.
+/// Per Pencil `AYx23`: session intention, drag-reorderable entry list
+/// with a per-row remove button, total, and a "Save as Set" form at the
+/// bottom for capturing the current setlist as a reusable Set. The Start
+/// action lives in the sheet's nav bar (right side, opposite Cancel) —
+/// iOS Mail-compose pattern.
 ///
-/// Per-entry rep target / planned duration controls and Save-as-Set
-/// are intentionally not here — see #389 (per-entry controls) and #390
-/// (save/load set) for the planned re-introductions.
+/// Per-entry rep target / planned duration controls are intentionally
+/// not here — see #389 for that re-introduction.
 #[component]
 pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -68,6 +68,17 @@ fn ReviewSheetBody() -> impl IntoView {
     let core_intention = core.clone();
     let core_remove = core.clone();
     let core_drag = core.clone();
+    let core_save_set = core.clone();
+
+    // Shared with the Save-as-Set Show gate below; mirrors the same
+    // predicate used by the parent's nav-action-disabled signal.
+    let has_entries = Signal::derive(move || {
+        view_model.with(|vm| {
+            vm.building_setlist
+                .as_ref()
+                .is_some_and(|s| !s.entries.is_empty())
+        })
+    });
 
     // The reorder callback is invoked from a window-level pointer event
     // listener inside `use_drag_reorder` — that runs outside any Leptos
@@ -187,6 +198,24 @@ fn ReviewSheetBody() -> impl IntoView {
                     }.into_any(),
                 }
             }}
+
+            // Save as Set — gated on a non-empty setlist (matches the
+            // core precondition; saving with no entries surfaces an
+            // error). Hidden until the user has at least one item so the
+            // sheet's empty state stays clean.
+            <Show when=move || has_entries.get()>
+                {
+                    let core_save = core_save_set.clone();
+                    view! {
+                        <SetSaveForm on_save=Callback::new(move |name: String| {
+                            let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                            let core_ref = core_save.borrow();
+                            let effects = core_ref.process_event(event);
+                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        }) />
+                    }
+                }
+            </Show>
 
             {move || {
                 let vm = view_model.get();
