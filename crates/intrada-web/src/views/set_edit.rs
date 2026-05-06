@@ -7,8 +7,8 @@ use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::validation::MAX_ROUTINE_NAME;
-use intrada_core::{Event, RoutineEntry, RoutineEntryView, RoutineEvent, ViewModel};
+use intrada_core::validation::MAX_SET_NAME;
+use intrada_core::{Event, SetEntry, SetEntryView, SetEvent, ViewModel};
 
 use crate::components::{
     BackLink, BuilderItemRow, Button, ButtonVariant, EditorEntry, EntryListEditor, PageHeading,
@@ -17,9 +17,9 @@ use crate::components::{
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Edit page for a single routine — update name, reorder/remove entries, add from library.
+/// Edit page for a single set — update name, reorder/remove entries, add from library.
 #[component]
-pub fn RoutineEditView() -> impl IntoView {
+pub fn SetEditView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
@@ -28,20 +28,20 @@ pub fn RoutineEditView() -> impl IntoView {
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
 
-    // Find routine to edit
-    let routine = view_model
+    // Find set to edit
+    let set = view_model
         .get_untracked()
-        .routines
+        .sets
         .into_iter()
         .find(|r| r.id == id);
 
-    // If routine not found and still loading, show skeleton then re-check
-    if routine.is_none() {
+    // If set not found and still loading, show skeleton then re-check
+    if set.is_none() {
         let id = id.clone();
         return view! {
             <div class="sm:max-w-2xl sm:mx-auto">
-                <BackLink label="Back to Routines" href="/routines".to_string() />
-                <PageHeading text="Edit Routine" />
+                <BackLink label="Back to Sets" href="/routines".to_string() />
+                <PageHeading text="Edit Set" />
                 {move || {
                     if is_loading.get() {
                         view! {
@@ -52,8 +52,8 @@ pub fn RoutineEditView() -> impl IntoView {
                             </div>
                         }.into_any()
                     } else {
-                        // Check if routine appeared after loading completed
-                        let found = view_model.get().routines.iter().any(|r| r.id == id);
+                        // Check if set appeared after loading completed
+                        let found = view_model.get().sets.iter().any(|r| r.id == id);
                         if found {
                             let url = format!("/routines/{}/edit", id);
                             let navigate = use_navigate();
@@ -62,9 +62,9 @@ pub fn RoutineEditView() -> impl IntoView {
                         } else {
                             view! {
                                 <div class="text-center py-8">
-                                    <p class="text-secondary mb-4">"Routine not found."</p>
+                                    <p class="text-secondary mb-4">"Set not found."</p>
                                     <A href="/routines" attr:class="text-accent-text hover:text-accent-hover font-medium">
-                                        "\u{2190} Back to Routines"
+                                        "\u{2190} Back to Sets"
                                     </A>
                                 </div>
                             }.into_any()
@@ -75,16 +75,16 @@ pub fn RoutineEditView() -> impl IntoView {
         }.into_any();
     }
 
-    let routine = routine.expect("routine confirmed Some above");
-    let routine_id = routine.id.clone();
-    let name = RwSignal::new(routine.name.clone());
-    let entries: RwSignal<Vec<RoutineEntryView>> = RwSignal::new(routine.entries.clone());
+    let set = set.expect("set confirmed Some above");
+    let set_id = set.id.clone();
+    let name = RwSignal::new(set.name.clone());
+    let entries: RwSignal<Vec<SetEntryView>> = RwSignal::new(set.entries.clone());
     let form_error = RwSignal::new(Option::<String>::None);
 
     let core_save = core;
 
     // Drag-and-drop reorder fires on the local signal; <EntryListEditor>
-    // owns the hook + container ref. Routine edits stay shell-side until
+    // owns the hook + container ref. Set edits stay shell-side until
     // the user hits Save (we don't dispatch a Crux event per drop).
     let on_reorder = Callback::new(move |(entry_id, new_position): (String, usize)| {
         entries.update(|e| {
@@ -101,8 +101,8 @@ pub fn RoutineEditView() -> impl IntoView {
         entries.update(|e| e.retain(|x| x.id != entry_id));
     });
 
-    // Project `Vec<RoutineEntryView>` (5 fields) down to the minimal
-    // `Vec<EditorEntry>` shape the shared editor consumes. Routines
+    // Project `Vec<SetEntryView>` (5 fields) down to the minimal
+    // `Vec<EditorEntry>` shape the shared editor consumes. Sets
     // don't carry planned durations, so `duration_display` is `None`.
     let editor_entries = Signal::derive(move || {
         entries
@@ -126,7 +126,7 @@ pub fn RoutineEditView() -> impl IntoView {
         if already_in {
             entries.update(|e| e.retain(|x| x.item_id != item_id));
         } else if let Some(item) = vm.items.iter().find(|i| i.id == item_id) {
-            let new_entry = RoutineEntryView {
+            let new_entry = SetEntryView {
                 id: ulid::Ulid::new().to_string(),
                 item_id: item.id.clone(),
                 item_title: item.title.clone(),
@@ -139,15 +139,15 @@ pub fn RoutineEditView() -> impl IntoView {
 
     view! {
         <div class="sm:max-w-2xl sm:mx-auto">
-            <BackLink label="Back to Routines" href="/routines".to_string() />
+            <BackLink label="Back to Sets" href="/routines".to_string() />
 
-            <PageHeading text="Edit Routine" />
+            <PageHeading text="Edit Set" />
 
             <div class="space-y-6">
                 // Name + entries form — flat, no Card chrome (matches the
                 // session builder / review-sheet vocabulary).
                 <form class="space-y-4" on:submit={
-                    let routine_id = routine_id.clone();
+                    let set_id = set_id.clone();
                     let navigate = navigate.clone();
                     move |ev: ev::SubmitEvent| {
                         ev.prevent_default();
@@ -157,23 +157,23 @@ pub fn RoutineEditView() -> impl IntoView {
                             form_error.set(Some("Name is required".to_string()));
                             return;
                         }
-                        if trimmed.len() > MAX_ROUTINE_NAME {
-                            form_error.set(Some(format!("Name must be {MAX_ROUTINE_NAME} characters or fewer")));
+                        if trimmed.len() > MAX_SET_NAME {
+                            form_error.set(Some(format!("Name must be {MAX_SET_NAME} characters or fewer")));
                             return;
                         }
                         form_error.set(None);
 
                         let current_entries = entries.get_untracked();
                         if current_entries.is_empty() {
-                            form_error.set(Some("Routine must have at least one entry".to_string()));
+                            form_error.set(Some("Set must have at least one entry".to_string()));
                             return;
                         }
 
-                        // Build RoutineEntry Vec from the view entries
-                        let routine_entries: Vec<RoutineEntry> = current_entries
+                        // Build SetEntry Vec from the view entries
+                        let set_entries: Vec<SetEntry> = current_entries
                             .into_iter()
                             .enumerate()
-                            .map(|(pos, e)| RoutineEntry {
+                            .map(|(pos, e)| SetEntry {
                                 id: e.id,
                                 item_id: e.item_id,
                                 item_title: e.item_title,
@@ -182,10 +182,10 @@ pub fn RoutineEditView() -> impl IntoView {
                             })
                             .collect();
 
-                        let event = Event::Routine(RoutineEvent::UpdateRoutine {
-                            id: routine_id.clone(),
+                        let event = Event::Set(SetEvent::UpdateSet {
+                            id: set_id.clone(),
                             name: trimmed,
-                            entries: routine_entries,
+                            entries: set_entries,
                         });
                         let core_ref = core_save.borrow();
                         let effects = core_ref.process_event(event);
@@ -194,9 +194,9 @@ pub fn RoutineEditView() -> impl IntoView {
                     }
                 }>
                     <div>
-                        <label for="routine-name" class="form-label">"Routine name"</label>
+                        <label for="set-name" class="form-label">"Set name"</label>
                         <input
-                            id="routine-name"
+                            id="set-name"
                             type="text"
                             class="input-base"
                             placeholder="e.g. Morning Warm-up"
@@ -210,7 +210,7 @@ pub fn RoutineEditView() -> impl IntoView {
                     // Entries — shared <EntryListEditor> shape (drag-reorder
                     // + compact rows + remove). Same primitive the session
                     // review sheet uses; the only divergence is the local
-                    // signal vs Crux dispatch and that routines don't show
+                    // signal vs Crux dispatch and that sets don't show
                     // per-entry duration.
                     <div>
                         <label class="form-label">"Entries"</label>

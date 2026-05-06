@@ -1,8 +1,8 @@
 mod health;
 mod items;
 mod lessons;
-mod routines;
 mod sessions;
+mod sets;
 
 use axum::http::{header, HeaderValue, Method};
 use axum::Router;
@@ -62,6 +62,6 @@ fn api_routes() -> Router<AppState> {
         .merge(health::router())
         .nest("/items", items::router())
         .nest("/sessions", sessions::router())
-        .nest("/routines", routines::router())
+        .nest("/sets", sets::router())
         .nest("/lessons", lessons::router())
 }

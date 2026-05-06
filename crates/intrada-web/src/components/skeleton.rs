@@ -42,7 +42,7 @@ pub fn SkeletonItemCard() -> impl IntoView {
 }
 
 /// Generic list-page skeleton — a heading line followed by stacked card blocks.
-/// Used for sessions and routines pages.
+/// Used for sessions and sets pages.
 #[component]
 pub fn SkeletonCardList(
     /// Number of card placeholders to render

@@ -1,7 +1,7 @@
 pub mod items;
 pub mod lessons;
-pub mod routines;
 pub mod sessions;
+pub mod sets;
 
 use intrada_core::domain::item::ItemKind;
 

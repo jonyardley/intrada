@@ -17,7 +17,7 @@ pub const DEFAULT_REP_TARGET: u8 = 5;
 pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;
-pub const MAX_ROUTINE_NAME: usize = 200;
+pub const MAX_SET_NAME: usize = 200;
 pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 300;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
@@ -251,18 +251,18 @@ pub fn validate_tempo(tempo: &Tempo) -> Result<(), LibraryError> {
     Ok(())
 }
 
-pub fn validate_routine_name(name: &str) -> Result<(), LibraryError> {
+pub fn validate_set_name(name: &str) -> Result<(), LibraryError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
         return Err(LibraryError::Validation {
             field: "name".to_string(),
-            message: "Routine name is required".to_string(),
+            message: "Set name is required".to_string(),
         });
     }
-    if trimmed.len() > MAX_ROUTINE_NAME {
+    if trimmed.len() > MAX_SET_NAME {
         return Err(LibraryError::Validation {
             field: "name".to_string(),
-            message: format!("Routine name must not exceed {MAX_ROUTINE_NAME} characters"),
+            message: format!("Set name must not exceed {MAX_SET_NAME} characters"),
         });
     }
     Ok(())
@@ -298,8 +298,8 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-/// Validate a routine entry's required fields: item_id, item_title, and item_type.
-pub fn validate_routine_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
+/// Validate a set entry's required fields: item_id, item_title, and item_type.
+pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {
             field: "item_id".to_string(),
@@ -1146,13 +1146,13 @@ mod tests {
     }
 
     #[test]
-    fn test_entries_empty_routine() {
+    fn test_entries_empty_set() {
         let entries: Vec<i32> = vec![];
-        let err = validate_entries_not_empty(&entries, "Routine").unwrap_err();
+        let err = validate_entries_not_empty(&entries, "Set").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "entries");
-                assert_eq!(message, "Routine must have at least one entry");
+                assert_eq!(message, "Set must have at least one entry");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1224,16 +1224,16 @@ mod tests {
         }
     }
 
-    // --- validate_routine_entry_fields tests ---
+    // --- validate_set_entry_fields tests ---
 
     #[test]
-    fn test_routine_entry_fields_valid() {
-        assert!(validate_routine_entry_fields("id1", "Sonata").is_ok());
+    fn test_set_entry_fields_valid() {
+        assert!(validate_set_entry_fields("id1", "Sonata").is_ok());
     }
 
     #[test]
-    fn test_routine_entry_fields_empty_item_id() {
-        let err = validate_routine_entry_fields("", "Sonata").unwrap_err();
+    fn test_set_entry_fields_empty_item_id() {
+        let err = validate_set_entry_fields("", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_id");
@@ -1244,8 +1244,8 @@ mod tests {
     }
 
     #[test]
-    fn test_routine_entry_fields_whitespace_item_id() {
-        let err = validate_routine_entry_fields("  ", "Sonata").unwrap_err();
+    fn test_set_entry_fields_whitespace_item_id() {
+        let err = validate_set_entry_fields("  ", "Sonata").unwrap_err();
         match err {
             LibraryError::Validation { field, .. } => {
                 assert_eq!(field, "item_id");
@@ -1255,8 +1255,8 @@ mod tests {
     }
 
     #[test]
-    fn test_routine_entry_fields_empty_item_title() {
-        let err = validate_routine_entry_fields("id1", "").unwrap_err();
+    fn test_set_entry_fields_empty_item_title() {
+        let err = validate_set_entry_fields("id1", "").unwrap_err();
         match err {
             LibraryError::Validation { field, message } => {
                 assert_eq!(field, "item_title");

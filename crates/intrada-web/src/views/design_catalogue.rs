@@ -13,7 +13,7 @@ use crate::components::{
     EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError, GroupedList,
     GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget,
     LibraryItemCard, LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing,
-    PullToRefresh, RatingChips, RoutineSaveForm, SectionLabel, SetlistEntryRow, SkeletonBlock,
+    PullToRefresh, RatingChips, SectionLabel, SetSaveForm, SetlistEntryRow, SkeletonBlock,
     SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput,
     TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
@@ -299,7 +299,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#setlist-entry" class="text-accent-text hover:text-primary">"Setlist Entry"</a></li>
                             <li><a href="#grouped-list" class="text-accent-text hover:text-primary">"Grouped List"</a></li>
                             <li><a href="#drag-drop" class="text-accent-text hover:text-primary">"Drag-to-Reorder List"</a></li>
-                            <li><a href="#routine-save" class="text-accent-text hover:text-primary">"Routine Save Form"</a></li>
+                            <li><a href="#set-save" class="text-accent-text hover:text-primary">"Set Save Form"</a></li>
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
                             <li><a href="#week-strip" class="text-accent-text hover:text-primary">"Week Strip"</a></li>
@@ -1005,11 +1005,11 @@ pub fn DesignCatalogue() -> impl IntoView {
                             </EmptyState>
                         </div>
                         <div>
-                            <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Routines"</p>
+                            <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Sets"</p>
                             <EmptyState
                                 icon=IconName::ListChecks
-                                title="No saved routines yet"
-                                body="Save a setlist as a routine when building a session."
+                                title="No saved sets yet"
+                                body="Save a setlist as a set when building a session."
                             >
                                 <button type="button" class="cta-link">"New Session"</button>
                             </EmptyState>
@@ -1040,7 +1040,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="swipe-actions">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Swipe Actions"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-4">"iOS-style swipe-to-reveal trailing action (UISwipeActionsConfiguration feel). Touch-only; gesture is hidden on non-iOS. Direction discrimination ensures vertical scrolls fall through. Half-open snap reveals the action button; full-swipe past 200px commits without a button tap (light haptic on threshold). Used in production for library and routine row Delete."</p>
+                    <p class="text-xs text-faint mb-4">"iOS-style swipe-to-reveal trailing action (UISwipeActionsConfiguration feel). Touch-only; gesture is hidden on non-iOS. Direction discrimination ensures vertical scrolls fall through. Half-open snap reveals the action button; full-swipe past 200px commits without a button tap (light haptic on threshold). Used in production for library and set row Delete."</p>
                     <p class="text-xs text-faint mb-4">"On iOS device: swipe the row left."</p>
                     <SwipeActionsDemo />
                 </Card>
@@ -1050,7 +1050,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="context-menu">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Context Menu"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-4">"iOS-style long-press context menu (UIContextMenuInteraction feel). ~500ms hold without significant movement triggers; medium haptic on activation. Menu floats anchored to the touch point, clamped to viewport edges, with backdrop blur + dim. Tap outside / Escape / select an action dismisses. Used in production for library and routine row Edit / Delete shortcuts."</p>
+                    <p class="text-xs text-faint mb-4">"iOS-style long-press context menu (UIContextMenuInteraction feel). ~500ms hold without significant movement triggers; medium haptic on activation. Menu floats anchored to the touch point, clamped to viewport edges, with backdrop blur + dim. Tap outside / Escape / select an action dismisses. Used in production for library and set row Edit / Delete shortcuts."</p>
                     <p class="text-xs text-faint mb-4">"On iOS device: long-press the row below."</p>
                     <ContextMenuDemo />
                 </Card>
@@ -1425,16 +1425,16 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="drag-drop">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Drag-to-Reorder List"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-3">"`<EntryListEditor>` \u{2014} the shared drag-reorderable list used by `<SessionReviewSheet>` (session builder) and `<RoutineEditView>` (routine editor). Both call sites project their domain entries (`SetlistEntryView` / `RoutineEntryView`) into the minimal `EditorEntry` shape and pass through. Long-press the grip handle, drag, release to drop \u{2014} rows physically follow the finger via translateY transforms (the `use_drag_reorder` hook + `SetlistEntryRow` compact mode). On iOS this fires a light haptic at threshold and a success haptic on commit. The previous DropIndicator-line pattern was retired in PR #388."</p>
+                    <p class="text-xs text-faint mb-3">"`<EntryListEditor>` \u{2014} the shared drag-reorderable list used by `<SessionReviewSheet>` (session builder) and `<SetEditView>` (set editor). Both call sites project their domain entries (`SetlistEntryView` / `SetEntryView`) into the minimal `EditorEntry` shape and pass through. Long-press the grip handle, drag, release to drop \u{2014} rows physically follow the finger via translateY transforms (the `use_drag_reorder` hook + `SetlistEntryRow` compact mode). On iOS this fires a light haptic at threshold and a success haptic on commit. The previous DropIndicator-line pattern was retired in PR #388."</p>
                     <EntryListEditorDemo />
                 </Card>
             </section>
 
-            // ── Routine Save Form ─────────────────────────────────────
-            <section id="routine-save">
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Routine Save Form"</h3>
+            // ── Set Save Form ─────────────────────────────────────
+            <section id="set-save">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Set Save Form"</h3>
                 <p class="text-xs text-faint mb-3">"Click the dashed button to expand the form. Interactive — try saving without a name."</p>
-                <RoutineSaveForm on_save=Callback::new(|_name: String| {}) />
+                <SetSaveForm on_save=Callback::new(|_name: String| {}) />
             </section>
 
             // ── Loading States ────────────────────────────────────────
@@ -1483,7 +1483,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-3">"SkeletonCardList"</p>
-                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, routines."</p>
+                            <p class="text-xs text-faint mb-3">"Generic list page skeleton for sessions, sets."</p>
                             <SkeletonCardList count=3 />
                         </div>
                     </div>
@@ -1728,7 +1728,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
-                            <span>"SessionSummary — Card + Button + RoutineSaveForm (scoring, notes, save)"</span>
+                            <span>"SessionSummary — Card + Button + SetSaveForm (scoring, notes, save)"</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
@@ -1736,7 +1736,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
-                            <span>"RoutineLoader — Card (routine list with load buttons)"</span>
+                            <span>"SetLoader — Card (set list with load buttons)"</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
@@ -1912,7 +1912,7 @@ fn PullToRefreshDemo() -> impl IntoView {
 
 /// Catalogue demo: EntryListEditor wired up against a local
 /// `RwSignal<Vec<EditorEntry>>` — same shape both production
-/// consumers (SessionReviewSheet, RoutineEditView) use, just with
+/// consumers (SessionReviewSheet, SetEditView) use, just with
 /// shell-only state instead of a Crux dispatch. Subsumes the
 /// hand-rolled `DragReorderDemo` that #403 added — same primitive,
 /// the abstraction now lives in `<EntryListEditor>`.

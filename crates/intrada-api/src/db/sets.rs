@@ -5,41 +5,45 @@ use libsql::Connection;
 use serde::{Deserialize, Serialize};
 
 use intrada_core::domain::item::ItemKind;
-use intrada_core::domain::routine::{Routine, RoutineEntry};
+use intrada_core::domain::set::{Set, SetEntry};
 
 use super::{col, item_kind_from_str, item_kind_to_str};
 use crate::error::ApiError;
 
-/// Request body for creating a new routine.
+/// Request body for creating a new set.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CreateRoutineRequest {
+pub struct CreateSetRequest {
     pub name: String,
-    pub entries: Vec<CreateRoutineEntry>,
+    pub entries: Vec<CreateSetEntry>,
 }
 
-/// Entry within a CreateRoutineRequest.
+/// Entry within a CreateSetRequest.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CreateRoutineEntry {
+pub struct CreateSetEntry {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
 }
 
-/// Request body for updating an existing routine.
+/// Request body for updating an existing set.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UpdateRoutineRequest {
+pub struct UpdateSetRequest {
     pub name: String,
-    pub entries: Vec<CreateRoutineEntry>,
+    pub entries: Vec<CreateSetEntry>,
 }
 
 /// Column list for routine_entries SELECTs.
+///
+/// Note: the table is still called `routine_entries` in the database
+/// — we kept the table name to avoid a migration when renaming the
+/// concept from "routine" to "set". See PR for `Routine` → `Set`.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position";
 
-/// Subquery to select routine IDs for a user. Shared between the parent query
+/// Subquery to select set IDs for a user. Shared between the parent query
 /// and the batch entry query so filter clauses stay in sync (#152).
-const ROUTINE_IDS_FOR_USER: &str = "SELECT id FROM routines WHERE user_id = ?1";
+const SET_IDS_FOR_USER: &str = "SELECT id FROM routines WHERE user_id = ?1";
 
-fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
+fn row_to_entry(row: &libsql::Row) -> Result<SetEntry, ApiError> {
     let id: String = col!(row, 0)?;
     let item_id: String = col!(row, 1)?;
     let item_title: String = col!(row, 2)?;
@@ -47,7 +51,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     let item_type = item_kind_from_str(&item_type_str)?;
     let position: i64 = col!(row, 4)?;
 
-    Ok(RoutineEntry {
+    Ok(SetEntry {
         id,
         item_id,
         item_title,
@@ -56,14 +60,14 @@ fn row_to_entry(row: &libsql::Row) -> Result<RoutineEntry, ApiError> {
     })
 }
 
-/// Fetch entries for a routine, ordered by position.
-async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<RoutineEntry>, ApiError> {
+/// Fetch entries for a set, ordered by position.
+async fn fetch_entries(conn: &Connection, set_id: &str) -> Result<Vec<SetEntry>, ApiError> {
     let mut rows = conn
         .query(
             &format!(
                 "SELECT {ENTRY_COLUMNS} FROM routine_entries WHERE routine_id = ?1 ORDER BY position ASC"
             ),
-            libsql::params![routine_id],
+            libsql::params![set_id],
         )
         .await?;
 
@@ -78,10 +82,10 @@ async fn fetch_entries(conn: &Connection, routine_id: &str) -> Result<Vec<Routin
     Ok(entries)
 }
 
-/// Parse a routine row (without entries) into a partial Routine.
+/// Parse a set row (without entries) into a partial Set.
 ///
 /// Expects columns: id, name, created_at, updated_at
-fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError> {
+fn row_to_set_without_entries(row: &libsql::Row) -> Result<Set, ApiError> {
     let id: String = col!(row, 0)?;
     let name: String = col!(row, 1)?;
     let created_at_str: String = col!(row, 2)?;
@@ -94,7 +98,7 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
         .parse()
         .map_err(|e| ApiError::Internal(format!("Invalid updated_at: {e}")))?;
 
-    Ok(Routine {
+    Ok(Set {
         id,
         name,
         entries: vec![], // filled separately
@@ -103,8 +107,8 @@ fn row_to_routine_without_entries(row: &libsql::Row) -> Result<Routine, ApiError
     })
 }
 
-pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routine>, ApiError> {
-    // Query 1: all routines for this user.
+pub async fn list_sets(conn: &Connection, user_id: &str) -> Result<Vec<Set>, ApiError> {
+    // Query 1: all sets for this user.
     let mut rows = conn
         .query(
             "SELECT id, name, created_at, updated_at
@@ -114,60 +118,53 @@ pub async fn list_routines(conn: &Connection, user_id: &str) -> Result<Vec<Routi
         )
         .await?;
 
-    let mut routines: Vec<Routine> = Vec::new();
+    let mut sets: Vec<Set> = Vec::new();
     while let Some(row) = rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
-        routines.push(row_to_routine_without_entries(&row)?);
+        sets.push(row_to_set_without_entries(&row)?);
     }
 
-    if routines.is_empty() {
-        return Ok(routines);
+    if sets.is_empty() {
+        return Ok(sets);
     }
 
-    // Query 2: all entries for those routines in one batch.
+    // Query 2: all entries for those sets in one batch.
     // routine_id is appended after ENTRY_COLUMNS so row_to_entry reads columns 0–4.
     let mut entry_rows = conn
         .query(
             &format!(
                 "SELECT {ENTRY_COLUMNS}, routine_id FROM routine_entries
-                 WHERE routine_id IN ({ROUTINE_IDS_FOR_USER})
+                 WHERE routine_id IN ({SET_IDS_FOR_USER})
                  ORDER BY routine_id, position ASC"
             ),
             libsql::params![user_id],
         )
         .await?;
 
-    let mut entries_by_routine: HashMap<String, Vec<RoutineEntry>> = HashMap::new();
+    let mut entries_by_set: HashMap<String, Vec<SetEntry>> = HashMap::new();
     while let Some(row) = entry_rows
         .next()
         .await
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
         let entry = row_to_entry(&row)?;
-        let routine_id: String = col!(row, 5)?;
-        entries_by_routine
-            .entry(routine_id)
-            .or_default()
-            .push(entry);
+        let set_id: String = col!(row, 5)?;
+        entries_by_set.entry(set_id).or_default().push(entry);
     }
 
-    for routine in &mut routines {
-        if let Some(entries) = entries_by_routine.remove(&routine.id) {
-            routine.entries = entries;
+    for set in &mut sets {
+        if let Some(entries) = entries_by_set.remove(&set.id) {
+            set.entries = entries;
         }
     }
 
-    Ok(routines)
+    Ok(sets)
 }
 
-pub async fn get_routine(
-    conn: &Connection,
-    id: &str,
-    user_id: &str,
-) -> Result<Option<Routine>, ApiError> {
+pub async fn get_set(conn: &Connection, id: &str, user_id: &str) -> Result<Option<Set>, ApiError> {
     let mut rows = conn
         .query(
             "SELECT id, name, created_at, updated_at FROM routines WHERE id = ?1 AND user_id = ?2",
@@ -181,29 +178,29 @@ pub async fn get_routine(
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
         Some(row) => {
-            let mut routine = row_to_routine_without_entries(&row)?;
-            routine.entries = fetch_entries(conn, &routine.id).await?;
-            Ok(Some(routine))
+            let mut set = row_to_set_without_entries(&row)?;
+            set.entries = fetch_entries(conn, &set.id).await?;
+            Ok(Some(set))
         }
         None => Ok(None),
     }
 }
 
-pub async fn insert_routine(
+pub async fn insert_set(
     conn: &Connection,
     user_id: &str,
-    input: &CreateRoutineRequest,
-) -> Result<Routine, ApiError> {
+    input: &CreateSetRequest,
+) -> Result<Set, ApiError> {
     let id = ulid::Ulid::new().to_string();
     let now = Utc::now();
     let created_at_str = now.to_rfc3339();
     let updated_at_str = now.to_rfc3339();
 
-    // Use a transaction to insert routine + entries atomically
+    // Use a transaction to insert set + entries atomically
     conn.execute("BEGIN", ()).await?;
 
-    let result: Result<Routine, ApiError> = async {
-        // Insert routine row
+    let result: Result<Set, ApiError> = async {
+        // Insert set row
         conn.execute(
             "INSERT INTO routines (id, name, created_at, updated_at, user_id)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -217,7 +214,7 @@ pub async fn insert_routine(
         )
         .await?;
 
-        // Insert each routine entry
+        // Insert each set entry
         let mut entries = Vec::with_capacity(input.entries.len());
         for (position, entry) in input.entries.iter().enumerate() {
             let entry_id = ulid::Ulid::new().to_string();
@@ -235,7 +232,7 @@ pub async fn insert_routine(
             )
             .await?;
 
-            entries.push(RoutineEntry {
+            entries.push(SetEntry {
                 id: entry_id,
                 item_id: entry.item_id.clone(),
                 item_title: entry.item_title.clone(),
@@ -244,7 +241,7 @@ pub async fn insert_routine(
             });
         }
 
-        Ok(Routine {
+        Ok(Set {
             id: id.clone(),
             name: input.name.clone(),
             entries,
@@ -255,9 +252,9 @@ pub async fn insert_routine(
     .await;
 
     match result {
-        Ok(routine) => {
+        Ok(set) => {
             conn.execute("COMMIT", ()).await?;
-            Ok(routine)
+            Ok(set)
         }
         Err(e) => {
             let _ = conn.execute("ROLLBACK", ()).await;
@@ -266,14 +263,14 @@ pub async fn insert_routine(
     }
 }
 
-pub async fn update_routine(
+pub async fn update_set(
     conn: &Connection,
     id: &str,
     user_id: &str,
-    input: &UpdateRoutineRequest,
-) -> Result<Option<Routine>, ApiError> {
-    // Check if routine exists
-    let existing = get_routine(conn, id, user_id).await?;
+    input: &UpdateSetRequest,
+) -> Result<Option<Set>, ApiError> {
+    // Check if set exists
+    let existing = get_set(conn, id, user_id).await?;
     let existing = match existing {
         Some(r) => r,
         None => return Ok(None),
@@ -284,8 +281,8 @@ pub async fn update_routine(
 
     conn.execute("BEGIN", ()).await?;
 
-    let result: Result<Routine, ApiError> = async {
-        // Update routine name and updated_at
+    let result: Result<Set, ApiError> = async {
+        // Update set name and updated_at
         conn.execute(
             "UPDATE routines SET name = ?1, updated_at = ?2 WHERE id = ?3 AND user_id = ?4",
             libsql::params![input.name.as_str(), updated_at_str.as_str(), id, user_id],
@@ -317,7 +314,7 @@ pub async fn update_routine(
             )
             .await?;
 
-            entries.push(RoutineEntry {
+            entries.push(SetEntry {
                 id: entry_id,
                 item_id: entry.item_id.clone(),
                 item_title: entry.item_title.clone(),
@@ -326,7 +323,7 @@ pub async fn update_routine(
             });
         }
 
-        Ok(Routine {
+        Ok(Set {
             id: id.to_string(),
             name: input.name.clone(),
             entries,
@@ -337,9 +334,9 @@ pub async fn update_routine(
     .await;
 
     match result {
-        Ok(routine) => {
+        Ok(set) => {
             conn.execute("COMMIT", ()).await?;
-            Ok(Some(routine))
+            Ok(Some(set))
         }
         Err(e) => {
             let _ = conn.execute("ROLLBACK", ()).await;
@@ -348,8 +345,8 @@ pub async fn update_routine(
     }
 }
 
-pub async fn delete_routine(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
-    // Verify ownership first — only delete entries if the routine belongs to this user.
+pub async fn delete_set(conn: &Connection, id: &str, user_id: &str) -> Result<bool, ApiError> {
+    // Verify ownership first — only delete entries if the set belongs to this user.
     let rows_affected = conn
         .execute(
             "DELETE FROM routines WHERE id = ?1 AND user_id = ?2",

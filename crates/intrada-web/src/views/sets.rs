@@ -3,7 +3,7 @@ use leptos_router::components::A;
 use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, ItemKind, RoutineEvent, RoutineView, ViewModel};
+use intrada_core::{Event, ItemKind, SetEvent, SetView, ViewModel};
 
 use crate::components::{
     AccentBar, AccentRow, ContextMenu, ContextMenuAction, EmptyState, Icon, IconName,
@@ -12,22 +12,22 @@ use crate::components::{
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Management page for saved routines — lists all routines with edit/delete actions.
+/// Management page for saved sets — lists all sets with edit/delete actions.
 #[component]
-pub fn RoutinesListView() -> impl IntoView {
+pub fn SetsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let is_loading = expect_context::<IsLoading>();
 
     view! {
         <div>
             <PageHeading
-                text="Routines"
+                text="Sets"
                 subtitle="Save and reuse your favourite practice structures."
                 trailing=Box::new(move || view! {
                     // Trailing + action mirrors the Library page heading.
-                    // Navigates to the session builder (where routines are
-                    // born — see the Save-as-Routine flow).
-                    <PageAddButton href="/sessions/new" aria_label="New Routine" />
+                    // Navigates to the session builder (where sets are
+                    // born — see the Save-as-Set flow).
+                    <PageAddButton href="/sessions/new" aria_label="New Set" />
                 }.into_any())
             />
 
@@ -40,12 +40,12 @@ pub fn RoutinesListView() -> impl IntoView {
 
                 let vm = view_model.get();
 
-                if vm.routines.is_empty() {
+                if vm.sets.is_empty() {
                     view! {
                         <EmptyState
                             icon=IconName::ListChecks
-                            title="No saved routines yet"
-                            body="Save a setlist as a routine when building a session or from the session summary."
+                            title="No saved sets yet"
+                            body="Save a setlist as a set when building a session or from the session summary."
                         >
                             <A href="/sessions/new" attr:class="cta-link">
                                 "New Session"
@@ -54,10 +54,10 @@ pub fn RoutinesListView() -> impl IntoView {
                     }.into_any()
                 } else {
                     view! {
-                        <ul class="space-y-2 list-none p-0" role="list" aria-label="Saved routines">
-                            {vm.routines.into_iter().map(|routine| view! {
+                        <ul class="space-y-2 list-none p-0" role="list" aria-label="Saved sets">
+                            {vm.sets.into_iter().map(|set| view! {
                                 <li>
-                                    <RoutineRow routine=routine />
+                                    <SetRow set=set />
                                 </li>
                             }).collect::<Vec<_>>()}
                         </ul>
@@ -69,7 +69,7 @@ pub fn RoutinesListView() -> impl IntoView {
                                 href="/sessions/new"
                                 attr:class="text-sm font-medium text-accent-text hover:text-accent-hover"
                             >
-                                "Create New Routine"
+                                "Create New Set"
                             </A>
                         </div>
                     }.into_any()
@@ -79,20 +79,20 @@ pub fn RoutinesListView() -> impl IntoView {
     }
 }
 
-/// Build the meta line shown under the routine title — "N items" or
+/// Build the meta line shown under the set title — "N items" or
 /// "N pieces · M exercises" depending on the mix.
 ///
-/// Pencil shows "3 pieces · 20 min" but `RoutineEntryView` carries no
+/// Pencil shows "3 pieces · 20 min" but `SetEntryView` carries no
 /// duration today, so we surface the type breakdown instead. Total
 /// duration is a #TODO once we model item duration in core.
-fn routine_meta_line(routine: &RoutineView) -> String {
-    let (pieces, exercises) = routine
-        .entries
-        .iter()
-        .fold((0usize, 0usize), |(p, e), entry| match entry.item_type {
-            ItemKind::Piece => (p + 1, e),
-            ItemKind::Exercise => (p, e + 1),
-        });
+fn set_meta_line(set: &SetView) -> String {
+    let (pieces, exercises) =
+        set.entries
+            .iter()
+            .fold((0usize, 0usize), |(p, e), entry| match entry.item_type {
+                ItemKind::Piece => (p + 1, e),
+                ItemKind::Exercise => (p, e + 1),
+            });
     match (pieces, exercises) {
         (0, 0) => "Empty".to_string(),
         (p, 0) => format!("{} {}", p, if p == 1 { "piece" } else { "pieces" }),
@@ -107,29 +107,29 @@ fn routine_meta_line(routine: &RoutineView) -> String {
     }
 }
 
-/// A single routine row — name + meta line, full-row tap to edit. The
+/// A single set row — name + meta line, full-row tap to edit. The
 /// Edit / Delete affordances live in the swipe gesture and long-press
 /// context menu, matching the iOS list pattern. No accent bar (`bar=
-/// AccentBar::None`) — the routine list is uniform-type so bars would
+/// AccentBar::None`) — the set list is uniform-type so bars would
 /// flatten into noise instead of carrying signal.
 #[component]
-fn RoutineRow(routine: RoutineView) -> impl IntoView {
+fn SetRow(set: SetView) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
 
-    let id = routine.id.clone();
-    let id_for_swipe = routine.id.clone();
-    let id_for_menu_delete = routine.id.clone();
-    let name = routine.name.clone();
-    let meta = routine_meta_line(&routine);
+    let id = set.id.clone();
+    let id_for_swipe = set.id.clone();
+    let id_for_menu_delete = set.id.clone();
+    let name = set.name.clone();
+    let meta = set_meta_line(&set);
     let edit_href = format!("/routines/{}/edit", id);
     let edit_href_for_menu = edit_href.clone();
 
     let core_for_gesture = core.clone();
-    let direct_delete = Callback::new(move |routine_id: String| {
-        let event = Event::Routine(RoutineEvent::DeleteRoutine { id: routine_id });
+    let direct_delete = Callback::new(move |set_id: String| {
+        let event = Event::Set(SetEvent::DeleteSet { id: set_id });
         let effects = {
             let core_ref = core_for_gesture.borrow();
             core_ref.process_event(event)

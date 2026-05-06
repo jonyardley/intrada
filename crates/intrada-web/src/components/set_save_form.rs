@@ -2,13 +2,13 @@ use leptos::prelude::*;
 
 use crate::components::{Button, ButtonVariant, Card};
 
-/// Inline form for saving a setlist or summary as a named routine.
+/// Inline form for saving a setlist or summary as a named set.
 ///
-/// When collapsed, shows a "Save as Routine" button. When expanded, shows a
+/// When collapsed, shows a "Save as Set" button. When expanded, shows a
 /// name input, Save, and Cancel buttons. Calls `on_save` with the entered name.
 #[component]
-pub fn RoutineSaveForm(
-    /// Callback invoked with the routine name when the user taps Save.
+pub fn SetSaveForm(
+    /// Callback invoked with the set name when the user taps Save.
     on_save: Callback<String>,
 ) -> impl IntoView {
     let expanded = RwSignal::new(false);
@@ -34,12 +34,12 @@ pub fn RoutineSaveForm(
                 let try_save_btn = try_save;
                 view! {
                     <Card>
-                        <h4 class="card-title">"Save as Routine"</h4>
+                        <h4 class="card-title">"Save as Set"</h4>
                         <div class="space-y-3">
                             <div>
-                                <label class="sr-only" for="routine-name">"Routine name"</label>
+                                <label class="sr-only" for="set-name">"Set name"</label>
                                 <input
-                                    id="routine-name"
+                                    id="set-name"
                                     type="text"
                                     class="input-base"
                                     placeholder="e.g. Morning Warm-up"
@@ -83,7 +83,7 @@ pub fn RoutineSaveForm(
                         class="w-full rounded-lg border border-dashed border-border-default bg-surface-secondary px-4 py-3 text-sm font-medium text-accent-text hover:bg-surface-hover hover:border-accent-focus/40 motion-safe:transition-colors motion-safe:duration-150"
                         on:click=move |_| expanded.set(true)
                     >
-                        "Save as Routine"
+                        "Save as Set"
                     </button>
                 }.into_any()
             }

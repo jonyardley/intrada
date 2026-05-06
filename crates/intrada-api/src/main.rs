@@ -58,7 +58,7 @@ async fn main() {
     // checks FK constraints via a parent-table read, which suffers the same
     // cross-connection consistency issue that caused photo upload 404s.
     // All cascade deletes are handled explicitly in application code
-    // (delete_session, delete_routine, delete_lesson).
+    // (delete_session, delete_set, delete_lesson).
 
     tracing::info!("Running migrations...");
     migrations::run_migrations(&conn)

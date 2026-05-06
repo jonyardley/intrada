@@ -11,7 +11,7 @@ use crate::domain::item::Item;
 use crate::domain::lesson::Lesson;
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
-    CreateItem, CreateLesson, CreateRoutineRequest, UpdateItem, UpdateLesson, UpdateRoutineRequest,
+    CreateItem, CreateLesson, CreateSetRequest, UpdateItem, UpdateLesson, UpdateSetRequest,
 };
 
 type Http = crux_http::command::Http<Effect, Event>;
@@ -44,18 +44,18 @@ pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
         })
 }
 
-pub fn fetch_routines(api_base_url: &str) -> Command<Effect, Event> {
-    use crate::domain::routine::Routine;
+pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
+    use crate::domain::set::Set;
 
-    Http::get(format!("{api_base_url}/api/routines"))
-        .expect_json::<Vec<Routine>>()
+    Http::get(format!("{api_base_url}/api/sets"))
+        .expect_json::<Vec<Set>>()
         .build()
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
-                Some(routines) => Event::RoutinesLoaded { routines },
-                None => Event::LoadFailed("Failed to parse routines response".into()),
+                Some(sets) => Event::SetsLoaded { sets },
+                None => Event::LoadFailed("Failed to parse sets response".into()),
             },
-            Err(e) => Event::LoadFailed(format!("Failed to load routines: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to load sets: {e}")),
         })
 }
 
@@ -140,50 +140,44 @@ pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
-// ── Routine operations ──────────────────────────────────────────────────
+// ── Set operations ──────────────────────────────────────────────────
 
-pub fn create_routine(
-    api_base_url: &str,
-    routine: &crate::domain::routine::Routine,
-) -> Command<Effect, Event> {
-    let create = CreateRoutineRequest::from_routine(routine);
-    Http::post(format!("{api_base_url}/api/routines"))
+pub fn create_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<Effect, Event> {
+    let create = CreateSetRequest::from_set(set);
+    Http::post(format!("{api_base_url}/api/sets"))
         .body_json(&create)
-        .expect("serialize CreateRoutineRequest")
+        .expect("serialize CreateSetRequest")
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchRoutines,
-            Err(e) => Event::LoadFailed(format!("Failed to save routine: {e}")),
+            Ok(_) => Event::RefetchSets,
+            Err(e) => Event::LoadFailed(format!("Failed to save set: {e}")),
         })
 }
 
-pub fn update_routine(
-    api_base_url: &str,
-    routine: &crate::domain::routine::Routine,
-) -> Command<Effect, Event> {
-    use crate::domain::routine::Routine;
+pub fn update_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<Effect, Event> {
+    use crate::domain::set::Set;
 
-    let update = UpdateRoutineRequest::from_routine(routine);
-    Http::put(format!("{api_base_url}/api/routines/{}", routine.id))
+    let update = UpdateSetRequest::from_set(set);
+    Http::put(format!("{api_base_url}/api/sets/{}", set.id))
         .body_json(&update)
-        .expect("serialize UpdateRoutineRequest")
-        .expect_json::<Routine>()
+        .expect("serialize UpdateSetRequest")
+        .expect_json::<Set>()
         .build()
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
-                Some(routine) => Event::RoutineUpdated { routine },
-                None => Event::LoadFailed("update_routine: server returned no body".into()),
+                Some(set) => Event::SetUpdated { set },
+                None => Event::LoadFailed("update_set: server returned no body".into()),
             },
-            Err(e) => Event::LoadFailed(format!("Failed to update routine: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to update set: {e}")),
         })
 }
 
-pub fn delete_routine(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::delete(format!("{api_base_url}/api/routines/{id}"))
+pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::delete(format!("{api_base_url}/api/sets/{id}"))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete routine: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to delete set: {e}")),
         })
 }
 

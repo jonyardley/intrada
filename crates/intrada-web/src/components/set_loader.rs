@@ -1,17 +1,17 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, RoutineEvent, ViewModel};
+use intrada_core::{Event, SetEvent, ViewModel};
 
 use crate::components::Card;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Shows saved routines and lets the user load one into the current setlist.
+/// Shows saved sets and lets the user load one into the current setlist.
 ///
-/// Each routine is displayed as a row with name, entry count, and a Load button.
-/// Only visible when at least one routine exists.
+/// Each set is displayed as a row with name, entry count, and a Load button.
+/// Only visible when at least one set exists.
 #[component]
-pub fn RoutineLoader() -> impl IntoView {
+pub fn SetLoader() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
@@ -20,18 +20,18 @@ pub fn RoutineLoader() -> impl IntoView {
     view! {
         {move || {
             let vm = view_model.get();
-            if vm.routines.is_empty() {
+            if vm.sets.is_empty() {
                 None
             } else {
                 let core_load = core.clone();
                 Some(view! {
                     <Card>
-                        <h3 class="section-title">"Saved Routines"</h3>
+                        <h3 class="section-title">"Saved Sets"</h3>
                         <div class="space-y-2">
-                            {vm.routines.iter().map(|routine| {
-                                let routine_id = routine.id.clone();
-                                let name = routine.name.clone();
-                                let entry_count = routine.entry_count;
+                            {vm.sets.iter().map(|set| {
+                                let set_id = set.id.clone();
+                                let name = set.name.clone();
+                                let entry_count = set.entry_count;
                                 let core_l = core_load.clone();
                                 view! {
                                     <div class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover">
@@ -44,8 +44,8 @@ pub fn RoutineLoader() -> impl IntoView {
                                         <button
                                             class="text-xs font-medium text-accent-text hover:text-accent-hover px-2 py-1 rounded hover:bg-surface-secondary motion-safe:transition-colors motion-safe:duration-150"
                                             on:click=move |_| {
-                                                let event = Event::Routine(RoutineEvent::LoadRoutineIntoSetlist {
-                                                    routine_id: routine_id.clone(),
+                                                let event = Event::Set(SetEvent::LoadSetIntoSetlist {
+                                                    set_id: set_id.clone(),
                                                 });
                                                 let core_ref = core_l.borrow();
                                                 let effects = core_ref.process_event(event);

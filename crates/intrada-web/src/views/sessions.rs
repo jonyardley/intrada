@@ -258,7 +258,7 @@ pub(crate) fn SessionRow(
         // Delete is reachable via swipe-left (mobile) and long-press → context
         // menu. No inline confirmation banner — the gesture itself is the
         // deliberate confirmation, matching native UISwipeActionsConfiguration
-        // / UIContextMenuInteraction behaviour and the Routines pattern.
+        // / UIContextMenuInteraction behaviour and the Sets pattern.
         <ContextMenu actions=menu_actions>
             <SwipeActions on_delete=Callback::new(move |_| {
                 direct_delete.run(id_for_swipe.clone());
@@ -297,7 +297,7 @@ pub(crate) fn SessionRow(
                                     // long-press → context menu (mobile + desktop).
                                     // The previous inline text-button on the row was a
                                     // duplicate affordance; the gesture-based ones match
-                                    // the iOS pattern used elsewhere (Routines, Library).
+                                    // the iOS pattern used elsewhere (Sets, Library).
                                 </div>
                                 // Entry details with scores
                                 <div class="mt-1 pt-2 space-y-1.5">

@@ -5,7 +5,7 @@ use leptos_router::hooks::use_location;
 
 /// Mobile bottom tab bar for primary navigation.
 ///
-/// Shows Library / Practice / Routines / Analytics tabs. Hidden on `sm:`
+/// Shows Library / Practice / Sets / Analytics tabs. Hidden on `sm:`
 /// and wider where the header nav is visible instead.
 ///
 /// Icons follow the iOS convention: outline (stroke) for the inactive
@@ -28,7 +28,7 @@ pub fn BottomTabBar() -> impl IntoView {
         path.starts_with("/sessions")
     };
 
-    let is_routines_active = move || {
+    let is_sets_active = move || {
         let path = location.pathname.get();
         path.starts_with("/routines")
     };
@@ -91,25 +91,25 @@ pub fn BottomTabBar() -> impl IntoView {
                     <span class="text-xs font-medium">"Practice"</span>
                 </A>
 
-                // Routines tab — list
+                // Sets tab — list
                 <A
                     href="/routines"
                     attr:class=move || {
-                        if is_routines_active() {
+                        if is_sets_active() {
                             if has_tapped.get() { spring } else { active }
                         } else {
                             inactive
                         }
                     }
-                    attr:aria-current=move || if is_routines_active() { Some("page") } else { None }
+                    attr:aria-current=move || if is_sets_active() { Some("page") } else { None }
                     on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
-                    {move || if is_routines_active() {
-                        view! { <RoutinesIconSolid /> }.into_any()
+                    {move || if is_sets_active() {
+                        view! { <SetsIconSolid /> }.into_any()
                     } else {
-                        view! { <RoutinesIconOutline /> }.into_any()
+                        view! { <SetsIconOutline /> }.into_any()
                     }}
-                    <span class="text-xs font-medium">"Routines"</span>
+                    <span class="text-xs font-medium">"Sets"</span>
                 </A>
 
                 // Analytics tab — bar chart
@@ -210,9 +210,9 @@ fn ClockIconSolid() -> impl IntoView {
 }
 
 #[component]
-fn RoutinesIconOutline() -> impl IntoView {
+fn SetsIconOutline() -> impl IntoView {
     // Queue-list shape: a top "header" rule with three rows below — reads
-    // unambiguously as "saved routine / template" rather than a generic
+    // unambiguously as "saved set / template" rather than a generic
     // hamburger menu.
     view! {
         <svg
@@ -230,7 +230,7 @@ fn RoutinesIconOutline() -> impl IntoView {
 }
 
 #[component]
-fn RoutinesIconSolid() -> impl IntoView {
+fn SetsIconSolid() -> impl IntoView {
     view! {
         <svg
             xmlns="http://www.w3.org/2000/svg"

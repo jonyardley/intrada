@@ -12,17 +12,17 @@ use crate::validation;
 
 /// A named, reusable setlist template containing an ordered list of library item references.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct Routine {
+pub struct Set {
     pub id: String,
     pub name: String,
-    pub entries: Vec<RoutineEntry>,
+    pub entries: Vec<SetEntry>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-/// A single item within a routine, representing a library piece or exercise.
+/// A single item within a set, representing a library piece or exercise.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct RoutineEntry {
+pub struct SetEntry {
     pub id: String,
     pub item_id: String,
     pub item_title: String,
@@ -33,62 +33,61 @@ pub struct RoutineEntry {
 // ── Events ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum RoutineEvent {
-    SaveBuildingAsRoutine {
+pub enum SetEvent {
+    SaveBuildingAsSet {
         name: String,
     },
-    SaveSummaryAsRoutine {
+    SaveSummaryAsSet {
         name: String,
     },
-    LoadRoutineIntoSetlist {
-        routine_id: String,
+    LoadSetIntoSetlist {
+        set_id: String,
     },
-    DeleteRoutine {
+    DeleteSet {
         id: String,
     },
-    UpdateRoutine {
+    UpdateSet {
         id: String,
         name: String,
-        entries: Vec<RoutineEntry>,
+        entries: Vec<SetEntry>,
     },
 }
 
 // ── Handler ────────────────────────────────────────────────────────────
 
-pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<Effect, Event> {
+pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        RoutineEvent::SaveBuildingAsRoutine { name } => {
+        SetEvent::SaveBuildingAsSet { name } => {
             // Precondition: must be in Building status
             let building = match &model.session_status {
                 SessionStatus::Building(b) => b,
                 _ => {
-                    model.last_error =
-                        Some("Can only save routine during building phase".to_string());
+                    model.last_error = Some("Can only save set during building phase".to_string());
                     return crux_core::render::render();
                 }
             };
 
             // Validate name
-            if let Err(e) = validation::validate_routine_name(&name) {
+            if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
             // Validate entries non-empty
             if building.entries.is_empty() {
-                model.last_error = Some("Routine must have at least one entry".to_string());
+                model.last_error = Some("Set must have at least one entry".to_string());
                 return crux_core::render::render();
             }
 
             let now = Utc::now();
-            let routine = Routine {
+            let set = Set {
                 id: ulid::Ulid::new().to_string(),
                 name: name.trim().to_string(),
                 entries: building
                     .entries
                     .iter()
                     .enumerate()
-                    .map(|(i, e)| RoutineEntry {
+                    .map(|(i, e)| SetEntry {
                         id: ulid::Ulid::new().to_string(),
                         item_id: e.item_id.clone(),
                         item_title: e.item_title.clone(),
@@ -100,47 +99,46 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
                 updated_at: now,
             };
 
-            model.routines.push(routine.clone());
+            model.sets.push(set.clone());
             model.last_error = None;
 
             Command::all([
-                crate::http::create_routine(&model.api_base_url, &routine),
+                crate::http::create_set(&model.api_base_url, &set),
                 crux_core::render::render(),
             ])
         }
 
-        RoutineEvent::SaveSummaryAsRoutine { name } => {
+        SetEvent::SaveSummaryAsSet { name } => {
             // Precondition: must be in Summary status
             let summary = match &model.session_status {
                 SessionStatus::Summary(s) => s,
                 _ => {
-                    model.last_error =
-                        Some("Can only save routine from practice summary".to_string());
+                    model.last_error = Some("Can only save set from practice summary".to_string());
                     return crux_core::render::render();
                 }
             };
 
             // Validate name
-            if let Err(e) = validation::validate_routine_name(&name) {
+            if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
             // Validate entries non-empty
             if summary.entries.is_empty() {
-                model.last_error = Some("Routine must have at least one entry".to_string());
+                model.last_error = Some("Set must have at least one entry".to_string());
                 return crux_core::render::render();
             }
 
             let now = Utc::now();
-            let routine = Routine {
+            let set = Set {
                 id: ulid::Ulid::new().to_string(),
                 name: name.trim().to_string(),
                 entries: summary
                     .entries
                     .iter()
                     .enumerate()
-                    .map(|(i, e)| RoutineEntry {
+                    .map(|(i, e)| SetEntry {
                         id: ulid::Ulid::new().to_string(),
                         item_id: e.item_id.clone(),
                         item_title: e.item_title.clone(),
@@ -152,37 +150,36 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
                 updated_at: now,
             };
 
-            model.routines.push(routine.clone());
+            model.sets.push(set.clone());
             model.last_error = None;
 
             Command::all([
-                crate::http::create_routine(&model.api_base_url, &routine),
+                crate::http::create_set(&model.api_base_url, &set),
                 crux_core::render::render(),
             ])
         }
 
-        RoutineEvent::LoadRoutineIntoSetlist { routine_id } => {
+        SetEvent::LoadSetIntoSetlist { set_id } => {
             // Precondition: must be in Building status
             let building = match &mut model.session_status {
                 SessionStatus::Building(b) => b,
                 _ => {
-                    model.last_error =
-                        Some("Can only load routine during building phase".to_string());
+                    model.last_error = Some("Can only load set during building phase".to_string());
                     return crux_core::render::render();
                 }
             };
 
-            // Find routine by ID
-            let routine = match model.routines.iter().find(|r| r.id == routine_id) {
+            // Find set by ID
+            let set = match model.sets.iter().find(|r| r.id == set_id) {
                 Some(r) => r.clone(),
                 None => {
-                    model.last_error = Some("Routine not found".to_string());
+                    model.last_error = Some("Set not found".to_string());
                     return crux_core::render::render();
                 }
             };
 
-            // Create new SetlistEntry objects from routine entries (fresh ULIDs)
-            for entry in &routine.entries {
+            // Create new SetlistEntry objects from set entries (fresh ULIDs)
+            for entry in &set.entries {
                 building.entries.push(SetlistEntry {
                     id: ulid::Ulid::new().to_string(),
                     item_id: entry.item_id.clone(),
@@ -212,52 +209,52 @@ pub fn handle_routine_event(event: RoutineEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
-        RoutineEvent::DeleteRoutine { id } => {
-            model.routines.retain(|r| r.id != id);
+        SetEvent::DeleteSet { id } => {
+            model.sets.retain(|r| r.id != id);
             model.last_error = None;
 
             Command::all([
-                crate::http::delete_routine(&model.api_base_url, &id),
+                crate::http::delete_set(&model.api_base_url, &id),
                 crux_core::render::render(),
             ])
         }
 
-        RoutineEvent::UpdateRoutine { id, name, entries } => {
+        SetEvent::UpdateSet { id, name, entries } => {
             // Validate name
-            if let Err(e) = validation::validate_routine_name(&name) {
+            if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
             // Validate entries non-empty
-            if let Err(e) = validation::validate_entries_not_empty(&entries, "Routine") {
+            if let Err(e) = validation::validate_entries_not_empty(&entries, "Set") {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            // Find and update routine
-            let routine = match model.routines.iter_mut().find(|r| r.id == id) {
+            // Find and update set
+            let set = match model.sets.iter_mut().find(|r| r.id == id) {
                 Some(r) => r,
                 None => {
-                    model.last_error = Some("Routine not found".to_string());
+                    model.last_error = Some("Set not found".to_string());
                     return crux_core::render::render();
                 }
             };
 
-            routine.name = name.trim().to_string();
-            routine.entries = entries;
-            routine.updated_at = Utc::now();
+            set.name = name.trim().to_string();
+            set.entries = entries;
+            set.updated_at = Utc::now();
 
             // Reindex positions
-            for (i, entry) in routine.entries.iter_mut().enumerate() {
+            for (i, entry) in set.entries.iter_mut().enumerate() {
                 entry.position = i;
             }
 
-            let updated = routine.clone();
+            let updated = set.clone();
             model.last_error = None;
 
             Command::all([
-                crate::http::update_routine(&model.api_base_url, &updated),
+                crate::http::update_set(&model.api_base_url, &updated),
                 crux_core::render::render(),
             ])
         }
@@ -324,19 +321,19 @@ mod tests {
         ]
     }
 
-    fn sample_routine() -> Routine {
-        Routine {
-            id: "routine-1".to_string(),
+    fn sample_set() -> Set {
+        Set {
+            id: "set-1".to_string(),
             name: "Morning Warm-up".to_string(),
             entries: vec![
-                RoutineEntry {
+                SetEntry {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
                     item_type: ItemKind::Exercise,
                     position: 0,
                 },
-                RoutineEntry {
+                SetEntry {
                     id: "re-2".to_string(),
                     item_id: "item-b".to_string(),
                     item_title: "C Major Scale".to_string(),
@@ -350,20 +347,20 @@ mod tests {
     }
 
     #[test]
-    fn save_building_as_routine_creates_routine() {
+    fn save_building_as_set_creates_set() {
         let mut model = model_with_building(sample_setlist_entries());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "Morning Warm-up".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 1);
-        assert_eq!(model.routines[0].name, "Morning Warm-up");
-        assert_eq!(model.routines[0].entries.len(), 2);
-        assert_eq!(model.routines[0].entries[0].item_title, "Long Tones");
-        assert_eq!(model.routines[0].entries[1].item_title, "C Major Scale");
+        assert_eq!(model.sets.len(), 1);
+        assert_eq!(model.sets[0].name, "Morning Warm-up");
+        assert_eq!(model.sets[0].entries.len(), 2);
+        assert_eq!(model.sets[0].entries[0].item_title, "Long Tones");
+        assert_eq!(model.sets[0].entries[1].item_title, "C Major Scale");
         assert!(model.last_error.is_none());
     }
 
@@ -371,8 +368,8 @@ mod tests {
     fn save_building_preserves_building_state() {
         let entries = sample_setlist_entries();
         let mut model = model_with_building(entries.clone());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
             },
             &mut model,
@@ -389,89 +386,89 @@ mod tests {
     #[test]
     fn save_building_empty_name_fails() {
         let mut model = model_with_building(sample_setlist_entries());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
     fn save_building_whitespace_only_name_fails() {
         let mut model = model_with_building(sample_setlist_entries());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "   ".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
     fn save_building_name_too_long_fails() {
         let mut model = model_with_building(sample_setlist_entries());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "x".repeat(201),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
     fn save_building_name_at_limit_succeeds() {
         let mut model = model_with_building(sample_setlist_entries());
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "x".repeat(200),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 1);
+        assert_eq!(model.sets.len(), 1);
         assert!(model.last_error.is_none());
     }
 
     #[test]
     fn save_building_empty_setlist_fails() {
         let mut model = model_with_building(vec![]);
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
     fn save_building_wrong_status_fails() {
         let mut model = Model::test_default(); // Idle status
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveBuildingAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
-    fn save_summary_as_routine_creates_routine() {
+    fn save_summary_as_set_creates_set() {
         use crate::domain::session::{CompletionStatus, SummarySession};
 
         let mut model = Model {
@@ -488,36 +485,36 @@ mod tests {
             ..Default::default()
         };
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveSummaryAsRoutine {
-                name: "Post-Session Routine".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::SaveSummaryAsSet {
+                name: "Post-Session Set".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 1);
-        assert_eq!(model.routines[0].name, "Post-Session Routine");
-        assert_eq!(model.routines[0].entries.len(), 2);
+        assert_eq!(model.sets.len(), 1);
+        assert_eq!(model.sets[0].name, "Post-Session Set");
+        assert_eq!(model.sets[0].entries.len(), 2);
         assert!(model.last_error.is_none());
     }
 
     #[test]
     fn save_summary_wrong_status_fails() {
         let mut model = Model::test_default(); // Idle status
-        let _cmd = handle_routine_event(
-            RoutineEvent::SaveSummaryAsRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::SaveSummaryAsSet {
                 name: "Test".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_some());
     }
 
     #[test]
-    fn load_routine_into_setlist_appends_entries() {
-        let routine = sample_routine();
+    fn load_set_into_setlist_appends_entries() {
+        let set = sample_set();
         let mut model = model_with_building(vec![SetlistEntry {
             id: "existing-1".to_string(),
             item_id: "item-x".to_string(),
@@ -536,17 +533,17 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
         }]);
-        model.routines.push(routine);
+        model.sets.push(set);
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::LoadRoutineIntoSetlist {
-                routine_id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
             },
             &mut model,
         );
 
         if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries.len(), 3); // 1 existing + 2 from routine
+            assert_eq!(b.entries.len(), 3); // 1 existing + 2 from set
             assert_eq!(b.entries[0].item_title, "Existing Item");
             assert_eq!(b.entries[1].item_title, "Long Tones");
             assert_eq!(b.entries[2].item_title, "C Major Scale");
@@ -554,7 +551,7 @@ mod tests {
             assert_eq!(b.entries[0].position, 0);
             assert_eq!(b.entries[1].position, 1);
             assert_eq!(b.entries[2].position, 2);
-            // New entries should have fresh IDs (not matching routine entry IDs)
+            // New entries should have fresh IDs (not matching set entry IDs)
             assert_ne!(b.entries[1].id, "re-1");
             assert_ne!(b.entries[2].id, "re-2");
             // New entries should have default values
@@ -569,13 +566,13 @@ mod tests {
     }
 
     #[test]
-    fn load_routine_not_building_fails() {
+    fn load_set_not_building_fails() {
         let mut model = Model::test_default();
-        model.routines.push(sample_routine());
+        model.sets.push(sample_set());
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::LoadRoutineIntoSetlist {
-                routine_id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
             },
             &mut model,
         );
@@ -584,11 +581,11 @@ mod tests {
     }
 
     #[test]
-    fn load_routine_not_found_fails() {
+    fn load_set_not_found_fails() {
         let mut model = model_with_building(vec![]);
-        let _cmd = handle_routine_event(
-            RoutineEvent::LoadRoutineIntoSetlist {
-                routine_id: "nonexistent".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "nonexistent".to_string(),
             },
             &mut model,
         );
@@ -597,28 +594,28 @@ mod tests {
     }
 
     #[test]
-    fn delete_routine_removes_from_model() {
+    fn delete_set_removes_from_model() {
         let mut model = Model::test_default();
-        model.routines.push(sample_routine());
-        assert_eq!(model.routines.len(), 1);
+        model.sets.push(sample_set());
+        assert_eq!(model.sets.len(), 1);
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::DeleteRoutine {
-                id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::DeleteSet {
+                id: "set-1".to_string(),
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 0);
+        assert_eq!(model.sets.len(), 0);
         assert!(model.last_error.is_none());
     }
 
     #[test]
-    fn update_routine_changes_name_and_entries() {
+    fn update_set_changes_name_and_entries() {
         let mut model = Model::test_default();
-        model.routines.push(sample_routine());
+        model.sets.push(sample_set());
 
-        let new_entries = vec![RoutineEntry {
+        let new_entries = vec![SetEntry {
             id: ulid::Ulid::new().to_string(),
             item_id: "item-c".to_string(),
             item_title: "New Item".to_string(),
@@ -626,32 +623,32 @@ mod tests {
             position: 0,
         }];
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::UpdateRoutine {
-                id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::UpdateSet {
+                id: "set-1".to_string(),
                 name: "Updated Name".to_string(),
                 entries: new_entries,
             },
             &mut model,
         );
 
-        assert_eq!(model.routines.len(), 1);
-        assert_eq!(model.routines[0].name, "Updated Name");
-        assert_eq!(model.routines[0].entries.len(), 1);
-        assert_eq!(model.routines[0].entries[0].item_title, "New Item");
+        assert_eq!(model.sets.len(), 1);
+        assert_eq!(model.sets[0].name, "Updated Name");
+        assert_eq!(model.sets[0].entries.len(), 1);
+        assert_eq!(model.sets[0].entries[0].item_title, "New Item");
         assert!(model.last_error.is_none());
     }
 
     #[test]
-    fn update_routine_invalid_name_fails() {
+    fn update_set_invalid_name_fails() {
         let mut model = Model::test_default();
-        model.routines.push(sample_routine());
+        model.sets.push(sample_set());
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::UpdateRoutine {
-                id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::UpdateSet {
+                id: "set-1".to_string(),
                 name: "".to_string(),
-                entries: vec![RoutineEntry {
+                entries: vec![SetEntry {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
@@ -663,18 +660,18 @@ mod tests {
         );
 
         // Name should NOT have been changed
-        assert_eq!(model.routines[0].name, "Morning Warm-up");
+        assert_eq!(model.sets[0].name, "Morning Warm-up");
         assert!(model.last_error.is_some());
     }
 
     #[test]
-    fn update_routine_empty_entries_fails() {
+    fn update_set_empty_entries_fails() {
         let mut model = Model::test_default();
-        model.routines.push(sample_routine());
+        model.sets.push(sample_set());
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::UpdateRoutine {
-                id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::UpdateSet {
+                id: "set-1".to_string(),
                 name: "Updated".to_string(),
                 entries: vec![],
             },
@@ -682,19 +679,19 @@ mod tests {
         );
 
         // Entries should NOT have been changed
-        assert_eq!(model.routines[0].entries.len(), 2);
+        assert_eq!(model.sets[0].entries.len(), 2);
         assert!(model.last_error.is_some());
     }
 
     #[test]
-    fn update_routine_not_found_fails() {
+    fn update_set_not_found_fails() {
         let mut model = Model::test_default();
 
-        let _cmd = handle_routine_event(
-            RoutineEvent::UpdateRoutine {
+        let _cmd = handle_set_event(
+            SetEvent::UpdateSet {
                 id: "nonexistent".to_string(),
                 name: "Updated".to_string(),
-                entries: vec![RoutineEntry {
+                entries: vec![SetEntry {
                     id: "re-1".to_string(),
                     item_id: "item-a".to_string(),
                     item_title: "Long Tones".to_string(),
@@ -709,23 +706,23 @@ mod tests {
     }
 
     #[test]
-    fn load_routine_twice_is_additive() {
-        let routine = sample_routine();
+    fn load_set_twice_is_additive() {
+        let set = sample_set();
         let mut model = model_with_building(vec![]);
-        model.routines.push(routine);
+        model.sets.push(set);
 
         // Load once
-        let _cmd = handle_routine_event(
-            RoutineEvent::LoadRoutineIntoSetlist {
-                routine_id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
             },
             &mut model,
         );
 
         // Load again
-        let _cmd = handle_routine_event(
-            RoutineEvent::LoadRoutineIntoSetlist {
-                routine_id: "routine-1".to_string(),
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
             },
             &mut model,
         );

@@ -55,7 +55,7 @@ pub fn load_session_in_progress() -> Option<intrada_core::ActiveSession> {
 /// Initialise the Crux core and fetch all data from the API.
 ///
 /// Sends `Event::StartApp` with the API base URL, which makes the core produce
-/// HTTP fetch effects for items, sessions, and routines. A shared
+/// HTTP fetch effects for items, sessions, and sets. A shared
 /// counter keeps `is_loading` true until ALL fetches complete.
 pub fn init_core(
     view_model: &RwSignal<ViewModel>,

@@ -53,7 +53,7 @@ async fn save_session(
 
     // Validate each entry's fields
     for entry in &input.entries {
-        validation::validate_routine_entry_fields(&entry.item_id, &entry.item_title)?;
+        validation::validate_set_entry_fields(&entry.item_id, &entry.item_title)?;
         validation::validate_entry_notes(&entry.notes)?;
         validation::validate_score(&entry.score)?;
         validation::validate_intention(&entry.intention)?;

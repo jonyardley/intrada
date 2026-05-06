@@ -29,12 +29,12 @@ pub mod page_heading;
 pub mod progress_ring;
 pub mod pull_to_refresh;
 pub mod rating_chips;
-pub mod routine_loader;
-pub mod routine_save_form;
 pub mod section_label;
 pub mod session_review_sheet;
 pub mod session_summary;
 pub mod session_timer;
+pub mod set_loader;
+pub mod set_save_form;
 pub mod setlist_builder;
 pub mod setlist_entry;
 pub mod skeleton;
@@ -80,13 +80,13 @@ pub use page_heading::PageHeading;
 pub use progress_ring::ProgressRing;
 pub use pull_to_refresh::PullToRefresh;
 pub use rating_chips::RatingChips;
-// RoutineLoader is currently unused — kept around for the planned routine
+// SetLoader is currently unused — kept around for the planned set
 // flows revisit (see PR conversation). Re-export when something needs it.
-pub use routine_save_form::RoutineSaveForm;
 pub use section_label::SectionLabel;
 pub use session_review_sheet::SessionReviewSheet;
 pub use session_summary::SessionSummary;
 pub use session_timer::SessionTimer;
+pub use set_save_form::SetSaveForm;
 pub use setlist_builder::SetlistBuilder;
 pub use setlist_entry::SetlistEntryRow;
 pub use skeleton::{SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine};

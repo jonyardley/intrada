@@ -14,12 +14,12 @@ use crate::analytics::compute_analytics;
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::lesson::{handle_lesson_event, Lesson, LessonEvent};
-use crate::domain::routine::{handle_routine_event, Routine, RoutineEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
 #[cfg(test)]
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
+use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
@@ -40,18 +40,18 @@ pub enum Event {
     StartApp {
         api_base_url: String,
     },
-    /// Fetch all data from the API (items, sessions, routines).
+    /// Fetch all data from the API (items, sessions, sets).
     FetchAll,
     /// Re-fetch a single resource kind after a mutation (refresh-after-mutate).
     RefetchItems,
     RefetchSessions,
-    RefetchRoutines,
+    RefetchSets,
     RefetchLessons,
 
     // ── Domain ──────────────────────────────────────────────────────
     Item(ItemEvent),
     Session(SessionEvent),
-    Routine(RoutineEvent),
+    Set(SetEvent),
     Lesson(LessonEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
@@ -61,8 +61,8 @@ pub enum Event {
     SessionsLoaded {
         sessions: Vec<PracticeSession>,
     },
-    RoutinesLoaded {
-        routines: Vec<Routine>,
+    SetsLoaded {
+        sets: Vec<Set>,
     },
     LessonsLoaded {
         lessons: Vec<Lesson>,
@@ -76,9 +76,9 @@ pub enum Event {
     ItemUpdated {
         item: Item,
     },
-    /// Server confirmed a routine update — replace the optimistic copy.
-    RoutineUpdated {
-        routine: Routine,
+    /// Server confirmed a set update — replace the optimistic copy.
+    SetUpdated {
+        set: Set,
     },
     /// Server confirmed a delete — model already updated optimistically.
     DeleteConfirmed,
@@ -147,23 +147,23 @@ impl App for Intrada {
                 Command::all([
                     http::fetch_items(&model.api_base_url),
                     http::fetch_sessions(&model.api_base_url),
-                    http::fetch_routines(&model.api_base_url),
+                    http::fetch_sets(&model.api_base_url),
                 ])
             }
             Event::FetchAll => Command::all([
                 http::fetch_items(&model.api_base_url),
                 http::fetch_sessions(&model.api_base_url),
-                http::fetch_routines(&model.api_base_url),
+                http::fetch_sets(&model.api_base_url),
             ]),
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
-            Event::RefetchRoutines => http::fetch_routines(&model.api_base_url),
+            Event::RefetchSets => http::fetch_sets(&model.api_base_url),
             Event::RefetchLessons => http::fetch_lessons(&model.api_base_url),
 
             // ── Domain handlers ──────────────────────────────────────
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
-            Event::Routine(routine_event) => handle_routine_event(routine_event, model),
+            Event::Set(set_event) => handle_set_event(set_event, model),
             Event::Lesson(lesson_event) => handle_lesson_event(lesson_event, model),
 
             // ── Data loaded callbacks ────────────────────────────────
@@ -177,8 +177,8 @@ impl App for Intrada {
                 model.practice_summaries = build_practice_summaries(&model.sessions);
                 crux_core::render::render()
             }
-            Event::RoutinesLoaded { routines } => {
-                model.routines = routines;
+            Event::SetsLoaded { sets } => {
+                model.sets = sets;
                 crux_core::render::render()
             }
             Event::LessonsLoaded { lessons } => {
@@ -199,9 +199,9 @@ impl App for Intrada {
                 }
                 crux_core::render::render()
             }
-            Event::RoutineUpdated { routine } => {
-                if let Some(existing) = model.routines.iter_mut().find(|r| r.id == routine.id) {
-                    *existing = routine;
+            Event::SetUpdated { set } => {
+                if let Some(existing) = model.sets.iter_mut().find(|r| r.id == set.id) {
+                    *existing = set;
                 }
                 crux_core::render::render()
             }
@@ -307,20 +307,20 @@ impl App for Intrada {
             Some(compute_analytics(&model.sessions, &model.items, today))
         };
 
-        // Build routine views
-        let routines = model
-            .routines
+        // Build set views
+        let sets = model
+            .sets
             .iter()
             .map(|r| {
-                use crate::model::{RoutineEntryView, RoutineView};
-                RoutineView {
+                use crate::model::{SetEntryView, SetView};
+                SetView {
                     id: r.id.clone(),
                     name: r.name.clone(),
                     entry_count: r.entries.len(),
                     entries: r
                         .entries
                         .iter()
-                        .map(|e| RoutineEntryView {
+                        .map(|e| SetEntryView {
                             id: e.id.clone(),
                             item_id: e.item_id.clone(),
                             item_title: e.item_title.clone(),
@@ -347,7 +347,7 @@ impl App for Intrada {
             session_status,
             error: model.last_error.clone(),
             analytics,
-            routines,
+            sets,
             lessons,
             current_lesson,
         }
@@ -1446,17 +1446,17 @@ mod tests {
     }
 
     #[test]
-    fn test_routines_loaded_populates_model() {
-        use crate::domain::routine::{Routine, RoutineEntry};
+    fn test_sets_loaded_populates_model() {
+        use crate::domain::set::{Set, SetEntry};
 
         let app = Intrada;
         let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
-        let routines = vec![Routine {
+        let sets = vec![Set {
             id: "r1".to_string(),
             name: "Warm-up".to_string(),
-            entries: vec![RoutineEntry {
+            entries: vec![SetEntry {
                 id: "re1".to_string(),
                 item_id: "item-1".to_string(),
                 item_title: "Scales".to_string(),
@@ -1467,10 +1467,10 @@ mod tests {
             updated_at: now,
         }];
 
-        let _cmd = app.update(Event::RoutinesLoaded { routines }, &mut model);
+        let _cmd = app.update(Event::SetsLoaded { sets }, &mut model);
 
-        assert_eq!(model.routines.len(), 1);
-        assert_eq!(model.routines[0].name, "Warm-up");
+        assert_eq!(model.sets.len(), 1);
+        assert_eq!(model.sets[0].name, "Warm-up");
     }
 
     // --- Write-confirmation callbacks ---
@@ -1554,15 +1554,15 @@ mod tests {
     }
 
     #[test]
-    fn test_routine_updated_replaces_existing() {
-        use crate::domain::routine::Routine;
+    fn test_set_updated_replaces_existing() {
+        use crate::domain::set::Set;
 
         let app = Intrada;
         let now = chrono::Utc::now();
         let mut model = Model {
-            routines: vec![Routine {
+            sets: vec![Set {
                 id: "r1".to_string(),
-                name: "Old Routine".to_string(),
+                name: "Old Set".to_string(),
                 entries: vec![],
                 created_at: now,
                 updated_at: now,
@@ -1570,17 +1570,17 @@ mod tests {
             ..Model::test_default()
         };
 
-        let updated = Routine {
+        let updated = Set {
             id: "r1".to_string(),
-            name: "Renamed Routine".to_string(),
+            name: "Renamed Set".to_string(),
             entries: vec![],
             created_at: now,
             updated_at: now,
         };
 
-        let _cmd = app.update(Event::RoutineUpdated { routine: updated }, &mut model);
+        let _cmd = app.update(Event::SetUpdated { set: updated }, &mut model);
 
-        assert_eq!(model.routines[0].name, "Renamed Routine");
+        assert_eq!(model.sets[0].name, "Renamed Set");
     }
 
     #[test]
@@ -1662,27 +1662,27 @@ mod tests {
         );
     }
 
-    // --- View: routines ---
+    // --- View: sets ---
 
     #[test]
-    fn test_view_renders_routines() {
-        use crate::domain::routine::{Routine, RoutineEntry};
+    fn test_view_renders_sets() {
+        use crate::domain::set::{Set, SetEntry};
 
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            routines: vec![Routine {
+            sets: vec![Set {
                 id: "r1".to_string(),
                 name: "Morning Warm-up".to_string(),
                 entries: vec![
-                    RoutineEntry {
+                    SetEntry {
                         id: "re1".to_string(),
                         item_id: "item-1".to_string(),
                         item_title: "Scales".to_string(),
                         item_type: ItemKind::Exercise,
                         position: 0,
                     },
-                    RoutineEntry {
+                    SetEntry {
                         id: "re2".to_string(),
                         item_id: "item-2".to_string(),
                         item_title: "Arpeggios".to_string(),
@@ -1697,11 +1697,11 @@ mod tests {
         };
 
         let vm = app.view(&model);
-        assert_eq!(vm.routines.len(), 1);
-        assert_eq!(vm.routines[0].name, "Morning Warm-up");
-        assert_eq!(vm.routines[0].entry_count, 2);
-        assert_eq!(vm.routines[0].entries[0].item_title, "Scales");
-        assert_eq!(vm.routines[0].entries[1].item_title, "Arpeggios");
+        assert_eq!(vm.sets.len(), 1);
+        assert_eq!(vm.sets[0].name, "Morning Warm-up");
+        assert_eq!(vm.sets[0].entry_count, 2);
+        assert_eq!(vm.sets[0].entries[0].item_title, "Scales");
+        assert_eq!(vm.sets[0].entries[1].item_title, "Arpeggios");
     }
 
     // --- Practice summaries edge cases ---

@@ -75,39 +75,39 @@ pub struct SessionsData {
 
 // ── API request DTOs ─────────────────────────────────────────────────
 
-/// Request body for creating a routine via the REST API.
+/// Request body for creating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CreateRoutineRequest {
+pub struct CreateSetRequest {
     pub name: String,
-    pub entries: Vec<CreateRoutineEntryRequest>,
+    pub entries: Vec<CreateSetEntryRequest>,
 }
 
-/// Entry within a create/update routine API request.
+/// Entry within a create/update set API request.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CreateRoutineEntryRequest {
+pub struct CreateSetEntryRequest {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
 }
 
-/// Request body for updating a routine via the REST API.
+/// Request body for updating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct UpdateRoutineRequest {
+pub struct UpdateSetRequest {
     pub name: String,
-    pub entries: Vec<CreateRoutineEntryRequest>,
+    pub entries: Vec<CreateSetEntryRequest>,
 }
 
 // ── Conversion helpers ──────────────────────────────────────────────
 
-impl CreateRoutineRequest {
-    /// Build from a domain `Routine`.
-    pub fn from_routine(routine: &super::routine::Routine) -> Self {
+impl CreateSetRequest {
+    /// Build from a domain `Set`.
+    pub fn from_set(set: &super::set::Set) -> Self {
         Self {
-            name: routine.name.clone(),
-            entries: routine
+            name: set.name.clone(),
+            entries: set
                 .entries
                 .iter()
-                .map(|e| CreateRoutineEntryRequest {
+                .map(|e| CreateSetEntryRequest {
                     item_id: e.item_id.clone(),
                     item_title: e.item_title.clone(),
                     item_type: e.item_type.clone(),
@@ -117,15 +117,15 @@ impl CreateRoutineRequest {
     }
 }
 
-impl UpdateRoutineRequest {
-    /// Build from a domain `Routine`.
-    pub fn from_routine(routine: &super::routine::Routine) -> Self {
+impl UpdateSetRequest {
+    /// Build from a domain `Set`.
+    pub fn from_set(set: &super::set::Set) -> Self {
         Self {
-            name: routine.name.clone(),
-            entries: routine
+            name: set.name.clone(),
+            entries: set
                 .entries
                 .iter()
-                .map(|e| CreateRoutineEntryRequest {
+                .map(|e| CreateSetEntryRequest {
                     item_id: e.item_id.clone(),
                     item_title: e.item_title.clone(),
                     item_type: e.item_type.clone(),
