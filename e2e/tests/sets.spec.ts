@@ -47,10 +47,7 @@ test.describe("sets page", () => {
     );
   });
 
-  // Skipped: "Save as Set" UI was removed from the session review
-  // sheet during the strip-back — see #390 for the planned re-introduction
-  // alongside the broader sets revisit.
-  test.skip("save set from session builder", async ({ page }) => {
+  test("save set from session builder", async ({ page }) => {
     await page.goto("/sessions/new");
     await page.getByRole("button", { name: "Custom Session" }).click();
     await page.getByText("Clair de Lune").click();
@@ -60,6 +57,8 @@ test.describe("sets page", () => {
     await reviewSheet.getByPlaceholder("e.g. Morning Warm-up").fill("My New Set");
     await reviewSheet.getByRole("button", { name: "Save" }).click();
 
+    // TODO(#390 pt 2): switch to /library once the URL migration drops
+    // /routines and serves Sets from the Library Sets tab.
     await page.goto("/routines");
     await expect(page.getByText("My New Set")).toBeVisible();
   });
