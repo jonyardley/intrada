@@ -17,10 +17,10 @@ use crate::components::{
 /// "X items" (no time estimate — Sets are recipes; durations come from
 /// session-time defaults).
 ///
-/// Tapping navigates to the Set Detail surface for review-then-start.
-/// While the dedicated `/library/sets/:id` route is being built, this
-/// links to the existing `/routines/:id/edit` page so the row stays
-/// functional in the interim.
+/// Tapping navigates to the Set Detail surface (`/library/sets/:id`)
+/// for review-then-start. The context-menu Edit action goes to the
+/// edit form (`/routines/:id/edit`) — that route stays as-is until the
+/// fold-into-Library URL migration ships in a later PR.
 #[component]
 pub fn LibrarySetCard(
     set: SetView,
@@ -39,11 +39,10 @@ pub fn LibrarySetCard(
         format!("{entry_count} items")
     };
 
-    // TODO: switch to `/library/sets/:id` when Set Detail lands.
-    let href = format!("/routines/{id}/edit");
+    let href = format!("/library/sets/{id}");
     let id_for_swipe = id.clone();
     let id_for_menu_delete = id.clone();
-    let edit_href = href.clone();
+    let edit_href = format!("/routines/{id}/edit");
 
     let row = view! {
         <A href=href attr:class="block no-underline">

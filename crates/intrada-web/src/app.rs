@@ -18,7 +18,7 @@ use crate::views::DesignCatalogue;
 use crate::views::{
     AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
     NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView,
-    SessionsListView, SetEditView, SetsListView,
+    SessionsListView, SetDetailView, SetEditView, SetsListView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
@@ -176,6 +176,12 @@ fn AuthenticatedApp() -> impl IntoView {
                     // /library/new MUST come before /library/:id to avoid "new" matching :id
                     <Route path=path!("/library/new") view=move || view! {
                         <AddLibraryItemForm />
+                    } />
+                    // /library/sets/:id — Set Detail page. Literal "sets"
+                    // segment in the middle so this doesn't collide with
+                    // /library/:id (piece/exercise detail).
+                    <Route path=path!("/library/sets/:id") view=move || view! {
+                        <SetDetailView />
                     } />
                     <Route path=path!("/library/:id") view=move || view! {
                         <DetailView />
