@@ -3,11 +3,11 @@ use leptos::prelude::*;
 use leptos::web_sys;
 use wasm_bindgen::JsCast;
 
-use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, ViewModel};
+use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, SetEvent, SetView, ViewModel};
 
 use crate::components::{
-    BottomSheet, EmptyState, Icon, IconName, LibraryItemCard, LibraryTypeTabs, PageAddButton,
-    PageHeading, PullToRefresh, SkeletonItemCard,
+    BottomSheet, EmptyState, Icon, IconName, LibraryFilter, LibraryFilterTabs, LibraryItemCard,
+    LibrarySetCard, PageAddButton, PageHeading, PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
 use intrada_web::core_bridge::process_effects_with_core;
@@ -22,6 +22,17 @@ fn matches_query(item: &LibraryItemView, q: &str) -> bool {
         || item.tags.iter().any(|t| t.to_lowercase().contains(q))
 }
 
+/// Set-name search. Matches against the set's name + the title of every
+/// entry inside it — so searching "Hanon" finds a set that *contains*
+/// Hanon, not just sets named "Hanon".
+fn matches_set_query(set: &SetView, q: &str) -> bool {
+    set.name.to_lowercase().contains(q)
+        || set
+            .entries
+            .iter()
+            .any(|e| e.item_title.to_lowercase().contains(q))
+}
+
 #[component]
 pub fn LibraryListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -32,27 +43,56 @@ pub fn LibraryListView() -> impl IntoView {
     let add_sheet_open = RwSignal::new(false);
 
     // Default to All so the user sees their whole library on first load.
-    // `None` = no kind filter; `Some(kind)` filters to that kind.
-    let active_filter: RwSignal<Option<ItemKind>> = RwSignal::new(None);
+    let active_filter: RwSignal<LibraryFilter> = RwSignal::new(LibraryFilter::default());
     let query = RwSignal::new(String::new());
 
-    // Filtered view: by tab first, then by query (title / composer / tag,
-    // case-insensitive, substring match). Empty query passes through.
+    // Filtered items (pieces + exercises). Driven by the All / Pieces /
+    // Exercises tabs — for the Sets tab, this returns empty and the
+    // Set-list memo below takes over.
     // Memo (not Signal::derive) so the filter runs once per dependency
     // change and caches for re-reads in the same render cycle (count span,
     // list, and empty-state branches all read it).
     let filtered_items = Memo::new(move |_| {
         let vm = view_model.get();
-        let kind = active_filter.get();
+        let filter = active_filter.get();
         let q = query.get().trim().to_lowercase();
-        vm.items
+        match filter {
+            // Sets tab — items list is empty (the set list handles render)
+            LibraryFilter::Sets => Vec::new(),
+            _ => vm
+                .items
+                .into_iter()
+                .filter(|item| {
+                    matches!(
+                        (filter, &item.item_type),
+                        (LibraryFilter::All, _)
+                            | (LibraryFilter::Pieces, ItemKind::Piece)
+                            | (LibraryFilter::Exercises, ItemKind::Exercise)
+                    )
+                })
+                .filter(|item| q.is_empty() || matches_query(item, &q))
+                .collect::<Vec<_>>(),
+        }
+    });
+
+    // Filtered Sets — only populated when the Sets tab is active.
+    // Search matches set name + entry titles (so "Hanon" finds a set
+    // that contains Hanon, not just sets named "Hanon").
+    let filtered_sets = Memo::new(move |_| {
+        let vm = view_model.get();
+        if active_filter.get() != LibraryFilter::Sets {
+            return Vec::new();
+        }
+        let q = query.get().trim().to_lowercase();
+        vm.sets
             .into_iter()
-            .filter(|item| match &kind {
-                None => true,
-                Some(k) => &item.item_type == k,
-            })
-            .filter(|item| q.is_empty() || matches_query(item, &q))
+            .filter(|s| q.is_empty() || matches_set_query(s, &q))
             .collect::<Vec<_>>()
+    });
+
+    let total_count = Memo::new(move |_| match active_filter.get() {
+        LibraryFilter::Sets => filtered_sets.get().len(),
+        _ => filtered_items.get().len(),
     });
 
     let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
@@ -69,6 +109,22 @@ pub fn LibraryListView() -> impl IntoView {
         };
         process_effects_with_core(
             &core_for_delete,
+            effects,
+            &view_model,
+            &is_loading,
+            &is_submitting,
+        );
+    });
+
+    let core_for_set_delete = core.clone();
+    let on_delete_set = Callback::new(move |id: String| {
+        let event = Event::Set(SetEvent::DeleteSet { id });
+        let effects = {
+            let core_ref = core_for_set_delete.borrow();
+            core_ref.process_event(event)
+        };
+        process_effects_with_core(
+            &core_for_set_delete,
             effects,
             &view_model,
             &is_loading,
@@ -159,32 +215,39 @@ pub fn LibraryListView() -> impl IntoView {
                 </Show>
             </div>
 
-            // Type tabs — All / Pieces / Exercises. Underline-style with a
-            // sliding accent indicator. Default active = All.
-            <LibraryTypeTabs
+            // Type tabs — All / Pieces / Exercises / Sets. Underline-style
+            // with a sliding accent indicator. Default active = All. The
+            // 4-tab variant; the setlist builder uses the 3-tab
+            // `<LibraryTypeTabs>` since Sets aren't items you can pick.
+            <LibraryFilterTabs
                 active=Signal::derive(move || active_filter.get())
-                on_change=Callback::new(move |kind| active_filter.set(kind))
+                on_change=Callback::new(move |f| active_filter.set(f))
             />
 
             // Library items section. The page-level <PageHeading> above
             // already supplies the visible "Library" title, so the
             // section just carries an aria-label for screen readers and
-            // an inline item count (reflects the *filtered* total).
+            // an inline count (reflects the *filtered* total).
             <section id="library-list" aria-label="Library items">
                 <div class="flex justify-end mb-4">
                     <span class="text-sm text-muted">
                         {move || {
-                            let count = filtered_items.get().len();
-                            if count == 1 {
-                                "1 item".to_string()
-                            } else {
-                                format!("{count} items")
+                            let count = total_count.get();
+                            let is_sets = active_filter.get() == LibraryFilter::Sets;
+                            match (count, is_sets) {
+                                (1, true) => "1 set".to_string(),
+                                (n, true) => format!("{n} sets"),
+                                (1, false) => "1 item".to_string(),
+                                (n, false) => format!("{n} items"),
                             }
                         }}
                     </span>
                 </div>
 
-                // Items list
+                // List body — branches on filter to render the right kind
+                // of row (atomic items vs sets). The skeleton + empty
+                // states are shared across both modes; the row component
+                // is the only piece that changes.
                 <div>
                     {move || {
                         if is_loading.get() {
@@ -196,13 +259,57 @@ pub fn LibraryListView() -> impl IntoView {
                                     <SkeletonItemCard />
                                 </ul>
                             }.into_any()
+                        } else if active_filter.get() == LibraryFilter::Sets {
+                            // Sets tab — render Set rows.
+                            let vm = view_model.get();
+                            let filtered = filtered_sets.get();
+                            if vm.sets.is_empty() {
+                                view! {
+                                    <EmptyState
+                                        icon=IconName::ListChecks
+                                        title="No saved sets yet"
+                                        body="Save a setlist as a set to reuse it later."
+                                    />
+                                }.into_any()
+                            } else if filtered.is_empty() {
+                                let q = query.get();
+                                let trimmed = q.trim();
+                                let (title, body) = if trimmed.is_empty() {
+                                    // Empty filter + no query is unreachable
+                                    // here — the truly-empty branch above
+                                    // catches `vm.sets.is_empty()`, and an
+                                    // empty query short-circuits the filter
+                                    // (matches_set_query) so a non-empty
+                                    // sets vec always passes through.
+                                    unreachable!(
+                                        "Sets-tab + empty query is handled by the truly-empty branch"
+                                    )
+                                } else {
+                                    ("No matching sets".to_string(),
+                                     format!("No sets match \u{201C}{trimmed}\u{201D}."))
+                                };
+                                view! {
+                                    <EmptyState
+                                        icon=IconName::Search
+                                        title=title
+                                        body=body
+                                    />
+                                }.into_any()
+                            } else {
+                                view! {
+                                    <ul class="space-y-2 list-none p-0" role="list" aria-label="Library sets">
+                                        {filtered.into_iter().map(|set| {
+                                            view! {
+                                                <LibrarySetCard set=set on_delete=on_delete_set />
+                                            }
+                                        }).collect::<Vec<_>>()}
+                                    </ul>
+                                }.into_any()
+                            }
                         } else {
+                            // Items tabs (All / Pieces / Exercises).
                             let vm = view_model.get();
                             let filtered = filtered_items.get();
-                            // Three empty states:
-                            //  1. truly empty library  — onboarding CTA
-                            //  2. tab + non-empty query  — "no matches"
-                            //  3. tab with no items but a non-empty other tab — neutral message
                             if vm.items.is_empty() {
                                 view! {
                                     <EmptyState
@@ -223,29 +330,34 @@ pub fn LibraryListView() -> impl IntoView {
                                 let q = query.get();
                                 let trimmed = q.trim();
                                 let (title, body) = if trimmed.is_empty() {
-                                    // Empty filter and no query — the user
+                                    // Empty filter + no query — user
                                     // filtered to a kind they have none of.
-                                    // All-tab + non-empty items is always
-                                    // non-empty (truly-empty branch covers
-                                    // the rest), so None is unreachable here.
+                                    // All-tab is unreachable (truly-empty
+                                    // covers it).
                                     match active_filter.get() {
-                                        Some(ItemKind::Piece) => (
+                                        LibraryFilter::Pieces => (
                                             "No pieces yet".to_string(),
                                             "Switch tabs to see your other items, or add a new one.".to_string(),
                                         ),
-                                        Some(ItemKind::Exercise) => (
+                                        LibraryFilter::Exercises => (
                                             "No exercises yet".to_string(),
                                             "Switch tabs to see your other items, or add a new one.".to_string(),
                                         ),
-                                        None => unreachable!(
+                                        LibraryFilter::All => unreachable!(
                                             "All-tab + empty query is handled by the truly-empty branch"
+                                        ),
+                                        LibraryFilter::Sets => unreachable!(
+                                            "Sets handled by the branch above"
                                         ),
                                     }
                                 } else {
                                     let kind_label = match active_filter.get() {
-                                        None => "items",
-                                        Some(ItemKind::Piece) => "pieces",
-                                        Some(ItemKind::Exercise) => "exercises",
+                                        LibraryFilter::All => "items",
+                                        LibraryFilter::Pieces => "pieces",
+                                        LibraryFilter::Exercises => "exercises",
+                                        LibraryFilter::Sets => unreachable!(
+                                            "Sets handled by the branch above"
+                                        ),
                                     };
                                     (
                                         "No matching items".to_string(),

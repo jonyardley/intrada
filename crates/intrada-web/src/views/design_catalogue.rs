@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
-use intrada_core::{ItemKind, LibraryItemView, TempoHistoryEntry};
+use intrada_core::{ItemKind, LibraryItemView, SetEntryView, SetView, TempoHistoryEntry};
 
 use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
@@ -12,10 +12,11 @@ use crate::components::{
     CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
     EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError, GroupedList,
     GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget,
-    LibraryItemCard, LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing,
-    PullToRefresh, RatingChips, SectionLabel, SetSaveForm, SetlistEntryRow, SkeletonBlock,
-    SkeletonCardList, SkeletonItemCard, SkeletonLine, StatCard, StatTone, SwipeActions, TagInput,
-    TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    LibraryFilter, LibraryFilterTabs, LibraryItemCard, LibrarySetCard, LibraryTypeTabs, LineChart,
+    PageAddButton, PageHeading, ProgressRing, PullToRefresh, RatingChips, SectionLabel,
+    SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
+    StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart, TextArea, TextField,
+    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
 };
 use wasm_bindgen::JsCast;
 
@@ -31,6 +32,7 @@ pub fn DesignCatalogue() -> impl IntoView {
 
     let type_tab_active = RwSignal::new(ItemType::Piece);
     let library_tab_active: RwSignal<Option<ItemKind>> = RwSignal::new(None);
+    let library_filter_active: RwSignal<LibraryFilter> = RwSignal::new(LibraryFilter::default());
     let sample_text = RwSignal::new(String::new());
     let sample_text_hint = RwSignal::new(String::new());
     let sample_text_required = RwSignal::new(String::new());
@@ -123,6 +125,42 @@ pub fn DesignCatalogue() -> impl IntoView {
         updated_at: "2025-02-20".to_string(),
         practice: None,
         latest_achieved_tempo: None,
+    };
+
+    let sample_set_short = SetView {
+        id: "sample-set-1".to_string(),
+        name: "Morning Warm-up".to_string(),
+        entry_count: 3,
+        entries: vec![
+            SetEntryView {
+                id: "se-1".into(),
+                item_id: "i-1".into(),
+                item_title: "Hanon No. 1".into(),
+                item_type: ItemKind::Exercise,
+                position: 0,
+            },
+            SetEntryView {
+                id: "se-2".into(),
+                item_id: "i-2".into(),
+                item_title: "Bach Prelude in C".into(),
+                item_type: ItemKind::Piece,
+                position: 1,
+            },
+            SetEntryView {
+                id: "se-3".into(),
+                item_id: "i-3".into(),
+                item_title: "Chromatic Scale".into(),
+                item_type: ItemKind::Exercise,
+                position: 2,
+            },
+        ],
+    };
+
+    let sample_set_long = SetView {
+        id: "sample-set-2".to_string(),
+        name: "Recital Programme — June".to_string(),
+        entry_count: 7,
+        entries: Vec::new(),
     };
 
     let chart_data: Vec<DailyPracticeTotal> = (1..=28)
@@ -257,6 +295,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#card" class="text-accent-text hover:text-primary">"Card"</a></li>
                             <li><a href="#stat-card" class="text-accent-text hover:text-primary">"Stat Card"</a></li>
                             <li><a href="#library-item-card" class="text-accent-text hover:text-primary">"Library Item Card"</a></li>
+                            <li><a href="#library-set-card" class="text-accent-text hover:text-primary">"Library Set Card"</a></li>
                             <li><a href="#builder-item-row" class="text-accent-text hover:text-primary">"Builder Item Row"</a></li>
                             <li><a href="#buttons" class="text-accent-text hover:text-primary">"Buttons"</a></li>
                             <li><a href="#circular-button" class="text-accent-text hover:text-primary">"Circular Button"</a></li>
@@ -264,6 +303,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#type-badge" class="text-accent-text hover:text-primary">"Type Badge"</a></li>
                             <li><a href="#type-tabs" class="text-accent-text hover:text-primary">"Type Tabs"</a></li>
                             <li><a href="#library-type-tabs" class="text-accent-text hover:text-primary">"Library Type Tabs"</a></li>
+                            <li><a href="#library-filter-tabs" class="text-accent-text hover:text-primary">"Library Filter Tabs"</a></li>
                             <li><a href="#error-banner" class="text-accent-text hover:text-primary">"Error Banner"</a></li>
                             <li><a href="#progress" class="text-accent-text hover:text-primary">"Progress Bar"</a></li>
                             <li><a href="#progress-ring" class="text-accent-text hover:text-primary">"Progress Ring"</a></li>
@@ -894,12 +934,34 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="library-type-tabs">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Type Tabs"</h3>
                 <Card>
-                    <p class="text-xs text-faint mb-3">"Three-tab underline toggle (All / Pieces / Exercises) used by the Library. The accent indicator slides between tabs on selection. Distinct from TypeTabs (segmented pill) above; matches the Pencil refresh frame for the Library screen."</p>
+                    <p class="text-xs text-faint mb-3">"Three-tab underline toggle (All / Pieces / Exercises) used by the setlist builder \u{2014} the consumer doesn\u{2019}t need a Sets tab because Sets aren\u{2019}t pickable items. The Library page itself uses the four-tab `<LibraryFilterTabs>` below."</p>
                     <LibraryTypeTabs
                         active=Signal::derive(move || library_tab_active.get())
                         on_change=Callback::new(move |k| library_tab_active.set(k))
                     />
                 </Card>
+            </section>
+
+            // ── Library Filter Tabs ───────────────────────────────────
+            <section id="library-filter-tabs">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Filter Tabs"</h3>
+                <Card>
+                    <p class="text-xs text-faint mb-3">"Four-tab underline toggle (All / Pieces / Exercises / Sets) used by the Library page when Sets are listed alongside atomic items. Same sliding-indicator + WAI-ARIA tabs pattern as `<LibraryTypeTabs>`, just with a `LibraryFilter` enum that includes the `Sets` variant. Pencil reference: NEW DESIGN \u{2014} Library refresh."</p>
+                    <LibraryFilterTabs
+                        active=Signal::derive(move || library_filter_active.get())
+                        on_change=Callback::new(move |f| library_filter_active.set(f))
+                    />
+                </Card>
+            </section>
+
+            // ── Library Set Card ──────────────────────────────────────
+            <section id="library-set-card">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Library Set Card"</h3>
+                <p class="text-xs text-faint mb-3">"Sibling primitive to `<LibraryItemCard>` for Sets in the Library list. Same 60px AccentRow chrome, but with the Teal bar (signalling Set content as distinct from gold for Pieces / blue for Exercises). Title is the Set name, subtitle is the item count \u{2014} no time estimate (Sets are recipes; durations come from session-time defaults)."</p>
+                <ul class="space-y-2 list-none p-0">
+                    <LibrarySetCard set=sample_set_short.clone() />
+                    <LibrarySetCard set=sample_set_long.clone() />
+                </ul>
             </section>
 
             // ── Error Banner ──────────────────────────────────────────
