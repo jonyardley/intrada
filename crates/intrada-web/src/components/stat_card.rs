@@ -42,6 +42,7 @@ pub fn StatCard(
             match bar {
                 AccentBar::Gold => "",
                 AccentBar::Blue => " stat-card-faint--blue",
+                AccentBar::Teal => " stat-card-faint--teal",
                 AccentBar::None => " stat-card-faint--no-bar",
             }
         );

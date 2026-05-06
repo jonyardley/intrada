@@ -162,13 +162,19 @@ html {
 
   /* ── Accent bar gradients (2026 refresh) ──
      The 4px gradient bar inset on the left of AccentRow / DetailGroup
-     cards is the signature visual of the new design. Two variants:
+     cards is the signature visual of the new design. Three variants:
        - Gold: maps to "piece" content (warm, authoritative)
        - Blue: maps to "exercise" content (cool, technical)
-     Both as CSS gradient strings so callers can use them in
+       - Teal: maps to "set" content (mixed compositions of pieces +
+         exercises). Distinct from gold/blue so a Set row in a
+         heterogeneous library list reads as its own kind at a glance.
+         Picked at hue ~190 — cooler than the success-green (~158) so
+         it doesn't read as a success-state cue.
+     All as CSS gradient strings so callers can use them in
      `background-image:` without rebuilding the gradient each time. */
   --bar-gradient-gold: linear-gradient(180deg, #D4A050 0%, #B8860B 100%);
   --bar-gradient-blue: linear-gradient(180deg, #6B9FD4 0%, #4A7AB8 100%);
+  --bar-gradient-teal: linear-gradient(180deg, #5EBFB6 0%, #388A86 100%);
 
   /* ── Typography ──
      Heading font: Source Serif 4 — a clean transitional serif that
@@ -378,6 +384,9 @@ body {
 .accent-row--blue::before {
   background: var(--bar-gradient-blue);
 }
+.accent-row--teal::before {
+  background: var(--bar-gradient-teal);
+}
 .accent-row--no-bar::before {
   display: none;
 }
@@ -453,6 +462,9 @@ body {
 .detail-group--blue::before {
   background: var(--bar-gradient-blue);
 }
+.detail-group--teal::before {
+  background: var(--bar-gradient-teal);
+}
 .detail-group--no-bar::before {
   display: none;
 }
@@ -502,6 +514,9 @@ body {
 }
 .stat-card-faint--blue::before {
   background: var(--bar-gradient-blue);
+}
+.stat-card-faint--teal::before {
+  background: var(--bar-gradient-teal);
 }
 .stat-card-faint--no-bar::before {
   display: none;

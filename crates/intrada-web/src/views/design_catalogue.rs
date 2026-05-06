@@ -417,6 +417,29 @@ pub fn DesignCatalogue() -> impl IntoView {
                     </div>
                 </div>
 
+                // Bar-gradient swatches — used by AccentRow / DetailGroup /
+                // StatCard to signal type (Piece / Exercise / Set) at a glance.
+                <div class="mt-6">
+                    <p class="text-xs font-medium text-muted uppercase mb-2">"Bar Gradients"</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="space-y-1">
+                            <div class="h-12 rounded-lg" style="background: var(--bar-gradient-gold)"></div>
+                            <p class="text-xs text-faint">"bar-gradient-gold"</p>
+                            <p class="text-xs text-faint">"Pieces"</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="h-12 rounded-lg" style="background: var(--bar-gradient-blue)"></div>
+                            <p class="text-xs text-faint">"bar-gradient-blue"</p>
+                            <p class="text-xs text-faint">"Exercises"</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="h-12 rounded-lg" style="background: var(--bar-gradient-teal)"></div>
+                            <p class="text-xs text-faint">"bar-gradient-teal"</p>
+                            <p class="text-xs text-faint">"Sets"</p>
+                        </div>
+                    </div>
+                </div>
+
                 // Text colour samples
                 <div class="mt-6 space-y-1">
                     <p class="text-xs font-medium text-muted uppercase mb-2">"Text Colours"</p>
@@ -624,6 +647,12 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <InlineTypeIndicator item_type=ItemType::Exercise />
                     </AccentRow>
+                    <AccentRow bar=AccentBar::Teal>
+                        <div class="flex flex-col flex-1 gap-0.5">
+                            <span class="text-sm font-semibold text-primary">"Morning Warm-up"</span>
+                            <span class="text-xs text-muted">"5 items"</span>
+                        </div>
+                    </AccentRow>
                     <AccentRow bar=AccentBar::None>
                         <div class="flex flex-col flex-1 gap-0.5">
                             <span class="text-sm font-semibold text-primary">"No-bar variant"</span>
@@ -646,6 +675,11 @@ pub fn DesignCatalogue() -> impl IntoView {
                     </DetailGroup>
                     <DetailGroup label="Notes" bar=AccentBar::Blue>
                         <p class="text-sm text-secondary leading-relaxed">"Focus on the arpeggiated left hand in the opening section. Keep dynamics very soft, pp throughout the first page."</p>
+                    </DetailGroup>
+                    <DetailGroup label="Set Entries" bar=AccentBar::Teal>
+                        <DetailRow label="1.">"Hanon Exercise No.1"</DetailRow>
+                        <DetailRow label="2.">"Clair de Lune"</DetailRow>
+                        <DetailRow label="3.">"Bach Prelude in C"</DetailRow>
                     </DetailGroup>
                 </div>
             </section>
@@ -692,6 +726,12 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <StatCard title="Day Streak" value="12".to_string() bar=AccentBar::Gold tone=StatTone::Accent />
                     <StatCard title="Hrs This Week" value="8.5".to_string() bar=AccentBar::Blue tone=StatTone::WarmAccent />
                     <StatCard title="Pieces Learned" value="23".to_string() bar=AccentBar::Gold />
+                </div>
+                <p class="text-xs text-faint mt-3 mb-2">"Teal bar — for Set-flavoured stats."</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <StatCard title="Saved Sets" value="7".to_string() bar=AccentBar::Teal />
+                    <StatCard title="Sets This Week" value="3".to_string() bar=AccentBar::Teal subtitle="Up from 1" />
+                    <StatCard title="Set Streak" value="4 days".to_string() bar=AccentBar::Teal />
                 </div>
             </section>
 

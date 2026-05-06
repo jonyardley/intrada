@@ -25,6 +25,7 @@ pub fn DetailGroup(
         match bar {
             AccentBar::Gold => "",
             AccentBar::Blue => " detail-group--blue",
+            AccentBar::Teal => " detail-group--teal",
             AccentBar::None => " detail-group--no-bar",
         }
     );
