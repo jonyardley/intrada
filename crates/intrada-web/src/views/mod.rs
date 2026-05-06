@@ -11,6 +11,7 @@ pub mod session_new;
 pub mod session_summary;
 pub mod sessions;
 pub mod sessions_all;
+pub mod set_detail;
 pub mod set_edit;
 pub mod sets;
 
@@ -27,5 +28,6 @@ pub use session_new::SessionNewView;
 pub use session_summary::SessionSummaryView;
 pub use sessions::SessionsListView;
 pub use sessions_all::SessionsAllView;
+pub use set_detail::SetDetailView;
 pub use set_edit::SetEditView;
 pub use sets::SetsListView;
