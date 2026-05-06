@@ -8,6 +8,10 @@ pub enum AccentBar {
     Gold,
     /// Blue gradient — maps to "exercise" content.
     Blue,
+    /// Teal gradient — maps to "set" content (compositions of pieces +
+    /// exercises). Distinct from gold/blue so a Set row sits visibly
+    /// alongside atomic-item rows in a heterogeneous library list.
+    Teal,
     /// No bar — for uniform-type lists where the bar would add noise.
     None,
 }
@@ -17,6 +21,7 @@ impl AccentBar {
         match self {
             Self::Gold => "",
             Self::Blue => " accent-row--blue",
+            Self::Teal => " accent-row--teal",
             Self::None => " accent-row--no-bar",
         }
     }
