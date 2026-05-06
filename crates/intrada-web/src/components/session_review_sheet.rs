@@ -12,9 +12,9 @@ use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 /// and a total. The Start action lives in the sheet's nav bar (right side,
 /// opposite Cancel) — iOS Mail-compose pattern.
 ///
-/// Per-entry rep target / planned duration controls and Save-as-Routine
+/// Per-entry rep target / planned duration controls and Save-as-Set
 /// are intentionally not here — see #389 (per-entry controls) and #390
-/// (save/load routine) for the planned re-introductions.
+/// (save/load set) for the planned re-introductions.
 #[component]
 pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -98,8 +98,8 @@ fn ReviewSheetBody() -> impl IntoView {
 
     // Project the building setlist's `Vec<SetlistEntryView>` (16 fields)
     // down to the minimal `Vec<EditorEntry>` (4 fields) shape that the
-    // shared `<EntryListEditor>` consumes. Routines do the same with
-    // their `RoutineEntryView`.
+    // shared `<EntryListEditor>` consumes. Sets do the same with
+    // their `SetEntryView`.
     let editor_entries = Signal::derive(move || {
         view_model
             .get()

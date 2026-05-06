@@ -2,10 +2,10 @@ mod common;
 
 use axum::http::StatusCode;
 use intrada_core::domain::item::ItemKind;
-use intrada_core::domain::routine::Routine;
+use intrada_core::domain::set::Set;
 use serde_json::json;
 
-fn sample_routine_body() -> serde_json::Value {
+fn sample_set_body() -> serde_json::Value {
     json!({
         "name": "Morning Warm-Up",
         "entries": [
@@ -26,42 +26,42 @@ fn sample_routine_body() -> serde_json::Value {
 // ── Create ─────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn create_routine_returns_201() {
+async fn create_set_returns_201() {
     let app = common::setup_test_app().await;
-    let (status, body) = common::post_json(app, "/api/routines", sample_routine_body()).await;
+    let (status, body) = common::post_json(app, "/api/sets", sample_set_body()).await;
 
     assert_eq!(status, StatusCode::CREATED);
-    let routine: Routine = common::json(&body);
-    assert!(!routine.id.is_empty());
-    assert_eq!(routine.name, "Morning Warm-Up");
-    assert_eq!(routine.entries.len(), 2);
+    let set: Set = common::json(&body);
+    assert!(!set.id.is_empty());
+    assert_eq!(set.name, "Morning Warm-Up");
+    assert_eq!(set.entries.len(), 2);
 }
 
 #[tokio::test]
-async fn create_routine_with_entries() {
+async fn create_set_with_entries() {
     let app = common::setup_test_app().await;
-    let (status, body) = common::post_json(app, "/api/routines", sample_routine_body()).await;
+    let (status, body) = common::post_json(app, "/api/sets", sample_set_body()).await;
 
     assert_eq!(status, StatusCode::CREATED);
-    let routine: Routine = common::json(&body);
+    let set: Set = common::json(&body);
 
-    assert_eq!(routine.entries.len(), 2);
-    assert_eq!(routine.entries[0].item_id, "piece-001");
-    assert_eq!(routine.entries[0].item_title, "Clair de Lune");
-    assert_eq!(routine.entries[0].item_type, ItemKind::Piece);
-    assert_eq!(routine.entries[0].position, 0);
-    assert_eq!(routine.entries[1].item_id, "exercise-001");
-    assert_eq!(routine.entries[1].item_title, "Hanon No. 1");
-    assert_eq!(routine.entries[1].item_type, ItemKind::Exercise);
-    assert_eq!(routine.entries[1].position, 1);
+    assert_eq!(set.entries.len(), 2);
+    assert_eq!(set.entries[0].item_id, "piece-001");
+    assert_eq!(set.entries[0].item_title, "Clair de Lune");
+    assert_eq!(set.entries[0].item_type, ItemKind::Piece);
+    assert_eq!(set.entries[0].position, 0);
+    assert_eq!(set.entries[1].item_id, "exercise-001");
+    assert_eq!(set.entries[1].item_title, "Hanon No. 1");
+    assert_eq!(set.entries[1].item_type, ItemKind::Exercise);
+    assert_eq!(set.entries[1].position, 1);
 }
 
 #[tokio::test]
-async fn create_routine_empty_name_returns_400() {
+async fn create_set_empty_name_returns_400() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::post_json(
         app,
-        "/api/routines",
+        "/api/sets",
         json!({
             "name": "",
             "entries": [
@@ -79,13 +79,13 @@ async fn create_routine_empty_name_returns_400() {
 }
 
 #[tokio::test]
-async fn create_routine_no_entries_returns_400() {
+async fn create_set_no_entries_returns_400() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::post_json(
         app,
-        "/api/routines",
+        "/api/sets",
         json!({
-            "name": "Empty Routine",
+            "name": "Empty Set",
             "entries": []
         }),
     )
@@ -97,13 +97,13 @@ async fn create_routine_no_entries_returns_400() {
 // ── List ───────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn list_routines() {
+async fn list_sets() {
     let app = common::setup_test_app().await;
 
-    common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
+    common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
     common::post_json(
         app.clone(),
-        "/api/routines",
+        "/api/sets",
         json!({
             "name": "Evening Practice",
             "entries": [
@@ -117,62 +117,62 @@ async fn list_routines() {
     )
     .await;
 
-    let (status, body) = common::get(app, "/api/routines").await;
+    let (status, body) = common::get(app, "/api/sets").await;
     assert_eq!(status, StatusCode::OK);
-    let routines: Vec<Routine> = common::json(&body);
-    assert_eq!(routines.len(), 2);
+    let sets: Vec<Set> = common::json(&body);
+    assert_eq!(sets.len(), 2);
 
     // Verify entries are included in list response
-    assert_eq!(routines[0].entries.len(), 2);
-    assert_eq!(routines[1].entries.len(), 1);
+    assert_eq!(sets[0].entries.len(), 2);
+    assert_eq!(sets[1].entries.len(), 1);
 }
 
 #[tokio::test]
-async fn list_routines_empty() {
+async fn list_sets_empty() {
     let app = common::setup_test_app().await;
-    let (status, body) = common::get(app, "/api/routines").await;
+    let (status, body) = common::get(app, "/api/sets").await;
 
     assert_eq!(status, StatusCode::OK);
-    let routines: Vec<Routine> = common::json(&body);
-    assert!(routines.is_empty());
+    let sets: Vec<Set> = common::json(&body);
+    assert!(sets.is_empty());
 }
 
 // ── Get by ID ──────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn get_routine_by_id() {
+async fn get_set_by_id() {
     let app = common::setup_test_app().await;
 
-    let (_, body) = common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
-    let created: Routine = common::json(&body);
+    let (_, body) = common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
+    let created: Set = common::json(&body);
 
-    let (status, body) = common::get(app, &format!("/api/routines/{}", created.id)).await;
+    let (status, body) = common::get(app, &format!("/api/sets/{}", created.id)).await;
     assert_eq!(status, StatusCode::OK);
-    let fetched: Routine = common::json(&body);
+    let fetched: Set = common::json(&body);
     assert_eq!(fetched.id, created.id);
     assert_eq!(fetched.name, "Morning Warm-Up");
     assert_eq!(fetched.entries.len(), 2);
 }
 
 #[tokio::test]
-async fn get_routine_not_found_returns_404() {
+async fn get_set_not_found_returns_404() {
     let app = common::setup_test_app().await;
-    let (status, _body) = common::get(app, "/api/routines/nonexistent-id").await;
+    let (status, _body) = common::get(app, "/api/sets/nonexistent-id").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 // ── Update ─────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn update_routine_name() {
+async fn update_set_name() {
     let app = common::setup_test_app().await;
 
-    let (_, body) = common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
-    let created: Routine = common::json(&body);
+    let (_, body) = common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
+    let created: Set = common::json(&body);
 
     let (status, body) = common::put_json(
         app,
-        &format!("/api/routines/{}", created.id),
+        &format!("/api/sets/{}", created.id),
         json!({
             "name": "Afternoon Warm-Up",
             "entries": [
@@ -192,24 +192,24 @@ async fn update_routine_name() {
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    let updated: Routine = common::json(&body);
+    let updated: Set = common::json(&body);
     assert_eq!(updated.name, "Afternoon Warm-Up");
     assert_eq!(updated.entries.len(), 2);
     assert!(updated.updated_at > created.updated_at);
 }
 
 #[tokio::test]
-async fn update_routine_entries() {
+async fn update_set_entries() {
     let app = common::setup_test_app().await;
 
-    let (_, body) = common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
-    let created: Routine = common::json(&body);
+    let (_, body) = common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
+    let created: Set = common::json(&body);
     assert_eq!(created.entries.len(), 2);
 
     // Replace entries with a single different entry
     let (status, body) = common::put_json(
         app,
-        &format!("/api/routines/{}", created.id),
+        &format!("/api/sets/{}", created.id),
         json!({
             "name": "Morning Warm-Up",
             "entries": [
@@ -224,7 +224,7 @@ async fn update_routine_entries() {
     .await;
 
     assert_eq!(status, StatusCode::OK);
-    let updated: Routine = common::json(&body);
+    let updated: Set = common::json(&body);
     assert_eq!(updated.entries.len(), 1);
     assert_eq!(updated.entries[0].item_id, "piece-003");
     assert_eq!(updated.entries[0].item_title, "Gymnopedie No. 1");
@@ -232,13 +232,13 @@ async fn update_routine_entries() {
 }
 
 #[tokio::test]
-async fn update_routine_not_found_returns_404() {
+async fn update_set_not_found_returns_404() {
     let app = common::setup_test_app().await;
     let (status, _body) = common::put_json(
         app,
-        "/api/routines/nonexistent-id",
+        "/api/sets/nonexistent-id",
         json!({
-            "name": "Ghost Routine",
+            "name": "Ghost Set",
             "entries": [
                 {
                     "item_id": "piece-001",
@@ -255,41 +255,40 @@ async fn update_routine_not_found_returns_404() {
 // ── Delete ─────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn delete_routine() {
+async fn delete_set() {
     let app = common::setup_test_app().await;
 
-    let (_, body) = common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
-    let created: Routine = common::json(&body);
+    let (_, body) = common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
+    let created: Set = common::json(&body);
 
-    let (status, _body) =
-        common::delete(app.clone(), &format!("/api/routines/{}", created.id)).await;
+    let (status, _body) = common::delete(app.clone(), &format!("/api/sets/{}", created.id)).await;
     assert_eq!(status, StatusCode::OK);
 
     // Verify gone
-    let (status, _body) = common::get(app, &format!("/api/routines/{}", created.id)).await;
+    let (status, _body) = common::get(app, &format!("/api/sets/{}", created.id)).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn delete_routine_not_found_returns_404() {
+async fn delete_set_not_found_returns_404() {
     let app = common::setup_test_app().await;
-    let (status, _body) = common::delete(app, "/api/routines/nonexistent-id").await;
+    let (status, _body) = common::delete(app, "/api/sets/nonexistent-id").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn delete_routine_cascades_entries() {
+async fn delete_set_cascades_entries() {
     let app = common::setup_test_app().await;
 
-    // Create two routines
-    let (_, body) = common::post_json(app.clone(), "/api/routines", sample_routine_body()).await;
-    let routine_a: Routine = common::json(&body);
+    // Create two sets
+    let (_, body) = common::post_json(app.clone(), "/api/sets", sample_set_body()).await;
+    let set_a: Set = common::json(&body);
 
     let (_, body) = common::post_json(
         app.clone(),
-        "/api/routines",
+        "/api/sets",
         json!({
-            "name": "Other Routine",
+            "name": "Other Set",
             "entries": [
                 {
                     "item_id": "piece-999",
@@ -300,22 +299,20 @@ async fn delete_routine_cascades_entries() {
         }),
     )
     .await;
-    let routine_b: Routine = common::json(&body);
+    let set_b: Set = common::json(&body);
 
-    // Delete routine A
-    let (status, _body) =
-        common::delete(app.clone(), &format!("/api/routines/{}", routine_a.id)).await;
+    // Delete set A
+    let (status, _body) = common::delete(app.clone(), &format!("/api/sets/{}", set_a.id)).await;
     assert_eq!(status, StatusCode::OK);
 
-    // Routine A is gone
-    let (status, _body) =
-        common::get(app.clone(), &format!("/api/routines/{}", routine_a.id)).await;
+    // Set A is gone
+    let (status, _body) = common::get(app.clone(), &format!("/api/sets/{}", set_a.id)).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 
-    // Routine B is unaffected and still has its entries
-    let (status, body) = common::get(app, &format!("/api/routines/{}", routine_b.id)).await;
+    // Set B is unaffected and still has its entries
+    let (status, body) = common::get(app, &format!("/api/sets/{}", set_b.id)).await;
     assert_eq!(status, StatusCode::OK);
-    let fetched_b: Routine = common::json(&body);
+    let fetched_b: Set = common::json(&body);
     assert_eq!(fetched_b.entries.len(), 1);
     assert_eq!(fetched_b.entries[0].item_title, "Separate Piece");
 }

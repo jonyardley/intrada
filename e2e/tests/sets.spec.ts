@@ -1,14 +1,14 @@
 import { test, expect } from "../fixtures/api-mock";
-import { createSeedRoutinesWithStub } from "../fixtures/seed-data";
+import { createSeedSetsWithStub } from "../fixtures/seed-data";
 
-test.describe("routines page", () => {
-  test("shows empty state when no routines exist", async ({ page }) => {
+test.describe("sets page", () => {
+  test("shows empty state when no sets exist", async ({ page }) => {
     await page.goto("/routines");
 
     await expect(
-      page.getByRole("heading", { name: "Routines" })
+      page.getByRole("heading", { name: "Sets" })
     ).toBeVisible();
-    await expect(page.getByText("No saved routines yet")).toBeVisible();
+    await expect(page.getByText("No saved sets yet")).toBeVisible();
 
     // Should have a link to create a session
     await expect(
@@ -16,24 +16,24 @@ test.describe("routines page", () => {
     ).toBeVisible();
   });
 
-  test("displays pre-seeded routine with entries", async ({
+  test("displays pre-seeded set with entries", async ({
     page,
     mockApi,
   }) => {
-    // Seed a routine before navigating
-    mockApi.routines = createSeedRoutinesWithStub();
+    // Seed a set before navigating
+    mockApi.sets = createSeedSetsWithStub();
 
     await page.goto("/routines");
 
     await expect(
-      page.getByRole("heading", { name: "Routines" })
+      page.getByRole("heading", { name: "Sets" })
     ).toBeVisible();
 
-    // Should show the routine name
+    // Should show the set name
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
 
     // Type-breakdown meta line replaces the previous "N items" badge —
-    // STUB_ROUTINE has one piece + one exercise.
+    // STUB_SET has one piece + one exercise.
     await expect(page.getByText("1 piece · 1 exercise")).toBeVisible();
 
     // The whole row is a tap target linking to the edit screen — Edit /
@@ -47,33 +47,33 @@ test.describe("routines page", () => {
     );
   });
 
-  // Skipped: "Save as Routine" UI was removed from the session review
+  // Skipped: "Save as Set" UI was removed from the session review
   // sheet during the strip-back — see #390 for the planned re-introduction
-  // alongside the broader routines revisit.
-  test.skip("save routine from session builder", async ({ page }) => {
+  // alongside the broader sets revisit.
+  test.skip("save set from session builder", async ({ page }) => {
     await page.goto("/sessions/new");
     await page.getByRole("button", { name: "Custom Session" }).click();
     await page.getByText("Clair de Lune").click();
     await page.getByRole("button", { name: "Review session" }).click();
     const reviewSheet = page.getByRole("dialog");
-    await reviewSheet.getByRole("button", { name: "Save as Routine" }).click();
-    await reviewSheet.getByPlaceholder("e.g. Morning Warm-up").fill("My New Routine");
+    await reviewSheet.getByRole("button", { name: "Save as Set" }).click();
+    await reviewSheet.getByPlaceholder("e.g. Morning Warm-up").fill("My New Set");
     await reviewSheet.getByRole("button", { name: "Save" }).click();
 
     await page.goto("/routines");
-    await expect(page.getByText("My New Routine")).toBeVisible();
+    await expect(page.getByText("My New Set")).toBeVisible();
   });
 
-  // Skipped: "Load routine" UI was removed from the builder during #388
-  // and the strip-back kept it out — see #390. The RoutineLoader component
-  // is still in the module tree pending the routines revisit.
-  test.skip("load routine into session builder", async ({ page, mockApi }) => {
-    mockApi.routines = createSeedRoutinesWithStub();
+  // Skipped: "Load set" UI was removed from the builder during #388
+  // and the strip-back kept it out — see #390. The SetLoader component
+  // is still in the module tree pending the sets revisit.
+  test.skip("load set into session builder", async ({ page, mockApi }) => {
+    mockApi.sets = createSeedSetsWithStub();
 
     await page.goto("/sessions/new");
     await page.getByRole("button", { name: "Custom Session" }).click();
 
-    await expect(page.getByText("Saved Routines")).toBeVisible();
+    await expect(page.getByText("Saved Sets")).toBeVisible();
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
     await page.getByRole("button", { name: "Load" }).click();
 

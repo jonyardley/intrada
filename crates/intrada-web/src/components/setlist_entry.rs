@@ -11,7 +11,7 @@ use crate::components::{DragHandle, Icon, IconName, InlineTypeIndicator};
 /// Takes the minimum data needed to render — id + title + type, plus an
 /// optional duration string and position number for surfaces that need
 /// them. Decoupled from any specific entry view-model so this row primitive
-/// can be reused by routine entries (which have a smaller shape than
+/// can be reused by set entries (which have a smaller shape than
 /// session entries) without padding callsites with default fields.
 #[component]
 pub fn SetlistEntryRow(

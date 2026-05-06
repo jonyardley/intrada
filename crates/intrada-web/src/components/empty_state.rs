@@ -5,7 +5,7 @@ use crate::components::{Icon, IconName};
 /// Empty-state primitive — large icon, heading, body, optional CTA slot.
 ///
 /// Used wherever a list/section can legitimately have no rows: library,
-/// routines, sessions list, analytics. Centralises the iOS-shaped layout
+/// sets, sessions list, analytics. Centralises the iOS-shaped layout
 /// (large glyph + heading + body) so every empty screen reads the same
 /// way. The CTA is passed via `children` so callers can drop in a link,
 /// button, or nothing at all.

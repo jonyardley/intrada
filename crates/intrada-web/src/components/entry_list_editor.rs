@@ -5,12 +5,12 @@ use intrada_core::ItemKind;
 use crate::components::SetlistEntryRow;
 use intrada_web::hooks::use_drag_reorder;
 
-/// Minimal projection of a setlist or routine entry — just what the
+/// Minimal projection of a setlist or set entry — just what the
 /// editor row needs to render. Callers project from their domain
-/// view-model (`SetlistEntryView`, `RoutineEntryView`) into this.
+/// view-model (`SetlistEntryView`, `SetEntryView`) into this.
 ///
 /// Keeps the shared component decoupled from the two divergent
-/// view-model shapes (routines have 5 fields; sessions have 16). The
+/// view-model shapes (sets have 5 fields; sessions have 16). The
 /// projection is trivial — `Vec::iter().map(|e| EditorEntry { ... })`
 /// — so the cost of the abstraction is one tiny adapter at each call
 /// site. The win is the editor doesn't have to know about the
@@ -20,7 +20,7 @@ pub struct EditorEntry {
     pub id: String,
     pub item_title: String,
     pub item_type: ItemKind,
-    /// `None` hides the duration line on the row — routines don't carry
+    /// `None` hides the duration line on the row — sets don't carry
     /// planned durations, sessions do.
     pub duration_display: Option<String>,
 }
@@ -30,7 +30,7 @@ pub struct EditorEntry {
 /// physically translate). The shared editor body used by:
 ///
 /// - `<SessionReviewSheet>` for building a session setlist
-/// - `<RoutineEditView>` for editing a saved routine
+/// - `<SetEditView>` for editing a saved set
 ///
 /// Both surfaces previously inlined the same drag-handle plumbing,
 /// the same compact row markup, and the same "remove" wiring. This

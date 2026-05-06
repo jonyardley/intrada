@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use crate::analytics::AnalyticsView;
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::lesson::Lesson;
-use crate::domain::routine::Routine;
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
     SetlistEntry, SummarySession,
 };
+use crate::domain::set::Set;
 use crate::domain::ListQuery;
 
 /// Internal application state — not exposed to shells.
@@ -22,7 +22,7 @@ pub struct Model {
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
-    pub routines: Vec<Routine>,
+    pub sets: Vec<Set>,
     pub lessons: Vec<Lesson>,
     pub current_lesson: Option<Lesson>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
@@ -67,7 +67,7 @@ pub struct ViewModel {
     pub session_status: SessionStatusView,
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
-    pub routines: Vec<RoutineView>,
+    pub sets: Vec<SetView>,
     pub lessons: Vec<LessonView>,
     pub current_lesson: Option<LessonView>,
 }
@@ -119,18 +119,18 @@ pub fn lesson_to_view(lesson: &Lesson) -> LessonView {
     }
 }
 
-/// Represents a routine for display in the UI.
+/// Represents a set for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct RoutineView {
+pub struct SetView {
     pub id: String,
     pub name: String,
     pub entry_count: usize,
-    pub entries: Vec<RoutineEntryView>,
+    pub entries: Vec<SetEntryView>,
 }
 
-/// Represents a single entry within a routine for display.
+/// Represents a single entry within a set for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct RoutineEntryView {
+pub struct SetEntryView {
     pub id: String,
     pub item_id: String,
     pub item_title: String,

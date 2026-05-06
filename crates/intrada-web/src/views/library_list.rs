@@ -107,7 +107,7 @@ pub fn LibraryListView() -> impl IntoView {
         <PullToRefresh on_refresh=on_refresh is_refreshing=is_refreshing>
         <div class="space-y-6">
             // Page heading matches the other top-level tabs (Practice,
-            // Routines, Analytics). The "Add Item" trailing action lives
+            // Sets, Analytics). The "Add Item" trailing action lives
             // in PageHeading's trailing slot so it sits at the title's
             // level, not floating below the subtitle. Uses PageAddButton
             // (circular "+") for consistency across all top-level pages.

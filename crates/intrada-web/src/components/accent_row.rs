@@ -28,7 +28,7 @@ impl AccentBar {
 ///
 /// Use sparingly: bars earn their keep on **mixed-type lists** (library,
 /// setlist builder) and detail-page sections. For uniform lists (session
-/// history, all routines), pass `bar=AccentBar::None` so the bars don't
+/// history, all sets), pass `bar=AccentBar::None` so the bars don't
 /// flatten into noise.
 ///
 /// Layout contract: the row is a 60px-min flexbox with `align-items:

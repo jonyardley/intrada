@@ -10,9 +10,9 @@ import { test as base, Page } from "@playwright/test";
 import {
   Item,
   PracticeSession,
-  Routine,
+  Set,
   createSeedItems,
-  createSeedRoutines,
+  createSeedSets,
 } from "./seed-data";
 
 const API_BASE = "https://intrada-api.fly.dev";
@@ -26,7 +26,7 @@ function generateId(): string {
 export interface MockStore {
   items: Item[];
   sessions: PracticeSession[];
-  routines: Routine[];
+  sets: Set[];
 }
 
 /**
@@ -201,19 +201,19 @@ async function setupApiMock(page: Page, store: MockStore) {
       }
     }
 
-    // ---- Routines ----
-    if (path === "/api/routines" && method === "GET") {
+    // ---- Sets ----
+    if (path === "/api/sets" && method === "GET") {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(store.routines),
+        body: JSON.stringify(store.sets),
       });
     }
 
-    if (path === "/api/routines" && method === "POST") {
+    if (path === "/api/sets" && method === "POST") {
       const body = request.postDataJSON();
       const now = new Date().toISOString();
-      const routine: Routine = {
+      const set: Set = {
         id: generateId(),
         name: body.name,
         entries: (body.entries ?? []).map(
@@ -228,20 +228,20 @@ async function setupApiMock(page: Page, store: MockStore) {
         created_at: now,
         updated_at: now,
       };
-      store.routines.push(routine);
+      store.sets.push(set);
       return route.fulfill({
         status: 201,
         contentType: "application/json",
-        body: JSON.stringify(routine),
+        body: JSON.stringify(set),
       });
     }
 
-    const routineMatch = path.match(/^\/api\/routines\/(.+)$/);
-    if (routineMatch) {
-      const id = routineMatch[1];
+    const setMatch = path.match(/^\/api\/sets\/(.+)$/);
+    if (setMatch) {
+      const id = setMatch[1];
       if (method === "GET") {
-        const routine = store.routines.find((r) => r.id === id);
-        if (!routine) {
+        const set = store.sets.find((r) => r.id === id);
+        if (!set) {
           return route.fulfill({
             status: 404,
             contentType: "application/json",
@@ -251,11 +251,11 @@ async function setupApiMock(page: Page, store: MockStore) {
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(routine),
+          body: JSON.stringify(set),
         });
       }
       if (method === "PUT") {
-        const idx = store.routines.findIndex((r) => r.id === id);
+        const idx = store.sets.findIndex((r) => r.id === id);
         if (idx === -1) {
           return route.fulfill({
             status: 404,
@@ -264,9 +264,9 @@ async function setupApiMock(page: Page, store: MockStore) {
           });
         }
         const body = request.postDataJSON();
-        const routine = store.routines[idx];
-        routine.name = body.name;
-        routine.entries = (body.entries ?? []).map(
+        const set = store.sets[idx];
+        set.name = body.name;
+        set.entries = (body.entries ?? []).map(
           (e: { item_id: string; item_title: string; item_type: string }, i: number) => ({
             id: generateId(),
             item_id: e.item_id,
@@ -275,15 +275,15 @@ async function setupApiMock(page: Page, store: MockStore) {
             position: i,
           })
         );
-        routine.updated_at = new Date().toISOString();
+        set.updated_at = new Date().toISOString();
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(routine),
+          body: JSON.stringify(set),
         });
       }
       if (method === "DELETE") {
-        const idx = store.routines.findIndex((r) => r.id === id);
+        const idx = store.sets.findIndex((r) => r.id === id);
         if (idx === -1) {
           return route.fulfill({
             status: 404,
@@ -291,11 +291,11 @@ async function setupApiMock(page: Page, store: MockStore) {
             body: JSON.stringify({ error: "Not found" }),
           });
         }
-        store.routines.splice(idx, 1);
+        store.sets.splice(idx, 1);
         return route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({ message: "Routine deleted" }),
+          body: JSON.stringify({ message: "Set deleted" }),
         });
       }
     }
@@ -321,7 +321,7 @@ export const test = base.extend<{ mockApi: MockStore }>({
       const store: MockStore = {
         items: createSeedItems(),
         sessions: [],
-        routines: createSeedRoutines(),
+        sets: createSeedSets(),
       };
       await setupClerkMock(page);
       await setupApiMock(page, store);

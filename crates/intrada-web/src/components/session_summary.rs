@@ -1,11 +1,10 @@
 use leptos::prelude::*;
 
-use intrada_core::{CompletionStatus, EntryStatus, Event, RoutineEvent, SessionEvent, ViewModel};
+use intrada_core::{CompletionStatus, EntryStatus, Event, SessionEvent, SetEvent, ViewModel};
 use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{
-    AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, RoutineSaveForm, StatCard,
-    StatTone,
+    AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, SetSaveForm, StatCard, StatTone,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -25,12 +24,12 @@ pub fn SessionSummary() -> impl IntoView {
     let core_entries = core.clone();
     let core_score = core.clone();
     let core_tempo = core.clone();
-    let core_routine_save = core.clone();
+    let core_set_save = core.clone();
     let core_session_notes_outer = core;
 
     view! {
         // pb-32 reserves space for the sticky .action-bar at the bottom so
-        // the last section (Save-as-Routine button) isn't occluded.
+        // the last section (Save-as-Set button) isn't occluded.
         <div class="space-y-6 pb-32">
             {move || {
                 let vm = view_model.get();
@@ -308,15 +307,15 @@ pub fn SessionSummary() -> impl IntoView {
                                 />
                             </div>
 
-                            // Save as Routine — kept in place for now;
-                            // re-evaluate position when the routines flow
+                            // Save as Set — kept in place for now;
+                            // re-evaluate position when the sets flow
                             // is reworked (see #390).
                             {
-                                let core_save_routine = core_routine_save.clone();
+                                let core_save_set = core_set_save.clone();
                                 view! {
-                                    <RoutineSaveForm on_save=Callback::new(move |name: String| {
-                                        let event = Event::Routine(RoutineEvent::SaveSummaryAsRoutine { name });
-                                        let core_ref = core_save_routine.borrow();
+                                    <SetSaveForm on_save=Callback::new(move |name: String| {
+                                        let event = Event::Set(SetEvent::SaveSummaryAsSet { name });
+                                        let core_ref = core_save_set.borrow();
                                         let effects = core_ref.process_event(event);
                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                     }) />

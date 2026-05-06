@@ -291,8 +291,8 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "CREATE INDEX IF NOT EXISTS idx_lesson_photos_lesson_id ON lesson_photos(lesson_id);",
     ),
     // Drop FK on routine_entries.routine_id — same Turso failure mode as
-    // lesson_photos (see #294). Orphan safety: delete_routine and
-    // update_routine already delete child rows explicitly.
+    // lesson_photos (see #294). Orphan safety: delete_set and
+    // update_set already delete child rows explicitly.
     (
         "0044_create_routine_entries_new",
         "CREATE TABLE IF NOT EXISTS routine_entries_new (

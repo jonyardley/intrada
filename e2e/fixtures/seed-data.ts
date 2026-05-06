@@ -81,7 +81,7 @@ export const STUB_EXERCISE: Item = {
   updated_at: NOW,
 };
 
-export interface RoutineEntry {
+export interface SetEntry {
   id: string;
   item_id: string;
   item_title: string;
@@ -89,18 +89,18 @@ export interface RoutineEntry {
   position: number;
 }
 
-export interface Routine {
+export interface Set {
   id: string;
   name: string;
-  entries: RoutineEntry[];
+  entries: SetEntry[];
   created_at: string;
   updated_at: string;
 }
 
-const STUB_ROUTINE_ID = "01JSTUB0000000000ROUTN00001";
+const STUB_SET_ID = "01JSTUB0000000000ROUTN00001";
 
-export const STUB_ROUTINE: Routine = {
-  id: STUB_ROUTINE_ID,
+export const STUB_SET: Set = {
+  id: STUB_SET_ID,
   name: "Morning Warm-up",
   entries: [
     {
@@ -126,10 +126,10 @@ export function createSeedItems(): Item[] {
   return [structuredClone(STUB_PIECE), structuredClone(STUB_EXERCISE)];
 }
 
-export function createSeedRoutines(): Routine[] {
+export function createSeedSets(): Set[] {
   return [];
 }
 
-export function createSeedRoutinesWithStub(): Routine[] {
-  return [structuredClone(STUB_ROUTINE)];
+export function createSeedSetsWithStub(): Set[] {
+  return [structuredClone(STUB_SET)];
 }

@@ -23,7 +23,7 @@ use crate::components::{Icon, IconName};
 #[component]
 pub fn PageAddButton(
     /// What this button adds — read aloud by screen readers ("Add Item",
-    /// "New Session", "New Routine"). Keep it short; the visible affordance
+    /// "New Session", "New Set"). Keep it short; the visible affordance
     /// is the "+" glyph alone.
     #[prop(into)]
     aria_label: String,
