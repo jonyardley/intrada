@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+  # Run on every PR regardless of target branch — stacked PRs (where the
+  # target is a feature branch, not main) need CI too. Without this filter
+  # the workflow only triggers when the target is `main`, leaving stacked
+  # PRs with "no checks reported" until they're rebased onto main.
   pull_request:
-    branches: [main]
 
 # Cancel in-flight runs when a new commit lands on the same PR. Don't cancel
 # main-branch runs — those gate deploys, so we want every commit's build to
