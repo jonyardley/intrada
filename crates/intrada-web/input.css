@@ -199,17 +199,6 @@ body {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Custom Variants
-   ═══════════════════════════════════════════════════════════════════════ */
-
-@custom-variant supports-backdrop {
-  @supports (backdrop-filter: blur(1px)) {
-    @slot;
-  }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════
    Composite Utilities
    ═══════════════════════════════════════════════════════════════════════
    These combine multiple CSS properties into single utility classes.
@@ -983,16 +972,9 @@ body {
    Drag-and-Drop Utilities
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Drop indicator line — appears between entries during drag.
-   Transitions are wrapped in motion-safe to honour prefers-reduced-motion (FR-011). */
-@utility drop-indicator {
-  width: 100%;
-  background-color: var(--color-accent-focus);
-  border-radius: 1px;
-  @media (prefers-reduced-motion: no-preference) {
-    transition: opacity 150ms ease, height 150ms ease;
-  }
-}
+/* `.drop-indicator` was retired in PR #388 along with the indicator-line
+   drag pattern. The current `use_drag_reorder` hook moves rows physically
+   via translateY. */
 
 /* Visual highlight applied to the entry row being dragged (FR-003). */
 @utility drag-active {
@@ -1582,9 +1564,11 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
      Tall enough for forms; backdrop dim still shows ~8vh of context. */
   height: 92vh;
   z-index: 1001;
+  /* Solid surface — sheets sit over a dimmed backdrop, so the content
+     behind doesn't bleed through. Aligned with the 2026 surface family
+     (no glassmorphism / backdrop-blur). The backdrop itself provides
+     the depth cue, not the sheet body. */
   background: var(--color-surface-fallback);
-  border: 1px solid var(--color-border-card);
-  border-bottom: none;
   border-radius: 1.25rem 1.25rem 0 0;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
   /* Closed by default — translated fully off-screen. The .--open modifier
@@ -1600,11 +1584,6 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
      and the overflow-y on the body has nothing to clip against. */
   overflow: hidden;
   padding-bottom: env(safe-area-inset-bottom);
-
-  @supports (backdrop-filter: blur(1px)) {
-    background: var(--color-surface-primary);
-    backdrop-filter: blur(20px);
-  }
 }
 
 .bottom-sheet--open {
@@ -1736,10 +1715,12 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 }
 
 .grouped-list-row {
-  background-color: var(--color-surface-fallback);
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-lg);
+  /* 2026 surface family — same chrome as `.card` / `.detail-group` /
+     `.stat-card-faint`. Was previously the glassmorphism stack
+     (white/12 + border + shadow-lg + backdrop-blur). */
+  background-color: var(--color-surface-faint);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-card);
   /* Clip the inner SwipeActions track so a swipe-revealed action button
      doesn't poke past the rounded row corners. */
   overflow: hidden;
@@ -1755,9 +1736,12 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 [data-platform="ios"] .grouped-list {
   display: block;
   gap: 0;
-  background-color: var(--color-surface-primary);
-  border: 1px solid var(--color-border-card);
-  border-radius: var(--radius-card);
+  /* iOS inset-grouped container — solid 2026 surface, hairline rules
+     between rows (handled by `.grouped-list-row + .grouped-list-row`
+     below). Was glassmorphism in the previous design language. */
+  background-color: var(--color-surface-faint);
+  border-radius: var(--radius-surface);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   backdrop-filter: blur(12px);
 }
@@ -1880,8 +1864,9 @@ html:not([data-platform="ios"]) .swipe-row-action {
   position: fixed;
   z-index: 1501;
   min-width: 240px;
+  /* Solid 2026 chrome — context menus float over content, but the
+     surface itself doesn't carry blur. The drop shadow handles depth. */
   background: var(--color-surface-fallback);
-  border: 1px solid var(--color-border-card);
   border-radius: 0.875rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   display: flex;
@@ -1894,11 +1879,6 @@ html:not([data-platform="ios"]) .swipe-row-action {
   transform-origin: top left;
   pointer-events: none;
   transition: opacity 180ms ease, transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
-
-  @supports (backdrop-filter: blur(1px)) {
-    background: var(--color-surface-primary);
-    backdrop-filter: blur(20px);
-  }
 }
 
 .context-menu--open {
@@ -2031,33 +2011,23 @@ html:not([data-platform="ios"]) .context-menu {
 
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TypeTabs — iOS UISegmentedControl-style variant
-   Web default: pill toggle with accent fill per segment (existing Tailwind
-   classes handle this; .type-tabs-thumb is hidden).
-   iOS: rounded-rect track + an accent-filled thumb that slides between
-   segments via CSS transform on --thumb-x. Brand colour carries the
-   active state; the iOS-spring transition + monochrome inactive text
-   keep the control feeling native.
+   TypeTabs — segmented control with sliding accent thumb.
+   Same shape across web + iOS: rounded-rect track, accent thumb that
+   slides between segments via `transform: translateX(var(--thumb-x))`.
+   Cross-platform unification (PR #403) — the previous web variant was
+   a static per-segment `bg-accent` fill that lost the signature slide.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* On web, the thumb is purely decorative and must not affect layout. */
-.type-tabs-thumb {
-  display: none;
-}
-
-/* iOS segmented control track */
-[data-platform="ios"] .type-tabs {
+.type-tabs {
   border-radius: 9px;
   padding: 2px;
   gap: 0;
 }
 
 /* Sliding thumb — absolutely fills one half of the track inner area.
-   Uses the brand accent indigo so the selection state reads at a glance
-   (a neutral-on-neutral thumb on this dark palette was too subtle). The
-   sliding shape + iOS spring still drive the native interaction feel. */
-[data-platform="ios"] .type-tabs-thumb {
-  display: block;
+   Uses the brand accent indigo so the selection state reads at a glance.
+   iOS spring transition keeps the interaction feeling native there too. */
+.type-tabs-thumb {
   position: absolute;
   top: 2px;
   bottom: 2px;
@@ -2075,15 +2045,15 @@ html:not([data-platform="ios"]) .context-menu {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-platform="ios"] .type-tabs-thumb {
+  .type-tabs-thumb {
     transition: none;
   }
 }
 
-/* Buttons sit above the thumb; transparent bg replaces the web pill fill.
+/* Buttons sit above the thumb; transparent bg lets the thumb show through.
    Explicit width:50% + flex:none avoids inline-flex ambiguity that would
    give unequal halves (and misalign the sliding thumb). */
-[data-platform="ios"] .type-tabs-btn {
+.type-tabs-btn {
   position: relative;
   z-index: 10;
   background: transparent;
@@ -2097,28 +2067,26 @@ html:not([data-platform="ios"]) .context-menu {
   flex: none;
 }
 
-[data-platform="ios"] .type-tabs-btn[aria-selected="true"] {
+.type-tabs-btn[aria-selected="true"] {
   color: var(--color-text-primary);
   font-weight: 600;
 }
 
-/* Touch focus must be invisible — the Tailwind `focus:ring-2` utilities
-   on the button class still fire on tap and read as a blue glow on iOS,
-   which is exactly the web-y focus-state issue we want to avoid. Override
-   any inherited :focus ring; only show a ring for keyboard navigation. */
-[data-platform="ios"] .type-tabs-btn:focus {
+/* Override the Tailwind `focus:ring-2` utilities that still fire on tap
+   and read as a blue glow — only show a ring for keyboard navigation. */
+.type-tabs-btn:focus {
   outline: none;
   box-shadow: none;
 }
 
-[data-platform="ios"] .type-tabs-btn:focus-visible {
+.type-tabs-btn:focus-visible {
   outline: 2px solid var(--color-accent-focus);
   outline-offset: -2px;
   box-shadow: none;
 }
 
 /* Display-only mode (edit form): cursor and hover state stripped */
-[data-platform="ios"] .type-tabs-btn[aria-disabled="true"] {
+.type-tabs-btn[aria-disabled="true"] {
   cursor: default;
 }
 

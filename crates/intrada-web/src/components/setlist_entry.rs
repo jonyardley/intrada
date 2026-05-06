@@ -2,8 +2,9 @@ use leptos::prelude::*;
 use web_sys::PointerEvent;
 
 use intrada_core::ItemKind;
+use intrada_web::types::ItemType;
 
-use crate::components::{DragHandle, Icon, IconName, TypeBadge};
+use crate::components::{DragHandle, Icon, IconName, InlineTypeIndicator};
 
 /// A single entry in the setlist (building or active phase).
 ///
@@ -57,6 +58,10 @@ pub fn SetlistEntryRow(
     let id_for_up = id.clone();
     let id_for_down = id.clone();
     let id_for_drag = id;
+    let inline_type = match item_type {
+        ItemKind::Piece => ItemType::Piece,
+        ItemKind::Exercise => ItemType::Exercise,
+    };
 
     view! {
         <div
@@ -95,7 +100,7 @@ pub fn SetlistEntryRow(
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-primary truncate">{item_title}</span>
                     {if !compact {
-                        Some(view! { <TypeBadge item_type=item_type.clone() /> })
+                        Some(view! { <InlineTypeIndicator item_type=inline_type /> })
                     } else {
                         None
                     }}
@@ -109,7 +114,7 @@ pub fn SetlistEntryRow(
                 }}
             </div>
             {if compact {
-                Some(view! { <TypeBadge item_type=item_type /> })
+                Some(view! { <InlineTypeIndicator item_type=inline_type /> })
             } else {
                 None
             }}

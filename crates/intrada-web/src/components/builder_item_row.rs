@@ -1,8 +1,9 @@
 use leptos::prelude::*;
 
 use intrada_core::{ItemKind, LibraryItemView};
+use intrada_web::types::ItemType;
 
-use crate::components::{AccentBar, AccentRow, Icon, IconName, TypeBadge};
+use crate::components::{AccentBar, AccentRow, Icon, IconName, InlineTypeIndicator};
 
 /// Library row used inside the session builder: title + subtitle + type badge,
 /// with a toggle on the right that switches between "+ add" (idle) and
@@ -24,8 +25,11 @@ pub fn BuilderItemRow(
     let item_id = item.id.clone();
     let title = item.title.clone();
     let subtitle = item.subtitle.clone();
-    let item_type = item.item_type.clone();
-    let aria_label = format!("{} ({})", title, item_type);
+    let inline_type = match item.item_type {
+        ItemKind::Piece => ItemType::Piece,
+        ItemKind::Exercise => ItemType::Exercise,
+    };
+    let aria_label = format!("{} ({})", title, item.item_type);
 
     view! {
         <button
@@ -45,7 +49,7 @@ pub fn BuilderItemRow(
                         <div class="text-xs text-muted truncate">{subtitle.clone()}</div>
                     })}
                 </div>
-                <TypeBadge item_type=item_type />
+                <InlineTypeIndicator item_type=inline_type />
                 <span class="builder-row-toggle" aria-hidden="true">
                     {move || {
                         if is_selected.get() {
