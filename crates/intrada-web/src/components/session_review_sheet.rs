@@ -49,7 +49,7 @@ pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl In
             on_nav_action=on_start
             nav_action_disabled=setlist_empty
         >
-            <ReviewSheetBody />
+            <ReviewSheetBody sheet_open=open />
         </BottomSheet>
     }
 }
@@ -58,8 +58,11 @@ pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl In
 /// Lives in its own component so per-entry move-closures don't have to
 /// satisfy `Fn` for the BottomSheet's children prop — the Leptos component
 /// boundary breaks the closure-trait dependency chain.
+///
+/// `sheet_open` is forwarded to [`SetSaveForm`] so it can reset its
+/// "Saved" state when the sheet closes.
 #[component]
-fn ReviewSheetBody() -> impl IntoView {
+fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
@@ -207,12 +210,15 @@ fn ReviewSheetBody() -> impl IntoView {
                 {
                     let core_save = core_save_set.clone();
                     view! {
-                        <SetSaveForm on_save=Callback::new(move |name: String| {
-                            let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
-                            let core_ref = core_save.borrow();
-                            let effects = core_ref.process_event(event);
-                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                        }) />
+                        <SetSaveForm
+                            sheet_open=sheet_open
+                            on_save=Callback::new(move |name: String| {
+                                let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                                let core_ref = core_save.borrow();
+                                let effects = core_ref.process_event(event);
+                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                            })
+                        />
                     }
                 }
             </Show>
