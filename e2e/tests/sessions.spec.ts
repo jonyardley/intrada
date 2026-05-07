@@ -111,7 +111,9 @@ test.describe("sessions page", () => {
     await expect(page.getByText("Items Practiced")).toBeVisible();
   });
 
-  test("cancel building returns to sessions list", async ({ page }) => {
+  test("cancel building from empty setlist returns to sessions list", async ({
+    page,
+  }) => {
     await page.goto("/sessions/new");
 
     // Click "Custom Session" to enter the setlist builder
@@ -122,14 +124,61 @@ test.describe("sessions page", () => {
       page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
 
-    // Click Cancel — scoped to <main> to avoid matching the (closed but
-    // still mounted) bottom sheet's own Cancel button.
+    // Empty-setlist branch: single-tap Cancel (no confirmation, since
+    // there's nothing to lose). Scoped to <main> to avoid matching the
+    // (closed but still mounted) bottom sheet's own Cancel button.
     await page
       .getByRole("main")
       .getByRole("button", { name: "Cancel" })
       .click();
 
     // Should redirect to sessions list
+    await expect(
+      page.getByRole("heading", { name: "Practice" })
+    ).toBeVisible();
+  });
+
+  test("Start over with confirmation clears non-empty setlist", async ({
+    page,
+  }) => {
+    await page.goto("/sessions/new");
+    await page.getByRole("button", { name: "Custom Session" }).click();
+    await expect(
+      page.getByRole("heading", { name: "New Session" })
+    ).toBeVisible();
+
+    // Add an item — Start over only appears when the setlist is non-empty.
+    await page.getByText("Clair de Lune").click();
+
+    // First tap: Start over → confirmation pair appears.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Start over" })
+      .click();
+    await expect(
+      page.getByRole("main").getByRole("button", { name: "Yes, clear it" })
+    ).toBeVisible();
+
+    // Tap "Keep it" to abort — single Start over button returns.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Keep it" })
+      .click();
+    await expect(
+      page.getByRole("main").getByRole("button", { name: "Start over" })
+    ).toBeVisible();
+
+    // Tap Start over again, then confirm.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Start over" })
+      .click();
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Yes, clear it" })
+      .click();
+
+    // CancelBuilding clears the in-progress setlist and redirects.
     await expect(
       page.getByRole("heading", { name: "Practice" })
     ).toBeVisible();

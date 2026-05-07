@@ -1,6 +1,6 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-04-25.
+> Last reviewed: 2026-05-07.
 
 ## Project Overview
 
@@ -45,13 +45,17 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 ## Commands
 
 ```bash
-cargo fmt --check          # must pass before commit
+cargo fmt --check          # must pass before commit AND before push (CI runs both)
 cargo test                 # all workspace tests
-cargo clippy               # lint check
+cargo clippy               # lint check — must pass before push
 cargo test -p intrada-api  # API tests only
 just ios-dev               # start Tauri iOS dev session (sim) — runs trunk serve + tauri ios dev
 just ios-build             # build Tauri iOS app for device (no TestFlight)
 ```
+
+Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushing* —
+not just before committing. Pushing then watching CI fail wastes a full ~3-minute
+roundtrip per agent or contributor; better to catch the formatting tab here.
 
 First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
@@ -208,6 +212,50 @@ queries alone.
 - No `unwrap()` without justification.
 - Prefer well-established libraries over custom implementations.
 
+## Project-specific gotchas
+
+Bear-traps that have caught us at least once. Skim before you start; the cost
+of a recheck is a few seconds, the cost of one of these landing in main is a
+follow-up PR.
+
+### Tauri WebView origin is `tauri://localhost`
+
+Inside the Tauri 2 iOS shell the WebView's runtime origin is `tauri://localhost`
+— **not** the dev server URL (`http://192.168.x.x:8080`) and not whatever the
+production web app runs at. This affects:
+
+- **CORS** allowlists in `intrada-api` (`ALLOWED_ORIGIN`) — must include
+  `tauri://localhost`, otherwise simulator/device API calls hit preflight 403s.
+- **OAuth redirect URIs** in Clerk — register the `tauri://` origin alongside
+  the web ones, or sign-in returns to a broken URL.
+- **CSP** in `tauri.conf.json` and any meta tags — `tauri:` scheme must be in
+  `connect-src` / `frame-src` etc.
+
+### Leptos + Crux callbacks need owner context
+
+Callbacks invoked from raw `addEventListener` / `web_sys::EventTarget`
+listeners run **outside** the Leptos owner that called `expect_context`. They
+panic on context lookup. Use the `*_with_core` helpers (e.g.
+`process_effects_with_core` instead of `process_effects`) which take
+`SharedCore` explicitly. Sites where this matters: pull-to-refresh, drag
+reorder pointer events, anything wired up via wasm-bindgen `Closure`.
+
+### `option_env!` needs `cargo:rerun-if-env-changed`
+
+If a build script (or `option_env!` site indirectly via macro expansion)
+reads an env var, pair it with `println!("cargo:rerun-if-env-changed=NAME")`
+in `build.rs`. Without it, cargo caches the macro expansion across builds and
+your "I changed the env var" rebuild silently uses stale values. We've hit this
+on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
+
+### Leptos SVG attribute values must be strings
+
+`view! { <svg width=24 ... /> }` compiles but renders blank. SVG attribute
+values in Leptos 0.8 must be strings — `width="24".to_string()` or
+`width=format!("{px}")`. Same for `height`, `x`, `y`, `r`, `cx`, `cy`,
+`viewBox`, etc. Numeric literals work for HTML attrs (which Leptos coerces)
+but not SVG.
+
 ## Workflow
 
 Match ceremony to scope. Default to less. Escalate only when work demands it.
@@ -281,6 +329,18 @@ If you're unsure whether a skill applies, default to the tier system. The skills
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
 3. Never push to main. Always a feature branch + PR.
+4. **Self-review every non-trivial PR** before declaring it ready. Use the
+   `superpowers:code-reviewer` subagent (feature work) or the `/review` skill
+   (small fixes), then post the summary as a `gh pr comment` so it's visible
+   on the PR alongside CI — the reviewer doesn't see in-conversation subagent
+   output. Apply blockers / important findings inline; defer the rest as
+   tracked issues per (5). Skip self-review for Tier 1 trivia (typos, dep
+   bumps, single-line config tweaks).
+5. **Open a tracked issue for every deferred / out-of-scope item**, with
+   appropriate labels (`horizon:now|next|later`, kind: `ux` / `architecture`
+   / `bug` / `accessibility` / `ios` / `pillar:*`). PR descriptions are not
+   tracking — they get auto-collapsed after merge. Mention the issue numbers
+   in the self-review comment so the link is bidirectional.
 
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.

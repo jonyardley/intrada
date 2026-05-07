@@ -1,0 +1,16 @@
+[package]
+name = "tauri-plugin-background-audio"
+version = "0.0.1"
+edition = "2021"
+rust-version.workspace = true
+description = "Intrada-internal Tauri plugin: keeps the practice timer running while the app is backgrounded / the device is locked. Phase B scaffold — commands return Ok with no native side-effects yet."
+# Required by tauri-plugin's build script (must match package.name).
+links = "tauri-plugin-background-audio"
+
+[dependencies]
+tauri = { version = "2" }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

@@ -237,6 +237,12 @@ pub struct ActiveSessionView {
     pub current_position: usize,
     pub total_items: usize,
     pub started_at: String,
+    /// Wall-clock anchor (RFC3339 UTC) for the *current item*. Resets to
+    /// "now" on each item advance (Next / Skip). The shell derives the
+    /// per-item elapsed timer from `Utc::now() - current_item_started_at`
+    /// rather than incrementing a counter — survives WebView suspension /
+    /// tab backgrounding without drift.
+    pub current_item_started_at: String,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
     pub current_rep_target: Option<u8>,
@@ -310,6 +316,7 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
+        current_item_started_at: active.current_item_started_at.to_rfc3339(),
         entries: active.entries.iter().map(entry_to_view).collect(),
         session_intention: active.session_intention.clone(),
         current_rep_target: current.rep_target,

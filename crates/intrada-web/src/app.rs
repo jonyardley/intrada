@@ -3,8 +3,9 @@ use std::rc::Rc;
 
 use crux_core::Core;
 use leptos::prelude::*;
-use leptos_router::components::{Route, Router, Routes};
+use leptos_router::components::{Redirect, Route, Router, Routes};
 use leptos_router::path;
+use leptos_router::NavigateOptions;
 use send_wrapper::SendWrapper;
 use wasm_bindgen::prelude::*;
 
@@ -18,7 +19,7 @@ use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
     LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
-    SessionsAllView, SessionsListView, SetDetailView, SetEditView, SetsListView,
+    SessionsAllView, SessionsListView, SetDetailView, SetEditView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
@@ -204,8 +205,17 @@ fn AuthenticatedApp() -> impl IntoView {
                     <Route path=path!("/sessions/summary") view=move || view! {
                         <SessionSummaryView />
                     } />
-                    <Route path=path!("/routines") view=move || view! {
-                        <SetsListView />
+                    // /routines folded into Library (Sets type-tab) —
+                    // legacy URL redirects so deep links / bookmarks land
+                    // on the right tab. `replace: true` keeps the back
+                    // button from bouncing the user to the dead URL.
+                    // Edit form keeps its old URL until the next
+                    // migration step.
+                    <Route path=path!("/routines") view=|| view! {
+                        <Redirect
+                            path="/?type=set"
+                            options=NavigateOptions { replace: true, ..Default::default() }
+                        />
                     } />
                     <Route path=path!("/routines/:id/edit") view=move || view! {
                         <SetEditView />

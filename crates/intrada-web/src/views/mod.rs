@@ -14,7 +14,6 @@ pub mod sessions;
 pub mod sessions_all;
 pub mod set_detail;
 pub mod set_edit;
-pub mod sets;
 pub mod settings;
 
 pub use account_delete::AccountDeleteView;
@@ -33,5 +32,4 @@ pub use sessions::SessionsListView;
 pub use sessions_all::SessionsAllView;
 pub use set_detail::SetDetailView;
 pub use set_edit::SetEditView;
-pub use sets::SetsListView;
 pub use settings::SettingsSheet;

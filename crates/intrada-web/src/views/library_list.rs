@@ -1,6 +1,7 @@
 use leptos::ev;
 use leptos::prelude::*;
 use leptos::web_sys;
+use leptos_router::hooks::use_query_map;
 use wasm_bindgen::JsCast;
 
 use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, SetEvent, SetView, ViewModel};
@@ -20,6 +21,20 @@ fn matches_query(item: &LibraryItemView, q: &str) -> bool {
     item.title.to_lowercase().contains(q)
         || item.subtitle.to_lowercase().contains(q)
         || item.tags.iter().any(|t| t.to_lowercase().contains(q))
+}
+
+/// Map a `?type=` query value to a `LibraryFilter`. Accepts the
+/// canonical singulars (`piece`, `exercise`, `set`) plus the natural
+/// plural / legacy forms so a deep link from any external surface
+/// resolves the same way.
+fn filter_from_query(value: &str) -> Option<LibraryFilter> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "all" => Some(LibraryFilter::All),
+        "piece" | "pieces" => Some(LibraryFilter::Pieces),
+        "exercise" | "exercises" => Some(LibraryFilter::Exercises),
+        "set" | "sets" => Some(LibraryFilter::Sets),
+        _ => None,
+    }
 }
 
 /// Set-name search. Matches against the set's name + the title of every
@@ -42,8 +57,18 @@ pub fn LibraryListView() -> impl IntoView {
     let is_refreshing = RwSignal::new(false);
     let add_sheet_open = RwSignal::new(false);
 
-    // Default to All so the user sees their whole library on first load.
-    let active_filter: RwSignal<LibraryFilter> = RwSignal::new(LibraryFilter::default());
+    // Initial filter respects `?type=` so the /routines redirect (and any
+    // other deep link) can land on the right tab. Unknown / missing →
+    // default (All) so the user sees their whole library.
+    //
+    // Intentionally `with_untracked` — the URL is a deep-link entry
+    // point, not a live source of truth. Once the user is on the page,
+    // tab clicks own the filter; we don't want the URL changing back to
+    // override their selection.
+    let initial_filter = use_query_map()
+        .with_untracked(|q| q.get("type").and_then(|v| filter_from_query(&v)))
+        .unwrap_or_default();
+    let active_filter: RwSignal<LibraryFilter> = RwSignal::new(initial_filter);
     let query = RwSignal::new(String::new());
 
     // Filtered items (pieces + exercises). Driven by the All / Pieces /
@@ -169,7 +194,7 @@ pub fn LibraryListView() -> impl IntoView {
             // (circular "+") for consistency across all top-level pages.
             <PageHeading
                 text="Library"
-                subtitle="Your pieces and exercises."
+                subtitle="Your pieces, exercises, and sets."
                 trailing=Box::new(move || view! {
                     <PageAddButton
                         aria_label="Add Item"

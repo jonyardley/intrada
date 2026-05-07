@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
@@ -9,6 +10,7 @@ use crate::components::{
     Button, ButtonSize, ButtonVariant, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet,
     ItemReflectionTarget, ProgressRing, SectionLabel, SetlistEntryRow, TransitionPrompt,
 };
+use intrada_web::background_audio;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 
@@ -31,6 +33,8 @@ pub fn SessionTimer() -> impl IntoView {
     let is_submitting = expect_context::<IsSubmitting>();
     let focus_mode = expect_context::<FocusMode>();
 
+    // Per-item elapsed time, derived from the wall clock — see recompute()
+    // below. Kept as RwSignal<u32> so ProgressRing's API doesn't change.
     let elapsed_secs = RwSignal::new(0u32);
     let interval_id: RwSignal<Option<i32>> = RwSignal::new(None);
     // Position the user manually dismissed the rep counter at. Tied to
@@ -49,11 +53,102 @@ pub fn SessionTimer() -> impl IntoView {
     let reflection_next_type = RwSignal::new(Option::<ItemKind>::None);
     let reflection_position_label = RwSignal::new(String::new());
 
-    // Start the display timer
-    {
-        let closure = Closure::<dyn Fn()>::new(move || {
-            elapsed_secs.update(|s| *s += 1);
+    // Wall-clock derive: read `current_item_started_at` from the active
+    // session and compute elapsed = now − started_at. Survives WebView
+    // suspension / tab backgrounding without drift, where the previous
+    // tick-counter (setInterval increment) silently froze. The 1Hz
+    // interval below just *triggers* the recompute — the value comes
+    // from the wall clock, not an accumulator.
+    let recompute = move || {
+        let vm = view_model.get_untracked();
+        let next = vm
+            .active_session
+            .as_ref()
+            .and_then(|a| DateTime::parse_from_rfc3339(&a.current_item_started_at).ok())
+            .map(|started_at| {
+                (chrono::Utc::now() - started_at.with_timezone(&chrono::Utc))
+                    .num_seconds()
+                    .max(0) as u32
+            })
+            .unwrap_or(0);
+        // Equality guard skips redundant signal sets when the second
+        // hasn't ticked over — keeps ProgressRing / digital-readout
+        // from re-rendering up to N times per second on the next
+        // sub-second 1Hz fire after a recompute trigger.
+        if elapsed_secs.get_untracked() != next {
+            elapsed_secs.set(next);
+        }
+    };
+
+    // Initial seed — covers the case where SessionTimer mounts mid-item
+    // (e.g. crash recovery rehydrates an in-progress session at minute 7).
+    recompute();
+
+    // Re-derive immediately whenever `current_item_started_at` changes
+    // (item advance / skip / new session start). Without this, elapsed
+    // would briefly show the previous item's value until the next
+    // 1Hz tick.
+    Effect::new(move |_| {
+        // Read the anchor reactively so this Effect depends on it.
+        let _ = view_model.with(|vm| {
+            vm.active_session
+                .as_ref()
+                .map(|a| a.current_item_started_at.clone())
         });
+        recompute();
+    });
+
+    // Background-audio plugin lifecycle (Phase B of #309 — plugin
+    // commands return Ok with no native side-effects yet, JS bindings
+    // are no-ops outside Tauri, so this is safe to land before any iOS
+    // work). Tracks the `current_item_started_at` anchor across renders
+    // so we can tell session start (None → Some), item advance (anchor
+    // change), and session end (Some → None) apart with a single
+    // Effect.
+    //
+    // The Effect re-fires on every ViewModel push (coarser than ideal —
+    // any unrelated VM mutation triggers it) but the anchor-equality
+    // guard makes that idempotent. If we ever care about the wasted
+    // work, a Memo<Option<String>> over current_item_started_at would
+    // isolate the dependency.
+    let prev_anchor: RwSignal<Option<String>> = RwSignal::new(None);
+    Effect::new(move |_| {
+        let next = view_model.with(|vm| {
+            vm.active_session.as_ref().map(|a| {
+                (
+                    a.current_item_title.clone(),
+                    a.current_position,
+                    a.total_items,
+                    a.current_item_started_at.clone(),
+                )
+            })
+        });
+        let prev = prev_anchor.get_untracked();
+        match (prev, next) {
+            (None, Some((title, _pos, _total, started_at))) => {
+                background_audio::begin_session(&title, &started_at);
+                prev_anchor.set(Some(started_at));
+            }
+            (Some(prev_anchor_val), Some((title, pos, total, started_at)))
+                if prev_anchor_val != started_at =>
+            {
+                let position_label = format!("Item {} of {}", pos + 1, total);
+                background_audio::set_now_playing(&title, &position_label, &started_at);
+                prev_anchor.set(Some(started_at));
+            }
+            (Some(_), None) => {
+                background_audio::end_session();
+                prev_anchor.set(None);
+            }
+            _ => {}
+        }
+    });
+
+    // Coarse 1Hz tick for the second-resolution display. The closure just
+    // calls recompute(); skipping a fire (backgrounded tab) is harmless
+    // because the next fire pulls the correct value from the wall clock.
+    {
+        let closure = Closure::<dyn Fn()>::new(recompute);
         if let Some(window) = web_sys::window() {
             if let Ok(id) = window.set_interval_with_callback_and_timeout_and_arguments_0(
                 closure.as_ref().unchecked_ref(),
@@ -384,7 +479,10 @@ pub fn SessionTimer() -> impl IntoView {
                                             let core_ref = core_end.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
+                                            // elapsed_secs self-corrects via the
+                                            // wall-clock derive when the active
+                                            // session ends / current_item_started_at
+                                            // changes — no explicit reset needed.
                                         })
                                     >
                                         "End Early"
@@ -397,7 +495,6 @@ pub fn SessionTimer() -> impl IntoView {
                                             let core_ref = core_skip.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            elapsed_secs.set(0);
                                         })
                                     >
                                         "Skip"
@@ -452,7 +549,8 @@ pub fn SessionTimer() -> impl IntoView {
                                     let core_ref = core_advance.borrow();
                                     let effects = core_ref.process_event(event);
                                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    elapsed_secs.set(0);
+                                    // elapsed_secs self-corrects via the wall-clock
+                                    // derive when current_item_started_at changes.
                                     duration_elapsed.set(false);
                                 });
                                 view! {
