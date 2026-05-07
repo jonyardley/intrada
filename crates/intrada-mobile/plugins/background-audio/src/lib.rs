@@ -12,16 +12,14 @@
 //! call sites in the shell don't need to gate on `data-platform`.
 
 use serde::{Deserialize, Serialize};
-use tauri::{plugin::TauriPlugin, Manager, Runtime};
+use tauri::{plugin::TauriPlugin, Runtime};
 
-/// Errors surfaceable from plugin commands. Wrapped in `Result` so
-/// future Phase C work can distinguish "not yet implemented for this
-/// platform" from genuine native-side failures.
+/// Errors surfaceable from plugin commands. Phase B has no error paths
+/// (every command returns `Ok`), but the type is here so Phase C can
+/// surface AVAudioSession activation / interruption failures without
+/// the JS bindings caring about the variant set growing.
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("background-audio: not supported on this platform")]
-    UnsupportedPlatform,
-}
+pub enum Error {}
 
 impl Serialize for Error {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
@@ -86,8 +84,3 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         })
         .build()
 }
-
-// Suppress unused-import warning in Phase B — `Manager` is here because
-// Phase C's setup hook will need it for `app.try_state::<...>()` access.
-#[allow(dead_code)]
-fn _phantom_use<R: Runtime>(_: &impl Manager<R>) {}

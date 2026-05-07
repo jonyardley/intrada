@@ -98,12 +98,19 @@ pub fn SessionTimer() -> impl IntoView {
         recompute();
     });
 
-    // Background-audio plugin lifecycle (Phase B of #309 — JS bindings
-    // are no-ops outside Tauri, plugin commands are no-ops in Phase B,
-    // so this is safe to land before any iOS work). Tracks the
-    // `current_item_started_at` anchor across renders so we can tell
-    // session start (None → Some), item advance (anchor change), and
-    // session end (Some → None) apart with a single Effect.
+    // Background-audio plugin lifecycle (Phase B of #309 — plugin
+    // commands return Ok with no native side-effects yet, JS bindings
+    // are no-ops outside Tauri, so this is safe to land before any iOS
+    // work). Tracks the `current_item_started_at` anchor across renders
+    // so we can tell session start (None → Some), item advance (anchor
+    // change), and session end (Some → None) apart with a single
+    // Effect.
+    //
+    // The Effect re-fires on every ViewModel push (coarser than ideal —
+    // any unrelated VM mutation triggers it) but the anchor-equality
+    // guard makes that idempotent. If we ever care about the wasted
+    // work, a Memo<Option<String>> over current_item_started_at would
+    // isolate the dependency.
     let prev_anchor: RwSignal<Option<String>> = RwSignal::new(None);
     Effect::new(move |_| {
         let next = view_model.with(|vm| {
