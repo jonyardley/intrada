@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::components::{Button, ButtonVariant, Card, Icon, IconName};
+use crate::components::{use_toast, Button, ButtonVariant, Card, Icon, IconName};
 
 /// Inline form for saving a setlist or summary as a named set.
 ///
@@ -28,6 +28,7 @@ pub fn SetSaveForm(
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
     let saved = RwSignal::new(false);
+    let toast = use_toast();
 
     if let Some(open) = sheet_open {
         Effect::new(move |_| {
@@ -47,6 +48,7 @@ pub fn SetSaveForm(
             name.set(String::new());
             expanded.set(false);
             saved.set(true);
+            toast.show("Saved as Set");
         }
     };
 

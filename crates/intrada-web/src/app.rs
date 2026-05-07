@@ -12,7 +12,8 @@ use wasm_bindgen::prelude::*;
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::{
-    AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant, ErrorBanner,
+    provide_toast, AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant,
+    ErrorBanner, ToastStack,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
@@ -136,6 +137,7 @@ fn AuthenticatedApp() -> impl IntoView {
     provide_context(is_loading);
     provide_context(is_submitting);
     provide_context(focus_mode);
+    provide_toast();
 
     // Initialize: fetch data from API and recover any in-progress session
     {
@@ -167,8 +169,9 @@ fn AuthenticatedApp() -> impl IntoView {
                 }
                 role="main"
             >
-                // Global error banner
+                // Global error banner + transient success toasts
                 <ErrorBanner />
+                <ToastStack />
 
                 <Routes transition=true fallback=|| view! { <NotFoundView /> }>
                     <Route path=path!("/") view=move || view! {

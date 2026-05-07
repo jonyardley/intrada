@@ -11,8 +11,8 @@ use intrada_core::validation::MAX_SET_NAME;
 use intrada_core::{Event, SetEntry, SetEntryView, SetEvent, ViewModel};
 
 use crate::components::{
-    BackLink, BuilderItemRow, Button, ButtonVariant, EditorEntry, EntryListEditor, PageHeading,
-    SkeletonBlock, SkeletonLine,
+    use_toast, BackLink, BuilderItemRow, Button, ButtonVariant, EditorEntry, EntryListEditor,
+    PageHeading, SkeletonBlock, SkeletonLine,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -24,6 +24,7 @@ pub fn SetEditView() -> impl IntoView {
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
+    let toast = use_toast();
     let params = use_params_map();
     let id = params.read().get("id").unwrap_or_default();
     let navigate = use_navigate();
@@ -190,6 +191,7 @@ pub fn SetEditView() -> impl IntoView {
                         let core_ref = core_save.borrow();
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        toast.show("Set updated");
                         navigate("/?type=set", NavigateOptions { replace: true, ..Default::default() });
                     }
                 }>
