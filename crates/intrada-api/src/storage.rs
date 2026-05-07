@@ -105,4 +105,33 @@ impl R2Client {
         }
         Ok(())
     }
+
+    /// Delete every photo belonging to a user (account-deletion path).
+    ///
+    /// Lists by `{user_id}/` prefix and deletes each object. Refuses an
+    /// empty `user_id` — that would prefix-list `/`, matching everyone's
+    /// photos.
+    pub async fn delete_user_photos(&self, user_id: &str) -> Result<(), ApiError> {
+        if user_id.is_empty() {
+            return Err(ApiError::Internal(
+                "delete_user_photos called with empty user_id".to_string(),
+            ));
+        }
+        let prefix = format!("{user_id}/");
+        let list = self
+            .bucket
+            .list(prefix, None)
+            .await
+            .map_err(|e| ApiError::Internal(format!("R2 list failed: {e}")))?;
+
+        for result in list {
+            for obj in result.contents {
+                self.bucket
+                    .delete_object(&obj.key)
+                    .await
+                    .map_err(|e| ApiError::Internal(format!("R2 delete failed: {e}")))?;
+            }
+        }
+        Ok(())
+    }
 }

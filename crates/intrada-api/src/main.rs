@@ -1,4 +1,5 @@
 use intrada_api::auth;
+use intrada_api::clerk::ClerkClient;
 use intrada_api::migrations;
 use intrada_api::routes;
 use intrada_api::state::{AppState, Db};
@@ -106,6 +107,19 @@ async fn main() {
         }
     };
 
+    let clerk = match ClerkClient::from_env() {
+        Some(client) => {
+            tracing::info!("Clerk Backend client configured");
+            Some(client)
+        }
+        None => {
+            tracing::warn!(
+                "CLERK_SECRET_KEY not set — account deletion will skip Clerk user removal"
+            );
+            None
+        }
+    };
+
     let shared_db = Db::new(db, conn);
 
     // Background liveness probe. Keeps the shared libsql session warm so
@@ -117,7 +131,7 @@ async fn main() {
     // heartbeat ticks.
     shared_db.spawn_heartbeat();
 
-    let state = AppState::new(shared_db, allowed_origin, auth_config, r2);
+    let state = AppState::new(shared_db, allowed_origin, auth_config, r2, clerk);
     let router = routes::api_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());

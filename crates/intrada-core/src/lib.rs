@@ -7,6 +7,7 @@ pub mod model;
 pub mod validation;
 
 pub use app::{AppEffect, Effect, Event, Intrada};
+pub use domain::account::{AccountEvent, AccountPreferences};
 pub use domain::item::{Item, ItemEvent, ItemKind};
 pub use domain::lesson::{Lesson, LessonEvent, LessonPhoto};
 pub use domain::session::{

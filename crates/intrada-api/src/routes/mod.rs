@@ -1,3 +1,4 @@
+mod account;
 mod health;
 mod items;
 mod lessons;
@@ -60,6 +61,7 @@ pub fn api_router(state: AppState) -> Router {
 fn api_routes() -> Router<AppState> {
     Router::new()
         .merge(health::router())
+        .nest("/account", account::router())
         .nest("/items", items::router())
         .nest("/sessions", sessions::router())
         .nest("/sets", sets::router())
