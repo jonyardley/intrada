@@ -144,7 +144,7 @@ pub fn SettingsSheet(open: RwSignal<bool>, on_close: Callback<()>) -> impl IntoV
 
                 // Practice defaults section
                 <div>
-                    <h3 class="section-title mb-card-compact">"Practice defaults"</h3>
+                    <h3 class="section-title mb-card-compact">"Defaults"</h3>
                     <p class="hint-text">
                         "Used to pre-fill new custom practice sessions."
                     </p>

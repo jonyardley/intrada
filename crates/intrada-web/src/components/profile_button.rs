@@ -33,7 +33,13 @@ pub fn ProfileButton() -> impl IntoView {
             >
                 {initial}
             </button>
-            <SettingsSheet open=open on_close=close />
+            // Lazy-mount the sheet so its (Cancel, Delete account, …)
+            // buttons aren't in the DOM tree when closed — otherwise
+            // role-based selectors elsewhere on the page get strict-mode
+            // collisions.
+            <Show when=move || open.get()>
+                <SettingsSheet open=open on_close=close />
+            </Show>
         </Show>
     }
 }
