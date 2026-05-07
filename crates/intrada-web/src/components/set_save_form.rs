@@ -1,11 +1,13 @@
 use leptos::prelude::*;
 
-use crate::components::{Button, ButtonVariant, Card};
+use crate::components::{Button, ButtonVariant, Card, Icon, IconName};
 
 /// Inline form for saving a setlist or summary as a named set.
 ///
 /// When collapsed, shows a "Save as Set" button. When expanded, shows a
 /// name input, Save, and Cancel buttons. Calls `on_save` with the entered name.
+/// After a successful save the button switches to a disabled "Saved" state to
+/// prevent duplicate Set creation. The state resets when the form unmounts.
 #[component]
 pub fn SetSaveForm(
     /// Callback invoked with the set name when the user taps Save.
@@ -14,6 +16,7 @@ pub fn SetSaveForm(
     let expanded = RwSignal::new(false);
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
+    let saved = RwSignal::new(false);
 
     let try_save = move || {
         let trimmed = name.get_untracked().trim().to_string();
@@ -24,6 +27,7 @@ pub fn SetSaveForm(
             on_save.run(trimmed);
             name.set(String::new());
             expanded.set(false);
+            saved.set(true);
         }
     };
 
@@ -76,6 +80,16 @@ pub fn SetSaveForm(
                             </div>
                         </div>
                     </Card>
+                }.into_any()
+            } else if saved.get() {
+                view! {
+                    <button
+                        class="w-full rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm font-medium text-success-text inline-flex items-center justify-center gap-2 cursor-default"
+                        disabled
+                    >
+                        <Icon name=IconName::Check class="w-4 h-4" />
+                        "Saved"
+                    </button>
                 }.into_any()
             } else {
                 view! {
