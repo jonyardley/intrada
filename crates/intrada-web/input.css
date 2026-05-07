@@ -1555,6 +1555,12 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  /* Soft blur so the underlying page recedes — matches the chrome
+     treatment used elsewhere (.glass-chrome, .action-bar). Without
+     this the dim looks flat and the page is still legible behind
+     the sheet. -webkit- prefix for the iOS Tauri WebView. */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   z-index: 1000;
   opacity: 0;
   pointer-events: none;
