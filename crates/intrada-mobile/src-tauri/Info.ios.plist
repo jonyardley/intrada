@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		UIBackgroundModes: [audio] is required so iOS keeps the practice
+		timer's audio session active when the screen locks. Combined with
+		the silent audio loop in tauri-plugin-background-audio, this is
+		what keeps the timer running on the lock screen.
+
+		Tauri merges this file into the generated Info.plist on each
+		build (it picks up `Info.ios.plist` siblings to tauri.conf.json
+		automatically). Phase C of #309.
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+</dict>
+</plist>
