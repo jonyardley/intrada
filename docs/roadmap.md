@@ -1,261 +1,160 @@
 # intrada — Product Roadmap
 
-*Updated 2026-04-25*
-
-Everything in intrada serves the five layers described in the [Product Vision](../VISION.md):
-**Capture → Plan → Space → Show → Guide**. These layers build on each other — you
-can't schedule what you haven't captured, you can't space what you haven't scheduled,
-and you can't show progress on what you haven't tracked.
-
-The roadmap is also organised around three activity pillars — **Plan** (decide what to
-practise), **Practice** (play with intention), and **Track** (see the process working) —
-which cut across the layers. Features are placed on a rolling horizon: **Now** (next
-4 weeks), **Next** (4–12 weeks), and **Later** (12+ weeks).
+*This is a vision and prioritisation doc, not a project plan. For what's
+actually shipping right now, see the [project board](https://github.com/users/jonyardley/projects/2)
+and [open issues](https://github.com/jonyardley/intrada/issues).*
 
 ---
 
-## What's Built Today
+## How to read this doc
 
-| Area | Status |
-|------|--------|
-| Auth (Clerk/Google, JWT, JWKS refresh, 401 retry) | Done |
-| Library CRUD (piece + exercise, tags, key, tempo, notes) | Done |
-| Sessions (build, active, summary, timer, crash recovery) | Done |
-| Routines (full CRUD, load into builder, save from summary) | Done |
-| Analytics (weekly stats, streak, 28-day chart, top items, score trends, weekly summary) | Done |
-| Scoring (1-5 per item) and per-item/session notes | Done |
-| Search/filter infrastructure in core (ListQuery) | Backend only (no UI) |
-| Design system (tokens, typography utilities, component library) | Done |
-| Drag-and-drop session builder | Done |
-| Composer + tag autocomplete | Done |
-| E2E test suite (Playwright, 30 tests) | Done |
-| Intentional practice micro-cycle (#47) — session + per-item intentions | Done |
-| Focus mode (#48) — minimal UI during active practice | Done |
-| Repetition counter (#49) — consecutive correct attempts per item | Done |
-| Tempo tracking (#52) — log achieved tempo per item, progress charts (#66) | Done |
-| Weekly practice summary (#68) — week-over-week comparison, neglected items, score changes | Done |
-| Holistic practice loop (#93) — unified library, sessions & routines flow | Done |
-| DB composite indexes (#146) and request timing middleware (#147) | Done |
-| Skeleton loading states (#155) — initial load flicker fix, skeleton placeholders | Done |
-| Design system token compliance (#163) — all raw Tailwind colours replaced with semantic tokens | Done |
-| Practice consistency calendar (#65) — week strip, comeback framing, session dots | Done |
-| Tauri/Leptos iOS shell — Phase 0 (#302) — scaffold, CI, CLAUDE.md, simulator running | Done |
-| SwiftUI shell removed — committed to single Leptos UI codebase across web + iOS | Done |
-| Remove category field (#211) — exercises use tags only, simplified subtitle logic | Done |
-| Use mutate response (#148) — updates/deletes use API response directly, no re-fetch | Done |
-| Filter clause sync (#152) — extracted subquery constants to prevent user isolation drift | Done |
+intrada serves the five layers of the [Product Vision](../VISION.md):
+**Capture → Plan → Space → Show → Guide**. The layers build on each other
+— you can't schedule what you haven't captured, can't space what you
+haven't scheduled, can't show progress on what you haven't tracked.
+
+The roadmap is also organised around three activity pillars — **Plan**
+(decide what to practise), **Practice** (play with intention), and
+**Track** (see the process working) — that cut across the layers.
+
+This doc names the layers, pillars, and prioritisation principle.
+**Issues on the [project board](https://github.com/users/jonyardley/projects/2)
+are the source of truth for scope and timing.** When this doc and the
+issues disagree, the issues are right.
 
 ---
 
-## Prioritisation Model
+## Where the product is today
 
-Features are prioritised by **vision layer first, then pillar**. Layer 1 (Capture)
-features take precedence over Layer 2 (Plan), which take precedence over Layer 3
-(Space), and so on. Within a layer, the three pillars advance independently.
+Capture, Plan, Space (manual), and Show (analytics) all have working
+surfaces. Auth, library, sessions, routines, scoring, focus mode, tempo
+tracking, design system, multi-device shell, E2E tests — all done. The
+Tauri/Leptos iOS shell is the active iOS path; the SwiftUI shell has been
+removed.
 
-The question to ask is: "What's the most important thing I haven't captured yet?"
-before "What's the smartest way to schedule it?"
+The active gaps are deeper Layer-1 capture (multi-key, sections, archive),
+the Space layer (mastery decay, spaced repetition), and parts of Show
+(timeline charts, calendar). Layer 5 (Guide / AI) is intentionally on the
+horizon.
+
+Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ---
 
-## Three Pillars
+## Three pillars
 
 ### Plan — "Decide what to practise"
 
-Before the instrument comes out. Building sessions, organising the library, and
-eventually letting the app decide for you.
+Before the instrument comes out. Building sessions, organising the
+library, and eventually letting the app decide for you. Spans Layers 1
+(Capture), 2 (Plan), and 3 (Space).
 
-#### Now (next 4 weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 46 | **Multi-key practice** — assign multiple keys to items, track mastery per key independently. | XL | 1: Capture |
-| 267 | **Teacher assignment capture** — quick-capture flow optimised for post-lesson entry. Structured fields for exercise type, keys, voicing details, teacher notes. Designed to replace the notebook. | M | 1: Capture |
-| 212 | **Short session presets** — 10/15/20/30 minute options. | S | 2: Plan |
-
-#### Next (4-12 weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 50 | **Section/passage management** — break pieces into practisable sections with independent mastery scores and tempo targets. | L | 1: Capture |
-| 53 | **Full-text search** — search across all practice notes to find recurring themes. | M | 1: Capture |
-| 45 | **Archive/retire workflow** — handle completed/mastered items so the active library stays focused. | M | 1: Capture |
-| 57 | **One-tap session start** — open the app, tap Start, play. Initial version uses recent routine + items not practised recently + decayed mastery scores. Upgraded when spacing engine ships. | L | 2: Plan |
-| 142 | **Session time budgeting** — declare available time, allocate across items automatically or manually. | M | 2: Plan |
-| 59 | **Session planning** — input available time, get a structured plan with warm-up, focused work, and review segments. | L | 2: Plan |
-| 58 | **Mastery decay model** — scores decrease over time without review, creating natural scheduling urgency. Gives one-tap start smarter item selection without the full spacing engine. | M | 3: Space |
-
-#### Later (12+ weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 55 | **Spaced repetition engine** — modified SM-2 algorithm for optimal review intervals based on mastery scores and time since last practice. First feature built when Later begins. | XL | 3: Space |
-| 56 | **Interleaved setlist generator** — mixed-type sessions with configurable interleaving intensity. | L | 3: Space |
-| 42 | **Links to IMSLP** — link pieces to free sheet music on IMSLP. | S | 1: Capture |
-| 43 | **Open-source exercise library** — built-in scales, arpeggios, Hanon, Czerny etc. | L | 1: Capture |
-| 71 | **AI setlist generation** — goal-driven practice plans ("I have a gig in 3 weeks — build me a plan"). | L | 5: Guide |
-| 76 | **AI goal coaching** — realistic goal setting and actionable daily practice plans. (blocked on goals redesign) | L | 5: Guide |
-| 100 | **Personalisation** — user preferences and customisation. | — | — |
-
----
+→ [`pillar:plan`](https://github.com/jonyardley/intrada/labels/pillar%3Aplan)
 
 ### Practice — "Play with intention"
 
-Instrument is out. Timer running. The app stays out of the way and supports
-focus, not admin.
+Instrument is out. Timer running. The app stays out of the way and
+supports focus, not admin. Lives mainly in Layer 4 (Show — encouragement,
+feedback) with cross-cutting accessibility concerns.
 
-#### Next (4-12 weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 61 | **Encouragement messaging** — data-tied, process-focused messages comparing current ratings to recent history. | S | 4: Show |
-| 54 | **Dyslexia-friendly typography** — clean fonts, adequate spacing, sensory-considerate defaults, configurable contrast modes. | S | Cross-cutting |
-| 62 | **Rest & recovery awareness** — flag when practice volume significantly exceeds historical average. | S | 4: Show |
-| 166 | **Session tempo targets** — suggest incremental tempo targets based on recent progress toward the item's target BPM. | M | 2: Plan |
-
-#### Later (12+ weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 69 | **Audio recording & playback** — record a run-through, play it back, compare to weeks ago. | L | 4: Show |
-| 70 | **Customisable encouragement preferences** — frequency, tone, delivery controls. Respects neurodiversity. | M | 4: Show |
-
----
+→ [`pillar:practice`](https://github.com/jonyardley/intrada/labels/pillar%3Apractice)
 
 ### Track — "See the process working"
 
-After the session. Analytics, insights, visualisation. Evidence that the practice
-is actually working.
+After the session. Analytics, insights, visualisation. Evidence the
+practice is actually working. Mostly Layer 4 (Show); Layer 5 (Guide) when
+AI work becomes timely.
 
-#### Next (4-12 weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 63 | **Mastery timeline charts** — per-item and aggregate line charts showing mastery improvement over weeks and months. | L | 4: Show |
-| 79 | **Calendar view** — calendar-based view of practice sessions. | M | 4: Show |
-
-#### Later (12+ weeks)
-
-| # | Feature | Size | Vision Layer |
-|---|---------|------|-------------|
-| 64 | **Circle of fifths widget** — interactive key coverage visualisation showing mastery per key. Depends on multi-key (#46). | L | 4: Show |
-| 72 | **AI pattern recognition** — identify systematic weaknesses from accumulated data. | L | 5: Guide |
-| 73 | **AI session review** — post-session analysis with rebalancing suggestions. | M | 5: Guide |
-| 74 | **Adaptive interleaving** — AI adjusts mixing intensity based on user patterns. | L | 5: Guide |
-| 75 | **Teacher integration** — suggested items, progress visibility (with permission). | L | 5: Guide |
+→ [`pillar:track`](https://github.com/jonyardley/intrada/labels/pillar%3Atrack)
 
 ---
 
-## Mobile Shell (Tauri/Leptos)
+## Prioritisation principle
 
-The SwiftUI iOS shell (#187–#202) is on hold. Active iOS development now goes
-through the Tauri 2 + Leptos shell. See `specs/tauri-leptos-ios-shell.md`
-for the full plan.
+**Vision layer first, then pillar.** Layer 1 features take precedence
+over Layer 2, which take precedence over Layer 3, and so on. Within a
+layer, the three pillars advance independently.
 
-### Done
-| Phase | Description | PR |
-|-------|-------------|-----|
-| Phase 0 | Scaffold, CI, CLAUDE.md, simulator running | #302 |
+The question is *"what's the most important thing I haven't captured
+yet?"* before *"what's the smartest way to schedule it?"*
 
-### Now
-| Phase | Description | Size |
-|-------|-------------|------|
-| Phase 1a | Foundation CSS — iOS reset, SF Pro, safe areas, no-zoom inputs | S |
-| Phase 1b | Interactivity — View Transitions, haptics, spring animations | M |
-| Phase 1c | `<SplitView>` primitive for iPad list→detail layouts | M |
+### Now / Next / Later in your head
 
-### Next
-| Phase | Description | Size |
-|-------|-------------|------|
-| Phase 2a | Component audit — classify all views/components for iOS parity | S |
-| Phase 2b | iOS-shaped component variants — sheets, segmented control, list rows, pull-to-refresh | L |
-| Phase 2c | Re-skin Practice pillar — focus mode, active session, scoring, rep counter | L |
-| Phase 2d | Background audio Swift plugin (P0 — lock-screen timers) | M |
+- **Now** — a real musician hits a wall *because* this isn't built.
+- **Next** — a real musician notices it's missing after a month of use.
+- **Later** — the app could live without it for a year.
 
-### Later
-| Phase | Description | Size |
-|-------|-------------|------|
-| Phase 3 | Plan + Track pillars at parity | L |
-| Phase 4 | Dogfood on physical device (Xcode sideload) | S |
-| Phase 5 | Shell-of-record cutover (CLAUDE.md, on-hold markers) | S |
-| [#300](https://github.com/jonyardley/intrada/issues/300) | TestFlight enablement | S |
-| [#301](https://github.com/jonyardley/intrada/issues/301) | App Store submission | M |
-| [#299](https://github.com/jonyardley/intrada/issues/299) | MusicKit integration | L |
-| [#303](https://github.com/jonyardley/intrada/issues/303) | CSP hardening | S |
+These are tags on issues, not buckets in this doc. They drift as work
+ships and as we learn.
 
 ---
 
-## Cross-Cutting Concerns
+## Mobile shell
 
-These don't belong to a single pillar — they support all three.
+iOS ships through the Tauri 2 + Leptos shell — the SwiftUI shell has
+been removed. The Leptos UI is the single codebase; iOS-specific
+look-and-feel is layered in via `[data-platform="ios"]` rules and Tauri
+plugins (haptics, deep-link, background audio). Every web feature ships
+on iOS at the same time.
 
-| # | Feature | Horizon | Labels |
-|---|---------|---------|--------|
-| 41 | **Offline-first support** — service worker, IndexedDB, sync | Next | architecture |
-| 149 | **Pagination** — add limit/offset to list endpoints | Next | architecture |
+See [`specs/tauri-leptos-ios-shell.md`](../specs/tauri-leptos-ios-shell.md)
+for the phased plan. Active mobile-shell work tracks under the
+[`ios`](https://github.com/jonyardley/intrada/labels/ios) label.
 
 ---
 
-## Delivery Model
+## Delivery model
 
 ### Labels
 
 | Label | Purpose |
 |-------|---------|
-| `pillar:plan` | Decide what to practise |
-| `pillar:practice` | Play with intention |
-| `pillar:track` | See the process working |
-| `layer:capture` | Vision Layer 1 — capture and remember |
-| `layer:plan` | Vision Layer 2 — plan what to do today |
-| `layer:space` | Vision Layer 3 — space it for retention |
-| `layer:show` | Vision Layer 4 — show that it's working |
-| `layer:guide` | Vision Layer 5 — identify gaps and guide |
-| `horizon:now` | Next 4 weeks |
-| `horizon:next` | 4-12 weeks |
-| `horizon:later` | 12+ weeks / future |
+| `pillar:plan` / `pillar:practice` / `pillar:track` | Activity pillar |
+| `layer:capture` / `:plan` / `:space` / `:show` / `:guide` | Vision layer |
+| `horizon:now` / `:next` / `:later` | Rough timing — 4 wk / 4–12 wk / 12+ wk |
 | `architecture` | Technical debt, infrastructure |
-| `ux` | User experience (cross-cutting) |
-| `accessibility` | Neurodiversity and accessibility (cross-cutting) |
+| `ux` / `accessibility` | Cross-cutting |
+| `security` | Security-relevant |
+| `ios` | iOS-specific (Tauri shell) |
+| `epic` | Umbrella issue with sub-items |
 
-### Project board
+### Board
 
-Backlog > Ready > In Progress > In Review > Done
+[Project board](https://github.com/users/jonyardley/projects/2) columns
+are workflow states (Backlog → Ready → In Progress → In Review → Done),
+not categories. Use the labels above to filter and slice.
 
-The board columns are workflow states, not categories. Use the pillar, layer, and
-horizon labels to filter and slice the board.
-
-### Prioritisation
-
-**Vision layer first, then pillar.** Layer 1 features take precedence over Layer 2,
-and so on. Within a layer, "What's the most important Plan feature?" is a better
-question than "What phase are we in?" Within each pillar, the Priority field
-(P0/P1/P2) ranks items.
+A `Priority` custom field (P0/P1/P2) ranks within a pillar/layer when
+multiple items share the same horizon.
 
 ---
 
-## Open Questions
+## Open questions
 
-1. **Metronome: built-in or external?** The tempo-building loop needs a metronome.
-   Building one is non-trivial (accurate timing in WASM). Tempo tracking (#52) has
-   shipped — a built-in metronome would complete the tempo practice workflow.
+These are unresolved product questions. Each one likely produces issues
+(or a Tier-3 spec) once answered.
 
-2. **Offline-first architecture.** Currently API-dependent. What syncs? When?
-   Gets harder to retrofit the longer we wait.
+1. **Metronome: built-in or external?** Tempo tracking (#52) shipped — a
+   built-in metronome would complete the tempo-building loop. Building
+   one in WASM is non-trivial (timing accuracy in a browser/WebView).
 
-3. ~~**iOS native vs web-first.**~~ **Decided: Tauri/Leptos is the primary
-   channel for both web and iOS.** The SwiftUI shell is on hold. The Leptos
-   shell runs in a Tauri WKWebView on iOS, shipping features on both platforms
-   simultaneously. See `specs/tauri-leptos-ios-shell.md`.
+2. **Offline-first architecture.** Currently API-dependent. What syncs?
+   When? Gets harder to retrofit the longer we wait. Tracked at #41.
 
-4. **Scoring + tempo coupling.** Should every mastery rating require a tempo?
-   Or is tempo optional (only for items with tempo targets)?
+3. **Scoring + tempo coupling.** Should every mastery rating require a
+   tempo? Or is tempo optional (only for items with tempo targets)?
 
-5. **Teacher integration timing.** Currently horizon:later. Basic sharing
-   (routines, item suggestions) could come earlier without AI. The new
-   "teacher assignment capture" feature (#267) addresses the immediate
-   capture problem without requiring teacher-facing features.
+4. **Teacher integration timing.** Currently a Layer-5 horizon. Basic
+   sharing (routines, item suggestions) could come earlier without AI.
+   The teacher-assignment capture (#267) addressed the immediate capture
+   problem without teacher-facing features.
 
-6. **Goals redesign.** The goals feature has been removed for a ground-up rethink.
-   The five vision layers don't depend on goals in the short term — Capture, Plan,
-   Space, and Show all work without them. Goals become important when reaching
-   Layer 5 (gap analysis, pathways). Deferring is intentional, not an oversight.
+5. **Goals redesign.** Goals were removed for a ground-up rethink. The
+   five layers don't depend on goals short-term; they become important
+   at Layer 5 (gap analysis, pathways). Deferring is intentional, not
+   an oversight.
+
+6. **Lessons / photos / R2 surface.** A lessons + photos surface
+   (#274–#281) has started shipping without a roadmap home. Decide
+   whether it's a Layer-1 Capture feature, a separate teacher-facing
+   surface, or scaffolding to roll back.
