@@ -2188,7 +2188,9 @@ html:not([data-platform="ios"]) .context-menu {
 
 .toast-stack {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+  /* 5.5rem clears the BottomTabBar (h-16 = 4rem) with ~1.5rem
+     headroom on web; iOS adds the safe-area inset on top. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;

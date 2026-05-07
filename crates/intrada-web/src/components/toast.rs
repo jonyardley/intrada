@@ -62,9 +62,11 @@ impl ToastChannel {
     }
 
     fn with_next_id(&self) -> u64 {
-        let id = self.next_id.with_value(|n| *n + 1);
-        self.next_id.set_value(id);
-        id
+        // `update_value` mutates atomically — two synchronous show()
+        // calls cannot observe the same n before either writes back,
+        // unlike a separate read + set_value pair.
+        self.next_id.update_value(|n| *n += 1);
+        self.next_id.get_value()
     }
 }
 
