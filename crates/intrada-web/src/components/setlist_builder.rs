@@ -37,6 +37,22 @@ pub fn SetlistBuilder() -> impl IntoView {
     let core_toggle = core.clone();
     let core_cancel = core.clone();
 
+    // "Start over" two-step confirmation. First tap shows the
+    // confirmation pair; second tap on "Yes, clear it" dispatches
+    // CancelBuilding (which already wipes the in-progress localStorage
+    // blob via AppEffect::ClearSessionInProgress).
+    let confirming_clear = RwSignal::new(false);
+
+    let on_clear_request = Callback::new(move |_| confirming_clear.set(true));
+    let on_clear_cancel = Callback::new(move |_| confirming_clear.set(false));
+    let on_clear_confirm = Callback::new(move |_| {
+        let event = Event::Session(SessionEvent::CancelBuilding);
+        let core_ref = core_cancel.borrow();
+        let effects = core_ref.process_event(event);
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        confirming_clear.set(false);
+    });
+
     // Library list filter state.
     let active_filter: RwSignal<Option<ItemKind>> = RwSignal::new(None);
     let query = RwSignal::new(String::new());
@@ -197,19 +213,40 @@ pub fn SetlistBuilder() -> impl IntoView {
                 }}
             </div>
 
-            // Cancel — kept here so the user can back out without leaving
-            // the page; primary navigation away is "Start Session" inside
-            // the sheet.
-            <div class="flex justify-center pt-2">
-                <Button variant=ButtonVariant::Secondary on_click=Callback::new(move |_| {
-                    let event = Event::Session(SessionEvent::CancelBuilding);
-                    let core_ref = core_cancel.borrow();
-                    let effects = core_ref.process_event(event);
-                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                })>
-                    "Cancel"
-                </Button>
-            </div>
+            // Start over — destructive reset of the in-progress setlist.
+            // Hidden when the setlist is empty (nothing to clear).
+            // First tap reveals a Yes/No confirmation pair; second tap
+            // dispatches CancelBuilding.
+            <Show when=move || !setlist_empty.get()>
+                <div class="flex justify-center pt-2">
+                    <Show
+                        when=move || confirming_clear.get()
+                        fallback=move || view! {
+                            <Button
+                                variant=ButtonVariant::DangerOutline
+                                on_click=on_clear_request
+                            >
+                                "Start over"
+                            </Button>
+                        }
+                    >
+                        <div class="flex gap-2">
+                            <Button
+                                variant=ButtonVariant::Danger
+                                on_click=on_clear_confirm
+                            >
+                                "Yes, clear it"
+                            </Button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=on_clear_cancel
+                            >
+                                "Keep it"
+                            </Button>
+                        </div>
+                    </Show>
+                </div>
+            </Show>
         </div>
 
         // Sticky bottom toolbar — count + duration + Review CTA.
