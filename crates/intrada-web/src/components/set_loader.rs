@@ -2,14 +2,21 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, SetEvent, ViewModel};
 
-use crate::components::Card;
+use crate::components::{AccentBar, AccentRow, Button, ButtonVariant};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Shows saved sets and lets the user load one into the current setlist.
+/// Lists the user's saved Sets and lets them load one into the current
+/// (empty) building setlist. Renders nothing when there are no saved Sets.
 ///
-/// Each set is displayed as a row with name, entry count, and a Load button.
-/// Only visible when at least one set exists.
+/// Mounted at the top of the SetlistBuilder, gated by the caller on
+/// `setlist_empty` — once the user has picked items, the loader hides so
+/// the "load vs current selection" decision doesn't arise. Merge/replace
+/// is deferred until that flow is needed (see #390).
+///
+/// Each row mirrors the LibrarySetCard chrome (AccentRow with the Teal
+/// bar that signals Set content) so saved Sets read consistently across
+/// the Library and the builder.
 #[component]
 pub fn SetLoader() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -25,40 +32,46 @@ pub fn SetLoader() -> impl IntoView {
             } else {
                 let core_load = core.clone();
                 Some(view! {
-                    <Card>
+                    <div class="space-y-2">
                         <h3 class="section-title">"Saved Sets"</h3>
-                        <div class="space-y-2">
+                        <ul class="space-y-2">
                             {vm.sets.iter().map(|set| {
                                 let set_id = set.id.clone();
                                 let name = set.name.clone();
                                 let entry_count = set.entry_count;
+                                let count_label = if entry_count == 1 {
+                                    "1 item".to_string()
+                                } else {
+                                    format!("{entry_count} items")
+                                };
                                 let core_l = core_load.clone();
+                                let on_load = Callback::new(move |_| {
+                                    let event = Event::Set(SetEvent::LoadSetIntoSetlist {
+                                        set_id: set_id.clone(),
+                                    });
+                                    let core_ref = core_l.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                });
                                 view! {
-                                    <div class="flex items-center justify-between rounded-lg bg-surface-secondary px-3 py-2 hover:bg-surface-hover">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-sm text-primary font-medium">{name}</span>
-                                            <span class="badge badge--accent">
-                                                {format!("{} item{}", entry_count, if entry_count == 1 { "" } else { "s" })}
-                                            </span>
-                                        </div>
-                                        <button
-                                            class="text-xs font-medium text-accent-text hover:text-accent-hover px-2 py-1 rounded hover:bg-surface-secondary motion-safe:transition-colors motion-safe:duration-150"
-                                            on:click=move |_| {
-                                                let event = Event::Set(SetEvent::LoadSetIntoSetlist {
-                                                    set_id: set_id.clone(),
-                                                });
-                                                let core_ref = core_l.borrow();
-                                                let effects = core_ref.process_event(event);
-                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            }
-                                        >
-                                            "Load"
-                                        </button>
-                                    </div>
+                                    <li>
+                                        <AccentRow bar=AccentBar::Teal>
+                                            <div class="flex flex-col flex-1 min-w-0 gap-0.5">
+                                                <span class="text-sm font-semibold text-primary truncate">{name}</span>
+                                                <span class="text-xs text-muted truncate">{count_label}</span>
+                                            </div>
+                                            <Button
+                                                variant=ButtonVariant::Secondary
+                                                on_click=on_load
+                                            >
+                                                "Load"
+                                            </Button>
+                                        </AccentRow>
+                                    </li>
                                 }
                             }).collect::<Vec<_>>()}
-                        </div>
-                    </Card>
+                        </ul>
+                    </div>
                 })
             }
         }}

@@ -84,12 +84,11 @@ pub use page_heading::PageHeading;
 pub use progress_ring::ProgressRing;
 pub use pull_to_refresh::PullToRefresh;
 pub use rating_chips::RatingChips;
-// SetLoader is currently unused — kept around for the planned set
-// flows revisit (see PR conversation). Re-export when something needs it.
 pub use section_label::SectionLabel;
 pub use session_review_sheet::SessionReviewSheet;
 pub use session_summary::SessionSummary;
 pub use session_timer::SessionTimer;
+pub use set_loader::SetLoader;
 pub use set_save_form::SetSaveForm;
 pub use setlist_builder::SetlistBuilder;
 pub use setlist_entry::SetlistEntryRow;
