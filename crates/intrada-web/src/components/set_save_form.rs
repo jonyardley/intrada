@@ -7,16 +7,35 @@ use crate::components::{Button, ButtonVariant, Card, Icon, IconName};
 /// When collapsed, shows a "Save as Set" button. When expanded, shows a
 /// name input, Save, and Cancel buttons. Calls `on_save` with the entered name.
 /// After a successful save the button switches to a disabled "Saved" state to
-/// prevent duplicate Set creation. The state resets when the form unmounts.
+/// prevent duplicate Set creation.
+///
+/// When mounted inside a [`BottomSheet`], pass the sheet's `open` signal as
+/// `sheet_open` — the "Saved" state will reset when the sheet closes, so a
+/// close→reopen cycle starts fresh. Bottom sheets keep their children
+/// mounted (translated off-screen), so without this the button would stay
+/// stuck in the "Saved" state forever. Full-screen mounts (e.g. session
+/// summary) can omit it.
 #[component]
 pub fn SetSaveForm(
     /// Callback invoked with the set name when the user taps Save.
     on_save: Callback<String>,
+    /// Optional parent-sheet open signal. If provided, the "Saved" state
+    /// resets when this transitions to false.
+    #[prop(optional, into)]
+    sheet_open: Option<Signal<bool>>,
 ) -> impl IntoView {
     let expanded = RwSignal::new(false);
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
     let saved = RwSignal::new(false);
+
+    if let Some(open) = sheet_open {
+        Effect::new(move |_| {
+            if !open.get() {
+                saved.set(false);
+            }
+        });
+    }
 
     let try_save = move || {
         let trimmed = name.get_untracked().trim().to_string();
