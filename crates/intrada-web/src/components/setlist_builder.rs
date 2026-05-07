@@ -213,40 +213,55 @@ pub fn SetlistBuilder() -> impl IntoView {
                 }}
             </div>
 
-            // Start over — destructive reset of the in-progress setlist.
-            // Hidden when the setlist is empty (nothing to clear).
-            // First tap reveals a Yes/No confirmation pair; second tap
-            // dispatches CancelBuilding.
-            <Show when=move || !setlist_empty.get()>
-                <div class="flex justify-center pt-2">
-                    <Show
-                        when=move || confirming_clear.get()
-                        fallback=move || view! {
-                            <Button
-                                variant=ButtonVariant::DangerOutline
-                                on_click=on_clear_request
-                            >
-                                "Start over"
-                            </Button>
-                        }
+            // Cancel / Start over — both fire CancelBuilding (same
+            // downstream effect: clears building state and the
+            // in-progress localStorage blob, returning the user to the
+            // sessions list). Different UX:
+            // - Empty setlist: single-tap "Cancel" — there's nothing to
+            //   lose, so navigation is the only intent.
+            // - Non-empty setlist: two-step "Start over" → "Yes, clear
+            //   it" / "Keep it" so the user can't accidentally discard
+            //   their work.
+            <div class="flex justify-center pt-2">
+                <Show
+                    when=move || setlist_empty.get()
+                    fallback=move || view! {
+                        <Show
+                            when=move || confirming_clear.get()
+                            fallback=move || view! {
+                                <Button
+                                    variant=ButtonVariant::DangerOutline
+                                    on_click=on_clear_request
+                                >
+                                    "Start over"
+                                </Button>
+                            }
+                        >
+                            <div class="flex gap-2">
+                                <Button
+                                    variant=ButtonVariant::Danger
+                                    on_click=on_clear_confirm
+                                >
+                                    "Yes, clear it"
+                                </Button>
+                                <Button
+                                    variant=ButtonVariant::Secondary
+                                    on_click=on_clear_cancel
+                                >
+                                    "Keep it"
+                                </Button>
+                            </div>
+                        </Show>
+                    }
+                >
+                    <Button
+                        variant=ButtonVariant::Secondary
+                        on_click=on_clear_confirm
                     >
-                        <div class="flex gap-2">
-                            <Button
-                                variant=ButtonVariant::Danger
-                                on_click=on_clear_confirm
-                            >
-                                "Yes, clear it"
-                            </Button>
-                            <Button
-                                variant=ButtonVariant::Secondary
-                                on_click=on_clear_cancel
-                            >
-                                "Keep it"
-                            </Button>
-                        </div>
-                    </Show>
-                </div>
-            </Show>
+                        "Cancel"
+                    </Button>
+                </Show>
+            </div>
         </div>
 
         // Sticky bottom toolbar — count + duration + Review CTA.
