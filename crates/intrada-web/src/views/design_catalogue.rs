@@ -1838,7 +1838,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>
-                            <span>"SetLoader — Card (set list with load buttons)"</span>
+                            <span>"SetLoader — AccentRow (Teal) + Button (saved-set picker for the builder)"</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="text-accent-text">"→"</span>

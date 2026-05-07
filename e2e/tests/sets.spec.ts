@@ -63,10 +63,7 @@ test.describe("sets page", () => {
     await expect(page.getByText("My New Set")).toBeVisible();
   });
 
-  // Skipped: "Load set" UI was removed from the builder during #388
-  // and the strip-back kept it out — see #390. The SetLoader component
-  // is still in the module tree pending the sets revisit.
-  test.skip("load set into session builder", async ({ page, mockApi }) => {
+  test("load set into session builder", async ({ page, mockApi }) => {
     mockApi.sets = createSeedSetsWithStub();
 
     await page.goto("/sessions/new");
@@ -74,7 +71,13 @@ test.describe("sets page", () => {
 
     await expect(page.getByText("Saved Sets")).toBeVisible();
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
-    await page.getByRole("button", { name: "Load" }).click();
+    // Scope by row so the click stays unambiguous if more saved sets are
+    // ever seeded — prevents future flakes when the loader has >1 row.
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "Morning Warm-up" })
+      .getByRole("button", { name: "Load" })
+      .click();
 
     await page.getByRole("button", { name: "Review session" }).click();
     await expect(

@@ -9,6 +9,7 @@ use intrada_core::{Event, ItemKind, LibraryItemView, SessionEvent, ViewModel};
 
 use crate::components::{
     BuilderItemRow, Button, ButtonVariant, Icon, IconName, LibraryTypeTabs, SessionReviewSheet,
+    SetLoader,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -119,6 +120,15 @@ pub fn SetlistBuilder() -> impl IntoView {
 
     view! {
         <div class="space-y-4 pb-32">
+            // Saved Sets — visible while the setlist is empty so the user
+            // can start from a saved Set rather than picking items
+            // individually. Hides once they've added their first item to
+            // keep the library list uncluttered (merge/replace flow is
+            // out of scope here — see #390).
+            <Show when=move || setlist_empty.get()>
+                <SetLoader />
+            </Show>
+
             // Search bar with built-in clear button (mirrors the library
             // list's affordance — clear the query without clearing tabs).
             <div class="search-bar">
