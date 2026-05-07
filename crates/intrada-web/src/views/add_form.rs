@@ -8,8 +8,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{CreateItem, Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
-    AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card, PageHeading,
-    TagInput, TextArea, TextField, TypeTabs,
+    use_toast, AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card,
+    PageHeading, TagInput, TextArea, TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tempo, unique_composers, unique_tags};
@@ -39,6 +39,7 @@ pub fn AddLibraryItemForm(
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
+    let toast = use_toast();
     let navigate = use_navigate();
     let navigate_cancel = navigate.clone();
 
@@ -126,6 +127,11 @@ pub fn AddLibraryItemForm(
                             }
                         };
 
+                        let toast_message = match kind {
+                            ItemKind::Piece => "Piece added",
+                            ItemKind::Exercise => "Exercise added",
+                        };
+
                         let event = Event::Item(ItemEvent::Add(CreateItem {
                             title: title_val,
                             kind,
@@ -139,6 +145,7 @@ pub fn AddLibraryItemForm(
                         let core_ref = core.borrow();
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                        toast.show(toast_message);
                         if let Some(cb) = dismiss_save {
                             cb.run(());
                         } else {
