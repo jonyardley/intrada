@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../src-tauri/gen/schemas/mobile-schema.json",
+  "default": {
+    "description": "Default permissions for the background-audio plugin: allow the WebView to begin a session, update Now Playing, and end the session.",
+    "permissions": [
+      "allow-begin-session",
+      "allow-set-now-playing",
+      "allow-end-session"
+    ]
+  }
+}
