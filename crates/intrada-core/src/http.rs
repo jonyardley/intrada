@@ -7,6 +7,7 @@
 use crux_core::Command;
 
 use crate::app::{Effect, Event};
+use crate::domain::account::{AccountEvent, AccountPreferences};
 use crate::domain::item::Item;
 use crate::domain::lesson::Lesson;
 use crate::domain::session::PracticeSession;
@@ -241,5 +242,56 @@ pub fn delete_lesson(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete lesson: {e}")),
+        })
+}
+
+// ── Account operations ─────────────────────────────────────────────────
+
+pub fn get_account_preferences(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/account/preferences"))
+        .expect_json::<AccountPreferences>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(prefs) => Event::Account(AccountEvent::PreferencesLoaded(prefs)),
+                None => Event::LoadFailed("Failed to parse preferences response".into()),
+            },
+            Err(e) => Event::LoadFailed(format!("Failed to load preferences: {e}")),
+        })
+}
+
+pub fn save_account_preferences(
+    api_base_url: &str,
+    prefs: &AccountPreferences,
+    previous: Option<AccountPreferences>,
+) -> Command<Effect, Event> {
+    Http::put(format!("{api_base_url}/api/account/preferences"))
+        .body_json(prefs)
+        .expect("serialize AccountPreferences")
+        .expect_json::<AccountPreferences>()
+        .build()
+        .then_send(move |result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(saved) => Event::Account(AccountEvent::PreferencesSaved(saved)),
+                None => Event::Account(AccountEvent::SavePreferencesFailed {
+                    previous: previous.clone(),
+                    message: "save_preferences: server returned no body".into(),
+                }),
+            },
+            Err(e) => Event::Account(AccountEvent::SavePreferencesFailed {
+                previous: previous.clone(),
+                message: format!("Failed to save preferences: {e}"),
+            }),
+        })
+}
+
+pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
+    Http::delete(format!("{api_base_url}/api/account"))
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::Account(AccountEvent::AccountDeleted),
+            Err(e) => Event::Account(AccountEvent::DeleteAccountFailed(format!(
+                "Failed to delete account: {e}"
+            ))),
         })
 }

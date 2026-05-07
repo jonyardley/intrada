@@ -16,9 +16,9 @@ use crate::components::{
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
 use crate::views::{
-    AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
-    NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView,
-    SessionsListView, SetDetailView, SetEditView, SetsListView,
+    AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
+    LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
+    SessionsAllView, SessionsListView, SetDetailView, SetEditView, SetsListView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
@@ -215,6 +215,9 @@ fn AuthenticatedApp() -> impl IntoView {
                     } />
                     <Route path=path!("/design") view=move || view! {
                         <DesignRouteView />
+                    } />
+                    <Route path=path!("/settings/delete-account") view=move || view! {
+                        <AccountDeleteView />
                     } />
                 </Routes>
             </main>

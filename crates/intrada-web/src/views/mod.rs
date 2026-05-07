@@ -1,3 +1,4 @@
+pub mod account_delete;
 pub mod add_form;
 pub mod analytics;
 #[cfg(debug_assertions)]
@@ -14,7 +15,9 @@ pub mod sessions_all;
 pub mod set_detail;
 pub mod set_edit;
 pub mod sets;
+pub mod settings;
 
+pub use account_delete::AccountDeleteView;
 pub use add_form::AddLibraryItemForm;
 pub use analytics::AnalyticsPage;
 #[cfg(debug_assertions)]
@@ -31,3 +34,4 @@ pub use sessions_all::SessionsAllView;
 pub use set_detail::SetDetailView;
 pub use set_edit::SetEditView;
 pub use sets::SetsListView;
+pub use settings::SettingsSheet;

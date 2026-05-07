@@ -50,6 +50,7 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>, allowed_origin: &
         allowed_origin.to_string(),
         auth_config,
         None,
+        None,
     );
     routes::api_router(state)
 }
@@ -181,6 +182,57 @@ pub async fn post_json_with_auth(
         .header("content-type", "application/json")
         .header("Authorization", format!("Bearer {token}"))
         .body(Body::from(json))
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    (status, body)
+}
+
+/// Send a PUT request with JSON body and Authorization header.
+#[allow(dead_code)]
+pub async fn put_json_with_auth(
+    router: Router,
+    uri: &str,
+    body: impl serde::Serialize,
+    token: &str,
+) -> (StatusCode, Vec<u8>) {
+    let json = serde_json::to_string(&body).unwrap();
+    let request = Request::builder()
+        .method("PUT")
+        .uri(uri)
+        .header("content-type", "application/json")
+        .header("Authorization", format!("Bearer {token}"))
+        .body(Body::from(json))
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    (status, body)
+}
+
+/// Send a DELETE request with an Authorization header.
+#[allow(dead_code)]
+pub async fn delete_with_auth(router: Router, uri: &str, token: &str) -> (StatusCode, Vec<u8>) {
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(uri)
+        .header("Authorization", format!("Bearer {token}"))
+        .body(Body::empty())
         .unwrap();
 
     let response = router.oneshot(request).await.unwrap();

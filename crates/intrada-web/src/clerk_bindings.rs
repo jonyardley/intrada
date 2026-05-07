@@ -35,6 +35,12 @@ use wasm_bindgen::prelude::*;
         }
         return null;
     }
+    export function js_get_user_email() {
+        if (window.__intrada_auth && window.__intrada_auth.getUserEmail) {
+            return window.__intrada_auth.getUserEmail();
+        }
+        return null;
+    }
     export async function js_sign_out() {
         if (window.__intrada_auth) {
             await window.__intrada_auth.signOut();
@@ -59,6 +65,7 @@ extern "C" {
     fn js_init_failed() -> bool;
     async fn js_get_token() -> JsValue;
     fn js_get_user_id() -> JsValue;
+    fn js_get_user_email() -> JsValue;
     async fn js_sign_out();
     async fn js_sign_in_with_google();
     fn js_add_auth_listener(callback: &Closure<dyn Fn()>);
@@ -92,6 +99,13 @@ pub async fn get_auth_token() -> Option<String> {
 /// Get the current user's Clerk user ID. Returns `None` if not signed in.
 pub fn get_user_id() -> Option<String> {
     let val = js_get_user_id();
+    val.as_string()
+}
+
+/// Get the current user's primary email address. Returns `None` if not
+/// signed in or if the Clerk user has no email on file.
+pub fn email() -> Option<String> {
+    let val = js_get_user_email();
     val.as_string()
 }
 
