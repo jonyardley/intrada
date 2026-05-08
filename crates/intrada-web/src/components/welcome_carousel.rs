@@ -135,7 +135,7 @@ pub fn WelcomeCarousel(
             haptics::haptic_light();
             mark_welcome_seen();
             show.set(false);
-            navigate("/", Default::default());
+            navigate("/library", Default::default());
         }
     };
 
@@ -146,7 +146,7 @@ pub fn WelcomeCarousel(
             // on click internally. Adding another would double-tap on iOS.
             mark_welcome_seen();
             show.set(false);
-            navigate("/", Default::default());
+            navigate("/library", Default::default());
         }
     };
 

@@ -91,7 +91,7 @@ pub fn EditLibraryItemForm(
                     view! {
                         <div class="text-center py-8">
                             <p class="text-secondary mb-4">"Item not found."</p>
-                            <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                            <A href="/library" attr:class="text-accent-text hover:text-accent-hover font-medium">
                                 "← Back to Library"
                             </A>
                         </div>
@@ -105,7 +105,7 @@ pub fn EditLibraryItemForm(
         }
         return view! {
             <div class="sm:max-w-2xl sm:mx-auto">
-                <BackLink label="Cancel" href="/".to_string() />
+                <BackLink label="Cancel" href="/library".to_string() />
                 <PageHeading text="Edit Library Item" />
                 <Card>{loading_inner}</Card>
             </div>

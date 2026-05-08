@@ -6,6 +6,7 @@ pub mod haptics;
 pub mod helpers;
 pub mod hooks;
 pub mod live_activity;
+pub mod platform;
 pub mod session_lifecycle;
 pub mod types;
 pub mod validation;

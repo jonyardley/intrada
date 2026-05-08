@@ -41,7 +41,7 @@ pub fn SetEditView() -> impl IntoView {
         let id = id.clone();
         return view! {
             <div class="sm:max-w-2xl sm:mx-auto">
-                <BackLink label="Back to Sets" href="/?type=set".to_string() />
+                <BackLink label="Back to Sets" href="/library?type=set".to_string() />
                 <PageHeading text="Edit Set" />
                 {move || {
                     if is_loading.get() {
@@ -64,7 +64,7 @@ pub fn SetEditView() -> impl IntoView {
                             view! {
                                 <div class="text-center py-8">
                                     <p class="text-secondary mb-4">"Set not found."</p>
-                                    <A href="/?type=set" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                                    <A href="/library?type=set" attr:class="text-accent-text hover:text-accent-hover font-medium">
                                         "\u{2190} Back to Sets"
                                     </A>
                                 </div>
@@ -140,7 +140,7 @@ pub fn SetEditView() -> impl IntoView {
 
     view! {
         <div class="sm:max-w-2xl sm:mx-auto">
-            <BackLink label="Back to Sets" href="/?type=set".to_string() />
+            <BackLink label="Back to Sets" href="/library?type=set".to_string() />
 
             <PageHeading text="Edit Set" />
 
@@ -192,7 +192,7 @@ pub fn SetEditView() -> impl IntoView {
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                         toast.show("Set updated");
-                        navigate("/?type=set", NavigateOptions { replace: true, ..Default::default() });
+                        navigate("/library?type=set", NavigateOptions { replace: true, ..Default::default() });
                     }
                 }>
                     <div>
@@ -245,7 +245,7 @@ pub fn SetEditView() -> impl IntoView {
                         <Button variant=ButtonVariant::Secondary on_click={
                             let navigate = navigate.clone();
                             Callback::new(move |_| {
-                                navigate("/?type=set", NavigateOptions::default());
+                                navigate("/library?type=set", NavigateOptions::default());
                             })
                         }>"Cancel"</Button>
                     </div>

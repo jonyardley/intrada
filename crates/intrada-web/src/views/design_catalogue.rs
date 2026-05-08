@@ -1391,7 +1391,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Navigation"</h3>
                 <Card>
                     <div class="space-y-3">
-                        <BackLink label="Back to Library" href="/".to_string() />
+                        <BackLink label="Back to Library" href="/library".to_string() />
                         <PageHeading text="Sample Page Heading" />
                     </div>
                 </Card>

@@ -49,10 +49,10 @@ test.describe("welcome carousel", () => {
     const cta = page.getByRole("button", { name: /Get started/ });
     await expect(cta).toBeVisible();
 
-    // Click CTA — should navigate to / (the Library home)
+    // Click CTA — should navigate to /library (the Library home)
     await cta.click();
     await expect(carousel).not.toBeVisible();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/library$/);
   });
 
   test("skip dismisses carousel and lands on library", async ({ page }) => {
@@ -69,8 +69,8 @@ test.describe("welcome carousel", () => {
     await page.getByRole("button", { name: "Skip" }).click();
 
     await expect(carousel).not.toBeVisible();
-    // Should be on the library page (root)
-    await expect(page).toHaveURL(/\/$/);
+    // Should be on the library page
+    await expect(page).toHaveURL(/\/library$/);
 
     // Note: reload-persistence is covered separately by the next test.
     // We can't easily test it here because the addInitScript above runs
@@ -82,7 +82,10 @@ test.describe("welcome carousel", () => {
   }) => {
     // No clearing needed — the shared fixture primes the flag by default,
     // simulating a returning user / second-visit.
+    // `/` is the public marketing page; authed users redirect to /library
+    // immediately, where the carousel would mount if welcome-seen=false.
     await page.goto("/");
+    await expect(page).toHaveURL(/\/library$/);
 
     // Carousel should not appear
     await expect(

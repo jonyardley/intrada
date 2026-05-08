@@ -84,7 +84,7 @@ pub fn SetDetailView() -> impl IntoView {
         drop(core_ref);
         let nav = use_navigate();
         nav(
-            "/",
+            "/library",
             NavigateOptions {
                 replace: true,
                 ..Default::default()
@@ -97,7 +97,7 @@ pub fn SetDetailView() -> impl IntoView {
             // Nav row — back link + trailing Edit action (iOS
             // UINavigationBar idiom; matches piece detail).
             <div class="flex items-center justify-between -mb-2">
-                <BackLink label="Library" href="/".to_string() />
+                <BackLink label="Library" href="/library".to_string() />
                 <A
                     href=format!("/routines/{id_for_edit}/edit")
                     attr:class="text-sm font-medium text-accent-text hover:text-accent-hover"
@@ -123,7 +123,7 @@ pub fn SetDetailView() -> impl IntoView {
                         <div class="text-center py-8">
                             <p class="text-secondary mb-4">"Set not found."</p>
                             <A
-                                href="/"
+                                href="/library"
                                 attr:class="text-accent-text hover:text-accent-hover font-medium"
                             >
                                 "\u{2190} Back to Library"
