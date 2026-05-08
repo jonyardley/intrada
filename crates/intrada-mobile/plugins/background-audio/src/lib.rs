@@ -101,10 +101,12 @@ fn capture_bridge_error(command: &str, err: &Error) {
 async fn begin_session<R: Runtime>(app: AppHandle<R>, args: BeginSessionArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        // Item title is user content (piece / exercise name); strip it
+        // from the breadcrumb so it doesn't bypass `send_default_pii:
+        // false`. Sentry can still triage by command + started_at.
         breadcrumb(
             "begin_session",
             serde_json::json!({
-                "title": &args.title,
                 "started_at": &args.started_at,
             }),
         );
@@ -126,10 +128,11 @@ async fn begin_session<R: Runtime>(app: AppHandle<R>, args: BeginSessionArgs) ->
 async fn set_now_playing<R: Runtime>(app: AppHandle<R>, args: NowPlayingArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        // See `begin_session` — `title` is user content; only generic
+        // metadata in the breadcrumb.
         breadcrumb(
             "set_now_playing",
             serde_json::json!({
-                "title": &args.title,
                 "position_label": &args.position_label,
                 "started_at": &args.started_at,
             }),

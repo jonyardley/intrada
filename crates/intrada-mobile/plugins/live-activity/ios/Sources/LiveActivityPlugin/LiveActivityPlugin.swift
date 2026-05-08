@@ -63,9 +63,18 @@ class LiveActivityPlugin: Plugin {
   }()
 
   // Tauri dispatches `Invoke` calls on a serial per-plugin queue, but
-  // ActivityKit's API is documented as main-thread-safe. We dispatch
-  // every state mutation to the main queue to mirror background-audio's
-  // pattern and avoid surprises.
+  // we still wrap the synchronous parts in `DispatchQueue.main.async`
+  // because reads/writes of `currentActivity` need a single home queue
+  // to avoid races with future timer / notification callbacks (mirrors
+  // background-audio's pattern). The `await activity.update(...)` and
+  // `await activity.end(...)` calls themselves are documented as safe
+  // from any context — they hop off main via `Task { @MainActor in }`
+  // so that any post-await state mutation lands back on main.
+  //
+  // iPad: ActivityKit doesn't support Live Activities on iPad. We
+  // short-circuit here rather than letting `Activity.request` throw,
+  // which would otherwise produce one Sentry "rejected" event per
+  // session start on every iPad install.
 
   @objc public func begin(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(BeginArgs.self)
@@ -73,6 +82,11 @@ class LiveActivityPlugin: Plugin {
 
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
+
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        invoke.resolve()
+        return
+      }
 
       if #available(iOS 16.1, *) {
         // If a previous session left an activity hanging (app crash
@@ -89,11 +103,23 @@ class LiveActivityPlugin: Plugin {
         )
 
         do {
-          let activity = try Activity<IntradaActivityAttributes>.request(
-            attributes: IntradaActivityAttributes(),
-            contentState: state,
-            pushType: nil
-          )
+          let activity: Activity<IntradaActivityAttributes>
+          if #available(iOS 16.2, *) {
+            // 16.2+: ActivityContent wrapper (preferred; iOS 16.1's
+            // contentState: API was deprecated in favour of this).
+            activity = try Activity<IntradaActivityAttributes>.request(
+              attributes: IntradaActivityAttributes(),
+              content: ActivityContent(state: state, staleDate: nil),
+              pushType: nil
+            )
+          } else {
+            // 16.1 baseline: contentState: parameter.
+            activity = try Activity<IntradaActivityAttributes>.request(
+              attributes: IntradaActivityAttributes(),
+              contentState: state,
+              pushType: nil
+            )
+          }
           self.currentActivity = activity
           invoke.resolve()
         } catch {
@@ -122,6 +148,11 @@ class LiveActivityPlugin: Plugin {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
 
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        invoke.resolve()
+        return
+      }
+
       if #available(iOS 16.1, *) {
         guard let activity = self.currentActivity as? Activity<IntradaActivityAttributes>
         else {
@@ -140,8 +171,17 @@ class LiveActivityPlugin: Plugin {
           plannedDurationSecs: args.planned_duration_secs
         )
 
-        Task {
-          await activity.update(using: state)
+        // `Activity.update` is `async` but not `throws` per Apple's API:
+        // it silently no-ops if the activity has been revoked / replaced.
+        // The lifecycle Effect's next item-advance fires another update,
+        // so transient failures self-heal. If `.activityState` checks
+        // become necessary we can add them here in Phase D.
+        Task { @MainActor in
+          if #available(iOS 16.2, *) {
+            await activity.update(ActivityContent(state: state, staleDate: nil))
+          } else {
+            await activity.update(using: state)
+          }
           invoke.resolve()
         }
       } else {
@@ -153,6 +193,11 @@ class LiveActivityPlugin: Plugin {
   @objc public func end(_ invoke: Invoke) {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
+
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        invoke.resolve()
+        return
+      }
 
       if #available(iOS 16.1, *) {
         self.endCurrentActivityIfAny()
@@ -168,11 +213,23 @@ class LiveActivityPlugin: Plugin {
     guard let activity = currentActivity as? Activity<IntradaActivityAttributes> else { return }
     // `Activity.end` requires a final ContentState even though the
     // activity dismisses immediately — reuse the last known state.
-    let final = activity.contentState
-    Task {
-      await activity.end(using: final, dismissalPolicy: .immediate)
+    // iOS 16.2 deprecated `contentState` in favour of `content.state`.
+    let final: IntradaActivityAttributes.ContentState
+    if #available(iOS 16.2, *) {
+      final = activity.content.state
+    } else {
+      final = activity.contentState
     }
     currentActivity = nil
+    Task { @MainActor in
+      if #available(iOS 16.2, *) {
+        await activity.end(
+          ActivityContent(state: final, staleDate: nil),
+          dismissalPolicy: .immediate)
+      } else {
+        await activity.end(using: final, dismissalPolicy: .immediate)
+      }
+    }
   }
 
   private func parseRfc3339(_ s: String) -> Date? {

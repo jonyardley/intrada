@@ -13,9 +13,10 @@ import PackageDescription
 let package = Package(
   name: "IntradaActivityShared",
   platforms: [
-    // ActivityKit shipped in iOS 16.1. Targets older than that compile
-    // the type defs but never request an activity.
-    .iOS(.v16)
+    // ActivityKit shipped in iOS 16.1. The `ActivityAttributes`
+    // conformance on `IntradaActivityAttributes` is `@available(iOS
+    // 16.1, *)` gated, so the platform target needs to match.
+    .iOS("16.1")
   ],
   products: [
     .library(

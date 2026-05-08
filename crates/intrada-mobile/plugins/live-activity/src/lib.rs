@@ -107,10 +107,15 @@ fn capture_bridge_error(command: &str, err: &Error) {
 async fn begin<R: Runtime>(app: AppHandle<R>, args: BeginArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        // Strip `item_title` from breadcrumb data — piece/exercise titles
+        // are user content that bypass `send_default_pii: false` if
+        // attached explicitly. `position_label` ("Item N of M") is
+        // generic; `planned_duration_secs` is metadata. Both are
+        // sufficient for Sentry to triage failures by item position
+        // without exposing what the user is practising.
         breadcrumb(
             "begin",
             serde_json::json!({
-                "item_title": &args.item_title,
                 "position_label": &args.position_label,
                 "started_at": &args.started_at,
                 "planned_duration_secs": args.planned_duration_secs,
@@ -134,10 +139,11 @@ async fn begin<R: Runtime>(app: AppHandle<R>, args: BeginArgs) -> Result<()> {
 async fn update<R: Runtime>(app: AppHandle<R>, args: UpdateArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        // See `begin` — `item_title` deliberately omitted from
+        // breadcrumb data to avoid leaking user content into Sentry.
         breadcrumb(
             "update",
             serde_json::json!({
-                "item_title": &args.item_title,
                 "position_label": &args.position_label,
                 "started_at": &args.started_at,
                 "planned_duration_secs": args.planned_duration_secs,
