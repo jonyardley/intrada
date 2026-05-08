@@ -11,6 +11,7 @@
     "haptics:allow-notification-feedback",
     "haptics:allow-vibrate",
     "deep-link:default",
-    "background-audio:default"
+    "background-audio:default",
+    "live-activity:default"
   ]
 }

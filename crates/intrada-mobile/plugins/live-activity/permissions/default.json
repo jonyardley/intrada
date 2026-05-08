@@ -1,0 +1,10 @@
+{
+  "default": {
+    "description": "Default permissions for the live-activity plugin: allow the WebView to begin, update, and end a Live Activity for the current practice session.",
+    "permissions": [
+      "allow-begin",
+      "allow-update",
+      "allow-end"
+    ]
+  }
+}

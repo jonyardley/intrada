@@ -34,10 +34,15 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_haptics::init())
         .plugin(tauri_plugin_deep_link::init())
-        // Phase B scaffold of #309 — Rust commands return Ok with no
-        // native side-effects. Phase C adds the AVAudioSession + Now
-        // Playing Swift impl behind the same command names.
+        // Background audio: AVAudioSession + Now Playing for the active
+        // practice session. Keeps the timer alive while the device is
+        // locked. (#309 — fully shipped.)
         .plugin(tauri_plugin_background_audio::init())
+        // Live Activity: Lock Screen + Dynamic Island for the active
+        // practice session. Phase B scaffold of #474 — Swift side
+        // resolves with no ActivityKit calls yet; Phase C wires the
+        // real Activity<...>.request / update / end.
+        .plugin(tauri_plugin_live_activity::init())
         .run(tauri::generate_context!())
         .expect("error while running intrada");
 }

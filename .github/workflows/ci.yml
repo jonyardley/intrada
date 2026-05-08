@@ -70,9 +70,9 @@ jobs:
       # intrada-mobile + its plugins (Tauri 2) require GTK/glib system libs
       # not present on Ubuntu runners — iOS-only crates with no meaningful
       # unit tests on Linux.
-      - run: cargo nextest run --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio
+      - run: cargo nextest run --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity
       - name: Doc tests
-        run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio
+        run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity
 
   clippy:
     name: Clippy
@@ -89,7 +89,7 @@ jobs:
           prefix-key: "native"
           save-if: "false"
       # intrada-mobile + its plugins excluded: Tauri 2 needs GTK/glib system libs on Linux.
-      - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio -- -D warnings
+      - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity -- -D warnings
       - name: Clippy (WASM target)
         run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
 
