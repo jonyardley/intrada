@@ -48,6 +48,9 @@ in-app feature.
 - **No third-party developer platform.** The OAuth surface is for end-user
   MCP clients, not for third-party apps building on intrada. Separate spec
   if we ever go there.
+- **No tools for `lessons`** in v1. Lessons (the photo-attached lesson
+  capture surface) have different access patterns than user-authored
+  library content; revisit in a future phase if agent demand emerges.
 
 ## Approach
 
@@ -66,9 +69,15 @@ in-app feature.
 │                                                                    │
 │   New crate: intrada-mcp (mounted as a sibling router)             │
 │                                                                    │
-│   • /mcp/*              MCP endpoint (HTTP+SSE)                    │
-│   • /oauth/*            OAuth 2.1 + DCR (Phase 5)                  │
-│   • /account/tokens/*   PAT issuance/revocation (Phase 2)          │
+│   • /api/mcp/*                              MCP endpoint (HTTP+SSE)│
+│   • /api/account/tokens/*                   PAT CRUD (Phase 2)     │
+│   • /oauth/*                                OAuth 2.1 (Phase 5)    │
+│   • /.well-known/oauth-authorization-server OAuth discovery (RFC   │
+│                                             8414, Phase 5)         │
+│                                                                    │
+│   MCP + PAT live under /api for CORS/middleware consistency with   │
+│   existing routes. OAuth endpoints live at root per RFC convention │
+│   (/.well-known/* MUST be at root).                                │
 │                                                                    │
 │   Tool handlers share a service layer with existing HTTP routes.   │
 │   Same auth extractor — token resolves to a user_id, identical     │
@@ -174,9 +183,11 @@ prompt. Mitigations:
    `intrada-api/src/services/` so MCP and Axum handlers both call into it.
    Avoids duplicate code and "MCP behaves subtly differently from web"
    bugs.
-9. **Validation lives in `intrada-core`, depended on by `intrada-api`.**
-   Single source of truth. Phase 1 adds the dependency edge so MCP bulk
-   writes can reject invalid items pre-DB without duplicating logic.
+9. **Validation stays in `intrada-core`** (already imported from
+   `routes/items.rs`, `routes/sets.rs`, `routes/sessions.rs`,
+   `routes/lessons.rs`). Phase 1 ensures the new service layer routes
+   bulk writes through the same `intrada_core::validation` calls so MCP
+   gets identical rejection logic to HTTP — no duplication, no drift.
 10. **Single flat scope for v1.** A token can do anything the user can.
     Granular read/write/per-resource scopes are deferred until there's a
     concrete reason (third-party clients, untrusted agents) — the
