@@ -1,7 +1,3 @@
-// The sub-components and WelcomeMark props are live code: they will be consumed
-// once WelcomeCarousel is updated in the next task. Suppress dead_code until then.
-#![allow(dead_code)]
-
 use leptos::prelude::*;
 
 /// Animated SVG mark for a welcome carousel card.

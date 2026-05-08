@@ -114,5 +114,4 @@ pub use type_tabs::TypeTabs;
 pub use week_strip::{DayCell, WeekStrip};
 pub use welcome_card::WelcomeCard;
 pub use welcome_carousel::WelcomeCarousel;
-#[allow(unused_imports)]
 pub use welcome_mark::WelcomeMark;

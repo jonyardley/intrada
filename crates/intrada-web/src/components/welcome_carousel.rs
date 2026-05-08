@@ -4,7 +4,7 @@ use leptos_router::hooks::use_navigate;
 use wasm_bindgen::prelude::*;
 use web_sys::TouchEvent;
 
-use crate::components::{Button, ButtonSize, ButtonVariant, WelcomeCard};
+use crate::components::{Button, ButtonSize, ButtonVariant, WelcomeCard, WelcomeMark};
 use intrada_web::haptics;
 
 /// localStorage key for the "welcome seen" flag.
@@ -15,14 +15,49 @@ const CARD_COUNT: usize = 5;
 /// Horizontal distance (px) to recognise a swipe gesture.
 const SWIPE_THRESHOLD: f64 = 30.0;
 
-/// Card copy — these are the spec, not placeholders.
-/// Edits should be deliberate (PR review, not drift).
-const CARDS: [&str; CARD_COUNT] = [
-    "Knowing how to practise well is hard. I\u{2019}ve struggled with it. So I built this.",
-    "Build a library of pieces and exercises \u{2014} the things you\u{2019}re actually working on.",
-    "Plan each session with intention. Decide where the effort goes before you pick up the instrument.",
-    "Run focused, timed sessions with real-time reflection \u{2014} score what happened while it\u{2019}s still fresh.",
-    "Track your progress, achieve your goals.",
+/// Per-card content: optional pillar label, anchor phrase, continuation.
+/// Card 1 (opener) deliberately omits the label.
+///
+/// These lines are the spec — not placeholders. Edits should be deliberate
+/// (PR review, not drift). See specs/onboarding-welcome.md.
+struct CardContent {
+    label: Option<&'static str>,
+    anchor: &'static str,
+    continuation: Option<&'static str>,
+}
+
+const CARDS: [CardContent; CARD_COUNT] = [
+    CardContent {
+        label: None,
+        anchor: "Knowing how to practise well is hard.",
+        continuation: Some("I\u{2019}ve struggled with it. So I built this."),
+    },
+    CardContent {
+        label: Some("CAPTURE"),
+        anchor: "Build a library",
+        continuation: Some(
+            "of pieces and exercises \u{2014} the things you\u{2019}re actually working on.",
+        ),
+    },
+    CardContent {
+        label: Some("PLAN"),
+        anchor: "Practise with intention",
+        continuation: Some(
+            "Plan each session. Decide where the effort goes before you pick up the instrument.",
+        ),
+    },
+    CardContent {
+        label: Some("PRACTICE"),
+        anchor: "Focus, reflect, repeat",
+        continuation: Some(
+            "Run timed sessions with real-time reflection \u{2014} score what happened while it\u{2019}s still fresh.",
+        ),
+    },
+    CardContent {
+        label: Some("TRACK"),
+        anchor: "Watch your progress",
+        continuation: Some("Track every session, achieve your goals."),
+    },
 ];
 
 /// Check whether the welcome has already been seen on this device.
@@ -111,7 +146,7 @@ pub fn WelcomeCarousel(
             // on click internally. Adding another would double-tap on iOS.
             mark_welcome_seen();
             show.set(false);
-            navigate("/library/new", Default::default());
+            navigate("/", Default::default());
         }
     };
 
@@ -245,30 +280,50 @@ pub fn WelcomeCarousel(
                 "Skip"
             </button>
 
-            // Card content — transitions on index change
+            // Card content — transitions on index change.
+            // The mark and the card share a vertical stack; both re-mount
+            // when card_index changes so the SVG draw-in animation replays.
             <div class=card_content_class>
                 {move || {
                     let idx = card_index.get();
-                    let copy = CARDS[idx].to_string();
+                    let card = &CARDS[idx];
                     let is_last = idx == CARD_COUNT - 1;
 
                     if is_last {
                         view! {
-                            <WelcomeCard copy=copy>
-                                <Button
-                                    variant=ButtonVariant::Primary
-                                    size=ButtonSize::Hero
-                                    full_width=true
-                                    on_click=on_cta_cb
+                            <div class="flex flex-col items-center">
+                                <div class="mb-8">
+                                    <WelcomeMark card_index=idx />
+                                </div>
+                                <WelcomeCard
+                                    label=card.label.map(str::to_string)
+                                    anchor=card.anchor.to_string()
+                                    continuation=card.continuation.map(str::to_string)
                                 >
-                                    "Add your first piece \u{2192}"
-                                </Button>
-                            </WelcomeCard>
+                                    <Button
+                                        variant=ButtonVariant::Primary
+                                        size=ButtonSize::Hero
+                                        full_width=true
+                                        on_click=on_cta_cb
+                                    >
+                                        "Get started \u{2192}"
+                                    </Button>
+                                </WelcomeCard>
+                            </div>
                         }
                         .into_any()
                     } else {
                         view! {
-                            <WelcomeCard copy=copy />
+                            <div class="flex flex-col items-center">
+                                <div class="mb-8">
+                                    <WelcomeMark card_index=idx />
+                                </div>
+                                <WelcomeCard
+                                    label=card.label.map(str::to_string)
+                                    anchor=card.anchor.to_string()
+                                    continuation=card.continuation.map(str::to_string)
+                                />
+                            </div>
                         }
                         .into_any()
                     }
