@@ -19,7 +19,7 @@ pub fn router() -> Router<AppState> {
 
 async fn list_sessions(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<PracticeSession>>, ApiError> {
     let conn = state.conn();
     let sessions = services::sessions::list_sessions(&conn, &user_id).await?;
@@ -28,7 +28,7 @@ async fn list_sessions(
 
 async fn get_session(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<PracticeSession>, ApiError> {
     let conn = state.conn();
@@ -38,7 +38,7 @@ async fn get_session(
 
 async fn save_session(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Json(input): Json<SaveSessionRequest>,
 ) -> Result<(StatusCode, Json<PracticeSession>), ApiError> {
     let conn = state.conn();
@@ -48,7 +48,7 @@ async fn save_session(
 
 async fn delete_session(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.conn();

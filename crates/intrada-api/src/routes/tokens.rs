@@ -17,7 +17,7 @@ pub fn router() -> Router<AppState> {
 
 async fn list_tokens(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<TokenListItem>>, ApiError> {
     let conn = state.conn();
     let tokens = services::tokens::list_tokens(&conn, &user_id).await?;
@@ -26,7 +26,7 @@ async fn list_tokens(
 
 async fn create_token(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Json(input): Json<CreateTokenRequest>,
 ) -> Result<(StatusCode, Json<CreatedTokenResponse>), ApiError> {
     let conn = state.conn();
@@ -36,7 +36,7 @@ async fn create_token(
 
 async fn revoke_token(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();

@@ -119,17 +119,21 @@ pub async fn revoke(conn: &Connection, user_id: &str, token_id: &str) -> Result<
     Ok(rows > 0)
 }
 
-/// Resolve a hashed PAT to `(user_id, revoked_at)`. Caller decides what to
-/// do with the revoked-at value — we return it raw rather than baking the
-/// revocation check into this function so the auth extractor can log
-/// revoked-token use distinctly from missing-token use.
-pub async fn lookup_by_hash(
-    conn: &Connection,
-    hash: &str,
-) -> Result<Option<(String, Option<DateTime<Utc>>)>, ApiError> {
+/// Result of a `lookup_by_hash` call. `revoked_at` is returned raw rather
+/// than baking the revocation check into the lookup so the auth extractor
+/// can log revoked-token use distinctly from missing-token use; and the
+/// Phase 4 audit log will need `token_id` to record which token initiated
+/// each MCP write.
+pub struct PatLookup {
+    pub token_id: String,
+    pub user_id: String,
+    pub revoked_at: Option<DateTime<Utc>>,
+}
+
+pub async fn lookup_by_hash(conn: &Connection, hash: &str) -> Result<Option<PatLookup>, ApiError> {
     let mut rows = conn
         .query(
-            "SELECT user_id, revoked_at FROM mcp_tokens WHERE hash = ?1",
+            "SELECT id, user_id, revoked_at FROM mcp_tokens WHERE hash = ?1",
             libsql::params![hash],
         )
         .await?;
@@ -139,9 +143,14 @@ pub async fn lookup_by_hash(
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
         Some(row) => {
-            let user_id: String = col!(row, 0)?;
-            let revoked_at: Option<String> = col!(row, 1)?;
-            Ok(Some((user_id, parse_dt_opt(revoked_at)?)))
+            let token_id: String = col!(row, 0)?;
+            let user_id: String = col!(row, 1)?;
+            let revoked_at: Option<String> = col!(row, 2)?;
+            Ok(Some(PatLookup {
+                token_id,
+                user_id,
+                revoked_at: parse_dt_opt(revoked_at)?,
+            }))
         }
         None => Ok(None),
     }

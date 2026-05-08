@@ -19,7 +19,7 @@ pub fn router() -> Router<AppState> {
 
 async fn list_sets(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Set>>, ApiError> {
     let conn = state.conn();
     let sets = services::sets::list_sets(&conn, &user_id).await?;
@@ -28,7 +28,7 @@ async fn list_sets(
 
 async fn get_set(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Set>, ApiError> {
     let conn = state.conn();
@@ -38,7 +38,7 @@ async fn get_set(
 
 async fn create_set(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Json(input): Json<CreateSetRequest>,
 ) -> Result<(StatusCode, Json<Set>), ApiError> {
     let conn = state.conn();
@@ -48,7 +48,7 @@ async fn create_set(
 
 async fn update_set(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
     Json(input): Json<UpdateSetRequest>,
 ) -> Result<Json<Set>, ApiError> {
@@ -59,7 +59,7 @@ async fn update_set(
 
 async fn delete_set(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.conn();
