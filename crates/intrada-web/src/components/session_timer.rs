@@ -11,6 +11,7 @@ use crate::components::{
     ItemReflectionTarget, ProgressRing, SectionLabel, SetlistEntryRow, TransitionPrompt,
 };
 use intrada_web::background_audio;
+use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
 
@@ -542,6 +543,11 @@ pub fn SessionTimer() -> impl IntoView {
                                         a.current_position == a.total_items.saturating_sub(1)
                                     });
                                     let event = if is_last_now {
+                                        clerk_bindings::sentry_breadcrumb(
+                                            "session",
+                                            "session.finish",
+                                            "info",
+                                        );
                                         Event::Session(SessionEvent::FinishSession { now })
                                     } else {
                                         Event::Session(SessionEvent::NextItem { now })

@@ -45,6 +45,13 @@
           // traffic arrives — every transaction counts against quota.
           tracesSampleRate: 1.0,
           sendDefaultPii: false,
+          // Continue traces across the web → API boundary so one waterfall
+          // shows route render → fetch → handler → DB. The Rust server's
+          // SentryHttpLayer (intrada-api/src/routes/mod.rs) reads the
+          // `sentry-trace` + `baggage` headers this propagation injects.
+          // Strings: production hostname. Regex: dev path (Trunk proxies
+          // /api/* to the local API server).
+          tracePropagationTargets: ["intrada-api.fly.dev", /\/api\//],
           integrations: [Sentry.browserTracingIntegration()],
           // Defensive scrubber alongside sendDefaultPii: false. Any throw
           // here would drop the event entirely — keep wrapped in try/catch
