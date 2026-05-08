@@ -170,6 +170,17 @@
           if (!this._ready || !this._clerk || !this._clerk.user) return null;
           return this._clerk.user.id;
         },
+        getUserEmail() {
+          if (!this._ready || !this._clerk || !this._clerk.user) return null;
+          const user = this._clerk.user;
+          if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
+            return user.primaryEmailAddress.emailAddress;
+          }
+          if (Array.isArray(user.emailAddresses) && user.emailAddresses.length > 0) {
+            return user.emailAddresses[0].emailAddress || null;
+          }
+          return null;
+        },
         async signOut() {
           if (!this._ready || !this._clerk) return;
           await this._clerk.signOut();

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
+use crate::domain::account::AccountPreferences;
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::lesson::Lesson;
 use crate::domain::session::{
@@ -26,6 +27,14 @@ pub struct Model {
     pub lessons: Vec<Lesson>,
     pub current_lesson: Option<Lesson>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
+    /// Per-user practice defaults; `None` until first load completes.
+    pub account_preferences: Option<AccountPreferences>,
+    /// True while a `DELETE /api/account` request is outstanding.
+    pub delete_in_flight: bool,
+    /// One-shot terminal signal: server confirmed the account was
+    /// deleted. The shell watches this to sign out + route home.
+    /// Does not reset (account is gone; nothing to reset to).
+    pub account_deleted: bool,
 }
 
 #[cfg(test)]
@@ -70,6 +79,9 @@ pub struct ViewModel {
     pub sets: Vec<SetView>,
     pub lessons: Vec<LessonView>,
     pub current_lesson: Option<LessonView>,
+    pub account_preferences: Option<AccountPreferences>,
+    pub delete_in_flight: bool,
+    pub account_deleted: bool,
 }
 
 /// Represents a lesson for display in the UI.
