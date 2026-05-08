@@ -106,4 +106,5 @@ pub use type_badge::TypeBadge;
 pub use type_tabs::TypeTabs;
 pub use week_strip::{DayCell, WeekStrip};
 pub use welcome_card::WelcomeCard;
-// pub use welcome_carousel::WelcomeCarousel; — added in Task 3 when implemented
+#[allow(unused_imports)]
+pub use welcome_carousel::WelcomeCarousel;

@@ -343,7 +343,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
                             <li><a href="#week-strip" class="text-accent-text hover:text-primary">"Week Strip"</a></li>
-                            <li><a href="#welcome-card" class="text-accent-text hover:text-primary">"Welcome Card"</a></li>
+                            <li><a href="#welcome-card" class="text-accent-text hover:text-primary">"Welcome Carousel"</a></li>
                             <li><a href="#shell" class="text-accent-text hover:text-primary">"Shell Components"</a></li>
                             <li><a href="#accessibility" class="text-accent-text hover:text-primary">"Accessibility"</a></li>
                         </ul>
@@ -1733,7 +1733,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="welcome-card" class="mb-16">
                 <h2 class="section-title">"Welcome Carousel"</h2>
                 <p class="text-sm text-muted mb-4">
-                    "First-run onboarding overlay. Five typographic cards with progress dots, Skip, and CTA. (Carousel itself + reset button land in Task 5.)"
+                    "First-run onboarding overlay. Five typographic cards with progress dots, Skip, and CTA."
                 </p>
 
                 // Individual WelcomeCard showcase

@@ -12,10 +12,11 @@ pub fn WelcomeCard(
     children: Option<Children>,
 ) -> impl IntoView {
     view! {
-        <div class="flex flex-col items-center justify-center text-center px-6 max-w-md mx-auto">
-            <p class="font-heading text-[1.75rem] leading-9 font-semibold text-primary tracking-tight">
-                {copy}
-            </p>
+        // px-card-comfortable for horizontal padding token; mt-10 is intentional
+        // breathing room on the full-screen canvas between copy and CTA, no
+        // matching token in the spacing scale.
+        <div class="flex flex-col items-center justify-center text-center px-card-comfortable max-w-md mx-auto">
+            <p class="page-title">{copy}</p>
             {children.map(|c| view! {
                 <div class="mt-10 w-full">
                     {c()}
