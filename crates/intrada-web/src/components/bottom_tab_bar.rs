@@ -68,6 +68,15 @@ pub fn BottomTabBar() -> impl IntoView {
         None => "Practice",
     };
 
+    // Tapping Practice jumps straight to whatever's already in flight so
+    // the user can't accidentally start a second session on top of an
+    // active one. Live > building > idle.
+    let practice_href = move || match practice_status.get() {
+        Some(StatusDotState::Live) => "/sessions/active".to_string(),
+        Some(StatusDotState::Building) => "/sessions/new".to_string(),
+        None => "/sessions".to_string(),
+    };
+
     let spring = "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center";
     let active = "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center";
     let inactive = "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center";
@@ -104,7 +113,7 @@ pub fn BottomTabBar() -> impl IntoView {
                 // building or live (#272). The dot overlays the icon's
                 // top-right corner in the relative-positioned wrapper.
                 <A
-                    href="/sessions"
+                    href=practice_href
                     attr:class=move || {
                         if is_sessions_active() {
                             if has_tapped.get() { spring } else { active }

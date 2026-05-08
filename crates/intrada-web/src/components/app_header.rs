@@ -1,3 +1,4 @@
+use intrada_core::ViewModel;
 use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
@@ -11,6 +12,7 @@ use crate::components::ProfileButton;
 #[component]
 pub fn AppHeader() -> impl IntoView {
     let location = use_location();
+    let view_model = expect_context::<RwSignal<ViewModel>>();
 
     let is_library_active = move || {
         let path = location.pathname.get();
@@ -25,6 +27,21 @@ pub fn AppHeader() -> impl IntoView {
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
+    };
+
+    // Tapping Practice jumps straight to whatever's already in flight so
+    // the user can't accidentally start a second session on top of an
+    // active one. Live > building > idle.
+    let practice_href = move || {
+        view_model.with(|vm| {
+            if vm.active_session.is_some() {
+                "/sessions/active".to_string()
+            } else if vm.building_setlist.is_some() {
+                "/sessions/new".to_string()
+            } else {
+                "/sessions".to_string()
+            }
+        })
     };
 
     view! {
@@ -51,7 +68,7 @@ pub fn AppHeader() -> impl IntoView {
                             "Library"
                         </A>
                         <A
-                            href="/sessions"
+                            href=practice_href
                             attr:class=move || {
                                 if is_sessions_active() {
                                     "text-sm font-medium text-accent-text motion-safe:transition-colors"
