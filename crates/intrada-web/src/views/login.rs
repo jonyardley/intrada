@@ -4,7 +4,7 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
 use crate::components::{Button, ButtonSize, ButtonVariant};
-use intrada_web::clerk_bindings;
+use intrada_web::js_bridge;
 
 use crate::app::AuthState;
 
@@ -41,7 +41,7 @@ pub fn LoginView() -> impl IntoView {
     let on_sign_in = Callback::new(move |_| {
         signing_in.set(true);
         leptos::task::spawn_local(async move {
-            clerk_bindings::sign_in_with_google().await;
+            js_bridge::sign_in_with_google().await;
             // Clerk redirects the page — no need to update state here.
         });
     });

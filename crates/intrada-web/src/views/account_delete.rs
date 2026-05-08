@@ -5,8 +5,8 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
 use intrada_core::{AccountEvent, Event, ViewModel};
-use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::process_effects;
+use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{Button, ButtonVariant, TextField};
@@ -52,7 +52,7 @@ pub fn AccountDeleteView() -> impl IntoView {
         navigated.set(true);
         let navigate = navigate.clone();
         leptos::task::spawn_local(async move {
-            clerk_bindings::sign_out().await;
+            js_bridge::sign_out().await;
             navigate(
                 "/",
                 NavigateOptions {
