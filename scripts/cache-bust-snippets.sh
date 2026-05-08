@@ -33,15 +33,23 @@
 #
 #   1. Hashes the contents of dist/snippets/<crate>-<wb-hash>/
 #   2. Renames the folder to dist/snippets/<crate>-<content-hash>/
-#   3. Rewrites every `snippets/<old>/` reference in dist/*.js (and
-#      dist/*.html, defensively) to use the new folder name.
+#   3. Rewrites every `snippets/<old>/` reference in:
+#        - dist/*.js (wasm-bindgen shim — primary site)
+#        - dist/*.html (defensive)
+#        - dist/*.wasm (wasm-bindgen embeds the path in the WASM
+#          import section as a UTF-8 string)
+#   4. Recomputes SHA-384 integrity hashes for every file referenced
+#      by an `integrity="sha384-..."` attribute in index.html. Trunk
+#      emits SRI for the shim and the .wasm; rewriting their contents
+#      invalidates the digest, and browsers then block the resource
+#      ("Failed to find a valid digest in the 'integrity' attribute").
 #
 # Folder name now changes whenever the snippet contents change, so the
 # next deploy busts every cache layer naturally — no runtime/protocol
 # changes, no service worker, no header tuning needed.
 #
 # Idempotent: re-running on an already-content-hashed folder produces
-# the same name (same content → same hash).
+# the same name (same content → same hash) and skips step 3+4.
 
 set -euo pipefail
 
@@ -96,10 +104,67 @@ for old_path in "$SNIPPETS_DIR"/*/; do
         rm -f "${f}.bak"
     done < <(find "$DIST" -maxdepth 2 -type f \( -name '*.js' -o -name '*.html' \) -print0)
 
+    # Also rewrite the WASM binary's embedded import path strings.
+    # wasm-bindgen bakes the snippet path into the WASM module's import
+    # section as a UTF-8 string. If we rename the folder without
+    # rewriting the WASM, `WebAssembly.instantiate()` looks up imports
+    # under the OLD path which the JS shim no longer provides — and
+    # the whole WASM fails to load with: "module is not an object or
+    # function". The replacement is byte-for-byte (both old and new
+    # folder names are `<crate>-` + 16-char hex = identical length),
+    # so the length-prefixed string stays valid.
+    # Use perl (-0777 slurp) for binary-safe in-place editing — sed's
+    # line-buffered behaviour can mangle non-text bytes.
+    while IFS= read -r -d '' wasm; do
+        perl -0777 -i -pe "s|snippets/\Q${old_dir}\E/|snippets/${new_dir}/|g" "$wasm"
+    done < <(find "$DIST" -maxdepth 2 -type f -name '*.wasm' -print0)
+
     printf '[cache-bust-snippets] %s → %s\n' "$old_dir" "$new_dir"
     renamed_any=1
 done
 
 if [[ "$renamed_any" -eq 0 ]]; then
     printf '[cache-bust-snippets] no snippet folder needed renaming\n'
+    exit 0
+fi
+
+# Recompute SHA-384 integrity hashes for every file in dist that's
+# referenced by an `integrity="sha384-..."` attribute in index.html.
+# Trunk emits SRI hashes for the wasm-bindgen JS shim, the .wasm, and
+# the snippet files. Modifying any of those (which the loop above does
+# for the shim and the wasm) leaves index.html with stale digests, and
+# the browser blocks the resource:
+#   "Failed to find a valid digest in the 'integrity' attribute …
+#    The resource has been blocked."
+# This walks every <link>/<script integrity=...> in index.html and
+# replaces the hash with whatever the on-disk file currently hashes to.
+INDEX="$DIST/index.html"
+if [[ -f "$INDEX" ]]; then
+    python3 - "$DIST" "$INDEX" <<'PY'
+import base64, hashlib, pathlib, re, sys
+
+dist, index = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+html = index.read_text()
+tag_re = re.compile(r'<(?:link|script)\b[^>]*\bintegrity="sha384-[^"]+"[^>]*>', re.I)
+src_re = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.I)
+
+
+def patch(m):
+    tag = m.group(0)
+    src = src_re.search(tag)
+    if not src:
+        return tag
+    rel = src.group(1).lstrip('/')
+    file = dist / rel
+    if not file.is_file():
+        return tag
+    digest = base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode()
+    return re.sub(r'integrity="sha384-[^"]+"', f'integrity="sha384-{digest}"', tag)
+
+
+new_html, count = tag_re.subn(patch, html)
+if new_html != html:
+    index.write_text(new_html)
+    print(f'[cache-bust-snippets] refreshed {count} integrity hashes in index.html')
+PY
 fi
