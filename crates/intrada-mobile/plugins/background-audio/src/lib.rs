@@ -58,12 +58,62 @@ pub struct NowPlayingArgs {
     pub started_at: String,
 }
 
+/// Drop a Sentry breadcrumb tagged `background-audio` so any subsequent
+/// failure (here or elsewhere in the session) carries the lifecycle
+/// context. No-op when Sentry isn't initialised (simulator / dev /
+/// non-iOS), so cheap to call unconditionally.
+#[cfg(target_os = "ios")]
+fn breadcrumb(command: &str, data: serde_json::Value) {
+    sentry::add_breadcrumb(sentry::Breadcrumb {
+        category: Some("background-audio".to_string()),
+        message: Some(command.to_string()),
+        level: sentry::Level::Info,
+        data: data
+            .as_object()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
+        ..Default::default()
+    });
+}
+
+/// Capture a plugin-bridge failure as a Sentry message tagged with the
+/// command name. Errors here mean the iOS audio session is likely not
+/// active (timer will keep running web-side via the wall-clock derive,
+/// but the lock-screen + background timer behaviour is broken) — we want
+/// telemetry on the rate so we can prioritise fixes against real-device
+/// data. No-op when Sentry isn't initialised.
+#[cfg(target_os = "ios")]
+fn capture_bridge_error(command: &str, err: &Error) {
+    sentry::with_scope(
+        |scope| {
+            scope.set_tag("plugin", "background-audio");
+            scope.set_tag("command", command);
+        },
+        || {
+            sentry::capture_message(&format!("{err}"), sentry::Level::Error);
+        },
+    );
+}
+
 #[tauri::command]
 async fn begin_session<R: Runtime>(app: AppHandle<R>, args: BeginSessionArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        breadcrumb(
+            "begin_session",
+            serde_json::json!({
+                "title": &args.title,
+                "started_at": &args.started_at,
+            }),
+        );
         let state = app.state::<mobile::BackgroundAudio<R>>();
-        return state.run("begin_session", args);
+        let result = state.run("begin_session", args);
+        if let Err(err) = &result {
+            capture_bridge_error("begin_session", err);
+        }
+        result
     }
     #[cfg(not(target_os = "ios"))]
     {
@@ -76,8 +126,20 @@ async fn begin_session<R: Runtime>(app: AppHandle<R>, args: BeginSessionArgs) ->
 async fn set_now_playing<R: Runtime>(app: AppHandle<R>, args: NowPlayingArgs) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        breadcrumb(
+            "set_now_playing",
+            serde_json::json!({
+                "title": &args.title,
+                "position_label": &args.position_label,
+                "started_at": &args.started_at,
+            }),
+        );
         let state = app.state::<mobile::BackgroundAudio<R>>();
-        return state.run("set_now_playing", args);
+        let result = state.run("set_now_playing", args);
+        if let Err(err) = &result {
+            capture_bridge_error("set_now_playing", err);
+        }
+        result
     }
     #[cfg(not(target_os = "ios"))]
     {
@@ -90,8 +152,13 @@ async fn set_now_playing<R: Runtime>(app: AppHandle<R>, args: NowPlayingArgs) ->
 async fn end_session<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     #[cfg(target_os = "ios")]
     {
+        breadcrumb("end_session", serde_json::json!({}));
         let state = app.state::<mobile::BackgroundAudio<R>>();
-        return state.run("end_session", ());
+        let result = state.run("end_session", ());
+        if let Err(err) = &result {
+            capture_bridge_error("end_session", err);
+        }
+        result
     }
     #[cfg(not(target_os = "ios"))]
     {

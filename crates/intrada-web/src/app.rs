@@ -22,6 +22,7 @@ use crate::views::{
     LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
     SessionsAllView, SessionsListView, SetDetailView, SetEditView,
 };
+use intrada_web::background_audio;
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -152,6 +153,15 @@ fn AuthenticatedApp() -> impl IntoView {
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
         }
     }
+
+    // Background-audio plugin lifecycle (#309 Phase D). Mounted at the
+    // app level so the Some → None transition fires `end_session()` even
+    // when the user navigates away from /sessions/active before
+    // finishing — e.g. backing to home, switching tabs, or hitting
+    // "Discard Session" from /sessions/new. Mounting inside <SessionTimer>
+    // would unmount the Effect alongside the route and leak the iOS
+    // AVAudioSession + silent loop until the OS reclaims it.
+    background_audio::mount_background_audio_lifecycle(view_model);
 
     view! {
         <div class="relative z-0 min-h-screen text-primary">
