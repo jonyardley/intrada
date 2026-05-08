@@ -32,6 +32,49 @@
           tracesSampleRate: 1.0,
           sendDefaultPii: false,
           integrations: [Sentry.browserTracingIntegration()],
+          // Defensive scrubber alongside sendDefaultPii: false. Any throw
+          // here would drop the event entirely — keep wrapped in try/catch
+          // and return the event unchanged on any failure.
+          beforeSend: function (event) {
+            try {
+              var EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+              var redactEmails = function (s) {
+                return typeof s === 'string' ? s.replace(EMAIL_RE, '[email]') : s;
+              };
+              var stripAuthHeaders = function (headers) {
+                if (!headers) return;
+                if (Array.isArray(headers)) {
+                  for (var i = headers.length - 1; i >= 0; i--) {
+                    var pair = headers[i];
+                    if (pair && typeof pair[0] === 'string' &&
+                        pair[0].toLowerCase() === 'authorization') {
+                      headers.splice(i, 1);
+                    }
+                  }
+                } else if (typeof headers === 'object') {
+                  Object.keys(headers).forEach(function (k) {
+                    if (k.toLowerCase() === 'authorization') delete headers[k];
+                  });
+                }
+              };
+              if (event.request) stripAuthHeaders(event.request.headers);
+              if (Array.isArray(event.breadcrumbs)) {
+                event.breadcrumbs.forEach(function (b) {
+                  if (b && b.data) stripAuthHeaders(b.data.headers || b.data);
+                  if (b && typeof b.message === 'string') b.message = redactEmails(b.message);
+                });
+              }
+              if (event.message) event.message = redactEmails(event.message);
+              if (event.exception && Array.isArray(event.exception.values)) {
+                event.exception.values.forEach(function (v) {
+                  if (v && typeof v.value === 'string') v.value = redactEmails(v.value);
+                });
+              }
+            } catch (e) {
+              // Swallow — never drop events because of scrubber failure.
+            }
+            return event;
+          },
         });
       })();
     </script>

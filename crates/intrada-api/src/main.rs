@@ -28,6 +28,30 @@ async fn main() {
                 // real traffic arrives — every transaction counts against quota.
                 traces_sample_rate: 1.0,
                 send_default_pii: false,
+                // Defensive scrubber alongside send_default_pii: false. Strip
+                // auth-bearing headers from both request data and any
+                // breadcrumbs (tower-http's TraceLayer + sentry's tracing
+                // integration can record request headers as breadcrumb data).
+                before_send: Some(std::sync::Arc::new(|mut event| {
+                    fn is_auth_key(k: &str) -> bool {
+                        let k = k.to_ascii_lowercase();
+                        k == "authorization" || k == "proxy-authorization" || k == "cookie"
+                    }
+                    if let Some(req) = event.request.as_mut() {
+                        req.headers.retain(|k, _| !is_auth_key(k));
+                    }
+                    for crumb in event.breadcrumbs.iter_mut() {
+                        crumb.data.retain(|k, _| !is_auth_key(k));
+                        for nested in ["headers", "http.headers"] {
+                            if let Some(serde_json::Value::Object(map)) =
+                                crumb.data.get_mut(nested)
+                            {
+                                map.retain(|k, _| !is_auth_key(k));
+                            }
+                        }
+                    }
+                    Some(event)
+                })),
                 ..Default::default()
             },
         ))
