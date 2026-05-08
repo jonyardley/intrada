@@ -36,12 +36,21 @@ GEN_DIR     = MOBILE_ROOT.join('src-tauri/gen/apple')
 PROJECT_YML = GEN_DIR.join('project.yml')
 
 WIDGET_EXTENSION_ROOT = MOBILE_ROOT.join('widget-extension')
+SHARED_PACKAGE_ROOT   = MOBILE_ROOT.join('shared/IntradaActivityShared')
 
 # Bundle ID convention: append `.LiveActivity` to the main app's bundle
 # ID. Apple requires extension bundle IDs to be a child of the host
 # app's bundle ID for App Store submission.
 TARGET_NAME       = 'IntradaLiveActivity'
 TARGET_BUNDLE_ID  = 'com.intrada.app.LiveActivity'
+
+# Shared Swift package consumed by both this widget extension and the
+# tauri-plugin-live-activity Swift target. Hosts the
+# `IntradaActivityAttributes` type — the same identity must appear on
+# both sides of the `Activity<T>` / `ActivityConfiguration<T>`
+# boundary (Swift's type system enforces this).
+SHARED_PACKAGE_NAME    = 'IntradaActivityShared'
+SHARED_PACKAGE_PRODUCT = 'IntradaActivityShared'
 
 # Live Activities first shipped in iOS 16.1. Bumping above the main
 # app's deployment target (iOS 14.0 per project.yml) is fine — the
@@ -61,6 +70,14 @@ unless WIDGET_EXTENSION_ROOT.directory?
     ERROR: #{WIDGET_EXTENSION_ROOT} not found.
     The widget-extension/ directory is checked in — this script should be
     run from a clean checkout. If it's missing, your tree is broken.
+  ERR
+end
+
+unless SHARED_PACKAGE_ROOT.directory?
+  abort <<~ERR
+    ERROR: #{SHARED_PACKAGE_ROOT} not found.
+    The shared SwiftPM package (IntradaActivityShared) is checked in — this script
+    should be run from a clean checkout. If it's missing, your tree is broken.
   ERR
 end
 
@@ -87,8 +104,16 @@ end
 
 # ── Mutate ────────────────────────────────────────────────────────────
 # Paths in project.yml are relative to gen/apple/. We need to express
-# the path back up to crates/intrada-mobile/widget-extension/.
+# the path back up to crates/intrada-mobile/widget-extension/ and the
+# shared SwiftPM package directory.
 widget_rel = WIDGET_EXTENSION_ROOT.relative_path_from(GEN_DIR).to_s
+shared_rel = SHARED_PACKAGE_ROOT.relative_path_from(GEN_DIR).to_s
+
+# Declare the shared SwiftPM package at project scope so multiple
+# targets can depend on it. xcodegen merges this with whatever existing
+# `packages:` section Tauri's template has (currently empty).
+project['packages'] ||= {}
+project['packages'][SHARED_PACKAGE_NAME] = { 'path' => shared_rel }
 
 project['targets'][TARGET_NAME] = {
   'type'       => 'app-extension',
@@ -125,6 +150,13 @@ project['targets'][TARGET_NAME] = {
   'dependencies' => [
     { 'sdk' => 'WidgetKit.framework' },
     { 'sdk' => 'SwiftUI.framework' },
+    { 'sdk' => 'ActivityKit.framework' },
+    # Shared types (IntradaActivityAttributes) — declared in the
+    # project-scope `packages:` section above. Same package is also
+    # referenced by tauri-plugin-live-activity's Package.swift, so the
+    # SAME type identity reaches both the widget extension and the
+    # plugin's Activity<T>.request call.
+    { 'package' => SHARED_PACKAGE_NAME, 'product' => SHARED_PACKAGE_PRODUCT },
   ],
 }
 

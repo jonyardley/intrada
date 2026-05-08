@@ -3039,6 +3039,7 @@ dependencies = [
  "tauri-plugin-background-audio",
  "tauri-plugin-deep-link",
  "tauri-plugin-haptics",
+ "tauri-plugin-live-activity",
 ]
 
 [[package]]
@@ -6860,6 +6861,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01b167d598ada05c599f4460595108c8d1aa636030a97d19796c1bcda97d881d"
 dependencies = [
  "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tauri-plugin-live-activity"
+version = "0.0.1"
+dependencies = [
+ "sentry",
  "serde",
  "serde_json",
  "tauri",
