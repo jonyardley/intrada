@@ -13,6 +13,7 @@ crate-type = ["staticlib", "cdylib"]
 tauri = { version = "2", features = [] }
 tauri-plugin-haptics = "2"
 tauri-plugin-deep-link = "2"
+tauri-plugin-background-audio = { path = "../plugins/background-audio" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

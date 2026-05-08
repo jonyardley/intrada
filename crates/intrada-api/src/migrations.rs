@@ -365,6 +365,15 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0053_recreate_setlist_entries_session_id_index",
         "CREATE INDEX IF NOT EXISTS idx_setlist_entries_session_id ON setlist_entries(session_id);",
     ),
+    (
+        "0054_create_user_preferences",
+        "CREATE TABLE IF NOT EXISTS user_preferences (
+            user_id TEXT PRIMARY KEY NOT NULL,
+            default_focus_minutes INTEGER,
+            default_rep_count INTEGER,
+            updated_at TEXT NOT NULL
+        );",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

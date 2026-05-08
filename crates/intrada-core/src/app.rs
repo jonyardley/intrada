@@ -10,6 +10,7 @@ use crux_http::HttpRequest;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
+use crate::domain::account::{handle_account_event, AccountEvent};
 #[cfg(test)]
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
@@ -53,6 +54,7 @@ pub enum Event {
     Session(SessionEvent),
     Set(SetEvent),
     Lesson(LessonEvent),
+    Account(AccountEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -165,6 +167,7 @@ impl App for Intrada {
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Set(set_event) => handle_set_event(set_event, model),
             Event::Lesson(lesson_event) => handle_lesson_event(lesson_event, model),
+            Event::Account(account_event) => handle_account_event(account_event, model),
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -350,6 +353,9 @@ impl App for Intrada {
             sets,
             lessons,
             current_lesson,
+            account_preferences: model.account_preferences.clone(),
+            delete_in_flight: model.delete_in_flight,
+            account_deleted: model.account_deleted,
         }
     }
 }

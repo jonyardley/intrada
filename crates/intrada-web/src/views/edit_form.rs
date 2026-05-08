@@ -9,8 +9,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemEvent, UpdateItem, ViewModel};
 
 use crate::components::{
-    AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card, PageHeading,
-    SkeletonBlock, SkeletonLine, TagInput, TextArea, TextField, TypeTabs,
+    use_toast, AutocompleteTextField, BackLink, Button, ButtonSize, ButtonVariant, Card,
+    PageHeading, SkeletonBlock, SkeletonLine, TagInput, TextArea, TextField, TypeTabs,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::helpers::{parse_tempo, parse_tempo_display, unique_composers, unique_tags};
@@ -42,6 +42,7 @@ pub fn EditLibraryItemForm(
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
+    let toast = use_toast();
     let params = use_params_map();
     let id = item_id.unwrap_or_else(|| params.read().get("id").unwrap_or_default());
     let navigate = use_navigate();
@@ -220,6 +221,7 @@ pub fn EditLibraryItemForm(
                             let core_ref = core.borrow();
                             let effects = core_ref.process_event(event);
                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                            toast.show("Updated");
                             if let Some(cb) = on_dismiss {
                                 cb.run(());
                             } else {

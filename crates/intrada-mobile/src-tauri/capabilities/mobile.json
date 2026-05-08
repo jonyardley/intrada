@@ -10,6 +10,7 @@
     "haptics:allow-impact-feedback",
     "haptics:allow-notification-feedback",
     "haptics:allow-vibrate",
-    "deep-link:default"
+    "deep-link:default",
+    "background-audio:default"
   ]
 }

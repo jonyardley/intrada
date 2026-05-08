@@ -34,6 +34,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_haptics::init())
         .plugin(tauri_plugin_deep_link::init())
+        // Phase B scaffold of #309 — Rust commands return Ok with no
+        // native side-effects. Phase C adds the AVAudioSession + Now
+        // Playing Swift impl behind the same command names.
+        .plugin(tauri_plugin_background_audio::init())
         .run(tauri::generate_context!())
         .expect("error while running intrada");
 }

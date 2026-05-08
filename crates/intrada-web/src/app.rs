@@ -13,16 +13,17 @@ use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::welcome_carousel::welcome_already_seen;
 use crate::components::{
-    AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant, ErrorBanner,
-    WelcomeCarousel,
+    provide_toast, AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant,
+    ErrorBanner, ToastStack, WelcomeCarousel,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
 use crate::views::{
-    AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm, LibraryListView,
-    NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView,
-    SessionsListView, SetDetailView, SetEditView,
+    AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
+    LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
+    SessionsAllView, SessionsListView, SetDetailView, SetEditView,
 };
+use intrada_web::background_audio;
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -143,6 +144,7 @@ fn AuthenticatedApp() -> impl IntoView {
     provide_context(is_loading);
     provide_context(is_submitting);
     provide_context(focus_mode);
+    provide_toast();
 
     // Initialize: fetch data from API and recover any in-progress session
     {
@@ -157,6 +159,15 @@ fn AuthenticatedApp() -> impl IntoView {
             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
         }
     }
+
+    // Background-audio plugin lifecycle (#309 Phase D). Mounted at the
+    // app level so the Some → None transition fires `end_session()` even
+    // when the user navigates away from /sessions/active before
+    // finishing — e.g. backing to home, switching tabs, or hitting
+    // "Discard Session" from /sessions/new. Mounting inside <SessionTimer>
+    // would unmount the Effect alongside the route and leak the iOS
+    // AVAudioSession + silent loop until the OS reclaims it.
+    background_audio::mount_background_audio_lifecycle(view_model);
 
     view! {
         <div class="relative z-0 min-h-screen text-primary">
@@ -183,8 +194,9 @@ fn AuthenticatedApp() -> impl IntoView {
                 }
                 role="main"
             >
-                // Global error banner
+                // Global error banner + transient success toasts
                 <ErrorBanner />
+                <ToastStack />
 
                 <Routes transition=true fallback=|| view! { <NotFoundView /> }>
                     <Route path=path!("/") view=move || view! {
@@ -241,6 +253,9 @@ fn AuthenticatedApp() -> impl IntoView {
                     } />
                     <Route path=path!("/design") view=move || view! {
                         <DesignRouteView />
+                    } />
+                    <Route path=path!("/settings/delete-account") view=move || view! {
+                        <AccountDeleteView />
                     } />
                 </Routes>
             </main>

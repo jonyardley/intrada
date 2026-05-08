@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
+use crate::domain::account::AccountPreferences;
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::lesson::Lesson;
 use crate::domain::session::{
@@ -26,6 +27,14 @@ pub struct Model {
     pub lessons: Vec<Lesson>,
     pub current_lesson: Option<Lesson>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
+    /// Per-user practice defaults; `None` until first load completes.
+    pub account_preferences: Option<AccountPreferences>,
+    /// True while a `DELETE /api/account` request is outstanding.
+    pub delete_in_flight: bool,
+    /// One-shot terminal signal: server confirmed the account was
+    /// deleted. The shell watches this to sign out + route home.
+    /// Does not reset (account is gone; nothing to reset to).
+    pub account_deleted: bool,
 }
 
 #[cfg(test)]
@@ -70,6 +79,9 @@ pub struct ViewModel {
     pub sets: Vec<SetView>,
     pub lessons: Vec<LessonView>,
     pub current_lesson: Option<LessonView>,
+    pub account_preferences: Option<AccountPreferences>,
+    pub delete_in_flight: bool,
+    pub account_deleted: bool,
 }
 
 /// Represents a lesson for display in the UI.
@@ -225,6 +237,12 @@ pub struct ActiveSessionView {
     pub current_position: usize,
     pub total_items: usize,
     pub started_at: String,
+    /// Wall-clock anchor (RFC3339 UTC) for the *current item*. Resets to
+    /// "now" on each item advance (Next / Skip). The shell derives the
+    /// per-item elapsed timer from `Utc::now() - current_item_started_at`
+    /// rather than incrementing a counter — survives WebView suspension /
+    /// tab backgrounding without drift.
+    pub current_item_started_at: String,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
     pub current_rep_target: Option<u8>,
@@ -298,6 +316,7 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
+        current_item_started_at: active.current_item_started_at.to_rfc3339(),
         entries: active.entries.iter().map(entry_to_view).collect(),
         session_intention: active.session_intention.clone(),
         current_rep_target: current.rep_target,

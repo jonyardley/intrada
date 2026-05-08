@@ -1,9 +1,11 @@
+pub mod account;
 pub mod item;
 pub mod lesson;
 pub mod session;
 pub mod set;
 pub mod types;
 
+pub use account::{AccountEvent, AccountPreferences};
 pub use item::{Item, ItemEvent, ItemKind};
 pub use lesson::{Lesson, LessonEvent, LessonPhoto};
 pub use session::{

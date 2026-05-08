@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
 
-use intrada_web::clerk_bindings;
+use crate::components::ProfileButton;
 
 /// Application header with name, tagline, and navigation.
 ///
@@ -35,60 +35,50 @@ pub fn AppHeader() -> impl IntoView {
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>
                     </A>
                 </div>
-                <nav class="hidden sm:flex items-center gap-4">
-                    <A
-                        href="/"
-                        attr:class=move || {
-                            if is_library_active() {
-                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
-                            } else {
-                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                <div class="flex items-center gap-4">
+                    <nav class="hidden sm:flex items-center gap-4">
+                        <A
+                            href="/"
+                            attr:class=move || {
+                                if is_library_active() {
+                                    "text-sm font-medium text-accent-text motion-safe:transition-colors"
+                                } else {
+                                    "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                                }
                             }
-                        }
-                        attr:aria-current=move || if is_library_active() { Some("page") } else { None }
-                    >
-                        "Library"
-                    </A>
-                    <A
-                        href="/sessions"
-                        attr:class=move || {
-                            if is_sessions_active() {
-                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
-                            } else {
-                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
-                            }
-                        }
-                        attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
-                    >
-                        "Practice"
-                    </A>
-                    <A
-                        href="/analytics"
-                        attr:class=move || {
-                            if is_analytics_active() {
-                                "text-sm font-medium text-accent-text motion-safe:transition-colors"
-                            } else {
-                                "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
-                            }
-                        }
-                        attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
-                    >
-                        "Analytics"
-                    </A>
-                    <Show when=move || clerk_bindings::is_signed_in()>
-                        <button
-                            on:click=move |_| {
-                                leptos::task::spawn_local(async move {
-                                    clerk_bindings::sign_out().await;
-                                });
-                            }
-                            class="text-sm font-medium text-muted hover:text-primary motion-safe:transition-colors ml-2"
-                            aria-label="Sign out"
+                            attr:aria-current=move || if is_library_active() { Some("page") } else { None }
                         >
-                            "Sign out"
-                        </button>
-                    </Show>
-                </nav>
+                            "Library"
+                        </A>
+                        <A
+                            href="/sessions"
+                            attr:class=move || {
+                                if is_sessions_active() {
+                                    "text-sm font-medium text-accent-text motion-safe:transition-colors"
+                                } else {
+                                    "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                                }
+                            }
+                            attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
+                        >
+                            "Practice"
+                        </A>
+                        <A
+                            href="/analytics"
+                            attr:class=move || {
+                                if is_analytics_active() {
+                                    "text-sm font-medium text-accent-text motion-safe:transition-colors"
+                                } else {
+                                    "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                                }
+                            }
+                            attr:aria-current=move || if is_analytics_active() { Some("page") } else { None }
+                        >
+                            "Analytics"
+                        </A>
+                    </nav>
+                    <ProfileButton />
+                </div>
             </div>
         </header>
     }

@@ -194,7 +194,7 @@ pub fn LibraryListView() -> impl IntoView {
             // (circular "+") for consistency across all top-level pages.
             <PageHeading
                 text="Library"
-                subtitle="Your pieces and exercises."
+                subtitle="Your pieces, exercises, and sets."
                 trailing=Box::new(move || view! {
                     <PageAddButton
                         aria_label="Add Item"
