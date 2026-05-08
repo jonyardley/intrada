@@ -74,6 +74,11 @@ pub fn App() -> impl IntoView {
                     if let Some(id) = clerk_bindings::get_user_id() {
                         clerk_bindings::sentry_set_user(&id);
                     }
+                    // No breadcrumb here — Clerk's `addListener` fires
+                    // immediately on subscribe with the current state, so the
+                    // listener path below catches both fresh and warm sign-ins
+                    // and emits the breadcrumb there. Emitting here too would
+                    // double-fire on every load.
                     is_authenticated.set(true);
                     auth_loading.set(false);
                     return;
@@ -99,8 +104,10 @@ pub fn App() -> impl IntoView {
                 if let Some(id) = clerk_bindings::get_user_id() {
                     clerk_bindings::sentry_set_user(&id);
                 }
+                clerk_bindings::sentry_breadcrumb("auth", "signed-in", "info");
             } else {
                 clerk_bindings::sentry_clear_user();
+                clerk_bindings::sentry_breadcrumb("auth", "signed-out", "info");
             }
             is_authenticated.set(signed_in);
             auth_loading.set(false);

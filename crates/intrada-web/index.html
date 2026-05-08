@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Intrada</title>
 
+    <!-- Release tag for Sentry. Defaults to null (PR builds, local dev) and
+         is replaced by CI's deploy step with `sed` before publishing to
+         Cloudflare — the literal string `__SENTRY_RELEASE_PLACEHOLDER__`
+         is the swap target. Keep this script BEFORE the Sentry SDK so the
+         init below can read it. -->
+    <script>window.__SENTRY_RELEASE__ = "__SENTRY_RELEASE_PLACEHOLDER__";</script>
+
     <!-- Sentry browser SDK. Loaded synchronously in <head> so it's ready
          before any other script runs — catches errors from the inline
          scripts below (data-platform setup, press feedback, Clerk bridge)
@@ -23,14 +30,28 @@
         var isWebDev = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
           && location.protocol !== 'tauri:';
         if (isWebDev) return;
+        var release = window.__SENTRY_RELEASE__;
+        // Treat the unsubstituted placeholder (PR builds, local dev) as no
+        // release — undefined disables release tagging cleanly.
+        if (typeof release !== 'string' || release.indexOf('PLACEHOLDER') !== -1) {
+          release = undefined;
+        }
         Sentry.init({
           dsn: "https://2a33748d4de845f26e3711629e47b38f@o4511313186979840.ingest.de.sentry.io/4511313298980944",
+          release: release,
           environment: location.protocol === 'tauri:' ? 'ios' : 'production',
           // Bumped from 0.1 → 1.0 while traffic is single-digit-user (just
           // @jonyardley testing). Dial back to 0.1 (or 0.01) once real
           // traffic arrives — every transaction counts against quota.
           tracesSampleRate: 1.0,
           sendDefaultPii: false,
+          // Continue traces across the web → API boundary so one waterfall
+          // shows route render → fetch → handler → DB. The Rust server's
+          // SentryHttpLayer (intrada-api/src/routes/mod.rs) reads the
+          // `sentry-trace` + `baggage` headers this propagation injects.
+          // Strings: production hostname. Regex: dev path (Trunk proxies
+          // /api/* to the local API server).
+          tracePropagationTargets: ["intrada-api.fly.dev", /\/api\//],
           integrations: [Sentry.browserTracingIntegration()],
           // Defensive scrubber alongside sendDefaultPii: false. Any throw
           // here would drop the event entirely — keep wrapped in try/catch

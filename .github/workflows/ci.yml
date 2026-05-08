@@ -18,6 +18,7 @@ concurrency:
 
 env:
   RUST_VERSION: "1.89.0"
+  SENTRY_ORG: jon-yardley
 
 jobs:
   # Detects which paths changed in the PR — used to skip jobs whose inputs
@@ -234,11 +235,32 @@ jobs:
         with:
           name: web-dist
           path: crates/intrada-web/dist
+      # Inject the release id into the prebuilt index.html before publishing.
+      # The placeholder is set in the source — this swap only happens in the
+      # main-branch deploy path, so PR builds keep `release: undefined`.
+      - name: Inject Sentry release into index.html
+        run: |
+          sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" crates/intrada-web/dist/index.html
+          grep -q "${{ github.sha }}" crates/intrada-web/dist/index.html
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Tag the release in Sentry once Cloudflare has the build. Failure
+      # here shouldn't block a successful deploy, so continue-on-error.
+      - name: Create Sentry release (intrada-web)
+        if: env.SENTRY_AUTH_TOKEN != ''
+        continue-on-error: true
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: intrada-web
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          set_commits: auto
+          finalize: true
 
   deploy-api:
     name: Deploy API to Fly.io
@@ -248,6 +270,18 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - run: flyctl deploy --remote-only --build-arg GIT_SHA=${{ github.sha }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Create Sentry release (intrada-api)
+        if: env.SENTRY_AUTH_TOKEN != ''
+        continue-on-error: true
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_PROJECT: intrada-api
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          set_commits: auto
+          finalize: true

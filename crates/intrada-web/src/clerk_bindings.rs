@@ -68,6 +68,15 @@ use wasm_bindgen::prelude::*;
             window.Sentry.setUser(null);
         }
     }
+    export function js_sentry_breadcrumb(category, message, level) {
+        if (window.Sentry) {
+            window.Sentry.addBreadcrumb({
+                category: category,
+                message: message,
+                level: level || 'info',
+            });
+        }
+    }
 ")]
 extern "C" {
     fn js_init_clerk(key: &str);
@@ -81,6 +90,7 @@ extern "C" {
     fn js_add_auth_listener(callback: &Closure<dyn Fn()>);
     fn js_sentry_set_user(id: &str);
     fn js_sentry_clear_user();
+    fn js_sentry_breadcrumb(category: &str, message: &str, level: &str);
 }
 
 /// Initialize Clerk with the publishable key.
@@ -148,4 +158,13 @@ pub fn sentry_set_user(id: &str) {
 /// Clear the Sentry user scope. Call on sign-out.
 pub fn sentry_clear_user() {
     js_sentry_clear_user();
+}
+
+/// Add a Sentry breadcrumb attached to subsequent events. Use at key UX
+/// moments (auth lifecycle, session lifecycle, sync failures) so that the
+/// "what was the user doing 5s before this crash" question has answers.
+/// `level` should be one of: "fatal", "error", "warning", "info", "debug".
+/// No-op if Sentry isn't loaded.
+pub fn sentry_breadcrumb(category: &str, message: &str, level: &str) {
+    js_sentry_breadcrumb(category, message, level);
 }
