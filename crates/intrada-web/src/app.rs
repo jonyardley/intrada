@@ -70,6 +70,9 @@ pub fn App() -> impl IntoView {
             for _ in 0..50 {
                 gloo_timers::future::TimeoutFuture::new(100).await;
                 if clerk_bindings::is_signed_in() {
+                    if let Some(id) = clerk_bindings::get_user_id() {
+                        clerk_bindings::sentry_set_user(&id);
+                    }
                     is_authenticated.set(true);
                     auth_loading.set(false);
                     return;
@@ -91,6 +94,13 @@ pub fn App() -> impl IntoView {
     {
         let closure = Closure::new(move || {
             let signed_in = clerk_bindings::is_signed_in();
+            if signed_in {
+                if let Some(id) = clerk_bindings::get_user_id() {
+                    clerk_bindings::sentry_set_user(&id);
+                }
+            } else {
+                clerk_bindings::sentry_clear_user();
+            }
             is_authenticated.set(signed_in);
             auth_loading.set(false);
         });

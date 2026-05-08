@@ -36,7 +36,13 @@ impl FromRequestParts<AppState> for AuthUser {
     ) -> Result<Self, Self::Rejection> {
         let auth_config = match &state.auth_config {
             Some(config) => config,
-            None => return Ok(AuthUser(String::new())),
+            None => {
+                // Defensive: if anything earlier in the middleware chain ever
+                // attaches a user to this per-request hub, make sure the
+                // auth-disabled path doesn't inherit it.
+                sentry::configure_scope(|scope| scope.set_user(None));
+                return Ok(AuthUser(String::new()));
+            }
         };
 
         let header = parts
@@ -59,7 +65,19 @@ impl FromRequestParts<AppState> for AuthUser {
         let keys = auth_config.decoding_keys.read().await;
         for key in keys.iter() {
             match decode::<Claims>(token, key, &validation) {
-                Ok(data) => return Ok(AuthUser(data.claims.sub)),
+                Ok(data) => {
+                    let user_id = data.claims.sub;
+                    // Per-request hub isolation comes from the
+                    // NewSentryLayer in routes/mod.rs — configuring the
+                    // current scope here cannot bleed into other requests.
+                    sentry::configure_scope(|scope| {
+                        scope.set_user(Some(sentry::User {
+                            id: Some(user_id.clone()),
+                            ..Default::default()
+                        }));
+                    });
+                    return Ok(AuthUser(user_id));
+                }
                 Err(e) => {
                     tracing::debug!("JWT decode error: {e}");
                     continue;

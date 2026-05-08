@@ -58,6 +58,16 @@ use wasm_bindgen::prelude::*;
             });
         }
     }
+    export function js_sentry_set_user(id) {
+        if (window.Sentry && id) {
+            window.Sentry.setUser({ id: id });
+        }
+    }
+    export function js_sentry_clear_user() {
+        if (window.Sentry) {
+            window.Sentry.setUser(null);
+        }
+    }
 ")]
 extern "C" {
     fn js_init_clerk(key: &str);
@@ -69,6 +79,8 @@ extern "C" {
     async fn js_sign_out();
     async fn js_sign_in_with_google();
     fn js_add_auth_listener(callback: &Closure<dyn Fn()>);
+    fn js_sentry_set_user(id: &str);
+    fn js_sentry_clear_user();
 }
 
 /// Initialize Clerk with the publishable key.
@@ -122,4 +134,18 @@ pub async fn sign_in_with_google() {
 /// Register a listener for auth state changes (sign-in/sign-out).
 pub fn add_auth_listener(callback: &Closure<dyn Fn()>) {
     js_add_auth_listener(callback);
+}
+
+/// Attach the Clerk user id to Sentry's current scope. No-op if Sentry is
+/// not loaded (web dev) or `id` is empty. Safe to call from non-Leptos-owner
+/// contexts (raw event listeners, Closures) — only touches window globals.
+pub fn sentry_set_user(id: &str) {
+    if !id.is_empty() {
+        js_sentry_set_user(id);
+    }
+}
+
+/// Clear the Sentry user scope. Call on sign-out.
+pub fn sentry_clear_user() {
+    js_sentry_clear_user();
 }
