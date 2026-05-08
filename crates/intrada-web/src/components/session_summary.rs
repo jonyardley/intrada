@@ -357,6 +357,7 @@ pub fn SessionSummary() -> impl IntoView {
                                 <Button
                                     variant=ButtonVariant::DangerOutline
                                     on_click=Callback::new(move |_| {
+                                        clerk_bindings::sentry_breadcrumb("session", "session.discard", "info");
                                         let event = Event::Session(SessionEvent::DiscardSession);
                                         let core_ref = core_discard.borrow();
                                         let effects = core_ref.process_event(event);
