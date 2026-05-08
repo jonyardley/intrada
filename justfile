@@ -93,6 +93,11 @@ e2e: build
 ios-dev:
     #!/usr/bin/env bash
     set -e
+    # Tag local mobile builds with the current commit so events from the
+    # simulator land in Sentry attributed to a release. Empty if not in a
+    # git checkout — `option_env!` filter in src-tauri/src/lib.rs treats
+    # empty as no-release.
+    export GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
     trap 'kill 0' EXIT
     pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
     pkill -f "trunk serve" 2>/dev/null || true
@@ -146,6 +151,10 @@ ios-dev:
 ios-dev-device:
     #!/usr/bin/env bash
     set -e
+    # Tag local device builds with the current commit so events from the
+    # device land in Sentry attributed to a release. Same defaulting as
+    # `ios-dev`.
+    export GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
     trap 'kill 0' EXIT
     pkill -f "xcodebuild.*intrada-mobile" 2>/dev/null || true
     pkill -f "trunk serve" 2>/dev/null || true
@@ -192,8 +201,12 @@ ios-dev-device:
     wait
 
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
+# Tags the build with the current commit so events land in Sentry
+# attributed to a release. Empty if not in a git checkout — the
+# `option_env!` filter in src-tauri/src/lib.rs treats empty as
+# no-release.
 ios-build:
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios build
+    cd crates/intrada-mobile/src-tauri && GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')" cargo tauri ios build
 
 # ─────────────────────────────────────────────
 # Diagnostics & cleanup
