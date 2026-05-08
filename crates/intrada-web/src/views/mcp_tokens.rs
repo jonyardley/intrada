@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 
 use intrada_core::{Event, McpToken, McpTokenEvent, ViewModel};
+use intrada_web::api_client::API_BASE_URL;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -121,6 +122,36 @@ pub fn McpTokensView() -> impl IntoView {
                     "Personal Access Tokens let an AI client (Claude Desktop, Cursor, custom MCP agent) act on your behalf. Generate one for each device or app that needs access."
                 </p>
             </div>
+
+            // Connection details. Permanently visible (not collapsible) since
+            // a first-time user needs the URL + auth instructions to get
+            // anywhere — burying these behind a disclosure adds friction.
+            <Card>
+                <div class="space-y-card">
+                    <div>
+                        <h3 class="card-title">"Connecting your AI client"</h3>
+                        <p class="hint-text">
+                            "Configure your MCP client to point at this endpoint and authenticate with one of the tokens below. Speaks "
+                            <span class="font-mono text-xs">"streamable HTTP"</span>
+                            " + JSON-RPC 2.0."
+                        </p>
+                    </div>
+                    <div class="space-y-card-compact">
+                        <div>
+                            <span class="field-label">"MCP endpoint"</span>
+                            <code class="block w-full px-card-compact py-card-compact mt-1 rounded-md bg-surface-secondary border border-border-default font-mono text-xs text-primary select-all break-all">
+                                {format!("{API_BASE_URL}/api/mcp")}
+                            </code>
+                        </div>
+                        <div>
+                            <span class="field-label">"Authentication"</span>
+                            <code class="block w-full px-card-compact py-card-compact mt-1 rounded-md bg-surface-secondary border border-border-default font-mono text-xs text-primary select-all break-all">
+                                "Authorization: Bearer <your token>"
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </Card>
 
             // Show-once card for the just-created token. Sits at the top so
             // the user can copy without losing it under the list.
