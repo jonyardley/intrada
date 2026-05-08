@@ -12,11 +12,15 @@ use intrada_web::platform::is_ios;
 ///
 /// Pencil ref: `fWsUw` (desktop) and `vFOGv` (mobile-web).
 ///
-/// On mount:
+/// Renders immediately — does not wait for Clerk to initialise. Auth-state-
+/// based redirects fire reactively via the Effect below as soon as Clerk
+/// resolves:
 /// - Authed users → redirect to /library.
-/// - iOS users (Tauri WebView) → redirect to /login. They already
-///   downloaded the app; the marketing pitch is redundant.
-/// - Anyone else (web, unauthed) → render the marketing page.
+/// - Unauthed iOS users (Tauri WebView) → redirect to /login. They already
+///   downloaded the app; the marketing pitch is redundant. Held until
+///   `auth_loading=false` so we know they're really unauthed (vs. Clerk
+///   still loading their session).
+/// - Anyone else → render the marketing page.
 ///
 /// Sub-sections live as private components in this file. Phone-frame
 /// graphics in the hero use a small reusable `PhoneFrame` shell with
@@ -24,6 +28,7 @@ use intrada_web::platform::is_ios;
 #[component]
 pub fn WelcomeView() -> impl IntoView {
     let auth = expect_context::<AuthState>();
+    let on_ios = is_ios();
 
     Effect::new(move |_| {
         if auth.is_authenticated.get() {
@@ -35,7 +40,7 @@ pub fn WelcomeView() -> impl IntoView {
                     ..Default::default()
                 },
             );
-        } else if is_ios() {
+        } else if !auth.auth_loading.get() && on_ios {
             let navigate = use_navigate();
             navigate(
                 "/login",
@@ -287,7 +292,17 @@ fn WelcomeFeature(
     let layout_class = "max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center";
 
     let text_order = if reverse { "lg:order-2" } else { "" };
-    let mock_order = if reverse { "lg:order-1" } else { "" };
+    // Below the `lg:` breakpoint the grid collapses to a single column and
+    // the mock would otherwise stretch to the full content max-width
+    // (~1280px on tablet). Cap it at `max-w-md` and centre it so the rows
+    // and stat cards keep proportions close to how they're sized inside
+    // the hero PhoneFrame. At `lg:` and up the column itself constrains
+    // the width, so we drop the cap.
+    let mock_order = if reverse {
+        "lg:order-1 w-full max-w-md mx-auto lg:max-w-none lg:mx-0"
+    } else {
+        "w-full max-w-md mx-auto lg:max-w-none lg:mx-0"
+    };
 
     let id = format!("feature-{}", kicker.to_lowercase());
 
@@ -311,7 +326,7 @@ fn WelcomeFeature(
                     }).collect_view()}
                 </ul>
             </div>
-            <div class=mock_order>
+            <div class=format!("card p-5 sm:p-6 flex flex-col gap-3.5 {mock_order}")>
                 {mock()}
             </div>
         </section>
