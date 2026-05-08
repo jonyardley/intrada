@@ -66,10 +66,13 @@ brew install xcodegen                              # xcodegen (required by Tauri
 cd crates/intrada-mobile/src-tauri
 cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
 
-# Patch the generated project.yml to fix the libapp.a duplicate-output
-# bug (#476) — run after every `cargo tauri ios init`. Idempotent.
-cd ..
+# Run the post-init scripts to (a) fix the libapp.a duplicate-output bug
+# (#476) and (b) add the Live Activity widget extension target (#474).
+# Both mutate gen/apple/project.yml and re-run xcodegen. Idempotent —
+# re-run after every `cargo tauri ios init`.
+cd ..   # back to crates/intrada-mobile/
 ruby scripts/fix-ios-build-config.rb
+ruby scripts/add-live-activity-target.rb
 ```
 
 If you're forking this repo, update `bundle.iOS.developmentTeam` in
@@ -311,6 +314,13 @@ schema changes, multi-week work spanning core + web + iOS.
 Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
 approach, key decisions, open questions). Then Pencil for UI work, then
 Plan mode, then implement.
+
+**Spec doc rides with the first implementation phase, not its own PR.**
+The spec is the first commit on the Phase A branch; Phase A scaffold is
+the rest. The PR title/body reflects both. Reviewers sanity-check the
+spec against working code rather than abstract architecture diagrams.
+Phases B/C/D still ship as their own PRs — only the spec ↔ Phase A
+boundary collapses.
 
 Do not run `/speckit-*` slash commands. Historical SpecKit folders under
 `specs/` are reference only.
