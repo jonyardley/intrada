@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 //
 // Mirrors the shape of `intrada-web/src/background_audio.rs` so both
 // plugins can be driven from the same lifecycle Effect (see
-// `mount_session_lifecycle` in `background_audio.rs`).
+// `mount_session_lifecycle` in `session_lifecycle.rs`).
 #[wasm_bindgen(inline_js = "
     function live_activity_invoke(cmd, args) {
         try {
