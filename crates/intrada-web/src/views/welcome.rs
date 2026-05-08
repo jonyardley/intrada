@@ -287,7 +287,17 @@ fn WelcomeFeature(
     let layout_class = "max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center";
 
     let text_order = if reverse { "lg:order-2" } else { "" };
-    let mock_order = if reverse { "lg:order-1" } else { "" };
+    // Below the `lg:` breakpoint the grid collapses to a single column and
+    // the mock would otherwise stretch to the full content max-width
+    // (~1280px on tablet). Cap it at `max-w-md` and centre it so the rows
+    // and stat cards keep proportions close to how they're sized inside
+    // the hero PhoneFrame. At `lg:` and up the column itself constrains
+    // the width, so we drop the cap.
+    let mock_order = if reverse {
+        "lg:order-1 w-full max-w-md mx-auto lg:max-w-none lg:mx-0"
+    } else {
+        "w-full max-w-md mx-auto lg:max-w-none lg:mx-0"
+    };
 
     let id = format!("feature-{}", kicker.to_lowercase());
 
@@ -311,7 +321,7 @@ fn WelcomeFeature(
                     }).collect_view()}
                 </ul>
             </div>
-            <div class=mock_order>
+            <div class=format!("card p-5 sm:p-6 flex flex-col gap-3.5 {mock_order}")>
                 {mock()}
             </div>
         </section>
