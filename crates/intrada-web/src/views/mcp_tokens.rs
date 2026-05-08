@@ -110,17 +110,25 @@ pub fn McpTokensView() -> impl IntoView {
     });
 
     view! {
-        <div class="max-w-md mx-auto py-comfortable space-y-comfortable pb-[env(safe-area-inset-bottom)]">
-            <h1 class="page-title">"MCP tokens"</h1>
-            <p class="text-sm text-secondary">
-                "Personal Access Tokens let an AI client (Claude Desktop, Cursor, custom MCP agent) act on your behalf. Generate one for each device or app that needs access."
-            </p>
+        <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
+            // Title + description grouped tighter than the section spacing
+            // so the lede reads as belonging to the title, with the
+            // section-sized gap reserved for the page's distinct sections
+            // below.
+            <div class="space-y-card">
+                <h1 class="page-title">"MCP tokens"</h1>
+                <p class="text-sm text-secondary">
+                    "Personal Access Tokens let an AI client (Claude Desktop, Cursor, custom MCP agent) act on your behalf. Generate one for each device or app that needs access."
+                </p>
+            </div>
 
             // Show-once card for the just-created token. Sits at the top so
             // the user can copy without losing it under the list.
             <Show when=move || just_created.get().is_some() fallback=|| view! { <></> }>
                 <Card>
-                    <div class="space-y-card-compact p-card-compact">
+                    // Card provides its own padding (p-card sm:p-card-comfortable);
+                    // the inner div only handles vertical rhythm.
+                    <div class="space-y-card">
                         <div>
                             <h3 class="card-title">"Token created"</h3>
                             <p class="hint-text">
@@ -164,7 +172,7 @@ pub fn McpTokensView() -> impl IntoView {
                 }
             >
                 <Card>
-                    <div class="space-y-card-compact p-card-compact">
+                    <div class="space-y-card">
                         <TextField
                             id="mcp-token-name"
                             label="Name"
@@ -241,7 +249,13 @@ fn TokenRow(token: McpToken, on_revoke: Callback<String>) -> impl IntoView {
     });
 
     view! {
-        <div class="flex items-center justify-between gap-card-compact px-card-compact py-card-compact min-h-[64px]">
+        // Standard card padding (16px) rather than card-compact (12px) —
+        // this row carries two lines of text + an action button, so the
+        // tighter 12px reads as cramped (and the row is taller than a
+        // typical settings row anyway). gap-card between the text block
+        // and the button keeps them visually separated rather than
+        // butting up under the touch target.
+        <div class="flex items-center justify-between gap-card p-card min-h-[64px]">
             <div class="flex flex-col gap-1 min-w-0">
                 <div class="flex items-baseline gap-card-compact">
                     <span class="text-sm font-medium text-primary truncate">
