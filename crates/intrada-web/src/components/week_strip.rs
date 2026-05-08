@@ -158,6 +158,22 @@ pub fn WeekStrip(
     // selected date as a side-effect of swiping.
     let suppress_next_click = RwSignal::new(false);
 
+    // Snap-back setTimeout handle. Stored at component scope (RwSignal
+    // because the outer pointer-up closure must be Fn, and on_cleanup
+    // requires Send+Sync) so on_cleanup can cancel it on unmount — without
+    // that, the timeout's callback (which sets signals like
+    // transition_disabled / snap_target) fires after the parent owner is
+    // disposed and panics with "reactive value already disposed".
+    let snap_timeout_handle: RwSignal<Option<i32>> = RwSignal::new(None);
+
+    on_cleanup(move || {
+        if let Some(id) = snap_timeout_handle.get_untracked() {
+            if let Some(window) = web_sys::window() {
+                window.clear_timeout_with_handle(id);
+            }
+        }
+    });
+
     let frame_ref = NodeRef::<leptos::html::Div>::new();
 
     // Day-cell click goes through this wrapper so the strip can swallow
@@ -346,10 +362,12 @@ pub fn WeekStrip(
                 cb_re_enable.forget();
             });
             if let Some(window) = web_sys::window() {
-                let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                if let Ok(id) = window.set_timeout_with_callback_and_timeout_and_arguments_0(
                     cb.as_ref().unchecked_ref(),
                     SNAP_DURATION_MS,
-                );
+                ) {
+                    snap_timeout_handle.set(Some(id));
+                }
             }
             cb.forget();
         } else {

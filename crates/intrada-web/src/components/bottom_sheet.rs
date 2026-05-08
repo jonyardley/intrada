@@ -1,5 +1,6 @@
 use leptos::portal::Portal;
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{AddEventListenerOptions, KeyboardEvent, TouchEvent};
@@ -78,20 +79,37 @@ pub fn BottomSheet(
     });
 
     // Attach Escape-to-close at the document level when the sheet opens.
+    // Pairs add_event_listener with on_cleanup so the listener is removed
+    // when `open` flips false AND when the component unmounts — without
+    // cleanup, listener accumulates across open/close cycles and panics
+    // ("reactive value already disposed") on Escape after the sheet's
+    // owner is gone.
     Effect::new(move || {
         if !open.get() {
             return;
         }
+        let Some(window) = web_sys::window() else {
+            return;
+        };
         let on_keydown: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
             if ev.key() == "Escape" {
                 close.run(());
             }
         });
-        if let Some(window) = web_sys::window() {
-            let _ = window
-                .add_event_listener_with_callback("keydown", on_keydown.as_ref().unchecked_ref());
-        }
-        on_keydown.forget();
+        let _ =
+            window.add_event_listener_with_callback("keydown", on_keydown.as_ref().unchecked_ref());
+        // SendWrapper: leptos's on_cleanup requires Send+Sync, but the
+        // wasm-bindgen Closure body is `dyn Fn` without those bounds. Safe
+        // on wasm32 (single-threaded by construction); SendWrapper would
+        // only panic if accessed from a different thread.
+        let on_keydown = SendWrapper::new(on_keydown);
+        let window = SendWrapper::new(window);
+        on_cleanup(move || {
+            let _ = window.remove_event_listener_with_callback(
+                "keydown",
+                on_keydown.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     // Wire touch handlers for swipe-down-to-dismiss. Attached to the handle

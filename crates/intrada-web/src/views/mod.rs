@@ -32,4 +32,4 @@ pub use sessions::SessionsListView;
 pub use sessions_all::SessionsAllView;
 pub use set_detail::SetDetailView;
 pub use set_edit::SetEditView;
-pub use settings::SettingsSheet;
+pub use settings::SettingsView;
