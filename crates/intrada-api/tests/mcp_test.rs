@@ -48,9 +48,11 @@ async fn tools_list_returns_full_catalogue() {
     assert_eq!(status, StatusCode::OK);
     let v: Value = common::json(&body);
     let tools = v["result"]["tools"].as_array().expect("tools array");
-    assert_eq!(tools.len(), 7, "expected 7 tools, got {}", tools.len());
+    // 7 reads (Phase 3) + 6 writes (Phase 4) = 13.
+    assert_eq!(tools.len(), 13, "expected 13 tools, got {}", tools.len());
 
     let names: Vec<_> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    // Reads.
     assert!(names.contains(&"list_items"));
     assert!(names.contains(&"get_item"));
     assert!(names.contains(&"list_sets"));
@@ -58,6 +60,13 @@ async fn tools_list_returns_full_catalogue() {
     assert!(names.contains(&"list_sessions"));
     assert!(names.contains(&"get_session"));
     assert!(names.contains(&"get_practice_summary"));
+    // Writes.
+    assert!(names.contains(&"create_item"));
+    assert!(names.contains(&"update_item"));
+    assert!(names.contains(&"delete_item"));
+    assert!(names.contains(&"create_set"));
+    assert!(names.contains(&"update_set"));
+    assert!(names.contains(&"bulk_import_items"));
 
     // Every tool must declare an inputSchema (agents rely on this for
     // argument validation).
@@ -514,4 +523,348 @@ async fn cors_preflight_returns_permissive_headers_for_mcp() {
         Some("*"),
         "MCP preflight should advertise permissive origin; got {allow_origin:?}"
     );
+}
+
+// ── Phase 4 write tools ────────────────────────────────────────────────
+
+/// Helper: drive an MCP `tools/call` against an authed `Router` (the PAT
+/// is required because audit-log rows only get recorded for
+/// `AuthSource::Pat`). Returns the parsed response body.
+async fn mcp_call_with_pat(
+    app: axum::Router,
+    token: &str,
+    name: &str,
+    arguments: Value,
+    id: u32,
+) -> Value {
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/mcp")
+        .header("content-type", "application/json")
+        .header("Authorization", format!("Bearer {token}"))
+        .body(axum::body::Body::from(
+            serde_json::to_string(&json!({
+                "jsonrpc": "2.0",
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+                "id": id
+            }))
+            .unwrap(),
+        ))
+        .unwrap();
+    let resp = tower::ServiceExt::oneshot(app, req).await.unwrap();
+    let body = http_body_util::BodyExt::collect(resp.into_body())
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    common::json(&body)
+}
+
+/// Helper: mint a PAT via the public API and return the bearer string.
+async fn mint_pat(app: axum::Router, name: &str) -> String {
+    let (_, body) = common::post_json(app, "/api/account/tokens", json!({"name": name})).await;
+    let v: Value = common::json(&body);
+    v["token"].as_str().unwrap().to_string()
+}
+
+#[tokio::test]
+async fn create_item_via_mcp_writes_and_audits() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "create-test").await;
+
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "create_item",
+        json!({"title": "Goldberg Variations", "kind": "piece", "composer": "J.S. Bach", "tags": []}),
+        1,
+    )
+    .await;
+
+    assert_eq!(response["result"]["isError"], Value::Null);
+    let text = response["result"]["content"][0]["text"].as_str().unwrap();
+    let item: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(item["title"], "Goldberg Variations");
+    assert_eq!(item["kind"], "piece");
+
+    // Audit log should have one row for this write.
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 1, "expected exactly one audit row");
+    assert_eq!(entries[0]["tool"], "create_item");
+    assert!(!entries[0]["args_hash"].as_str().unwrap().is_empty());
+    // args_hash must NOT contain the literal title — it's a hash, not a copy.
+    assert!(!entries[0]["args_hash"]
+        .as_str()
+        .unwrap()
+        .contains("Goldberg"));
+}
+
+#[tokio::test]
+async fn read_tools_do_not_audit() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "read-test").await;
+
+    // Multiple read calls.
+    for id in 0..3 {
+        mcp_call_with_pat(app.clone(), &token, "list_items", json!({}), id).await;
+    }
+
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert!(
+        entries.is_empty(),
+        "read tools must not produce audit rows; got {} entries",
+        entries.len()
+    );
+}
+
+#[tokio::test]
+async fn update_item_via_mcp_writes_and_audits() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "update-test").await;
+
+    // Seed an item via the regular HTTP path (not MCP, so this doesn't audit).
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({"title": "Original", "kind": "piece", "composer": "Composer", "tags": []}),
+    )
+    .await;
+    let v: Value = common::json(&body);
+    let id = v["id"].as_str().unwrap().to_string();
+
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "update_item",
+        json!({"id": id, "title": "Renamed"}),
+        2,
+    )
+    .await;
+    assert_eq!(response["result"]["isError"], Value::Null);
+    let text = response["result"]["content"][0]["text"].as_str().unwrap();
+    let item: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(item["title"], "Renamed");
+
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0]["tool"], "update_item");
+}
+
+#[tokio::test]
+async fn delete_item_via_mcp_writes_and_audits() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "delete-test").await;
+
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({"title": "To delete", "kind": "exercise", "tags": []}),
+    )
+    .await;
+    let v: Value = common::json(&body);
+    let id = v["id"].as_str().unwrap().to_string();
+
+    let response =
+        mcp_call_with_pat(app.clone(), &token, "delete_item", json!({"id": id}), 3).await;
+    assert_eq!(response["result"]["isError"], Value::Null);
+
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0]["tool"], "delete_item");
+}
+
+#[tokio::test]
+async fn bulk_import_dry_run_returns_preview_without_writing_or_auditing() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "bulk-dry-test").await;
+
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "bulk_import_items",
+        json!({
+            "dry_run": true,
+            "items": [
+                {"title": "Bach: Cello Suite No. 1", "kind": "piece", "composer": "J.S. Bach", "tags": []},
+                {"title": "Bach: Cello Suite No. 2", "kind": "piece", "composer": "J.S. Bach", "tags": []},
+                {"title": "", "kind": "piece", "tags": []}  // invalid — empty title
+            ]
+        }),
+        4,
+    )
+    .await;
+
+    assert_eq!(response["result"]["isError"], Value::Null);
+    let text = response["result"]["content"][0]["text"].as_str().unwrap();
+    let preview: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(preview["dry_run"], true);
+    assert_eq!(preview["valid_count"], 2);
+    assert_eq!(preview["invalid_count"], 1);
+    let items = preview["items"].as_array().unwrap();
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[0]["valid"], true);
+    assert_eq!(items[1]["valid"], true);
+    assert_eq!(items[2]["valid"], false);
+
+    // Library should be empty — preview must not write.
+    let (_, items_body) = common::get(app.clone(), "/api/items").await;
+    let items: Vec<Value> = common::json(&items_body);
+    assert!(items.is_empty(), "dry_run must not write");
+
+    // No audit row.
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let audit: Vec<Value> = common::json(&audit_body);
+    assert!(audit.is_empty(), "dry_run must not audit");
+}
+
+#[tokio::test]
+async fn bulk_import_non_dry_run_writes_all_or_nothing_and_audits() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "bulk-write-test").await;
+
+    // Refuse a write that contains any invalid item.
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "bulk_import_items",
+        json!({
+            "dry_run": false,
+            "items": [
+                {"title": "Valid 1", "kind": "piece", "composer": "X", "tags": []},
+                {"title": "", "kind": "piece", "tags": []}
+            ]
+        }),
+        5,
+    )
+    .await;
+    assert_eq!(response["result"]["isError"], true);
+
+    // Library still empty.
+    let (_, items_body) = common::get(app.clone(), "/api/items").await;
+    let items: Vec<Value> = common::json(&items_body);
+    assert!(
+        items.is_empty(),
+        "all-or-nothing: invalid item aborts write"
+    );
+
+    // No audit row for the failed write.
+    let (_, audit_body) = common::get(app.clone(), "/api/account/audit").await;
+    let audit: Vec<Value> = common::json(&audit_body);
+    assert!(
+        audit.is_empty(),
+        "failed bulk_import must not audit; got {audit:?}"
+    );
+
+    // Now retry with valid items only.
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "bulk_import_items",
+        json!({
+            "dry_run": false,
+            "items": [
+                {"title": "Bach Suite 1", "kind": "piece", "composer": "Bach", "tags": []},
+                {"title": "Bach Suite 2", "kind": "piece", "composer": "Bach", "tags": []},
+                {"title": "Bach Suite 3", "kind": "piece", "composer": "Bach", "tags": []}
+            ]
+        }),
+        6,
+    )
+    .await;
+    assert_eq!(response["result"]["isError"], Value::Null);
+    let text = response["result"]["content"][0]["text"].as_str().unwrap();
+    let result: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(result["created_count"], 3);
+
+    // Library should have 3 items.
+    let (_, items_body) = common::get(app.clone(), "/api/items").await;
+    let items: Vec<Value> = common::json(&items_body);
+    assert_eq!(items.len(), 3);
+
+    // Single audit row for the successful bulk import (not one-per-item).
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let audit: Vec<Value> = common::json(&audit_body);
+    assert_eq!(audit.len(), 1);
+    assert_eq!(audit[0]["tool"], "bulk_import_items");
+}
+
+#[tokio::test]
+async fn audit_log_endpoint_returns_newest_first() {
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "audit-order").await;
+
+    // Three sequential writes.
+    for i in 0..3 {
+        mcp_call_with_pat(
+            app.clone(),
+            &token,
+            "create_item",
+            json!({
+                "title": format!("Item {i}"),
+                "kind": "piece",
+                "composer": "Test",
+                "tags": []
+            }),
+            10 + i,
+        )
+        .await;
+    }
+
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 3);
+    // Newest first: created_at[0] >= created_at[1] >= created_at[2].
+    let ts: Vec<&str> = entries
+        .iter()
+        .map(|e| e["created_at"].as_str().unwrap())
+        .collect();
+    assert!(
+        ts[0] >= ts[1] && ts[1] >= ts[2],
+        "audit list must be newest-first; got {ts:?}"
+    );
+}
+
+#[tokio::test]
+async fn audit_log_excludes_other_users() {
+    // True isolation test — seed a foreign-user audit row directly via
+    // the connection, then confirm the GET endpoint scoped to "" (the
+    // disabled-mode user) doesn't see it.
+    let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+    let token = mint_pat(app.clone(), "isolation").await;
+
+    // Insert a foreign row attributed to user_id="other_user".
+    intrada_api::db::audit::insert(
+        &conn,
+        "01HXFOREIGN0000000000000000",
+        "01HXFOREIGNTOKEN0000000000",
+        "other_user",
+        "create_item",
+        "deadbeef".repeat(8).as_str(),
+        chrono::Utc::now(),
+    )
+    .await
+    .expect("insert foreign audit row");
+
+    // Make one legitimate write as the disabled-mode user_id ("").
+    mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "create_item",
+        json!({"title": "Mine", "kind": "piece", "composer": "Me", "tags": []}),
+        20,
+    )
+    .await;
+
+    // The audit endpoint scoped to "" must return only the legitimate
+    // write — never the seeded foreign row.
+    let (_, audit_body) = common::get(app, "/api/account/audit").await;
+    let entries: Vec<Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 1, "must not include foreign-user rows");
+    // Sanity: the entry belongs to the legitimate write (token id != foreign).
+    assert_ne!(entries[0]["token_id"], "01HXFOREIGNTOKEN0000000000");
 }

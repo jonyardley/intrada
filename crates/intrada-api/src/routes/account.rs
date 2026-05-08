@@ -1,10 +1,12 @@
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get};
 use axum::{Json, Router};
+use serde::Deserialize;
 
 use crate::auth::AuthUser;
 use crate::db::account::AccountPreferences;
+use crate::db::audit::AuditLogEntry;
 use crate::error::ApiError;
 use crate::routes::tokens;
 use crate::services;
@@ -14,7 +16,28 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", delete(delete_account))
         .route("/preferences", get(get_preferences).put(put_preferences))
+        .route("/audit", get(get_audit_log))
         .nest("/tokens", tokens::router())
+}
+
+const DEFAULT_AUDIT_LIMIT: u32 = 50;
+
+#[derive(Debug, Deserialize)]
+struct AuditQuery {
+    /// Page size. Defaults to 50; service hard-caps at 500.
+    limit: Option<u32>,
+}
+
+async fn get_audit_log(
+    State(state): State<AppState>,
+    AuthUser { user_id, .. }: AuthUser,
+    Query(q): Query<AuditQuery>,
+) -> Result<Json<Vec<AuditLogEntry>>, ApiError> {
+    let conn = state.conn();
+    let entries =
+        services::audit::list_audit(&conn, &user_id, q.limit.unwrap_or(DEFAULT_AUDIT_LIMIT))
+            .await?;
+    Ok(Json(entries))
 }
 
 async fn get_preferences(

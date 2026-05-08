@@ -28,6 +28,19 @@ pub async fn setup_test_app_with_origin(allowed_origin: &str) -> Router {
 }
 
 async fn setup_test_app_inner(auth_config: Option<AuthConfig>, allowed_origin: &str) -> Router {
+    let (router, _conn) = setup_test_app_with_conn(auth_config, allowed_origin).await;
+    router
+}
+
+/// Like `setup_test_app_inner`, but also returns a clone of the underlying
+/// `libsql::Connection` so tests can inject rows directly (e.g. cross-user
+/// isolation tests that need to seed a row attributable to a different
+/// `user_id` than the one the Router will resolve from auth).
+#[allow(dead_code)]
+pub async fn setup_test_app_with_conn(
+    auth_config: Option<AuthConfig>,
+    allowed_origin: &str,
+) -> (Router, libsql::Connection) {
     let tmp_dir = std::env::temp_dir();
     let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
 
@@ -46,13 +59,13 @@ async fn setup_test_app_inner(auth_config: Option<AuthConfig>, allowed_origin: &
         .expect("Failed to run migrations");
 
     let state = AppState::new(
-        Db::new(db, conn),
+        Db::new(db, conn.clone()),
         allowed_origin.to_string(),
         auth_config,
         None,
         None,
     );
-    routes::api_router(state)
+    (routes::api_router(state), conn)
 }
 
 /// Send a GET request and return the response.

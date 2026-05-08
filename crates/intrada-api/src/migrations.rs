@@ -391,6 +391,21 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0056_index_mcp_tokens_user_id",
         "CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user_id ON mcp_tokens(user_id);",
     ),
+    (
+        "0057_create_mcp_audit_log",
+        "CREATE TABLE IF NOT EXISTS mcp_audit_log (
+            id TEXT PRIMARY KEY NOT NULL,
+            token_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            tool TEXT NOT NULL,
+            args_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0058_index_mcp_audit_log_user_created",
+        "CREATE INDEX IF NOT EXISTS idx_mcp_audit_log_user_created ON mcp_audit_log(user_id, created_at DESC);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

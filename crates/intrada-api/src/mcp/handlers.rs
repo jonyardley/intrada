@@ -12,11 +12,15 @@
 
 use chrono::{DateTime, Utc};
 use libsql::Connection;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use intrada_core::domain::item::ItemKind;
+use intrada_core::domain::types::{CreateItem, UpdateItem};
+use intrada_core::validation;
 
+use crate::auth::AuthSource;
+use crate::db::sets::{CreateSetEntry, CreateSetRequest, UpdateSetRequest};
 use crate::error::ApiError;
 use crate::services;
 
@@ -254,4 +258,199 @@ pub async fn get_practice_summary(
         "average_score": avg_score,
         "items": items,
     }))
+}
+
+// ── Write tools (Phase 4) ──────────────────────────────────────────────
+
+// ── create_item ────────────────────────────────────────────────────────
+
+pub async fn create_item(
+    conn: &Connection,
+    user_id: &str,
+    args: CreateItem,
+) -> Result<Value, ApiError> {
+    let item = services::items::create_item(conn, user_id, &args).await?;
+    serde_json::to_value(item).map_err(|e| ApiError::Internal(format!("serialize item: {e}")))
+}
+
+// ── update_item ────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateItemArgs {
+    pub id: String,
+    /// PATCH-style partial. `None` field = unchanged. `Some(None)` = clear.
+    #[serde(flatten)]
+    pub patch: UpdateItem,
+}
+
+pub async fn update_item(
+    conn: &Connection,
+    user_id: &str,
+    args: UpdateItemArgs,
+) -> Result<Value, ApiError> {
+    let item = services::items::update_item(conn, &args.id, user_id, &args.patch).await?;
+    serde_json::to_value(item).map_err(|e| ApiError::Internal(format!("serialize item: {e}")))
+}
+
+// ── delete_item ────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteItemArgs {
+    pub id: String,
+}
+
+pub async fn delete_item(
+    conn: &Connection,
+    user_id: &str,
+    args: DeleteItemArgs,
+) -> Result<Value, ApiError> {
+    services::items::delete_item(conn, &args.id, user_id).await?;
+    Ok(json!({ "deleted": args.id }))
+}
+
+// ── create_set ─────────────────────────────────────────────────────────
+
+pub async fn create_set(
+    conn: &Connection,
+    user_id: &str,
+    args: CreateSetRequest,
+) -> Result<Value, ApiError> {
+    let set = services::sets::create_set(conn, user_id, &args).await?;
+    serde_json::to_value(set).map_err(|e| ApiError::Internal(format!("serialize set: {e}")))
+}
+
+// ── update_set ─────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateSetArgs {
+    pub id: String,
+    pub name: String,
+    pub entries: Vec<CreateSetEntry>,
+}
+
+pub async fn update_set(
+    conn: &Connection,
+    user_id: &str,
+    args: UpdateSetArgs,
+) -> Result<Value, ApiError> {
+    let req = UpdateSetRequest {
+        name: args.name,
+        entries: args.entries,
+    };
+    let set = services::sets::update_set(conn, &args.id, user_id, &req).await?;
+    serde_json::to_value(set).map_err(|e| ApiError::Internal(format!("serialize set: {e}")))
+}
+
+// ── bulk_import_items ──────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct BulkImportItemsArgs {
+    pub items: Vec<CreateItem>,
+    /// `true` returns a preview without writing. The agent shows the
+    /// preview to the user, gets confirmation, then re-calls with
+    /// `dry_run: false`. Idiomatic MCP confirmation pattern.
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct BulkImportItemPreview {
+    index: usize,
+    title: String,
+    valid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Pre-flight every item against `intrada_core::validation::validate_create_item`.
+/// Returns per-item validation status for the preview, plus a flat
+/// `valid_count` / `invalid_count` so the agent can decide whether to
+/// proceed without iterating the array client-side.
+fn validate_all(items: &[CreateItem]) -> (Vec<BulkImportItemPreview>, usize, usize) {
+    let mut previews = Vec::with_capacity(items.len());
+    let mut valid_count = 0;
+    let mut invalid_count = 0;
+    for (index, item) in items.iter().enumerate() {
+        let (valid, error) = match validation::validate_create_item(item) {
+            Ok(()) => {
+                valid_count += 1;
+                (true, None)
+            }
+            Err(e) => {
+                invalid_count += 1;
+                (false, Some(e.to_string()))
+            }
+        };
+        previews.push(BulkImportItemPreview {
+            index,
+            title: item.title.clone(),
+            valid,
+            error,
+        });
+    }
+    (previews, valid_count, invalid_count)
+}
+
+/// Bulk-import handler. Records audit internally because the dispatcher
+/// can't know in advance whether `dry_run` will trigger an actual write
+/// — so the audit decision lives next to the write decision.
+pub async fn bulk_import_items(
+    conn: &Connection,
+    source: &AuthSource,
+    user_id: &str,
+    raw_args: &Value,
+    args: BulkImportItemsArgs,
+) -> Result<Value, ApiError> {
+    let (previews, valid_count, invalid_count) = validate_all(&args.items);
+
+    if args.dry_run {
+        return Ok(json!({
+            "dry_run": true,
+            "valid_count": valid_count,
+            "invalid_count": invalid_count,
+            "items": previews,
+        }));
+    }
+
+    // Validation atomicity: if ANY item is invalid, write NONE. The
+    // agent should fix invalid items and retry rather than commit a
+    // partial set.
+    if invalid_count > 0 {
+        return Err(ApiError::Validation(format!(
+            "{invalid_count} of {} items failed validation; fix or omit them and retry",
+            args.items.len()
+        )));
+    }
+
+    // Sequential inserts — libsql HTTP doesn't reliably support
+    // multi-statement transactions across the same connection (see the
+    // `delete_all_user_data` comment for the rationale). DB-level
+    // atomicity is therefore best-effort, NOT guaranteed: if a DB error
+    // happens mid-loop after pre-flight validation passed, earlier
+    // inserts persist. We surface the partial state in the error so the
+    // agent can re-issue only the remaining items rather than
+    // silently leaving the user wondering what happened.
+    let mut created = Vec::with_capacity(args.items.len());
+    for (index, item) in args.items.iter().enumerate() {
+        match services::items::create_item(conn, user_id, item).await {
+            Ok(created_item) => created.push(created_item),
+            Err(e) => {
+                tracing::error!(?e, index, total = args.items.len(), "bulk_import partial");
+                return Err(ApiError::Internal(format!(
+                    "Failed to insert item at index {index} ({} of {} succeeded): {e:?}",
+                    created.len(),
+                    args.items.len()
+                )));
+            }
+        }
+    }
+
+    services::audit::record_pat_write(conn, source, user_id, "bulk_import_items", raw_args).await;
+
+    serde_json::to_value(json!({
+        "dry_run": false,
+        "created_count": created.len(),
+        "items": created,
+    }))
+    .map_err(|e| ApiError::Internal(format!("serialize bulk_import result: {e}")))
 }
