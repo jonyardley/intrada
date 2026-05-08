@@ -24,8 +24,8 @@ use crate::views::{
     SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
     SettingsView, WelcomeView,
 };
-use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
+use intrada_web::js_bridge;
 use intrada_web::session_lifecycle;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -68,7 +68,7 @@ pub fn App() -> impl IntoView {
     } = auth;
 
     // Initialize Clerk
-    clerk_bindings::init_clerk();
+    js_bridge::init_clerk();
 
     // Poll for Clerk readiness, then set auth state
     {
@@ -87,9 +87,9 @@ pub fn App() -> impl IntoView {
 
             for _ in 0..50 {
                 gloo_timers::future::TimeoutFuture::new(100).await;
-                if clerk_bindings::is_signed_in() {
-                    if let Some(id) = clerk_bindings::get_user_id() {
-                        clerk_bindings::sentry_set_user(&id);
+                if js_bridge::is_signed_in() {
+                    if let Some(id) = js_bridge::get_user_id() {
+                        js_bridge::sentry_set_user(&id);
                     }
                     // No breadcrumb here — Clerk's `addListener` fires
                     // immediately on subscribe with the current state, so the
@@ -100,7 +100,7 @@ pub fn App() -> impl IntoView {
                     auth_loading.set(false);
                     return;
                 }
-                if clerk_bindings::init_failed() {
+                if js_bridge::init_failed() {
                     // Clerk failed to init (bad key, wrong domain, etc.)
                     auth_error.set(true);
                     auth_loading.set(false);
@@ -115,20 +115,20 @@ pub fn App() -> impl IntoView {
     // Listen for auth state changes after initial load
     {
         let closure = Closure::new(move || {
-            let signed_in = clerk_bindings::is_signed_in();
+            let signed_in = js_bridge::is_signed_in();
             if signed_in {
-                if let Some(id) = clerk_bindings::get_user_id() {
-                    clerk_bindings::sentry_set_user(&id);
+                if let Some(id) = js_bridge::get_user_id() {
+                    js_bridge::sentry_set_user(&id);
                 }
-                clerk_bindings::sentry_breadcrumb("auth", "signed-in", "info");
+                js_bridge::sentry_breadcrumb("auth", "signed-in", "info");
             } else {
-                clerk_bindings::sentry_clear_user();
-                clerk_bindings::sentry_breadcrumb("auth", "signed-out", "info");
+                js_bridge::sentry_clear_user();
+                js_bridge::sentry_breadcrumb("auth", "signed-out", "info");
             }
             is_authenticated.set(signed_in);
             auth_loading.set(false);
         });
-        clerk_bindings::add_auth_listener(&closure);
+        js_bridge::add_auth_listener(&closure);
         closure.forget(); // leak intentionally — lives for app lifetime
     }
 

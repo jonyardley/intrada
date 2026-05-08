@@ -5,8 +5,8 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
 use intrada_core::{AccountEvent, AccountPreferences, Event, ViewModel};
-use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::process_effects;
+use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{
@@ -34,7 +34,7 @@ pub fn SettingsView() -> impl IntoView {
         });
     }
 
-    let email = move || clerk_bindings::email().unwrap_or_else(|| "Signed in".to_string());
+    let email = move || js_bridge::email().unwrap_or_else(|| "Signed in".to_string());
 
     // Seed with defaults so the form is never blank — falls through to
     // these values whenever the API hasn't returned yet, including the
@@ -99,7 +99,7 @@ pub fn SettingsView() -> impl IntoView {
 
     let sign_out_click = move |_| {
         leptos::task::spawn_local(async move {
-            clerk_bindings::sign_out().await;
+            js_bridge::sign_out().await;
         });
     };
 

@@ -1,10 +1,10 @@
 pub mod api_client;
 pub mod background_audio;
-pub mod clerk_bindings;
 pub mod core_bridge;
 pub mod haptics;
 pub mod helpers;
 pub mod hooks;
+pub mod js_bridge;
 pub mod live_activity;
 pub mod platform;
 pub mod session_lifecycle;

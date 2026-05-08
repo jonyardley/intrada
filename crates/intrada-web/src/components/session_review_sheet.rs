@@ -3,8 +3,8 @@ use leptos::prelude::*;
 use intrada_core::{Event, SessionEvent, SetEvent, ViewModel};
 
 use crate::components::{BottomSheet, EditorEntry, EntryListEditor, SetSaveForm};
-use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
+use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// Bottom sheet that opens from the Review session CTA in the builder.
@@ -35,7 +35,7 @@ pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl In
 
     let on_start = Callback::new(move |_| {
         let now = chrono::Utc::now();
-        clerk_bindings::sentry_breadcrumb("session", "session.start", "info");
+        js_bridge::sentry_breadcrumb("session", "session.start", "info");
         let event = Event::Session(SessionEvent::StartSession { now });
         let core_ref = core_start.borrow();
         let effects = core_ref.process_event(event);
