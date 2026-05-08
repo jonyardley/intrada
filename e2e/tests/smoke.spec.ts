@@ -1,7 +1,12 @@
 import { test, expect } from "../fixtures/api-mock";
 
 test("app renders with library list", async ({ page }) => {
-  await page.goto("/");
+  // Visit /library directly. `/` is now the public marketing page; an
+  // authed user redirects from there to /library, but the brief overlap
+  // window includes a faux LibraryMock h3 ("Library") inside the marketing
+  // hero that races the real page-title h1 and trips strict-mode
+  // duplicate-locator detection.
+  await page.goto("/library");
 
   // Verify page heading is visible
   await expect(

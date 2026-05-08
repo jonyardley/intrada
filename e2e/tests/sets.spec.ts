@@ -5,9 +5,9 @@ test.describe("sets in Library", () => {
   test("shows empty state on the Sets tab when no sets exist", async ({
     page,
   }) => {
-    // /routines redirects to /?type=set so the Library opens with the
-    // Sets tab pre-selected — kept for legacy deep links.
-    await page.goto("/?type=set");
+    // /routines redirects to /library?type=set so the Library opens with
+    // the Sets tab pre-selected — kept for legacy deep links.
+    await page.goto("/library?type=set");
 
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
 
@@ -23,7 +23,7 @@ test.describe("sets in Library", () => {
   test("displays pre-seeded set on the Sets tab", async ({ page, mockApi }) => {
     mockApi.sets = createSeedSetsWithStub();
 
-    await page.goto("/?type=set");
+    await page.goto("/library?type=set");
 
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
@@ -46,9 +46,9 @@ test.describe("sets in Library", () => {
   }) => {
     await page.goto("/routines");
 
-    // Should land on Library (URL `/?type=set` after the replace
+    // Should land on Library (URL `/library?type=set` after the replace
     // navigation, with the Sets tab already selected).
-    await expect(page).toHaveURL(/\?type=set$/);
+    await expect(page).toHaveURL(/\/library\?type=set$/);
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Sets" })).toHaveAttribute(
       "aria-selected",
@@ -68,7 +68,7 @@ test.describe("sets in Library", () => {
 
     // Sets are now visible on the Library Sets tab; check the saved
     // set surfaces there.
-    await page.goto("/?type=set");
+    await page.goto("/library?type=set");
     await expect(page.getByText("My New Set")).toBeVisible();
   });
 
