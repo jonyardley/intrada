@@ -1,5 +1,6 @@
 use leptos::portal::Portal;
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{AddEventListenerOptions, KeyboardEvent, TouchEvent};
@@ -61,47 +62,65 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
     });
 
     // Escape key dismisses the menu when open.
+    // Pairs add_event_listener with on_cleanup so the listener is removed
+    // when `is_open` flips false AND when the component unmounts — without
+    // cleanup, listener accumulates and panics ("reactive value already
+    // disposed") on Escape after the menu's owner is gone.
     Effect::new(move || {
         if !is_open.get() {
             return;
         }
+        let Some(window) = web_sys::window() else {
+            return;
+        };
         let on_keydown: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
             if ev.key() == "Escape" {
                 close.run(());
             }
         });
-        if let Some(window) = web_sys::window() {
-            let _ = window
-                .add_event_listener_with_callback("keydown", on_keydown.as_ref().unchecked_ref());
-        }
-        on_keydown.forget();
+        let _ =
+            window.add_event_listener_with_callback("keydown", on_keydown.as_ref().unchecked_ref());
+        // SendWrapper: leptos's on_cleanup requires Send+Sync; Closure's
+        // dyn Fn body and web_sys::Window aren't both. Safe on wasm32 —
+        // single-threaded by construction.
+        let on_keydown = SendWrapper::new(on_keydown);
+        let window = SendWrapper::new(window);
+        on_cleanup(move || {
+            let _ = window.remove_event_listener_with_callback(
+                "keydown",
+                on_keydown.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     // Long-press detection on the trigger. Uses touchstart + setTimeout to
     // schedule activation; touchmove past tolerance or touchend before the
-    // timeout cancels.
+    // timeout cancels. on_cleanup also clears any pending timeout on
+    // component unmount — without it, the activate Closure can fire after
+    // the component is gone and panic accessing disposed signals.
     Effect::new(move || {
         let Some(el) = trigger_ref.get() else {
             return;
         };
 
         // setTimeout handle so we can cancel on early release / scroll.
-        let timeout_handle = std::rc::Rc::new(std::cell::Cell::new(None::<i32>));
+        // RwSignal (instead of Rc<Cell>) so on_cleanup's Send+Sync bound
+        // is satisfied and the closure stays Copy across the touch handlers.
+        let timeout_handle: RwSignal<Option<i32>> = RwSignal::new(None);
 
-        let cancel_pending = {
-            let timeout_handle = std::rc::Rc::clone(&timeout_handle);
-            move || {
-                if let Some(handle) = timeout_handle.take() {
-                    if let Some(window) = web_sys::window() {
-                        window.clear_timeout_with_handle(handle);
-                    }
+        let cancel_pending = move || {
+            let prev = timeout_handle.get_untracked();
+            timeout_handle.set(None);
+            if let Some(handle) = prev {
+                if let Some(window) = web_sys::window() {
+                    window.clear_timeout_with_handle(handle);
                 }
             }
         };
 
+        on_cleanup(cancel_pending);
+
         let touchstart: Closure<dyn Fn(TouchEvent)> = {
-            let timeout_handle = std::rc::Rc::clone(&timeout_handle);
-            let cancel_pending = cancel_pending.clone();
             Closure::new(move |ev: TouchEvent| {
                 cancel_pending();
                 if let Some(touch) = ev.touches().get(0) {
@@ -147,7 +166,6 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
         };
 
         let touchmove: Closure<dyn Fn(TouchEvent)> = {
-            let cancel_pending = cancel_pending.clone();
             Closure::new(move |ev: TouchEvent| {
                 let (Some(start_x), Some(start_y)) =
                     (touch_start_x.get_untracked(), touch_start_y.get_untracked())
@@ -168,7 +186,6 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
         };
 
         let touchend: Closure<dyn Fn(TouchEvent)> = {
-            let cancel_pending = cancel_pending.clone();
             Closure::new(move |_: TouchEvent| {
                 cancel_pending();
                 touch_start_x.set(None);
@@ -177,7 +194,6 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
         };
 
         let touchcancel: Closure<dyn Fn(TouchEvent)> = {
-            let cancel_pending = cancel_pending.clone();
             Closure::new(move |_: TouchEvent| {
                 cancel_pending();
                 touch_start_x.set(None);

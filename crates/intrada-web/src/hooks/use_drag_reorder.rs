@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, PointerEvent};
@@ -104,6 +105,18 @@ impl DragReorderReturn {
 /// Movement threshold in pixels before drag is committed.
 const DRAG_THRESHOLD_PX: f64 = 5.0;
 
+/// Owned trio of (pointermove, pointerup, pointercancel) closures kept alive
+/// for the component's lifetime so they can be removed on unmount.
+type PointerListenerTrio = (
+    Closure<dyn Fn(PointerEvent)>,
+    Closure<dyn Fn(PointerEvent)>,
+    Closure<dyn Fn(PointerEvent)>,
+);
+
+/// Wrapped so it satisfies `on_cleanup`'s Send+Sync bound on wasm32.
+type PointerListenersHandle =
+    SendWrapper<std::rc::Rc<std::cell::RefCell<Option<PointerListenerTrio>>>>;
+
 /// Creates a reusable drag-and-drop reorder hook.
 ///
 /// # Arguments
@@ -166,8 +179,17 @@ pub fn use_drag_reorder(
     });
 
     // --- Register window-level pointer event listeners ---
-    // We use Closure::forget() to leak the closures (same pattern as session_timer.rs).
-    // These listeners live for the component's lifetime. In a WASM SPA this is acceptable.
+    // Pair add_event_listener with on_cleanup so the listeners are removed
+    // when the component unmounts. Without cleanup, pointermove fires on
+    // every mouse movement after unmount and panics ("reactive value already
+    // disposed") accessing drag_state.
+    //
+    // SendWrapper wraps the !Send Rc<RefCell<Closure>> so it can pass through
+    // leptos's `on_cleanup` (which requires Send + Sync). Safe on wasm32 —
+    // single-threaded by construction; SendWrapper would only panic if
+    // accessed from a different thread, which can't happen here.
+    let pointer_listeners: PointerListenersHandle =
+        SendWrapper::new(std::rc::Rc::new(std::cell::RefCell::new(None)));
     {
         let pointer_move_handler: Closure<dyn Fn(PointerEvent)> =
             Closure::new(move |ev: PointerEvent| {
@@ -280,14 +302,31 @@ pub fn use_drag_reorder(
             );
         }
 
-        // Leak closures so they stay alive (same pattern as session_timer.rs)
-        pointer_move_handler.forget();
-        pointer_up_handler.forget();
-        pointer_cancel_handler.forget();
+        // Hold closures so they stay alive while the component is mounted.
+        // on_cleanup below removes the listeners and drops the closures.
+        *pointer_listeners.borrow_mut() = Some((
+            pointer_move_handler,
+            pointer_up_handler,
+            pointer_cancel_handler,
+        ));
     }
 
-    // Clean up drag state when component unmounts
+    // Remove window listeners and clear drag state on component unmount.
     on_cleanup(move || {
+        if let Some((mv, up, cancel)) = pointer_listeners.borrow_mut().take() {
+            if let Some(window) = web_sys::window() {
+                let _ = window.remove_event_listener_with_callback(
+                    "pointermove",
+                    mv.as_ref().unchecked_ref(),
+                );
+                let _ = window
+                    .remove_event_listener_with_callback("pointerup", up.as_ref().unchecked_ref());
+                let _ = window.remove_event_listener_with_callback(
+                    "pointercancel",
+                    cancel.as_ref().unchecked_ref(),
+                );
+            }
+        }
         drag_state.set(None);
     });
 
