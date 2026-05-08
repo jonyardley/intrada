@@ -5,12 +5,14 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 
 use intrada_core::{
-    CompletionStatus, EntryStatus, Event, PracticeSessionView, SessionEvent, ViewModel,
+    CompletionStatus, EntryStatus, Event, PracticeSessionView, SessionEvent, SessionStatusView,
+    ViewModel,
 };
 
 use crate::components::{
-    ContextMenu, ContextMenuAction, EmptyState, GroupedList, GroupedListRow, Icon, IconName,
-    PageAddButton, PageHeading, SkeletonCardList, SwipeActions, WeekStrip,
+    ButtonSize, ButtonVariant, ContextMenu, ContextMenuAction, EmptyState, GroupedList,
+    GroupedListRow, Icon, IconName, LinkButton, PageAddButton, PageHeading, SkeletonCardList,
+    SwipeActions, WeekStrip,
 };
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::helpers::{
@@ -143,6 +145,37 @@ pub fn SessionsListView() -> impl IntoView {
                     on_today=on_today
                     is_current_week=Signal::derive(move || week_offset.get() == 0)
                 />
+            </div>
+
+            // Body CTA — Resume the running session if there is one,
+            // otherwise Start a new one. Discard lives inside the active
+            // session view; we deliberately don't surface it here.
+            <div class="mb-6">
+                {move || {
+                    if view_model.get().session_status == SessionStatusView::Active {
+                        view! {
+                            <LinkButton
+                                variant=ButtonVariant::Primary
+                                size=ButtonSize::Hero
+                                full_width=true
+                                href="/sessions/active"
+                            >
+                                "Resume Session"
+                            </LinkButton>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <LinkButton
+                                variant=ButtonVariant::Primary
+                                size=ButtonSize::Hero
+                                full_width=true
+                                href="/sessions/new"
+                            >
+                                "Start Session"
+                            </LinkButton>
+                        }.into_any()
+                    }
+                }}
             </div>
 
             // Session cards for selected day
