@@ -75,6 +75,22 @@ pub fn McpTokensView() -> impl IntoView {
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
     });
 
+    // Tie the just-created token's lifetime to this view: when the user
+    // navigates away without explicitly dismissing, fire the same dismiss
+    // event so the full bearer string doesn't linger in the model (or the
+    // DOM if they navigate back later). Without this, the show-once card
+    // would re-appear on next visit — the bytes outlive the user's
+    // attention.
+    {
+        let core = core.clone();
+        on_cleanup(move || {
+            let core_ref = core.borrow();
+            let effects =
+                core_ref.process_event(Event::McpToken(McpTokenEvent::DismissCreatedToken));
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        });
+    }
+
     let core_for_revoke = core.clone();
     let revoke_token: Callback<String> = Callback::new(move |id: String| {
         let core_ref = core_for_revoke.borrow();
