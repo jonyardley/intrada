@@ -14,16 +14,6 @@ stage = "pre_build"
 command = "tailwindcss"
 command_arguments = ["-i", "input.css", "-o", "tailwind-output.css"]
 
-# Content-hash the wasm-bindgen snippets folder so caches naturally
-# invalidate when an `inline_js` block is added/removed/reordered.
-# wasm-bindgen otherwise reuses the same folder name across builds —
-# which causes "Importing binding name 'X' is not found" errors when
-# any cache (browser, Cloudflare, WKWebView) pins old snippet contents
-# under that stable path. See scripts/cache-bust-snippets.sh + #440.
-[[hooks]]
-stage = "post_build"
-command = "../../scripts/cache-bust-snippets.sh"
-
 # Proxy API requests to the backend server during development.
 # The web app makes requests to /api/* which Trunk forwards to the API server,
 # avoiding CORS issues entirely in local development.
