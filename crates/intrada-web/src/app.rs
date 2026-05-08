@@ -53,6 +53,15 @@ pub struct AuthState {
     pub auth_error: RwSignal<bool>,
 }
 
+/// Remembers the user's focus-mode toggle for the currently-active session,
+/// keyed by `ActiveSessionView::started_at` (RFC3339, unique per session).
+///
+/// Re-entering the active-session route looks this up so a user who
+/// explicitly exited focus mode mid-session isn't snapped back into it on
+/// return. Cleared when the session ends so the next session starts fresh.
+#[derive(Clone, Copy)]
+pub struct SessionFocusPref(pub RwSignal<Option<(String, bool)>>);
+
 #[component]
 pub fn App() -> impl IntoView {
     // Auth state signals — drive the auth gate
@@ -143,6 +152,7 @@ pub fn App() -> impl IntoView {
     let is_loading = IsLoading::new(true);
     let is_submitting = IsSubmitting::new(false);
     let focus_mode = FocusMode(RwSignal::new(false));
+    let session_focus_pref = SessionFocusPref(RwSignal::new(None));
 
     provide_context(auth);
     provide_context(core.clone());
@@ -150,6 +160,7 @@ pub fn App() -> impl IntoView {
     provide_context(is_loading);
     provide_context(is_submitting);
     provide_context(focus_mode);
+    provide_context(session_focus_pref);
     provide_toast();
 
     // Session-lifecycle Effect (#309 Phase D + #474 Phase B). Drives
