@@ -1729,20 +1729,34 @@ pub fn DesignCatalogue() -> impl IntoView {
                 </div>
             </section>
 
-            // ── Welcome Card ─────────────────────────────────────────
-            <section id="welcome-card">
-                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Welcome Card"</h3>
-                <div class="space-y-6">
-                    <Card>
-                        <p class="text-xs font-medium text-muted uppercase mb-3">"WelcomeCard — copy only"</p>
-                        <WelcomeCard copy="Your practice journey starts here." />
-                    </Card>
-                    <Card>
-                        <p class="text-xs font-medium text-muted uppercase mb-3">"WelcomeCard — with CTA slot"</p>
-                        <WelcomeCard copy="Add your first piece to get started.">
-                            <button class="btn-primary w-full">"Add your first piece"</button>
+            // ── Welcome Carousel ──────────────────────────────────────
+            <section id="welcome-card" class="mb-16">
+                <h2 class="section-title">"Welcome Carousel"</h2>
+                <p class="text-sm text-muted mb-4">
+                    "First-run onboarding overlay. Five typographic cards with progress dots, Skip, and CTA. (Carousel itself + reset button land in Task 5.)"
+                </p>
+
+                // Individual WelcomeCard showcase
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeCard (standalone)"</h3>
+                    <div class="py-8">
+                        <WelcomeCard copy="Knowing how to practise well is hard. I\u{2019}ve struggled with it. So I built this.".to_string() />
+                    </div>
+                </div>
+
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeCard (with CTA — final card)"</h3>
+                    <div class="py-8">
+                        <WelcomeCard copy="Track your progress, achieve your goals.".to_string()>
+                            <Button
+                                variant=ButtonVariant::Primary
+                                size=ButtonSize::Hero
+                                full_width=true
+                            >
+                                "Add your first piece \u{2192}"
+                            </Button>
                         </WelcomeCard>
-                    </Card>
+                    </div>
                 </div>
             </section>
 
