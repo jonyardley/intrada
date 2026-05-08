@@ -31,9 +31,21 @@ pub fn api_router(state: AppState) -> Router {
         })
         .collect();
 
-    let cors = CorsLayer::new()
+    // Strict CORS for the user-facing API surface. Browser-based MCP
+    // clients use the separate `/api/mcp` route below with its own
+    // permissive CORS.
+    let strict_cors = CorsLayer::new()
         .allow_origin(AllowOrigin::list(origins))
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+
+    // Permissive CORS for `/api/mcp/*` only. Per #481 — MCP auth is
+    // bearer-token-only (PAT), no cookies are involved, so CORS adds zero
+    // security on this route while removing a real product capability
+    // (browser-based MCP agents). The PAT IS the auth gate.
+    let mcp_cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::any())
+        .allow_methods([Method::POST, Method::OPTIONS])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     let trace = TraceLayer::new_for_http()
@@ -47,9 +59,14 @@ pub fn api_router(state: AppState) -> Router {
         // ERROR-only event capture.
         .on_failure(DefaultOnFailure::new().level(Level::WARN));
 
+    let mcp_routes = crate::mcp::router().layer(mcp_cors);
+
     Router::new()
-        .nest("/api", api_routes())
-        .layer(cors)
+        // Order matters: longest-prefix wins. `/api/mcp/*` resolves here
+        // (permissive CORS); everything else under `/api/*` goes to the
+        // strict-CORS subtree below.
+        .nest("/api/mcp", mcp_routes)
+        .nest("/api", api_routes().layer(strict_cors))
         .layer(trace)
         // Sentry layers: per-request hub + HTTP transaction (route-aware via
         // the `tower-axum-matched-path` feature). NewSentryLayer must wrap

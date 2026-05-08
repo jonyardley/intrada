@@ -2,6 +2,7 @@ pub mod auth;
 pub mod clerk;
 pub mod db;
 pub mod error;
+pub mod mcp;
 pub mod migrations;
 pub mod routes;
 pub mod services;
