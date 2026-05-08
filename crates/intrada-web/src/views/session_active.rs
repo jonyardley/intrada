@@ -4,7 +4,7 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::{SessionStatusView, ViewModel};
 
-use crate::app::FocusMode;
+use crate::app::{FocusMode, SessionFocusPref};
 use crate::components::{Icon, IconName, SessionTimer};
 
 /// Active session view: wraps the SessionTimer, redirects when session state changes.
@@ -12,11 +12,30 @@ use crate::components::{Icon, IconName, SessionTimer};
 pub fn SessionActiveView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let focus_mode = expect_context::<FocusMode>();
+    let focus_pref = expect_context::<SessionFocusPref>();
     let navigate = use_navigate();
 
-    // Enter focus mode on mount, exit on unmount
-    focus_mode.set(true);
+    // Restore focus-mode preference for this session if we have one.
+    // Fresh sessions default to ON; returning to a session the user
+    // explicitly exited focus on stays OFF.
+    let active_started_at =
+        view_model.with_untracked(|vm| vm.active_session.as_ref().map(|s| s.started_at.clone()));
+    let initial_focus = match (&active_started_at, focus_pref.0.get_untracked()) {
+        (Some(id), Some((stored_id, val))) if id == &stored_id => val,
+        _ => true,
+    };
+    focus_mode.set(initial_focus);
+
     on_cleanup(move || {
+        // Save current toggle keyed by session id so re-entering the same
+        // session restores it. If the session ended (no active_session),
+        // clear the pref so the next session starts fresh.
+        let started_at = view_model
+            .with_untracked(|vm| vm.active_session.as_ref().map(|s| s.started_at.clone()));
+        match started_at {
+            Some(id) => focus_pref.0.set(Some((id, focus_mode.0.get_untracked()))),
+            None => focus_pref.0.set(None),
+        }
         focus_mode.set(false);
     });
 
@@ -93,9 +112,9 @@ pub fn SessionActiveView() -> impl IntoView {
                     on:click=move |_| focus_signal.set(!focus_signal.get_untracked())
                 >
                     {move || if focus_signal.get() {
-                        view! { <Icon name=IconName::ChevronDown class="w-5 h-5" /> }
+                        view! { <Icon name=IconName::Minimize class="w-5 h-5" /> }
                     } else {
-                        view! { <Icon name=IconName::ChevronUp class="w-5 h-5" /> }
+                        view! { <Icon name=IconName::Maximize class="w-5 h-5" /> }
                     }}
                 </button>
             </div>
