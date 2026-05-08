@@ -14,7 +14,14 @@ async fn main() {
         sentry::init((
             dsn,
             sentry::ClientOptions {
-                release: option_env!("GIT_SHA").map(Into::into),
+                // Filter the empty string explicitly: `option_env!` returns
+                // `Some("")` (not `None`) when the env var is set to "" at
+                // build time — which would tag every event with an empty
+                // release rather than no release. Mirrors the same guard in
+                // `intrada-mobile/src-tauri/src/lib.rs`.
+                release: option_env!("GIT_SHA")
+                    .filter(|s| !s.is_empty())
+                    .map(Into::into),
                 environment: Some(
                     if cfg!(debug_assertions) {
                         "development"
