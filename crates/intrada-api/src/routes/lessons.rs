@@ -36,7 +36,7 @@ pub fn router() -> Router<AppState> {
 
 async fn list_lessons(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Lesson>>, ApiError> {
     let conn = state.conn();
     let r2 = state.r2()?;
@@ -46,7 +46,7 @@ async fn list_lessons(
 
 async fn get_lesson(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Lesson>, ApiError> {
     let conn = state.conn();
@@ -57,7 +57,7 @@ async fn get_lesson(
 
 async fn create_lesson(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Json(input): Json<CreateLesson>,
 ) -> Result<(StatusCode, Json<Lesson>), ApiError> {
     let conn = state.conn();
@@ -68,7 +68,7 @@ async fn create_lesson(
 
 async fn update_lesson(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
     Json(input): Json<UpdateLesson>,
 ) -> Result<Json<Lesson>, ApiError> {
@@ -80,7 +80,7 @@ async fn update_lesson(
 
 async fn delete_lesson(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();
@@ -92,7 +92,7 @@ async fn delete_lesson(
 
 async fn upload_photo(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
@@ -135,7 +135,7 @@ async fn upload_photo(
 
 async fn delete_photo(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path((id, photo_id)): Path<(String, String)>,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();
