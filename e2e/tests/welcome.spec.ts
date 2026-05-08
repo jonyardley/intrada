@@ -20,42 +20,39 @@ test.describe("welcome carousel", () => {
       page.getByText("Knowing how to practise well is hard")
     ).toBeVisible();
 
-    // Tap to advance through cards 2-4
+    // Tap to advance through cards 2-4. Each card now has a distinct
+    // anchor phrase (the bold serif heading) — the test matches that
+    // since it's the most reliable per-card signal.
     // Click in the centre of the viewport to avoid the Skip button (top-right)
     // and the progress dots (bottom). The carousel overlay is fixed inset-0.
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150); // allow 50ms fade-out + render swap
-    await expect(
-      page.getByText("Build a library of pieces and exercises")
-    ).toBeVisible();
+    // Card 2 anchor — "Build a library"
+    await expect(page.getByText("Build a library")).toBeVisible();
 
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150);
-    await expect(
-      page.getByText("Plan each session with intention")
-    ).toBeVisible();
+    // Card 3 anchor — "Practise with intention"
+    await expect(page.getByText("Practise with intention")).toBeVisible();
 
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150);
-    await expect(
-      page.getByText("Run focused, timed sessions")
-    ).toBeVisible();
+    // Card 4 anchor — "Focus, reflect, repeat"
+    await expect(page.getByText("Focus, reflect, repeat")).toBeVisible();
 
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150);
-    // Card 5 — final card with CTA
-    await expect(
-      page.getByText("Track your progress, achieve your goals")
-    ).toBeVisible();
+    // Card 5 anchor — "Watch your progress"
+    await expect(page.getByText("Watch your progress")).toBeVisible();
 
     // Use regex to match the button regardless of the → Unicode arrow suffix
-    const cta = page.getByRole("button", { name: /Add your first piece/ });
+    const cta = page.getByRole("button", { name: /Get started/ });
     await expect(cta).toBeVisible();
 
-    // Click CTA — should navigate to /library/new
+    // Click CTA — should navigate to / (the Library home)
     await cta.click();
     await expect(carousel).not.toBeVisible();
-    await expect(page).toHaveURL(/\/library\/new/);
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("skip dismisses carousel and lands on library", async ({ page }) => {

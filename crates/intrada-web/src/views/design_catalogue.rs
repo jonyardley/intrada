@@ -20,6 +20,7 @@ use crate::components::{
     SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
     StatCard, StatTone, StatusDot, StatusDotState, SwipeActions, TagInput, TempoProgressChart,
     TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
+    WelcomeMark,
 };
 use wasm_bindgen::JsCast;
 
@@ -1772,26 +1773,71 @@ pub fn DesignCatalogue() -> impl IntoView {
                     "First-run onboarding overlay. Five typographic cards with progress dots, Skip, and CTA."
                 </p>
 
-                // Individual WelcomeCard showcase
                 <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
-                    <h3 class="card-title">"WelcomeCard (standalone)"</h3>
+                    <h3 class="card-title">"WelcomeCard (opener — no label)"</h3>
                     <div class="py-8">
-                        <WelcomeCard copy="Knowing how to practise well is hard. I\u{2019}ve struggled with it. So I built this.".to_string() />
+                        <WelcomeCard
+                            label=None
+                            anchor="Knowing how to practise well is hard.".to_string()
+                            continuation=Some("I\u{2019}ve struggled with it. So I built this.".to_string())
+                        />
                     </div>
                 </div>
 
                 <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
-                    <h3 class="card-title">"WelcomeCard (with CTA — final card)"</h3>
+                    <h3 class="card-title">"WelcomeCard (with label + continuation)"</h3>
                     <div class="py-8">
-                        <WelcomeCard copy="Track your progress, achieve your goals.".to_string()>
+                        <WelcomeCard
+                            label=Some("CAPTURE".to_string())
+                            anchor="Build a library".to_string()
+                            continuation=Some("of pieces and exercises \u{2014} the things you\u{2019}re actually working on.".to_string())
+                        />
+                    </div>
+                </div>
+
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeCard (final — with CTA)"</h3>
+                    <div class="py-8">
+                        <WelcomeCard
+                            label=Some("TRACK".to_string())
+                            anchor="Watch your progress".to_string()
+                            continuation=Some("Track every session, achieve your goals.".to_string())
+                        >
                             <Button
                                 variant=ButtonVariant::Primary
                                 size=ButtonSize::Hero
                                 full_width=true
                             >
-                                "Add your first piece \u{2192}"
+                                "Get started \u{2192}"
                             </Button>
                         </WelcomeCard>
+                    </div>
+                </div>
+
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeMark — animated SVG per card"</h3>
+                    <p class="text-sm text-muted mb-4">"Each card mounts a draw-in animation. Click each to remount and replay."</p>
+                    <div class="grid grid-cols-5 gap-4 py-4">
+                        <div class="flex flex-col items-center gap-2">
+                            <WelcomeMark card_index=0 />
+                            <span class="field-label">"Opener"</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <WelcomeMark card_index=1 />
+                            <span class="field-label">"Capture"</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <WelcomeMark card_index=2 />
+                            <span class="field-label">"Plan"</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <WelcomeMark card_index=3 />
+                            <span class="field-label">"Practice"</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <WelcomeMark card_index=4 />
+                            <span class="field-label">"Track"</span>
+                        </div>
                     </div>
                 </div>
 
