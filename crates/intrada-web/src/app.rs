@@ -195,12 +195,11 @@ pub fn App() -> impl IntoView {
             // Fixed gradient background — stays behind all content, does not scroll
             <div class="fixed inset-0 -z-10 bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"></div>
 
-            <Show
-                when=move || auth_loading.get()
-                fallback=move || view! { <AppRoutes /> }
-            >
-                <AuthLoadingScreen />
-            </Show>
+            // Routes mount immediately — public surfaces (`/`, `/login`)
+            // don't need auth state to render. The auth-loading gate now
+            // lives inside `AuthenticatedShell` so it only blocks private
+            // routes while Clerk initialises.
+            <AppRoutes />
         </Router>
     }
 }
@@ -286,8 +285,19 @@ fn AppRoutes() -> impl IntoView {
 /// bottom tab bar, welcome carousel). Mounts per route navigation; the
 /// underlying Crux core / view_model contexts are provided at App level
 /// so this remount is cheap.
+///
+/// Three rendering states, driven reactively by `AuthState`:
+/// - `auth_loading=true` → `AuthLoadingScreen` (Clerk still initialising;
+///   only private routes wait — public `/` and `/login` paint immediately).
+/// - `auth_loading=false && !is_authenticated` → empty placeholder while
+///   the redirect Effect navigates to `/login`.
+/// - `auth_loading=false && is_authenticated` → full chrome + `children()`.
+///
+/// Children type is `ChildrenFn` so the reactive view-closure can call it
+/// across state transitions (e.g. loading → authed) — `Children` (FnOnce)
+/// would be consumed on the first call and panic on the second.
 #[component]
-fn AuthenticatedShell(children: Children) -> impl IntoView {
+fn AuthenticatedShell(children: ChildrenFn) -> impl IntoView {
     let auth = expect_context::<AuthState>();
     let focus_mode = expect_context::<FocusMode>();
 
@@ -296,9 +306,12 @@ fn AuthenticatedShell(children: Children) -> impl IntoView {
     // is set so future mounts see false.
     let show_welcome = RwSignal::new(!welcome_already_seen());
 
-    // Auth gate: redirect to /login if not authed.
+    // Auth gate: redirect to /login when Clerk has finished initialising
+    // and confirmed the user isn't signed in. Wait for `auth_loading=false`
+    // so we don't bounce in-flight users to /login while Clerk's still
+    // figuring out whether they have a session.
     Effect::new(move |_| {
-        if !auth.is_authenticated.get() {
+        if !auth.auth_loading.get() && !auth.is_authenticated.get() {
             let navigate = use_navigate();
             navigate(
                 "/login",
@@ -310,54 +323,53 @@ fn AuthenticatedShell(children: Children) -> impl IntoView {
         }
     });
 
-    // Skip rendering the private chrome + children when unauthed at mount
-    // time. The Effect above handles the actual redirect; rendering an
-    // empty placeholder while it fires keeps deep-linked unauthed users
-    // from briefly seeing AppHeader / data-fetching private views.
-    // `get_untracked` so we don't subscribe — sign-in/out flows trigger a
-    // route change which unmounts this shell anyway.
-    if !auth.is_authenticated.get_untracked() {
-        return view! { <div></div> }.into_any();
+    move || {
+        if auth.auth_loading.get() {
+            view! { <AuthLoadingScreen /> }.into_any()
+        } else if auth.is_authenticated.get() {
+            view! {
+                <div class="relative z-0 min-h-screen text-primary">
+                    // Welcome carousel overlay — shown once for first-time users.
+                    <Show when=move || show_welcome.get()>
+                        <WelcomeCarousel show=show_welcome />
+                    </Show>
+
+                    // Header — hidden in focus mode
+                    <Show when=move || !focus_mode.get()>
+                        <AppHeader />
+                    </Show>
+
+                    // Main content
+                    <main
+                        class=move || if focus_mode.get() {
+                            "focus-mode-container"
+                        } else {
+                            "max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10"
+                        }
+                        role="main"
+                    >
+                        <ErrorBanner />
+                        <ToastStack />
+                        {children()}
+                    </main>
+
+                    // Footer — hidden in focus mode
+                    <Show when=move || !focus_mode.get()>
+                        <AppFooter />
+                    </Show>
+
+                    // Mobile bottom tab bar (hidden on sm: and wider) — hidden in focus mode
+                    <Show when=move || !focus_mode.get()>
+                        <BottomTabBar />
+                    </Show>
+                </div>
+            }
+            .into_any()
+        } else {
+            // Unauthed: empty placeholder while the redirect Effect fires.
+            view! { <div></div> }.into_any()
+        }
     }
-
-    view! {
-        <div class="relative z-0 min-h-screen text-primary">
-            // Welcome carousel overlay — shown once for first-time users.
-            <Show when=move || show_welcome.get()>
-                <WelcomeCarousel show=show_welcome />
-            </Show>
-
-            // Header — hidden in focus mode
-            <Show when=move || !focus_mode.get()>
-                <AppHeader />
-            </Show>
-
-            // Main content
-            <main
-                class=move || if focus_mode.get() {
-                    "focus-mode-container"
-                } else {
-                    "max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-20 sm:pb-10"
-                }
-                role="main"
-            >
-                <ErrorBanner />
-                <ToastStack />
-                {children()}
-            </main>
-
-            // Footer — hidden in focus mode
-            <Show when=move || !focus_mode.get()>
-                <AppFooter />
-            </Show>
-
-            // Mobile bottom tab bar (hidden on sm: and wider) — hidden in focus mode
-            <Show when=move || !focus_mode.get()>
-                <BottomTabBar />
-            </Show>
-        </div>
-    }
-    .into_any()
 }
 
 /// Loading screen shown while Clerk initializes.
