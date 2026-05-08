@@ -2364,7 +2364,7 @@ html:not([data-platform="ios"]) .context-menu {
 .welcome-mark--opener .welcome-dot {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-dot-slide-1 800ms var(--welcome-mark-ease) 200ms backwards;
+  animation: welcome-mark-dot-slide-1 800ms var(--welcome-mark-ease) 200ms both;
 }
 
 /* ── Card 2: three lines draw staggered, dots snap on after ────────── */
@@ -2375,7 +2375,7 @@ html:not([data-platform="ios"]) .context-menu {
 }
 .welcome-mark--capture line {
   stroke-dasharray: 56;
-  animation: welcome-mark-line-draw 400ms ease-out backwards;
+  animation: welcome-mark-line-draw 400ms ease-out both;
 }
 .welcome-mark--capture line:nth-of-type(1) { animation-delay: 0ms; }
 .welcome-mark--capture line:nth-of-type(2) { animation-delay: 80ms; }
@@ -2383,7 +2383,7 @@ html:not([data-platform="ios"]) .context-menu {
 .welcome-mark--capture .welcome-dot {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-dot-snap 400ms var(--welcome-mark-ease) backwards;
+  animation: welcome-mark-dot-snap 400ms var(--welcome-mark-ease) both;
 }
 .welcome-mark--capture .welcome-dot:nth-of-type(1) { animation-delay: 350ms; }
 .welcome-mark--capture .welcome-dot:nth-of-type(2) { animation-delay: 480ms; }
@@ -2395,7 +2395,7 @@ html:not([data-platform="ios"]) .context-menu {
   to   { opacity: 1; }
 }
 .welcome-mark--align line {
-  animation: welcome-mark-line-fade 300ms ease-out backwards;
+  animation: welcome-mark-line-fade 300ms ease-out both;
 }
 .welcome-mark--align line:nth-of-type(1) { animation-delay: 0ms; }
 .welcome-mark--align line:nth-of-type(2) { animation-delay: 60ms; }
@@ -2423,13 +2423,13 @@ html:not([data-platform="ios"]) .context-menu {
   100% { opacity: 1; transform: translateX(10px); }
 }
 .welcome-mark--align .welcome-dot:nth-of-type(1) {
-  animation: welcome-mark-align-1 700ms var(--welcome-mark-ease) 250ms backwards;
+  animation: welcome-mark-align-1 700ms var(--welcome-mark-ease) 250ms both;
 }
 .welcome-mark--align .welcome-dot:nth-of-type(2) {
-  animation: welcome-mark-align-2 700ms var(--welcome-mark-ease) 350ms backwards;
+  animation: welcome-mark-align-2 700ms var(--welcome-mark-ease) 350ms both;
 }
 .welcome-mark--align .welcome-dot:nth-of-type(3) {
-  animation: welcome-mark-align-3 700ms var(--welcome-mark-ease) 450ms backwards;
+  animation: welcome-mark-align-3 700ms var(--welcome-mark-ease) 450ms both;
 }
 
 /* ── Card 4: line + violet dot pulses with rings; amber dot slides in ── */
@@ -2455,24 +2455,24 @@ html:not([data-platform="ios"]) .context-menu {
 .welcome-mark--practice .welcome-dot--violet {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-dot-pulse 700ms var(--welcome-mark-ease) 300ms backwards;
+  animation: welcome-mark-dot-pulse 700ms var(--welcome-mark-ease) 300ms both;
 }
 .welcome-mark--practice .welcome-ring {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-ring-pulse 1000ms ease-out backwards;
+  animation: welcome-mark-ring-pulse 1000ms ease-out both;
 }
 .welcome-mark--practice .welcome-ring--first  { animation-delay: 500ms; }
 .welcome-mark--practice .welcome-ring--second { animation-delay: 700ms; }
 .welcome-mark--practice .welcome-dot--amber {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-amber-enter 600ms var(--welcome-mark-ease) 700ms backwards;
+  animation: welcome-mark-amber-enter 600ms var(--welcome-mark-ease) 700ms both;
 }
 
 /* ── Card 5: three lines, violet dots stagger rightward as progress ── */
 .welcome-mark--track line {
-  animation: welcome-mark-line-fade 300ms ease-out backwards;
+  animation: welcome-mark-line-fade 300ms ease-out both;
 }
 .welcome-mark--track line:nth-of-type(1) { animation-delay: 0ms; }
 .welcome-mark--track line:nth-of-type(2) { animation-delay: 60ms; }
@@ -2497,13 +2497,13 @@ html:not([data-platform="ios"]) .context-menu {
   100% { opacity: 1; transform: translateX(40px); }
 }
 .welcome-mark--track .welcome-dot:nth-of-type(1) {
-  animation: welcome-mark-step-1 700ms var(--welcome-mark-ease) 250ms backwards;
+  animation: welcome-mark-step-1 700ms var(--welcome-mark-ease) 250ms both;
 }
 .welcome-mark--track .welcome-dot:nth-of-type(2) {
-  animation: welcome-mark-step-2 700ms var(--welcome-mark-ease) 400ms backwards;
+  animation: welcome-mark-step-2 700ms var(--welcome-mark-ease) 400ms both;
 }
 .welcome-mark--track .welcome-dot:nth-of-type(3) {
-  animation: welcome-mark-step-3 700ms var(--welcome-mark-ease) 550ms backwards;
+  animation: welcome-mark-step-3 700ms var(--welcome-mark-ease) 550ms both;
 }
 
 /* ── Reduced-motion: snap to final state ─────────────────────────────── */
