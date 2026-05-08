@@ -26,7 +26,7 @@ pub fn BottomTabBar() -> impl IntoView {
 
     let is_library_active = move || {
         let path = location.pathname.get();
-        path == "/" || path.starts_with("/library")
+        path.starts_with("/library")
     };
 
     let is_sessions_active = move || {
@@ -81,7 +81,7 @@ pub fn BottomTabBar() -> impl IntoView {
             <div class="flex h-full items-center justify-around">
                 // Library tab — music note
                 <A
-                    href="/"
+                    href="/library"
                     attr:class=move || {
                         if is_library_active() {
                             if has_tapped.get() { spring } else { active }

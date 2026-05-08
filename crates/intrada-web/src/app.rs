@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crux_core::Core;
 use leptos::prelude::*;
 use leptos_router::components::{Redirect, Route, Router, Routes};
+use leptos_router::hooks::use_navigate;
 use leptos_router::path;
 use leptos_router::NavigateOptions;
 use send_wrapper::SendWrapper;
@@ -13,16 +14,15 @@ use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::welcome_carousel::welcome_already_seen;
 use crate::components::{
-    provide_toast, AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant,
-    ErrorBanner, ToastStack, WelcomeCarousel,
+    provide_toast, AppFooter, AppHeader, BottomTabBar, ErrorBanner, ToastStack, WelcomeCarousel,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    LibraryListView, McpTokensView, NotFoundView, SessionActiveView, SessionNewView,
+    LibraryListView, LoginView, McpTokensView, NotFoundView, SessionActiveView, SessionNewView,
     SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
-    SettingsView,
+    SettingsView, WelcomeView,
 };
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
@@ -44,12 +44,28 @@ impl FocusMode {
     }
 }
 
+/// Auth state shared across the app. Provided as context at the App level so
+/// any view (public or private) can read whether the user is signed in.
+#[derive(Clone, Copy)]
+pub struct AuthState {
+    pub is_authenticated: RwSignal<bool>,
+    pub auth_loading: RwSignal<bool>,
+    pub auth_error: RwSignal<bool>,
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     // Auth state signals — drive the auth gate
-    let is_authenticated = RwSignal::new(false);
-    let auth_loading = RwSignal::new(true);
-    let auth_error = RwSignal::new(false);
+    let auth = AuthState {
+        is_authenticated: RwSignal::new(false),
+        auth_loading: RwSignal::new(true),
+        auth_error: RwSignal::new(false),
+    };
+    let AuthState {
+        is_authenticated,
+        auth_loading,
+        auth_error,
+    } = auth;
 
     // Initialize Clerk
     clerk_bindings::init_clerk();
@@ -86,7 +102,6 @@ pub fn App() -> impl IntoView {
                 }
                 if clerk_bindings::init_failed() {
                     // Clerk failed to init (bad key, wrong domain, etc.)
-                    // Show sign-in screen with error message.
                     auth_error.set(true);
                     auth_loading.set(false);
                     return;
@@ -117,66 +132,25 @@ pub fn App() -> impl IntoView {
         closure.forget(); // leak intentionally — lives for app lifetime
     }
 
-    view! {
-        <Router>
-            // Fixed gradient background — stays behind all content, does not scroll
-            <div class="fixed inset-0 -z-10 bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"></div>
-
-            <Show
-                when=move || auth_loading.get()
-                fallback=move || {
-                    view! {
-                        <Show
-                            when=move || is_authenticated.get()
-                            fallback=move || view! { <SignInScreen auth_error=auth_error /> }
-                        >
-                            <AuthenticatedApp />
-                        </Show>
-                    }
-                }
-            >
-                <AuthLoadingScreen />
-            </Show>
-        </Router>
-    }
-}
-
-/// The main authenticated application — only rendered when signed in.
-#[component]
-fn AuthenticatedApp() -> impl IntoView {
+    // ─── Crux core + app-level reactive state ─────────────────────────
+    // Mounted once at the App level (was previously inside the
+    // `AuthenticatedApp` wrapper). Keeping it here means navigating between
+    // public (`/`, `/login`) and private routes doesn't re-init the core or
+    // drop the in-memory view_model. Data fetches still gate on auth via
+    // the Effect below.
     let core: SharedCore = SendWrapper::new(Rc::new(RefCell::new(Core::<Intrada>::new())));
     let view_model = RwSignal::new(ViewModel::default());
     let is_loading = IsLoading::new(true);
     let is_submitting = IsSubmitting::new(false);
-
     let focus_mode = FocusMode(RwSignal::new(false));
 
-    // Welcome carousel — show for first-time users (localStorage gate).
-    // The signal is initialised once at mount; the carousel sets it to
-    // false on Skip or final CTA.
-    let show_welcome = RwSignal::new(!welcome_already_seen());
-
-    // Provide context BEFORE init so process_effects can use expect_context
+    provide_context(auth);
     provide_context(core.clone());
     provide_context(view_model);
     provide_context(is_loading);
     provide_context(is_submitting);
     provide_context(focus_mode);
     provide_toast();
-
-    // Initialize: fetch data from API and recover any in-progress session
-    {
-        // Spawn async HTTP fetches for library data and sessions
-        init_core(&view_model, &is_loading, &is_submitting);
-
-        // Recover any in-progress session from localStorage (crash recovery — FR-008)
-        if let Some(session) = load_session_in_progress() {
-            let core_ref = core.borrow();
-            let effects =
-                core_ref.process_event(Event::Session(SessionEvent::RecoverSession { session }));
-            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-        }
-    }
 
     // Session-lifecycle Effect (#309 Phase D + #474 Phase B). Drives
     // both the background-audio plugin (lock-screen Now Playing /
@@ -189,13 +163,166 @@ fn AuthenticatedApp() -> impl IntoView {
     // <SessionTimer> would leak both plugins.
     session_lifecycle::mount_session_lifecycle(view_model);
 
+    // Initialise core data when (and only when) the user is authenticated.
+    // Public routes don't trigger this. The `initialized` flag prevents the
+    // Effect from re-running on subsequent reactive ticks. On sign-out the
+    // flag resets so a subsequent sign-in (same browser session) re-fetches
+    // — without this, signing back in after a logout would render stale
+    // data from the previous session.
+    let initialized = RwSignal::new(false);
+    let core_for_init = core.clone();
+    Effect::new(move |_| {
+        let authed = auth.is_authenticated.get();
+        if authed && !initialized.get_untracked() {
+            init_core(&view_model, &is_loading, &is_submitting);
+
+            // Recover any in-progress session from localStorage (FR-008).
+            if let Some(session) = load_session_in_progress() {
+                let core_ref = core_for_init.borrow();
+                let effects = core_ref
+                    .process_event(Event::Session(SessionEvent::RecoverSession { session }));
+                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+            }
+
+            initialized.set(true);
+        } else if !authed && initialized.get_untracked() {
+            initialized.set(false);
+        }
+    });
+
+    view! {
+        <Router>
+            // Fixed gradient background — stays behind all content, does not scroll
+            <div class="fixed inset-0 -z-10 bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"></div>
+
+            <Show
+                when=move || auth_loading.get()
+                fallback=move || view! { <AppRoutes /> }
+            >
+                <AuthLoadingScreen />
+            </Show>
+        </Router>
+    }
+}
+
+/// Routes are split into public (`/`, `/login`) and private (everything
+/// else, wrapped in `AuthenticatedShell`). The shell renders the chrome
+/// (header, footer, tab bar, welcome carousel) and redirects to `/login`
+/// if the user isn't authenticated.
+#[component]
+fn AppRoutes() -> impl IntoView {
+    view! {
+        <Routes transition=true fallback=|| view! { <NotFoundView /> }>
+            // ─── Public routes ────────────────────────────────────────
+            <Route path=path!("/") view=|| view! { <WelcomeView /> } />
+            <Route path=path!("/login") view=|| view! { <LoginView /> } />
+
+            // ─── Private routes ───────────────────────────────────────
+            // /library/new MUST come before /library/:id to avoid "new"
+            // matching :id.
+            <Route path=path!("/library") view=|| view! {
+                <AuthenticatedShell><LibraryListView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/library/new") view=|| view! {
+                <AuthenticatedShell><AddLibraryItemForm /></AuthenticatedShell>
+            } />
+            // /library/sets/:id — Set Detail. Literal "sets" segment so it
+            // doesn't collide with /library/:id (piece/exercise detail).
+            <Route path=path!("/library/sets/:id") view=|| view! {
+                <AuthenticatedShell><SetDetailView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/library/:id") view=|| view! {
+                <AuthenticatedShell><DetailView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/library/:id/edit") view=|| view! {
+                <AuthenticatedShell><EditLibraryItemForm /></AuthenticatedShell>
+            } />
+            <Route path=path!("/sessions") view=|| view! {
+                <AuthenticatedShell><SessionsListView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/sessions/all") view=|| view! {
+                <AuthenticatedShell><SessionsAllView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/sessions/new") view=|| view! {
+                <AuthenticatedShell><SessionNewView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/sessions/active") view=|| view! {
+                <AuthenticatedShell><SessionActiveView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/sessions/summary") view=|| view! {
+                <AuthenticatedShell><SessionSummaryView /></AuthenticatedShell>
+            } />
+            // /routines folded into Library (Sets type-tab). Legacy URL
+            // redirects to the right tab.
+            <Route path=path!("/routines") view=|| view! {
+                <Redirect
+                    path="/library?type=set"
+                    options=NavigateOptions { replace: true, ..Default::default() }
+                />
+            } />
+            <Route path=path!("/routines/:id/edit") view=|| view! {
+                <AuthenticatedShell><SetEditView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/analytics") view=|| view! {
+                <AuthenticatedShell><AnalyticsPage /></AuthenticatedShell>
+            } />
+            <Route path=path!("/design") view=|| view! {
+                <AuthenticatedShell><DesignRouteView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/settings") view=|| view! {
+                <AuthenticatedShell><SettingsView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/settings/delete-account") view=|| view! {
+                <AuthenticatedShell><AccountDeleteView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/settings/mcp-tokens") view=|| view! {
+                <AuthenticatedShell><McpTokensView /></AuthenticatedShell>
+            } />
+        </Routes>
+    }
+}
+
+/// Wraps a private route's view with auth-gate + chrome (header, footer,
+/// bottom tab bar, welcome carousel). Mounts per route navigation; the
+/// underlying Crux core / view_model contexts are provided at App level
+/// so this remount is cheap.
+#[component]
+fn AuthenticatedShell(children: Children) -> impl IntoView {
+    let auth = expect_context::<AuthState>();
+    let focus_mode = expect_context::<FocusMode>();
+
+    // Welcome carousel — show for first-time users (localStorage gate).
+    // Re-evaluates on each shell mount; once dismissed, the localStorage flag
+    // is set so future mounts see false.
+    let show_welcome = RwSignal::new(!welcome_already_seen());
+
+    // Auth gate: redirect to /login if not authed.
+    Effect::new(move |_| {
+        if !auth.is_authenticated.get() {
+            let navigate = use_navigate();
+            navigate(
+                "/login",
+                NavigateOptions {
+                    replace: true,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+
+    // Skip rendering the private chrome + children when unauthed at mount
+    // time. The Effect above handles the actual redirect; rendering an
+    // empty placeholder while it fires keeps deep-linked unauthed users
+    // from briefly seeing AppHeader / data-fetching private views.
+    // `get_untracked` so we don't subscribe — sign-in/out flows trigger a
+    // route change which unmounts this shell anyway.
+    if !auth.is_authenticated.get_untracked() {
+        return view! { <div></div> }.into_any();
+    }
+
     view! {
         <div class="relative z-0 min-h-screen text-primary">
             // Welcome carousel overlay — shown once for first-time users.
-            // Positioned fixed z-[2000] inside the carousel itself, sits above
-            // the routed content. The app underneath continues to mount and
-            // fetch data so the empty Library / `/library/new` form is already
-            // loaded when the carousel dismisses.
             <Show when=move || show_welcome.get()>
                 <WelcomeCarousel show=show_welcome />
             </Show>
@@ -205,7 +332,7 @@ fn AuthenticatedApp() -> impl IntoView {
                 <AppHeader />
             </Show>
 
-            // Main content — routed by URL
+            // Main content
             <main
                 class=move || if focus_mode.get() {
                     "focus-mode-container"
@@ -214,76 +341,9 @@ fn AuthenticatedApp() -> impl IntoView {
                 }
                 role="main"
             >
-                // Global error banner + transient success toasts
                 <ErrorBanner />
                 <ToastStack />
-
-                <Routes transition=true fallback=|| view! { <NotFoundView /> }>
-                    <Route path=path!("/") view=move || view! {
-                        <LibraryListView />
-                    } />
-                    // /library/new MUST come before /library/:id to avoid "new" matching :id
-                    <Route path=path!("/library/new") view=move || view! {
-                        <AddLibraryItemForm />
-                    } />
-                    // /library/sets/:id — Set Detail page. Literal "sets"
-                    // segment in the middle so this doesn't collide with
-                    // /library/:id (piece/exercise detail).
-                    <Route path=path!("/library/sets/:id") view=move || view! {
-                        <SetDetailView />
-                    } />
-                    <Route path=path!("/library/:id") view=move || view! {
-                        <DetailView />
-                    } />
-                    <Route path=path!("/library/:id/edit") view=move || view! {
-                        <EditLibraryItemForm />
-                    } />
-                    <Route path=path!("/sessions") view=move || view! {
-                        <SessionsListView />
-                    } />
-                    <Route path=path!("/sessions/all") view=move || view! {
-                        <SessionsAllView />
-                    } />
-                    <Route path=path!("/sessions/new") view=move || view! {
-                        <SessionNewView />
-                    } />
-                    <Route path=path!("/sessions/active") view=move || view! {
-                        <SessionActiveView />
-                    } />
-                    <Route path=path!("/sessions/summary") view=move || view! {
-                        <SessionSummaryView />
-                    } />
-                    // /routines folded into Library (Sets type-tab) —
-                    // legacy URL redirects so deep links / bookmarks land
-                    // on the right tab. `replace: true` keeps the back
-                    // button from bouncing the user to the dead URL.
-                    // Edit form keeps its old URL until the next
-                    // migration step.
-                    <Route path=path!("/routines") view=|| view! {
-                        <Redirect
-                            path="/?type=set"
-                            options=NavigateOptions { replace: true, ..Default::default() }
-                        />
-                    } />
-                    <Route path=path!("/routines/:id/edit") view=move || view! {
-                        <SetEditView />
-                    } />
-                    <Route path=path!("/analytics") view=move || view! {
-                        <AnalyticsPage />
-                    } />
-                    <Route path=path!("/design") view=move || view! {
-                        <DesignRouteView />
-                    } />
-                    <Route path=path!("/settings") view=move || view! {
-                        <SettingsView />
-                    } />
-                    <Route path=path!("/settings/delete-account") view=move || view! {
-                        <AccountDeleteView />
-                    } />
-                    <Route path=path!("/settings/mcp-tokens") view=move || view! {
-                        <McpTokensView />
-                    } />
-                </Routes>
+                {children()}
             </main>
 
             // Footer — hidden in focus mode
@@ -297,6 +357,7 @@ fn AuthenticatedApp() -> impl IntoView {
             </Show>
         </div>
     }
+    .into_any()
 }
 
 /// Loading screen shown while Clerk initializes.
@@ -307,60 +368,6 @@ fn AuthLoadingScreen() -> impl IntoView {
             <div class="text-center">
                 <h1 class="page-title mb-2">"Intrada"</h1>
                 <p class="text-muted">"Loading..."</p>
-            </div>
-        </div>
-    }
-}
-
-/// Sign-in screen shown when user is not authenticated.
-#[component]
-fn SignInScreen(auth_error: RwSignal<bool>) -> impl IntoView {
-    let signing_in = RwSignal::new(false);
-
-    let on_sign_in = Callback::new(move |_| {
-        signing_in.set(true);
-        leptos::task::spawn_local(async move {
-            clerk_bindings::sign_in_with_google().await;
-            // Redirect will happen — no need to update state
-        });
-    });
-
-    let signing_in_signal = signing_in.read_only();
-    let disabled_signal = Signal::derive(move || signing_in.get() || auth_error.get());
-
-    view! {
-        <div class="relative z-0 min-h-screen text-primary flex items-center justify-center px-4">
-            <div class="card p-8 sm:p-12 max-w-sm w-full text-center">
-                <h1 class="page-title mb-2">"Intrada"</h1>
-                <p class="text-muted mb-8">"Your music practice companion"</p>
-
-                <Show when=move || auth_error.get()>
-                    <p class="text-danger-text text-sm mb-4">
-                        "Sign-in is temporarily unavailable. Please try again later."
-                    </p>
-                </Show>
-
-                <Button
-                    variant=ButtonVariant::Secondary
-                    size=ButtonSize::Hero
-                    full_width=true
-                    on_click=on_sign_in
-                    disabled=disabled_signal
-                    loading=signing_in_signal
-                >
-                    // Hide the Google glyph during the loading window so the
-                    // Button's spinner doesn't compete with it side-by-side.
-                    // Once signed in, this screen unmounts so we never re-show.
-                    <Show when=move || !signing_in.get()>
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                        </svg>
-                    </Show>
-                    {move || if signing_in.get() { "Signing in..." } else { "Sign in with Google" }}
-                </Button>
             </div>
         </div>
     }

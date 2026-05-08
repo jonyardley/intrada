@@ -58,7 +58,7 @@ pub fn DetailView() -> impl IntoView {
             // Pencil reference and iOS UINavigationBar idiom). The
             // bottom action row keeps Delete only.
             <div class="flex items-center justify-between -mb-2">
-                <BackLink label="Library" href="/".to_string() />
+                <BackLink label="Library" href="/library".to_string() />
                 <button
                     type="button"
                     class="text-sm font-medium text-accent-text hover:text-accent-hover"
@@ -122,7 +122,7 @@ pub fn DetailView() -> impl IntoView {
                                                     let core_ref = core_del.borrow();
                                                     let effects = core_ref.process_event(event);
                                                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                                    navigate_del("/", NavigateOptions { replace: true, ..Default::default() });
+                                                    navigate_del("/library", NavigateOptions { replace: true, ..Default::default() });
                                                 })>
                                                 {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
                                             </Button>
@@ -335,7 +335,7 @@ pub fn DetailView() -> impl IntoView {
                     view! {
                         <div class="text-center py-8">
                             <p class="text-secondary mb-4">"Item not found."</p>
-                            <A href="/" attr:class="text-accent-text hover:text-accent-hover font-medium">
+                            <A href="/library" attr:class="text-accent-text hover:text-accent-hover font-medium">
                                 "← Back to Library"
                             </A>
                         </div>

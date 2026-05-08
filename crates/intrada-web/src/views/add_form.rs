@@ -149,7 +149,7 @@ pub fn AddLibraryItemForm(
                         if let Some(cb) = dismiss_save {
                             cb.run(());
                         } else {
-                            navigate("/", NavigateOptions { replace: true, ..Default::default() });
+                            navigate("/library", NavigateOptions { replace: true, ..Default::default() });
                         }
                     }
                 >
@@ -220,7 +220,7 @@ pub fn AddLibraryItemForm(
                                         if let Some(cb) = dismiss_cancel {
                                             cb.run(());
                                         } else {
-                                            navigate_cancel("/", NavigateOptions::default());
+                                            navigate_cancel("/library", NavigateOptions::default());
                                         }
                                     })>"Cancel"</Button>
                                 </div>
@@ -237,7 +237,7 @@ pub fn AddLibraryItemForm(
     } else {
         view! {
             <div class="sm:max-w-2xl sm:mx-auto">
-                <BackLink label="Cancel" href="/".to_string() />
+                <BackLink label="Cancel" href="/library".to_string() />
                 <PageHeading text="Add Library Item" />
                 <Card>{form_body}</Card>
             </div>

@@ -14,7 +14,7 @@ pub fn AppHeader() -> impl IntoView {
 
     let is_library_active = move || {
         let path = location.pathname.get();
-        path == "/" || path.starts_with("/library")
+        path.starts_with("/library")
     };
 
     let is_sessions_active = move || {
@@ -31,14 +31,14 @@ pub fn AppHeader() -> impl IntoView {
         <header class="glass-chrome border-b border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-card sm:py-card-comfortable flex items-center justify-between">
                 <div>
-                    <A href="/" attr:class="no-underline">
+                    <A href="/library" attr:class="no-underline">
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>
                     </A>
                 </div>
                 <div class="flex items-center gap-4">
                     <nav class="hidden sm:flex items-center gap-4">
                         <A
-                            href="/"
+                            href="/library"
                             attr:class=move || {
                                 if is_library_active() {
                                     "text-sm font-medium text-accent-text motion-safe:transition-colors"

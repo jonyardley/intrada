@@ -76,7 +76,7 @@ pub fn AccountDeleteView() -> impl IntoView {
 
     let cancel_navigate = use_navigate();
     let on_cancel = move |_| {
-        cancel_navigate("/", NavigateOptions::default());
+        cancel_navigate("/library", NavigateOptions::default());
     };
 
     view! {

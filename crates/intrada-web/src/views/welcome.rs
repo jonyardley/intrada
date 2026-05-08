@@ -1,0 +1,540 @@
+use leptos::prelude::*;
+use leptos_router::components::A;
+use leptos_router::hooks::use_navigate;
+use leptos_router::NavigateOptions;
+
+use crate::app::AuthState;
+use crate::components::{Button, ButtonVariant};
+use intrada_web::clerk_bindings;
+use intrada_web::platform::is_ios;
+
+/// Public marketing homepage at `/`.
+///
+/// Pencil ref: `fWsUw` (desktop) and `vFOGv` (mobile-web).
+///
+/// On mount:
+/// - Authed users → redirect to /library.
+/// - iOS users (Tauri WebView) → redirect to /login. They already
+///   downloaded the app; the marketing pitch is redundant.
+/// - Anyone else (web, unauthed) → render the marketing page.
+///
+/// Sub-sections live as private components in this file. Phone-frame
+/// graphics in the hero use a small reusable `PhoneFrame` shell with
+/// hand-built faux content matching the Pencil mocks.
+#[component]
+pub fn WelcomeView() -> impl IntoView {
+    let auth = expect_context::<AuthState>();
+
+    Effect::new(move |_| {
+        if auth.is_authenticated.get() {
+            let navigate = use_navigate();
+            navigate(
+                "/library",
+                NavigateOptions {
+                    replace: true,
+                    ..Default::default()
+                },
+            );
+        } else if is_ios() {
+            let navigate = use_navigate();
+            navigate(
+                "/login",
+                NavigateOptions {
+                    replace: true,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+
+    view! {
+        <div class="relative z-0 min-h-screen text-primary">
+            <WelcomeNav />
+            <WelcomeHero />
+            <WelcomePillars />
+            <WelcomeFeature
+                kicker="PLAN".to_string()
+                title="Your repertoire,\norganised.".to_string()
+                description="Track every piece and exercise you're working on. Tag by composer, key, tempo. No more sticky notes on the music stand or buried in a notes app.".to_string()
+                bullets=vec![
+                    "Pieces and exercises in one library".to_string(),
+                    "Reusable routines that group what you actually run".to_string(),
+                    "Goals so the bigger picture stays in view".to_string(),
+                ]
+                reverse=false
+                mock=Box::new(|| view! { <LibraryMock /> }.into_any())
+            />
+            <WelcomeFeature
+                kicker="PRACTICE".to_string()
+                title="A focus mode\nthat gets out of the way.".to_string()
+                description="Run a routine end-to-end. Each piece gets a timer, a quick rating, and a moment to reflect — then on to the next. Big numbers, big buttons, no chrome.".to_string()
+                bullets=vec![
+                    "Per-piece timers and quick ratings".to_string(),
+                    "Resume right where you left off".to_string(),
+                    "Mid-session adjustments without losing your place".to_string(),
+                ]
+                reverse=true
+                mock=Box::new(|| view! { <PracticeMock /> }.into_any())
+            />
+            <WelcomeFeature
+                kicker="TRACK".to_string()
+                title="Progress, made\nvisible.".to_string()
+                description="How long have you actually played this month? Which pieces have been getting your attention — and which haven't? Intrada turns the data you'd never log into something you can act on.".to_string()
+                bullets=vec![
+                    "Total time, sessions, streaks at a glance".to_string(),
+                    "Per-piece practice history".to_string(),
+                    "See where your time actually went".to_string(),
+                ]
+                reverse=false
+                mock=Box::new(|| view! { <AnalyticsMock /> }.into_any())
+            />
+            <WelcomeFinalCta />
+            <WelcomeFooter />
+        </div>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Top nav — sticky, glass-chrome, brand + nav links + sign-in CTA
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeNav() -> impl IntoView {
+    let signing_in = RwSignal::new(false);
+    let on_sign_in = Callback::new(move |_| {
+        signing_in.set(true);
+        leptos::task::spawn_local(async move {
+            clerk_bindings::sign_in_with_google().await;
+        });
+    });
+
+    view! {
+        <header class="sticky top-0 z-40 glass-chrome border-b border-border-default">
+            <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-4 flex items-center justify-between">
+                <A href="/" attr:class="flex items-center gap-2.5 no-underline">
+                    <svg class="w-5 h-5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+                    </svg>
+                    <span class="text-lg font-bold text-primary font-heading">"Intrada"</span>
+                </A>
+
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="#pillars" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"Features"</a>
+                    <a href="#feature-plan" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"How it works"</a>
+                    <a href="#feature-track" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"For musicians"</a>
+                </nav>
+
+                <div class="flex items-center gap-3">
+                    <A href="/login" attr:class="hidden sm:inline-flex text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">
+                        "Sign in"
+                    </A>
+                    <Button variant=ButtonVariant::Primary on_click=on_sign_in loading=signing_in.read_only()>
+                        "Get started"
+                    </Button>
+                </div>
+            </div>
+        </header>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Hero — headline, sub, dual CTAs, 3-phone showcase
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeHero() -> impl IntoView {
+    let signing_in = RwSignal::new(false);
+    let on_sign_in = Callback::new(move |_| {
+        signing_in.set(true);
+        leptos::task::spawn_local(async move {
+            clerk_bindings::sign_in_with_google().await;
+        });
+    });
+
+    view! {
+        <section class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-20 sm:pt-28 pb-12 text-center">
+            // Beta badge
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-faint border border-border-default mb-8">
+                <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                <span class="text-xs font-semibold text-secondary">"Now in beta · iOS + Web"</span>
+            </div>
+
+            <h1 class="text-5xl sm:text-7xl lg:text-8xl font-bold text-primary mb-6 leading-[1.05] tracking-tight font-heading">
+                "Practice with intent."
+            </h1>
+
+            <p class="text-base sm:text-lg lg:text-xl text-secondary max-w-2xl mx-auto leading-relaxed mb-10">
+                "Intrada turns deliberate practice into a habit. Plan your repertoire, focus every minute, and watch your progress add up."
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-20">
+                <Button
+                    variant=ButtonVariant::Primary
+                    on_click=on_sign_in
+                    loading=signing_in.read_only()
+                >
+                    "Sign in with Google"
+                </Button>
+                <a
+                    href="#pillars"
+                    class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-surface-secondary border border-border-default px-3.5 py-2.5 text-sm font-medium text-label hover:bg-surface-hover motion-safe:transition-colors min-h-[44px] no-underline"
+                >
+                    "See how it works"
+                </a>
+            </div>
+
+            // Phone showcase — 3 mocks, middle one slightly raised for visual rhythm
+            <div class="flex items-end justify-center gap-4 sm:gap-6 flex-wrap">
+                <div class="hidden lg:block">
+                    <PhoneFrame><LibraryMock /></PhoneFrame>
+                </div>
+                <PhoneFrame><PracticeMock /></PhoneFrame>
+                <div class="hidden lg:block">
+                    <PhoneFrame><AnalyticsMock /></PhoneFrame>
+                </div>
+            </div>
+        </section>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Three pillars — Plan / Practice / Track
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomePillars() -> impl IntoView {
+    view! {
+        <section id="pillars" class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+            <div class="text-center mb-16">
+                <p class="text-xs font-bold tracking-[0.15em] text-accent-text mb-3">"THREE PILLARS"</p>
+                <h2 class="text-3xl sm:text-5xl font-bold text-primary mb-5 leading-tight font-heading">
+                    "A complete practice loop."
+                </h2>
+                <p class="text-base sm:text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
+                    "Intrada is built around the way real practice works — plan it, run it, learn from it."
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <PillarCard
+                    icon="library".to_string()
+                    title="Plan".to_string()
+                    description="Build a library of pieces and exercises. Group them into reusable routines you actually run end-to-end.".to_string()
+                />
+                <PillarCard
+                    icon="timer".to_string()
+                    title="Practice".to_string()
+                    description="Focus mode times each piece, captures a quick rating, and keeps you moving without breaking flow.".to_string()
+                />
+                <PillarCard
+                    icon="trending-up".to_string()
+                    title="Track".to_string()
+                    description="See your minutes, streaks, and which pieces have been getting your attention — and which haven't.".to_string()
+                />
+            </div>
+        </section>
+    }
+}
+
+#[component]
+fn PillarCard(icon: String, title: String, description: String) -> impl IntoView {
+    let icon_svg = match icon.as_str() {
+        "library" => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 01-2.5-2.5z M4 19.5A2.5 2.5 0 016.5 17H20"/>
+            </svg>
+        }.into_any(),
+        "timer" => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
+                <line x1="10" y1="2" x2="14" y2="2"/>
+                <line x1="12" y1="14" x2="15" y2="11"/>
+                <circle cx="12" cy="14" r="8"/>
+            </svg>
+        }.into_any(),
+        _ => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
+                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+                <polyline points="16 7 22 7 22 13"/>
+            </svg>
+        }.into_any(),
+    };
+
+    view! {
+        <div class="card p-8 flex flex-col items-start gap-4">
+            <div class="w-12 h-12 rounded-surface bg-badge-piece-bg flex items-center justify-center text-accent-text">
+                {icon_svg}
+            </div>
+            <h3 class="text-2xl font-bold text-primary font-heading">
+                {title}
+            </h3>
+            <p class="text-base text-secondary leading-relaxed">{description}</p>
+        </div>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Feature deep-dive — alternating text+mock sections
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeFeature(
+    kicker: String,
+    title: String,
+    description: String,
+    bullets: Vec<String>,
+    reverse: bool,
+    mock: Box<dyn Fn() -> AnyView + Send + Sync>,
+) -> impl IntoView {
+    let layout_class = "max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center";
+
+    let text_order = if reverse { "lg:order-2" } else { "" };
+    let mock_order = if reverse { "lg:order-1" } else { "" };
+
+    let id = format!("feature-{}", kicker.to_lowercase());
+
+    view! {
+        <section id=id class=layout_class>
+            <div class=format!("flex flex-col items-start gap-6 {text_order}")>
+                <p class="text-xs font-bold tracking-[0.15em] text-accent-text">{kicker}</p>
+                <h2 class="text-3xl sm:text-5xl font-bold text-primary leading-tight whitespace-pre-line font-heading">
+                    {title}
+                </h2>
+                <p class="text-base sm:text-lg text-secondary leading-relaxed">{description}</p>
+                <ul class="flex flex-col gap-3 mt-2">
+                    {bullets.into_iter().map(|b| view! {
+                        <li class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-accent-text shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="9 12 11 14 15 10"/>
+                            </svg>
+                            <span class="text-base text-secondary">{b}</span>
+                        </li>
+                    }).collect_view()}
+                </ul>
+            </div>
+            <div class=mock_order>
+                {mock()}
+            </div>
+        </section>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Final CTA card
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeFinalCta() -> impl IntoView {
+    let signing_in = RwSignal::new(false);
+    let on_sign_in = Callback::new(move |_| {
+        signing_in.set(true);
+        leptos::task::spawn_local(async move {
+            clerk_bindings::sign_in_with_google().await;
+        });
+    });
+
+    view! {
+        <section class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-32">
+            <div class="card p-12 sm:p-16 flex flex-col items-center text-center">
+                <h2 class="text-4xl sm:text-6xl font-bold text-primary mb-5 leading-tight font-heading">
+                    "Ready to practice better?"
+                </h2>
+                <p class="text-base sm:text-lg text-secondary mb-8 max-w-xl leading-relaxed">
+                    "Sign in with Google to get started — free during beta. No credit card."
+                </p>
+                <Button
+                    variant=ButtonVariant::Primary
+                    on_click=on_sign_in
+                    loading=signing_in.read_only()
+                >
+                    "Sign in with Google"
+                </Button>
+                <p class="text-faint text-sm mt-6">"Available on iOS and the web."</p>
+            </div>
+        </section>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Footer
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeFooter() -> impl IntoView {
+    view! {
+        <footer class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10 border-t border-border-default flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2.5">
+                <svg class="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+                </svg>
+                <span class="text-base font-bold text-primary font-heading">"Intrada"</span>
+            </div>
+            <p class="text-sm text-muted">"© 2026 Intrada · Built for musicians who practice with intent."</p>
+            <nav class="flex items-center gap-6">
+                <a href="#" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"Privacy"</a>
+                <a href="#" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"Terms"</a>
+                <a href="#" class="text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors no-underline">"Contact"</a>
+            </nav>
+        </footer>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Phone frame — black bezel, Dynamic Island, gradient inner screen
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn PhoneFrame(children: Children) -> impl IntoView {
+    view! {
+        <div
+            class="relative w-[280px] h-[580px] rounded-[48px] bg-black overflow-hidden shadow-2xl shrink-0"
+            style="padding: 6px;"
+        >
+            // Inner screen — app gradient bg, rounded slightly less than outer
+            <div
+                class="w-full h-full rounded-[42px] overflow-hidden flex flex-col gap-3 px-3.5"
+                style="padding-top: 42px; padding-bottom: 14px; background: linear-gradient(180deg, var(--color-bg-gradient-top), var(--color-bg-gradient-bottom));"
+            >
+                {children()}
+            </div>
+
+            // Dynamic Island — black pill at top
+            <div
+                class="absolute top-3.5 left-1/2 w-[104px] h-[30px] rounded-[15px] bg-black"
+                style="transform: translateX(-50%);"
+            ></div>
+        </div>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Faux app screens — used inside PhoneFrame and as feature mocks
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn LibraryMock() -> impl IntoView {
+    view! {
+        <>
+            <div class="flex items-center justify-between">
+                <h3 class="text-2xl font-bold text-primary font-heading">"Library"</h3>
+                <span class="text-xs font-semibold text-accent-text">"+ Add"</span>
+            </div>
+            <div class="inline-flex items-center gap-1 p-1 rounded-full bg-surface-input self-start">
+                <span class="px-3 py-1 rounded-full bg-accent text-white text-[11px] font-semibold">"Pieces"</span>
+                <span class="px-3 py-1 text-muted text-[11px] font-semibold">"Exercises"</span>
+            </div>
+            <FauxLibraryRow title="Clair de Lune".to_string() subtitle="Debussy".to_string() variant="piece".to_string() />
+            <FauxLibraryRow title="Nocturne Op.9 No.2".to_string() subtitle="Chopin".to_string() variant="piece".to_string() />
+            <FauxLibraryRow title="Hanon No. 1".to_string() subtitle="Hanon".to_string() variant="exercise".to_string() />
+        </>
+    }
+}
+
+#[component]
+fn FauxLibraryRow(title: String, subtitle: String, variant: String) -> impl IntoView {
+    let row_class = if variant == "exercise" {
+        "accent-row accent-row--blue"
+    } else {
+        "accent-row"
+    };
+
+    let indicator_class = if variant == "exercise" {
+        "inline-type-indicator inline-type-indicator--exercise"
+    } else {
+        "inline-type-indicator inline-type-indicator--piece"
+    };
+
+    let indicator_label = if variant == "exercise" {
+        "Exercise"
+    } else {
+        "Piece"
+    };
+
+    view! {
+        <div class=row_class>
+            <div class="flex flex-col flex-1 min-w-0 gap-0.5">
+                <span class="text-sm font-semibold text-primary truncate">{title}</span>
+                <span class="text-xs text-muted truncate">{subtitle}</span>
+            </div>
+            <span class=indicator_class>
+                <span class="inline-type-indicator-dot"></span>
+                {indicator_label}
+            </span>
+        </div>
+    }
+}
+
+#[component]
+fn PracticeMock() -> impl IntoView {
+    view! {
+        <div class="flex flex-col items-center justify-center w-full h-full gap-4">
+            <p class="text-[10px] font-bold tracking-[0.14em] text-faint">"NOW PRACTICING"</p>
+            <h3 class="text-2xl font-bold text-primary font-heading">"Clair de Lune"</h3>
+            <p class="text-xs text-muted">"Debussy"</p>
+            <p
+                class="text-6xl font-bold text-accent-text mt-4 mb-2"
+                style="letter-spacing: -0.04em;"
+            >
+                "04:32"
+            </p>
+            <div class="w-full h-1.5 rounded-full bg-surface-input overflow-hidden">
+                <div class="h-full bg-accent rounded-full" style="width: 65%;"></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+                <span class="px-4 py-2 rounded-lg bg-surface-input text-xs font-semibold text-primary">"Pause"</span>
+                <span class="px-4 py-2 rounded-lg bg-accent text-xs font-semibold text-white">"Next →"</span>
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn AnalyticsMock() -> impl IntoView {
+    view! {
+        <>
+            <h3 class="text-2xl font-bold text-primary font-heading">"Analytics"</h3>
+            <div class="grid grid-cols-2 gap-2">
+                <FauxStatCard label="TOTAL TIME".to_string() value="12h".to_string() />
+                <FauxStatCard label="SESSIONS".to_string() value="18".to_string() />
+            </div>
+            <FauxChart />
+        </>
+    }
+}
+
+#[component]
+fn FauxStatCard(label: String, value: String) -> impl IntoView {
+    view! {
+        <div class="card p-3 flex flex-col items-start gap-1">
+            <p class="text-[9px] font-bold tracking-[0.08em] text-faint">{label}</p>
+            <p class="text-2xl font-bold text-primary font-heading">{value}</p>
+            <p class="text-[10px] text-muted">"this month"</p>
+        </div>
+    }
+}
+
+#[component]
+fn FauxChart() -> impl IntoView {
+    let bars = [42_u16, 78, 60, 108, 84, 120, 66];
+    let highlights = [false, false, false, true, false, true, false];
+    let days = ["M", "T", "W", "T", "F", "S", "S"];
+
+    view! {
+        <div class="card p-3 flex flex-col gap-2">
+            <p class="text-xs font-semibold text-primary">"Practice Time"</p>
+            <div class="flex items-end gap-1.5 h-24">
+                {bars.iter().zip(highlights.iter()).map(|(h, hi)| {
+                    let bg = if *hi { "bg-accent" } else { "bg-accent/50" };
+                    let style = format!("height: {}%;", (*h as f32 / 120.0 * 100.0) as u32);
+                    view! {
+                        <div class=format!("flex-1 rounded {bg}") style=style></div>
+                    }
+                }).collect_view()}
+            </div>
+            <div class="flex items-center gap-1.5">
+                {days.iter().map(|d| view! {
+                    <span class="flex-1 text-[8px] text-faint text-center">{*d}</span>
+                }).collect_view()}
+            </div>
+        </div>
+    }
+}
