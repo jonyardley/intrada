@@ -227,28 +227,32 @@ the WebView's session_timer.
    than spawning a parallel one — one observer of session state, two
    side-effects.
 
+## Decisions locked
+
+- **Widget extension setup** (was open question §1): post-`init` Ruby
+  script using stdlib YAML + xcodegen. Implemented in Phase A as
+  `crates/intrada-mobile/scripts/add-live-activity-target.rb`.
+- **Dismissal policy** (was §2): `.immediate`. The activity disappears
+  from the lock screen + Dynamic Island within ~1s of session end.
+  Apple's `.default` keeps it in the Recent tray for ~8h, but for a
+  practice app the activity is no longer relevant once the user puts
+  the instrument down. Phase C uses `.immediate`.
+- **Compact Dynamic Island content** (was §3): progress arc + elapsed
+  time. Arc fills against `current_planned_duration_secs`; falls back
+  to indeterminate / elapsed-only when no planned duration is set.
+
 ## Open questions
 
-1. **Widget extension target setup in Tauri 2.** The single biggest
-   unknown. Phase A validates the chosen approach (manual / scripted /
-   upstream Tauri PR) before the Swift implementation is locked in.
-2. **Activity dismissal policy.** `.immediate` vs `.after(date)` vs
-   `.default`. Default keeps the activity in the user's Recent tray for
-   8 hours after end — useful "you finished a session" reminder, or
-   distracting clutter? Try both and pick.
-3. **Compact Dynamic Island content.** Width is severely limited
-   (~20pt + leading symbol). Options: (a) elapsed time only ("12:34"),
-   (b) progress arc + elapsed, (c) item-type icon + elapsed. Need to
-   eyeball on device.
-4. **Activity bundle ID + signing.** The widget extension is a separate
-   bundle (`com.intrada.app.LiveActivity`?) and needs its own
-   provisioning profile. May surface as a new step in the
-   "first-time iOS setup" section of CLAUDE.md.
-5. **Failure modes if `Activity.request` throws** (user disabled Live
-   Activities in Settings, or the app's
-   `NSSupportsLiveActivities` plist key is missing). Sentry-capture and
-   continue silently — same pattern as background-audio bridge errors.
-6. **Asset sharing.** If the lock-screen card uses the intrada logo or
+1. **Activity bundle ID + signing.** The widget extension is a separate
+   bundle (`com.intrada.app.LiveActivity` proposed) and needs its own
+   provisioning profile. Surfaces as a new step in the "first-time iOS
+   setup" section of CLAUDE.md alongside the `add-live-activity-target.rb`
+   script invocation.
+2. **Failure modes if `Activity.request` throws** (user disabled Live
+   Activities in Settings, or the app's `NSSupportsLiveActivities`
+   plist key is missing). Sentry-capture and continue silently — same
+   pattern as background-audio bridge errors.
+3. **Asset sharing.** If the lock-screen card uses the intrada logo or
    an item-type icon, the widget extension target needs the asset
    bundled. Determine whether to share the main-app asset catalogue or
    duplicate.

@@ -31,6 +31,11 @@ jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "multipart"] }
 rust-s3 = { version = "0.37", default-features = false, features = ["tokio-rustls-tls"] }
 
+# MCP Personal Access Tokens: cryptographically secure RNG for token bytes,
+# SHA-256 for at-rest hashing.
+rand = "0.8"
+sha2 = "0.10"
+
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
@@ -42,4 +47,3 @@ sentry = { version = "0.48", default-features = false, features = ["backtrace", 
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 rsa = "0.9"
-rand = "0.8"

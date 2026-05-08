@@ -6,6 +6,8 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::db;
+use crate::db::tokens::{PatLookup, TOKEN_PREFIX as PAT_PREFIX};
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -20,12 +22,36 @@ struct Claims {
     sub: String,
 }
 
-/// Extractor that yields the authenticated user's ID.
+/// How an `AuthUser` was produced. Phase 4's `mcp_audit_log` will record the
+/// `token_id` for every MCP write — surfacing it through the extractor here
+/// avoids a redundant DB lookup per write handler.
+#[derive(Debug, Clone)]
+pub enum AuthSource {
+    /// Clerk JWT validation passed.
+    Jwt,
+    /// MCP Personal Access Token resolved.
+    Pat { token_id: String },
+    /// `CLERK_ISSUER_URL` is unset and no PAT was provided. Local dev only.
+    // TODO(#477 phase 4): MCP write tools must refuse to record audit-log
+    // rows when source is Disabled (otherwise the audit table will record
+    // anonymous-but-attributed-to-empty-user_id rows in dev). The contract
+    // is captured here; enforcement lives with the audit-log impl.
+    Disabled,
+}
+
+/// Extractor that yields the authenticated user's ID and how the request
+/// authenticated.
 ///
-/// When `AppState.auth_config` is `None` (no `CLERK_ISSUER_URL` set),
-/// returns `AuthUser("")` — matching the migration default and preserving
-/// existing test behavior.
-pub struct AuthUser(pub String);
+/// Resolution order:
+/// 1. `Authorization: Bearer intrada_pat_…` → MCP PAT lookup. Works whether
+///    or not Clerk is configured, so MCP can authenticate against an API
+///    instance running without `CLERK_ISSUER_URL` (dev / local).
+/// 2. No `auth_config` (Clerk disabled) → empty `user_id` + `AuthSource::Disabled`.
+/// 3. JWT validation against the configured Clerk issuer.
+pub struct AuthUser {
+    pub user_id: String,
+    pub source: AuthSource,
+}
 
 impl FromRequestParts<AppState> for AuthUser {
     type Rejection = ApiError;
@@ -34,6 +60,17 @@ impl FromRequestParts<AppState> for AuthUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        let bearer = parts
+            .headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|h| h.strip_prefix("Bearer "));
+
+        // PAT path runs first so it works in auth-disabled mode too.
+        if let Some(token) = bearer.filter(|t| t.starts_with(PAT_PREFIX)) {
+            return resolve_pat(state, token).await;
+        }
+
         let auth_config = match &state.auth_config {
             Some(config) => config,
             None => {
@@ -41,19 +78,14 @@ impl FromRequestParts<AppState> for AuthUser {
                 // attaches a user to this per-request hub, make sure the
                 // auth-disabled path doesn't inherit it.
                 sentry::configure_scope(|scope| scope.set_user(None));
-                return Ok(AuthUser(String::new()));
+                return Ok(AuthUser {
+                    user_id: String::new(),
+                    source: AuthSource::Disabled,
+                });
             }
         };
 
-        let header = parts
-            .headers
-            .get("authorization")
-            .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
-
-        let token = header
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
+        let token = bearer.ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
 
         let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
         validation.set_issuer(&[&auth_config.issuer]);
@@ -67,16 +99,11 @@ impl FromRequestParts<AppState> for AuthUser {
             match decode::<Claims>(token, key, &validation) {
                 Ok(data) => {
                     let user_id = data.claims.sub;
-                    // Per-request hub isolation comes from the
-                    // NewSentryLayer in routes/mod.rs — configuring the
-                    // current scope here cannot bleed into other requests.
-                    sentry::configure_scope(|scope| {
-                        scope.set_user(Some(sentry::User {
-                            id: Some(user_id.clone()),
-                            ..Default::default()
-                        }));
+                    set_sentry_user(&user_id);
+                    return Ok(AuthUser {
+                        user_id,
+                        source: AuthSource::Jwt,
                     });
-                    return Ok(AuthUser(user_id));
                 }
                 Err(e) => {
                     tracing::debug!("JWT decode error: {e}");
@@ -87,6 +114,59 @@ impl FromRequestParts<AppState> for AuthUser {
 
         Err(ApiError::Unauthorized("Unauthorized".to_string()))
     }
+}
+
+async fn resolve_pat(state: &AppState, token: &str) -> Result<AuthUser, ApiError> {
+    let conn = state.conn();
+    let hash = db::tokens::hash_token(token);
+
+    match db::tokens::lookup_by_hash(&conn, &hash).await {
+        Ok(Some(PatLookup {
+            token_id,
+            user_id,
+            revoked_at: None,
+        })) => {
+            // Best-effort `last_used_at` update — auth has already succeeded,
+            // so a write failure here shouldn't deny access.
+            if let Err(e) = db::tokens::mark_used(&conn, &hash).await {
+                tracing::warn!(?e, "PAT mark_used update failed");
+            }
+            set_sentry_user(&user_id);
+            Ok(AuthUser {
+                user_id,
+                source: AuthSource::Pat { token_id },
+            })
+        }
+        Ok(Some(PatLookup {
+            revoked_at: Some(_),
+            ..
+        })) => {
+            // Revoked. Distinct log line so revoked-token use is grep-able
+            // separately from "unknown PAT".
+            tracing::info!("PAT auth rejected: token revoked");
+            Err(ApiError::Unauthorized("Unauthorized".to_string()))
+        }
+        Ok(None) => {
+            tracing::debug!("PAT auth rejected: token not found");
+            Err(ApiError::Unauthorized("Unauthorized".to_string()))
+        }
+        Err(e) => {
+            tracing::warn!(?e, "PAT lookup DB error");
+            Err(ApiError::Internal("Auth DB error".into()))
+        }
+    }
+}
+
+fn set_sentry_user(user_id: &str) {
+    // Per-request hub isolation comes from the NewSentryLayer in
+    // routes/mod.rs — configuring the current scope here cannot bleed into
+    // other requests.
+    sentry::configure_scope(|scope| {
+        scope.set_user(Some(sentry::User {
+            id: Some(user_id.to_string()),
+            ..Default::default()
+        }));
+    });
 }
 
 impl AuthConfig {
@@ -138,4 +218,90 @@ pub async fn fetch_jwks(
     }
 
     Ok(keys)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::Db;
+
+    async fn make_state() -> AppState {
+        let db_path = std::env::temp_dir().join(format!("auth_test_{}.db", ulid::Ulid::new()));
+        let db = libsql::Builder::new_local(&db_path)
+            .build()
+            .await
+            .expect("test db build");
+        let conn = db.connect().expect("test db connect");
+        crate::migrations::run_migrations_direct(&conn)
+            .await
+            .expect("test migrations");
+        AppState::new(
+            Db::new(db, conn),
+            "http://localhost".to_string(),
+            None,
+            None,
+            None,
+        )
+    }
+
+    #[tokio::test]
+    async fn pat_resolves_to_pat_source_with_correct_token_id() {
+        // Locks in the contract: a successfully-resolved PAT must produce
+        // AuthSource::Pat carrying the inserted token_id (not the user_id,
+        // not the hash). Phase 4's audit log depends on this.
+        let state = make_state().await;
+        let conn = state.conn();
+
+        let token = "intrada_pat_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
+        let hash = db::tokens::hash_token(token);
+        let token_id = "01HTEST00000000000000000PAT".to_string();
+        let prefix = token[..16].to_string();
+        db::tokens::insert(
+            &conn,
+            &token_id,
+            "user_42",
+            "auth-test",
+            &hash,
+            &prefix,
+            chrono::Utc::now(),
+        )
+        .await
+        .expect("insert PAT");
+
+        let auth_user = resolve_pat(&state, token)
+            .await
+            .expect("PAT should resolve");
+        assert_eq!(auth_user.user_id, "user_42");
+        match auth_user.source {
+            AuthSource::Pat { token_id: t } => assert_eq!(t, token_id),
+            other => panic!("Expected AuthSource::Pat, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn revoked_pat_resolves_to_unauthorized() {
+        let state = make_state().await;
+        let conn = state.conn();
+
+        let token = "intrada_pat_b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2";
+        let hash = db::tokens::hash_token(token);
+        let token_id = "01HTEST_REVOKED_PAT".to_string();
+        db::tokens::insert(
+            &conn,
+            &token_id,
+            "user_42",
+            "auth-test",
+            &hash,
+            "intrada_pat_b1c2",
+            chrono::Utc::now(),
+        )
+        .await
+        .expect("insert PAT");
+        db::tokens::revoke(&conn, "user_42", &token_id)
+            .await
+            .expect("revoke PAT");
+
+        let result = resolve_pat(&state, token).await;
+        assert!(matches!(result, Err(ApiError::Unauthorized(_))));
+    }
 }

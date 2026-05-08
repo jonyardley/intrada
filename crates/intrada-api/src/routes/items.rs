@@ -19,7 +19,7 @@ pub fn router() -> Router<AppState> {
 
 async fn list_items(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Item>>, ApiError> {
     let conn = state.conn();
     let items = services::items::list_items(&conn, &user_id).await?;
@@ -28,7 +28,7 @@ async fn list_items(
 
 async fn get_item(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Item>, ApiError> {
     let conn = state.conn();
@@ -38,7 +38,7 @@ async fn get_item(
 
 async fn create_item(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Json(input): Json<CreateItem>,
 ) -> Result<(StatusCode, Json<Item>), ApiError> {
     let conn = state.conn();
@@ -48,7 +48,7 @@ async fn create_item(
 
 async fn update_item(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
     Json(input): Json<UpdateItem>,
 ) -> Result<Json<Item>, ApiError> {
@@ -59,7 +59,7 @@ async fn update_item(
 
 async fn delete_item(
     State(state): State<AppState>,
-    AuthUser(user_id): AuthUser,
+    AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.conn();

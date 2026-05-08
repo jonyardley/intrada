@@ -16,5 +16,14 @@
 	<array>
 		<string>audio</string>
 	</array>
+
+	<!--
+		NSSupportsLiveActivities: opt the host app into ActivityKit so
+		`Activity<IntradaActivityAttributes>.request(...)` from the
+		tauri-plugin-live-activity Swift target succeeds. Without this
+		key, ActivityKit rejects every request immediately. Phase C of #474.
+	-->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>
