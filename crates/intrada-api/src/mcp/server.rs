@@ -10,8 +10,9 @@ use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::auth::AuthUser;
+use crate::auth::{AuthSource, AuthUser};
 use crate::error::ApiError;
+use crate::services;
 use crate::state::AppState;
 
 use super::handlers;
@@ -31,11 +32,11 @@ pub fn router() -> Router<AppState> {
 /// JSON-RPC `METHOD_NOT_FOUND` error. Notifications (no `id`) get a 204.
 async fn handle(
     State(state): State<AppState>,
-    // The `..` drops `AuthSource` for now. Phase 4 (#477) will read
-    // `AuthSource::Pat { token_id }` here to record audit-log rows for
-    // every MCP write — that's where the token_id plumbed through #501
-    // gets consumed.
-    AuthUser { user_id, .. }: AuthUser,
+    // `source` is read by `dispatch_tool` to attribute write-tool calls
+    // to the originating PAT in `mcp_audit_log`. JWT-authenticated MCP
+    // calls are accepted but their writes are NOT audited (no token_id
+    // to attribute to); see `services::audit::record_pat_write`.
+    AuthUser { user_id, source }: AuthUser,
     Json(req): Json<JsonRpcRequest>,
 ) -> axum::response::Response {
     use axum::http::StatusCode;
@@ -97,7 +98,7 @@ async fn handle(
                     .into_response();
                 }
             };
-            dispatch_tool(&state, &user_id, params, id).await
+            dispatch_tool(&state, &user_id, &source, params, id).await
         }
 
         // Notifications-as-requests: some clients send them with an id. Treat
@@ -125,12 +126,20 @@ async fn handle(
 async fn dispatch_tool(
     state: &AppState,
     user_id: &str,
+    source: &AuthSource,
     params: ToolsCallParams,
     id: Value,
 ) -> axum::response::Response {
     use axum::response::IntoResponse;
 
     let conn = state.conn();
+    // Keep a clone available for the post-match audit recording —
+    // each match arm moves `conn` into its closure.
+    let conn_for_audit = conn.clone();
+    // Hold onto a clone of the raw arguments so the audit-log row can
+    // record `args_hash` even after the typed parse moves the JSON.
+    let raw_args = params.arguments.clone();
+    let tool_name = params.name.clone();
     let result = match params.name.as_str() {
         tools::LIST_ITEMS => {
             parse_and_run(params.arguments, |args| async move {
@@ -181,6 +190,54 @@ async fn dispatch_tool(
             .await
         }
 
+        // Phase 4 write tools.
+        tools::CREATE_ITEM => {
+            parse_and_run(params.arguments, |args| async move {
+                handlers::create_item(&conn, user_id, args).await
+            })
+            .await
+        }
+
+        tools::UPDATE_ITEM => {
+            parse_and_run(params.arguments, |args| async move {
+                handlers::update_item(&conn, user_id, args).await
+            })
+            .await
+        }
+
+        tools::DELETE_ITEM => {
+            parse_and_run(params.arguments, |args| async move {
+                handlers::delete_item(&conn, user_id, args).await
+            })
+            .await
+        }
+
+        tools::CREATE_SET => {
+            parse_and_run(params.arguments, |args| async move {
+                handlers::create_set(&conn, user_id, args).await
+            })
+            .await
+        }
+
+        tools::UPDATE_SET => {
+            parse_and_run(params.arguments, |args| async move {
+                handlers::update_set(&conn, user_id, args).await
+            })
+            .await
+        }
+
+        tools::BULK_IMPORT_ITEMS => {
+            // bulk_import handles its own audit recording — `dry_run=true`
+            // must not produce an audit row, so the decision sits with
+            // the handler that knows whether a write actually happened.
+            let raw = raw_args.clone();
+            let source = source.clone();
+            parse_and_run(params.arguments, move |args| async move {
+                handlers::bulk_import_items(&conn, &source, user_id, &raw, args).await
+            })
+            .await
+        }
+
         unknown => {
             return Json(JsonRpcResponse::error(
                 id,
@@ -190,6 +247,13 @@ async fn dispatch_tool(
             .into_response();
         }
     };
+
+    // Audit single-write tools after a successful execution. Read tools
+    // and the bulk-import tool are excluded — bulk_import audits itself.
+    if result.is_ok() && tools::SINGLE_WRITE_TOOLS.contains(&tool_name.as_str()) {
+        services::audit::record_pat_write(&conn_for_audit, source, user_id, &tool_name, &raw_args)
+            .await;
+    }
 
     match result {
         Ok(value) => Json(JsonRpcResponse::success(
