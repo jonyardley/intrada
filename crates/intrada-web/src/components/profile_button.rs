@@ -1,10 +1,9 @@
 use leptos::prelude::*;
+use leptos_router::components::A;
 
 use intrada_web::clerk_bindings;
 
-use crate::views::SettingsSheet;
-
-/// Avatar button that opens the Settings bottom sheet.
+/// Avatar button that links to the Settings route.
 ///
 /// Shows the first letter of the signed-in user's email (initial fallback
 /// when Clerk doesn't expose a name). Hidden when not signed in — the
@@ -12,9 +11,6 @@ use crate::views::SettingsSheet;
 /// `Show` keeps the chrome stable during early init.
 #[component]
 pub fn ProfileButton() -> impl IntoView {
-    let open = RwSignal::new(false);
-    let close = Callback::new(move |_: ()| open.set(false));
-
     let initial = move || {
         clerk_bindings::email()
             .as_deref()
@@ -25,21 +21,13 @@ pub fn ProfileButton() -> impl IntoView {
 
     view! {
         <Show when=move || clerk_bindings::is_signed_in()>
-            <button
-                type="button"
-                class="ml-2 flex items-center justify-center h-8 w-8 rounded-full bg-surface-primary border border-border-default text-sm font-medium text-primary hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors"
-                aria-label="Account and settings"
-                on:click=move |_| open.set(true)
+            <A
+                href="/settings"
+                attr:class="ml-2 flex items-center justify-center h-8 w-8 rounded-full bg-surface-primary border border-border-default text-sm font-medium text-primary hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus motion-safe:transition-colors no-underline"
+                attr:aria-label="Account and settings"
             >
                 {initial}
-            </button>
-            // Lazy-mount the sheet so its (Cancel, Delete account, …)
-            // buttons aren't in the DOM tree when closed — otherwise
-            // role-based selectors elsewhere on the page get strict-mode
-            // collisions.
-            <Show when=move || open.get()>
-                <SettingsSheet open=open on_close=close />
-            </Show>
+            </A>
         </Show>
     }
 }

@@ -8,12 +8,10 @@ use crate::components::{StatusDot, StatusDotState};
 
 /// Mobile bottom tab bar for primary navigation.
 ///
-/// Shows Library / Practice / Analytics tabs. Hidden on `sm:` and wider
-/// where the header nav is visible instead.
-///
-/// Sets used to live as a fourth tab pointing at `/routines`; that
-/// surface folded into Library (Sets type-tab) so the bottom tab dropped
-/// out — fewer top-level destinations, less competition for thumb reach.
+/// Shows Library / Practice / Analytics / Account route tabs. Hidden on
+/// `sm:` and wider where the header nav is visible instead — except on
+/// iOS, where the web header is hidden and this is the only entry-point
+/// to settings.
 ///
 /// Icons follow the iOS convention: outline (stroke) for the inactive
 /// tabs, solid (fill) for the active one. Sizing matches the iOS tab
@@ -39,6 +37,11 @@ pub fn BottomTabBar() -> impl IntoView {
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
+    };
+
+    let is_account_active = move || {
+        let path = location.pathname.get();
+        path.starts_with("/settings")
     };
 
     // Practice-tab status dot (#272). Live takes precedence over Building
@@ -143,6 +146,27 @@ pub fn BottomTabBar() -> impl IntoView {
                         view! { <ChartIconOutline /> }.into_any()
                     }}
                     <span class="text-xs font-medium">"Analytics"</span>
+                </A>
+
+                // Account tab — settings + account actions
+                <A
+                    href="/settings"
+                    attr:class=move || {
+                        if is_account_active() {
+                            if has_tapped.get() { spring } else { active }
+                        } else {
+                            inactive
+                        }
+                    }
+                    attr:aria-current=move || if is_account_active() { Some("page") } else { None }
+                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
+                >
+                    {move || if is_account_active() {
+                        view! { <UserCircleIconSolid /> }.into_any()
+                    } else {
+                        view! { <UserCircleIconOutline /> }.into_any()
+                    }}
+                    <span class="text-xs font-medium">"Account"</span>
                 </A>
             </div>
         </nav>
@@ -249,6 +273,38 @@ fn ChartIconSolid() -> impl IntoView {
             aria-hidden="true"
         >
             <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75zM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 01-1.875-1.875V8.625zM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 013 19.875v-6.75z" />
+        </svg>
+    }
+}
+
+#[component]
+fn UserCircleIconOutline() -> impl IntoView {
+    view! {
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+        >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    }
+}
+
+#[component]
+fn UserCircleIconSolid() -> impl IntoView {
+    view! {
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+        >
+            <path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" />
         </svg>
     }
 }
