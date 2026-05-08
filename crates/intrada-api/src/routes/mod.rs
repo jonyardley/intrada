@@ -4,6 +4,7 @@ mod items;
 mod lessons;
 mod sessions;
 mod sets;
+mod tokens;
 
 use axum::http::{header, HeaderValue, Method};
 use axum::Router;

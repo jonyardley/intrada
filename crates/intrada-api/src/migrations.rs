@@ -374,6 +374,23 @@ const MIGRATIONS: &[(&str, &str)] = &[
             updated_at TEXT NOT NULL
         );",
     ),
+    (
+        "0055_create_mcp_tokens",
+        "CREATE TABLE IF NOT EXISTS mcp_tokens (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            hash TEXT NOT NULL UNIQUE,
+            prefix TEXT NOT NULL,
+            last_used_at TEXT,
+            created_at TEXT NOT NULL,
+            revoked_at TEXT
+        );",
+    ),
+    (
+        "0056_index_mcp_tokens_user_id",
+        "CREATE INDEX IF NOT EXISTS idx_mcp_tokens_user_id ON mcp_tokens(user_id);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
