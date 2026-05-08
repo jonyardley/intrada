@@ -6,12 +6,12 @@ mod sessions;
 mod sets;
 mod tokens;
 
-use axum::http::{header, HeaderValue, Method};
+use axum::http::{header, HeaderName, HeaderValue, Method, Request};
 use axum::Router;
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnResponse, TraceLayer};
-use tracing::Level;
+use tower_http::trace::{DefaultOnFailure, DefaultOnResponse, TraceLayer};
+use tracing::{info_span, Level, Span};
 
 use crate::state::AppState;
 
@@ -37,7 +37,39 @@ pub fn api_router(state: AppState) -> Router {
     let strict_cors = CorsLayer::new()
         .allow_origin(AllowOrigin::list(origins))
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            // Sentry's browser SDK auto-instruments `fetch` to attach W3C
+            // Baggage and Sentry trace headers for distributed tracing.
+            // Without these in the allow-list, cross-origin requests fail
+            // CORS preflight with "Request header field baggage is not
+            // allowed by Access-Control-Allow-Headers." This bites the iOS
+            // shell specifically — its WebView origin is `tauri://localhost`
+            // (cross-origin to the API), so every request preflights. The
+            // web app is same-origin via Trunk's proxy and never preflights,
+            // hiding the issue until you ship to iOS.
+            HeaderName::from_static("baggage"),
+            HeaderName::from_static("sentry-trace"),
+        ]);
+
+    // Custom span includes the Origin header so CORS preflight failures
+    // are debuggable from logs alone — without it, you see "OPTIONS 200"
+    // with no clue what origin the browser sent.
+    let make_span = |req: &Request<_>| -> Span {
+        let origin = req
+            .headers()
+            .get("origin")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("-");
+        info_span!(
+            "request",
+            method = %req.method(),
+            uri = %req.uri(),
+            version = ?req.version(),
+            origin = %origin,
+        )
+    };
 
     // Permissive CORS for `/api/mcp/*` only. Per #481 — MCP auth is
     // bearer-token-only (PAT), no cookies are involved, so CORS adds zero
@@ -49,7 +81,7 @@ pub fn api_router(state: AppState) -> Router {
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     let trace = TraceLayer::new_for_http()
-        .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+        .make_span_with(make_span)
         .on_response(DefaultOnResponse::new().level(Level::INFO))
         // Lower the on_failure event (default ERROR → WARN). Without this,
         // every 5xx generates a generic `tracing::error!("response failed")`

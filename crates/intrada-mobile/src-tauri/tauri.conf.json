@@ -22,7 +22,8 @@
   "bundle": {
     "active": true,
     "iOS": {
-      "developmentTeam": "9S5FG4LQAF"
+      "developmentTeam": "9S5FG4LQAF",
+      "minimumSystemVersion": "17.0"
     }
   }
 }

@@ -92,23 +92,30 @@ end
 # ── Load + check ──────────────────────────────────────────────────────
 project = YAML.load_file(PROJECT_YML)
 
-if project['targets']&.key?(TARGET_NAME)
-  puts "✓ #{TARGET_NAME} target already present in project.yml — nothing to do."
-  exit 0
-end
-
 main_target_name = 'intrada-mobile_iOS'
 unless project['targets']&.key?(main_target_name)
   abort "ERROR: expected main target '#{main_target_name}' in project.yml — Tauri may have changed the target name. Update this script."
 end
 
+# If the widget extension target is already present, the only thing left
+# to (potentially) apply is the ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES fix
+# below. Fall through and let the script idempotently ensure that
+# setting is present, then re-run xcodegen if it changed anything.
+target_already_present = project['targets'].key?(TARGET_NAME)
+if target_already_present
+  puts "✓ #{TARGET_NAME} target already present — checking build settings."
+end
+
 # ── Mutate ────────────────────────────────────────────────────────────
+mutated = false
+
 # Paths in project.yml are relative to gen/apple/. We need to express
 # the path back up to crates/intrada-mobile/widget-extension/ and the
 # shared SwiftPM package directory.
 widget_rel = WIDGET_EXTENSION_ROOT.relative_path_from(GEN_DIR).to_s
 shared_rel = SHARED_PACKAGE_ROOT.relative_path_from(GEN_DIR).to_s
 
+unless target_already_present
 # Declare the shared SwiftPM package at project scope so multiple
 # targets can depend on it. xcodegen merges this with whatever existing
 # `packages:` section Tauri's template has (currently empty).
@@ -172,9 +179,51 @@ unless already_dep
   main_target['dependencies'] << { 'target' => TARGET_NAME, 'embed' => true }
 end
 
+mutated = true
+end # unless target_already_present
+
+main_target = project['targets'][main_target_name]
+
+# Force-embed the Swift standard libraries on the main app target.
+#
+# Why: before Phase C the main app was pure Rust — Xcode never ran the
+# "Embed Swift Standard Libraries" build phase, because nothing in the
+# main target linked Swift. Phase C adds a Swift app-extension dependency
+# (IntradaLiveActivity) and pulls in the IntradaActivityShared SwiftPM
+# product. That partially activates Swift toolchain behavior: Xcode copies
+# the back-deployment shim libswift_Concurrency.dylib into Frameworks/,
+# but without ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES, the
+# swift-stdlib-tool pass that would copy libswiftCore.dylib (and friends)
+# alongside it never runs.
+#
+# Result on device: dyld tries to resolve @rpath/libswiftCore.dylib for
+# libswift_Concurrency.dylib at launch, fails, and halts the process
+# before main runs. Symptom is "white screen then disappears" — launch
+# storyboard renders, then SIGABRT from dyld with
+# "Library not loaded: @rpath/libswiftCore.dylib".
+#
+# The simulator masks this — its dyld cache resolves Swift stdlib
+# regardless of bundle contents — so the bug only shows up on device.
+#
+# Setting it on the main target tells Xcode to run the embed pass for
+# the whole .app bundle. The widget extension nested inside picks up
+# the same dylibs from the parent bundle's Frameworks/ via @rpath.
+main_target['settings'] ||= {}
+main_target['settings']['base'] ||= {}
+if main_target['settings']['base']['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] != 'YES'
+  main_target['settings']['base']['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
+  mutated = true
+  puts '✓ Set ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES on main app target.'
+end
+
 # ── Save ──────────────────────────────────────────────────────────────
+unless mutated
+  puts '✓ Nothing to do — project.yml already up to date.'
+  exit 0
+end
+
 PROJECT_YML.write(project.to_yaml)
-puts "✓ Added '#{TARGET_NAME}' target to #{PROJECT_YML.relative_path_from(MOBILE_ROOT)}"
+puts "✓ Wrote #{PROJECT_YML.relative_path_from(MOBILE_ROOT)}"
 
 # ── Re-run xcodegen ───────────────────────────────────────────────────
 puts '→ Re-running xcodegen to regenerate .xcodeproj…'
