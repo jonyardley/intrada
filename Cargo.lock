@@ -6823,7 +6823,9 @@ dependencies = [
 name = "tauri-plugin-background-audio"
 version = "0.0.1"
 dependencies = [
+ "sentry",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.18",
