@@ -10,6 +10,7 @@ use crate::app::{Effect, Event};
 use crate::domain::account::{AccountEvent, AccountPreferences};
 use crate::domain::item::Item;
 use crate::domain::lesson::Lesson;
+use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
     CreateItem, CreateLesson, CreateSetRequest, UpdateItem, UpdateLesson, UpdateSetRequest,
@@ -293,5 +294,64 @@ pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
             Err(e) => Event::Account(AccountEvent::DeleteAccountFailed(format!(
                 "Failed to delete account: {e}"
             ))),
+        })
+}
+
+// ── MCP Personal Access Tokens ─────────────────────────────────────────
+
+pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/account/tokens"))
+        .expect_json::<Vec<McpToken>>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(tokens) => Event::McpToken(McpTokenEvent::TokensLoaded(tokens)),
+                None => Event::McpToken(McpTokenEvent::LoadTokensFailed(
+                    "list_mcp_tokens: empty body".into(),
+                )),
+            },
+            Err(e) => Event::McpToken(McpTokenEvent::LoadTokensFailed(format!(
+                "Failed to load tokens: {e}"
+            ))),
+        })
+}
+
+pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event> {
+    #[derive(serde::Serialize)]
+    struct Body<'a> {
+        name: &'a str,
+    }
+
+    Http::post(format!("{api_base_url}/api/account/tokens"))
+        .body_json(&Body { name })
+        .expect("serialize CreateTokenRequest")
+        .expect_json::<CreatedMcpToken>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(created) => Event::McpToken(McpTokenEvent::TokenCreated(created)),
+                None => Event::McpToken(McpTokenEvent::CreateTokenFailed(
+                    "create_mcp_token: empty body".into(),
+                )),
+            },
+            Err(e) => Event::McpToken(McpTokenEvent::CreateTokenFailed(format!(
+                "Failed to create token: {e}"
+            ))),
+        })
+}
+
+pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    let id_for_callback = id.to_string();
+    Http::delete(format!("{api_base_url}/api/account/tokens/{id}"))
+        .build()
+        .then_send(move |result| match result {
+            Ok(_) => Event::McpToken(McpTokenEvent::TokenRevoked {
+                id: id_for_callback.clone(),
+                revoked_at: chrono::Utc::now(),
+            }),
+            Err(e) => Event::McpToken(McpTokenEvent::RevokeTokenFailed {
+                id: id_for_callback.clone(),
+                message: format!("Failed to revoke token: {e}"),
+            }),
         })
 }
