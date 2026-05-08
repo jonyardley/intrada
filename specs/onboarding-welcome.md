@@ -53,24 +53,26 @@ Right now, the app says nothing at all.
 
 ### Voice and content arc
 
-Four cards, first-person from the maker, surfacing the central insight
-in plain language:
+Five cards: one maker's-note opener followed by a plain-language
+walkthrough of the core loop — Capture → Plan → Practice → Track.
 
-1. *"Hi. I built intrada because my practice was a mess."*
-2. *"Unstructured. Sporadic. Lots of effort, no real sense of progress —
-   and I never quite knew where to start."*
-3. *"Here's what I figured out: it's easy to play what you already know
-   because it feels good. The real progress is in the bits that take
-   effort. The skill is knowing where to put it."*
-4. *"intrada is the tool I wish I'd had. Let's add your first piece. →"*
+| # | Pillar | Copy |
+|---|--------|------|
+| 1 | Opener | *"Knowing how to practise well is hard. I've struggled with it. So I built this."* |
+| 2 | Capture | *"Build a library of pieces and exercises — the things you're actually working on."* |
+| 3 | Plan | *"Plan each session with intention. Decide where the effort goes before you pick up the instrument."* |
+| 4 | Practice | *"Run focused, timed sessions with real-time reflection — score what happened while it's still fresh."* |
+| 5 | Track | *"Track your progress, achieve your goals."* + CTA |
 
 Final-card CTA routes to `/library/new` (the add-piece form). Skip
 routes to `/` (the empty Library). Either action records the "seen"
 flag.
 
 These lines are the spec — not placeholders. They are derived from a
-brainstorming interview and chosen because *no other practice app speaks
-this way*. Edits should be deliberate (PR review, not drift).
+brainstorming interview and a deliberate content review, chosen because
+the opener speaks in a voice no other practice app uses, and the loop
+cards introduce exactly the concepts a new user will encounter first.
+Edits should be deliberate (PR review, not drift).
 
 ### Visual treatment
 
@@ -95,7 +97,7 @@ uses `p-card-comfortable`.
 
 - Swipe left to advance, swipe right to go back (mobile);
   tap-anywhere-to-advance (desktop); tap any progress dot to jump.
-- Four progress dots at bottom, current one filled.
+- Five progress dots at bottom, current one filled.
 - "Skip" link top-right — small, low-contrast (`text-muted`), present
   but not pushy. Skips to `/` and records the flag.
 - Final card's primary CTA is a Hero-size primary
@@ -152,7 +154,7 @@ changes, no DB migrations.
     swipe/tap handling, progress dots, Skip link, transitions, and the
     localStorage write.
   - `WelcomeCard` — slot for a single card (line of copy + optional
-    SVG mark). Used four times by the carousel.
+    SVG mark). Used five times by the carousel.
 - **Mount point.** Inside
   [`AuthenticatedApp`](../crates/intrada-web/src/app.rs:125), render
   `<WelcomeCarousel />` as a *sibling* of `<main>` (not wrapping it),
@@ -169,7 +171,7 @@ changes, no DB migrations.
   server-side (#100), it becomes domain state and moves into core.
 - **No Tauri plugin.** Haptics use the existing `tauri-plugin-haptics`
   bindings. View Transitions use the existing wasm-bindgen bridge.
-- **Pencil first.** The four cards and the carousel chrome (dots, Skip,
+- **Pencil first.** The five cards and the carousel chrome (dots, Skip,
   CTA) get screens in `design/intrada.pen` before implementation, per
   CLAUDE.md's Pencil workflow.
 
@@ -178,7 +180,7 @@ changes, no DB migrations.
 - **Component test (in design catalogue).** Manual, but the catalogue
   entry exercises every state.
 - **E2E (Playwright).** New spec covering:
-  - Fresh localStorage → sign-in → welcome shows → tap through 4 cards →
+  - Fresh localStorage → sign-in → welcome shows → tap through 5 cards →
     final CTA → land on `/library/new`.
   - Fresh localStorage → sign-in → welcome shows → tap Skip → land on
     `/` → reload → no welcome.
@@ -210,7 +212,7 @@ changes, no DB migrations.
 - **Production "Show welcome again" affordance** (settings or About
   screen). One line once server-side persistence lands.
 - **Track-shaped welcome.** Once Musician Tracks (#193) ship, an extra
-  card (card 4 → card 5, or replacement of card 3) can offer a
+  card (inserted before card 5, or replacing card 1) can offer a
   light track self-identification. Out of scope for v1 by explicit
   decision earlier in design.
 - **Returning users re-onboarding.** A "what's new" treatment is
