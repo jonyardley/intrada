@@ -16,7 +16,7 @@ use crate::components::{
     PageAddButton, PageHeading, ProgressRing, PullToRefresh, RatingChips, SectionLabel,
     SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
     StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart, TextArea, TextField,
-    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
 };
 use wasm_bindgen::JsCast;
 
@@ -343,6 +343,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
                             <li><a href="#week-strip" class="text-accent-text hover:text-primary">"Week Strip"</a></li>
+                            <li><a href="#welcome-card" class="text-accent-text hover:text-primary">"Welcome Card"</a></li>
                             <li><a href="#shell" class="text-accent-text hover:text-primary">"Shell Components"</a></li>
                             <li><a href="#accessibility" class="text-accent-text hover:text-primary">"Accessibility"</a></li>
                         </ul>
@@ -1724,6 +1725,23 @@ pub fn DesignCatalogue() -> impl IntoView {
                                 />
                             </div>
                         </div>
+                    </Card>
+                </div>
+            </section>
+
+            // ── Welcome Card ─────────────────────────────────────────
+            <section id="welcome-card">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Welcome Card"</h3>
+                <div class="space-y-6">
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WelcomeCard — copy only"</p>
+                        <WelcomeCard copy="Your practice journey starts here." />
+                    </Card>
+                    <Card>
+                        <p class="text-xs font-medium text-muted uppercase mb-3">"WelcomeCard — with CTA slot"</p>
+                        <WelcomeCard copy="Add your first piece to get started.">
+                            <button class="btn-primary w-full">"Add your first piece"</button>
+                        </WelcomeCard>
                     </Card>
                 </div>
             </section>
