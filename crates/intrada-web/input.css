@@ -2460,9 +2460,10 @@ html:not([data-platform="ios"]) .context-menu {
 .welcome-mark--practice .welcome-ring {
   transform-box: fill-box;
   transform-origin: center;
-  animation: welcome-mark-ring-pulse 1000ms ease-out 500ms backwards;
+  animation: welcome-mark-ring-pulse 1000ms ease-out backwards;
 }
-.welcome-mark--practice .welcome-ring:nth-of-type(2) { animation-delay: 700ms; }
+.welcome-mark--practice .welcome-ring--first  { animation-delay: 500ms; }
+.welcome-mark--practice .welcome-ring--second { animation-delay: 700ms; }
 .welcome-mark--practice .welcome-dot--amber {
   transform-box: fill-box;
   transform-origin: center;

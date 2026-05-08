@@ -169,16 +169,18 @@ fn MarkPractice() -> impl IntoView {
                 stroke-width="2"
                 stroke-linecap="round"
             />
-            // Two transient rings — only visible during the pulse animation
+            // Two transient rings — only visible during the pulse animation.
+            // Modifier classes (--first / --second) instead of :nth-of-type
+            // so re-ordering the SVG below can't silently break the timing.
             <circle
-                class="welcome-ring"
+                class="welcome-ring welcome-ring--first"
                 cx="40" cy="40" r="6"
                 fill="none"
                 stroke="var(--color-accent)"
                 stroke-width="1.5"
             />
             <circle
-                class="welcome-ring"
+                class="welcome-ring welcome-ring--second"
                 cx="40" cy="40" r="6"
                 fill="none"
                 stroke="var(--color-accent)"
