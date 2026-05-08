@@ -77,6 +77,19 @@ async function setupClerkMock(page: Page) {
   });
 }
 
+/**
+ * Prime the welcome-seen flag so the onboarding carousel doesn't appear
+ * for tests that aren't specifically about it. Welcome-carousel tests
+ * (e.g. `welcome.spec.ts`) should clear this flag explicitly via
+ * `page.addInitScript(() => localStorage.removeItem("intrada:welcome-seen"))`
+ * BEFORE this fixture runs — which means before the first `goto`.
+ */
+async function setupWelcomeMock(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem("intrada:welcome-seen", "1");
+  });
+}
+
 async function setupApiMock(page: Page, store: MockStore) {
   await page.route(`${API_BASE}/api/**`, async (route) => {
     const request = route.request();
@@ -324,6 +337,7 @@ export const test = base.extend<{ mockApi: MockStore }>({
         sets: createSeedSets(),
       };
       await setupClerkMock(page);
+      await setupWelcomeMock(page);
       await setupApiMock(page, store);
       await use(store);
     },
