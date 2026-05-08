@@ -36,6 +36,7 @@ pub fn SessionActiveView() -> impl IntoView {
             Some(id) => focus_pref.0.set(Some((id, focus_mode.0.get_untracked()))),
             None => focus_pref.0.set(None),
         }
+        // FocusMode is app-level; reset it so chrome reappears off-route.
         focus_mode.set(false);
     });
 
