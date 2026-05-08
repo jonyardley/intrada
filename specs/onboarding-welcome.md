@@ -107,7 +107,12 @@ uses `p-card-comfortable`.
 **iOS polish** (under `[data-platform="ios"]`):
 
 - `selection` haptic on advance (every card change).
-- `success` haptic on the final CTA tap.
+- `light` haptic on the final CTA tap. *(The earlier draft of this spec
+  called for `success`. We use the `Button::Primary` primitive which
+  already fires `haptic_light` internally; firing a separate `success`
+  on top would double-tap on iOS hardware. Keeping the single `light`
+  haptic — the navigation to `/library/new` carries the success
+  semantic on its own.)*
 - `light` haptic on Skip.
 - Safe-area insets on top (Skip link) and bottom (progress dots + CTA).
 
