@@ -2205,6 +2205,64 @@ html:not([data-platform="ios"]) .context-menu {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Welcome carousel — first-run onboarding overlay
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Card content transition — fade-and-rise when the card changes.
+   Respects prefers-reduced-motion. */
+.welcome-card-content {
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity 200ms ease-out, transform 200ms ease-out;
+  }
+}
+
+.welcome-card-content--entering {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.welcome-card-content--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress dots row */
+.welcome-dots {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* Individual progress dot — a small tappable circle. The min 44px touch
+   target is on the button element; the visible dot is the inner span. */
+.welcome-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.welcome-dot-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background 200ms ease;
+  }
+}
+
+.welcome-dot--active .welcome-dot-inner {
+  background: var(--color-text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Toast — transient success / status feedback
    Glassmorphism pill above the bottom tab bar, respects safe-area.
    ═══════════════════════════════════════════════════════════════════════ */

@@ -11,9 +11,10 @@ use wasm_bindgen::prelude::*;
 
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
+use crate::components::welcome_carousel::welcome_already_seen;
 use crate::components::{
     provide_toast, AppFooter, AppHeader, BottomTabBar, Button, ButtonSize, ButtonVariant,
-    ErrorBanner, ToastStack,
+    ErrorBanner, ToastStack, WelcomeCarousel,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
@@ -142,6 +143,11 @@ fn AuthenticatedApp() -> impl IntoView {
 
     let focus_mode = FocusMode(RwSignal::new(false));
 
+    // Welcome carousel — show for first-time users (localStorage gate).
+    // The signal is initialised once at mount; the carousel sets it to
+    // false on Skip or final CTA.
+    let show_welcome = RwSignal::new(!welcome_already_seen());
+
     // Provide context BEFORE init so process_effects can use expect_context
     provide_context(core.clone());
     provide_context(view_model);
@@ -175,6 +181,15 @@ fn AuthenticatedApp() -> impl IntoView {
 
     view! {
         <div class="relative z-0 min-h-screen text-primary">
+            // Welcome carousel overlay — shown once for first-time users.
+            // Positioned fixed z-[2000] inside the carousel itself, sits above
+            // the routed content. The app underneath continues to mount and
+            // fetch data so the empty Library / `/library/new` form is already
+            // loaded when the carousel dismisses.
+            <Show when=move || show_welcome.get()>
+                <WelcomeCarousel show=show_welcome />
+            </Show>
+
             // Header — hidden in focus mode
             <Show when=move || !focus_mode.get()>
                 <AppHeader />

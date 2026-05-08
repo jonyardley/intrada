@@ -1,11 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::NaiveDate;
+use leptos::ev;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{ItemKind, LibraryItemView, SetEntryView, SetView, TempoHistoryEntry};
 
+#[cfg(debug_assertions)]
+use crate::components::welcome_carousel::reset_welcome_seen;
 use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
     BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize,
@@ -16,7 +19,7 @@ use crate::components::{
     PageAddButton, PageHeading, ProgressRing, PullToRefresh, RatingChips, SectionLabel,
     SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
     StatCard, StatTone, StatusDot, StatusDotState, SwipeActions, TagInput, TempoProgressChart,
-    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip,
+    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
 };
 use wasm_bindgen::JsCast;
 
@@ -343,6 +346,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                             <li><a href="#loading" class="text-accent-text hover:text-primary">"Loading States"</a></li>
                             <li><a href="#skeletons" class="text-accent-text hover:text-primary">"Skeletons"</a></li>
                             <li><a href="#week-strip" class="text-accent-text hover:text-primary">"Week Strip"</a></li>
+                            <li><a href="#welcome-card" class="text-accent-text hover:text-primary">"Welcome Carousel"</a></li>
                             <li><a href="#shell" class="text-accent-text hover:text-primary">"Shell Components"</a></li>
                             <li><a href="#accessibility" class="text-accent-text hover:text-primary">"Accessibility"</a></li>
                         </ul>
@@ -1758,6 +1762,53 @@ pub fn DesignCatalogue() -> impl IntoView {
                             </div>
                         </div>
                     </Card>
+                </div>
+            </section>
+
+            // ── Welcome Carousel ──────────────────────────────────────
+            <section id="welcome-card" class="mb-16">
+                <h2 class="section-title">"Welcome Carousel"</h2>
+                <p class="text-sm text-muted mb-4">
+                    "First-run onboarding overlay. Five typographic cards with progress dots, Skip, and CTA."
+                </p>
+
+                // Individual WelcomeCard showcase
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeCard (standalone)"</h3>
+                    <div class="py-8">
+                        <WelcomeCard copy="Knowing how to practise well is hard. I\u{2019}ve struggled with it. So I built this.".to_string() />
+                    </div>
+                </div>
+
+                <div class="mb-8 p-6 rounded-xl bg-surface-secondary">
+                    <h3 class="card-title">"WelcomeCard (with CTA — final card)"</h3>
+                    <div class="py-8">
+                        <WelcomeCard copy="Track your progress, achieve your goals.".to_string()>
+                            <Button
+                                variant=ButtonVariant::Primary
+                                size=ButtonSize::Hero
+                                full_width=true
+                            >
+                                "Add your first piece \u{2192}"
+                            </Button>
+                        </WelcomeCard>
+                    </div>
+                </div>
+
+                // Dev affordance — clears the localStorage flag so the
+                // carousel reappears on reload.
+                <div class="flex gap-4">
+                    <Button
+                        variant=ButtonVariant::Secondary
+                        on_click=Callback::new(move |_: ev::MouseEvent| {
+                            reset_welcome_seen();
+                            if let Some(window) = web_sys::window() {
+                                let _ = window.location().reload();
+                            }
+                        })
+                    >
+                        "Reset welcome flag & reload"
+                    </Button>
                 </div>
             </section>
 

@@ -53,6 +53,8 @@ pub mod transition_prompt;
 pub mod type_badge;
 pub mod type_tabs;
 pub mod week_strip;
+pub mod welcome_card;
+pub mod welcome_carousel;
 
 pub use accent_row::{AccentBar, AccentRow};
 pub use app_footer::AppFooter;
@@ -109,3 +111,5 @@ pub use transition_prompt::TransitionPrompt;
 pub use type_badge::TypeBadge;
 pub use type_tabs::TypeTabs;
 pub use week_strip::{DayCell, WeekStrip};
+pub use welcome_card::WelcomeCard;
+pub use welcome_carousel::WelcomeCarousel;
