@@ -279,7 +279,7 @@ pub fn catalogue() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: BULK_IMPORT_ITEMS,
-            description: "Create many items at once (the killer tool for \"set me up with the Bach Cello Suites\"). Call with `dry_run: true` first to get a per-item validation preview, show that to the user for confirmation, then re-call with `dry_run: false` to actually write. The write is all-or-nothing — if any item fails validation, none are written.",
+            description: "Create many items at once (the killer tool for \"set me up with the Bach Cello Suites\"). Call with `dry_run: true` first to get a per-item validation preview, show that to the user for confirmation, then re-call with `dry_run: false` to actually write. Validation runs across all items pre-flight — if ANY item is invalid, NONE are written. Once validation passes, items are inserted sequentially; in the rare case a DB error happens mid-insert, the response surfaces how many items were written before the error so the agent can re-issue only the remainder.",
             input_schema: json!({
                 "type": "object",
                 "properties": {

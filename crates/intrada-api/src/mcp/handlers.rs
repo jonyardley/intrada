@@ -412,9 +412,9 @@ pub async fn bulk_import_items(
         }));
     }
 
-    // Refuse to write if any item is invalid — "all or nothing" per the
-    // spec's confirmation model. The agent should fix invalid items and
-    // retry; we don't want to write a partial set.
+    // Validation atomicity: if ANY item is invalid, write NONE. The
+    // agent should fix invalid items and retry rather than commit a
+    // partial set.
     if invalid_count > 0 {
         return Err(ApiError::Validation(format!(
             "{invalid_count} of {} items failed validation; fix or omit them and retry",
@@ -424,11 +424,12 @@ pub async fn bulk_import_items(
 
     // Sequential inserts — libsql HTTP doesn't reliably support
     // multi-statement transactions across the same connection (see the
-    // `delete_all_user_data` comment for the rationale). After
-    // pre-flight validation, post-validation insert failures are
-    // extremely rare (would only be a DB outage). If one happens
-    // mid-way, we surface the partial state in the error rather than
-    // silently leaving inconsistent data.
+    // `delete_all_user_data` comment for the rationale). DB-level
+    // atomicity is therefore best-effort, NOT guaranteed: if a DB error
+    // happens mid-loop after pre-flight validation passed, earlier
+    // inserts persist. We surface the partial state in the error so the
+    // agent can re-issue only the remaining items rather than
+    // silently leaving the user wondering what happened.
     let mut created = Vec::with_capacity(args.items.len());
     for (index, item) in args.items.iter().enumerate() {
         match services::items::create_item(conn, user_id, item).await {

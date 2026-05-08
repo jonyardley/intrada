@@ -831,27 +831,26 @@ async fn audit_log_endpoint_returns_newest_first() {
 
 #[tokio::test]
 async fn audit_log_excludes_other_users() {
-    // setup_test_app gives Disabled auth → empty user_id. We can simulate
-    // cross-user isolation at the SQL level by inserting an audit row
-    // for a different user_id directly and confirming the GET endpoint
-    // doesn't return it.
-    use intrada_api::db::audit;
-
-    let app = common::setup_test_app().await;
+    // True isolation test — seed a foreign-user audit row directly via
+    // the connection, then confirm the GET endpoint scoped to "" (the
+    // disabled-mode user) doesn't see it.
+    let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
     let token = mint_pat(app.clone(), "isolation").await;
 
-    // Insert an audit row attributed to a different user_id directly.
-    {
-        // We need a connection — easiest is to round-trip through the test
-        // setup, but since that's wrapped, use a minimal alternative:
-        // make a write via MCP first to confirm normal flow, then assert
-        // we DON'T see foreign rows. We can't easily inject foreign rows
-        // here, so this test instead verifies the WHERE user_id = ?1
-        // clause runs (positive path).
-        let _ = audit::insert; // silence unused warning if this branch goes away
-    }
+    // Insert a foreign row attributed to user_id="other_user".
+    intrada_api::db::audit::insert(
+        &conn,
+        "01HXFOREIGN0000000000000000",
+        "01HXFOREIGNTOKEN0000000000",
+        "other_user",
+        "create_item",
+        "deadbeef".repeat(8).as_str(),
+        chrono::Utc::now(),
+    )
+    .await
+    .expect("insert foreign audit row");
 
-    // Make one write as the empty-user_id (Disabled mode → "" user_id).
+    // Make one legitimate write as the disabled-mode user_id ("").
     mcp_call_with_pat(
         app.clone(),
         &token,
@@ -861,11 +860,11 @@ async fn audit_log_excludes_other_users() {
     )
     .await;
 
-    // The audit list returns rows for THIS user only. The full isolation
-    // assertion (foreign rows excluded) lives in the SQL — see
-    // `db::audit::list`'s `WHERE user_id = ?1`. Here we just confirm the
-    // happy path.
+    // The audit endpoint scoped to "" must return only the legitimate
+    // write — never the seeded foreign row.
     let (_, audit_body) = common::get(app, "/api/account/audit").await;
     let entries: Vec<Value> = common::json(&audit_body);
-    assert_eq!(entries.len(), 1);
+    assert_eq!(entries.len(), 1, "must not include foreign-user rows");
+    // Sanity: the entry belongs to the legitimate write (token id != foreign).
+    assert_ne!(entries[0]["token_id"], "01HXFOREIGNTOKEN0000000000");
 }
