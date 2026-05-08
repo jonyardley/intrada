@@ -47,7 +47,6 @@ fn mark_welcome_seen() {
 
 /// Clear the welcome-seen flag (dev use only).
 #[cfg(debug_assertions)]
-#[allow(dead_code)]
 pub fn reset_welcome_seen() {
     if let Some(storage) = web_sys::window()
         .and_then(|w| w.local_storage().ok())

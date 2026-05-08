@@ -1,11 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::NaiveDate;
+use leptos::ev;
 use leptos::prelude::*;
 
 use intrada_core::analytics::DailyPracticeTotal;
 use intrada_core::{ItemKind, LibraryItemView, SetEntryView, SetView, TempoHistoryEntry};
 
+#[cfg(debug_assertions)]
+use crate::components::welcome_carousel::reset_welcome_seen;
 use crate::components::{
     AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
     BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize,
@@ -1757,6 +1760,22 @@ pub fn DesignCatalogue() -> impl IntoView {
                             </Button>
                         </WelcomeCard>
                     </div>
+                </div>
+
+                // Dev affordance — clears the localStorage flag so the
+                // carousel reappears on reload.
+                <div class="flex gap-4">
+                    <Button
+                        variant=ButtonVariant::Secondary
+                        on_click=Callback::new(move |_: ev::MouseEvent| {
+                            reset_welcome_seen();
+                            if let Some(window) = web_sys::window() {
+                                let _ = window.location().reload();
+                            }
+                        })
+                    >
+                        "Reset welcome flag & reload"
+                    </Button>
                 </div>
             </section>
 
