@@ -108,6 +108,11 @@ pub fn SettingsView() -> impl IntoView {
         navigate("/settings/delete-account", NavigateOptions::default());
     });
 
+    let navigate_tokens = use_navigate();
+    let go_tokens = Callback::new(move |_: leptos::ev::MouseEvent| {
+        navigate_tokens("/settings/mcp-tokens", NavigateOptions::default());
+    });
+
     view! {
         <div class="max-w-md mx-auto py-comfortable space-y-comfortable pb-[env(safe-area-inset-bottom)]">
             <h1 class="page-title">"Settings"</h1>
@@ -168,6 +173,16 @@ pub fn SettingsView() -> impl IntoView {
             <div>
                 <h3 class="section-title mb-card-compact">"Account"</h3>
                 <GroupedList aria_label="Account actions".to_string()>
+                    <GroupedListRow>
+                        <button
+                            type="button"
+                            class="w-full flex items-center justify-between px-card-compact py-card-compact text-left text-sm font-medium text-primary hover:bg-surface-hover motion-safe:transition-colors min-h-[44px]"
+                            on:click=move |ev| go_tokens.run(ev)
+                        >
+                            <span>"MCP tokens"</span>
+                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                        </button>
+                    </GroupedListRow>
                     <GroupedListRow>
                         <button
                             type="button"

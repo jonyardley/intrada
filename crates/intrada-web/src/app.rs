@@ -20,8 +20,9 @@ use crate::components::{
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
-    SessionsAllView, SessionsListView, SetDetailView, SetEditView, SettingsView,
+    LibraryListView, McpTokensView, NotFoundView, SessionActiveView, SessionNewView,
+    SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
+    SettingsView,
 };
 use intrada_web::background_audio;
 use intrada_web::clerk_bindings;
@@ -269,6 +270,9 @@ fn AuthenticatedApp() -> impl IntoView {
                     } />
                     <Route path=path!("/settings/delete-account") view=move || view! {
                         <AccountDeleteView />
+                    } />
+                    <Route path=path!("/settings/mcp-tokens") view=move || view! {
+                        <McpTokensView />
                     } />
                 </Routes>
             </main>

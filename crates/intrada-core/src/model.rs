@@ -6,6 +6,7 @@ use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::lesson::Lesson;
+use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
     SetlistEntry, SummarySession,
@@ -35,6 +36,18 @@ pub struct Model {
     /// deleted. The shell watches this to sign out + route home.
     /// Does not reset (account is gone; nothing to reset to).
     pub account_deleted: bool,
+    /// MCP Personal Access Tokens for the current user. Newest first.
+    pub mcp_tokens: Vec<McpToken>,
+    /// Set to `true` after the first successful `LoadTokens` so the UI can
+    /// distinguish "loading" from "loaded but empty".
+    pub mcp_tokens_loaded: bool,
+    /// True while a token list / create / revoke request is outstanding.
+    pub mcp_tokens_loading: bool,
+    /// Set transiently after `CreateToken` succeeds — carries the full
+    /// token bytes so the UI can show them once. Cleared by
+    /// `DismissCreatedToken` (or naturally when the user navigates away
+    /// and the model is reloaded).
+    pub just_created_token: Option<CreatedMcpToken>,
 }
 
 #[cfg(test)]
@@ -82,7 +95,14 @@ pub struct ViewModel {
     pub account_preferences: Option<AccountPreferences>,
     pub delete_in_flight: bool,
     pub account_deleted: bool,
+    pub mcp_tokens: Vec<McpToken>,
+    pub mcp_tokens_loaded: bool,
+    pub mcp_tokens_loading: bool,
+    pub just_created_token: Option<CreatedMcpToken>,
 }
+
+// Sanity-check that ViewModel field names mirror Model where applicable.
+// (No code; just keeps model + viewmodel in sync mentally.)
 
 /// Represents a lesson for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
