@@ -40,99 +40,218 @@ Open `crates/intrada-web/input.css` and append after the existing welcome-dots /
 ```css
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Welcome mark animations — per-card SVG draw-in
+   Welcome mark animations — brand-vocabulary marks (lines + dots)
    ═══════════════════════════════════════════════════════════════════════
-   Each card's WelcomeMark applies one of five draw-in animations.
-   Animations run once on mount; mark stays at final state.
-   Re-mounting the SVG (e.g., via card index change) replays the animation.
-   Collapses to instant final-state under prefers-reduced-motion. */
+   Each card's WelcomeMark uses the same primitives as the brand logo
+   (horizontal lines + violet/amber dots). Animations express the
+   per-card concept by what the dots DO on the lines.
+
+   Lines render in --color-text-faint with stroke-width 2 (matches the
+   Icon component convention). Violet dots use --color-accent. Amber
+   dots use --color-warm-accent.
+
+   Animations run once on mount; mark stays at final state. Re-mounting
+   the SVG (via card_index change) replays the animation. Collapses to
+   instant final state under prefers-reduced-motion. */
 
 .welcome-mark {
   width: 80px;
   height: 80px;
-  color: var(--color-text-primary);
   display: block;
+  /* The mark's lines and dots set their own colours via stroke/fill
+     attributes referencing tokens; no inherited color needed. */
 }
 
-/* — Card 1: a single horizontal line drawing left→right — */
+/* Shared timing curve — matches the iOS-default spring feel. */
+:root {
+  --welcome-mark-ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ── Card 1: line draws in, then violet dot slides along it ────────── */
 @keyframes welcome-mark-line-draw {
-  from { stroke-dashoffset: 100; opacity: 0; }
-  to { stroke-dashoffset: 0; opacity: 1; }
+  from { stroke-dashoffset: 50; opacity: 0; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
 }
-.welcome-mark--line line {
-  stroke-dasharray: 100;
-  animation: welcome-mark-line-draw 600ms ease-out forwards;
+@keyframes welcome-mark-dot-slide-1 {
+  /* Dot starts off-line at the left, fades in once the line is drawn,
+     then slides right to settle past centre. The translate values are
+     in SVG user units (1:1 with px at 80 viewBox + 80px display). */
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(30px); }
 }
-
-/* — Card 2: dots popping into a small grid (staggered) — */
-@keyframes welcome-mark-dot-pop {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.welcome-mark--opener line {
+  stroke-dasharray: 50;
+  animation: welcome-mark-line-draw 500ms ease-out forwards;
 }
-.welcome-mark--dots .welcome-mark-dot {
-  transform-origin: center;
+.welcome-mark--opener .welcome-dot {
   transform-box: fill-box;
-  animation: welcome-mark-dot-pop 400ms ease-out backwards;
-}
-.welcome-mark--dots .welcome-mark-dot:nth-child(1) { animation-delay: 0ms; }
-.welcome-mark--dots .welcome-mark-dot:nth-child(2) { animation-delay: 80ms; }
-.welcome-mark--dots .welcome-mark-dot:nth-child(3) { animation-delay: 160ms; }
-.welcome-mark--dots .welcome-mark-dot:nth-child(4) { animation-delay: 240ms; }
-.welcome-mark--dots .welcome-mark-dot:nth-child(5) { animation-delay: 320ms; }
-.welcome-mark--dots .welcome-mark-dot:nth-child(6) { animation-delay: 400ms; }
-
-/* — Card 3: paths converging on a centre point — */
-@keyframes welcome-mark-converge {
-  from { stroke-dashoffset: 100; opacity: 0; }
-  to { stroke-dashoffset: 0; opacity: 1; }
-}
-.welcome-mark--converge path {
-  stroke-dasharray: 100;
-  animation: welcome-mark-converge 600ms ease-out forwards;
+  transform-origin: center;
+  animation: welcome-mark-dot-slide-1 800ms var(--welcome-mark-ease) 200ms backwards;
 }
 
-/* — Card 4: concentric rings pulsing once — */
-@keyframes welcome-mark-pulse {
-  0%   { transform: scale(0.5); opacity: 0; }
-  60%  { transform: scale(1.1); opacity: 1; }
+/* ── Card 2: three lines draw staggered, dots snap on after ────────── */
+@keyframes welcome-mark-dot-snap {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
-.welcome-mark--pulse circle {
+.welcome-mark--capture line {
+  stroke-dasharray: 56;
+  animation: welcome-mark-line-draw 400ms ease-out backwards;
+}
+.welcome-mark--capture line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--capture line:nth-of-type(2) { animation-delay: 80ms; }
+.welcome-mark--capture line:nth-of-type(3) { animation-delay: 160ms; }
+.welcome-mark--capture .welcome-dot {
+  transform-box: fill-box;
   transform-origin: center;
-  transform-box: fill-box;
-  animation: welcome-mark-pulse 600ms ease-out backwards;
+  animation: welcome-mark-dot-snap 400ms var(--welcome-mark-ease) backwards;
 }
-.welcome-mark--pulse circle:nth-child(1) { animation-delay: 0ms; }
-.welcome-mark--pulse circle:nth-child(2) { animation-delay: 100ms; }
-.welcome-mark--pulse circle:nth-child(3) { animation-delay: 200ms; }
+.welcome-mark--capture .welcome-dot:nth-of-type(1) { animation-delay: 350ms; }
+.welcome-mark--capture .welcome-dot:nth-of-type(2) { animation-delay: 480ms; }
+.welcome-mark--capture .welcome-dot:nth-of-type(3) { animation-delay: 610ms; }
 
-/* — Card 5: bars rising staggered — */
-@keyframes welcome-mark-bar-rise {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
+/* ── Card 3: lines fade in, then violet dots slide horizontally to align ── */
+@keyframes welcome-mark-line-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.welcome-mark--chart .welcome-mark-bar {
-  transform-origin: bottom;
+.welcome-mark--align line {
+  animation: welcome-mark-line-fade 300ms ease-out backwards;
+}
+.welcome-mark--align line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--align line:nth-of-type(2) { animation-delay: 60ms; }
+.welcome-mark--align line:nth-of-type(3) { animation-delay: 120ms; }
+.welcome-mark--align .welcome-dot {
   transform-box: fill-box;
-  animation: welcome-mark-bar-rise 400ms ease-out backwards;
+  transform-origin: center;
 }
-.welcome-mark--chart .welcome-mark-bar:nth-child(1) { animation-delay: 0ms; }
-.welcome-mark--chart .welcome-mark-bar:nth-child(2) { animation-delay: 100ms; }
-.welcome-mark--chart .welcome-mark-bar:nth-child(3) { animation-delay: 200ms; }
-.welcome-mark--chart .welcome-mark-bar:nth-child(4) { animation-delay: 300ms; }
+/* Each dot starts at its scattered position (set via SVG cx) and
+   translates to the same final column. The keyframes encode the
+   delta so dots end visually aligned. */
+@keyframes welcome-mark-align-1 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(20px); }
+}
+@keyframes welcome-mark-align-2 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(-20px); }
+}
+@keyframes welcome-mark-align-3 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(10px); }
+}
+.welcome-mark--align .welcome-dot:nth-of-type(1) {
+  animation: welcome-mark-align-1 700ms var(--welcome-mark-ease) 250ms backwards;
+}
+.welcome-mark--align .welcome-dot:nth-of-type(2) {
+  animation: welcome-mark-align-2 700ms var(--welcome-mark-ease) 350ms backwards;
+}
+.welcome-mark--align .welcome-dot:nth-of-type(3) {
+  animation: welcome-mark-align-3 700ms var(--welcome-mark-ease) 450ms backwards;
+}
 
-/* — Reduced-motion: collapse all five animations to instant final state — */
+/* ── Card 4: line + violet dot pulses with rings; amber dot slides in ── */
+@keyframes welcome-mark-ring-pulse {
+  0%   { opacity: 0; transform: scale(1); }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+@keyframes welcome-mark-dot-pulse {
+  0%   { transform: scale(0); opacity: 0; }
+  40%  { transform: scale(1); opacity: 1; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes welcome-mark-amber-enter {
+  0%   { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.welcome-mark--practice line {
+  stroke-dasharray: 50;
+  animation: welcome-mark-line-draw 400ms ease-out forwards;
+}
+.welcome-mark--practice .welcome-dot--violet {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-dot-pulse 700ms var(--welcome-mark-ease) 300ms backwards;
+}
+.welcome-mark--practice .welcome-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-ring-pulse 1000ms ease-out 500ms backwards;
+}
+.welcome-mark--practice .welcome-ring:nth-of-type(2) { animation-delay: 700ms; }
+.welcome-mark--practice .welcome-dot--amber {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-amber-enter 600ms var(--welcome-mark-ease) 700ms backwards;
+}
+
+/* ── Card 5: three lines, violet dots stagger rightward as progress ── */
+.welcome-mark--track line {
+  animation: welcome-mark-line-fade 300ms ease-out backwards;
+}
+.welcome-mark--track line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--track line:nth-of-type(2) { animation-delay: 60ms; }
+.welcome-mark--track line:nth-of-type(3) { animation-delay: 120ms; }
+.welcome-mark--track .welcome-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes welcome-mark-step-1 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(15px); }
+}
+@keyframes welcome-mark-step-2 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(28px); }
+}
+@keyframes welcome-mark-step-3 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(40px); }
+}
+.welcome-mark--track .welcome-dot:nth-of-type(1) {
+  animation: welcome-mark-step-1 700ms var(--welcome-mark-ease) 250ms backwards;
+}
+.welcome-mark--track .welcome-dot:nth-of-type(2) {
+  animation: welcome-mark-step-2 700ms var(--welcome-mark-ease) 400ms backwards;
+}
+.welcome-mark--track .welcome-dot:nth-of-type(3) {
+  animation: welcome-mark-step-3 700ms var(--welcome-mark-ease) 550ms backwards;
+}
+
+/* ── Reduced-motion: snap to final state ─────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .welcome-mark--line line,
-  .welcome-mark--dots .welcome-mark-dot,
-  .welcome-mark--converge path,
-  .welcome-mark--pulse circle,
-  .welcome-mark--chart .welcome-mark-bar {
+  .welcome-mark line,
+  .welcome-mark .welcome-dot,
+  .welcome-mark .welcome-ring {
     animation: none;
     stroke-dashoffset: 0;
     opacity: 1;
     transform: none;
   }
+  /* Rings should be invisible at rest (they only exist as a transient
+     pulse). Hide them entirely when motion is reduced. */
+  .welcome-mark .welcome-ring {
+    opacity: 0;
+  }
+  /* Dots in card 1, 3, 5 still need to land at their target X — apply
+     the final translate without animation so they sit in alignment. */
+  .welcome-mark--opener .welcome-dot { transform: translateX(30px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(1) { transform: translateX(20px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(2) { transform: translateX(-20px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(3) { transform: translateX(10px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(1) { transform: translateX(15px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(2) { transform: translateX(28px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(3) { transform: translateX(40px); }
 }
 ```
 
@@ -170,124 +289,250 @@ use leptos::prelude::*;
 
 /// Animated SVG mark for a welcome carousel card.
 ///
-/// Each card index gets a different abstract geometric mark that draws
-/// itself in via CSS keyframes when the SVG mounts. Stays at final
-/// state once animation completes; replays on re-mount (e.g., when
-/// the card index changes and a new SVG is rendered).
+/// Each card index gets a small mark composed of the brand's visual
+/// vocabulary: horizontal lines (in `--color-text-faint`) plus dots
+/// in violet (`--color-accent`) and amber (`--color-warm-accent`).
+/// Animations express the per-card concept by what the dots do on
+/// the lines (settle, snap, align, pulse, progress).
 ///
 /// Indices map to:
-/// - 0: opener — a horizontal line drawing in
-/// - 1: capture — dots popping into a grid
-/// - 2: plan — paths converging on a point
-/// - 3: practice — concentric rings pulsing
-/// - 4: track — a small bar chart rising
+/// - 0: opener — line draws, violet dot slides along it and settles
+/// - 1: capture — three lines stack in, amber/violet/amber dots snap on
+/// - 2: plan — three lines, scattered violet dots align in one column
+/// - 3: practice — line + violet dot pulses with rings, amber enters
+/// - 4: track — three lines, violet dots stagger rightward as progress
 ///
 /// Out-of-range indices render an empty placeholder.
 #[component]
 pub fn WelcomeMark(card_index: usize) -> impl IntoView {
     match card_index {
-        0 => view! { <MarkLine /> }.into_any(),
-        1 => view! { <MarkDots /> }.into_any(),
-        2 => view! { <MarkConverge /> }.into_any(),
-        3 => view! { <MarkPulse /> }.into_any(),
-        4 => view! { <MarkChart /> }.into_any(),
+        0 => view! { <MarkOpener /> }.into_any(),
+        1 => view! { <MarkCapture /> }.into_any(),
+        2 => view! { <MarkAlign /> }.into_any(),
+        3 => view! { <MarkPractice /> }.into_any(),
+        4 => view! { <MarkTrack /> }.into_any(),
         _ => view! { <span class="welcome-mark" aria-hidden="true"></span> }.into_any(),
     }
 }
 
-/// Card 1 — a single horizontal line drawing in left→right.
+/// Card 1 (opener) — a single line draws in, then a violet dot
+/// slides along it and settles past centre.
 #[component]
-fn MarkLine() -> impl IntoView {
+fn MarkOpener() -> impl IntoView {
     view! {
         <svg
-            class="welcome-mark welcome-mark--line"
+            class="welcome-mark welcome-mark--opener"
             viewBox="0 0 80 80"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
             aria-hidden="true"
         >
-            <line x1="20" y1="40" x2="60" y2="40" />
+            <line
+                x1="15" y1="40" x2="65" y2="40"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <circle
+                class="welcome-dot"
+                cx="20" cy="40" r="5"
+                fill="var(--color-accent)"
+            />
         </svg>
     }
 }
 
-/// Card 2 — six dots popping in to form a 3×2 grid.
+/// Card 2 (capture) — three lines, alternating amber/violet/amber
+/// dots snapping onto each at varied positions.
 #[component]
-fn MarkDots() -> impl IntoView {
+fn MarkCapture() -> impl IntoView {
     view! {
         <svg
-            class="welcome-mark welcome-mark--dots"
+            class="welcome-mark welcome-mark--capture"
             viewBox="0 0 80 80"
-            fill="currentColor"
             aria-hidden="true"
         >
-            <circle class="welcome-mark-dot" cx="25" cy="32" r="4" />
-            <circle class="welcome-mark-dot" cx="40" cy="32" r="4" />
-            <circle class="welcome-mark-dot" cx="55" cy="32" r="4" />
-            <circle class="welcome-mark-dot" cx="25" cy="48" r="4" />
-            <circle class="welcome-mark-dot" cx="40" cy="48" r="4" />
-            <circle class="welcome-mark-dot" cx="55" cy="48" r="4" />
+            <line
+                x1="12" y1="22" x2="68" y2="22"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="40" x2="68" y2="40"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="58" x2="68" y2="58"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <circle
+                class="welcome-dot"
+                cx="50" cy="22" r="5"
+                fill="var(--color-warm-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="32" cy="40" r="5"
+                fill="var(--color-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="58" cy="58" r="5"
+                fill="var(--color-warm-accent)"
+            />
         </svg>
     }
 }
 
-/// Card 3 — four paths converging on a centre point.
+/// Card 3 (plan) — three lines, three violet dots scattered at
+/// different positions, sliding horizontally to align in one column.
 #[component]
-fn MarkConverge() -> impl IntoView {
+fn MarkAlign() -> impl IntoView {
     view! {
         <svg
-            class="welcome-mark welcome-mark--converge"
+            class="welcome-mark welcome-mark--align"
             viewBox="0 0 80 80"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
             aria-hidden="true"
         >
-            <path d="M15 20 L40 40" />
-            <path d="M65 20 L40 40" />
-            <path d="M15 60 L40 40" />
-            <path d="M65 60 L40 40" />
-            <circle cx="40" cy="40" r="3" fill="currentColor" stroke="none" />
+            <line
+                x1="12" y1="22" x2="68" y2="22"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="40" x2="68" y2="40"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="58" x2="68" y2="58"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            // Dots start at scattered cx values; CSS keyframes translate
+            // each toward the same final column (≈ x=40):
+            //   dot 1 starts at 20, translates +20 → ends at 40
+            //   dot 2 starts at 60, translates -20 → ends at 40
+            //   dot 3 starts at 30, translates +10 → ends at 40
+            <circle
+                class="welcome-dot"
+                cx="20" cy="22" r="5"
+                fill="var(--color-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="60" cy="40" r="5"
+                fill="var(--color-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="30" cy="58" r="5"
+                fill="var(--color-accent)"
+            />
         </svg>
     }
 }
 
-/// Card 4 — three concentric rings pulsing in.
+/// Card 4 (practice) — single line with a pulsing violet dot at
+/// centre, two concentric rings emanating outward, and an amber dot
+/// sliding in from the right.
 #[component]
-fn MarkPulse() -> impl IntoView {
+fn MarkPractice() -> impl IntoView {
     view! {
         <svg
-            class="welcome-mark welcome-mark--pulse"
+            class="welcome-mark welcome-mark--practice"
             viewBox="0 0 80 80"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
             aria-hidden="true"
         >
-            <circle cx="40" cy="40" r="10" />
-            <circle cx="40" cy="40" r="20" />
-            <circle cx="40" cy="40" r="30" />
+            <line
+                x1="15" y1="40" x2="65" y2="40"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            // Two transient rings — only visible during the pulse animation
+            <circle
+                class="welcome-ring"
+                cx="40" cy="40" r="6"
+                fill="none"
+                stroke="var(--color-accent)"
+                stroke-width="1.5"
+            />
+            <circle
+                class="welcome-ring"
+                cx="40" cy="40" r="6"
+                fill="none"
+                stroke="var(--color-accent)"
+                stroke-width="1.5"
+            />
+            // Violet dot at centre — pulses
+            <circle
+                class="welcome-dot welcome-dot--violet"
+                cx="40" cy="40" r="5"
+                fill="var(--color-accent)"
+            />
+            // Amber dot — slides in from the right (CSS translates it from +20 → 0)
+            <circle
+                class="welcome-dot welcome-dot--amber"
+                cx="58" cy="40" r="5"
+                fill="var(--color-warm-accent)"
+            />
         </svg>
     }
 }
 
-/// Card 5 — four bars rising in staggered, ascending heights.
+/// Card 5 (track) — three lines, three violet dots that slide
+/// rightward in a staggered progression.
 #[component]
-fn MarkChart() -> impl IntoView {
+fn MarkTrack() -> impl IntoView {
     view! {
         <svg
-            class="welcome-mark welcome-mark--chart"
+            class="welcome-mark welcome-mark--track"
             viewBox="0 0 80 80"
-            fill="currentColor"
             aria-hidden="true"
         >
-            <rect class="welcome-mark-bar" x="15" y="50" width="10" height="15" />
-            <rect class="welcome-mark-bar" x="32" y="40" width="10" height="25" />
-            <rect class="welcome-mark-bar" x="49" y="30" width="10" height="35" />
-            <rect class="welcome-mark-bar" x="66" y="20" width="10" height="45" />
+            <line
+                x1="12" y1="22" x2="68" y2="22"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="40" x2="68" y2="40"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            <line
+                x1="12" y1="58" x2="68" y2="58"
+                stroke="var(--color-text-faint)"
+                stroke-width="2"
+                stroke-linecap="round"
+            />
+            // All three dots start at cx=18 (left of each line); CSS
+            // keyframes translate them rightward by +15 / +28 / +40 so
+            // the visual reads as left → middle → right progression.
+            <circle
+                class="welcome-dot"
+                cx="18" cy="22" r="5"
+                fill="var(--color-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="18" cy="40" r="5"
+                fill="var(--color-accent)"
+            />
+            <circle
+                class="welcome-dot"
+                cx="18" cy="58" r="5"
+                fill="var(--color-accent)"
+            />
         </svg>
     }
 }
@@ -314,7 +559,7 @@ cargo fmt --check
 cargo clippy -p intrada-web -- -D warnings
 ```
 
-Both must pass. The clippy check might flag the private `MarkLine` / `MarkDots` etc. as `dead_code` if they're never referenced from outside `welcome_mark.rs` — but they ARE referenced via the `WelcomeMark` component's match arm. If clippy still complains, it likely means the compiler can't trace dispatch through `view!` macro expansion. Resolve by adding `#[allow(dead_code)]` to each Mark sub-component, OR confirm the warning is absent (Leptos's `#[component]` macro typically expands so the references are visible).
+Both must pass. The clippy check might flag the private `MarkOpener` / `MarkCapture` / `MarkAlign` / `MarkPractice` / `MarkTrack` as `dead_code` if it can't trace their references through the `WelcomeMark` match arm. They ARE used (each match arm calls one of them via the `view!` macro), so any warning is a Leptos-macro-expansion limitation, not a real dead path. If clippy still complains after the build is otherwise clean, add `#[allow(dead_code)]` to each Mark sub-component.
 
 - [ ] **Step 4: Commit**
 

@@ -97,26 +97,49 @@ Generous spacing between layers. Background uses the existing dark
 gradient already wired in
 [app.rs:102](../crates/intrada-web/src/app.rs:102).
 
-**Per-card animated SVG mark.** Every card (including card 1, the
-opener) gets a small abstract geometric mark that draws itself in over
-~600ms when the card lands. Hand-coded inline SVG (no Lottie, no
-external files); animation runs via CSS `@keyframes` on
-`stroke-dasharray` / `stroke-dashoffset` and transforms. The mark
-stays at its final state once the animation completes; it does NOT
-loop. Re-entering a card replays the animation from start (e.g.,
-swiping back then forward).
+**Per-card animated SVG mark — built from the brand vocabulary.**
+Every card (including card 1, the opener) gets a small mark composed
+of the same primitives as the Digital Logo Kit: **horizontal lines +
+violet/amber dots**. Each animation expresses the per-card concept
+through what the dots do on the lines (settle, snap, align, pulse,
+progress). By card 5 the user has seen the same vocabulary five times
+in different motions; it registers as a brand rather than five
+disparate icons.
 
-| # | Mark concept |
+Hand-coded inline SVG (no Lottie, no external files); animation runs
+via CSS `@keyframes` on `stroke-dasharray` / `stroke-dashoffset`,
+`cx`/`transform`, and opacity. The mark stays at its final state once
+the animation completes; it does NOT loop. Re-entering a card replays
+the animation from start. Total duration ~600–900ms depending on the
+mark's complexity (line draw + dot slide is two beats; align is one).
+
+| # | Mark animation |
 |---|---|
-| 1 | A single horizontal line drawing in left-to-right — like an underline forming under the maker's voice |
-| 2 | Scattered dots / small squares popping into a small grid |
-| 3 | Multiple paths converging on a single point |
-| 4 | Concentric rings pulsing once, metronome-tick style |
-| 5 | A small bar/line chart drawing upward |
+| 1 | A single line draws in left→right; a violet dot slides along it and settles. The brand mark in motion — frames the whole welcome and links to the maker's "knowing where to put the effort" theme. |
+| 2 | Three lines draw in (top→bottom). Amber, violet, amber dots snap onto each line at varied positions — items captured into slots. |
+| 3 | Three lines with violet dots scattered at different positions. Dots slide horizontally and align at the same vertical column — *deciding where the effort goes*. |
+| 4 | A single line with one violet dot pulsing, with concentric rings emanating (metronome / heartbeat). An amber dot enters from the right and joins. |
+| 5 | Three lines with violet dots. Dots slide rightward in a stagger — left, middle, right — reading as progression along tracks. |
 
-The marks are rendered in `text-primary` (white) with `currentColor`
-strokes so they read as part of the typographic register rather than as
-illustrative imagery.
+**Colours and stroke conventions — pulled from the live code design
+system, not the Pencil file.** The Pencil file's Digital Logo Kit is a
+visual reference; the source of truth for tokens is
+`crates/intrada-web/input.css`.
+
+- Lines: `var(--color-text-faint)`, `stroke-width: 2`,
+  `stroke-linecap: round` — matches the existing `Icon` component
+  convention in `crates/intrada-web/src/components/icon.rs`.
+- Violet dots: `var(--color-accent)` (the primary brand accent in the
+  live token system — `oklch(50.5% 0.24 274)` warm indigo, not the
+  hex value shown in Pencil).
+- Amber dots: `var(--color-warm-accent)` (the live token —
+  `oklch(70% 0.12 78)` muted gold, used elsewhere for analytics bar
+  charts and tags).
+- No new tokens are added for this work.
+
+**Mark size and viewBox.** 80×80 px display size, 80×80 viewBox so
+SVG coordinates map 1:1 to display pixels and `stroke-width: 2` reads
+visually consistent with the rest of the app's icon set.
 
 **Motion.** Card-to-card transition stays as today: ~200ms opacity +
 translate-y on the `welcome-card-content--entering` / `--visible`
