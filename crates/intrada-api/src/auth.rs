@@ -6,6 +6,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::db;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -20,11 +21,19 @@ struct Claims {
     sub: String,
 }
 
+/// PAT bearer token prefix. Tokens not matching this fall through to JWT
+/// validation.
+const PAT_PREFIX: &str = "intrada_pat_";
+
 /// Extractor that yields the authenticated user's ID.
 ///
-/// When `AppState.auth_config` is `None` (no `CLERK_ISSUER_URL` set),
-/// returns `AuthUser("")` — matching the migration default and preserving
-/// existing test behavior.
+/// Resolution order:
+/// 1. `Authorization: Bearer intrada_pat_…` → MCP PAT lookup. Works whether
+///    or not Clerk is configured, so MCP can authenticate against an API
+///    instance running without `CLERK_ISSUER_URL` (dev / local).
+/// 2. No `auth_config` (Clerk disabled) → `AuthUser("")` — matches existing
+///    test behaviour.
+/// 3. JWT validation against the configured Clerk issuer.
 pub struct AuthUser(pub String);
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -34,6 +43,17 @@ impl FromRequestParts<AppState> for AuthUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        let bearer = parts
+            .headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|h| h.strip_prefix("Bearer "));
+
+        // PAT path runs first so it works in auth-disabled mode too.
+        if let Some(token) = bearer.filter(|t| t.starts_with(PAT_PREFIX)) {
+            return resolve_pat(state, token).await;
+        }
+
         let auth_config = match &state.auth_config {
             Some(config) => config,
             None => {
@@ -45,15 +65,7 @@ impl FromRequestParts<AppState> for AuthUser {
             }
         };
 
-        let header = parts
-            .headers
-            .get("authorization")
-            .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
-
-        let token = header
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
+        let token = bearer.ok_or_else(|| ApiError::Unauthorized("Unauthorized".to_string()))?;
 
         let mut validation = Validation::new(jsonwebtoken::Algorithm::RS256);
         validation.set_issuer(&[&auth_config.issuer]);
@@ -67,15 +79,7 @@ impl FromRequestParts<AppState> for AuthUser {
             match decode::<Claims>(token, key, &validation) {
                 Ok(data) => {
                     let user_id = data.claims.sub;
-                    // Per-request hub isolation comes from the
-                    // NewSentryLayer in routes/mod.rs — configuring the
-                    // current scope here cannot bleed into other requests.
-                    sentry::configure_scope(|scope| {
-                        scope.set_user(Some(sentry::User {
-                            id: Some(user_id.clone()),
-                            ..Default::default()
-                        }));
-                    });
+                    set_sentry_user(&user_id);
                     return Ok(AuthUser(user_id));
                 }
                 Err(e) => {
@@ -87,6 +91,49 @@ impl FromRequestParts<AppState> for AuthUser {
 
         Err(ApiError::Unauthorized("Unauthorized".to_string()))
     }
+}
+
+async fn resolve_pat(state: &AppState, token: &str) -> Result<AuthUser, ApiError> {
+    let conn = state.conn();
+    let hash = db::tokens::hash_token(token);
+
+    match db::tokens::lookup_by_hash(&conn, &hash).await {
+        Ok(Some((user_id, None))) => {
+            // Best-effort `last_used_at` update — auth has already succeeded,
+            // so a write failure here shouldn't deny access.
+            if let Err(e) = db::tokens::mark_used(&conn, &hash).await {
+                tracing::warn!(?e, "PAT mark_used update failed");
+            }
+            set_sentry_user(&user_id);
+            Ok(AuthUser(user_id))
+        }
+        Ok(Some((_, Some(_)))) => {
+            // Revoked. Distinct log line so revoked-token use is grep-able
+            // separately from "unknown PAT".
+            tracing::info!("PAT auth rejected: token revoked");
+            Err(ApiError::Unauthorized("Unauthorized".to_string()))
+        }
+        Ok(None) => {
+            tracing::debug!("PAT auth rejected: token not found");
+            Err(ApiError::Unauthorized("Unauthorized".to_string()))
+        }
+        Err(e) => {
+            tracing::warn!(?e, "PAT lookup DB error");
+            Err(ApiError::Internal("Auth DB error".into()))
+        }
+    }
+}
+
+fn set_sentry_user(user_id: &str) {
+    // Per-request hub isolation comes from the NewSentryLayer in
+    // routes/mod.rs — configuring the current scope here cannot bleed into
+    // other requests.
+    sentry::configure_scope(|scope| {
+        scope.set_user(Some(sentry::User {
+            id: Some(user_id.to_string()),
+            ..Default::default()
+        }));
+    });
 }
 
 impl AuthConfig {

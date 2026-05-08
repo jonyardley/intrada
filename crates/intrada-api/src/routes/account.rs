@@ -6,6 +6,7 @@ use axum::{Json, Router};
 use crate::auth::AuthUser;
 use crate::db::account::AccountPreferences;
 use crate::error::ApiError;
+use crate::routes::tokens;
 use crate::services;
 use crate::state::AppState;
 
@@ -13,6 +14,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", delete(delete_account))
         .route("/preferences", get(get_preferences).put(put_preferences))
+        .nest("/tokens", tokens::router())
 }
 
 async fn get_preferences(
