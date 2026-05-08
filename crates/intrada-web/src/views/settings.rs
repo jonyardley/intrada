@@ -109,7 +109,7 @@ pub fn SettingsView() -> impl IntoView {
     });
 
     view! {
-        <div class="max-w-md mx-auto py-comfortable space-y-comfortable pb-[env(safe-area-inset-bottom)]">
+        <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
             <h1 class="page-title">"Settings"</h1>
 
             // Account header
