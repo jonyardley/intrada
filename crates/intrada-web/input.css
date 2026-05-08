@@ -1140,6 +1140,23 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   animation: tab-spring 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Status dot pulse — used by <StatusDot state=Live> on the Practice tab to
+   signal a session is currently running. The static dot is rendered by
+   the component; this keyframe layers an outward halo via box-shadow that
+   fades out on each beat. Suppressed under prefers-reduced-motion: the
+   user still sees the coloured dot, just without the pulse. */
+@keyframes status-dot-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--color-danger); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .status-dot--pulse {
+    animation: status-dot-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════
    iOS WebView Reset (Phase 1a)

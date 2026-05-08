@@ -1,7 +1,10 @@
+use intrada_core::ViewModel;
 use intrada_web::haptics;
 use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
+
+use crate::components::{StatusDot, StatusDotState};
 
 /// Mobile bottom tab bar for primary navigation.
 ///
@@ -18,6 +21,7 @@ use leptos_router::hooks::use_location;
 #[component]
 pub fn BottomTabBar() -> impl IntoView {
     let location = use_location();
+    let view_model = expect_context::<RwSignal<ViewModel>>();
     // Prevents the spring animation firing on initial render when the
     // first tab is already active. Only animate after the user taps.
     let has_tapped = RwSignal::new(false);
@@ -35,6 +39,30 @@ pub fn BottomTabBar() -> impl IntoView {
     let is_analytics_active = move || {
         let path = location.pathname.get();
         path.starts_with("/analytics")
+    };
+
+    // Practice-tab status dot (#272). Live takes precedence over Building
+    // — though the core's `SessionStatus` is mutually exclusive so they
+    // never coincide; the explicit precedence here is just so the type
+    // signature matches `Option<StatusDotState>` cleanly.
+    let practice_status = Signal::derive(move || {
+        view_model.with(|vm| {
+            if vm.active_session.is_some() {
+                Some(StatusDotState::Live)
+            } else if vm.building_setlist.is_some() {
+                Some(StatusDotState::Building)
+            } else {
+                None
+            }
+        })
+    });
+
+    // Accessibility: surface the session state to screen readers via
+    // aria-label so the dot isn't a colour-only signal.
+    let practice_aria_label = move || match practice_status.get() {
+        Some(StatusDotState::Live) => "Practice — session in progress",
+        Some(StatusDotState::Building) => "Practice — session being built",
+        None => "Practice",
     };
 
     let spring = "flex flex-col items-center gap-0.5 text-accent-text tab-spring min-w-[64px] min-h-[44px] justify-center";
@@ -69,7 +97,9 @@ pub fn BottomTabBar() -> impl IntoView {
                     <span class="text-xs font-medium">"Library"</span>
                 </A>
 
-                // Practice tab — clock
+                // Practice tab — clock + status dot when a session is
+                // building or live (#272). The dot overlays the icon's
+                // top-right corner in the relative-positioned wrapper.
                 <A
                     href="/sessions"
                     attr:class=move || {
@@ -80,13 +110,17 @@ pub fn BottomTabBar() -> impl IntoView {
                         }
                     }
                     attr:aria-current=move || if is_sessions_active() { Some("page") } else { None }
+                    attr:aria-label=practice_aria_label
                     on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
                 >
-                    {move || if is_sessions_active() {
-                        view! { <ClockIconSolid /> }.into_any()
-                    } else {
-                        view! { <ClockIconOutline /> }.into_any()
-                    }}
+                    <span class="relative inline-flex">
+                        {move || if is_sessions_active() {
+                            view! { <ClockIconSolid /> }.into_any()
+                        } else {
+                            view! { <ClockIconOutline /> }.into_any()
+                        }}
+                        <StatusDot state=practice_status />
+                    </span>
                     <span class="text-xs font-medium">"Practice"</span>
                 </A>
 

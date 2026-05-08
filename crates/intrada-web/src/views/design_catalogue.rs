@@ -18,8 +18,8 @@ use crate::components::{
     LibraryFilter, LibraryFilterTabs, LibraryItemCard, LibrarySetCard, LibraryTypeTabs, LineChart,
     PageAddButton, PageHeading, ProgressRing, PullToRefresh, RatingChips, SectionLabel,
     SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
-    StatCard, StatTone, SwipeActions, TagInput, TempoProgressChart, TextArea, TextField,
-    TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
+    StatCard, StatTone, StatusDot, StatusDotState, SwipeActions, TagInput, TempoProgressChart,
+    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
 };
 use wasm_bindgen::JsCast;
 
@@ -776,6 +776,39 @@ pub fn DesignCatalogue() -> impl IntoView {
                     <StatCard title="Saved Sets" value="7".to_string() bar=AccentBar::Teal />
                     <StatCard title="Sets This Week" value="3".to_string() bar=AccentBar::Teal subtitle="Up from 1" />
                     <StatCard title="Set Streak" value="4 days".to_string() bar=AccentBar::Teal />
+                </div>
+            </section>
+
+            // ── Status Dot ────────────────────────────────────────────
+            <section id="status-dot">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Status Dot"</h3>
+                <p class="text-xs text-faint mb-3">
+                    "Tiny coloured dot designed to overlay an icon. Used on the Practice tab \
+                    in the bottom tab bar to signal session state (#272). Caller wraps the \
+                    icon in a relative parent; the dot positions absolutely at top-right."
+                </p>
+                <div class="flex items-center gap-8">
+                    <div class="flex flex-col items-center gap-2">
+                        <span class="relative inline-flex">
+                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <StatusDot state=Signal::derive(|| None) />
+                        </span>
+                        <span class="text-xs text-muted">"Idle"</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-2">
+                        <span class="relative inline-flex">
+                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <StatusDot state=Signal::derive(|| Some(StatusDotState::Building)) />
+                        </span>
+                        <span class="text-xs text-muted">"Building (amber)"</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-2">
+                        <span class="relative inline-flex">
+                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <StatusDot state=Signal::derive(|| Some(StatusDotState::Live)) />
+                        </span>
+                        <span class="text-xs text-muted">"Live (coral, pulse)"</span>
+                    </div>
                 </div>
             </section>
 
