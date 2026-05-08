@@ -6,6 +6,11 @@ use sha2::{Digest, Sha256};
 use super::col;
 use crate::error::ApiError;
 
+/// PAT bearer-token prefix. Single source of truth: the auth extractor
+/// filters incoming bearers by this prefix, and the service uses it when
+/// generating new tokens.
+pub const TOKEN_PREFIX: &str = "intrada_pat_";
+
 /// Request payload for `POST /api/account/tokens`.
 #[derive(Debug, Deserialize)]
 pub struct CreateTokenRequest {

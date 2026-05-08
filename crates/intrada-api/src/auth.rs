@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::db;
+use crate::db::tokens::TOKEN_PREFIX as PAT_PREFIX;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -20,10 +21,6 @@ pub struct AuthConfig {
 struct Claims {
     sub: String,
 }
-
-/// PAT bearer token prefix. Tokens not matching this fall through to JWT
-/// validation.
-const PAT_PREFIX: &str = "intrada_pat_";
 
 /// Extractor that yields the authenticated user's ID.
 ///

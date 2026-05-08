@@ -3,10 +3,8 @@ use libsql::Connection;
 use rand::RngCore;
 
 use crate::db;
-use crate::db::tokens::{CreatedTokenResponse, TokenListItem};
+use crate::db::tokens::{CreatedTokenResponse, TokenListItem, TOKEN_PREFIX};
 use crate::error::ApiError;
-
-const TOKEN_PREFIX: &str = "intrada_pat_";
 
 /// Length of the user-visible prefix shown in the list endpoint:
 /// `intrada_pat_` + first 4 hex chars of the body. Long enough to identify
