@@ -15,6 +15,7 @@ use crate::domain::account::{handle_account_event, AccountEvent};
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::lesson::{handle_lesson_event, Lesson, LessonEvent};
+use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
@@ -57,6 +58,7 @@ pub enum Event {
     Lesson(LessonEvent),
     Account(AccountEvent),
     McpToken(McpTokenEvent),
+    McpAudit(McpAuditEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -171,6 +173,7 @@ impl App for Intrada {
             Event::Lesson(lesson_event) => handle_lesson_event(lesson_event, model),
             Event::Account(account_event) => handle_account_event(account_event, model),
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
+            Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -360,6 +363,9 @@ impl App for Intrada {
             delete_in_flight: model.delete_in_flight,
             account_deleted: model.account_deleted,
             mcp_tokens: model.mcp_tokens.clone(),
+            mcp_audit: model.mcp_audit.clone(),
+            mcp_audit_loaded: model.mcp_audit_loaded,
+            mcp_audit_loading: model.mcp_audit_loading,
             mcp_tokens_loaded: model.mcp_tokens_loaded,
             mcp_tokens_loading: model.mcp_tokens_loading,
             just_created_token: model.just_created_token.clone(),

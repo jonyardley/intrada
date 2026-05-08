@@ -1,0 +1,88 @@
+//! MCP audit-log read-only surface for the shell.
+//!
+//! Mirrors the API's `AuditLogEntry`. The UI (Settings → MCP activity)
+//! lists these newest-first so the user can see what their AI clients
+//! have been doing on their behalf.
+
+use chrono::{DateTime, Utc};
+use crux_core::Command;
+use serde::{Deserialize, Serialize};
+
+use crate::app::{Effect, Event};
+use crate::model::Model;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct McpAuditEntry {
+    pub id: String,
+    pub token_id: String,
+    /// Joined from `mcp_tokens`. `None` only if the token row has been
+    /// hard-deleted (we soft-delete via `revoked_at`, so this is
+    /// defensive — but the UI must handle the case).
+    pub token_name: Option<String>,
+    pub token_prefix: Option<String>,
+    pub tool: String,
+    pub args_hash: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum McpAuditEvent {
+    LoadAudit,
+    AuditLoaded(Vec<McpAuditEntry>),
+    LoadAuditFailed(String),
+}
+
+pub fn handle_mcp_audit_event(event: McpAuditEvent, model: &mut Model) -> Command<Effect, Event> {
+    match event {
+        McpAuditEvent::LoadAudit => {
+            model.mcp_audit_loading = true;
+            Command::all([
+                crate::http::list_mcp_audit(&model.api_base_url),
+                crux_core::render::render(),
+            ])
+        }
+        McpAuditEvent::AuditLoaded(entries) => {
+            model.mcp_audit = entries;
+            model.mcp_audit_loaded = true;
+            model.mcp_audit_loading = false;
+            crux_core::render::render()
+        }
+        McpAuditEvent::LoadAuditFailed(message) => {
+            model.mcp_audit_loading = false;
+            model.last_error = Some(message);
+            crux_core::render::render()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_sets_loading_flag() {
+        let mut model = Model::test_default();
+        let _ = handle_mcp_audit_event(McpAuditEvent::LoadAudit, &mut model);
+        assert!(model.mcp_audit_loading);
+        assert!(!model.mcp_audit_loaded);
+    }
+
+    #[test]
+    fn loaded_replaces_list_and_clears_loading() {
+        let mut model = Model::test_default();
+        model.mcp_audit_loading = true;
+        let entry = McpAuditEntry {
+            id: "a".into(),
+            token_id: "t".into(),
+            token_name: Some("Claude Desktop".into()),
+            token_prefix: Some("intrada_pat_xxxx".into()),
+            tool: "create_item".into(),
+            args_hash: "deadbeef".into(),
+            created_at: Utc::now(),
+        };
+        let _ = handle_mcp_audit_event(McpAuditEvent::AuditLoaded(vec![entry.clone()]), &mut model);
+        assert_eq!(model.mcp_audit, vec![entry]);
+        assert!(model.mcp_audit_loaded);
+        assert!(!model.mcp_audit_loading);
+    }
+}

@@ -20,9 +20,9 @@ use crate::components::{
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    LibraryListView, LoginView, McpTokensView, NotFoundView, SessionActiveView, SessionNewView,
-    SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
-    SettingsView, WelcomeView,
+    LibraryListView, LoginView, McpAuditView, McpTokensView, NotFoundView, SessionActiveView,
+    SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView,
+    SetEditView, SettingsView, WelcomeView,
 };
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::js_bridge;
@@ -277,6 +277,9 @@ fn AppRoutes() -> impl IntoView {
             } />
             <Route path=path!("/settings/mcp-tokens") view=|| view! {
                 <AuthenticatedShell><McpTokensView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/settings/mcp-audit") view=|| view! {
+                <AuthenticatedShell><McpAuditView /></AuthenticatedShell>
             } />
         </Routes>
     }
