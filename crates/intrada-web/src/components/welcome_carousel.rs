@@ -1,7 +1,3 @@
-// Task 4 (app.rs integration) will consume these symbols — allow dead_code
-// until then so `cargo clippy -D warnings` passes in this intermediate state.
-#![allow(dead_code)]
-
 use leptos::ev;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
@@ -51,6 +47,7 @@ fn mark_welcome_seen() {
 
 /// Clear the welcome-seen flag (dev use only).
 #[cfg(debug_assertions)]
+#[allow(dead_code)]
 pub fn reset_welcome_seen() {
     if let Some(storage) = web_sys::window()
         .and_then(|w| w.local_storage().ok())
