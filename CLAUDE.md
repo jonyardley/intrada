@@ -57,6 +57,16 @@ Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushin
 not just before committing. Pushing then watching CI fail wastes a full ~3-minute
 roundtrip per agent or contributor; better to catch the formatting tab here.
 
+Optional one-time hook install (catches the "pushed onto a merged-PR
+branch and the commits orphaned" pitfall):
+```bash
+bash scripts/install-git-hooks.sh   # sets core.hooksPath = .githooks
+```
+The pre-push hook uses `gh` + `jq` to refuse pushes to a branch whose
+most recent PR is already MERGED, with a hint to create a fresh branch
+from `origin/main`. Bypass for legitimate edge cases:
+`SKIP_PR_CHECK=1 git push`. Opt out: `git config --unset core.hooksPath`.
+
 First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
 cargo install tauri-cli --version "^2" --locked   # Tauri CLI

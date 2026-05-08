@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# pre-push hook — refuses pushes to branches whose PR is already merged.
+#
+# Why: after a squash merge, the local branch tip "diverges" from main
+# immediately. Pushing more commits to that same branch silently
+# orphans them — the merged PR no longer accepts new commits, and the
+# push goes onto a branch with no open PR. This hook catches that at
+# the moment of push.
+#
+# Install: `bash scripts/install-git-hooks.sh` (sets core.hooksPath).
+#
+# Bypass (rare — only when you know what you're doing):
+#   SKIP_PR_CHECK=1 git push
+
+set -euo pipefail
+
+# Bypass switch.
+if [ "${SKIP_PR_CHECK:-}" = "1" ]; then
+  exit 0
+fi
+
+# Determine the branch being pushed. If we're in a detached HEAD or
+# a branch that isn't being pushed, there's nothing to check.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+if [ -z "$branch" ]; then
+  exit 0
+fi
+
+# Skip the check on protected branches — pushing to main / master is a
+# separate concern (branch protection on the remote handles it).
+case "$branch" in
+  main|master) exit 0 ;;
+esac
+
+# If `gh` isn't installed, we can't check — pass silently.
+if ! command -v gh >/dev/null 2>&1; then
+  exit 0
+fi
+
+# If `jq` isn't installed, we can't parse the response — pass silently.
+if ! command -v jq >/dev/null 2>&1; then
+  exit 0
+fi
+
+# Look up the most recent PR (any state) for this branch's HEAD ref.
+# `gh pr list -L 1` returns at most one row, JSON for stable parsing.
+# Network failure or auth issue → we don't want to block legitimate
+# pushes, so swallow errors and pass.
+state=$(gh pr list \
+  --head "$branch" \
+  --state all \
+  --json state \
+  -L 1 \
+  2>/dev/null | jq -r '.[0].state // empty' 2>/dev/null || true)
+
+if [ "$state" = "MERGED" ]; then
+  cat <<EOF >&2
+
+❌ Pre-push blocked: the most recent PR for branch '$branch' was MERGED.
+
+   Pushing more commits to a merged-PR branch silently orphans them —
+   the PR is closed, so the new commits don't show up anywhere.
+
+   To continue with follow-up work, create a fresh branch from main:
+
+     git fetch origin main
+     git checkout -b <new-branch> origin/main
+     git cherry-pick <sha>      # if you've already committed
+     git push -u origin <new-branch>
+     gh pr create               # opens the new PR
+
+   Or, if you really mean to push (rare — extracting a stash, fixing
+   a typo before deletion, etc.):
+
+     SKIP_PR_CHECK=1 git push
+
+EOF
+  exit 1
+fi
+
+exit 0
