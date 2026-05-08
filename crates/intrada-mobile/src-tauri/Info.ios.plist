@@ -25,5 +25,33 @@
 	-->
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+
+	<!--
+		Local Network access — required for `just ios-dev-device` so the
+		WebView's `fetch()` calls can reach the Mac's Trunk dev server
+		(http://192.168.x.x:8080) over Wi-Fi.
+
+		Why this is needed even though the WKWebView main-document load
+		works without it: the initial page load goes through WebKit's
+		privileged loader, but `fetch()` from JS uses NSURLSession,
+		which on iOS 14+ enforces Local Network Privacy. Without
+		NSLocalNetworkUsageDescription, requests to RFC1918 addresses
+		are silently blocked with `TypeError: Load failed` and no
+		permission prompt is ever shown.
+
+		NSAllowsLocalNetworking relaxes ATS for local-network
+		destinations only — it does NOT disable ATS globally. Production
+		traffic still goes over HTTPS to intrada-api.fly.dev.
+
+		Both keys are no-ops in production (the app never reaches a
+		local-network address) so they're safe to ship.
+	-->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Intrada needs local network access during development to reach the Trunk dev server on your Mac.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
