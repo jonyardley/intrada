@@ -43,8 +43,7 @@ async fn main() {
                     for crumb in event.breadcrumbs.iter_mut() {
                         crumb.data.retain(|k, _| !is_auth_key(k));
                         for nested in ["headers", "http.headers"] {
-                            if let Some(serde_json::Value::Object(map)) =
-                                crumb.data.get_mut(nested)
+                            if let Some(serde_json::Value::Object(map)) = crumb.data.get_mut(nested)
                             {
                                 map.retain(|k, _| !is_auth_key(k));
                             }
