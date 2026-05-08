@@ -31,8 +31,11 @@ pub enum AuthSource {
     Jwt,
     /// MCP Personal Access Token resolved.
     Pat { token_id: String },
-    /// `CLERK_ISSUER_URL` is unset and no PAT was provided. Local dev only;
-    /// MCP write tools will refuse to record audit rows for this source.
+    /// `CLERK_ISSUER_URL` is unset and no PAT was provided. Local dev only.
+    // TODO(#477 phase 4): MCP write tools must refuse to record audit-log
+    // rows when source is Disabled (otherwise the audit table will record
+    // anonymous-but-attributed-to-empty-user_id rows in dev). The contract
+    // is captured here; enforcement lives with the audit-log impl.
     Disabled,
 }
 
@@ -215,4 +218,90 @@ pub async fn fetch_jwks(
     }
 
     Ok(keys)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::Db;
+
+    async fn make_state() -> AppState {
+        let db_path = std::env::temp_dir().join(format!("auth_test_{}.db", ulid::Ulid::new()));
+        let db = libsql::Builder::new_local(&db_path)
+            .build()
+            .await
+            .expect("test db build");
+        let conn = db.connect().expect("test db connect");
+        crate::migrations::run_migrations_direct(&conn)
+            .await
+            .expect("test migrations");
+        AppState::new(
+            Db::new(db, conn),
+            "http://localhost".to_string(),
+            None,
+            None,
+            None,
+        )
+    }
+
+    #[tokio::test]
+    async fn pat_resolves_to_pat_source_with_correct_token_id() {
+        // Locks in the contract: a successfully-resolved PAT must produce
+        // AuthSource::Pat carrying the inserted token_id (not the user_id,
+        // not the hash). Phase 4's audit log depends on this.
+        let state = make_state().await;
+        let conn = state.conn();
+
+        let token = "intrada_pat_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
+        let hash = db::tokens::hash_token(token);
+        let token_id = "01HTEST00000000000000000PAT".to_string();
+        let prefix = token[..16].to_string();
+        db::tokens::insert(
+            &conn,
+            &token_id,
+            "user_42",
+            "auth-test",
+            &hash,
+            &prefix,
+            chrono::Utc::now(),
+        )
+        .await
+        .expect("insert PAT");
+
+        let auth_user = resolve_pat(&state, token)
+            .await
+            .expect("PAT should resolve");
+        assert_eq!(auth_user.user_id, "user_42");
+        match auth_user.source {
+            AuthSource::Pat { token_id: t } => assert_eq!(t, token_id),
+            other => panic!("Expected AuthSource::Pat, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn revoked_pat_resolves_to_unauthorized() {
+        let state = make_state().await;
+        let conn = state.conn();
+
+        let token = "intrada_pat_b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2";
+        let hash = db::tokens::hash_token(token);
+        let token_id = "01HTEST_REVOKED_PAT".to_string();
+        db::tokens::insert(
+            &conn,
+            &token_id,
+            "user_42",
+            "auth-test",
+            &hash,
+            "intrada_pat_b1c2",
+            chrono::Utc::now(),
+        )
+        .await
+        .expect("insert PAT");
+        db::tokens::revoke(&conn, "user_42", &token_id)
+            .await
+            .expect("revoke PAT");
+
+        let result = resolve_pat(&state, token).await;
+        assert!(matches!(result, Err(ApiError::Unauthorized(_))));
+    }
 }

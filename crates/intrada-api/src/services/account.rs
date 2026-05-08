@@ -38,9 +38,9 @@ pub async fn delete_account(
     user_id: &str,
 ) -> Result<(), ApiError> {
     // Refuse empty user_id outright — auth-disabled mode (no
-    // CLERK_ISSUER_URL) yields `AuthUser("")`, which would otherwise
-    // turn into an R2 prefix `/` and a Clerk DELETE /v1/users/ —
-    // both blast-radius hazards.
+    // CLERK_ISSUER_URL) yields `user_id == ""` (with `AuthSource::Disabled`),
+    // which would otherwise turn into an R2 prefix `/` and a Clerk
+    // DELETE /v1/users/ — both blast-radius hazards.
     if user_id.is_empty() {
         return Err(ApiError::Unauthorized("Unauthorized".to_string()));
     }
