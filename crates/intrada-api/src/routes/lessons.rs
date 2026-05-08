@@ -6,16 +6,12 @@ use tower_http::limit::RequestBodyLimitLayer;
 
 use intrada_core::domain::lesson::Lesson;
 use intrada_core::domain::types::{CreateLesson, UpdateLesson};
-use intrada_core::validation;
 
 use crate::auth::AuthUser;
-use crate::db;
 use crate::error::ApiError;
+use crate::services;
+use crate::services::lessons::MAX_PHOTO_SIZE;
 use crate::state::AppState;
-use crate::storage::R2Client;
-
-/// Max photo upload size: 5 MB
-const MAX_PHOTO_SIZE: usize = 5 * 1024 * 1024;
 
 /// HTTP body limit for photo uploads: 5 MB photo + multipart overhead.
 const PHOTO_BODY_LIMIT: usize = 6 * 1024 * 1024;
@@ -44,7 +40,7 @@ async fn list_lessons(
 ) -> Result<Json<Vec<Lesson>>, ApiError> {
     let conn = state.conn();
     let r2 = state.r2()?;
-    let lessons = db::lessons::list_lessons(&conn, &user_id, r2).await?;
+    let lessons = services::lessons::list_lessons(&conn, r2, &user_id).await?;
     Ok(Json(lessons))
 }
 
@@ -55,9 +51,7 @@ async fn get_lesson(
 ) -> Result<Json<Lesson>, ApiError> {
     let conn = state.conn();
     let r2 = state.r2()?;
-    let lesson = db::lessons::get_lesson(&conn, &id, &user_id, r2)
-        .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Lesson not found: {id}")))?;
+    let lesson = services::lessons::get_lesson(&conn, r2, &id, &user_id).await?;
     Ok(Json(lesson))
 }
 
@@ -66,10 +60,9 @@ async fn create_lesson(
     AuthUser(user_id): AuthUser,
     Json(input): Json<CreateLesson>,
 ) -> Result<(StatusCode, Json<Lesson>), ApiError> {
-    validation::validate_create_lesson(&input)?;
     let conn = state.conn();
     let r2 = state.r2()?;
-    let lesson = db::lessons::insert_lesson(&conn, &user_id, &input, r2).await?;
+    let lesson = services::lessons::create_lesson(&conn, r2, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(lesson)))
 }
 
@@ -79,12 +72,9 @@ async fn update_lesson(
     Path(id): Path<String>,
     Json(input): Json<UpdateLesson>,
 ) -> Result<Json<Lesson>, ApiError> {
-    validation::validate_update_lesson(&input)?;
     let conn = state.conn();
     let r2 = state.r2()?;
-    let lesson = db::lessons::update_lesson(&conn, &id, &user_id, &input, r2)
-        .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Lesson not found: {id}")))?;
+    let lesson = services::lessons::update_lesson(&conn, r2, &id, &user_id, &input).await?;
     Ok(Json(lesson))
 }
 
@@ -94,41 +84,11 @@ async fn delete_lesson(
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();
-
-    // Delete photos from R2 if storage is configured. Log but don't fail
-    // the request on R2 errors — DB is the source of truth.
-    if let Ok(r2) = state.r2() {
-        let keys = db::lessons::list_photo_storage_keys(&conn, &id, &user_id).await?;
-        for key in keys {
-            if let Err(e) = r2.delete(&key).await {
-                tracing::warn!(lesson_id = %id, storage_key = %key, error = ?e, "R2 photo delete failed; orphaning object");
-            }
-        }
-    }
-
-    let deleted = db::lessons::delete_lesson(&conn, &id, &user_id).await?;
-    if deleted {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err(ApiError::NotFound(format!("Lesson not found: {id}")))
-    }
+    services::lessons::delete_lesson(&conn, state.r2.as_ref(), &id, &user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ── Photo endpoints ────────────────────────────────────────────────────
-
-/// Inspect the leading bytes and return the canonical image content-type,
-/// or `None` if the bytes don't match a supported format. This is the only
-/// source of truth for a photo's content-type — the client-supplied
-/// multipart header is never trusted.
-fn sniff_image_content_type(bytes: &[u8]) -> Option<&'static str> {
-    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        Some("image/jpeg")
-    } else if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
-        Some("image/png")
-    } else {
-        None
-    }
-}
 
 async fn upload_photo(
     State(state): State<AppState>,
@@ -151,6 +111,9 @@ async fn upload_photo(
         .await
         .map_err(|e| ApiError::Validation(format!("Failed to read photo data: {e}")))?;
 
+    // Early body-size guard before handing off to the service. The service
+    // checks again (so non-HTTP callers like MCP get the same behaviour),
+    // but rejecting here avoids a wasted clone of the bytes into the service.
     if data.len() > MAX_PHOTO_SIZE {
         return Err(ApiError::Validation(format!(
             "Photo exceeds maximum size of {} MB",
@@ -158,19 +121,7 @@ async fn upload_photo(
         )));
     }
 
-    // Determine content-type from the bytes themselves — never trust the
-    // client's multipart header. Prevents XSS via spoofed Content-Type on
-    // the public R2 URL.
-    let content_type = sniff_image_content_type(&data)
-        .ok_or_else(|| ApiError::Validation("Photo must be JPEG or PNG".into()))?;
-
-    // Upload to R2
-    let photo_id = ulid::Ulid::new().to_string();
-    let storage_key = R2Client::photo_key(&user_id, &id, &photo_id);
-    r2.upload(&storage_key, &data, content_type).await?;
-
-    // Record in DB
-    let photo = db::lessons::insert_lesson_photo(&conn, &id, &user_id, &storage_key, r2).await?;
+    let photo = services::lessons::upload_lesson_photo(&conn, r2, &user_id, &id, &data).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -188,23 +139,7 @@ async fn delete_photo(
     Path((id, photo_id)): Path<(String, String)>,
 ) -> Result<StatusCode, ApiError> {
     let conn = state.conn();
-
-    // Get storage key before deleting from DB
-    let storage_key = db::lessons::get_lesson_photo_storage_key(&conn, &photo_id, &id, &user_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Photo not found: {photo_id}")))?;
-
-    // Delete from R2. Log but don't fail the request on R2 errors — the
-    // DB row below is the authoritative pointer; orphaned R2 objects are
-    // recoverable via prefix sweep but a stuck DB row is not.
-    if let Ok(r2) = state.r2() {
-        if let Err(e) = r2.delete(&storage_key).await {
-            tracing::warn!(photo_id = %photo_id, storage_key = %storage_key, error = ?e, "R2 photo delete failed; orphaning object");
-        }
-    }
-
-    // Delete from DB
-    db::lessons::delete_lesson_photo(&conn, &photo_id, &id, &user_id).await?;
-
+    services::lessons::delete_lesson_photo(&conn, state.r2.as_ref(), &user_id, &id, &photo_id)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }

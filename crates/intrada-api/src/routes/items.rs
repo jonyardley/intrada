@@ -5,11 +5,10 @@ use axum::{Json, Router};
 
 use intrada_core::domain::item::Item;
 use intrada_core::domain::types::{CreateItem, UpdateItem};
-use intrada_core::validation;
 
 use crate::auth::AuthUser;
-use crate::db;
 use crate::error::ApiError;
+use crate::services;
 use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
@@ -23,7 +22,7 @@ async fn list_items(
     AuthUser(user_id): AuthUser,
 ) -> Result<Json<Vec<Item>>, ApiError> {
     let conn = state.conn();
-    let items = db::items::list_items(&conn, &user_id).await?;
+    let items = services::items::list_items(&conn, &user_id).await?;
     Ok(Json(items))
 }
 
@@ -33,9 +32,7 @@ async fn get_item(
     Path(id): Path<String>,
 ) -> Result<Json<Item>, ApiError> {
     let conn = state.conn();
-    let item = db::items::get_item(&conn, &id, &user_id)
-        .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
+    let item = services::items::get_item(&conn, &id, &user_id).await?;
     Ok(Json(item))
 }
 
@@ -44,9 +41,8 @@ async fn create_item(
     AuthUser(user_id): AuthUser,
     Json(input): Json<CreateItem>,
 ) -> Result<(StatusCode, Json<Item>), ApiError> {
-    validation::validate_create_item(&input)?;
     let conn = state.conn();
-    let item = db::items::insert_item(&conn, &user_id, &input).await?;
+    let item = services::items::create_item(&conn, &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(item)))
 }
 
@@ -56,11 +52,8 @@ async fn update_item(
     Path(id): Path<String>,
     Json(input): Json<UpdateItem>,
 ) -> Result<Json<Item>, ApiError> {
-    validation::validate_update_item(&input)?;
     let conn = state.conn();
-    let item = db::items::update_item(&conn, &id, &user_id, &input)
-        .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))?;
+    let item = services::items::update_item(&conn, &id, &user_id, &input).await?;
     Ok(Json(item))
 }
 
@@ -70,10 +63,6 @@ async fn delete_item(
     Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let conn = state.conn();
-    let deleted = db::items::delete_item(&conn, &id, &user_id).await?;
-    if deleted {
-        Ok(Json(serde_json::json!({ "message": "Item deleted" })))
-    } else {
-        Err(ApiError::NotFound(format!("Item not found: {id}")))
-    }
+    services::items::delete_item(&conn, &id, &user_id).await?;
+    Ok(Json(serde_json::json!({ "message": "Item deleted" })))
 }
