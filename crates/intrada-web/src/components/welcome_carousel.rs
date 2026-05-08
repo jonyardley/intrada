@@ -111,7 +111,8 @@ pub fn WelcomeCarousel(
     let dismiss_cta = {
         let navigate = navigate.clone();
         move || {
-            haptics::haptic_success();
+            // No explicit haptic here — Button::Primary fires haptic_light
+            // on click internally. Adding another would double-tap on iOS.
             mark_welcome_seen();
             show.set(false);
             navigate("/library/new", Default::default());
@@ -119,9 +120,9 @@ pub fn WelcomeCarousel(
     };
 
     // ── Touch/swipe handling ───────────────────────────────────────────
-    // Follows the pattern from swipe_actions.rs — attach raw listeners
-    // via Effect + Closure so we can call preventDefault on horizontal
-    // swipes without blocking vertical scroll.
+    // Raw addEventListener via Effect+Closure (the swipe_actions.rs pattern).
+    // No preventDefault is needed: the overlay is `fixed inset-0` with no
+    // scrollable content beneath it during the welcome flow.
 
     let touch_start_x = RwSignal::new(None::<f64>);
     let touch_start_y = RwSignal::new(None::<f64>);
@@ -222,7 +223,7 @@ pub fn WelcomeCarousel(
     view! {
         <div
             node_ref=carousel_ref
-            class="fixed inset-0 z-10 flex flex-col items-center justify-center bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"
+            class="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-linear-to-b from-[var(--color-bg-gradient-top)] to-[var(--color-bg-gradient-bottom)]"
             style="padding-top: env(safe-area-inset-top, 0); padding-bottom: env(safe-area-inset-bottom, 0);"
             on:click=move |_: ev::MouseEvent| {
                 // Tap-to-advance on desktop (not on the final card — that has
@@ -237,6 +238,7 @@ pub fn WelcomeCarousel(
         >
             // Skip link — top right
             <button
+                type="button"
                 class="absolute top-4 right-4 px-2 py-1 text-sm text-muted bg-transparent border-none cursor-pointer"
                 style="top: calc(env(safe-area-inset-top, 16px) + 0.5rem);"
                 on:click=move |ev: ev::MouseEvent| {
@@ -279,21 +281,25 @@ pub fn WelcomeCarousel(
 
             // Progress dots
             <div
-                class="welcome-dots absolute bottom-8"
+                class="welcome-dots absolute"
                 style="bottom: calc(env(safe-area-inset-bottom, 32px) + 1rem);"
             >
                 {(0..CARD_COUNT)
                     .map(|i| {
+                        let is_active = move || card_index.get() == i;
                         let dot_class = move || {
-                            if card_index.get() == i {
+                            if is_active() {
                                 "welcome-dot welcome-dot--active"
                             } else {
                                 "welcome-dot"
                             }
                         };
+                        let aria_current = move || if is_active() { "true" } else { "false" };
                         view! {
                             <button
+                                type="button"
                                 class=dot_class
+                                aria-current=aria_current
                                 on:click=move |ev: ev::MouseEvent| {
                                     ev.stop_propagation();
                                     haptics::haptic_selection();
