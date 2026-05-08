@@ -14,6 +14,15 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json --bin intrada-api
 # Build application
 COPY . .
+# Baked into the binary at compile time via `option_env!("GIT_SHA")` and
+# reported to Sentry as the `release` so events tie to deploys. Defaulted
+# empty so local `docker build` without --build-arg still works.
+# Placed AFTER cargo-chef cook so changes to GIT_SHA per deploy don't bust
+# the dependency-build cache (the most expensive layer); only the final
+# application-build layer re-runs, gated by build.rs's
+# `cargo:rerun-if-env-changed=GIT_SHA`.
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 RUN cargo build --release --bin intrada-api
 
 # Runtime image — no Rust toolchain needed.
