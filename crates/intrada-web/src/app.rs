@@ -23,9 +23,9 @@ use crate::views::{
     LibraryListView, NotFoundView, SessionActiveView, SessionNewView, SessionSummaryView,
     SessionsAllView, SessionsListView, SetDetailView, SetEditView,
 };
-use intrada_web::background_audio;
 use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
+use intrada_web::session_lifecycle;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 /// App-level signal for focus mode — when true, navigation and non-essential UI are hidden.
@@ -170,14 +170,16 @@ fn AuthenticatedApp() -> impl IntoView {
         }
     }
 
-    // Background-audio plugin lifecycle (#309 Phase D). Mounted at the
-    // app level so the Some → None transition fires `end_session()` even
+    // Session-lifecycle Effect (#309 Phase D + #474 Phase B). Drives
+    // both the background-audio plugin (lock-screen Now Playing /
+    // AVAudioSession) and the live-activity plugin (Lock Screen +
+    // Dynamic Island) from the same vm.active_session transitions.
+    // Mounted at the app level so Some → None fires the end calls even
     // when the user navigates away from /sessions/active before
     // finishing — e.g. backing to home, switching tabs, or hitting
-    // "Discard Session" from /sessions/new. Mounting inside <SessionTimer>
-    // would unmount the Effect alongside the route and leak the iOS
-    // AVAudioSession + silent loop until the OS reclaims it.
-    background_audio::mount_background_audio_lifecycle(view_model);
+    // "Discard Session" from /sessions/new. Mounting inside
+    // <SessionTimer> would leak both plugins.
+    session_lifecycle::mount_session_lifecycle(view_model);
 
     view! {
         <div class="relative z-0 min-h-screen text-primary">
