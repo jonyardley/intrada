@@ -256,6 +256,28 @@ values in Leptos 0.8 must be strings — `width="24".to_string()` or
 `viewBox`, etc. Numeric literals work for HTML attrs (which Leptos coerces)
 but not SVG.
 
+### Linux CI doesn't lint `#[cfg(target_os = "ios")]` branches in Tauri plugins
+
+Plugins under `crates/intrada-mobile/plugins/` depend on `tauri = "2"` which
+pulls in glib/GTK system libs that aren't on the Ubuntu CI runners. CI works
+around it by `--exclude tauri-plugin-background-audio` from the workspace
+clippy/test commands. That means **iOS-only code paths inside those plugins
+get zero CI coverage**: a `#[cfg(target_os = "ios")] { ... return result; }`
+that clippy would normally flag as `needless_return` will pass CI clean and
+only fail the next time someone runs `cargo build --target aarch64-apple-ios`
+locally — which on iOS-only changes is "never, until release prep."
+
+Before pushing changes to any plugin under `crates/intrada-mobile/plugins/`,
+run clippy against the iOS target locally:
+
+```bash
+cargo clippy -p tauri-plugin-<name> --target aarch64-apple-ios -- -D warnings
+```
+
+`aarch64-apple-ios` is enough — the simulator targets (`x86_64-apple-ios`,
+`aarch64-apple-ios-sim`) don't add coverage clippy doesn't already get from
+the device target.
+
 ## Workflow
 
 Match ceremony to scope. Default to less. Escalate only when work demands it.
