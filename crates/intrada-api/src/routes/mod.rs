@@ -62,9 +62,10 @@ pub fn api_router(state: AppState) -> Router {
     let mcp_routes = crate::mcp::router().layer(mcp_cors);
 
     Router::new()
-        // Order matters: longest-prefix wins. `/api/mcp/*` resolves here
-        // (permissive CORS); everything else under `/api/*` goes to the
-        // strict-CORS subtree below.
+        // Two sibling nests: axum routes by path specificity, so a request
+        // to `/api/mcp/*` resolves to the permissive-CORS subtree, while
+        // every other `/api/*` path resolves to the strict-CORS subtree.
+        // Each subtree carries its own CorsLayer.
         .nest("/api/mcp", mcp_routes)
         .nest("/api", api_routes().layer(strict_cors))
         .layer(trace)

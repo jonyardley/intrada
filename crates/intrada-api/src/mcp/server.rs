@@ -31,6 +31,10 @@ pub fn router() -> Router<AppState> {
 /// JSON-RPC `METHOD_NOT_FOUND` error. Notifications (no `id`) get a 204.
 async fn handle(
     State(state): State<AppState>,
+    // The `..` drops `AuthSource` for now. Phase 4 (#477) will read
+    // `AuthSource::Pat { token_id }` here to record audit-log rows for
+    // every MCP write — that's where the token_id plumbed through #501
+    // gets consumed.
     AuthUser { user_id, .. }: AuthUser,
     Json(req): Json<JsonRpcRequest>,
 ) -> axum::response::Response {

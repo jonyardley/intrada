@@ -72,19 +72,19 @@ pub fn catalogue() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: LIST_SESSIONS,
-            description: "List the user's practice sessions, optionally filtered by date range. Each session has a start time, total duration, and a setlist of items practiced with per-item scores.",
+            description: "List the user's practice sessions, optionally filtered by start time (`session.started_at`). Each session has a start time, total duration, and a setlist of items practiced with per-item scores.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "start": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "Optional RFC 3339 lower bound (inclusive)."
+                        "description": "Optional RFC 3339 lower bound (inclusive); compared against session.started_at."
                     },
                     "end": {
                         "type": "string",
                         "format": "date-time",
-                        "description": "Optional RFC 3339 upper bound (inclusive)."
+                        "description": "Optional RFC 3339 upper bound (inclusive); compared against session.started_at."
                     }
                 },
                 "additionalProperties": false

@@ -166,7 +166,11 @@ pub async fn get_practice_summary(
         .collect();
 
     let sessions_count = in_window.len();
-    let total_minutes: u64 = in_window.iter().map(|s| s.total_duration_secs / 60).sum();
+    // Sum seconds first, divide once at the end — dividing per-session
+    // would drop sub-minute remainders. With 10 × 90s sessions the
+    // per-session approach reads as 10min instead of the correct 15.
+    let total_secs: u64 = in_window.iter().map(|s| s.total_duration_secs).sum();
+    let total_minutes = total_secs / 60;
 
     let mut item_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut score_sum: u32 = 0;
