@@ -61,9 +61,15 @@ First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
 cargo install tauri-cli --version "^2" --locked   # Tauri CLI
 brew install cocoapods                             # CocoaPods (required by Tauri iOS)
+brew install xcodegen                              # xcodegen (required by Tauri iOS)
 # Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
 cd crates/intrada-mobile/src-tauri
 cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
+
+# Patch the generated project.yml to fix the libapp.a duplicate-output
+# bug (#476) — run after every `cargo tauri ios init`. Idempotent.
+cd ..
+ruby scripts/fix-ios-build-config.rb
 ```
 
 If you're forking this repo, update `bundle.iOS.developmentTeam` in
