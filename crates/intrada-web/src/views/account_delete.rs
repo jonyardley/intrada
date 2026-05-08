@@ -80,7 +80,7 @@ pub fn AccountDeleteView() -> impl IntoView {
     };
 
     view! {
-        <div class="max-w-md mx-auto py-comfortable space-y-comfortable pb-[env(safe-area-inset-bottom)]">
+        <div class="max-w-md mx-auto py-card-comfortable space-y-card-comfortable pb-[env(safe-area-inset-bottom)]">
             <h1 class="page-title">"Delete your account?"</h1>
 
             <p class="text-sm text-secondary">
