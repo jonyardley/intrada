@@ -10,6 +10,7 @@ use crate::app::{Effect, Event};
 use crate::domain::account::{AccountEvent, AccountPreferences};
 use crate::domain::item::Item;
 use crate::domain::lesson::Lesson;
+use crate::domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
@@ -353,5 +354,24 @@ pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> 
                 id: id_for_callback.clone(),
                 message: format!("Failed to revoke token: {e}"),
             }),
+        })
+}
+
+// ── MCP Audit Log ──────────────────────────────────────────────────────
+
+pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/account/audit"))
+        .expect_json::<Vec<McpAuditEntry>>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(entries) => Event::McpAudit(McpAuditEvent::AuditLoaded(entries)),
+                None => Event::McpAudit(McpAuditEvent::LoadAuditFailed(
+                    "list_mcp_audit: empty body".into(),
+                )),
+            },
+            Err(e) => Event::McpAudit(McpAuditEvent::LoadAuditFailed(format!(
+                "Failed to load audit log: {e}"
+            ))),
         })
 }

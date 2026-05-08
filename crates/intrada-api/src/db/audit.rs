@@ -14,10 +14,18 @@ use super::col;
 use crate::error::ApiError;
 
 /// Public list view of an audit-log row.
+///
+/// `token_name` and `token_prefix` come from a LEFT JOIN with
+/// `mcp_tokens` so the UI can show "Created via 'Claude Desktop'" rather
+/// than a raw ULID. Both are `Option` because the token row could
+/// theoretically be hard-deleted (we only soft-delete via `revoked_at`,
+/// but defensive against future schema changes).
 #[derive(Debug, Serialize)]
 pub struct AuditLogEntry {
     pub id: String,
     pub token_id: String,
+    pub token_name: Option<String>,
+    pub token_prefix: Option<String>,
     pub tool: String,
     pub args_hash: String,
     pub created_at: DateTime<Utc>,
@@ -58,10 +66,11 @@ pub async fn list(
     let limit = limit.min(500);
     let mut rows = conn
         .query(
-            "SELECT id, token_id, tool, args_hash, created_at
-             FROM mcp_audit_log
-             WHERE user_id = ?1
-             ORDER BY created_at DESC
+            "SELECT a.id, a.token_id, t.name, t.prefix, a.tool, a.args_hash, a.created_at
+             FROM mcp_audit_log a
+             LEFT JOIN mcp_tokens t ON t.id = a.token_id
+             WHERE a.user_id = ?1
+             ORDER BY a.created_at DESC
              LIMIT ?2",
             libsql::params![user_id, limit as i64],
         )
@@ -75,15 +84,19 @@ pub async fn list(
     {
         let id: String = col!(row, 0)?;
         let token_id: String = col!(row, 1)?;
-        let tool: String = col!(row, 2)?;
-        let args_hash: String = col!(row, 3)?;
-        let created_at_str: String = col!(row, 4)?;
+        let token_name: Option<String> = col!(row, 2)?;
+        let token_prefix: Option<String> = col!(row, 3)?;
+        let tool: String = col!(row, 4)?;
+        let args_hash: String = col!(row, 5)?;
+        let created_at_str: String = col!(row, 6)?;
         let created_at: DateTime<Utc> = created_at_str
             .parse()
             .map_err(|e| ApiError::Internal(format!("Invalid created_at: {e}")))?;
         entries.push(AuditLogEntry {
             id,
             token_id,
+            token_name,
+            token_prefix,
             tool,
             args_hash,
             created_at,

@@ -113,6 +113,11 @@ pub fn SettingsView() -> impl IntoView {
         navigate_tokens("/settings/mcp-tokens", NavigateOptions::default());
     });
 
+    let navigate_audit = use_navigate();
+    let go_audit = Callback::new(move |_: leptos::ev::MouseEvent| {
+        navigate_audit("/settings/mcp-audit", NavigateOptions::default());
+    });
+
     view! {
         <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
             <h1 class="page-title">"Settings"</h1>
@@ -180,6 +185,16 @@ pub fn SettingsView() -> impl IntoView {
                             on:click=move |ev| go_tokens.run(ev)
                         >
                             <span>"MCP tokens"</span>
+                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                        </button>
+                    </GroupedListRow>
+                    <GroupedListRow>
+                        <button
+                            type="button"
+                            class="w-full flex items-center justify-between px-card-compact py-card-compact text-left text-sm font-medium text-primary hover:bg-surface-hover motion-safe:transition-colors min-h-[44px]"
+                            on:click=move |ev| go_audit.run(ev)
+                        >
+                            <span>"MCP activity"</span>
                             <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
                         </button>
                     </GroupedListRow>

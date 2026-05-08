@@ -6,6 +6,7 @@ use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
 use crate::domain::item::{Item, ItemKind};
 use crate::domain::lesson::Lesson;
+use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, RepAction, SessionStatus,
@@ -48,6 +49,13 @@ pub struct Model {
     /// `DismissCreatedToken` (or naturally when the user navigates away
     /// and the model is reloaded).
     pub just_created_token: Option<CreatedMcpToken>,
+    /// Audit-log entries for the current user, newest first.
+    pub mcp_audit: Vec<McpAuditEntry>,
+    /// True after the first successful `LoadAudit` so the UI can
+    /// distinguish "loading" from "loaded but empty".
+    pub mcp_audit_loaded: bool,
+    /// True while a `LoadAudit` HTTP request is outstanding.
+    pub mcp_audit_loading: bool,
 }
 
 #[cfg(test)]
@@ -99,6 +107,9 @@ pub struct ViewModel {
     pub mcp_tokens_loaded: bool,
     pub mcp_tokens_loading: bool,
     pub just_created_token: Option<CreatedMcpToken>,
+    pub mcp_audit: Vec<McpAuditEntry>,
+    pub mcp_audit_loaded: bool,
+    pub mcp_audit_loading: bool,
 }
 
 // Sanity-check that ViewModel field names mirror Model where applicable.
