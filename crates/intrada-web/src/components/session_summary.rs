@@ -6,6 +6,7 @@ use intrada_web::validation::validate_achieved_tempo_input;
 use crate::components::{
     AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, SetSaveForm, StatCard, StatTone,
 };
+use intrada_web::clerk_bindings;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -343,6 +344,7 @@ pub fn SessionSummary() -> impl IntoView {
                                         full_width=true
                                         on_click=Callback::new(move |_| {
                                             let now = chrono::Utc::now();
+                                            clerk_bindings::sentry_breadcrumb("session", "session.save", "info");
                                             let event = Event::Session(SessionEvent::SaveSession { now });
                                             let core_ref = core_save.borrow();
                                             let effects = core_ref.process_event(event);
