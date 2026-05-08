@@ -61,8 +61,8 @@ async fn create_lesson(
     Json(input): Json<CreateLesson>,
 ) -> Result<(StatusCode, Json<Lesson>), ApiError> {
     let conn = state.conn();
-    let r2 = state.r2()?;
-    let lesson = services::lessons::create_lesson(&conn, r2, &user_id, &input).await?;
+    let lesson =
+        services::lessons::create_lesson(&conn, state.r2.as_ref(), &user_id, &input).await?;
     Ok((StatusCode::CREATED, Json(lesson)))
 }
 
@@ -73,8 +73,8 @@ async fn update_lesson(
     Json(input): Json<UpdateLesson>,
 ) -> Result<Json<Lesson>, ApiError> {
     let conn = state.conn();
-    let r2 = state.r2()?;
-    let lesson = services::lessons::update_lesson(&conn, r2, &id, &user_id, &input).await?;
+    let lesson =
+        services::lessons::update_lesson(&conn, state.r2.as_ref(), &id, &user_id, &input).await?;
     Ok(Json(lesson))
 }
 

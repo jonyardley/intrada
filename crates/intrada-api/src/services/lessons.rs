@@ -46,22 +46,26 @@ pub async fn get_lesson(
 
 pub async fn create_lesson(
     conn: &Connection,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
     user_id: &str,
     input: &CreateLesson,
 ) -> Result<Lesson, ApiError> {
+    // Validate first so an invalid payload returns 422 even when R2 is
+    // unconfigured. Unwrap r2 only after validation passes.
     validation::validate_create_lesson(input)?;
+    let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
     db::lessons::insert_lesson(conn, user_id, input, r2).await
 }
 
 pub async fn update_lesson(
     conn: &Connection,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
     id: &str,
     user_id: &str,
     input: &UpdateLesson,
 ) -> Result<Lesson, ApiError> {
     validation::validate_update_lesson(input)?;
+    let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
     db::lessons::update_lesson(conn, id, user_id, input, r2)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Lesson not found: {id}")))
