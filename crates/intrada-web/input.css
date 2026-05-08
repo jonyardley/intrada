@@ -2315,3 +2315,218 @@ html:not([data-platform="ios"]) .context-menu {
     transform: translateY(0);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Welcome mark animations — brand-vocabulary marks (lines + dots)
+   ═══════════════════════════════════════════════════════════════════════
+   Each card's WelcomeMark uses the same primitives as the brand logo
+   (horizontal lines + violet/amber dots). Animations express the
+   per-card concept by what the dots DO on the lines.
+
+   Lines render in --color-text-faint with stroke-width 2 (matches the
+   Icon component convention). Violet dots use --color-accent. Amber
+   dots use --color-warm-accent.
+
+   Animations run once on mount; mark stays at final state. Re-mounting
+   the SVG (via card_index change) replays the animation. Collapses to
+   instant final state under prefers-reduced-motion. */
+
+.welcome-mark {
+  width: 80px;
+  height: 80px;
+  display: block;
+  /* The mark's lines and dots set their own colours via stroke/fill
+     attributes referencing tokens; no inherited color needed. */
+}
+
+/* Shared timing curve — matches the iOS-default spring feel. */
+:root {
+  --welcome-mark-ease: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ── Card 1: line draws in, then violet dot slides along it ────────── */
+@keyframes welcome-mark-line-draw {
+  from { stroke-dashoffset: 50; opacity: 0; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes welcome-mark-dot-slide-1 {
+  /* Dot starts off-line at the left, fades in once the line is drawn,
+     then slides right to settle past centre. The translate values are
+     in SVG user units (1:1 with px at 80 viewBox + 80px display). */
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(30px); }
+}
+.welcome-mark--opener line {
+  stroke-dasharray: 50;
+  animation: welcome-mark-line-draw 500ms ease-out forwards;
+}
+.welcome-mark--opener .welcome-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-dot-slide-1 800ms var(--welcome-mark-ease) 200ms backwards;
+}
+
+/* ── Card 2: three lines draw staggered, dots snap on after ────────── */
+@keyframes welcome-mark-dot-snap {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.welcome-mark--capture line {
+  stroke-dasharray: 56;
+  animation: welcome-mark-line-draw 400ms ease-out backwards;
+}
+.welcome-mark--capture line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--capture line:nth-of-type(2) { animation-delay: 80ms; }
+.welcome-mark--capture line:nth-of-type(3) { animation-delay: 160ms; }
+.welcome-mark--capture .welcome-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-dot-snap 400ms var(--welcome-mark-ease) backwards;
+}
+.welcome-mark--capture .welcome-dot:nth-of-type(1) { animation-delay: 350ms; }
+.welcome-mark--capture .welcome-dot:nth-of-type(2) { animation-delay: 480ms; }
+.welcome-mark--capture .welcome-dot:nth-of-type(3) { animation-delay: 610ms; }
+
+/* ── Card 3: lines fade in, then violet dots slide horizontally to align ── */
+@keyframes welcome-mark-line-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.welcome-mark--align line {
+  animation: welcome-mark-line-fade 300ms ease-out backwards;
+}
+.welcome-mark--align line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--align line:nth-of-type(2) { animation-delay: 60ms; }
+.welcome-mark--align line:nth-of-type(3) { animation-delay: 120ms; }
+.welcome-mark--align .welcome-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Each dot starts at its scattered position (set via SVG cx) and
+   translates to the same final column. The keyframes encode the
+   delta so dots end visually aligned. */
+@keyframes welcome-mark-align-1 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(20px); }
+}
+@keyframes welcome-mark-align-2 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(-20px); }
+}
+@keyframes welcome-mark-align-3 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(10px); }
+}
+.welcome-mark--align .welcome-dot:nth-of-type(1) {
+  animation: welcome-mark-align-1 700ms var(--welcome-mark-ease) 250ms backwards;
+}
+.welcome-mark--align .welcome-dot:nth-of-type(2) {
+  animation: welcome-mark-align-2 700ms var(--welcome-mark-ease) 350ms backwards;
+}
+.welcome-mark--align .welcome-dot:nth-of-type(3) {
+  animation: welcome-mark-align-3 700ms var(--welcome-mark-ease) 450ms backwards;
+}
+
+/* ── Card 4: line + violet dot pulses with rings; amber dot slides in ── */
+@keyframes welcome-mark-ring-pulse {
+  0%   { opacity: 0; transform: scale(1); }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+@keyframes welcome-mark-dot-pulse {
+  0%   { transform: scale(0); opacity: 0; }
+  40%  { transform: scale(1); opacity: 1; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes welcome-mark-amber-enter {
+  0%   { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.welcome-mark--practice line {
+  stroke-dasharray: 50;
+  animation: welcome-mark-line-draw 400ms ease-out forwards;
+}
+.welcome-mark--practice .welcome-dot--violet {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-dot-pulse 700ms var(--welcome-mark-ease) 300ms backwards;
+}
+.welcome-mark--practice .welcome-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-ring-pulse 1000ms ease-out 500ms backwards;
+}
+.welcome-mark--practice .welcome-ring:nth-of-type(2) { animation-delay: 700ms; }
+.welcome-mark--practice .welcome-dot--amber {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: welcome-mark-amber-enter 600ms var(--welcome-mark-ease) 700ms backwards;
+}
+
+/* ── Card 5: three lines, violet dots stagger rightward as progress ── */
+.welcome-mark--track line {
+  animation: welcome-mark-line-fade 300ms ease-out backwards;
+}
+.welcome-mark--track line:nth-of-type(1) { animation-delay: 0ms; }
+.welcome-mark--track line:nth-of-type(2) { animation-delay: 60ms; }
+.welcome-mark--track line:nth-of-type(3) { animation-delay: 120ms; }
+.welcome-mark--track .welcome-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes welcome-mark-step-1 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(15px); }
+}
+@keyframes welcome-mark-step-2 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(28px); }
+}
+@keyframes welcome-mark-step-3 {
+  0%   { opacity: 0; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(40px); }
+}
+.welcome-mark--track .welcome-dot:nth-of-type(1) {
+  animation: welcome-mark-step-1 700ms var(--welcome-mark-ease) 250ms backwards;
+}
+.welcome-mark--track .welcome-dot:nth-of-type(2) {
+  animation: welcome-mark-step-2 700ms var(--welcome-mark-ease) 400ms backwards;
+}
+.welcome-mark--track .welcome-dot:nth-of-type(3) {
+  animation: welcome-mark-step-3 700ms var(--welcome-mark-ease) 550ms backwards;
+}
+
+/* ── Reduced-motion: snap to final state ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-mark line,
+  .welcome-mark .welcome-dot,
+  .welcome-mark .welcome-ring {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+  /* Rings should be invisible at rest (they only exist as a transient
+     pulse). Hide them entirely when motion is reduced. */
+  .welcome-mark .welcome-ring {
+    opacity: 0;
+  }
+  /* Dots in card 1, 3, 5 still need to land at their target X — apply
+     the final translate without animation so they sit in alignment. */
+  .welcome-mark--opener .welcome-dot { transform: translateX(30px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(1) { transform: translateX(20px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(2) { transform: translateX(-20px); }
+  .welcome-mark--align .welcome-dot:nth-of-type(3) { transform: translateX(10px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(1) { transform: translateX(15px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(2) { transform: translateX(28px); }
+  .welcome-mark--track .welcome-dot:nth-of-type(3) { transform: translateX(40px); }
+}
