@@ -221,15 +221,14 @@ impl App for Intrada {
 
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
-                // Suppress duplicates and overlapping bursts (#346):
-                //   - identical message: no-op (avoids re-render and re-firing
-                //     the slide-in animation with the same text)
-                //   - already-showing different error: keep the first one
-                //     (StartApp fans out 3 parallel fetches; on a dead API
-                //     the user got 3 slide-downs in succession)
-                // Once the user dismisses (`ClearError`), the next failure
-                // shows again as expected.
-                if model.last_error.is_some() {
+                // Dedupe identical messages (#346) — avoids unnecessary
+                // re-renders. Distinct messages still replace the current
+                // error so user-action failures (save/delete) aren't
+                // silently swallowed by a stale load-error banner. The
+                // slide-in animation only re-fires on a true None → Some
+                // transition; the shell mounts the banner stably, so
+                // Some → Some swaps just update the text in place.
+                if model.last_error.as_deref() == Some(msg.as_str()) {
                     return Command::done();
                 }
                 model.last_error = Some(msg);
@@ -1652,29 +1651,41 @@ mod tests {
     }
 
     #[test]
-    fn test_load_failed_preserves_first_error_during_burst() {
-        // StartApp fans out three parallel fetches (items, sessions, sets);
-        // on a dead API all three call LoadFailed in succession. The user
-        // should see one banner, not three slide-downs. (#346)
+    fn test_load_failed_dedupes_identical_messages() {
+        // Identical messages no-op so the shell doesn't re-render with the
+        // same text. (#346) Separate from mount-stability — this is just
+        // belt-and-braces for repeated retries with the same error.
         let app = Intrada;
         let mut model = Model::test_default();
 
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+
+        assert_eq!(model.last_error, Some("timeout".to_string()));
+    }
+
+    #[test]
+    fn test_load_failed_distinct_message_replaces_existing() {
+        // A user-action error (save/delete) must surface even if a stale
+        // load-error banner is still up — otherwise the user has no
+        // feedback that their action failed. Burst re-animation is
+        // suppressed at the shell mount level, not by swallowing distinct
+        // messages here.
+        let app = Intrada;
+        let mut model = Model {
+            last_error: Some("Failed to load items".to_string()),
+            ..Model::test_default()
+        };
+
         let _ = app.update(
-            Event::LoadFailed("Failed to load items: timeout".to_string()),
-            &mut model,
-        );
-        let _ = app.update(
-            Event::LoadFailed("Failed to load sessions: timeout".to_string()),
-            &mut model,
-        );
-        let _ = app.update(
-            Event::LoadFailed("Failed to load sets: timeout".to_string()),
+            Event::LoadFailed("Failed to save item: 409 conflict".to_string()),
             &mut model,
         );
 
         assert_eq!(
             model.last_error,
-            Some("Failed to load items: timeout".to_string())
+            Some("Failed to save item: 409 conflict".to_string())
         );
     }
 

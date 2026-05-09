@@ -42,7 +42,7 @@ pub fn ErrorBanner() -> impl IntoView {
     let error_text = Memo::new(move |_| view_model.get().error.unwrap_or_default());
 
     view! {
-        <Show when=move || has_error.get() fallback=|| ()>
+        <Show when=move || has_error.get()>
             <div
                 class=move || {
                     let base = "error-banner rounded-lg bg-danger-surface border border-danger-text/20 p-4";
