@@ -1,6 +1,7 @@
 use leptos::ev;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::prelude::*;
 use web_sys::TouchEvent;
 
@@ -222,16 +223,23 @@ pub fn WelcomeCarousel(
             touch_start_y.set(None);
         });
 
-        let el_target: &web_sys::EventTarget = el.as_ref();
-        let _ = el_target
-            .add_event_listener_with_callback("touchstart", touchstart.as_ref().unchecked_ref());
-        let _ = el_target
-            .add_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+        let _ =
+            el.add_event_listener_with_callback("touchstart", touchstart.as_ref().unchecked_ref());
+        let _ = el.add_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
 
-        // Leak intentionally — carousel lives for app lifetime or until
-        // dismissed, and cleanup isn't worth the complexity.
-        touchstart.forget();
-        touchend.forget();
+        // SendWrapper: on_cleanup requires Send+Sync; Closure/HtmlElement
+        // aren't both. Safe on wasm32 — single-threaded by construction.
+        let touchstart = SendWrapper::new(touchstart);
+        let touchend = SendWrapper::new(touchend);
+        let el = SendWrapper::new(el);
+        on_cleanup(move || {
+            let _ = el.remove_event_listener_with_callback(
+                "touchstart",
+                touchstart.as_ref().unchecked_ref(),
+            );
+            let _ = el
+                .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+        });
     });
 
     // ── Callbacks for Leptos event handlers ─────────────────────────────
