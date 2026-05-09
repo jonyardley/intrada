@@ -6,6 +6,7 @@ use libsql::{Connection, Database};
 use crate::auth::AuthConfig;
 use crate::clerk::ClerkClient;
 use crate::error::ApiError;
+use crate::rate_limit::McpRateLimiter;
 use crate::storage::R2Client;
 
 /// Heartbeat interval for the background liveness probe.
@@ -101,6 +102,10 @@ pub struct AppState {
     pub auth_config: Option<AuthConfig>,
     pub r2: Option<R2Client>,
     pub clerk: Option<ClerkClient>,
+    /// Per-token rate limiter for `/api/mcp/*`. Defaults to production
+    /// limits (60 req/min/token); tests can swap in a tighter bucket
+    /// via [`AppState::with_rate_limiter`].
+    pub rate_limiter: Arc<McpRateLimiter>,
 }
 
 impl AppState {
@@ -117,7 +122,15 @@ impl AppState {
             auth_config,
             r2,
             clerk,
+            rate_limiter: Arc::new(McpRateLimiter::production()),
         }
+    }
+
+    /// Replace the rate limiter — used by integration tests to inject a
+    /// tighter bucket without breaking the existing `new()` arity.
+    pub fn with_rate_limiter(mut self, rate_limiter: Arc<McpRateLimiter>) -> Self {
+        self.rate_limiter = rate_limiter;
+        self
     }
 
     /// Get the R2 client, or return an error if not configured.

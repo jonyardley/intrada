@@ -101,7 +101,16 @@ pub fn api_router(state: AppState) -> Router {
         // ERROR-only event capture.
         .on_failure(DefaultOnFailure::new().level(Level::WARN));
 
-    let mcp_routes = crate::mcp::router().layer(mcp_cors);
+    // Layer order matters: rate-limit applied first (innermost), CORS
+    // wraps it. That way a 429 from the limiter still passes through
+    // the CORS layer on its way out and gets `Access-Control-Allow-Origin: *`
+    // headers — verified in `tests/rate_limit_test.rs`.
+    let mcp_routes = crate::mcp::router()
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::rate_limit::mcp_rate_limit,
+        ))
+        .layer(mcp_cors);
     let oauth_routes = oauth::router().layer(oauth_cors);
 
     Router::new()
