@@ -22,7 +22,7 @@ use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
     LibraryListView, LoginView, McpAuditView, McpTokensView, NotFoundView, OAuthConsentView,
     SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
-    SetDetailView, SetEditView, SettingsView, WelcomeView,
+    SetDetailView, SetEditView, SettingsView, SsoCallbackView, WelcomeView,
 };
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::js_bridge;
@@ -226,6 +226,7 @@ fn AppRoutes() -> impl IntoView {
             // ─── Public routes ────────────────────────────────────────
             <Route path=path!("/") view=|| view! { <WelcomeView /> } />
             <Route path=path!("/login") view=|| view! { <LoginView /> } />
+            <Route path=path!("/sso-callback") view=|| view! { <SsoCallbackView /> } />
 
             // ─── Private routes ───────────────────────────────────────
             // /library/new MUST come before /library/:id to avoid "new"
