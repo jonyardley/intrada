@@ -45,7 +45,7 @@ pub fn AppHeader() -> impl IntoView {
     };
 
     view! {
-        <header class="glass-chrome border-b border-border-default" role="banner">
+        <header class="sm:glass-chrome sm:border-b sm:border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-4 flex items-center justify-between">
                 <div>
                     <A href="/library" attr:class="flex items-center gap-2.5 no-underline">
@@ -55,8 +55,8 @@ pub fn AppHeader() -> impl IntoView {
                         <span class="text-lg font-bold text-primary font-heading">"Intrada"</span>
                     </A>
                 </div>
-                <div class="flex items-center gap-4">
-                    <nav class="hidden sm:flex items-center gap-4">
+                <div class="hidden sm:flex items-center gap-4">
+                    <nav class="flex items-center gap-4">
                         <A
                             href="/library"
                             attr:class=move || {
