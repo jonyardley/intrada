@@ -37,13 +37,13 @@ test.describe("welcome carousel", () => {
 
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150);
-    // Card 4 anchor — "Focus, reflect, repeat"
-    await expect(page.getByText("Focus, reflect, repeat")).toBeVisible();
+    // Card 4 anchor — "Focus, reflect, move on"
+    await expect(page.getByText("Focus, reflect, move on")).toBeVisible();
 
     await carousel.click({ position: { x: 200, y: 400 } });
     await page.waitForTimeout(150);
-    // Card 5 anchor — "Watch your progress"
-    await expect(page.getByText("Watch your progress")).toBeVisible();
+    // Card 5 anchor — "Watch the work add up"
+    await expect(page.getByText("Watch the work add up")).toBeVisible();
 
     // Use regex to match the button regardless of the → Unicode arrow suffix
     const cta = page.getByRole("button", { name: /Get started/ });
