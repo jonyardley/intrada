@@ -255,6 +255,19 @@ jobs:
         with:
           name: web-dist
           path: crates/intrada-web/dist
+      # Inject Sentry DebugIds into JS + WASM artifacts BEFORE wrangler
+      # publish, so the deployed files match the artifacts uploaded by
+      # action-release later. DebugIds let Sentry symbolicate stack frames
+      # without relying on filename-based source-map lookup (which breaks
+      # under content-hashed filenames or strict CSP). #485.
+      #
+      # Skipped when SENTRY_AUTH_TOKEN is unset — still want deploys to
+      # succeed for the rare case the token is rotated mid-deploy.
+      - name: Inject Sentry DebugIds into dist
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: npx --yes @sentry/cli@latest sourcemaps inject crates/intrada-web/dist
       # Inject the release id into the prebuilt index.html before publishing.
       # The placeholder is set in the source — this swap only happens in the
       # main-branch deploy path, so PR builds keep `release: undefined`.
@@ -267,9 +280,12 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      # Tag the release in Sentry once Cloudflare has the build. Failure
-      # here shouldn't block a successful deploy, so continue-on-error.
-      - name: Create Sentry release (intrada-web)
+      # Tag the release in Sentry + upload sourcemaps once Cloudflare has
+      # the build. The `sourcemaps:` input re-runs `sentry-cli sourcemaps
+      # inject` (idempotent — DebugIds are content-deterministic) and then
+      # uploads the artifact bundle. Failure here shouldn't block a
+      # successful deploy, so continue-on-error.
+      - name: Create Sentry release (intrada-web) + upload sourcemaps
         if: env.SENTRY_AUTH_TOKEN != ''
         continue-on-error: true
         uses: getsentry/action-release@v3
@@ -281,6 +297,7 @@ jobs:
           version: ${{ github.sha }}
           set_commits: auto
           finalize: true
+          sourcemaps: ./crates/intrada-web/dist
 
   deploy-api:
     name: Deploy API to Fly.io
