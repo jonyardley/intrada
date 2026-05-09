@@ -7,7 +7,7 @@ use crate::auth::AuthConfig;
 use crate::clerk::ClerkClient;
 use crate::db::is_transient_db_error;
 use crate::error::ApiError;
-use crate::rate_limit::McpRateLimiter;
+use crate::rate_limit::{IpRateLimiter, McpRateLimiter};
 use crate::storage::R2Client;
 
 /// Heartbeat interval for the background liveness probe.
@@ -153,6 +153,14 @@ pub struct AppState {
     /// limits (60 req/min/token); tests can swap in a tighter bucket
     /// via [`AppState::with_rate_limiter`].
     pub rate_limiter: Arc<McpRateLimiter>,
+    /// Per-IP rate limiter for `/api/mcp/*`. Guards against bogus-PAT
+    /// floods that would otherwise burn `lookup_by_hash` DB calls
+    /// (300 req/min/IP in production).
+    pub mcp_ip_limiter: Arc<IpRateLimiter>,
+    /// Per-IP rate limiter for OAuth endpoints. Guards the unauthenticated
+    /// `/oauth/register` DCR endpoint against DB-flooding abuse
+    /// (20 req/min/IP in production).
+    pub oauth_ip_limiter: Arc<IpRateLimiter>,
 }
 
 impl AppState {
@@ -170,13 +178,27 @@ impl AppState {
             r2,
             clerk,
             rate_limiter: Arc::new(McpRateLimiter::production()),
+            mcp_ip_limiter: Arc::new(IpRateLimiter::production_mcp()),
+            oauth_ip_limiter: Arc::new(IpRateLimiter::production_oauth()),
         }
     }
 
-    /// Replace the rate limiter — used by integration tests to inject a
-    /// tighter bucket without breaking the existing `new()` arity.
+    /// Replace the per-token MCP rate limiter — used by integration tests
+    /// to inject a tighter bucket without breaking the existing `new()` arity.
     pub fn with_rate_limiter(mut self, rate_limiter: Arc<McpRateLimiter>) -> Self {
         self.rate_limiter = rate_limiter;
+        self
+    }
+
+    /// Replace the per-IP MCP rate limiter — used by integration tests.
+    pub fn with_mcp_ip_limiter(mut self, limiter: Arc<IpRateLimiter>) -> Self {
+        self.mcp_ip_limiter = limiter;
+        self
+    }
+
+    /// Replace the per-IP OAuth rate limiter — used by integration tests.
+    pub fn with_oauth_ip_limiter(mut self, limiter: Arc<IpRateLimiter>) -> Self {
+        self.oauth_ip_limiter = limiter;
         self
     }
 

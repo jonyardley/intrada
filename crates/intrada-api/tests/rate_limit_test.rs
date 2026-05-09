@@ -1,8 +1,9 @@
-//! Integration tests for the MCP rate limiter (Phase 6A of #477).
+//! Integration tests for the MCP + OAuth rate limiters (#578).
 //!
 //! Sibling unit tests live in `intrada-api/src/rate_limit.rs`; these
 //! cover the wiring: middleware position, bypass logic, CORS-on-429,
-//! end-to-end against `setup_test_app_with_rate_limit`.
+//! end-to-end against `setup_test_app_with_rate_limit`,
+//! `setup_test_app_with_oauth_ip_limit`, and `setup_test_app_with_mcp_ip_limit`.
 
 mod common;
 
@@ -13,6 +14,33 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use tower::ServiceExt;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+/// Build a minimal `POST /oauth/register` DCR request, optionally from
+/// a specific IP (set via `Fly-Client-IP`).
+fn oauth_register_request(ip: Option<&str>) -> Request<Body> {
+    let mut builder = Request::builder()
+        .method("POST")
+        .uri("/oauth/register")
+        .header("content-type", "application/json")
+        .header("origin", "https://claude.ai");
+    if let Some(ip_val) = ip {
+        builder = builder.header("fly-client-ip", ip_val);
+    }
+    builder
+        .body(Body::from(
+            serde_json::to_string(&json!({
+                "client_name": "Test Client",
+                "redirect_uris": ["https://example.com/callback"],
+                "grant_types": ["authorization_code"],
+                "response_types": ["code"],
+                "token_endpoint_auth_method": "none"
+            }))
+            .unwrap(),
+        ))
+        .unwrap()
+}
 
 /// Helper: build an MCP `tools/list` JSON-RPC request authed with the
 /// given Bearer token (or no Authorization header when `token` is None).
@@ -214,6 +242,130 @@ async fn revoked_pat_does_not_consume_bucket() {
             "valid token's budget {i} should not be consumed by revoked-token traffic"
         );
     }
+}
+
+// ── IP rate limit tests ───────────────────────────────────────────────────
+
+#[tokio::test]
+async fn oauth_register_ip_rate_limit_returns_429() {
+    // limit=2 so we don't need many requests. Window long so bucket
+    // doesn't reset mid-test.
+    let app = common::setup_test_app_with_oauth_ip_limit(2, Duration::from_secs(60)).await;
+
+    // First two registrations succeed.
+    for i in 1..=2 {
+        let resp = app
+            .clone()
+            .oneshot(oauth_register_request(Some("1.2.3.4")))
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.status(),
+            StatusCode::CREATED,
+            "registration {i} should succeed"
+        );
+    }
+
+    // Third registration from same IP is rate-limited.
+    let resp = app
+        .clone()
+        .oneshot(oauth_register_request(Some("1.2.3.4")))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+
+    let retry_after = resp
+        .headers()
+        .get("retry-after")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default();
+    let retry_secs: u64 = retry_after.parse().expect("retry-after must be an integer");
+    assert!(
+        (1..=60).contains(&retry_secs),
+        "retry-after should be in (0, window]; got {retry_secs}"
+    );
+
+    // CORS headers must appear on the 429 — rate-limit is innermost,
+    // CORS wraps it so the browser sees the real error, not a CORS failure.
+    assert_eq!(
+        resp.headers()
+            .get("access-control-allow-origin")
+            .and_then(|v| v.to_str().ok()),
+        Some("*"),
+        "429 from OAuth register must carry CORS headers"
+    );
+
+    // Different IP is unaffected.
+    let resp = app
+        .oneshot(oauth_register_request(Some("9.9.9.9")))
+        .await
+        .unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::CREATED,
+        "different IP should have its own clean bucket"
+    );
+}
+
+#[tokio::test]
+async fn oauth_register_options_preflight_bypasses_ip_limit() {
+    let app = common::setup_test_app_with_oauth_ip_limit(1, Duration::from_secs(60)).await;
+
+    // One successful POST exhausts the limit=1 bucket.
+    let resp = app
+        .clone()
+        .oneshot(oauth_register_request(Some("1.2.3.4")))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // OPTIONS preflight should NOT be blocked even though bucket is full.
+    let preflight = Request::builder()
+        .method("OPTIONS")
+        .uri("/oauth/register")
+        .header("origin", "https://claude.ai")
+        .header("access-control-request-method", "POST")
+        .header("access-control-request-headers", "content-type")
+        .header("fly-client-ip", "1.2.3.4")
+        .body(Body::empty())
+        .unwrap();
+    let resp = app.oneshot(preflight).await.unwrap();
+    assert!(
+        resp.status().is_success() || resp.status() == StatusCode::NO_CONTENT,
+        "OPTIONS preflight should bypass IP rate limit; got {}",
+        resp.status()
+    );
+}
+
+#[tokio::test]
+async fn mcp_ip_rate_limit_blocks_bogus_pat_flood() {
+    // Tight IP limit (3 req/60s). Bogus PATs all come from the same
+    // "IP" (no Fly-Client-IP → "unknown"), so after 3 requests the IP
+    // bucket is full and further bogus-PAT requests return 429 — even
+    // though no token bucket was ever created.
+    let app = common::setup_test_app_with_mcp_ip_limit(3, Duration::from_secs(60)).await;
+
+    let bogus = "intrada_pat_0000000000000000000000000000000000000000000000000000000000000000";
+    for i in 1..=3 {
+        let resp = app.clone().oneshot(mcp_request(Some(bogus))).await.unwrap();
+        // The first 3 bogus-PAT requests pass the IP check, hit the handler,
+        // and get a 401 (no valid token). The IP bucket is still consumed
+        // because the IP check happens before auth resolution.
+        assert_eq!(
+            resp.status(),
+            StatusCode::UNAUTHORIZED,
+            "bogus-PAT request {i} should 401 (within IP budget)"
+        );
+    }
+
+    // 4th request from the same IP (no Fly-Client-IP → "unknown") is
+    // blocked at the IP layer — returns 429 regardless of the token.
+    let resp = app.oneshot(mcp_request(Some(bogus))).await.unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::TOO_MANY_REQUESTS,
+        "IP rate limit should block further requests after budget exhausted"
+    );
 }
 
 #[tokio::test]

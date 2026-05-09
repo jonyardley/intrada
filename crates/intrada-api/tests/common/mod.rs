@@ -7,7 +7,7 @@ use tower::ServiceExt;
 
 use intrada_api::auth::AuthConfig;
 use intrada_api::migrations;
-use intrada_api::rate_limit::McpRateLimiter;
+use intrada_api::rate_limit::{IpRateLimiter, McpRateLimiter};
 use intrada_api::routes;
 use intrada_api::state::{AppState, Db};
 use std::sync::Arc;
@@ -30,7 +30,7 @@ pub async fn setup_test_app_with_origin(allowed_origin: &str) -> Router {
     setup_test_app_inner(None, allowed_origin).await
 }
 
-/// Create a test router with a tightened rate-limiter — used by
+/// Create a test router with a tightened per-token rate-limiter — used by
 /// `tests/rate_limit_test.rs` to exercise 429 responses without
 /// hammering the default 60-req/min bucket.
 #[allow(dead_code)]
@@ -56,6 +56,62 @@ pub async fn setup_test_app_with_rate_limit(limit: u32, window: Duration) -> Rou
         None,
     )
     .with_rate_limiter(limiter);
+    routes::api_router(state)
+}
+
+/// Create a test router with a tightened per-IP OAuth rate-limiter — used by
+/// `tests/rate_limit_test.rs` to exercise 429 on `/oauth/register`.
+#[allow(dead_code)]
+pub async fn setup_test_app_with_oauth_ip_limit(limit: u32, window: Duration) -> Router {
+    let limiter = Arc::new(IpRateLimiter::new(limit, window));
+
+    let tmp_dir = std::env::temp_dir();
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db = libsql::Builder::new_local(&db_path)
+        .build()
+        .await
+        .expect("Failed to build test database");
+    let conn = db.connect().expect("Failed to connect to test database");
+    migrations::run_migrations_direct(&conn)
+        .await
+        .expect("Failed to run migrations");
+
+    let state = AppState::new(
+        Db::new(db, conn),
+        "http://localhost:3000".to_string(),
+        None,
+        None,
+        None,
+    )
+    .with_oauth_ip_limiter(limiter);
+    routes::api_router(state)
+}
+
+/// Create a test router with a tightened per-IP MCP rate-limiter — used by
+/// `tests/rate_limit_test.rs` to exercise bogus-PAT flood protection.
+#[allow(dead_code)]
+pub async fn setup_test_app_with_mcp_ip_limit(limit: u32, window: Duration) -> Router {
+    let limiter = Arc::new(IpRateLimiter::new(limit, window));
+
+    let tmp_dir = std::env::temp_dir();
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db = libsql::Builder::new_local(&db_path)
+        .build()
+        .await
+        .expect("Failed to build test database");
+    let conn = db.connect().expect("Failed to connect to test database");
+    migrations::run_migrations_direct(&conn)
+        .await
+        .expect("Failed to run migrations");
+
+    let state = AppState::new(
+        Db::new(db, conn),
+        "http://localhost:3000".to_string(),
+        None,
+        None,
+        None,
+    )
+    .with_mcp_ip_limiter(limiter);
     routes::api_router(state)
 }
 

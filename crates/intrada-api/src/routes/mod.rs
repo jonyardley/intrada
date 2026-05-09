@@ -137,7 +137,14 @@ pub fn api_router(state: AppState) -> Router {
     // 2025-11-25). Cross-origin clients fetch it, so it gets the
     // permissive OAuth-style CORS allowing GET from any origin.
     let asset_routes = assets::router().layer(oauth_cors.clone());
-    let oauth_routes = oauth::router().layer(oauth_cors);
+    // OAuth: IP rate-limit (innermost) → CORS (outermost) so 429s
+    // still carry Access-Control-Allow-Origin: * headers.
+    let oauth_routes = oauth::router()
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::rate_limit::oauth_ip_rate_limit,
+        ))
+        .layer(oauth_cors);
 
     Router::new()
         // Sibling nests: axum routes by path specificity. The OAuth
