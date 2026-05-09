@@ -68,8 +68,8 @@ the structure that follows feel intentional rather than templated.
 | 1 | *(none — opener)* | "Knowing how to practise well is hard." | "I've struggled with it. So I built this." |
 | 2 | CAPTURE | "Build a library" | "of pieces and exercises — the things you're actually working on." |
 | 3 | PLAN | "Practise with intention" | "Plan each session. Decide where the effort goes before you pick up the instrument." |
-| 4 | PRACTICE | "Focus, reflect, repeat" | "Run timed sessions with real-time reflection — score what happened while it's still fresh." |
-| 5 | TRACK | "Watch your progress" | "Track every session, achieve your goals." |
+| 4 | PRACTICE | "Focus, reflect, move on" | "Run timed sessions. Score what happened while it's still fresh, then on to the next." |
+| 5 | TRACK | "Watch the work add up" | "Music improves between sessions, not within them — so the data shows what your ears can't hear yet." |
 
 Final-card CTA routes to `/` (the Library home, not `/library/new` —
 the welcome should hand off to the empty library, not push the user

@@ -48,15 +48,17 @@ const CARDS: [CardContent; CARD_COUNT] = [
     },
     CardContent {
         label: Some("PRACTICE"),
-        anchor: "Focus, reflect, repeat",
+        anchor: "Focus, reflect, move on",
         continuation: Some(
-            "Run timed sessions with real-time reflection \u{2014} score what happened while it\u{2019}s still fresh.",
+            "Run timed sessions. Score what happened while it\u{2019}s still fresh, then on to the next.",
         ),
     },
     CardContent {
         label: Some("TRACK"),
-        anchor: "Watch your progress",
-        continuation: Some("Track every session, achieve your goals."),
+        anchor: "Watch the work add up",
+        continuation: Some(
+            "Music improves between sessions, not within them \u{2014} so the data shows what your ears can\u{2019}t hear yet.",
+        ),
     },
 ];
 
