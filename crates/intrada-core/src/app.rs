@@ -221,6 +221,17 @@ impl App for Intrada {
 
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
+                // Suppress duplicates and overlapping bursts (#346):
+                //   - identical message: no-op (avoids re-render and re-firing
+                //     the slide-in animation with the same text)
+                //   - already-showing different error: keep the first one
+                //     (StartApp fans out 3 parallel fetches; on a dead API
+                //     the user got 3 slide-downs in succession)
+                // Once the user dismisses (`ClearError`), the next failure
+                // shows again as expected.
+                if model.last_error.is_some() {
+                    return Command::done();
+                }
                 model.last_error = Some(msg);
                 crux_core::render::render()
             }
@@ -1638,6 +1649,46 @@ mod tests {
         );
 
         assert_eq!(model.last_error, Some("Connection refused".to_string()));
+    }
+
+    #[test]
+    fn test_load_failed_preserves_first_error_during_burst() {
+        // StartApp fans out three parallel fetches (items, sessions, sets);
+        // on a dead API all three call LoadFailed in succession. The user
+        // should see one banner, not three slide-downs. (#346)
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _ = app.update(
+            Event::LoadFailed("Failed to load items: timeout".to_string()),
+            &mut model,
+        );
+        let _ = app.update(
+            Event::LoadFailed("Failed to load sessions: timeout".to_string()),
+            &mut model,
+        );
+        let _ = app.update(
+            Event::LoadFailed("Failed to load sets: timeout".to_string()),
+            &mut model,
+        );
+
+        assert_eq!(
+            model.last_error,
+            Some("Failed to load items: timeout".to_string())
+        );
+    }
+
+    #[test]
+    fn test_load_failed_after_clear_shows_new_error() {
+        // After the user dismisses, the next failure surfaces as expected.
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _ = app.update(Event::LoadFailed("first".to_string()), &mut model);
+        let _ = app.update(Event::ClearError, &mut model);
+        let _ = app.update(Event::LoadFailed("second".to_string()), &mut model);
+
+        assert_eq!(model.last_error, Some("second".to_string()));
     }
 
     #[test]
