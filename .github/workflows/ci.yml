@@ -30,6 +30,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
+      mobile-plugins: ${{ steps.filter.outputs.mobile-plugins }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -49,6 +50,11 @@ jobs:
               - 'crates/intrada-web/**'
               - 'crates/intrada-core/**'
               - 'e2e/**'
+              - '.github/workflows/ci.yml'
+            mobile-plugins:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/intrada-mobile/plugins/**'
               - '.github/workflows/ci.yml'
 
   test:
@@ -93,6 +99,44 @@ jobs:
       - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity -- -D warnings
       - name: Clippy (WASM target)
         run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
+
+  ios-clippy:
+    # Lints iOS-only branches inside the Tauri plugins. Linux runners
+    # can't compile these (Tauri 2 pulls in glib/GTK system libs that
+    # the Ubuntu base image doesn't have), so they're --excluded from
+    # the main clippy job above. That left `#[cfg(target_os = "ios")]`
+    # branches with zero CI coverage — a stale `needless_return` or
+    # unused-import inside an iOS-only block would slip past every PR
+    # and only fail the next time someone ran `just ios-build` locally.
+    #
+    # macos-latest is ~10x the per-minute cost of Linux runners, so this
+    # job is path-filtered: it only runs on PRs that actually touch
+    # `crates/intrada-mobile/plugins/**` (or workspace Cargo files /
+    # this workflow). Always runs on main pushes regardless. Tracks #497.
+    name: iOS Clippy (Tauri plugins)
+    runs-on: macos-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.mobile-plugins == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: clippy
+          # Device target is enough — simulator targets (x86_64-apple-ios,
+          # aarch64-apple-ios-sim) don't add coverage clippy doesn't already
+          # get from the device target. Mirrors CLAUDE.md's recommendation.
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Separate cache key from native/wasm jobs — different target
+          # triple, different sysroot, different cached artefacts. No
+          # other job populates this cache, so we let it save (the other
+          # clippy job uses save-if:false because `test` populates the
+          # native cache).
+          prefix-key: "ios"
+      - run: cargo clippy -p tauri-plugin-background-audio --target aarch64-apple-ios -- -D warnings
+      - run: cargo clippy -p tauri-plugin-live-activity --target aarch64-apple-ios -- -D warnings
 
   wasm-build:
     name: WASM Build
