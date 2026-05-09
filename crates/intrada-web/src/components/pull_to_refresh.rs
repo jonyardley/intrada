@@ -4,6 +4,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{AddEventListenerOptions, TouchEvent};
 
 use intrada_web::haptics::haptic_light;
+use intrada_web::platform::is_ios;
 
 /// Pixels of pull required to commit to a refresh on release. Sized so the
 /// indicator (32px tall) is fully clear of the safe area / status bar by the
@@ -70,6 +71,16 @@ pub fn PullToRefresh(
     let wrapper_ref = NodeRef::<leptos::html::Div>::new();
 
     Effect::new(move || {
+        // Pull-to-refresh is iOS-only. Skipping listener registration on
+        // non-iOS leaves the browser's native pull-to-refresh in charge —
+        // wiring up touchmove with preventDefault here would otherwise
+        // silently steal the gesture from mobile Safari / Chrome on
+        // Android with no visual feedback (the indicator is CSS-hidden
+        // on non-iOS via input.css:1576). Same conceptual switch as the
+        // indicator-hide rule, just at the JS layer.
+        if !is_ios() {
+            return;
+        }
         let Some(el) = wrapper_ref.get() else {
             return;
         };
