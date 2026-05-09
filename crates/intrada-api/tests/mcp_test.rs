@@ -1,7 +1,10 @@
 mod common;
 
-use axum::http::StatusCode;
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use http_body_util::BodyExt;
 use serde_json::{json, Value};
+use tower::ServiceExt;
 
 #[tokio::test]
 async fn initialize_returns_protocol_version_and_server_info() {
@@ -29,6 +32,85 @@ async fn initialize_returns_protocol_version_and_server_info() {
     );
     assert_eq!(result["serverInfo"]["name"], "intrada");
     assert!(result["capabilities"]["tools"].is_object());
+}
+
+#[tokio::test]
+async fn initialize_advertises_server_icon_with_request_host() {
+    // MCP spec 2025-11-25 (SEP-973): `serverInfo.icons` lets the
+    // server advertise a logo. claude.ai's connector UI doesn't render
+    // it today (anthropics/claude-ai-mcp#152), but locking in the
+    // contract now means we don't quietly regress when they ship
+    // support. URL is derived from the request's `Host` so dev /
+    // preview / prod all advertise something fetchable.
+    let app = common::setup_test_app().await;
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/mcp")
+        .header("host", "intrada-api.fly.dev")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            serde_json::to_string(&json!({
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {},
+                "id": 1,
+            }))
+            .unwrap(),
+        ))
+        .unwrap();
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = resp
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    let v: Value = common::json(&body);
+
+    let icons = v["result"]["serverInfo"]["icons"]
+        .as_array()
+        .expect("serverInfo.icons should be an array");
+    assert_eq!(icons.len(), 1, "expected exactly one icon entry");
+    let icon = &icons[0];
+    assert_eq!(
+        icon["src"], "https://intrada-api.fly.dev/icon.svg",
+        "icon URL should be derived from the request's Host header"
+    );
+    assert_eq!(icon["mimeType"], "image/svg+xml");
+    assert_eq!(icon["sizes"][0], "any");
+}
+
+#[tokio::test]
+async fn icon_endpoint_serves_svg() {
+    // The URL `serverInfo.icons[].src` points at must actually serve
+    // something — this test guards the round-trip end-to-end so a
+    // future router refactor that drops the asset route is caught
+    // before deploy.
+    let app = common::setup_test_app().await;
+    let req = Request::builder()
+        .method("GET")
+        .uri("/icon.svg")
+        .body(Body::empty())
+        .unwrap();
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok()),
+        Some("image/svg+xml"),
+    );
+    let body = resp
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    let body_str = std::str::from_utf8(&body).expect("icon should be valid utf-8");
+    assert!(body_str.contains("<svg"), "expected SVG markup");
 }
 
 #[tokio::test]

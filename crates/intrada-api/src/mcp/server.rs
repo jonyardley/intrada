@@ -5,6 +5,7 @@
 //! to the empty user_id, matching the rest of the API.
 
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::routing::post;
 use axum::{Json, Router};
 use serde::Deserialize;
@@ -17,7 +18,7 @@ use crate::state::AppState;
 
 use super::handlers;
 use super::protocol::{
-    error_code, Capabilities, InitializeResult, JsonRpcRequest, JsonRpcResponse, ServerInfo,
+    error_code, Capabilities, Icon, InitializeResult, JsonRpcRequest, JsonRpcResponse, ServerInfo,
     ToolContent, ToolsCallParams, ToolsCallResult, ToolsCapability, ToolsListResult,
     PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION,
 };
@@ -37,6 +38,10 @@ pub fn router() -> Router<AppState> {
 )]
 async fn handle(
     State(state): State<AppState>,
+    // Read for the `serverInfo.icons` URL on `initialize` — derived
+    // from the request's `Host` so dev / preview / prod all advertise
+    // a working URL without an extra env var.
+    headers: HeaderMap,
     // `source` is read by `dispatch_tool` to attribute write-tool calls
     // to the originating PAT in `mcp_audit_log`. JWT-authenticated MCP
     // calls are accepted but their writes are NOT audited (no token_id
@@ -76,6 +81,13 @@ async fn handle(
                 server_info: ServerInfo {
                     name: SERVER_NAME,
                     version: SERVER_VERSION,
+                    icons: vec![Icon {
+                        src: icon_url(&headers),
+                        mime_type: Some("image/svg+xml"),
+                        // SVG vector — "any" tells the client a single
+                        // asset covers every render size.
+                        sizes: Some(vec!["any"]),
+                    }],
                 },
             })
             .expect("InitializeResult serializes"),
@@ -368,4 +380,23 @@ fn format_api_error(err: &ApiError) -> String {
             "Internal error".to_string()
         }
     }
+}
+
+/// Build the absolute URL to `/icon.svg` from the request headers, so
+/// the MCP `serverInfo.icons` field always points at the same host the
+/// client used to reach us. Same scheme/host derivation as the OAuth
+/// discovery doc — see `routes/oauth.rs::discovery`. Behind a
+/// TLS-terminating proxy (Fly.io / Cloudflare) we can't detect scheme
+/// reliably, so we default to https; http only on local dev hosts.
+fn icon_url(headers: &HeaderMap) -> String {
+    let host = headers
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("intrada-api.fly.dev");
+    let scheme = if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
+        "http"
+    } else {
+        "https"
+    };
+    format!("{scheme}://{host}/icon.svg")
 }
