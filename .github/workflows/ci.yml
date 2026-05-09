@@ -202,6 +202,26 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # Cache the RustSec advisory database to avoid re-cloning ~50MB on
+      # every run. Stale-OK: cargo-audit fetches incrementally on top.
+      - name: Cache advisory database
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/advisory-db
+          key: advisory-db-${{ github.run_id }}
+          restore-keys: advisory-db-
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      # Reads ignore list from .cargo/audit.toml — each entry must have a
+      # tracking issue and rationale comment. Anything new fails CI.
+      - run: cargo audit
+
   api-docker-build:
     # Catches Dockerfile / workspace-scoping bugs on PRs that would otherwise
     # only surface when the Deploy API job runs on main. Only runs when paths

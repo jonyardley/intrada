@@ -1,0 +1,25 @@
+# cargo-audit configuration.
+#
+# Each entry below documents a known-active advisory we have explicitly
+# accepted (with rationale + tracking issue). Anything new — including new
+# advisories on these same crates — fails CI.
+#
+# Re-evaluate this list whenever an entry's tracking issue closes.
+
+[advisories]
+ignore = [
+    # rsa 0.9.x Marvin Attack (timing side-channel on RSA key recovery).
+    # No upstream fix. The JWT verification path no longer uses rsa after
+    # switching jsonwebtoken to its `aws_lc_rs` feature; rsa now only appears
+    # as a dev-dependency (auth tests generate RSA keys at test time, no
+    # production exposure). Verified via `cargo tree -p intrada-api -i rsa`.
+    "RUSTSEC-2023-0071",
+
+    # rustls-webpki advisories pulled in transitively by libsql 0.9.30 →
+    # tonic 0.11.0. Cleared by upgrading libsql to ≥0.10. Tracked in
+    # https://github.com/jonyardley/intrada/issues/568.
+    "RUSTSEC-2026-0049", # CRL distribution-point matching
+    "RUSTSEC-2026-0098", # Name constraints — URI names
+    "RUSTSEC-2026-0099", # Name constraints — wildcard certificates
+    "RUSTSEC-2026-0104", # Reachable panic in CRL parsing
+]
