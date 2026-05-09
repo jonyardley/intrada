@@ -609,9 +609,8 @@ async fn cors_preflight_returns_permissive_headers_for_mcp() {
 
 // ── Phase 4 write tools ────────────────────────────────────────────────
 
-/// Helper: drive an MCP `tools/call` against an authed `Router` (the PAT
-/// is required because audit-log rows only get recorded for
-/// `AuthSource::Pat`). Returns the parsed response body.
+/// Helper: drive an MCP `tools/call` against an authed `Router` using a PAT.
+/// Returns the parsed response body.
 async fn mcp_call_with_pat(
     app: axum::Router,
     token: &str,
@@ -923,7 +922,7 @@ async fn audit_log_excludes_other_users() {
     intrada_api::db::audit::insert(
         &conn,
         "01HXFOREIGN0000000000000000",
-        "01HXFOREIGNTOKEN0000000000",
+        Some("01HXFOREIGNTOKEN0000000000"),
         "other_user",
         "create_item",
         "deadbeef".repeat(8).as_str(),
@@ -949,4 +948,43 @@ async fn audit_log_excludes_other_users() {
     assert_eq!(entries.len(), 1, "must not include foreign-user rows");
     // Sanity: the entry belongs to the legitimate write (token id != foreign).
     assert_ne!(entries[0]["token_id"], "01HXFOREIGNTOKEN0000000000");
+}
+
+#[tokio::test]
+async fn jwt_write_produces_audit_row_with_null_token_id() {
+    // Verifies the #528 fix: writes attributed to AuthSource::Jwt record
+    // a row with token_id = NULL, visible in the audit list as JSON null.
+    //
+    // We use the direct `record_mcp_write` path rather than a full HTTP
+    // roundtrip (which would require a real Clerk JWT) so the test stays
+    // self-contained. This exercises the exact code path that dispatch_tool
+    // hits when source == AuthSource::Jwt.
+    let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+
+    intrada_api::services::audit::record_mcp_write(
+        &conn,
+        &intrada_api::auth::AuthSource::Jwt,
+        "", // disabled-mode user_id (empty string)
+        "create_item",
+        &serde_json::json!({"title": "JWT write test"}),
+    )
+    .await;
+
+    let (status, audit_body) = common::get(app, "/api/account/audit").await;
+    assert_eq!(status, axum::http::StatusCode::OK);
+
+    let entries: Vec<serde_json::Value> = common::json(&audit_body);
+    assert_eq!(entries.len(), 1, "expected one audit row for JWT write");
+
+    let entry = &entries[0];
+    assert_eq!(entry["tool"], "create_item");
+    // token_id must be JSON null — not a string, not missing.
+    assert_eq!(
+        entry["token_id"],
+        serde_json::Value::Null,
+        "JWT write must produce token_id = null in audit row; got {:?}",
+        entry["token_id"]
+    );
+    // token_name and token_prefix are also null (no token to join).
+    assert_eq!(entry["token_name"], serde_json::Value::Null);
 }

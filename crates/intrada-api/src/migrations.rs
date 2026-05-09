@@ -434,6 +434,37 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0061_index_oauth_codes_expires",
         "CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_codes(expires_at);",
     ),
+    // Migrations 0062-0066: rebuild mcp_audit_log with nullable token_id so
+    // JWT-authenticated MCP writes can be recorded without a PAT to attribute
+    // to (#528). SQLite doesn't support ALTER COLUMN, so we use the
+    // create-copy-drop-rename pattern split across 5 single-statement migrations.
+    (
+        "0062_mcp_audit_log_new_nullable_token",
+        "CREATE TABLE IF NOT EXISTS mcp_audit_log_new (
+            id TEXT PRIMARY KEY NOT NULL,
+            token_id TEXT,
+            user_id TEXT NOT NULL,
+            tool TEXT NOT NULL,
+            args_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0063_mcp_audit_log_copy_rows",
+        "INSERT INTO mcp_audit_log_new SELECT * FROM mcp_audit_log;",
+    ),
+    (
+        "0064_mcp_audit_log_drop_old",
+        "DROP TABLE IF EXISTS mcp_audit_log;",
+    ),
+    (
+        "0065_mcp_audit_log_rename",
+        "ALTER TABLE mcp_audit_log_new RENAME TO mcp_audit_log;",
+    ),
+    (
+        "0066_mcp_audit_log_recreate_index",
+        "CREATE INDEX IF NOT EXISTS idx_mcp_audit_log_user_created ON mcp_audit_log(user_id, created_at DESC);",
+    ),
 ];
 
 /// Backoff schedule for transient-error retries during migration: try

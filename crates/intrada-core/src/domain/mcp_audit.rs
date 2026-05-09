@@ -14,10 +14,12 @@ use crate::model::Model;
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct McpAuditEntry {
     pub id: String,
-    pub token_id: String,
-    /// Joined from `mcp_tokens`. `None` only if the token row has been
-    /// hard-deleted (we soft-delete via `revoked_at`, so this is
-    /// defensive — but the UI must handle the case).
+    /// `None` for JWT-authenticated MCP writes (browser/iOS session, no PAT).
+    /// The UI renders these as "(web app)" (#528).
+    pub token_id: Option<String>,
+    /// Joined from `mcp_tokens`. `None` when the token row was hard-deleted,
+    /// or when `token_id` itself is `None` (JWT write). Both cases are
+    /// handled by the UI.
     pub token_name: Option<String>,
     pub token_prefix: Option<String>,
     pub tool: String,
@@ -73,7 +75,7 @@ mod tests {
         model.mcp_audit_loading = true;
         let entry = McpAuditEntry {
             id: "a".into(),
-            token_id: "t".into(),
+            token_id: Some("t".into()),
             token_name: Some("Claude Desktop".into()),
             token_prefix: Some("intrada_pat_xxxx".into()),
             tool: "create_item".into(),

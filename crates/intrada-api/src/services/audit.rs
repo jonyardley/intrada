@@ -1,16 +1,15 @@
 //! Audit recording for MCP write tools.
 //!
-//! Only `AuthSource::Pat { token_id }` writes are recorded — the audit
-//! row's `token_id` column is non-nullable and the table's purpose is
-//! to attribute MCP-issued mutations to a specific PAT.
+//! Every successful MCP write by a real user is recorded:
+//! - `AuthSource::Pat { token_id }`: row written with the resolved token id.
+//! - `AuthSource::Jwt`: row written with `token_id = NULL` (#528). The
+//!   browser/iOS session is the auth mechanism; no PAT exists to attribute
+//!   the write to, but the write still appears in the user's audit view
+//!   labelled "(web app)".
+//! - `AuthSource::Disabled`: skipped — dev-mode has no real user id.
 //!
-//! - **Jwt**: writes via `/api/mcp` from a Clerk-authenticated browser
-//!   session don't go through the audit log; the user's regular session
-//!   activity is the audit trail.
-//! - **Disabled**: dev-mode writes have no token to attribute to.
-//!
-//! See `auth.rs::AuthSource::Disabled` for the `// TODO(#477 phase 4)`
-//! marker that originally signposted this contract.
+//! After migration 0062-0066, `mcp_audit_log.token_id` is nullable,
+//! so JWT rows are schema-valid.
 
 use chrono::Utc;
 use libsql::Connection;
@@ -34,24 +33,38 @@ pub fn args_hash(args: &Value) -> String {
     })
 }
 
-/// Record a successful PAT write. No-op for non-PAT auth sources.
-/// Errors are logged but not propagated — failing to record an audit row
-/// shouldn't break a successful write that the user already saw succeed.
-pub async fn record_pat_write(
+/// Record a successful MCP write. Called after every successful single-write
+/// tool call. No-op for `AuthSource::Disabled` (local dev — no real user).
+///
+/// Errors are logged but not propagated — a failed audit row must not roll
+/// back a write the user already saw succeed.
+pub async fn record_mcp_write(
     conn: &Connection,
     source: &AuthSource,
     user_id: &str,
     tool: &str,
     args: &Value,
 ) {
-    let token_id = match source {
-        AuthSource::Pat { token_id } => token_id.clone(),
-        AuthSource::Jwt | AuthSource::Disabled => return,
+    // Resolve the token_id (None for JWT-authenticated calls).
+    let token_id: Option<String> = match source {
+        AuthSource::Pat { token_id } => Some(token_id.clone()),
+        AuthSource::Jwt => None,
+        // Disabled = local dev with no real user — skip entirely.
+        AuthSource::Disabled => return,
     };
 
     let id = ulid::Ulid::new().to_string();
     let hash = args_hash(args);
-    if let Err(e) = db::audit::insert(conn, &id, &token_id, user_id, tool, &hash, Utc::now()).await
+    if let Err(e) = db::audit::insert(
+        conn,
+        &id,
+        token_id.as_deref(),
+        user_id,
+        tool,
+        &hash,
+        Utc::now(),
+    )
+    .await
     {
         tracing::warn!(?e, tool, "audit log write failed; continuing");
     }

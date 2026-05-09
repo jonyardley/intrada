@@ -43,9 +43,9 @@ async fn handle(
     // a working URL without an extra env var.
     headers: HeaderMap,
     // `source` is read by `dispatch_tool` to attribute write-tool calls
-    // to the originating PAT in `mcp_audit_log`. JWT-authenticated MCP
-    // calls are accepted but their writes are NOT audited (no token_id
-    // to attribute to); see `services::audit::record_pat_write`.
+    // in `mcp_audit_log`. PAT writes record the resolved token_id; JWT
+    // writes (browser/iOS session) record token_id=NULL (#528); Disabled
+    // (local dev) skips the audit row entirely. See `services::audit::record_mcp_write`.
     AuthUser { user_id, source }: AuthUser,
     Json(req): Json<JsonRpcRequest>,
 ) -> axum::response::Response {
@@ -306,8 +306,9 @@ async fn dispatch_tool(
 
     // Audit single-write tools after a successful execution. Read tools
     // and the bulk-import tool are excluded — bulk_import audits itself.
+    // JWT writes are now included (#528): the row is recorded with token_id=NULL.
     if result.is_ok() && tools::SINGLE_WRITE_TOOLS.contains(&tool_name.as_str()) {
-        services::audit::record_pat_write(&conn_for_audit, source, user_id, &tool_name, &raw_args)
+        services::audit::record_mcp_write(&conn_for_audit, source, user_id, &tool_name, &raw_args)
             .await;
     }
 
