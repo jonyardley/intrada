@@ -19,7 +19,7 @@ use axum::{Form, Json, Router};
 use serde_json::json;
 // `Form` extractor uses `axum::extract::Form`, included via the prelude above.
 
-use crate::auth::AuthUser;
+use crate::auth::{AuthSource, AuthUser};
 use crate::error::ApiError;
 use crate::services;
 use crate::services::oauth::{
@@ -141,19 +141,38 @@ struct FinalizeResponse {
 }
 
 /// Called by the web app's consent page after the user clicks Allow.
-/// Authenticated by the user's Clerk JWT (existing AuthUser extractor)
-/// — only a real Clerk user can issue an auth code on their own behalf.
+/// Refuses anything other than `AuthSource::Jwt` (a real Clerk session).
+///
+/// PAT auth is rejected even though it's self-scoped — minting an OAuth
+/// code requires interactive user consent, and a PAT is by definition
+/// already a non-interactive credential. Allowing PAT-on-/finalize
+/// would let a stolen PAT chain into an OAuth grant attributed to
+/// "the user" without the user actually clicking Allow. Disabled mode
+/// is rejected because there's no user to attribute the code to.
 async fn finalize(
     State(state): State<AppState>,
-    AuthUser { user_id, .. }: AuthUser,
+    AuthUser { user_id, source }: AuthUser,
     Json(req): Json<FinalizeRequest>,
 ) -> Result<Json<FinalizeResponse>, ApiError> {
+    match source {
+        AuthSource::Jwt => {}
+        AuthSource::Pat { .. } => {
+            return Err(ApiError::Unauthorized(
+                "/oauth/finalize requires a browser session (Clerk JWT), not a PAT".into(),
+            ));
+        }
+        AuthSource::Disabled => {
+            return Err(ApiError::Unauthorized(
+                "/oauth/finalize requires a Clerk-authenticated user".into(),
+            ));
+        }
+    }
     if user_id.is_empty() {
-        // AuthSource::Disabled means CLERK_ISSUER_URL isn't set — no
-        // real user to attribute the code to. Refuse rather than mint
-        // an empty-user token.
+        // Defence in depth: AuthSource::Jwt with empty sub shouldn't happen
+        // (Clerk always populates sub), but refuse anyway rather than
+        // silently mint an empty-user token.
         return Err(ApiError::Unauthorized(
-            "/oauth/finalize requires a Clerk-authenticated user".into(),
+            "/oauth/finalize requires a non-empty user id".into(),
         ));
     }
 
@@ -183,8 +202,16 @@ async fn finalize(
     )
     .await?;
 
+    // Some OAuth clients register redirect_uris that already contain a
+    // query string (e.g. `https://app.example/cb?token=xxx`). Use `&`
+    // as the separator if so, `?` otherwise.
+    let separator = if req.redirect_uri.contains('?') {
+        '&'
+    } else {
+        '?'
+    };
     let mut redirect_url = format!(
-        "{redirect_uri}?code={code}",
+        "{redirect_uri}{separator}code={code}",
         redirect_uri = req.redirect_uri,
         code = urlencode(&code),
     );

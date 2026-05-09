@@ -130,10 +130,19 @@ pub async fn insert_code(conn: &Connection, code: &OAuthCode) -> Result<(), ApiE
     Ok(())
 }
 
-/// Read-and-delete by hash. The service layer enforces expiry at the
-/// caller — we don't filter on `expires_at` here because the auth code
-/// is single-use either way and the caller wants to distinguish
-/// "expired" from "unknown" for clearer error messaging.
+/// Read-and-delete by hash. Returns `None` if the code doesn't exist
+/// OR if a concurrent caller already consumed it.
+///
+/// Race-free across concurrent /oauth/token calls: we SELECT first to
+/// fetch the data, then DELETE filtered by hash and check `rows_affected`.
+/// If two callers race, both SELECT successfully but only ONE DELETE
+/// returns `rows_affected == 1`; the loser gets `0` and we return
+/// `None` so the caller treats it as "already consumed". libsql HTTP
+/// doesn't support multi-statement transactions, so this delete-with-
+/// rowcount check is the closest we can get to atomic-pop semantics.
+///
+/// Expiry isn't filtered here — the service layer checks `expires_at`
+/// to give the caller a distinct "expired" error message vs "unknown".
 pub async fn consume_code_by_hash(
     conn: &Connection,
     code_hash: &str,
@@ -171,14 +180,18 @@ pub async fn consume_code_by_hash(
         .parse()
         .map_err(|e| ApiError::Internal(format!("Invalid created_at: {e}")))?;
 
-    // Single-use: delete the row immediately on read so a replay attack
-    // (intercepted code re-submitted) can't double-spend even if the
-    // first exchange is still in flight.
-    conn.execute(
-        "DELETE FROM oauth_codes WHERE code_hash = ?1",
-        libsql::params![code_hash.clone()],
-    )
-    .await?;
+    // Atomic-pop check: if rows_affected == 0, a concurrent caller beat
+    // us to the delete. Treat as "already consumed" — neither caller
+    // gets to mint a token from the same code.
+    let deleted = conn
+        .execute(
+            "DELETE FROM oauth_codes WHERE code_hash = ?1",
+            libsql::params![code_hash.clone()],
+        )
+        .await?;
+    if deleted == 0 {
+        return Ok(None);
+    }
 
     Ok(Some(OAuthCode {
         code_hash,

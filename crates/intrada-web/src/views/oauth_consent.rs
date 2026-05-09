@@ -81,12 +81,19 @@ pub fn OAuthConsentView() -> impl IntoView {
     });
 
     // Cancel button: redirect to the OAuth client's redirect_uri with
-    // `?error=access_denied&state=…` per RFC 6749 §4.1.2.1.
+    // `?error=access_denied&state=…` per RFC 6749 §4.1.2.1. Use `&` as
+    // the separator if redirect_uri already contains a query string —
+    // mirrors the same fix on the API side in /oauth/finalize.
     let on_cancel = {
         let params = params_signal;
         Callback::new(move |_: leptos::ev::MouseEvent| {
             let Some(p) = params.get() else { return };
-            let mut url = format!("{}?error=access_denied", p.redirect_uri);
+            let separator = if p.redirect_uri.contains('?') {
+                '&'
+            } else {
+                '?'
+            };
+            let mut url = format!("{}{separator}error=access_denied", p.redirect_uri);
             if let Some(s) = p.state {
                 url.push_str(&format!("&state={}", urlencode(&s)));
             }
