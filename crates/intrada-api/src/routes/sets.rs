@@ -21,8 +21,16 @@ async fn list_sets(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Set>>, ApiError> {
-    let conn = state.conn();
-    let sets = services::sets::list_sets(&conn, &user_id).await?;
+    // Wrapped in `with_transient_retry` because INTRADA-API-36 surfaces
+    // here: Hrana streams occasionally drop mid-request between heartbeat
+    // ticks, returning "stream not found". The per-request retry covers
+    // the gap by reconnecting and re-running the whole list_sets call.
+    let sets = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::sets::list_sets(&conn, &user_id).await }
+        })
+        .await?;
     Ok(Json(sets))
 }
 
