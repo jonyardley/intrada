@@ -30,6 +30,11 @@ pub fn router() -> Router<AppState> {
 /// Top-level JSON-RPC handler. Routes by `method` to either MCP-protocol
 /// methods (`initialize`, `tools/list`, `tools/call`) or returns a
 /// JSON-RPC `METHOD_NOT_FOUND` error. Notifications (no `id`) get a 204.
+#[tracing::instrument(
+    name = "mcp.request",
+    skip_all,
+    fields(jsonrpc.method = %req.method)
+)]
 async fn handle(
     State(state): State<AppState>,
     // `source` is read by `dispatch_tool` to attribute write-tool calls
@@ -123,6 +128,21 @@ async fn handle(
 /// embedded in the result with `is_error: true` per the MCP spec, not
 /// surfaced as JSON-RPC errors (those are reserved for protocol-level
 /// problems).
+///
+/// Wrapped in a `mcp.tool` span so Sentry dashboards can group call
+/// volume + latency + error rate by tool name and (hashed) identity.
+/// `tool.name` is recorded eagerly; `user.id.hash`, `token.id.hash`,
+/// and `result` are recorded inside the body.
+#[tracing::instrument(
+    name = "mcp.tool",
+    skip_all,
+    fields(
+        tool.name = %params.name,
+        user.id.hash = tracing::field::Empty,
+        token.id.hash = tracing::field::Empty,
+        result = tracing::field::Empty,
+    )
+)]
 async fn dispatch_tool(
     state: &AppState,
     user_id: &str,
@@ -131,6 +151,21 @@ async fn dispatch_tool(
     id: Value,
 ) -> axum::response::Response {
     use axum::response::IntoResponse;
+
+    // Identity attributes — hashed so Sentry never sees raw user IDs
+    // or token IDs. `user.id.hash` is recorded for every call (empty
+    // string in `AuthSource::Disabled` mode); `token.id.hash` only for
+    // PAT-authenticated calls (Jwt + Disabled leave it empty).
+    {
+        let span = tracing::Span::current();
+        span.record("user.id.hash", crate::telemetry::hash_id(user_id).as_str());
+        if let AuthSource::Pat { token_id } = source {
+            span.record(
+                "token.id.hash",
+                crate::telemetry::hash_id(token_id).as_str(),
+            );
+        }
+    }
 
     let conn = state.conn();
     // Keep a clone available for the post-match audit recording —
@@ -239,6 +274,7 @@ async fn dispatch_tool(
         }
 
         unknown => {
+            tracing::Span::current().record("result", "method_not_found");
             return Json(JsonRpcResponse::error(
                 id,
                 error_code::METHOD_NOT_FOUND,
@@ -247,6 +283,14 @@ async fn dispatch_tool(
             .into_response();
         }
     };
+
+    tracing::Span::current().record(
+        "result",
+        match &result {
+            Ok(_) => "ok",
+            Err(_) => "error",
+        },
+    );
 
     // Audit single-write tools after a successful execution. Read tools
     // and the bulk-import tool are excluded — bulk_import audits itself.
