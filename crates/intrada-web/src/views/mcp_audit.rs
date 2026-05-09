@@ -4,7 +4,7 @@ use intrada_core::{Event, McpAuditEntry, McpAuditEvent, ViewModel};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-use crate::components::{EmptyState, GroupedList, GroupedListRow, IconName};
+use crate::components::{BackLink, EmptyState, GroupedList, GroupedListRow, IconName};
 
 /// Account-settings sub-page that shows the user's MCP audit log —
 /// every successful write tool call attributed to one of their PATs.
@@ -32,6 +32,8 @@ pub fn McpAuditView() -> impl IntoView {
 
     view! {
         <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
+            <BackLink label="Back to Settings" href="/settings".to_string() />
+
             <div class="space-y-card">
                 <h1 class="page-title">"MCP activity"</h1>
                 <p class="text-sm text-secondary">

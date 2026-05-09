@@ -8,7 +8,8 @@ use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{
-    Button, ButtonVariant, Card, EmptyState, GroupedList, GroupedListRow, IconName, TextField,
+    BackLink, Button, ButtonVariant, Card, EmptyState, GroupedList, GroupedListRow, IconName,
+    TextField,
 };
 
 /// Account-settings sub-page for managing MCP Personal Access Tokens —
@@ -112,6 +113,8 @@ pub fn McpTokensView() -> impl IntoView {
 
     view! {
         <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
+            <BackLink label="Back to Settings" href="/settings".to_string() />
+
             // Title + description grouped tighter than the section spacing
             // so the lede reads as belonging to the title, with the
             // section-sized gap reserved for the page's distinct sections
