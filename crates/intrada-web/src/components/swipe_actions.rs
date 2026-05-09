@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{AddEventListenerOptions, TouchEvent};
@@ -211,10 +212,33 @@ pub fn SwipeActions(
             &passive_opts,
         );
 
-        touchstart.forget();
-        touchmove.forget();
-        touchend.forget();
-        touchcancel.forget();
+        // Remove the listeners on unmount instead of `.forget()`-ing them
+        // forever. Without cleanup, a touch that lands on the row after
+        // its component has been disposed (rare but real on iOS Safari —
+        // contributed to INTRADA-WEB-4) fires the closure with disposed
+        // RwSignals and panics with "Unreachable code should not be
+        // executed" inside the wasm-bindgen invoke shim.
+        let touchstart = SendWrapper::new(touchstart);
+        let touchmove = SendWrapper::new(touchmove);
+        let touchend = SendWrapper::new(touchend);
+        let touchcancel = SendWrapper::new(touchcancel);
+        let el = SendWrapper::new(el);
+        on_cleanup(move || {
+            let _ = el.remove_event_listener_with_callback(
+                "touchstart",
+                touchstart.as_ref().unchecked_ref(),
+            );
+            let _ = el.remove_event_listener_with_callback(
+                "touchmove",
+                touchmove.as_ref().unchecked_ref(),
+            );
+            let _ = el
+                .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+            let _ = el.remove_event_listener_with_callback(
+                "touchcancel",
+                touchcancel.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     // Drive both content AND action via two CSS custom properties on the
