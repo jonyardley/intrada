@@ -133,7 +133,20 @@ pub fn McpTokensView() -> impl IntoView {
                         <p class="hint-text">
                             "Configure your MCP client to point at this endpoint and authenticate with one of the tokens below. Speaks "
                             <span class="font-mono text-xs">"streamable HTTP"</span>
-                            " + JSON-RPC 2.0."
+                            " + JSON-RPC 2.0. "
+                            // Link to the per-client setup guide (Claude.ai
+                            // OAuth, Claude Desktop config, Cursor, etc.).
+                            // Targets the GitHub-rendered markdown — no
+                            // marketing site yet, but the URL is stable on
+                            // the default branch.
+                            <a
+                                href="https://github.com/jonyardley/intrada/blob/main/docs/mcp-setup.md"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="text-accent-text hover:text-primary"
+                            >
+                                "Setup guide →"
+                            </a>
                         </p>
                     </div>
                     <div class="space-y-card-compact">
