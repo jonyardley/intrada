@@ -19,6 +19,7 @@ pub mod sessions_all;
 pub mod set_detail;
 pub mod set_edit;
 pub mod settings;
+pub mod sso_callback;
 pub mod welcome;
 
 pub use account_delete::AccountDeleteView;
@@ -42,4 +43,5 @@ pub use sessions_all::SessionsAllView;
 pub use set_detail::SetDetailView;
 pub use set_edit::SetEditView;
 pub use settings::SettingsView;
+pub use sso_callback::SsoCallbackView;
 pub use welcome::WelcomeView;
