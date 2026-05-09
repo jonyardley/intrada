@@ -61,7 +61,7 @@ pub fn WelcomeView() -> impl IntoView {
             <WelcomeFeature
                 kicker="PLAN".to_string()
                 title="The library that\nremembers for you.".to_string()
-                description="Half of what your teacher gives you disappears within a week. Intrada is where every piece, exercise, voicing and lick lives — captured once, connected to its context, ready when you need it.".to_string()
+                description="Half of what your teacher gives you disappears within a week. Intrada catches it — tag by composer, key, or tempo, group what you actually run into reusable routines, and connect everything to the goals you're working towards.".to_string()
                 bullets=vec![
                     "Pieces, exercises, and patterns in one place".to_string(),
                     "Reusable routines for the warm-ups and blocks you run every week".to_string(),
@@ -89,7 +89,7 @@ pub fn WelcomeView() -> impl IntoView {
                 bullets=vec![
                     "Mastery per piece, per key, across weeks".to_string(),
                     "Time, sessions, and where your attention actually went".to_string(),
-                    "Comeback framing — never a broken streak, never a zero".to_string(),
+                    "A welcome back when life happens — not a guilt trip".to_string(),
                 ]
                 reverse=false
                 mock=Box::new(|| view! { <AnalyticsMock /> }.into_any())
@@ -245,12 +245,12 @@ fn WelcomePillars() -> impl IntoView {
 fn PillarCard(icon: String, title: String, description: String) -> impl IntoView {
     let icon_svg = match icon.as_str() {
         "library" => view! {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 01-2.5-2.5z M4 19.5A2.5 2.5 0 016.5 17H20"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
+                <path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 01-2.5-2.5z M4 19.5A2.5 2.5 0 016.5 17H20"/>
             </svg>
         }.into_any(),
         "timer" => view! {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
                 <line x1="10" y1="2" x2="14" y2="2"/>
                 <line x1="12" y1="14" x2="15" y2="11"/>
                 <circle cx="12" cy="14" r="8"/>
@@ -278,7 +278,7 @@ fn PillarCard(icon: String, title: String, description: String) -> impl IntoView
             </svg>
         }.into_any(),
         _ => view! {
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
                 <polyline points="16 7 22 7 22 13"/>
             </svg>
@@ -319,7 +319,7 @@ fn WelcomeDifferentiators() -> impl IntoView {
                 <PillarCard
                     icon="calendar".to_string()
                     title="Schedules itself around you".to_string()
-                    description="Spaced repetition and interleaved practice are settled learning science. Intrada applies them automatically — weak items surface more often, work from six weeks ago doesn't silently decay, and every session fits the time you've got.".to_string()
+                    description="Spaced repetition and interleaved practice are settled learning science. Intrada is being built around them — so weak items surface more often, work from six weeks ago won't silently decay, and every session fits the time you've got.".to_string()
                 />
                 <PillarCard
                     icon="layers".to_string()
