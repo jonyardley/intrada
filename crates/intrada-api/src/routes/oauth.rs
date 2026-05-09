@@ -42,6 +42,7 @@ pub fn router() -> Router<AppState> {
 
 // ── Discovery (RFC 8414) ───────────────────────────────────────────────
 
+#[tracing::instrument(name = "oauth.discovery", skip_all)]
 async fn discovery(headers: HeaderMap) -> Response {
     // Build the issuer URL from the request's `Host` header so the
     // discovery doc reflects whatever domain the client used to fetch
@@ -76,6 +77,7 @@ async fn discovery(headers: HeaderMap) -> Response {
 
 // ── DCR (RFC 7591) ─────────────────────────────────────────────────────
 
+#[tracing::instrument(name = "oauth.register", skip_all, fields(client_name = %req.client_name))]
 async fn register(
     State(state): State<AppState>,
     Json(req): Json<RegisterClientRequest>,
@@ -87,6 +89,11 @@ async fn register(
 
 // ── Authorize (RFC 6749 §4.1.1) ────────────────────────────────────────
 
+#[tracing::instrument(
+    name = "oauth.authorize",
+    skip_all,
+    fields(client_id = %params.client_id)
+)]
 async fn authorize(
     State(state): State<AppState>,
     Query(params): Query<AuthorizeParams>,
@@ -149,6 +156,11 @@ struct FinalizeResponse {
 /// would let a stolen PAT chain into an OAuth grant attributed to
 /// "the user" without the user actually clicking Allow. Disabled mode
 /// is rejected because there's no user to attribute the code to.
+#[tracing::instrument(
+    name = "oauth.finalize",
+    skip_all,
+    fields(client_id = %req.client_id)
+)]
 async fn finalize(
     State(state): State<AppState>,
     AuthUser { user_id, source }: AuthUser,
@@ -227,6 +239,11 @@ async fn finalize(
 /// RFC 6749 §3.2 — `application/x-www-form-urlencoded` is the canonical
 /// content-type for the token endpoint. Most OAuth clients use it; JSON
 /// is a non-standard extension that we don't accept here.
+#[tracing::instrument(
+    name = "oauth.token",
+    skip_all,
+    fields(client_id = %req.client_id, grant_type = %req.grant_type)
+)]
 async fn token(
     State(state): State<AppState>,
     Form(req): Form<TokenRequest>,
