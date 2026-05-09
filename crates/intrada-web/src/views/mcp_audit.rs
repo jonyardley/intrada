@@ -80,12 +80,18 @@ pub fn McpAuditView() -> impl IntoView {
 #[component]
 fn AuditEntryRow(entry: McpAuditEntry) -> impl IntoView {
     let when = format_relative(entry.created_at);
-    let token_label = entry.token_name.clone().unwrap_or_else(|| {
-        entry
-            .token_prefix
-            .clone()
-            .unwrap_or_else(|| "(deleted token)".into())
-    });
+    // token_id is None → write via Clerk session (no PAT). Show "web app"
+    // rather than falling through to "(deleted token)".
+    let token_label = if entry.token_id.is_none() {
+        "web app".to_string()
+    } else {
+        entry.token_name.clone().unwrap_or_else(|| {
+            entry
+                .token_prefix
+                .clone()
+                .unwrap_or_else(|| "(deleted token)".into())
+        })
+    };
     let tool_label = humanize_tool(&entry.tool);
 
     view! {

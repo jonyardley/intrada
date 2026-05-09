@@ -445,7 +445,7 @@ pub async fn bulk_import_items(
         }
     }
 
-    services::audit::record_pat_write(conn, source, user_id, "bulk_import_items", raw_args).await;
+    services::audit::record_mcp_write(conn, source, user_id, "bulk_import_items", raw_args).await;
 
     serde_json::to_value(json!({
         "dry_run": false,

@@ -923,7 +923,7 @@ async fn audit_log_excludes_other_users() {
     intrada_api::db::audit::insert(
         &conn,
         "01HXFOREIGN0000000000000000",
-        "01HXFOREIGNTOKEN0000000000",
+        Some("01HXFOREIGNTOKEN0000000000"),
         "other_user",
         "create_item",
         "deadbeef".repeat(8).as_str(),

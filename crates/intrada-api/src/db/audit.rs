@@ -20,10 +20,14 @@ use crate::error::ApiError;
 /// than a raw ULID. Both are `Option` because the token row could
 /// theoretically be hard-deleted (we only soft-delete via `revoked_at`,
 /// but defensive against future schema changes).
+///
+/// `token_id` is `Option<String>` because JWT-authenticated MCP writes
+/// are recorded without a PAT — the entry captures the write but has no
+/// token to attribute it to (#528). The UI renders these as "(web app)".
 #[derive(Debug, Serialize)]
 pub struct AuditLogEntry {
     pub id: String,
-    pub token_id: String,
+    pub token_id: Option<String>,
     pub token_name: Option<String>,
     pub token_prefix: Option<String>,
     pub tool: String,
@@ -31,10 +35,12 @@ pub struct AuditLogEntry {
     pub created_at: DateTime<Utc>,
 }
 
+/// Insert an audit-log row. `token_id` is `None` for JWT-authenticated
+/// MCP writes (no PAT to attribute to).
 pub async fn insert(
     conn: &Connection,
     id: &str,
-    token_id: &str,
+    token_id: Option<&str>,
     user_id: &str,
     tool: &str,
     args_hash: &str,
@@ -83,7 +89,7 @@ pub async fn list(
         .map_err(|e| ApiError::Internal(e.to_string()))?
     {
         let id: String = col!(row, 0)?;
-        let token_id: String = col!(row, 1)?;
+        let token_id: Option<String> = col!(row, 1)?;
         let token_name: Option<String> = col!(row, 2)?;
         let token_prefix: Option<String> = col!(row, 3)?;
         let tool: String = col!(row, 4)?;

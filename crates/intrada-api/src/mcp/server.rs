@@ -306,8 +306,9 @@ async fn dispatch_tool(
 
     // Audit single-write tools after a successful execution. Read tools
     // and the bulk-import tool are excluded — bulk_import audits itself.
+    // JWT writes are now included (#528): the row is recorded with token_id=NULL.
     if result.is_ok() && tools::SINGLE_WRITE_TOOLS.contains(&tool_name.as_str()) {
-        services::audit::record_pat_write(&conn_for_audit, source, user_id, &tool_name, &raw_args)
+        services::audit::record_mcp_write(&conn_for_audit, source, user_id, &tool_name, &raw_args)
             .await;
     }
 
