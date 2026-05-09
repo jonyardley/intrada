@@ -76,6 +76,59 @@ async fn empty_segments_are_ignored() {
     assert_eq!(web.as_deref(), Some("http://localhost:8080"));
 }
 
+/// Locks in the contract that the permissive `oauth_cors` and `mcp_cors`
+/// allow Sentry's W3C `baggage` + `sentry-trace` headers in preflight.
+/// Without this, the web app's Sentry browser SDK auto-injects those
+/// headers on cross-origin fetches to `intrada-api.fly.dev` (it matches
+/// `tracePropagationTargets`), the preflight rejects them, and the
+/// browser surfaces "TypeError: Failed to fetch" before the actual
+/// request leaves — silently breaking OAuth `/oauth/finalize` and any
+/// browser-based MCP client. The strict `/api/*` CORS already had this;
+/// this test stops the same regression on the OAuth + MCP surfaces.
+async fn assert_preflight_allows_sentry_headers(uri: &str, method: &str) {
+    let app = common::setup_test_app().await;
+    let request = Request::builder()
+        .method(Method::OPTIONS)
+        .uri(uri)
+        .header("Origin", "https://myintrada.com")
+        .header("Access-Control-Request-Method", method)
+        .header(
+            "Access-Control-Request-Headers",
+            "authorization,content-type,baggage,sentry-trace",
+        )
+        .body(Body::empty())
+        .unwrap();
+    let response = app.oneshot(request).await.unwrap();
+    let allow_headers = response
+        .headers()
+        .get("access-control-allow-headers")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    assert!(
+        allow_headers.contains("baggage"),
+        "preflight for {uri} must allow `baggage` (Sentry distributed tracing); got: {allow_headers}"
+    );
+    assert!(
+        allow_headers.contains("sentry-trace"),
+        "preflight for {uri} must allow `sentry-trace` (Sentry distributed tracing); got: {allow_headers}"
+    );
+}
+
+#[tokio::test]
+async fn oauth_preflight_allows_sentry_propagation_headers() {
+    // /oauth/finalize is what the web app POSTs from the consent screen.
+    // /oauth/token is what claude.ai POSTs (cross-origin from claude.ai).
+    assert_preflight_allows_sentry_headers("/oauth/finalize", "POST").await;
+    assert_preflight_allows_sentry_headers("/oauth/token", "POST").await;
+    assert_preflight_allows_sentry_headers("/oauth/register", "POST").await;
+}
+
+#[tokio::test]
+async fn mcp_preflight_allows_sentry_propagation_headers() {
+    assert_preflight_allows_sentry_headers("/api/mcp", "POST").await;
+}
+
 #[tokio::test]
 async fn preflight_request_returns_cors_headers_for_allowed_origin() {
     let app = setup_test_app_with_origin("tauri://localhost").await;

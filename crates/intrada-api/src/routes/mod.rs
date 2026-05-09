@@ -72,6 +72,17 @@ pub fn api_router(state: AppState) -> Router {
         )
     };
 
+    // Sentry's browser SDK auto-attaches W3C `baggage` + `sentry-trace`
+    // headers to outgoing fetches whose URL matches `tracePropagationTargets`
+    // (configured in the web shell's `index.html` to include
+    // `intrada-api.fly.dev`). Cross-origin fetches preflight, and the
+    // preflight requests these headers — without them in the allow-list
+    // the browser surfaces "TypeError: Failed to fetch" before the
+    // request ever leaves. Strict CORS (the `/api/*` user-facing surface)
+    // already lists them; replicate on the permissive surfaces too.
+    const SENTRY_BAGGAGE: HeaderName = HeaderName::from_static("baggage");
+    const SENTRY_TRACE: HeaderName = HeaderName::from_static("sentry-trace");
+
     // Permissive CORS for `/api/mcp/*` only. Per #481 — MCP auth is
     // bearer-token-only (PAT), no cookies are involved, so CORS adds zero
     // security on this route while removing a real product capability
@@ -79,7 +90,12 @@ pub fn api_router(state: AppState) -> Router {
     let mcp_cors = CorsLayer::new()
         .allow_origin(AllowOrigin::any())
         .allow_methods([Method::POST, Method::OPTIONS])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            SENTRY_BAGGAGE,
+            SENTRY_TRACE,
+        ]);
 
     // Permissive CORS for OAuth endpoints. Same rationale as MCP —
     // cross-origin claude.ai-style flows are the whole point. The
@@ -88,7 +104,12 @@ pub fn api_router(state: AppState) -> Router {
     let oauth_cors = CorsLayer::new()
         .allow_origin(AllowOrigin::any())
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            SENTRY_BAGGAGE,
+            SENTRY_TRACE,
+        ]);
 
     let trace = TraceLayer::new_for_http()
         .make_span_with(make_span)
