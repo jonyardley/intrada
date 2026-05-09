@@ -97,6 +97,26 @@ unless project['targets']&.key?(main_target_name)
   abort "ERROR: expected main target '#{main_target_name}' in project.yml — Tauri may have changed the target name. Update this script."
 end
 
+# Read the Apple Team ID from the same place Tauri puts it — the main
+# app's xcodegen `settingGroups.app.base.DEVELOPMENT_TEAM`. Tauri
+# populates this from `tauri.conf.json`'s `bundle.iOS.developmentTeam`
+# at `cargo tauri ios init` time, so forks override the team ID once
+# in tauri.conf.json and it ripples here automatically.
+#
+# The widget extension target needs the same Team ID — Apple requires
+# extensions to be signed by the same team as their host app. Hardcoding
+# would force every fork to manually edit this script. (#507)
+development_team = project.dig('settingGroups', 'app', 'base', 'DEVELOPMENT_TEAM')
+if development_team.nil? || development_team.to_s.empty?
+  abort <<~ERR
+    ERROR: could not find DEVELOPMENT_TEAM in project.yml at
+    settingGroups.app.base.DEVELOPMENT_TEAM. Tauri normally populates
+    this from tauri.conf.json's `bundle.iOS.developmentTeam` at
+    `cargo tauri ios init` time. Set developmentTeam in tauri.conf.json
+    and re-run `cargo tauri ios init`.
+  ERR
+end
+
 # If the widget extension target is already present, the only thing left
 # to (potentially) apply is the ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES fix
 # below. Fall through and let the script idempotently ensure that
@@ -150,7 +170,9 @@ project['targets'][TARGET_NAME] = {
       'IPHONEOS_DEPLOYMENT_TARGET'  => MIN_IOS_DEPLOYMENT,
       'SWIFT_VERSION'               => '5.0',
       'CODE_SIGN_STYLE'             => 'Automatic',
-      'DEVELOPMENT_TEAM'            => '9S5FG4LQAF',
+      # Inherited from the main app target so forks don't need to edit
+      # this script — see the development_team lookup above. (#507)
+      'DEVELOPMENT_TEAM'            => development_team,
       'SKIP_INSTALL'                => 'NO',
     },
   },
