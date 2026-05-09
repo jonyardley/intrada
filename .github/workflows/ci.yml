@@ -319,6 +319,58 @@ jobs:
         run: |
           sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" crates/intrada-web/dist/index.html
           grep -q "${{ github.sha }}" crates/intrada-web/dist/index.html
+      # Recompute SHA-384 integrity hashes in index.html after the steps
+      # above. `sentry-cli sourcemaps inject` modifies JS files in place
+      # to add DebugId snippets, which invalidates the integrity hashes
+      # Trunk computed at build time. Without this step the browser
+      # rejects every modified resource:
+      #   "Failed to find a valid digest in the 'integrity' attribute …
+      #    The resource has been blocked."
+      # and the page renders blank. (Production blank-page incident
+      # 2026-05-09 hit exactly this.)
+      #
+      # Walks every <link>/<script integrity=...> and replaces the hash
+      # with whatever the on-disk file currently hashes to. Files whose
+      # contents weren't touched (CSS, WASM) get their hashes
+      # recomputed too — same value, no-op.
+      - name: Refresh SRI integrity hashes after inject
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, pathlib, re
+
+          dist = pathlib.Path("crates/intrada-web/dist")
+          index = dist / "index.html"
+          html = index.read_text()
+          tag_re = re.compile(
+              r'<(?:link|script)\b[^>]*\bintegrity="sha384-[^"]+"[^>]*>', re.I
+          )
+          src_re = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.I)
+
+
+          def patch(m):
+              tag = m.group(0)
+              src = src_re.search(tag)
+              if not src:
+                  return tag
+              rel = src.group(1).lstrip("/")
+              file = dist / rel
+              if not file.is_file():
+                  return tag
+              digest = base64.b64encode(
+                  hashlib.sha384(file.read_bytes()).digest()
+              ).decode()
+              return re.sub(
+                  r'integrity="sha384-[^"]+"',
+                  f'integrity="sha384-{digest}"',
+                  tag,
+              )
+
+
+          new_html, count = tag_re.subn(patch, html)
+          if new_html != html:
+              index.write_text(new_html)
+              print(f"refreshed {count} integrity hashes")
+          PY
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
