@@ -233,7 +233,76 @@ jobs:
         working-directory: e2e
         env:
           DIST_DIR: ${{ github.workspace }}/web-dist
-        run: npx playwright test
+        # `--grep-invert "smoke:"` excludes the deploy-smoke spec — that
+        # one runs against the *post-modification* dist in the
+        # `deploy-smoke` job below (where SRI invalidation could be
+        # caught), not the pristine artifact this job uses.
+        run: npx playwright test --grep-invert "smoke:"
+
+  # Deploy smoke — exercises the SAME post-build modification chain as
+  # the production deploy (sentry-cli inject → release placeholder →
+  # SRI recompute → SRI verify) on EVERY PR, then loads the resulting
+  # dist in headless Chromium and asserts the page actually renders.
+  #
+  # Closes the gap that broke prod on 2026-05-09: the post-build chain
+  # only ran on main pushes, so PR CI passed green and a runtime-
+  # blocking regression (stale SRI hashes after inject) shipped to
+  # users before anyone noticed. See #605.
+  deploy-smoke:
+    name: Deploy Smoke
+    runs-on: ubuntu-latest
+    needs: wasm-build
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: e2e/package-lock.json
+      - name: Download web-dist artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: crates/intrada-web/dist
+      # Sentry-cli `sourcemaps inject` doesn't need a token (only the
+      # `upload` subcommand does), so this runs unconditionally. The
+      # WHOLE point of the smoke job is to fire the chain that broke
+      # prod, regardless of secret availability on PR builds.
+      - name: Inject Sentry DebugIds
+        run: npx --yes @sentry/cli@latest sourcemaps inject crates/intrada-web/dist
+      # Substitute a fixed placeholder value rather than ${{ github.sha }}.
+      # Smoke job intent is to test the chain, not to mint a real release
+      # tag — and using the SHA would tag PR-time builds with their
+      # commit hash in dist/index.html, confusing post-merge triage.
+      - name: Inject Sentry release placeholder (smoke)
+        run: |
+          sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|pr-smoke|g" crates/intrada-web/dist/index.html
+          grep -q "pr-smoke" crates/intrada-web/dist/index.html
+      - name: Refresh SRI integrity hashes after inject
+        run: python3 scripts/refresh-sri-hashes.py
+      - name: Verify SRI integrity hashes match on-disk files
+        run: python3 scripts/verify-sri-hashes.py
+      - name: Install Playwright dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: e2e
+        run: npx playwright install chromium
+      - name: Run smoke spec against post-modification dist
+        working-directory: e2e
+        env:
+          DIST_DIR: ${{ github.workspace }}/crates/intrada-web/dist
+        # `--grep "smoke:"` runs only the deploy-smoke.spec.ts test —
+        # everything else in tests/ is the regular E2E suite, run in
+        # the `e2e` job above (against the pristine artifact).
+        run: npx playwright test --grep "smoke:"
 
   fmt:
     name: Formatting
@@ -333,113 +402,22 @@ jobs:
         run: |
           sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" crates/intrada-web/dist/index.html
           grep -q "${{ github.sha }}" crates/intrada-web/dist/index.html
-      # Recompute SHA-384 integrity hashes in index.html after the steps
-      # above. `sentry-cli sourcemaps inject` modifies JS files in place
-      # to add DebugId snippets, which invalidates the integrity hashes
-      # Trunk computed at build time. Without this step the browser
-      # rejects every modified resource:
-      #   "Failed to find a valid digest in the 'integrity' attribute …
-      #    The resource has been blocked."
-      # and the page renders blank. (Production blank-page incident
-      # 2026-05-09 hit exactly this.)
-      #
-      # Walks every <link>/<script integrity=...> and replaces the hash
-      # with whatever the on-disk file currently hashes to. Files whose
-      # contents weren't touched (CSS, WASM) get their hashes
-      # recomputed too — same value, no-op.
+      # Recompute SHA-384 integrity hashes — `sentry-cli sourcemaps
+      # inject` modifies JS files in place, leaving the SRI attributes
+      # Trunk pre-computed in index.html stale. Without this step the
+      # browser blocks every modified file ("Failed to find a valid
+      # digest in the 'integrity' attribute"), the inline module
+      # script never resolves, and the page renders blank.
+      # Production blank-page incident 2026-05-09 (PR #594) → #604.
       - name: Refresh SRI integrity hashes after inject
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, pathlib, re
-
-          dist = pathlib.Path("crates/intrada-web/dist")
-          index = dist / "index.html"
-          html = index.read_text()
-          tag_re = re.compile(
-              r'<(?:link|script)\b[^>]*\bintegrity="sha384-[^"]+"[^>]*>', re.I
-          )
-          src_re = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.I)
-
-
-          def patch(m):
-              tag = m.group(0)
-              src = src_re.search(tag)
-              if not src:
-                  return tag
-              rel = src.group(1).lstrip("/")
-              file = dist / rel
-              if not file.is_file():
-                  return tag
-              digest = base64.b64encode(
-                  hashlib.sha384(file.read_bytes()).digest()
-              ).decode()
-              return re.sub(
-                  r'integrity="sha384-[^"]+"',
-                  f'integrity="sha384-{digest}"',
-                  tag,
-              )
-
-
-          new_html, count = tag_re.subn(patch, html)
-          if new_html != html:
-              index.write_text(new_html)
-              print(f"refreshed {count} integrity hashes")
-          PY
-      # Belt-and-braces: read index.html back and assert every
-      # integrity hash matches the on-disk file it references. Catches
-      # the scenario where someone adds a NEW step that modifies dist/
-      # files between this point and wrangler publish (or removes the
-      # recompute step above) — fails the deploy loud rather than
-      # shipping a blank page like 2026-05-09. Same Python pattern as
-      # the recompute, just assertion-only.
+        run: python3 scripts/refresh-sri-hashes.py
+      # Belt-and-braces assertion: any post-build modification step
+      # added between recompute and wrangler publish (or removal of
+      # the recompute step above) fails the deploy loud rather than
+      # silently shipping a blank page. Same script also runs on
+      # every PR via the `deploy-smoke` job — see below.
       - name: Verify SRI integrity hashes match on-disk files
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, pathlib, re, sys
-
-          dist = pathlib.Path("crates/intrada-web/dist")
-          html = (dist / "index.html").read_text()
-          tag_re = re.compile(
-              r'<(?:link|script)\b[^>]*\bintegrity="sha384-([^"]+)"[^>]*>', re.I
-          )
-          src_re = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.I)
-
-          mismatches = []
-          checked = 0
-          for m in tag_re.finditer(html):
-              declared = m.group(1)
-              src = src_re.search(m.group(0))
-              if not src:
-                  continue
-              file = dist / src.group(1).lstrip("/")
-              if not file.is_file():
-                  mismatches.append(
-                      f"  {src.group(1)}: referenced but not on disk"
-                  )
-                  continue
-              actual = base64.b64encode(
-                  hashlib.sha384(file.read_bytes()).digest()
-              ).decode()
-              if declared != actual:
-                  mismatches.append(
-                      f"  {src.group(1)}: declared sha384-{declared[:12]}…, "
-                      f"actual sha384-{actual[:12]}…"
-                  )
-              checked += 1
-
-          if mismatches:
-              print("SRI integrity mismatch — would ship a blank page:")
-              for line in mismatches:
-                  print(line)
-              print(
-                  "\nLikely cause: a CI step modified dist/ between the "
-                  "recompute step and this verify step. Either move it "
-                  "BEFORE the recompute, or extend the recompute step "
-                  "to run after it."
-              )
-              sys.exit(1)
-          print(f"verified {checked} integrity hashes match on-disk files")
-          PY
+        run: python3 scripts/verify-sri-hashes.py
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
