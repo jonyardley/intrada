@@ -1322,6 +1322,19 @@ html.router-outlet-0.router-back::view-transition-new(root) {
   display: none;
 }
 
+/* Hide the web header on mobile web too — bottom tab bar is the primary
+   nav surface on small viewports, and the only header content visible on
+   mobile (brand wordmark + ProfileButton) is already covered: the Account
+   tab in the bottom bar replaces the profile button, and Apple-pattern
+   in-app screens don't show app branding inside the app. Aligns mobile
+   web cadence with iOS. 639px (not 640px) so the cut-off doesn't overlap
+   with Tailwind's `sm:` breakpoint. */
+@media (max-width: 639px) {
+  header[role="banner"] {
+    display: none;
+  }
+}
+
 /* Hide the web footer on iOS — attribution is a desktop convention. */
 [data-platform="ios"] footer[role="contentinfo"] {
   display: none;
