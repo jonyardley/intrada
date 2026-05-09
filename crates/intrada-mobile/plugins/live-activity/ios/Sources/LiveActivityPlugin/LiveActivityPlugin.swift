@@ -84,11 +84,22 @@ class LiveActivityPlugin: Plugin {
       guard let self = self else { return }
 
       if UIDevice.current.userInterfaceIdiom == .pad {
+        NSLog("[live-activity] begin: skipped (iPad — Live Activities unsupported)")
         invoke.resolve()
         return
       }
 
       if #available(iOS 16.1, *) {
+        let auth = ActivityAuthorizationInfo()
+        let priorCount = Activity<IntradaActivityAttributes>.activities.count
+        NSLog(
+          "[live-activity] begin: areActivitiesEnabled=%@ frequentPushesEnabled=%@ priorActivityCount=%d position=%@",
+          auth.areActivitiesEnabled ? "YES" : "NO",
+          auth.frequentPushesEnabled ? "YES" : "NO",
+          priorCount,
+          args.position_label
+        )
+
         // If a previous session left an activity hanging (app crash
         // mid-session, ActivityKit error path), end it before starting
         // the new one. iOS allows only one activity per attribute type
@@ -121,6 +132,11 @@ class LiveActivityPlugin: Plugin {
             )
           }
           self.currentActivity = activity
+          NSLog(
+            "[live-activity] begin: Activity.request succeeded id=%@ totalActivities=%d",
+            activity.id,
+            Activity<IntradaActivityAttributes>.activities.count
+          )
           invoke.resolve()
         } catch {
           // Common failure modes:
@@ -130,12 +146,18 @@ class LiveActivityPlugin: Plugin {
           // The wall-clock timer + background-audio still work; only
           // the lock-screen card is missing. Surface to the bridge so
           // Sentry catches it (per the plugin's Rust-side capture).
+          NSLog(
+            "[live-activity] begin: Activity.request FAILED error=%@ desc=%@",
+            String(describing: error),
+            error.localizedDescription
+          )
           invoke.reject(
             "live-activity: Activity.request failed: \(error.localizedDescription)")
         }
       } else {
         // Older iOS: no Live Activities — resolve silently. Background
         // audio still gives the user a lock-screen Now Playing card.
+        NSLog("[live-activity] begin: skipped (iOS < 16.1)")
         invoke.resolve()
       }
     }
@@ -160,9 +182,14 @@ class LiveActivityPlugin: Plugin {
           // `begin`, or the activity already ended (e.g. user revoked
           // Live Activities mid-session). No-op rather than error: the
           // shell-side lifecycle Effect can race ahead of iOS state.
+          NSLog(
+            "[live-activity] update: no current activity (begin missing or already ended) position=%@",
+            args.position_label
+          )
           invoke.resolve()
           return
         }
+        NSLog("[live-activity] update: position=%@", args.position_label)
 
         let state = IntradaActivityAttributes.ContentState(
           itemTitle: args.item_title,
@@ -200,6 +227,8 @@ class LiveActivityPlugin: Plugin {
       }
 
       if #available(iOS 16.1, *) {
+        let hadActivity = self.currentActivity != nil
+        NSLog("[live-activity] end: hadActivity=%@", hadActivity ? "YES" : "NO")
         self.endCurrentActivityIfAny()
       }
       invoke.resolve()
