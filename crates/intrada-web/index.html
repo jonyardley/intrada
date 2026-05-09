@@ -19,10 +19,14 @@
          scripts below (data-platform setup, press feedback, Clerk bridge)
          and from the WASM panic hook. The DSN is public by design (Sentry's
          security model expects it embedded in client code); environment is
-         tagged at runtime so dev/prod/ios events are filterable in the UI. -->
-    <script src="https://browser.sentry-cdn.com/10.51.0/bundle.tracing.min.js"
-            integrity="sha384-PLfi4Yv8UxpzFBe4XEbS8M1qAx+z/qs3jf7AY1XQorhPeW9SM5VarsX3+Is0NPNf"
-            crossorigin="anonymous"></script>
+         tagged at runtime so dev/prod/ios events are filterable in the UI.
+
+         Self-hosted instead of loaded from `browser.sentry-cdn.com` because
+         the CDN domain is on common ad/tracker blocklists (uBlock Origin,
+         Brave Shields, etc.) — blocked users would otherwise have
+         `window.Sentry` undefined and lose all observability coverage.
+         Bump the bundle by re-running `scripts/vendor-sentry-sdk.sh`. -->
+    <script src="/sentry/bundle.tracing.min.js"></script>
     <script>
       // Skip on plain-http localhost (web dev) to match the api/mobile
       // opt-in pattern and save event quota. iOS production WebView is also
@@ -47,6 +51,15 @@
           // traffic arrives — every transaction counts against quota.
           tracesSampleRate: 1.0,
           sendDefaultPii: false,
+          // Tunnel events through our own origin so content blockers that
+          // catch direct posts to *.ingest.sentry.io can't drop them. The
+          // Cloudflare Worker (worker.js) terminates `/sentry-tunnel` and
+          // forwards the envelope to Sentry's ingest endpoint.
+          //
+          // iOS WebView (`tauri://localhost`) doesn't run extensions and
+          // its origin doesn't host the Worker — leave the tunnel off
+          // there so events go straight to Sentry.
+          tunnel: location.protocol === 'tauri:' ? undefined : '/sentry-tunnel',
           // Continue traces across the web → API boundary so one waterfall
           // shows route render → fetch → handler → DB. The Rust server's
           // SentryHttpLayer (intrada-api/src/routes/mod.rs) reads the
@@ -111,6 +124,9 @@
          @font-face declaration lives in input.css so it can reference
          the same /fonts/ path that this directive copies into dist. -->
     <link data-trunk rel="copy-dir" href="fonts" />
+    <!-- Self-hosted Sentry browser SDK — see comment on the <script> tag
+         in <head>. Re-vendor with scripts/vendor-sentry-sdk.sh. -->
+    <link data-trunk rel="copy-dir" href="static/sentry" />
     <script>
       // Set data-platform="ios" early so [data-platform="ios"] CSS applies
       // before first paint — no flicker. Tauri WebView always serves pages
