@@ -436,13 +436,46 @@ const MIGRATIONS: &[(&str, &str)] = &[
     ),
 ];
 
+/// Backoff schedule for transient-error retries during migration: try
+/// immediately, then 200ms, 1s, 5s. Total max wall time per migration ≈
+/// 6.2s before giving up. Sized for Turso's typical cold-start +
+/// transient HTTP-stream-drop window seen in production (INTRADA-API-2):
+/// the connection blip resolves on the first or second retry, but if
+/// it's a sustained outage we still fail loudly within ~10s rather
+/// than retrying forever.
+const MIGRATION_RETRY_BACKOFF_MS: &[u64] = &[200, 1_000, 5_000];
+
+/// Substrings that mean "the request didn't reach Turso" rather than
+/// "Turso said no". On these we retry; on anything else (SQL syntax,
+/// constraint violation) we fail immediately so a real bug doesn't get
+/// hidden by silent retries.
+const TRANSIENT_ERROR_SUBSTRINGS: &[&str] = &[
+    "connection closed before message completed",
+    "connection reset",
+    "connection refused",
+    "broken pipe",
+    "timeout",
+    "timed out",
+    "stream not found",
+    "unexpected end of file",
+];
+
+fn is_transient_migration_error(err: &str) -> bool {
+    let lower = err.to_ascii_lowercase();
+    TRANSIENT_ERROR_SUBSTRINGS
+        .iter()
+        .any(|needle| lower.contains(needle))
+}
+
 /// Run migrations via libsql_migration (production path — tracks applied state).
+///
+/// Each migration is wrapped in a retry-with-backoff loop for transient
+/// connection errors against Turso (Hrana stream drops, cold-starts,
+/// network blips). Permanent errors (SQL syntax, constraint violations)
+/// fail immediately so we panic loudly on real bugs.
 pub async fn run_migrations(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
     for (id, sql) in MIGRATIONS {
-        let result = libsql_migration::content::migrate(conn, id.to_string(), sql.to_string())
-            .await
-            .map_err(|e| format!("Migration {id} failed: {e}"))?;
-
+        let result = run_one_migration_with_retry(conn, id, sql).await?;
         match result {
             libsql_migration::util::MigrationResult::Executed => {
                 tracing::info!("Migration {id} applied");
@@ -453,6 +486,44 @@ pub async fn run_migrations(conn: &Connection) -> Result<(), Box<dyn std::error:
         }
     }
     Ok(())
+}
+
+/// Single migration with retry-on-transient. Caller iterates `MIGRATIONS`.
+///
+/// `libsql_migration::content::migrate` is itself idempotent — it
+/// records applied state in `_migrations` and short-circuits on
+/// `AlreadyExecuted` — so retrying a partially-applied migration is
+/// safe: a successful apply on attempt N just observes `AlreadyExecuted`
+/// on attempt N+1.
+async fn run_one_migration_with_retry(
+    conn: &Connection,
+    id: &str,
+    sql: &str,
+) -> Result<libsql_migration::util::MigrationResult, Box<dyn std::error::Error>> {
+    let mut attempt = 0;
+    loop {
+        match libsql_migration::content::migrate(conn, id.to_string(), sql.to_string()).await {
+            Ok(result) => return Ok(result),
+            Err(e) => {
+                let err_str = e.to_string();
+                if attempt < MIGRATION_RETRY_BACKOFF_MS.len()
+                    && is_transient_migration_error(&err_str)
+                {
+                    let backoff_ms = MIGRATION_RETRY_BACKOFF_MS[attempt];
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        backoff_ms,
+                        error = %err_str,
+                        "Migration {id} hit transient error; retrying after backoff"
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(backoff_ms)).await;
+                    attempt += 1;
+                    continue;
+                }
+                return Err(format!("Migration {id} failed: {e}").into());
+            }
+        }
+    }
 }
 
 /// Run migrations via direct SQL execution (test path — no tracking overhead).
@@ -487,6 +558,54 @@ mod tests {
                 "Migration '{name}' contains multiple SQL statements. \
                  libsql_migration only executes the first statement. \
                  Split this into separate migrations."
+            );
+        }
+    }
+
+    /// Guard: the patterns we treat as transient cover the actual error
+    /// strings we've seen (and ones we expect to see) from Turso's
+    /// Hrana protocol. INTRADA-API-2 in production hit the first one.
+    #[test]
+    fn classifies_known_transient_errors() {
+        for example in [
+            // Live example from INTRADA-API-2 (2026-05-09).
+            "Hrana: `http error: `connection closed before message completed``",
+            // Capitalisation insensitivity.
+            "CONNECTION CLOSED BEFORE MESSAGE COMPLETED",
+            // Other Turso-side transient symptoms we've seen referenced
+            // in the heartbeat code (state.rs).
+            "stream not found: f238e949:019e0bd5-b8fb-7eb0-ade5-43aa668a9f23",
+            "Connection reset by peer",
+            "Connection refused",
+            "Broken pipe",
+            "operation timed out",
+            "request timeout",
+            "unexpected end of file",
+        ] {
+            assert!(
+                is_transient_migration_error(example),
+                "expected transient classification for: {example}"
+            );
+        }
+    }
+
+    /// Guard: real bugs (SQL errors, constraint violations, schema
+    /// mismatches) MUST NOT be classified as transient. Silently
+    /// retrying these would hide real problems behind 6 seconds of
+    /// "looks like it's working" before the same panic.
+    #[test]
+    fn does_not_classify_terminal_errors_as_transient() {
+        for example in [
+            "near \"FROM\": syntax error",
+            "no such table: routines",
+            "UNIQUE constraint failed: routines.id",
+            "FOREIGN KEY constraint failed",
+            "duplicate column name: title",
+            "table routines already exists",
+        ] {
+            assert!(
+                !is_transient_migration_error(example),
+                "should NOT classify as transient (would hide a real bug): {example}"
             );
         }
     }
