@@ -116,7 +116,12 @@ impl FromRequestParts<AppState> for AuthUser {
     }
 }
 
-async fn resolve_pat(state: &AppState, token: &str) -> Result<AuthUser, ApiError> {
+/// Resolve a Bearer-PAT token to an [`AuthUser`].
+///
+/// Visible to the rate-limit middleware so it can attribute requests to a
+/// `token_id` before the handler-level extractor runs. Reused by the
+/// [`AuthUser`] `FromRequestParts` impl below.
+pub(crate) async fn resolve_pat(state: &AppState, token: &str) -> Result<AuthUser, ApiError> {
     let conn = state.conn();
     let hash = db::tokens::hash_token(token);
 
