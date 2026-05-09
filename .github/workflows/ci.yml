@@ -371,6 +371,61 @@ jobs:
               index.write_text(new_html)
               print(f"refreshed {count} integrity hashes")
           PY
+      # Belt-and-braces: read index.html back and assert every
+      # integrity hash matches the on-disk file it references. Catches
+      # the scenario where someone adds a NEW step that modifies dist/
+      # files between this point and wrangler publish (or removes the
+      # recompute step above) — fails the deploy loud rather than
+      # shipping a blank page like 2026-05-09. Same Python pattern as
+      # the recompute, just assertion-only.
+      - name: Verify SRI integrity hashes match on-disk files
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, pathlib, re, sys
+
+          dist = pathlib.Path("crates/intrada-web/dist")
+          html = (dist / "index.html").read_text()
+          tag_re = re.compile(
+              r'<(?:link|script)\b[^>]*\bintegrity="sha384-([^"]+)"[^>]*>', re.I
+          )
+          src_re = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.I)
+
+          mismatches = []
+          checked = 0
+          for m in tag_re.finditer(html):
+              declared = m.group(1)
+              src = src_re.search(m.group(0))
+              if not src:
+                  continue
+              file = dist / src.group(1).lstrip("/")
+              if not file.is_file():
+                  mismatches.append(
+                      f"  {src.group(1)}: referenced but not on disk"
+                  )
+                  continue
+              actual = base64.b64encode(
+                  hashlib.sha384(file.read_bytes()).digest()
+              ).decode()
+              if declared != actual:
+                  mismatches.append(
+                      f"  {src.group(1)}: declared sha384-{declared[:12]}…, "
+                      f"actual sha384-{actual[:12]}…"
+                  )
+              checked += 1
+
+          if mismatches:
+              print("SRI integrity mismatch — would ship a blank page:")
+              for line in mismatches:
+                  print(line)
+              print(
+                  "\nLikely cause: a CI step modified dist/ between the "
+                  "recompute step and this verify step. Either move it "
+                  "BEFORE the recompute, or extend the recompute step "
+                  "to run after it."
+              )
+              sys.exit(1)
+          print(f"verified {checked} integrity hashes match on-disk files")
+          PY
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
