@@ -21,6 +21,14 @@ const DISMISS_ANIM_MS: u32 = 280;
 /// platforms get a slide-out animation when dismissed — the banner
 /// keeps its `is-dismissing` class for one animation cycle before
 /// the underlying error state actually clears.
+///
+/// Mount stability matters (#346): the wrapper `<div class="error-banner">`
+/// is rendered through `<Show>` so it stays mounted across Some→Some
+/// transitions in the underlying error signal. Without this, Leptos would
+/// reconcile by replacing the node and the slide-in keyframe would re-fire
+/// each time a new error message arrived. The slide-in only plays on the
+/// None → Some transition; subsequent message updates just swap the inner
+/// text in place.
 #[component]
 pub fn ErrorBanner() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -30,49 +38,53 @@ pub fn ErrorBanner() -> impl IntoView {
 
     let is_dismissing = RwSignal::new(false);
 
+    let has_error = Memo::new(move |_| view_model.get().error.is_some());
+    let error_text = Memo::new(move |_| view_model.get().error.unwrap_or_default());
+
     view! {
-        {move || {
-            view_model.get().error.map(|err| {
-                let core = core.clone();
-                let class = move || {
+        <Show when=move || has_error.get()>
+            <div
+                class=move || {
                     let base = "error-banner rounded-lg bg-danger-surface border border-danger-text/20 p-4";
                     if is_dismissing.get() {
                         format!("{base} is-dismissing")
                     } else {
                         base.to_string()
                     }
-                };
-                view! {
-                    <div class=class role="alert">
-                        <div class="flex items-start justify-between gap-3">
-                            <p class="text-sm text-danger-text">
-                                <span class="font-medium">"Error: "</span>{err}
-                            </p>
-                            <button
-                                class="error-banner-dismiss shrink-0"
-                                aria-label="Dismiss error"
-                                on:click=move |_| {
-                                    if is_dismissing.get_untracked() {
-                                        return;
-                                    }
-                                    haptic_selection();
-                                    is_dismissing.set(true);
-                                    let core = core.clone();
-                                    spawn_local(async move {
-                                        gloo_timers::future::TimeoutFuture::new(DISMISS_ANIM_MS).await;
-                                        is_dismissing.set(false);
-                                        let core_ref = core.borrow();
-                                        let effects = core_ref.process_event(Event::ClearError);
-                                        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                    });
-                                }
-                            >
-                                <Icon name=IconName::X class="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
                 }
-            })
-        }}
+                role="alert"
+            >
+                <div class="flex items-start justify-between gap-3">
+                    <p class="text-sm text-danger-text">
+                        <span class="font-medium">"Error: "</span>
+                        {move || error_text.get()}
+                    </p>
+                    <button
+                        class="error-banner-dismiss shrink-0"
+                        aria-label="Dismiss error"
+                        on:click={
+                            let core = core.clone();
+                            move |_| {
+                                if is_dismissing.get_untracked() {
+                                    return;
+                                }
+                                haptic_selection();
+                                is_dismissing.set(true);
+                                let core = core.clone();
+                                spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(DISMISS_ANIM_MS).await;
+                                    is_dismissing.set(false);
+                                    let core_ref = core.borrow();
+                                    let effects = core_ref.process_event(Event::ClearError);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                });
+                            }
+                        }
+                    >
+                        <Icon name=IconName::X class="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        </Show>
     }
 }

@@ -224,6 +224,16 @@ impl App for Intrada {
 
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
+                // Dedupe identical messages (#346) — avoids unnecessary
+                // re-renders. Distinct messages still replace the current
+                // error so user-action failures (save/delete) aren't
+                // silently swallowed by a stale load-error banner. The
+                // slide-in animation only re-fires on a true None → Some
+                // transition; the shell mounts the banner stably, so
+                // Some → Some swaps just update the text in place.
+                if model.last_error.as_deref() == Some(msg.as_str()) {
+                    return Command::done();
+                }
                 model.last_error = Some(msg);
                 crux_core::render::render()
             }
@@ -1643,6 +1653,58 @@ mod tests {
         );
 
         assert_eq!(model.last_error, Some("Connection refused".to_string()));
+    }
+
+    #[test]
+    fn test_load_failed_dedupes_identical_messages() {
+        // Identical messages no-op so the shell doesn't re-render with the
+        // same text. (#346) Separate from mount-stability — this is just
+        // belt-and-braces for repeated retries with the same error.
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+        let _ = app.update(Event::LoadFailed("timeout".to_string()), &mut model);
+
+        assert_eq!(model.last_error, Some("timeout".to_string()));
+    }
+
+    #[test]
+    fn test_load_failed_distinct_message_replaces_existing() {
+        // A user-action error (save/delete) must surface even if a stale
+        // load-error banner is still up — otherwise the user has no
+        // feedback that their action failed. Burst re-animation is
+        // suppressed at the shell mount level, not by swallowing distinct
+        // messages here.
+        let app = Intrada;
+        let mut model = Model {
+            last_error: Some("Failed to load items".to_string()),
+            ..Model::test_default()
+        };
+
+        let _ = app.update(
+            Event::LoadFailed("Failed to save item: 409 conflict".to_string()),
+            &mut model,
+        );
+
+        assert_eq!(
+            model.last_error,
+            Some("Failed to save item: 409 conflict".to_string())
+        );
+    }
+
+    #[test]
+    fn test_load_failed_after_clear_shows_new_error() {
+        // After the user dismisses, the next failure surfaces as expected.
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _ = app.update(Event::LoadFailed("first".to_string()), &mut model);
+        let _ = app.update(Event::ClearError, &mut model);
+        let _ = app.update(Event::LoadFailed("second".to_string()), &mut model);
+
+        assert_eq!(model.last_error, Some("second".to_string()));
     }
 
     #[test]
