@@ -48,7 +48,8 @@ pub fn AppHeader() -> impl IntoView {
         <header class="glass-chrome border-b border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-card sm:py-card-comfortable flex items-center justify-between">
                 <div>
-                    <A href="/library" attr:class="no-underline">
+                    <A href="/library" attr:class="flex items-center gap-2.5 no-underline">
+                        <img src="/public/app-icon.png" alt="" class="w-8 h-8 sm:w-9 sm:h-9 rounded-md" />
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">"Intrada"</h1>
                     </A>
                 </div>

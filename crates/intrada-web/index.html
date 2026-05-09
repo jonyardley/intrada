@@ -109,6 +109,9 @@
          @font-face declaration lives in input.css so it can reference
          the same /fonts/ path that this directive copies into dist. -->
     <link data-trunk rel="copy-dir" href="fonts" />
+    <link data-trunk rel="copy-dir" href="public" />
+    <link rel="icon" type="image/png" href="/public/favicon.png" />
+    <link rel="apple-touch-icon" href="/public/app-icon.png" />
     <script>
       // Set data-platform="ios" early so [data-platform="ios"] CSS applies
       // before first paint — no flicker. Tauri WebView always serves pages

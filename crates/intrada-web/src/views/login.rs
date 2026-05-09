@@ -54,9 +54,7 @@ pub fn LoginView() -> impl IntoView {
         <div class="relative z-0 min-h-screen text-primary flex flex-col items-center justify-center px-4 pt-safe pb-safe">
             // Brand wordmark — small, sits above the card to anchor the page
             <A href="/" attr:class="flex items-center gap-2 mb-10 no-underline">
-                <svg class="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-                </svg>
+                <img src="/public/app-icon.png" alt="" class="w-8 h-8 rounded-md" />
                 <span class="text-lg font-bold text-primary font-heading">"Intrada"</span>
             </A>
 
