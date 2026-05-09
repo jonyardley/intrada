@@ -95,9 +95,15 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
 
     // Long-press detection on the trigger. Uses touchstart + setTimeout to
     // schedule activation; touchmove past tolerance or touchend before the
-    // timeout cancels. on_cleanup also clears any pending timeout on
-    // component unmount — without it, the activate Closure can fire after
-    // the component is gone and panic accessing disposed signals.
+    // timeout cancels.
+    //
+    // The four touch listeners + scheduled `activate` closure are stored
+    // and removed in `on_cleanup`. Without that, the closures lived for
+    // the page's lifetime via `.forget()` and could fire AFTER the
+    // owning component had unmounted — at which point captured RwSignals
+    // were disposed and `set()` panicked with "Unreachable code should
+    // not be executed" inside the wasm-bindgen invoke shim. INTRADA-WEB-4
+    // surfaced this on iOS Safari.
     Effect::new(move || {
         let Some(el) = trigger_ref.get() else {
             return;
@@ -117,8 +123,6 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
                 }
             }
         };
-
-        on_cleanup(cancel_pending);
 
         let touchstart: Closure<dyn Fn(TouchEvent)> = {
             Closure::new(move |ev: TouchEvent| {
@@ -160,6 +164,11 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
                             timeout_handle.set(Some(handle));
                         }
                     }
+                    // Leaks the activate closure for its short scheduled
+                    // lifetime — `cancel_pending` (via `clear_timeout`)
+                    // ensures it can't fire after a touchmove/end abandon,
+                    // and on_cleanup below also cancels the timer when
+                    // the component unmounts.
                     activate.forget();
                 }
             })
@@ -225,10 +234,32 @@ pub fn ContextMenu(actions: Vec<ContextMenuAction>, children: Children) -> impl 
             &opts,
         );
 
-        touchstart.forget();
-        touchmove.forget();
-        touchend.forget();
-        touchcancel.forget();
+        // SendWrapper: leptos's on_cleanup requires Send+Sync; Closure's
+        // dyn Fn body and web_sys types aren't both. Safe on wasm32 —
+        // single-threaded by construction. Same pattern as the Escape
+        // handler above.
+        let touchstart = SendWrapper::new(touchstart);
+        let touchmove = SendWrapper::new(touchmove);
+        let touchend = SendWrapper::new(touchend);
+        let touchcancel = SendWrapper::new(touchcancel);
+        let el = SendWrapper::new(el);
+        on_cleanup(move || {
+            cancel_pending();
+            let _ = el.remove_event_listener_with_callback(
+                "touchstart",
+                touchstart.as_ref().unchecked_ref(),
+            );
+            let _ = el.remove_event_listener_with_callback(
+                "touchmove",
+                touchmove.as_ref().unchecked_ref(),
+            );
+            let _ = el
+                .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+            let _ = el.remove_event_listener_with_callback(
+                "touchcancel",
+                touchcancel.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     let backdrop_class = move || {
