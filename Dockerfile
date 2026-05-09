@@ -1,5 +1,10 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
+# cmake is required by aws-lc-sys (transitive dep of jsonwebtoken's
+# `aws_lc_rs` feature, which we use to avoid the rsa Marvin advisory).
+# Installed in the base stage so both `chef prepare` and `chef cook` see it.
+RUN apt-get update && apt-get install -y --no-install-recommends cmake \
+    && rm -rf /var/lib/apt/lists/*
 
 FROM chef AS planner
 COPY . .
