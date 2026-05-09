@@ -56,6 +56,12 @@ pub struct Model {
     pub mcp_audit_loaded: bool,
     /// True while a `LoadAudit` HTTP request is outstanding.
     pub mcp_audit_loading: bool,
+    /// True while the OAuth `/oauth/finalize` request is outstanding.
+    pub oauth_in_flight: bool,
+    /// Set transiently when `/oauth/finalize` returns; the consent view
+    /// reacts by navigating the browser to this URL (which contains the
+    /// auth code + state for the OAuth client).
+    pub oauth_redirect_url: Option<String>,
 }
 
 #[cfg(test)]
@@ -110,6 +116,8 @@ pub struct ViewModel {
     pub mcp_audit: Vec<McpAuditEntry>,
     pub mcp_audit_loaded: bool,
     pub mcp_audit_loading: bool,
+    pub oauth_in_flight: bool,
+    pub oauth_redirect_url: Option<String>,
 }
 
 // Sanity-check that ViewModel field names mirror Model where applicable.

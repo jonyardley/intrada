@@ -2,6 +2,7 @@ mod account;
 mod health;
 mod items;
 mod lessons;
+mod oauth;
 mod sessions;
 mod sets;
 mod tokens;
@@ -80,6 +81,15 @@ pub fn api_router(state: AppState) -> Router {
         .allow_methods([Method::POST, Method::OPTIONS])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
+    // Permissive CORS for OAuth endpoints. Same rationale as MCP —
+    // cross-origin claude.ai-style flows are the whole point. The
+    // discovery doc and DCR/token endpoints don't accept cookies; PKCE
+    // provides the security on the public-client OAuth flow.
+    let oauth_cors = CorsLayer::new()
+        .allow_origin(AllowOrigin::any())
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+
     let trace = TraceLayer::new_for_http()
         .make_span_with(make_span)
         .on_response(DefaultOnResponse::new().level(Level::INFO))
@@ -92,12 +102,15 @@ pub fn api_router(state: AppState) -> Router {
         .on_failure(DefaultOnFailure::new().level(Level::WARN));
 
     let mcp_routes = crate::mcp::router().layer(mcp_cors);
+    let oauth_routes = oauth::router().layer(oauth_cors);
 
     Router::new()
-        // Two sibling nests: axum routes by path specificity, so a request
-        // to `/api/mcp/*` resolves to the permissive-CORS subtree, while
-        // every other `/api/*` path resolves to the strict-CORS subtree.
-        // Each subtree carries its own CorsLayer.
+        // Sibling nests: axum routes by path specificity. The OAuth
+        // surface (`.well-known/*` and `/oauth/*`) is rooted because RFC
+        // 8414 requires `.well-known/*` at the host root, and the rest
+        // of the OAuth endpoints traditionally live there too. Each
+        // subtree carries its own CorsLayer.
+        .merge(oauth_routes)
         .nest("/api/mcp", mcp_routes)
         .nest("/api", api_routes().layer(strict_cors))
         .layer(trace)

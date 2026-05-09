@@ -127,6 +127,20 @@ impl AppState {
             .ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))
     }
 
+    /// The web app's base URL — used by the OAuth `/authorize` redirect
+    /// to land the user on the consent page. Sourced from the
+    /// `ALLOWED_ORIGIN` allowlist's first entry (which IS the production
+    /// web origin); this avoids introducing yet another env var to keep
+    /// in sync. Falls back to `myintrada.com` if nothing's configured.
+    pub fn web_base_url(&self) -> String {
+        self.allowed_origin
+            .split(',')
+            .map(|s| s.trim())
+            .find(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "https://myintrada.com".to_string())
+    }
+
     /// Return the shared database connection.
     ///
     /// `Connection` is `Clone` (wraps an `Arc`), so this is cheap. All
