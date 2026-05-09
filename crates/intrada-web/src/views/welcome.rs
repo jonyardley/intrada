@@ -57,38 +57,39 @@ pub fn WelcomeView() -> impl IntoView {
             <WelcomeNav />
             <WelcomeHero />
             <WelcomePillars />
+            <WelcomeDifferentiators />
             <WelcomeFeature
                 kicker="PLAN".to_string()
-                title="Your repertoire,\norganised.".to_string()
-                description="Track every piece and exercise you're working on. Tag by composer, key, tempo. No more sticky notes on the music stand or buried in a notes app.".to_string()
+                title="The library that\nremembers for you.".to_string()
+                description="Half of what your teacher gives you disappears within a week. Intrada is where every piece, exercise, voicing and lick lives — captured once, connected to its context, ready when you need it.".to_string()
                 bullets=vec![
-                    "Pieces and exercises in one library".to_string(),
-                    "Reusable routines that group what you actually run".to_string(),
-                    "Goals so the bigger picture stays in view".to_string(),
+                    "Pieces, exercises, and patterns in one place".to_string(),
+                    "Reusable routines for the warm-ups and blocks you run every week".to_string(),
+                    "Goals that turn the library into a path".to_string(),
                 ]
                 reverse=false
                 mock=Box::new(|| view! { <LibraryMock /> }.into_any())
             />
             <WelcomeFeature
                 kicker="PRACTICE".to_string()
-                title="A focus mode\nthat gets out of the way.".to_string()
-                description="Run a routine end-to-end. Each piece gets a timer, a quick rating, and a moment to reflect — then on to the next. Big numbers, big buttons, no chrome.".to_string()
+                title="One decision:\nstart.".to_string()
+                description="Choosing what to practise is the silent killer of a session. Intrada plans the work for the time you've got — you tap start and play. Each item gets a timer and a quick rating, then on to the next. Big numbers, big buttons, no chrome.".to_string()
                 bullets=vec![
-                    "Per-piece timers and quick ratings".to_string(),
+                    "A session ready every time you sit down".to_string(),
                     "Resume right where you left off".to_string(),
-                    "Mid-session adjustments without losing your place".to_string(),
+                    "Adjust duration and focus mid-session without losing your place".to_string(),
                 ]
                 reverse=true
                 mock=Box::new(|| view! { <PracticeMock /> }.into_any())
             />
             <WelcomeFeature
                 kicker="TRACK".to_string()
-                title="Progress, made\nvisible.".to_string()
-                description="How long have you actually played this month? Which pieces have been getting your attention — and which haven't? Intrada turns the data you'd never log into something you can act on.".to_string()
+                title="Progress you\ncan't yet feel.".to_string()
+                description="Music improves between sessions, not within them — so the work feels invisible while it's happening. Intrada turns weeks of mastery ratings, time, and tempo into evidence you can see today, before your ears catch up.".to_string()
                 bullets=vec![
-                    "Total time, sessions, streaks at a glance".to_string(),
-                    "Per-piece practice history".to_string(),
-                    "See where your time actually went".to_string(),
+                    "Mastery per piece, per key, across weeks".to_string(),
+                    "Time, sessions, and where your attention actually went".to_string(),
+                    "Comeback framing — never a broken streak, never a zero".to_string(),
                 ]
                 reverse=false
                 mock=Box::new(|| view! { <AnalyticsMock /> }.into_any())
@@ -169,7 +170,7 @@ fn WelcomeHero() -> impl IntoView {
             </h1>
 
             <p class="text-base sm:text-lg lg:text-xl text-secondary max-w-2xl mx-auto leading-relaxed mb-10">
-                "Intrada turns deliberate practice into a habit. Plan your repertoire, focus every minute, and watch your progress add up."
+                "Music has one of the longest feedback loops of any skill. Intrada captures what you're working on, plans what to practise next, and surfaces the progress you can't yet hear."
             </p>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-3 mb-20">
@@ -216,24 +217,24 @@ fn WelcomePillars() -> impl IntoView {
                     "A complete practice loop."
                 </h2>
                 <p class="text-base sm:text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
-                    "Intrada is built around the way real practice works — plan it, run it, learn from it."
+                    "Built around the three things real practice actually needs — somewhere to keep the material, a plan for today, and evidence the work is paying off."
                 </p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <PillarCard
                     icon="library".to_string()
                     title="Plan".to_string()
-                    description="Build a library of pieces and exercises. Group them into reusable routines you actually run end-to-end.".to_string()
+                    description="Stop losing material. Every piece, exercise, voicing and lick lives in one place — captured once, surfaced when it matters.".to_string()
                 />
                 <PillarCard
                     icon="timer".to_string()
                     title="Practice".to_string()
-                    description="Focus mode times each piece, captures a quick rating, and keeps you moving without breaking flow.".to_string()
+                    description="Stop deciding what to practise. Tap start. Intrada plans the session, runs the timer, and gets out of the way.".to_string()
                 />
                 <PillarCard
                     icon="trending-up".to_string()
                     title="Track".to_string()
-                    description="See your minutes, streaks, and which pieces have been getting your attention — and which haven't.".to_string()
+                    description="Stop wondering if it's working. Mastery, time, and per-piece progress — daily evidence that the work is paying off.".to_string()
                 />
             </div>
         </section>
@@ -255,6 +256,27 @@ fn PillarCard(icon: String, title: String, description: String) -> impl IntoView
                 <circle cx="12" cy="14" r="8"/>
             </svg>
         }.into_any(),
+        "calendar" => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <line x1="8" y1="3" x2="8" y2="7"/>
+                <line x1="16" y1="3" x2="16" y2="7"/>
+            </svg>
+        }.into_any(),
+        "layers" => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+            </svg>
+        }.into_any(),
+        "sparkles" => view! {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-6 h-6">
+                <path d="M12 3l1.8 6.2L20 11l-6.2 1.8L12 19l-1.8-6.2L4 11l6.2-1.8z"/>
+                <path d="M19 3l.7 2.3L22 6l-2.3.7L19 9l-.7-2.3L16 6l2.3-.7z"/>
+            </svg>
+        }.into_any(),
         _ => view! {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" class="w-6 h-6">
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
@@ -273,6 +295,44 @@ fn PillarCard(icon: String, title: String, description: String) -> impl IntoView
             </h3>
             <p class="text-base text-secondary leading-relaxed">{description}</p>
         </div>
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Differentiators — sets up unique positioning vs. timer-and-streak apps
+// ════════════════════════════════════════════════════════════════════════
+
+#[component]
+fn WelcomeDifferentiators() -> impl IntoView {
+    view! {
+        <section class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-24">
+            <div class="text-center mb-16">
+                <p class="text-xs font-bold tracking-[0.15em] text-accent-text mb-3">"WHY INTRADA"</p>
+                <h2 class="text-3xl sm:text-5xl font-bold text-primary mb-5 leading-tight font-heading">
+                    "Built on what works."
+                </h2>
+                <p class="text-base sm:text-lg text-secondary max-w-2xl mx-auto leading-relaxed">
+                    "Most practice apps measure attendance. Intrada is built on decades of research into how musicians actually learn — and how real progress hides until the data shows it."
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <PillarCard
+                    icon="calendar".to_string()
+                    title="Schedules itself around you".to_string()
+                    description="Spaced repetition and interleaved practice are settled learning science. Intrada applies them automatically — weak items surface more often, work from six weeks ago doesn't silently decay, and every session fits the time you've got.".to_string()
+                />
+                <PillarCard
+                    icon="layers".to_string()
+                    title="Tracks the detail that matters".to_string()
+                    description="Mastery per piece, per key, per tempo — not just total minutes. The fine grain is where invisible improvements live, and where the scheduler finds the work that needs you most.".to_string()
+                />
+                <PillarCard
+                    icon="sparkles".to_string()
+                    title="Designed for every mind".to_string()
+                    description="One tap from open to playing. No streak counters, no shame. A calm interface that gets out of the way during practice. Built with ADHD and neurodivergent musicians in mind — and better for everyone.".to_string()
+                />
+            </div>
+        </section>
     }
 }
 
@@ -351,10 +411,10 @@ fn WelcomeFinalCta() -> impl IntoView {
         <section class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-20 sm:py-32">
             <div class="card p-12 sm:p-16 flex flex-col items-center text-center">
                 <h2 class="text-4xl sm:text-6xl font-bold text-primary mb-5 leading-tight font-heading">
-                    "Ready to practice better?"
+                    "Let's practice."
                 </h2>
                 <p class="text-base sm:text-lg text-secondary mb-8 max-w-xl leading-relaxed">
-                    "Sign in with Google to get started — free during beta. No credit card."
+                    "Sign in with Google. Free during beta — no credit card."
                 </p>
                 <Button
                     variant=ButtonVariant::Primary
