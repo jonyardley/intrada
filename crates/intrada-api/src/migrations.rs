@@ -445,27 +445,8 @@ const MIGRATIONS: &[(&str, &str)] = &[
 /// than retrying forever.
 const MIGRATION_RETRY_BACKOFF_MS: &[u64] = &[200, 1_000, 5_000];
 
-/// Substrings that mean "the request didn't reach Turso" rather than
-/// "Turso said no". On these we retry; on anything else (SQL syntax,
-/// constraint violation) we fail immediately so a real bug doesn't get
-/// hidden by silent retries.
-const TRANSIENT_ERROR_SUBSTRINGS: &[&str] = &[
-    "connection closed before message completed",
-    "connection reset",
-    "connection refused",
-    "broken pipe",
-    "timeout",
-    "timed out",
-    "stream not found",
-    "unexpected end of file",
-];
-
-fn is_transient_migration_error(err: &str) -> bool {
-    let lower = err.to_ascii_lowercase();
-    TRANSIENT_ERROR_SUBSTRINGS
-        .iter()
-        .any(|needle| lower.contains(needle))
-}
+// Transient-error classifier moved to `db::is_transient_db_error` so
+// it's shared with the per-request retry helper in `state::Db`.
 
 /// Run migrations via libsql_migration (production path — tracks applied state).
 ///
@@ -507,7 +488,7 @@ async fn run_one_migration_with_retry(
             Err(e) => {
                 let err_str = e.to_string();
                 if attempt < MIGRATION_RETRY_BACKOFF_MS.len()
-                    && is_transient_migration_error(&err_str)
+                    && crate::db::is_transient_db_error(&err_str)
                 {
                     let backoff_ms = MIGRATION_RETRY_BACKOFF_MS[attempt];
                     tracing::warn!(
@@ -583,7 +564,7 @@ mod tests {
             "unexpected end of file",
         ] {
             assert!(
-                is_transient_migration_error(example),
+                crate::db::is_transient_db_error(example),
                 "expected transient classification for: {example}"
             );
         }
@@ -604,7 +585,7 @@ mod tests {
             "table routines already exists",
         ] {
             assert!(
-                !is_transient_migration_error(example),
+                !crate::db::is_transient_db_error(example),
                 "should NOT classify as transient (would hide a real bug): {example}"
             );
         }

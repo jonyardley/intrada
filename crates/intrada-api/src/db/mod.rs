@@ -11,6 +11,34 @@ use intrada_core::domain::item::ItemKind;
 
 use crate::error::ApiError;
 
+/// Substrings that indicate the request didn't reach Turso (transport-
+/// level), as opposed to "Turso said no" (SQL/constraint). On these we
+/// retry; on anything else we fail immediately so a real bug isn't
+/// hidden by silent retries.
+///
+/// Shared between the migration runner (startup) and the per-request
+/// retry helper (runtime, `state::Db::with_transient_retry`). Adding a
+/// new signature here gates retries everywhere.
+pub const TRANSIENT_ERROR_SUBSTRINGS: &[&str] = &[
+    "connection closed before message completed",
+    "connection reset",
+    "connection refused",
+    "broken pipe",
+    "timeout",
+    "timed out",
+    "stream not found",
+    "unexpected end of file",
+];
+
+/// True if the given error message contains any [`TRANSIENT_ERROR_SUBSTRINGS`]
+/// signature (case-insensitive). Use to gate retry decisions.
+pub fn is_transient_db_error(err: &str) -> bool {
+    let lower = err.to_ascii_lowercase();
+    TRANSIENT_ERROR_SUBSTRINGS
+        .iter()
+        .any(|needle| lower.contains(needle))
+}
+
 /// Extract a column value from a libsql row, converting errors to `ApiError`.
 ///
 /// Replaces the repetitive `row.get(N).map_err(|e| ApiError::Internal(e.to_string()))`

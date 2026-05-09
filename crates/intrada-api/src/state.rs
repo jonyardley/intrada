@@ -5,6 +5,7 @@ use libsql::{Connection, Database};
 
 use crate::auth::AuthConfig;
 use crate::clerk::ClerkClient;
+use crate::db::is_transient_db_error;
 use crate::error::ApiError;
 use crate::rate_limit::McpRateLimiter;
 use crate::storage::R2Client;
@@ -53,6 +54,52 @@ impl Db {
         let fresh = self.db.connect()?;
         *self.conn.write().expect("db connection lock poisoned") = fresh.clone();
         Ok(fresh)
+    }
+
+    /// Run a DB closure with retry-on-transient. Reconnects between
+    /// attempts so a half-broken HTTP session is replaced before the
+    /// next try. Total max wall time ≈ 600 ms (50 ms + 500 ms backoff).
+    ///
+    /// Sized for Turso's typical Hrana stream-not-found / connection-
+    /// closed signatures (INTRADA-API-36): the heartbeat (above) keeps
+    /// the session warm, but a request can still land in the narrow
+    /// window between a stream dropping and the heartbeat noticing.
+    /// Per-request retry covers that gap.
+    ///
+    /// Only `ApiError::Internal` whose string matches a known transient
+    /// substring triggers retry — terminal errors (NotFound, Validation,
+    /// Unauthorized, or Internal with non-transient message) surface
+    /// immediately so real bugs aren't masked.
+    pub async fn with_transient_retry<F, Fut, T>(&self, mut op: F) -> Result<T, ApiError>
+    where
+        F: FnMut(Connection) -> Fut,
+        Fut: std::future::Future<Output = Result<T, ApiError>>,
+    {
+        const BACKOFF_MS: &[u64] = &[0, 50, 500];
+        for (attempt, backoff) in BACKOFF_MS.iter().enumerate() {
+            if *backoff > 0 {
+                tokio::time::sleep(Duration::from_millis(*backoff)).await;
+                let _ = self.reconnect();
+            }
+            let conn = self.conn();
+            match op(conn).await {
+                Ok(value) => return Ok(value),
+                Err(ApiError::Internal(msg))
+                    if attempt + 1 < BACKOFF_MS.len() && is_transient_db_error(&msg) =>
+                {
+                    tracing::warn!(
+                        attempt = attempt + 1,
+                        error = %msg,
+                        "Transient DB error; reconnecting and retrying",
+                    );
+                    continue;
+                }
+                Err(other) => return Err(other),
+            }
+        }
+        // Loop always returns Ok or Err inside its body — last iteration
+        // either succeeds, or hits the non-transient branch and returns.
+        unreachable!("with_transient_retry loop must return")
     }
 
     /// Spawn a background task that pings the connection every
@@ -167,5 +214,17 @@ impl AppState {
     /// requests get a working session instead of a permanently-broken one.
     pub fn reconnect(&self) -> Result<Connection, libsql::Error> {
         self.db.reconnect()
+    }
+
+    /// Run a DB closure with retry-on-transient. Passthrough to
+    /// [`Db::with_transient_retry`] so handlers can write
+    /// `state.with_transient_retry(|conn| async move { … })` without
+    /// reaching into `state.db` directly.
+    pub async fn with_transient_retry<F, Fut, T>(&self, op: F) -> Result<T, ApiError>
+    where
+        F: FnMut(Connection) -> Fut,
+        Fut: std::future::Future<Output = Result<T, ApiError>>,
+    {
+        self.db.with_transient_retry(op).await
     }
 }
