@@ -12,6 +12,7 @@ pub use domain::item::{Item, ItemEvent, ItemKind};
 pub use domain::lesson::{Lesson, LessonEvent, LessonPhoto};
 pub use domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 pub use domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
+pub use domain::oauth::{OAuthEvent, OAuthFinalizeParams};
 pub use domain::session::{
     ActiveSession, CompletionStatus, EntryStatus, PracticeSession, SessionEvent, SessionStatus,
     SetlistEntry,

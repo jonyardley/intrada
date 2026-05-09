@@ -406,6 +406,34 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0058_index_mcp_audit_log_user_created",
         "CREATE INDEX IF NOT EXISTS idx_mcp_audit_log_user_created ON mcp_audit_log(user_id, created_at DESC);",
     ),
+    (
+        "0059_create_oauth_clients",
+        "CREATE TABLE IF NOT EXISTS oauth_clients (
+            client_id TEXT PRIMARY KEY NOT NULL,
+            client_secret_hash TEXT,
+            client_name TEXT NOT NULL,
+            redirect_uris TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0060_create_oauth_codes",
+        "CREATE TABLE IF NOT EXISTS oauth_codes (
+            code_hash TEXT PRIMARY KEY NOT NULL,
+            client_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            redirect_uri TEXT NOT NULL,
+            code_challenge TEXT NOT NULL,
+            code_challenge_method TEXT NOT NULL,
+            scope TEXT,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0061_index_oauth_codes_expires",
+        "CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_codes(expires_at);",
+    ),
 ];
 
 /// Run migrations via libsql_migration (production path — tracks applied state).

@@ -20,9 +20,9 @@ use crate::components::{
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    LibraryListView, LoginView, McpAuditView, McpTokensView, NotFoundView, SessionActiveView,
-    SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView,
-    SetEditView, SettingsView, WelcomeView,
+    LibraryListView, LoginView, McpAuditView, McpTokensView, NotFoundView, OAuthConsentView,
+    SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
+    SetDetailView, SetEditView, SettingsView, WelcomeView,
 };
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::js_bridge;
@@ -290,6 +290,14 @@ fn AppRoutes() -> impl IntoView {
             } />
             <Route path=path!("/settings/mcp-audit") view=|| view! {
                 <AuthenticatedShell><McpAuditView /></AuthenticatedShell>
+            } />
+            // OAuth consent screen — entry point for MCP clients connecting
+            // via the OAuth 2.1 flow (Phase 5 of #477). Reached via a
+            // redirect from the API's `/oauth/authorize`. AuthenticatedShell
+            // gates on Clerk so a hostile redirect can't trick an
+            // unauthenticated visitor into minting a token.
+            <Route path=path!("/oauth/consent") view=|| view! {
+                <AuthenticatedShell><OAuthConsentView /></AuthenticatedShell>
             } />
         </Routes>
     }

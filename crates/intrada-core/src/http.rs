@@ -12,6 +12,7 @@ use crate::domain::item::Item;
 use crate::domain::lesson::Lesson;
 use crate::domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
+use crate::domain::oauth::{OAuthEvent, OAuthFinalizeParams};
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
     CreateItem, CreateLesson, CreateSetRequest, UpdateItem, UpdateLesson, UpdateSetRequest,
@@ -372,6 +373,34 @@ pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
             },
             Err(e) => Event::McpAudit(McpAuditEvent::LoadAuditFailed(format!(
                 "Failed to load audit log: {e}"
+            ))),
+        })
+}
+
+// ── OAuth Finalize ─────────────────────────────────────────────────────
+
+#[derive(serde::Deserialize, Debug, Clone)]
+struct OAuthFinalizeResponse {
+    redirect_url: String,
+}
+
+pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Command<Effect, Event> {
+    Http::post(format!("{api_base_url}/oauth/finalize"))
+        .body_json(params)
+        .expect("serialize OAuthFinalizeParams")
+        .expect_json::<OAuthFinalizeResponse>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(body) => Event::OAuth(OAuthEvent::ConsentFinalized {
+                    redirect_url: body.redirect_url,
+                }),
+                None => Event::OAuth(OAuthEvent::ConsentFailed(
+                    "oauth_finalize: empty body".into(),
+                )),
+            },
+            Err(e) => Event::OAuth(OAuthEvent::ConsentFailed(format!(
+                "Failed to finalize OAuth consent: {e}"
             ))),
         })
 }

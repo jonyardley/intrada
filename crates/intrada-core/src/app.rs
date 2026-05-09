@@ -17,6 +17,7 @@ use crate::domain::item::{handle_item_event, Item, ItemEvent};
 use crate::domain::lesson::{handle_lesson_event, Lesson, LessonEvent};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
+use crate::domain::oauth::{handle_oauth_event, OAuthEvent};
 use crate::domain::session::{
     handle_session_event, ActiveSession, PracticeSession, SessionEvent, SessionStatus,
 };
@@ -59,6 +60,7 @@ pub enum Event {
     Account(AccountEvent),
     McpToken(McpTokenEvent),
     McpAudit(McpAuditEvent),
+    OAuth(OAuthEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -174,6 +176,7 @@ impl App for Intrada {
             Event::Account(account_event) => handle_account_event(account_event, model),
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
+            Event::OAuth(oauth_event) => handle_oauth_event(oauth_event, model),
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -369,6 +372,8 @@ impl App for Intrada {
             mcp_tokens_loaded: model.mcp_tokens_loaded,
             mcp_tokens_loading: model.mcp_tokens_loading,
             just_created_token: model.just_created_token.clone(),
+            oauth_in_flight: model.oauth_in_flight,
+            oauth_redirect_url: model.oauth_redirect_url.clone(),
         }
     }
 }
