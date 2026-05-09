@@ -15,7 +15,13 @@ use serde_json::Value;
 
 /// MCP protocol version we advertise. Bumping this requires reviewing any
 /// behaviour that changed between versions.
-pub const PROTOCOL_VERSION: &str = "2024-11-05";
+// Bumped to 2025-11-25 to advertise support for the `icons` field on
+// `serverInfo` (added in that revision via SEP-973). The handler set
+// we expose — `initialize`, `tools/list`, `tools/call`, plus
+// `notifications/*` no-ops — is unchanged across all post-2024-11-05
+// revisions, so declaring the latest is safe even though we don't
+// implement any other 2025-11-25 additions today.
+pub const PROTOCOL_VERSION: &str = "2025-11-25";
 
 pub const SERVER_NAME: &str = "intrada";
 pub const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -114,6 +120,28 @@ pub struct ToolsCapability {
 pub struct ServerInfo {
     pub name: &'static str,
     pub version: &'static str,
+    /// Server icons (MCP spec 2025-11-25, SEP-973). Skipped during
+    /// serialization when empty so the response shape on older
+    /// protocol revisions is unchanged. claude.ai's connector UI does
+    /// not render this today (anthropics/claude-ai-mcp#152), but
+    /// shipping it now means the icon lights up automatically the
+    /// day they ship support — no further server change needed.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub icons: Vec<Icon>,
+}
+
+/// Icon descriptor per MCP spec 2025-11-25. `src` is required
+/// (https:// or `data:` URI); the rest are advisory hints to the
+/// client. `theme` ("light" / "dark") lets servers ship paired icons
+/// when only one renders well on the user's chosen theme — we don't
+/// today (single white-on-purple SVG renders fine on either).
+#[derive(Debug, Serialize)]
+pub struct Icon {
+    pub src: String,
+    #[serde(rename = "mimeType", skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sizes: Option<Vec<&'static str>>,
 }
 
 /// `tools/list` response payload.

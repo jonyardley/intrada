@@ -1,4 +1,5 @@
 mod account;
+mod assets;
 mod health;
 mod items;
 mod lessons;
@@ -132,6 +133,10 @@ pub fn api_router(state: AppState) -> Router {
             crate::rate_limit::mcp_rate_limit,
         ))
         .layer(mcp_cors);
+    // Server icon — referenced from MCP `serverInfo.icons` (spec
+    // 2025-11-25). Cross-origin clients fetch it, so it gets the
+    // permissive OAuth-style CORS allowing GET from any origin.
+    let asset_routes = assets::router().layer(oauth_cors.clone());
     let oauth_routes = oauth::router().layer(oauth_cors);
 
     Router::new()
@@ -141,6 +146,7 @@ pub fn api_router(state: AppState) -> Router {
         // of the OAuth endpoints traditionally live there too. Each
         // subtree carries its own CorsLayer.
         .merge(oauth_routes)
+        .merge(asset_routes)
         .nest("/api/mcp", mcp_routes)
         .nest("/api", api_routes().layer(strict_cors))
         .layer(trace)
