@@ -199,10 +199,30 @@ pub fn BottomSheet(
             &passive_opts,
         );
 
-        touchstart.forget();
-        touchmove.forget();
-        touchend.forget();
-        touchcancel.forget();
+        // SendWrapper: on_cleanup requires Send+Sync; Closure/HtmlElement
+        // aren't both. Safe on wasm32 — single-threaded by construction.
+        // Same pattern as the Escape handler above.
+        let touchstart = SendWrapper::new(touchstart);
+        let touchmove = SendWrapper::new(touchmove);
+        let touchend = SendWrapper::new(touchend);
+        let touchcancel = SendWrapper::new(touchcancel);
+        let el = SendWrapper::new(el);
+        on_cleanup(move || {
+            let _ = el.remove_event_listener_with_callback(
+                "touchstart",
+                touchstart.as_ref().unchecked_ref(),
+            );
+            let _ = el.remove_event_listener_with_callback(
+                "touchmove",
+                touchmove.as_ref().unchecked_ref(),
+            );
+            let _ = el
+                .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+            let _ = el.remove_event_listener_with_callback(
+                "touchcancel",
+                touchcancel.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     let backdrop_class = move || {

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use leptos::prelude::*;
-use web_sys::wasm_bindgen::JsCast;
 
 use crate::components::FormFieldError;
 use intrada_web::helpers::filter_suggestions;
@@ -63,18 +62,15 @@ pub fn Autocomplete(
     let listbox_id = format!("{id}-listbox");
     let listbox_id_clone = listbox_id.clone();
 
-    // Handle focusout with delay to allow click events to fire first
+    // Handle focusout with delay to allow click events to fire first.
+    // spawn_local is safe here because on:focusout runs inside the Leptos
+    // owner; the async block closes over `is_open` which stays valid for
+    // the 150ms window (far shorter than any navigation / unmount path).
     let on_focusout = move |_ev: web_sys::FocusEvent| {
-        let handle = wasm_bindgen::closure::Closure::once(move || {
+        leptos::task::spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(150).await;
             is_open.set(false);
         });
-        let _ = web_sys::window()
-            .unwrap()
-            .set_timeout_with_callback_and_timeout_and_arguments_0(
-                handle.as_ref().unchecked_ref(),
-                150,
-            );
-        handle.forget();
     };
 
     // Handle keyboard navigation

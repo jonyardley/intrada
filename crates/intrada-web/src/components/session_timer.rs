@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 
@@ -117,16 +118,20 @@ pub fn SessionTimer() -> impl IntoView {
                 interval_id.set(Some(id));
             }
         }
-        closure.forget();
-    }
-
-    on_cleanup(move || {
-        if let Some(id) = interval_id.get_untracked() {
-            if let Some(window) = web_sys::window() {
-                window.clear_interval_with_handle(id);
+        // SendWrapper: on_cleanup requires Send+Sync; Closure isn't.
+        // Safe on wasm32 — single-threaded by construction.
+        let closure = SendWrapper::new(closure);
+        on_cleanup(move || {
+            if let Some(id) = interval_id.get_untracked() {
+                if let Some(window) = web_sys::window() {
+                    window.clear_interval_with_handle(id);
+                }
             }
-        }
-    });
+            // Drop the Closure after clearing the interval so the JS
+            // function is freed and can't fire a final time.
+            drop(closure);
+        });
+    }
 
     view! {
         // space-y-6 between major zones — hero, optional rep card,

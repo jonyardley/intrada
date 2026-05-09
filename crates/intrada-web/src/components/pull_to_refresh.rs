@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::{AddEventListenerOptions, TouchEvent};
@@ -182,11 +183,29 @@ pub fn PullToRefresh(
             &passive_opts,
         );
 
-        // Listeners outlive the component; same pattern as use_drag_reorder.
-        touchstart.forget();
-        touchmove.forget();
-        touchend.forget();
-        touchcancel.forget();
+        // SendWrapper: on_cleanup requires Send+Sync; Closure/HtmlElement
+        // aren't both. Safe on wasm32 — single-threaded by construction.
+        let touchstart = SendWrapper::new(touchstart);
+        let touchmove = SendWrapper::new(touchmove);
+        let touchend = SendWrapper::new(touchend);
+        let touchcancel = SendWrapper::new(touchcancel);
+        let el = SendWrapper::new(el);
+        on_cleanup(move || {
+            let _ = el.remove_event_listener_with_callback(
+                "touchstart",
+                touchstart.as_ref().unchecked_ref(),
+            );
+            let _ = el.remove_event_listener_with_callback(
+                "touchmove",
+                touchmove.as_ref().unchecked_ref(),
+            );
+            let _ = el
+                .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+            let _ = el.remove_event_listener_with_callback(
+                "touchcancel",
+                touchcancel.as_ref().unchecked_ref(),
+            );
+        });
     });
 
     // Drives the wrapper's transform — both content and indicator translate
