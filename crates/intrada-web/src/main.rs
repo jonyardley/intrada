@@ -22,15 +22,27 @@ fn dismiss_splash() {
     let Some(el) = document.get_element_by_id("app-splash") else {
         return;
     };
-    let el_clone = el.clone();
-    let _ = el
-        .unchecked_ref::<web_sys::HtmlElement>()
-        .style()
-        .set_property("opacity", "0");
-    let cb = wasm_bindgen::closure::Closure::once(move || {
-        el_clone.remove();
+    // Hold the splash for a minimum duration so it reads as intentional
+    // branding rather than a flicker. The fade-out starts after the hold,
+    // then the element is removed after the CSS transition completes.
+    let fade = wasm_bindgen::closure::Closure::once(move || {
+        let el_remove = el.clone();
+        let _ = el
+            .unchecked_ref::<web_sys::HtmlElement>()
+            .style()
+            .set_property("opacity", "0");
+        let remove_cb = wasm_bindgen::closure::Closure::once(move || {
+            el_remove.remove();
+        });
+        if let Some(w) = web_sys::window() {
+            let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(
+                remove_cb.as_ref().unchecked_ref(),
+                400,
+            );
+        }
+        remove_cb.forget();
     });
     let _ = window
-        .set_timeout_with_callback_and_timeout_and_arguments_0(cb.as_ref().unchecked_ref(), 350);
-    cb.forget();
+        .set_timeout_with_callback_and_timeout_and_arguments_0(fade.as_ref().unchecked_ref(), 600);
+    fade.forget();
 }
