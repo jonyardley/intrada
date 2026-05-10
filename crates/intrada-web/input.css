@@ -759,6 +759,32 @@ body {
   min-width: 0;
 }
 
+/* ── Session action bar (fixed bottom toolbar for active session) ── */
+
+.session-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 4rem;
+  z-index: 51;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem;
+  background: color-mix(in oklab, var(--color-surface-primary) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border-default);
+}
+@media (min-width: 640px) {
+  .session-action-bar {
+    bottom: 0;
+  }
+}
+.focus-mode-container .session-action-bar {
+  bottom: 0;
+}
+
 /* ── Chip (selectable pill) ────────────────────────────────────────── */
 
 .chip {
@@ -1060,14 +1086,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 14rem;   /* 224px — fits mobile with padding */
-  height: 14rem;
+  width: 16rem;   /* 256px — generous on mobile */
+  height: 16rem;
   margin-left: auto;
   margin-right: auto;
 
   @media (min-width: 640px) {
-    width: 18rem;  /* 288px — larger on desktop */
-    height: 18rem;
+    width: 20rem;  /* 320px — larger on desktop */
+    height: 20rem;
   }
 }
 
