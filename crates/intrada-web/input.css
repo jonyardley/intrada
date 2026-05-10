@@ -759,6 +759,41 @@ body {
   min-width: 0;
 }
 
+/* ── Chip (selectable pill) ────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--color-text-primary);
+}
+
+.chip-active {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent-text) 12%, transparent);
+  border: 1px solid var(--color-accent-text);
+  cursor: pointer;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Typography Utilities
    ═══════════════════════════════════════════════════════════════════════
