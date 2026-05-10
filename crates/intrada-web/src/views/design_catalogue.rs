@@ -2043,6 +2043,8 @@ fn ItemReflectionSheetDemo() -> impl IntoView {
             </Button>
             <ItemReflectionSheet
                 open=open
+                current_item_title=Signal::derive(move || "Clair de Lune".to_string())
+                current_item_type=Signal::derive(move || ItemKind::Piece)
                 next_item_title=Signal::derive(move || next_title.get())
                 next_item_type=Signal::derive(move || next_type.get())
                 target=Signal::derive(move || target.get())

@@ -50,6 +50,8 @@ pub fn SessionTimer() -> impl IntoView {
     // just-completed entry's score/tempo/notes before advancing.
     let reflection_open = RwSignal::new(false);
     let reflection_target = RwSignal::new(Option::<ItemReflectionTarget>::None);
+    let reflection_current_title = RwSignal::new(String::new());
+    let reflection_current_type = RwSignal::new(ItemKind::Piece);
     let reflection_next_title = RwSignal::new(Option::<String>::None);
     let reflection_next_type = RwSignal::new(Option::<ItemKind>::None);
     let reflection_position_label = RwSignal::new(String::new());
@@ -205,7 +207,7 @@ pub fn SessionTimer() -> impl IntoView {
                                 <p class="text-xs text-muted uppercase tracking-wider">
                                     {format!("Item {} of {}", position + 1, total)}
                                 </p>
-                                <h2 class="text-3xl sm:text-4xl font-bold text-primary font-heading">{current_title}</h2>
+                                <h2 class="text-3xl sm:text-4xl font-bold text-primary font-heading">{current_title.clone()}</h2>
                                 // Entry-level intention — fades with focus mode
                                 {current_entry_intention.map(|intention| view! {
                                     <div class=entry_intention_class>
@@ -213,7 +215,7 @@ pub fn SessionTimer() -> impl IntoView {
                                     </div>
                                 })}
                                 <div class="flex justify-center">
-                                    <InlineTypeIndicator item_type=item_kind_to_type(current_type) />
+                                    <InlineTypeIndicator item_type=item_kind_to_type(current_type.clone()) />
                                 </div>
                                 // Timer: progress ring when planned duration exists,
                                 // bare digital otherwise. The digital variant uses Inter
@@ -395,6 +397,8 @@ pub fn SessionTimer() -> impl IntoView {
                                     {
                                         let entries = active.entries.clone();
                                         let next_title_for_sheet = active.next_item_title.clone();
+                                        let current_title_for_sheet = current_title.clone();
+                                        let current_type_for_sheet = current_type.clone();
                                         let on_advance_tap = move || {
                                             if let Some(entry) = entries.get(position) {
                                                 reflection_target.set(Some(ItemReflectionTarget {
@@ -404,6 +408,8 @@ pub fn SessionTimer() -> impl IntoView {
                                                     initial_notes: entry.notes.clone(),
                                                 }));
                                             }
+                                            reflection_current_title.set(current_title_for_sheet.clone());
+                                            reflection_current_type.set(current_type_for_sheet.clone());
                                             reflection_next_title.set(next_title_for_sheet.clone());
                                             reflection_next_type.set(
                                                 entries.get(position + 1).map(|e| e.item_type.clone())
@@ -499,6 +505,8 @@ pub fn SessionTimer() -> impl IntoView {
                                 view! {
                                     <ItemReflectionSheet
                                         open=reflection_open
+                                        current_item_title=Signal::derive(move || reflection_current_title.get())
+                                        current_item_type=Signal::derive(move || reflection_current_type.get())
                                         next_item_title=Signal::derive(move || reflection_next_title.get())
                                         next_item_type=Signal::derive(move || reflection_next_type.get())
                                         target=Signal::derive(move || reflection_target.get())

@@ -43,6 +43,12 @@ pub struct ItemReflectionTarget {
 #[component]
 pub fn ItemReflectionSheet(
     open: RwSignal<bool>,
+    /// Title of the item the user just completed (the one being reflected on).
+    #[prop(into)]
+    current_item_title: Signal<String>,
+    /// Type of the current item — drives the badge under the title.
+    #[prop(into)]
+    current_item_type: Signal<ItemKind>,
     /// Title of the next item, or `None` for the last item.
     #[prop(into)]
     next_item_title: Signal<Option<String>>,
@@ -155,29 +161,33 @@ pub fn ItemReflectionSheet(
         dispatch_advance.run(false);
     });
 
-    let header_label = move || -> &'static str {
-        if next_item_title.with(|t| t.is_some()) {
-            "Up Next"
-        } else {
-            "Last Item"
+    let current_badge_view = move || {
+        let kind = current_item_type.get();
+        let item_type = match kind {
+            ItemKind::Piece => ItemType::Piece,
+            ItemKind::Exercise => ItemType::Exercise,
+        };
+        view! {
+            <div class="mt-1">
+                <InlineTypeIndicator item_type=item_type />
+            </div>
         }
     };
 
-    let title_text = move || -> String {
-        next_item_title
-            .get()
-            .unwrap_or_else(|| "Session complete".to_string())
-    };
-
-    let badge_view = move || {
-        next_item_type.get().map(|kind| {
-            let item_type = match kind {
-                ItemKind::Piece => ItemType::Piece,
-                ItemKind::Exercise => ItemType::Exercise,
-            };
+    let up_next_view = move || {
+        next_item_title.get().map(|title| {
+            let next_type = next_item_type.get().map(|kind| {
+                let item_type = match kind {
+                    ItemKind::Piece => ItemType::Piece,
+                    ItemKind::Exercise => ItemType::Exercise,
+                };
+                view! { <InlineTypeIndicator item_type=item_type /> }
+            });
             view! {
-                <div class="mt-1">
-                    <InlineTypeIndicator item_type=item_type />
+                <div class="flex items-center gap-2 text-sm text-muted">
+                    <span class="uppercase tracking-wider text-xs">"Up next:"</span>
+                    <span class="text-secondary">{title}</span>
+                    {next_type}
                 </div>
             }
         })
@@ -191,13 +201,10 @@ pub fn ItemReflectionSheet(
                 </p>
 
                 <div class="space-y-2">
-                    <p class="text-xs uppercase tracking-wider text-muted">
-                        {header_label}
-                    </p>
                     <h3 class="text-xl font-bold text-primary font-heading">
-                        {title_text}
+                        {move || current_item_title.get()}
                     </h3>
-                    {badge_view}
+                    {current_badge_view}
                 </div>
 
                 <div class="border-t border-border-default pt-4 space-y-4">
@@ -247,6 +254,8 @@ pub fn ItemReflectionSheet(
                         />
                     </div>
                 </div>
+
+                {up_next_view}
 
                 <div class="space-y-3 pt-2">
                     <Button
