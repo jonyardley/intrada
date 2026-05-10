@@ -154,6 +154,12 @@ jobs:
           prefix-key: "wasm"
           cache-on-failure: true
       - uses: jetli/trunk-action@v0.5.1
+      # Pin wasm-bindgen-cli so trunk finds it locally instead of downloading
+      # from GitHub Releases at build time (avoids transient 502 failures).
+      # Version must match the wasm-bindgen dependency in Cargo.lock.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.121
       # Tailwind v4 standalone binary doesn't change between runs — cache it.
       - name: Cache Tailwind CSS binary
         id: tailwind-cache
