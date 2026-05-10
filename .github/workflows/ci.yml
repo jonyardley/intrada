@@ -28,8 +28,10 @@ jobs:
     name: Path Changes
     runs-on: ubuntu-latest
     outputs:
+      rust: ${{ steps.filter.outputs.rust }}
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
       mobile-plugins: ${{ steps.filter.outputs.mobile-plugins }}
     steps:
       - uses: actions/checkout@v6
@@ -37,6 +39,11 @@ jobs:
         id: filter
         with:
           filters: |
+            rust:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/**'
+              - '.github/workflows/ci.yml'
             api:
               - 'Dockerfile'
               - 'Cargo.toml'
@@ -51,6 +58,13 @@ jobs:
               - 'crates/intrada-core/**'
               - 'e2e/**'
               - '.github/workflows/ci.yml'
+            mobile:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/intrada-mobile/**'
+              - 'crates/intrada-web/**'
+              - 'crates/intrada-core/**'
+              - '.github/workflows/ci.yml'
             mobile-plugins:
               - 'Cargo.toml'
               - 'Cargo.lock'
@@ -60,6 +74,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -68,6 +84,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
+          cache-on-failure: true
       # nextest runs the same assertions as `cargo test` but with a smarter
       # scheduler — typically 40–50% faster. Doc tests are run separately
       # below since nextest doesn't execute them.
@@ -84,6 +101,8 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -137,6 +156,123 @@ jobs:
           prefix-key: "ios"
       - run: cargo clippy -p tauri-plugin-background-audio --target aarch64-apple-ios -- -D warnings
       - run: cargo clippy -p tauri-plugin-live-activity --target aarch64-apple-ios -- -D warnings
+
+  ios-build:
+    # Full iOS simulator build — verifies the Tauri host, plugins, WASM
+    # frontend, and generated Xcode project all compile and link together.
+    # Catches regressions that slip past the plugin-only ios-clippy job:
+    # broken Swift bridges, Xcode project generation failures, Tauri host
+    # compile errors, and frontend/core changes that break the iOS bundle.
+    #
+    # Targets aarch64-apple-ios-sim (Apple Silicon simulator) — no code
+    # signing required, no Apple Developer secrets needed.
+    #
+    # Path-filtered: only runs when mobile, web, or core paths change.
+    # Always runs on main pushes. ~10-12 min with caching.
+    name: iOS Build (Simulator)
+    runs-on: macos-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios-sim,wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "ios-build"
+          cache-on-failure: true
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.121
+      - uses: jetli/trunk-action@v0.5.1
+      - name: Cache Tailwind CSS binary
+        id: tailwind-cache
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/bin/tailwindcss
+          key: tailwindcss-v4.1.18-macos-arm64
+      - name: Install Tailwind CSS v4 standalone CLI
+        if: steps.tailwind-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-macos-arm64
+          chmod +x tailwindcss-macos-arm64
+          mv tailwindcss-macos-arm64 /usr/local/bin/tailwindcss
+      - name: Build WASM frontend
+        working-directory: crates/intrada-web
+        env:
+          INTRADA_API_URL: https://intrada-api.fly.dev
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: trunk build --release
+      - name: Cache Homebrew packages
+        id: brew-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Cache Tauri CLI binary
+        id: tauri-cli-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin/cargo-tauri
+          key: tauri-cli-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('crates/intrada-mobile/src-tauri/Cargo.toml') }}
+      - name: Install Tauri CLI
+        if: steps.tauri-cli-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-cli --version "^2" --locked
+      - name: Generate Xcode project
+        working-directory: crates/intrada-mobile/src-tauri
+        run: cargo tauri ios init
+      - name: Patch Xcode project (fix duplicate libapp.a output)
+        working-directory: crates/intrada-mobile
+        run: ruby scripts/fix-ios-build-config.rb
+      - name: Add Live Activity widget target
+        working-directory: crates/intrada-mobile
+        run: ruby scripts/add-live-activity-target.rb
+      - name: Disable code signing in Xcode project (CI)
+        working-directory: crates/intrada-mobile/src-tauri/gen/apple
+        run: |
+          ruby -ryaml -e '
+            proj = YAML.load_file("project.yml")
+            (proj["targets"] || {}).each do |_, t|
+              s = t["settings"] ||= {}
+              base = s["base"] ||= {}
+              base["CODE_SIGN_IDENTITY"] = ""
+              base["CODE_SIGNING_REQUIRED"] = "NO"
+              base["CODE_SIGNING_ALLOWED"] = "NO"
+            end
+            File.write("project.yml", proj.to_yaml)
+          '
+          xcodegen generate --no-env --spec project.yml
+      - name: Build iOS app (simulator, unsigned)
+        working-directory: crates/intrada-mobile/src-tauri
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: cargo tauri ios build --ci --target aarch64-sim
+      - name: Locate built .app bundle
+        id: find-app
+        run: |
+          APP_PATH=$(find crates/intrada-mobile/src-tauri/gen/apple/build \
+            -name "Intrada.app" -type d | head -1)
+          if [[ -z "$APP_PATH" ]]; then
+            echo "::error::Could not find Intrada.app in build output"
+            find crates/intrada-mobile/src-tauri/gen/apple/build -type d -maxdepth 4
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found .app at: $APP_PATH"
+      - name: Run iOS simulator smoke test
+        run: scripts/ios-simulator-smoke.sh "${{ steps.find-app.outputs.app_path }}"
+      - name: Upload iOS screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-screenshots
+          path: ios-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
 
   wasm-build:
     name: WASM Build
@@ -200,6 +336,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "wasm"
+          save-if: "false"
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Run WASM tests
@@ -313,6 +450,8 @@ jobs:
   fmt:
     name: Formatting
     runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
