@@ -6,7 +6,7 @@ open = false
 ignore = ["dist/"]
 
 [build]
-# Release builds use wasm-opt for smaller binaries
+filehash = false
 
 # Tailwind CSS v4 — run as pre-build hook since trunk's built-in tailwind-css uses v3
 [[hooks]]

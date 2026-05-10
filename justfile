@@ -36,6 +36,14 @@ dev-web:
     sleep 0.3
     trunk serve --config crates/intrada-web/Trunk.toml
 
+# Type-check only (no codegen) — fastest feedback for "does it compile?"
+check-fast:
+    cargo check --workspace
+
+# Type-check just the web WASM target
+check-web:
+    cargo check -p intrada-web --target wasm32-unknown-unknown
+
 # Run all tests
 test:
     cargo test --workspace
@@ -53,6 +61,18 @@ check:
     cargo test --workspace
     cargo clippy --workspace -- -D warnings
     cargo fmt --all -- --check
+
+# Pre-push validation (matches CI — catches errors before the 3-min roundtrip)
+pre-push:
+    #!/usr/bin/env bash
+    set -e
+    echo "Checking format..."
+    cargo fmt --all -- --check
+    echo "Running clippy..."
+    cargo clippy --workspace -- -D warnings
+    echo "Running tests..."
+    cargo test --workspace
+    echo "✓ All checks passed"
 
 # Seed development data (API must be running)
 seed:
