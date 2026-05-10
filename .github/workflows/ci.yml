@@ -30,6 +30,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
       mobile-plugins: ${{ steps.filter.outputs.mobile-plugins }}
     steps:
       - uses: actions/checkout@v6
@@ -50,6 +51,13 @@ jobs:
               - 'crates/intrada-web/**'
               - 'crates/intrada-core/**'
               - 'e2e/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/intrada-mobile/**'
+              - 'crates/intrada-web/**'
+              - 'crates/intrada-core/**'
               - '.github/workflows/ci.yml'
             mobile-plugins:
               - 'Cargo.toml'
@@ -137,6 +145,77 @@ jobs:
           prefix-key: "ios"
       - run: cargo clippy -p tauri-plugin-background-audio --target aarch64-apple-ios -- -D warnings
       - run: cargo clippy -p tauri-plugin-live-activity --target aarch64-apple-ios -- -D warnings
+
+  ios-build:
+    # Full iOS simulator build — verifies the Tauri host, plugins, WASM
+    # frontend, and generated Xcode project all compile and link together.
+    # Catches regressions that slip past the plugin-only ios-clippy job:
+    # broken Swift bridges, Xcode project generation failures, Tauri host
+    # compile errors, and frontend/core changes that break the iOS bundle.
+    #
+    # Targets aarch64-apple-ios-sim (Apple Silicon simulator) — no code
+    # signing required, no Apple Developer secrets needed.
+    #
+    # Path-filtered: only runs when mobile, web, or core paths change.
+    # Always runs on main pushes. ~10-12 min with caching.
+    name: iOS Build (Simulator)
+    runs-on: macos-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios-sim,wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "ios-build"
+          cache-on-failure: true
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@0.2.121
+      - uses: jetli/trunk-action@v0.5.1
+      - name: Cache Tailwind CSS binary
+        id: tailwind-cache
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/bin/tailwindcss
+          key: tailwindcss-v4.1.18-macos-arm64
+      - name: Install Tailwind CSS v4 standalone CLI
+        if: steps.tailwind-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-macos-arm64
+          chmod +x tailwindcss-macos-arm64
+          mv tailwindcss-macos-arm64 /usr/local/bin/tailwindcss
+      - name: Build WASM frontend
+        working-directory: crates/intrada-web
+        env:
+          INTRADA_API_URL: https://intrada-api.fly.dev
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: trunk build --release
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+      - name: Generate Xcode project
+        working-directory: crates/intrada-mobile/src-tauri
+        run: cargo tauri ios init
+      - name: Patch Xcode project (fix duplicate libapp.a output)
+        working-directory: crates/intrada-mobile
+        run: ruby scripts/fix-ios-build-config.rb
+      - name: Add Live Activity widget target
+        working-directory: crates/intrada-mobile
+        run: ruby scripts/add-live-activity-target.rb
+      - name: Build iOS app (simulator, unsigned)
+        working-directory: crates/intrada-mobile/src-tauri
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          cargo tauri ios build --ci --target aarch64-sim -- \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
   wasm-build:
     name: WASM Build
