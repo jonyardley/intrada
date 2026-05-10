@@ -46,21 +46,19 @@ the visual transition is seamless.
 
 ### Worker.js routing
 
-Currently, `wrangler.toml` uses `not_found_handling = "single-page-application"`
-which serves `index.html` for all unmatched paths. After prerendering,
-`index.html` contains the WelcomeView HTML — we don't want `/library` to show
-marketing content while WASM loads.
+Prerendered HTML lives in `dist/prerendered/` (not overwriting `index.html`).
+`wrangler.toml` keeps `not_found_handling = "single-page-application"` — the
+SPA shell (`index.html`) is still the fallback for all app routes. Worker.js
+intercepts marketing routes and serves from `dist/prerendered/` before the
+SPA fallback triggers:
 
-Change: remove `not_found_handling` from wrangler.toml and route in worker.js:
-
+```javascript
+const PRERENDERED = { "/": "/prerendered/index.html", "/login": "/prerendered/login.html" };
+// ... in fetch handler: lookup normalizedPath in PRERENDERED, serve via env.ASSETS.fetch()
 ```
-if path matches a file in dist → serve it (assets, prerendered HTML)
-else → serve dist/_app.html (SPA shell)
-```
 
-This uses `env.ASSETS.fetch()` for file matches (Cloudflare handles this
-natively) and falls back to fetching `_app.html` explicitly. The sentry-tunnel
-intercept stays as-is.
+This avoids the `_app.html` rename approach from the original design — simpler,
+and no changes to `wrangler.toml` are needed.
 
 ### Auth during prerender
 
@@ -111,33 +109,16 @@ regardless.
 pipeline. Using it for prerender avoids adding a new tool and guarantees the
 snapshot matches what a real browser renders.
 
-## Open questions
-
-1. **Clerk publishable key in prerender** — the prerender runs the full WASM
-   app, which reads `CLERK_PUBLISHABLE_KEY` at compile time. CI already sets
-   this for `trunk build`. Should work, but need to verify Clerk doesn't
-   block rendering on init failure in headless mode.
-
-2. **`_app.html` and Cloudflare assets** — need to verify that
-   `env.ASSETS.fetch(new Request(url.origin + '/_app.html'))` works for
-   serving the SPA shell from worker.js. Alternative: use a KV lookup or
-   `env.ASSETS.fetch()` with path rewrite.
-
-3. **Prerender timing** — how long to wait for WASM to fully render? The
-   deploy-smoke test uses 20s timeout with polling. Prerender can use the
-   same approach but may need route-specific content assertions (e.g., wait
-   for "Music practice with intent" on `/`).
-
 ## Files changed
 
 | File | Change |
 |------|--------|
 | `scripts/prerender.mjs` | New — Playwright prerender script |
-| `worker.js` | Route non-asset requests to `_app.html` instead of relying on wrangler SPA fallback |
-| `wrangler.toml` | Remove `not_found_handling` |
-| `.github/workflows/ci.yml` | Add prerender step after trunk build |
-| `e2e/tests/deploy-smoke.spec.ts` | Assert prerendered `/` contains hero text |
-| `crates/intrada-web/static/sitemap.xml` | Add `/login` if not already present |
+| `worker.js` | Intercept marketing routes, serve from `dist/prerendered/` |
+| `scripts/refresh-sri-hashes.py` | Scan all HTML files in dist/ (not just index.html) |
+| `scripts/verify-sri-hashes.py` | Same — scan all HTML files |
+| `.github/workflows/ci.yml` | Add prerender step + widen sed placeholder injection to all HTML |
+| `e2e/tests/deploy-smoke.spec.ts` | Assert prerendered `/` and `/login` contain expected content |
 
 ## Acceptance
 

@@ -74,7 +74,9 @@ export default {
     // content without waiting for WASM. The SPA shell (index.html) is
     // still the fallback for all app routes via wrangler.toml's
     // not_found_handling = "single-page-application".
-    const prerendered = PRERENDERED[url.pathname];
+    const normalizedPath =
+      url.pathname === "/" ? "/" : url.pathname.replace(/\/+$/, "");
+    const prerendered = PRERENDERED[normalizedPath];
     if (prerendered) {
       const prerenderUrl = new URL(request.url);
       prerenderUrl.pathname = prerendered;

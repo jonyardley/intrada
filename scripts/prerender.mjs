@@ -20,7 +20,7 @@ import { join, resolve } from "node:path";
 import { createConnection } from "node:net";
 
 const DEFAULT_DIST = "crates/intrada-web/dist";
-const PORT = 9222;
+const PORT = 9333;
 const TIMEOUT_MS = 30_000;
 
 const ROUTES = [
