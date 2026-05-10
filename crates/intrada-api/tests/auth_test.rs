@@ -24,8 +24,8 @@ struct TestClaims {
 
 /// Generate an RSA key pair and return (encoding_key, auth_config).
 fn test_keys() -> (EncodingKey, AuthConfig) {
-    let mut rng = rand::thread_rng();
-    let private_key = RsaPrivateKey::new(&mut rng, 2048).expect("Failed to generate RSA key");
+    let private_key =
+        RsaPrivateKey::new(&mut rsa::rand_core::OsRng, 2048).expect("Failed to generate RSA key");
 
     let private_pem = private_key
         .to_pkcs1_pem(rsa::pkcs1::LineEnding::LF)

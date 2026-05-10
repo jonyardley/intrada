@@ -291,7 +291,7 @@ pub async fn exchange_code_for_token(
 
 fn random_hex_32() -> String {
     let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().fill_bytes(&mut bytes);
     hex_encode(&bytes)
 }
 

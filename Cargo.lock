@@ -2911,7 +2911,7 @@ dependencies = [
  "jsonwebtoken",
  "libsql",
  "libsql_migration",
- "rand 0.8.5",
+ "rand 0.9.4",
  "reqwest 0.12.28",
  "rsa",
  "rust-s3",
