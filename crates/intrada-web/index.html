@@ -191,6 +191,10 @@
       // device.
       if (location.protocol === 'tauri:') {
         document.documentElement.setAttribute('data-platform', 'ios');
+        // Show the branded splash screen on iOS only — on web it feels
+        // unnecessary and adds a flash before the app renders.
+        var splash = document.getElementById('app-splash');
+        if (splash) splash.style.display = 'flex';
         // Native iOS apps don't have pinch-zoom on the page. Override the
         // viewport meta to disable it inside the Tauri WebView only —
         // regular browser users keep their accessibility zoom.
@@ -357,15 +361,15 @@
         </nav>
       </div>
     </noscript>
-    <!-- Branded loading state shown before WASM mounts. Matches the
-         AuthLoadingScreen component so the transition is seamless.
+    <!-- Branded splash screen — iOS only. Hidden by default (display:none);
+         the inline Tauri-detection script above sets display:flex on iOS.
          Removed by main.rs dismiss_splash() once the Leptos app mounts.
          Colors are hardcoded because CSS tokens aren't loaded yet —
          keep in sync with input.css: #161926/#0f111a = surface bg,
          #9180fa = accent, #e8e6f0 = text-primary. -->
     <div id="app-splash" style="
       position: fixed; inset: 0; z-index: 9999;
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       background: linear-gradient(to bottom, #161926, #0f111a);
       transition: opacity 0.3s ease;
     ">
