@@ -162,7 +162,7 @@ ios-dev:
     # bootstatus -b boots the device if shutdown then waits for full boot.
     # Idempotent — no-op if already booted. Avoids the install-before-boot race.
     xcrun simctl bootstatus "$SIM_UDID" -b
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM" 2>&1 | grep -v "Waiting for your frontend dev server"
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --no-dev-server-wait "$SIM"
     wait
 
 # Device must be connected via USB and trusted. Requires Wi-Fi for the
@@ -226,7 +226,14 @@ ios-dev-device:
     done
     echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (device)..."
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --host "$LAN_IP" "$DEVICE" 2>&1 | grep -v "Waiting for your frontend dev server"
+    # --no-dev-server-wait: we already verified trunk above, skip Tauri's
+    # own 180 s poll (which also mis-resolves the port to :80).
+    # --config overrides devUrl with the LAN IP so the device WebView loads
+    # the correct address (localhost is unreachable from the physical device).
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev \
+        --no-dev-server-wait \
+        --config "{\"build\":{\"devUrl\":\"http://$LAN_IP:8080\"}}" \
+        "$DEVICE"
     wait
 
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
