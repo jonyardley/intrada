@@ -93,7 +93,7 @@ test("smoke: prerendered homepage contains marketing content", async ({
   expect(response!.status()).toBe(200);
 
   const html = await response!.text();
-  expect(html).toContain("Music practice with intent");
+  expect(html).toContain("Practice with intent");
   expect(html).toContain("<h1");
 });
 
@@ -105,5 +105,5 @@ test("smoke: prerendered login page contains sign-in content", async ({
   expect(response!.status()).toBe(200);
 
   const html = await response!.text();
-  expect(html).toContain("Sign in");
+  expect(html).toContain("Sign in to continue");
 });

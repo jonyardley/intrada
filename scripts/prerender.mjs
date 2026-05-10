@@ -23,9 +23,12 @@ const DEFAULT_DIST = "crates/intrada-web/dist";
 const PORT = 9333;
 const TIMEOUT_MS = 30_000;
 
+// `waitFor` strings must match text actually rendered by the WASM
+// (not meta tags / OG descriptions). Source: views/welcome.rs h1 and
+// views/login.rs h1 + subtitle.
 const ROUTES = [
-  { path: "/", output: "index.html", waitFor: "Music practice with intent" },
-  { path: "/login", output: "login.html", waitFor: "Sign in" },
+  { path: "/", output: "index.html", waitFor: "Practice with intent" },
+  { path: "/login", output: "login.html", waitFor: "Sign in to continue" },
 ];
 
 const distDir = resolve(process.argv[2] || DEFAULT_DIST);
@@ -92,17 +95,38 @@ async function main() {
           window.Clerk = class { async load() {} };
         });
 
+        // Capture console errors for diagnostics on timeout.
+        const consoleErrors = [];
+        page.on("console", (msg) => {
+          if (msg.type() === "error") consoleErrors.push(msg.text());
+        });
+        page.on("pageerror", (err) => consoleErrors.push(`pageerror: ${err.message}`));
+
         const url = `http://127.0.0.1:${PORT}${route.path}`;
         console.log(`prerender: ${route.path} → ${route.output}`);
 
         await page.goto(url, { waitUntil: "networkidle" });
 
         // Wait for the WASM app to render the expected content.
-        await page.waitForFunction(
-          (text) => document.body?.innerText?.includes(text),
-          route.waitFor,
-          { timeout: TIMEOUT_MS },
-        );
+        try {
+          await page.waitForFunction(
+            (text) => document.body?.innerText?.includes(text),
+            route.waitFor,
+            { timeout: TIMEOUT_MS },
+          );
+        } catch (err) {
+          const bodyText = await page
+            .evaluate(() => (document.body?.innerText || "").slice(0, 500))
+            .catch(() => "<could not read body>");
+          console.error(
+            `prerender: timeout waiting for "${route.waitFor}" on ${route.path}`,
+          );
+          console.error(`  body.innerText (first 500 chars): ${bodyText}`);
+          if (consoleErrors.length) {
+            console.error(`  console errors:\n    ${consoleErrors.join("\n    ")}`);
+          }
+          throw err;
+        }
 
         const html = await page.content();
         const outPath = join(outDir, route.output);
