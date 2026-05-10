@@ -18,6 +18,7 @@ concurrency:
 
 env:
   RUST_VERSION: "1.89.0"
+  TAILWIND_VERSION: "4.1.18"
   SENTRY_ORG: jon-yardley
 
 jobs:
@@ -63,6 +64,9 @@ jobs:
               - 'crates/intrada-mobile/**'
               - 'crates/intrada-web/**'
               - 'crates/intrada-core/**'
+              - 'scripts/ios-simulator-smoke.sh'
+              - 'scripts/fix-ios-build-config.rb'
+              - 'scripts/add-live-activity-target.rb'
               - '.github/workflows/ci.yml'
 
   test:
@@ -127,6 +131,7 @@ jobs:
     # Always runs on main pushes.
     name: iOS (Clippy + Build + Smoke)
     runs-on: macos-latest
+    timeout-minutes: 40
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
     steps:
@@ -155,11 +160,11 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/bin/tailwindcss
-          key: tailwindcss-v4.1.18-macos-arm64
+          key: tailwindcss-v${{ env.TAILWIND_VERSION }}-macos-arm64
       - name: Install Tailwind CSS v4 standalone CLI
         if: steps.tailwind-cache.outputs.cache-hit != 'true'
         run: |
-          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-macos-arm64
+          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-macos-arm64"
           chmod +x tailwindcss-macos-arm64
           mv tailwindcss-macos-arm64 /usr/local/bin/tailwindcss
       - name: Build WASM frontend
@@ -227,6 +232,8 @@ jobs:
           echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
           echo "Found .app at: $APP_PATH"
       - name: Run iOS simulator smoke test
+        env:
+          SMOKE_WAIT_SECS: "15"
         run: scripts/ios-simulator-smoke.sh "${{ steps.find-app.outputs.app_path }}"
       - name: Upload iOS screenshots
         if: always()
@@ -265,11 +272,11 @@ jobs:
         uses: actions/cache@v5
         with:
           path: /usr/local/bin/tailwindcss
-          key: tailwindcss-v4.1.18-linux-x64
+          key: tailwindcss-v${{ env.TAILWIND_VERSION }}-linux-x64
       - name: Install Tailwind CSS v4 standalone CLI
         if: steps.tailwind-cache.outputs.cache-hit != 'true'
         run: |
-          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.18/tailwindcss-linux-x64
+          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64"
           chmod +x tailwindcss-linux-x64
           mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
       - name: Build WASM (release)
