@@ -144,7 +144,9 @@ async function main() {
   console.log("prerender: done");
 }
 
-main().catch((err) => {
-  console.error("prerender: FAILED", err);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("prerender: FAILED", err);
+    process.exit(1);
+  });
