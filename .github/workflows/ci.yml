@@ -216,6 +216,28 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+      - name: Locate built .app bundle
+        id: find-app
+        run: |
+          APP_PATH=$(find crates/intrada-mobile/src-tauri/gen/apple/build \
+            -name "Intrada.app" -type d | head -1)
+          if [[ -z "$APP_PATH" ]]; then
+            echo "::error::Could not find Intrada.app in build output"
+            find crates/intrada-mobile/src-tauri/gen/apple/build -type d -maxdepth 4
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+          echo "Found .app at: $APP_PATH"
+      - name: Run iOS simulator smoke test
+        run: scripts/ios-simulator-smoke.sh "${{ steps.find-app.outputs.app_path }}"
+      - name: Upload iOS screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-screenshots
+          path: ios-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
 
   wasm-build:
     name: WASM Build
