@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Recompute SHA-384 integrity hashes in dist/index.html.
+"""Recompute SHA-384 integrity hashes in all HTML files under dist/.
 
 Walks every `<link>/<script integrity="sha384-…">` tag, computes the
 SHA-384 of the file the tag references, and rewrites the attribute.
 Files whose contents weren't touched recompute to the same value
 (no-op).
+
+Scans index.html and any prerendered HTML files (dist/prerendered/*.html)
+so that SRI hashes stay valid after sentry-cli inject modifies JS files.
 
 Why this exists
 ───────────────
@@ -44,14 +47,9 @@ TAG_RE = re.compile(
 SRC_RE = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.IGNORECASE)
 
 
-def main() -> int:
-    dist = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DIST)
-    index = dist / "index.html"
-    if not index.is_file():
-        print(f"refresh-sri-hashes: {index} not found", file=sys.stderr)
-        return 1
-
-    html = index.read_text()
+def refresh_file(html_path: pathlib.Path, dist: pathlib.Path) -> tuple[int, bool]:
+    """Refresh SRI hashes in a single HTML file. Returns (count, changed)."""
+    html = html_path.read_text()
 
     def patch(match: re.Match[str]) -> str:
         tag = match.group(0)
@@ -70,11 +68,43 @@ def main() -> int:
         )
 
     new_html, count = TAG_RE.subn(patch, html)
-    if new_html != html:
-        index.write_text(new_html)
-        print(f"refresh-sri-hashes: refreshed {count} integrity hashes")
+    changed = new_html != html
+    if changed:
+        html_path.write_text(new_html)
+    return count, changed
+
+
+def main() -> int:
+    dist = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DIST)
+    index = dist / "index.html"
+    if not index.is_file():
+        print(f"refresh-sri-hashes: {index} not found", file=sys.stderr)
+        return 1
+
+    html_files = [index] + sorted(
+        f for f in dist.rglob("*.html") if f != index
+    )
+
+    total_count = 0
+    total_changed = 0
+    for html_path in html_files:
+        count, changed = refresh_file(html_path, dist)
+        total_count += count
+        if changed:
+            total_changed += 1
+            rel = html_path.relative_to(dist)
+            print(f"refresh-sri-hashes: refreshed {count} hashes in {rel}")
+
+    if total_changed == 0:
+        print(
+            f"refresh-sri-hashes: all {total_count} integrity hashes already "
+            f"match across {len(html_files)} file(s)"
+        )
     else:
-        print(f"refresh-sri-hashes: all {count} integrity hashes already match")
+        print(
+            f"refresh-sri-hashes: refreshed {total_count} hashes across "
+            f"{total_changed}/{len(html_files)} file(s)"
+        )
     return 0
 
 

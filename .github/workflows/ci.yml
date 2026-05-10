@@ -288,6 +288,16 @@ jobs:
           INTRADA_API_URL: https://intrada-api.fly.dev
           CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: trunk build --release
+      # Prerender marketing routes (/, /login) so crawlers see real
+      # HTML content. Runs headless Chromium via Playwright against
+      # the just-built dist/, writes to dist/prerendered/.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Install prerender dependencies
+        run: npx playwright install chromium --with-deps
+      - name: Prerender marketing routes
+        run: node scripts/prerender.mjs crates/intrada-web/dist
       - name: Upload dist artifact
         uses: actions/upload-artifact@v7
         with:

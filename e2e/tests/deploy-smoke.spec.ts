@@ -79,3 +79,31 @@ test("smoke: post-modification dist renders without runtime-blocking console err
       blocking.map((e) => `  ${e}`).join("\n"),
   ).toEqual([]);
 });
+
+// Prerendered HTML check — verifies the build-time prerender step
+// produced files that contain real marketing content. In production
+// worker.js serves these for marketing routes; here we load the
+// prerendered file directly to confirm it has the expected content
+// before WASM even loads.
+test("smoke: prerendered homepage contains marketing content", async ({
+  page,
+}) => {
+  const response = await page.goto("/prerendered/index.html");
+  expect(response).not.toBeNull();
+  expect(response!.status()).toBe(200);
+
+  const html = await response!.text();
+  expect(html).toContain("Music practice with intent");
+  expect(html).toContain("<h1");
+});
+
+test("smoke: prerendered login page contains sign-in content", async ({
+  page,
+}) => {
+  const response = await page.goto("/prerendered/login.html");
+  expect(response).not.toBeNull();
+  expect(response!.status()).toBe(200);
+
+  const html = await response!.text();
+  expect(html).toContain("Sign in");
+});

@@ -1,6 +1,11 @@
 // Cloudflare Worker entry. Default behaviour: serve the Trunk-built
-// dist/ via the [assets] binding (configured in wrangler.toml). One
-// route is intercepted before that fallback: `/sentry-tunnel`.
+// dist/ via the [assets] binding (configured in wrangler.toml). Two
+// concerns are handled before that fallback:
+//
+// 1. `/sentry-tunnel` — forwards Sentry envelopes through our origin.
+// 2. Prerendered marketing routes — `/`, `/login` are served from
+//    `dist/prerendered/` so crawlers (and all users) get real HTML on
+//    first fetch. WASM loads on top and takes over interactively.
 //
 // ## Why /sentry-tunnel exists
 //
@@ -50,12 +55,32 @@ const MAX_ENVELOPE_BYTES = 1_000_000;
 // trust on attacker-controlled input.
 const SENTRY_CONTENT_TYPE = "application/x-sentry-envelope";
 
+// Marketing routes prerendered at build time. Map from public path to
+// the asset path inside dist/prerendered/. Adding a new marketing page
+// is a one-line change here + a matching entry in scripts/prerender.mjs.
+const PRERENDERED = {
+  "/": "/prerendered/index.html",
+  "/login": "/prerendered/login.html",
+};
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/sentry-tunnel") {
       return tunnelToSentry(request);
     }
+
+    // Serve prerendered HTML for marketing routes so crawlers see real
+    // content without waiting for WASM. The SPA shell (index.html) is
+    // still the fallback for all app routes via wrangler.toml's
+    // not_found_handling = "single-page-application".
+    const prerendered = PRERENDERED[url.pathname];
+    if (prerendered) {
+      const prerenderUrl = new URL(request.url);
+      prerenderUrl.pathname = prerendered;
+      return env.ASSETS.fetch(new Request(prerenderUrl, request));
+    }
+
     return env.ASSETS.fetch(request);
   },
 };
