@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
             const invoke =
                 window.__TAURI__?.core?.invoke ??
                 window.__TAURI_INTERNALS__?.invoke;
-            if (invoke) invoke(cmd, args ?? {});
+            if (invoke) invoke(cmd, args ?? {}).catch(function(e){ if (typeof console !== 'undefined') console.debug('plugin invoke failed:', cmd, e); });
         } catch(e) {}
     }
     export function haptic_selection() {

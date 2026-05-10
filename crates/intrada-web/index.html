@@ -72,6 +72,17 @@
           // here would drop the event entirely — keep wrapped in try/catch
           // and return the event unchanged on any failure.
           beforeSend: function (event) {
+            // Drop benign errors that can't be fixed in code:
+            // - View transition skipped when app is backgrounded mid-nav
+            // - WASM LinkError from transient cache coherence mismatch
+            try {
+              var msg = (event.message || '');
+              if (event.exception && Array.isArray(event.exception.values)) {
+                msg += ' ' + event.exception.values.map(function(v){ return v.value || ''; }).join(' ');
+              }
+              if (msg.indexOf('View transition was skipped') !== -1) return null;
+              if (msg.indexOf('must be callable') !== -1 && msg.indexOf('LinkError') !== -1) return null;
+            } catch(e) {}
             try {
               var EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
               var redactEmails = function (s) {
