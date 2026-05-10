@@ -228,7 +228,7 @@ test.describe("sessions page", () => {
     await expect(page.getByText("Item 1 of 2")).toBeVisible();
 
     // End early
-    await page.getByRole("button", { name: "End Early" }).click();
+    await page.getByRole("button", { name: "End" }).click();
 
     // Should see summary with "Ended Early" indicator
     await expect(page.getByText("Session Complete")).toBeVisible();

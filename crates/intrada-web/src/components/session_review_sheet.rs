@@ -2,7 +2,9 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, SessionEvent, SetEvent, ViewModel};
 
-use crate::components::{BottomSheet, EditorEntry, EntryListEditor, SetSaveForm};
+use crate::components::{
+    BottomSheet, Button, ButtonSize, ButtonVariant, EditorEntry, EntryListEditor, SetSaveForm,
+};
 use intrada_web::core_bridge::{process_effects, process_effects_with_core};
 use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -51,7 +53,7 @@ pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl In
             on_nav_action=on_start
             nav_action_disabled=setlist_empty
         >
-            <ReviewSheetBody sheet_open=open />
+            <ReviewSheetBody sheet_open=open on_start=on_start setlist_empty=setlist_empty />
         </BottomSheet>
     }
 }
@@ -64,7 +66,11 @@ pub fn SessionReviewSheet(open: Signal<bool>, on_close: Callback<()>) -> impl In
 /// `sheet_open` is forwarded to [`SetSaveForm`] so it can reset its
 /// "Saved" state when the sheet closes.
 #[component]
-fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
+fn ReviewSheetBody(
+    sheet_open: Signal<bool>,
+    on_start: Callback<()>,
+    setlist_empty: Signal<bool>,
+) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
     let is_loading = expect_context::<IsLoading>();
@@ -250,6 +256,21 @@ fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
                     }.into_any(),
                 }
             }}
+
+            // Prominent Start button — duplicates the nav-bar action so
+            // users don't accidentally hit Save as Set when they mean to
+            // start practising.
+            <Show when=move || has_entries.get()>
+                <Button
+                    variant=ButtonVariant::Primary
+                    size=ButtonSize::Hero
+                    full_width=true
+                    disabled=Signal::derive(move || setlist_empty.get())
+                    on_click=Callback::new(move |_| on_start.run(()))
+                >
+                    "Start practising"
+                </Button>
+            </Show>
 
             // Save as Set — gated on a non-empty setlist (matches the
             // core precondition; saving with no entries surfaces an

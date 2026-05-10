@@ -390,7 +390,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                                         })
                                     >
-                                        "End Early"
+                                        "End"
                                     </Button>
                                     {
                                         let entries = active.entries.clone();
