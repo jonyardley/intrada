@@ -299,7 +299,10 @@
     </noscript>
     <!-- Branded loading state shown before WASM mounts. Matches the
          AuthLoadingScreen component so the transition is seamless.
-         Removed by lib.rs setup hook once the Leptos app is ready. -->
+         Removed by main.rs dismiss_splash() once the Leptos app mounts.
+         Colors are hardcoded because CSS tokens aren't loaded yet —
+         keep in sync with input.css: #161926/#0f111a = surface bg,
+         #9180fa = accent, #e8e6f0 = text-primary. -->
     <div id="app-splash" style="
       position: fixed; inset: 0; z-index: 9999;
       display: flex; align-items: center; justify-content: center;

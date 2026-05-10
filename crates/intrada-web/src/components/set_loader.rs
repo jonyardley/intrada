@@ -36,6 +36,7 @@ pub fn SetLoader() -> impl IntoView {
                         <button
                             type="button"
                             class="flex items-center gap-2 w-full text-left"
+                            aria-expanded=move || expanded.get().to_string()
                             on:click=move |_| expanded.set(!expanded.get_untracked())
                         >
                             <span class=move || if expanded.get() {

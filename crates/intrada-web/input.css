@@ -1449,16 +1449,16 @@ nav[aria-label="Mobile navigation"] {
 
 /* No text selection on app chrome — native iOS apps don't allow selecting
    labels, headings, or card text. Opt content areas back in below. */
-body {
+[data-platform="ios"] body {
   -webkit-user-select: none;
   user-select: none;
 }
 
 /* Re-enable selection on actual content where users expect to copy text */
-input,
-textarea,
-[contenteditable],
-.user-selectable {
+[data-platform="ios"] input,
+[data-platform="ios"] textarea,
+[data-platform="ios"] [contenteditable],
+[data-platform="ios"] .user-selectable {
   -webkit-user-select: text;
   user-select: text;
 }
