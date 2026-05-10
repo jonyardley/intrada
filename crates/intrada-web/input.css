@@ -780,18 +780,10 @@ body {
   color: var(--color-text-primary);
 }
 
-.chip-active {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 14px;
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
+.chip.chip-active {
   color: var(--color-accent-text);
   background: color-mix(in srgb, var(--color-accent-text) 12%, transparent);
-  border: 1px solid var(--color-accent-text);
-  cursor: pointer;
+  border-color: var(--color-accent-text);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

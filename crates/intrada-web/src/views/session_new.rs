@@ -22,10 +22,12 @@ pub fn SessionNewView() -> impl IntoView {
 
     let started_building = RwSignal::new(false);
 
-    // Auto-start building on mount if idle, or redirect if active.
+    // Single Effect handles all session_status transitions:
+    // - Idle (first mount): auto-start building
+    // - Idle (after cancel/abandon): navigate back to list
+    // - Active (crash recovery or just started): navigate to active session
     Effect::new({
         let core = core.clone();
-        let navigate = use_navigate();
         move |_| {
             let vm = view_model.get();
             match vm.session_status {
@@ -45,34 +47,17 @@ pub fn SessionNewView() -> impl IntoView {
                     process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                     started_building.set(true);
                 }
+                SessionStatusView::Idle => {
+                    navigate(
+                        "/sessions",
+                        NavigateOptions {
+                            replace: true,
+                            ..Default::default()
+                        },
+                    );
+                }
                 _ => {}
             }
-        }
-    });
-
-    // Navigate on state transitions (building → active, or cancel → idle).
-    Effect::new(move |_| {
-        let vm = view_model.get();
-        match vm.session_status {
-            SessionStatusView::Active if started_building.get_untracked() => {
-                navigate(
-                    "/sessions/active",
-                    NavigateOptions {
-                        replace: true,
-                        ..Default::default()
-                    },
-                );
-            }
-            SessionStatusView::Idle if started_building.get_untracked() => {
-                navigate(
-                    "/sessions",
-                    NavigateOptions {
-                        replace: true,
-                        ..Default::default()
-                    },
-                );
-            }
-            _ => {}
         }
     });
 

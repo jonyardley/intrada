@@ -1344,8 +1344,8 @@ mod tests {
                 target_duration_mins: Some(20),
             }),
         );
-        // No-op when idle, no error surfaced
         assert!(matches!(model.session_status, SessionStatus::Idle));
+        assert!(model.last_error.is_none());
     }
 
     #[test]
