@@ -295,7 +295,9 @@ jobs:
         with:
           node-version: 20
       - name: Install prerender dependencies
-        run: npx playwright install chromium --with-deps
+        run: |
+          npm install playwright serve
+          npx playwright install chromium --with-deps
       - name: Prerender marketing routes
         run: node scripts/prerender.mjs crates/intrada-web/dist
       - name: Upload dist artifact

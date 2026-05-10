@@ -10,8 +10,8 @@
 // Usage:
 //   node scripts/prerender.mjs [DIST_DIR]
 //
-// Defaults to crates/intrada-web/dist. Requires Playwright browsers
-// installed (`npx playwright install chromium`).
+// Defaults to crates/intrada-web/dist. Requires `playwright` and `serve`
+// npm packages plus Playwright browsers (`npx playwright install chromium`).
 
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
