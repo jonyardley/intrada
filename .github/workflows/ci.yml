@@ -72,6 +72,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
@@ -99,6 +100,7 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
@@ -247,6 +249,7 @@ jobs:
   wasm-build:
     name: WASM Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
     steps:
@@ -295,6 +298,7 @@ jobs:
   wasm-test:
     name: WASM Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
     steps:
@@ -316,6 +320,7 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: wasm-build
     steps:
       - uses: actions/checkout@v6
@@ -364,6 +369,7 @@ jobs:
   deploy-smoke:
     name: Deploy Smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: wasm-build
     steps:
       - uses: actions/checkout@v6
@@ -462,6 +468,7 @@ jobs:
     # but don't push.
     name: API Docker Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.api == 'true'
     steps:
@@ -488,7 +495,7 @@ jobs:
   deploy:
     name: Deploy to Cloudflare
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, ios-build]
+    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke, ios-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
