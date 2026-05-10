@@ -55,11 +55,12 @@ pub fn handle_oauth_event(event: OAuthEvent, model: &mut Model) -> Command<Effec
         OAuthEvent::ConsentFinalized { redirect_url } => {
             model.oauth_in_flight = false;
             model.oauth_redirect_url = Some(redirect_url);
+            model.record_success();
             crux_core::render::render()
         }
         OAuthEvent::ConsentFailed(message) => {
             model.oauth_in_flight = false;
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
         OAuthEvent::ResetConsent => {
