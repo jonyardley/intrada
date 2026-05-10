@@ -3,7 +3,7 @@ use libsql::Connection;
 /// Single source of truth for all database migrations.
 ///
 /// Each entry is `(name, sql)` where `sql` must contain exactly ONE SQL statement.
-/// Production uses `run_migrations()` (via libsql_migration tracking).
+/// Production uses `run_migrations()` (idempotent tracking via `libsql_migrations` table).
 /// Tests use `run_migrations_direct()` (raw execution, same SQL).
 const MIGRATIONS: &[(&str, &str)] = &[
     (
@@ -479,43 +479,47 @@ const MIGRATION_RETRY_BACKOFF_MS: &[u64] = &[200, 1_000, 5_000];
 // Transient-error classifier moved to `db::is_transient_db_error` so
 // it's shared with the per-request retry helper in `state::Db`.
 
-/// Run migrations via libsql_migration (production path — tracks applied state).
+/// Run migrations with idempotent tracking (production path).
 ///
 /// Each migration is wrapped in a retry-with-backoff loop for transient
 /// connection errors against Turso (Hrana stream drops, cold-starts,
 /// network blips). Permanent errors (SQL syntax, constraint violations)
 /// fail immediately so we panic loudly on real bugs.
+///
+/// Tracking uses the `libsql_migrations` table (same schema as the
+/// former `libsql_migration` crate for backwards compatibility).
 pub async fn run_migrations(conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS libsql_migrations (
+            id TEXT PRIMARY KEY,
+            status BOOLEAN DEFAULT false,
+            exec_time DATE
+        )",
+        (),
+    )
+    .await?;
+
     for (id, sql) in MIGRATIONS {
-        let result = run_one_migration_with_retry(conn, id, sql).await?;
-        match result {
-            libsql_migration::util::MigrationResult::Executed => {
-                tracing::info!("Migration {id} applied");
-            }
-            libsql_migration::util::MigrationResult::AlreadyExecuted => {
-                tracing::debug!("Migration {id} already applied");
-            }
+        let applied = run_one_migration_with_retry(conn, id, sql).await?;
+        if applied {
+            tracing::info!("Migration {id} applied");
+        } else {
+            tracing::debug!("Migration {id} already applied");
         }
     }
     Ok(())
 }
 
-/// Single migration with retry-on-transient. Caller iterates `MIGRATIONS`.
-///
-/// `libsql_migration::content::migrate` is itself idempotent — it
-/// records applied state in `_migrations` and short-circuits on
-/// `AlreadyExecuted` — so retrying a partially-applied migration is
-/// safe: a successful apply on attempt N just observes `AlreadyExecuted`
-/// on attempt N+1.
+/// Returns `true` if the migration was executed, `false` if already applied.
 async fn run_one_migration_with_retry(
     conn: &Connection,
     id: &str,
     sql: &str,
-) -> Result<libsql_migration::util::MigrationResult, Box<dyn std::error::Error>> {
+) -> Result<bool, Box<dyn std::error::Error>> {
     let mut attempt = 0;
     loop {
-        match libsql_migration::content::migrate(conn, id.to_string(), sql.to_string()).await {
-            Ok(result) => return Ok(result),
+        match execute_one_migration(conn, id, sql).await {
+            Ok(applied) => return Ok(applied),
             Err(e) => {
                 let err_str = e.to_string();
                 if attempt < MIGRATION_RETRY_BACKOFF_MS.len()
@@ -538,6 +542,39 @@ async fn run_one_migration_with_retry(
     }
 }
 
+async fn execute_one_migration(
+    conn: &Connection,
+    id: &str,
+    sql: &str,
+) -> Result<bool, libsql::Error> {
+    let stmt = conn
+        .prepare("SELECT status FROM libsql_migrations WHERE id = ?")
+        .await?;
+    let mut rows = stmt.query([id]).await?;
+
+    if let Some(row) = rows.next().await? {
+        if let libsql::Value::Integer(1) = row.get_value(0)? {
+            return Ok(false);
+        }
+    } else {
+        conn.execute(
+            "INSERT INTO libsql_migrations (id) VALUES (?) ON CONFLICT(id) DO NOTHING",
+            libsql::params![id],
+        )
+        .await?;
+    }
+
+    conn.execute(sql, ()).await?;
+
+    conn.execute(
+        "UPDATE libsql_migrations SET status = true, exec_time = CURRENT_TIMESTAMP WHERE id = ?",
+        libsql::params![id],
+    )
+    .await?;
+
+    Ok(true)
+}
+
 /// Run migrations via direct SQL execution (test path — no tracking overhead).
 ///
 /// Uses the same `MIGRATIONS` source as `run_migrations()` to guarantee
@@ -555,9 +592,9 @@ mod tests {
 
     /// Guard: every migration must contain exactly one SQL statement.
     ///
-    /// libsql_migration silently ignores all but the first statement in a
-    /// multi-statement migration. This test catches that mistake at compile
-    /// time rather than discovering it in production.
+    /// execute_one_migration runs a single `conn.execute(sql)` — if multiple
+    /// statements are bundled, only the first executes. This test catches
+    /// that mistake before it reaches production.
     #[test]
     fn each_migration_contains_single_statement() {
         for (name, sql) in MIGRATIONS {
@@ -568,7 +605,7 @@ mod tests {
             assert!(
                 !trimmed.contains(';'),
                 "Migration '{name}' contains multiple SQL statements. \
-                 libsql_migration only executes the first statement. \
+                 conn.execute() only runs the first statement. \
                  Split this into separate migrations."
             );
         }

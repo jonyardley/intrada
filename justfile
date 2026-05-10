@@ -17,7 +17,7 @@ dev:
     echo "Starting API server..."
     cargo run -p intrada-api &
     echo "Starting web dev server (trunk serve — watches for changes)..."
-    trunk serve --config crates/intrada-web/Trunk.toml &
+    trunk serve --config crates/intrada-web/Trunk.toml --filehash false &
     wait
 
 # Start only the API server
@@ -34,7 +34,15 @@ dev-web:
     set -e
     pkill -f "trunk serve" 2>/dev/null || true
     sleep 0.3
-    trunk serve --config crates/intrada-web/Trunk.toml
+    trunk serve --config crates/intrada-web/Trunk.toml --filehash false
+
+# Type-check only (no codegen) — fastest feedback for "does it compile?"
+check-fast:
+    cargo check --workspace
+
+# Type-check just the web WASM target
+check-web:
+    cargo check -p intrada-web --target wasm32-unknown-unknown
 
 # Run all tests
 test:
@@ -48,11 +56,14 @@ lint:
 fmt:
     cargo fmt --all
 
-# Check everything (test + lint + format check)
+# Check everything (fmt → clippy → test, cheapest first)
 check:
-    cargo test --workspace
-    cargo clippy --workspace -- -D warnings
     cargo fmt --all -- --check
+    cargo clippy --workspace -- -D warnings
+    cargo test --workspace
+
+# Alias for check — catches errors before the 3-min CI roundtrip
+pre-push: check
 
 # Seed development data (API must be running)
 seed:
@@ -103,7 +114,16 @@ ios-dev:
     pkill -f "trunk serve" 2>/dev/null || true
     sleep 0.3
     echo "Starting trunk dev server..."
-    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 --filehash false &
+    TRUNK_PID=$!
+    echo "  Waiting for trunk to be ready on :8080..."
+    until curl -sf http://localhost:8080/ > /dev/null 2>&1; do
+        if ! kill -0 $TRUNK_PID 2>/dev/null; then
+            echo "❌ trunk exited before becoming ready"; exit 1
+        fi
+        sleep 2
+    done
+    echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (simulator)..."
     SIMS=()
     while IFS= read -r line; do SIMS+=("$line"); done < <(
@@ -142,7 +162,7 @@ ios-dev:
     # bootstatus -b boots the device if shutdown then waits for full boot.
     # Idempotent — no-op if already booted. Avoids the install-before-boot race.
     xcrun simctl bootstatus "$SIM_UDID" -b
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev "$SIM"
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --no-dev-server-wait "$SIM"
     wait
 
 # Device must be connected via USB and trusted. Requires Wi-Fi for the
@@ -195,9 +215,25 @@ ios-dev-device:
     # device) can reach Trunk over Wi-Fi. localhost won't work — the device's
     # localhost is itself, not the Mac. build.rs detects the env change and
     # rebuilds. The Trunk proxy then forwards /api/* to localhost:3001.
-    INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 --filehash false &
+    TRUNK_PID=$!
+    echo "  Waiting for trunk to be ready on :8080..."
+    until curl -sf "http://$LAN_IP:8080/" > /dev/null 2>&1; do
+        if ! kill -0 $TRUNK_PID 2>/dev/null; then
+            echo "❌ trunk exited before becoming ready"; exit 1
+        fi
+        sleep 2
+    done
+    echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (device)..."
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --host "$LAN_IP" "$DEVICE"
+    # --no-dev-server-wait: we already verified trunk above, skip Tauri's
+    # own 180 s poll (which also mis-resolves the port to :80).
+    # --config overrides devUrl with the LAN IP so the device WebView loads
+    # the correct address (localhost is unreachable from the physical device).
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios dev \
+        --no-dev-server-wait \
+        --config "{\"build\":{\"devUrl\":\"http://$LAN_IP:8080\"}}" \
+        "$DEVICE"
     wait
 
 # Build Tauri iOS app for physical device (Xcode sideload — no TestFlight).
