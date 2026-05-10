@@ -135,6 +135,8 @@ fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
             .unwrap_or_default()
     });
 
+    let core_duration = core.clone();
+
     // Local intention signal seeded from VM each open.
     let session_intention_value = RwSignal::new(String::new());
     Effect::new(move |_| {
@@ -148,6 +150,16 @@ fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
             session_intention_value.set(current);
         }
     });
+
+    let current_target = Signal::derive(move || {
+        view_model
+            .get()
+            .building_setlist
+            .as_ref()
+            .and_then(|s| s.target_duration_mins)
+    });
+
+    let duration_presets: Vec<Option<u32>> = vec![None, Some(10), Some(15), Some(20), Some(30)];
 
     view! {
         <div class="flex flex-col gap-5 pb-2">
@@ -168,6 +180,41 @@ fn ReviewSheetBody(sheet_open: Signal<bool>) -> impl IntoView {
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                     }
                 />
+            </div>
+
+            <div>
+                <label class="form-label">"Session target"</label>
+                <div class="flex gap-2 flex-wrap">
+                    {duration_presets.into_iter().map(|preset| {
+                        let core_d = core_duration.clone();
+                        let label = match preset {
+                            None => "No limit".to_string(),
+                            Some(m) => format!("{m} min"),
+                        };
+                        view! {
+                            <button
+                                type="button"
+                                class=move || {
+                                    if current_target.get() == preset {
+                                        "chip chip-active"
+                                    } else {
+                                        "chip"
+                                    }
+                                }
+                                on:click=move |_| {
+                                    let event = Event::Session(SessionEvent::SetTargetDuration {
+                                        target_duration_mins: preset,
+                                    });
+                                    let core_ref = core_d.borrow();
+                                    let effects = core_ref.process_event(event);
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                }
+                            >
+                                {label}
+                            </button>
+                        }
+                    }).collect::<Vec<_>>()}
+                </div>
             </div>
 
             {move || {

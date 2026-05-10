@@ -9,7 +9,7 @@ use intrada_web::core_bridge::process_effects;
 use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-use crate::components::{BackLink, Button, ButtonVariant, TextField};
+use crate::components::{BackLink, Button, ButtonVariant, PageHeading, TextField};
 
 const CONFIRM_PHRASE: &str = "delete my account";
 
@@ -83,7 +83,7 @@ pub fn AccountDeleteView() -> impl IntoView {
         <div class="max-w-md mx-auto py-card-comfortable space-y-card-comfortable pb-[env(safe-area-inset-bottom)]">
             <BackLink label="Back to Settings" href="/settings".to_string() />
 
-            <h1 class="page-title">"Delete your account?"</h1>
+            <PageHeading text="Delete your account?" />
 
             <p class="text-sm text-secondary">
                 "This is permanent. All of the following will be erased:"

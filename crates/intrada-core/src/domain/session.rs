@@ -181,6 +181,12 @@ pub enum SessionEvent {
     StartSession {
         now: DateTime<Utc>,
     },
+    /// Set or clear the session-level time target during building phase.
+    /// `None` removes the target; `Some(mins)` sets it (validated against
+    /// MIN/MAX_SESSION_TARGET_MINS).
+    SetTargetDuration {
+        target_duration_mins: Option<u32>,
+    },
     CancelBuilding,
 
     // === Active Phase ===
@@ -436,6 +442,31 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             building.session_intention = intention;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetTargetDuration {
+            target_duration_mins,
+        } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            if let Some(mins) = target_duration_mins {
+                if !(validation::MIN_SESSION_TARGET_MINS..=validation::MAX_SESSION_TARGET_MINS)
+                    .contains(&mins)
+                {
+                    model.last_error = Some(format!(
+                        "Session target must be between {} and {} minutes",
+                        validation::MIN_SESSION_TARGET_MINS,
+                        validation::MAX_SESSION_TARGET_MINS
+                    ));
+                    return crux_core::render::render();
+                }
+            }
+
+            building.target_duration_mins = target_duration_mins;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -1240,6 +1271,81 @@ mod tests {
         } else {
             panic!("Expected Building state");
         }
+    }
+
+    #[test]
+    fn test_set_target_duration_during_building() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetTargetDuration {
+                target_duration_mins: Some(20),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.target_duration_mins, Some(20));
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_target_duration_clear() {
+        let mut model = model_with_library();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartBuildingWithTarget {
+                target_duration_mins: 15,
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetTargetDuration {
+                target_duration_mins: None,
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.target_duration_mins, None);
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_target_duration_out_of_range() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetTargetDuration {
+                target_duration_mins: Some(999),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.target_duration_mins, None);
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_target_duration_when_not_building() {
+        let mut model = model_with_library();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetTargetDuration {
+                target_duration_mins: Some(20),
+            }),
+        );
+        assert!(matches!(model.session_status, SessionStatus::Idle));
+        assert!(model.last_error.is_none());
     }
 
     #[test]

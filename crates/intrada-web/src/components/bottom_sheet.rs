@@ -45,6 +45,11 @@ pub fn BottomSheet(
     /// Reactive disabled state for the trailing action.
     #[prop(optional, into)]
     nav_action_disabled: Option<Signal<bool>>,
+    /// When true, the sheet sizes to its content (up to 50vh) instead of
+    /// the full-height large detent. Use for short forms and feedback
+    /// popovers that shouldn't dominate the screen.
+    #[prop(optional)]
+    compact: bool,
     children: ChildrenFn,
 ) -> impl IntoView {
     // Stored so it can be cloned out of the Portal's Fn children closure
@@ -233,12 +238,11 @@ pub fn BottomSheet(
         }
     };
 
-    let sheet_class = move || {
-        if open.get() {
-            "bottom-sheet bottom-sheet--open"
-        } else {
-            "bottom-sheet"
-        }
+    let sheet_class = move || match (open.get(), compact) {
+        (true, true) => "bottom-sheet bottom-sheet--open bottom-sheet--compact",
+        (true, false) => "bottom-sheet bottom-sheet--open",
+        (false, true) => "bottom-sheet bottom-sheet--compact",
+        (false, false) => "bottom-sheet",
     };
 
     // While dragging, transform follows the finger (no transition lag).

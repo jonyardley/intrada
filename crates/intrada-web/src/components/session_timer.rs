@@ -137,7 +137,7 @@ pub fn SessionTimer() -> impl IntoView {
         // space-y-6 between major zones — hero, optional rep card,
         // primary CTA, sub-actions. The wider gap separates concerns
         // visually so the user can read the screen at a glance.
-        <div class="space-y-6">
+        <div class="space-y-6 pb-28">
             {move || {
                 let vm = view_model.get();
                 match vm.active_session {
@@ -205,7 +205,7 @@ pub fn SessionTimer() -> impl IntoView {
                                 <p class="text-xs text-muted uppercase tracking-wider">
                                     {format!("Item {} of {}", position + 1, total)}
                                 </p>
-                                <h2 class="text-2xl font-bold text-primary font-heading">{current_title}</h2>
+                                <h2 class="text-3xl sm:text-4xl font-bold text-primary font-heading">{current_title}</h2>
                                 // Entry-level intention — fades with focus mode
                                 {current_entry_intention.map(|intention| view! {
                                     <div class=entry_intention_class>
@@ -230,7 +230,7 @@ pub fn SessionTimer() -> impl IntoView {
                                         </div>
                                     }.into_any(),
                                     None => view! {
-                                        <p class="mt-4 text-5xl sm:text-6xl font-light tracking-tight text-primary tabular-nums">
+                                        <p class="mt-4 text-6xl sm:text-7xl font-light tracking-tight text-primary tabular-nums">
                                             {move || {
                                                 let secs = elapsed_secs.get();
                                                 format!("{:02}:{:02}", secs / 60, secs % 60)
@@ -263,9 +263,9 @@ pub fn SessionTimer() -> impl IntoView {
                                 // warning in the iOS palette and didn't
                                 // fit a positive completion moment.
                                 let count_class = if reached {
-                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-accent-text"
+                                    "text-5xl sm:text-6xl font-light tracking-tight tabular-nums text-accent-text"
                                 } else {
-                                    "text-4xl sm:text-5xl font-light tracking-tight tabular-nums text-primary"
+                                    "text-5xl sm:text-6xl font-light tracking-tight tabular-nums text-primary"
                                 };
                                 let bar_fill_class = if reached {
                                     "h-full rounded-full bg-accent motion-safe:transition-all motion-safe:duration-300"
@@ -274,7 +274,7 @@ pub fn SessionTimer() -> impl IntoView {
                                 };
 
                                 view! {
-                                    <div class="rounded-xl bg-surface-secondary p-4 space-y-3">
+                                    <div class="rounded-xl bg-surface-secondary px-6 py-4 space-y-3">
                                         // Header row — label left, X close right
                                         <div class="flex items-center justify-between -mt-1 -mr-1">
                                             <span class="section-label" style="margin-bottom:0">"Consecutive Reps"</span>
@@ -374,68 +374,12 @@ pub fn SessionTimer() -> impl IntoView {
                                 None
                             }}
 
-                            // Controls — primary action (Next / Finish) is
-                            // a full-width hero CTA matching the Pencil
-                            // reference. Tap opens the reflection sheet,
-                            // which captures self-rating + tempo + notes
-                            // before dispatching NextItem / FinishSession.
-                            // Skip + End Early stay as secondary /
-                            // destructive sized buttons in a row beneath.
-                            <div class="space-y-3">
-                                {
-                                    let entries = active.entries.clone();
-                                    let next_title_for_sheet = active.next_item_title.clone();
-                                    let on_advance_tap = move || {
-                                        // Snapshot the just-completed entry so the
-                                        // reflection sheet can pre-populate (and
-                                        // dispatch Update* events against the right
-                                        // entry id even after Next/Finish lands).
-                                        //
-                                        // Order: set `target` BEFORE flipping `open`.
-                                        // The sheet's seed effect runs on target
-                                        // change — flipping open first would let it
-                                        // see the previous item's target on first
-                                        // render.
-                                        if let Some(entry) = entries.get(position) {
-                                            reflection_target.set(Some(ItemReflectionTarget {
-                                                entry_id: entry.id.clone(),
-                                                initial_score: entry.score,
-                                                initial_tempo: entry.achieved_tempo,
-                                                initial_notes: entry.notes.clone(),
-                                            }));
-                                        }
-                                        reflection_next_title.set(next_title_for_sheet.clone());
-                                        // Type of the next item — drives the badge in
-                                        // the sheet header. None on the last item.
-                                        reflection_next_type.set(
-                                            entries.get(position + 1).map(|e| e.item_type.clone())
-                                        );
-                                        reflection_position_label.set(
-                                            format!("Item {} of {}", position + 1, total)
-                                        );
-                                        reflection_open.set(true);
-                                    };
-                                    let label = if is_last { "Finish Session" } else { "Next Item" };
-                                    view! {
-                                        <Button
-                                            variant=ButtonVariant::Primary
-                                            size=ButtonSize::Hero
-                                            full_width=true
-                                            on_click=Callback::new(move |_| on_advance_tap())
-                                        >
-                                            {label}
-                                        </Button>
-                                    }.into_any()
-                                }
-                                // Sub-actions — proper Button components
-                                // (44px standard size). They're clearly
-                                // subordinate to the hero CTA above by
-                                // virtue of the hero's heavier presence
-                                // (52px / 17px / drop shadow), not by
-                                // shrinking these to look like text. End
-                                // Early on the leading edge per iOS
-                                // convention.
-                                <div class="flex items-center justify-center gap-3">
+                            // Controls — fixed bottom toolbar so buttons
+                            // never scroll off screen. Primary CTA
+                            // (Next/Finish) fills the width; Skip + End
+                            // Early sit as compact secondary actions.
+                            <div class="session-action-bar" role="toolbar" aria-label="Session controls">
+                                <div class="flex items-center gap-3 w-full">
                                     <Button
                                         variant=ButtonVariant::DangerOutline
                                         on_click=Callback::new(move |_| {
@@ -444,14 +388,43 @@ pub fn SessionTimer() -> impl IntoView {
                                             let core_ref = core_end.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                                            // elapsed_secs self-corrects via the
-                                            // wall-clock derive when the active
-                                            // session ends / current_item_started_at
-                                            // changes — no explicit reset needed.
                                         })
                                     >
                                         "End Early"
                                     </Button>
+                                    {
+                                        let entries = active.entries.clone();
+                                        let next_title_for_sheet = active.next_item_title.clone();
+                                        let on_advance_tap = move || {
+                                            if let Some(entry) = entries.get(position) {
+                                                reflection_target.set(Some(ItemReflectionTarget {
+                                                    entry_id: entry.id.clone(),
+                                                    initial_score: entry.score,
+                                                    initial_tempo: entry.achieved_tempo,
+                                                    initial_notes: entry.notes.clone(),
+                                                }));
+                                            }
+                                            reflection_next_title.set(next_title_for_sheet.clone());
+                                            reflection_next_type.set(
+                                                entries.get(position + 1).map(|e| e.item_type.clone())
+                                            );
+                                            reflection_position_label.set(
+                                                format!("Item {} of {}", position + 1, total)
+                                            );
+                                            reflection_open.set(true);
+                                        };
+                                        let label = if is_last { "Finish Session" } else { "Next Item" };
+                                        view! {
+                                            <Button
+                                                variant=ButtonVariant::Primary
+                                                size=ButtonSize::Hero
+                                                full_width=true
+                                                on_click=Callback::new(move |_| on_advance_tap())
+                                            >
+                                                {label}
+                                            </Button>
+                                        }.into_any()
+                                    }
                                     <Button
                                         variant=ButtonVariant::Secondary
                                         on_click=Callback::new(move |_| {

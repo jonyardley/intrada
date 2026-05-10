@@ -184,7 +184,7 @@ pub fn ItemReflectionSheet(
     };
 
     view! {
-        <BottomSheet open=open on_close=on_close>
+        <BottomSheet open=open on_close=on_close compact=true>
             <div class="space-y-5">
                 <p class="text-xs uppercase tracking-wider text-muted text-center">
                     {move || position_label.get()}

@@ -10,7 +10,7 @@ use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{
-    Button, ButtonVariant, GroupedList, GroupedListRow, Icon, IconName, TextField,
+    Button, ButtonVariant, GroupedList, GroupedListRow, Icon, IconName, PageHeading, TextField,
 };
 
 /// Settings route — account info, practice defaults, sign-out, and the
@@ -120,7 +120,7 @@ pub fn SettingsView() -> impl IntoView {
 
     view! {
         <div class="max-w-md mx-auto py-card-comfortable space-y-section pb-[env(safe-area-inset-bottom)]">
-            <h1 class="page-title">"Settings"</h1>
+            <PageHeading text="Settings" />
 
             // Account header
             <div class="flex items-center gap-card">

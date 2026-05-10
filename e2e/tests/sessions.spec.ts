@@ -33,13 +33,7 @@ test.describe("sessions page", () => {
     // shares the same accessible name.
     await page.getByLabel("New Session").click();
 
-    // Should see the preset selection page
-    await expect(
-      page.getByRole("heading", { name: "New Session" })
-    ).toBeVisible();
-
-    // Click "Custom Session" to enter the setlist builder
-    await page.getByRole("button", { name: "Custom Session" }).click();
+    // Auto-starts building — should land on the setlist builder directly
     await expect(page.getByPlaceholder("Search library...")).toBeVisible();
 
     // Add "Clair de Lune" — tap the library row toggles selection
@@ -77,9 +71,6 @@ test.describe("sessions page", () => {
   test("multi-item session with skip", async ({ page }) => {
     await page.goto("/sessions/new");
 
-    // Click "Custom Session" to enter the setlist builder
-    await page.getByRole("button", { name: "Custom Session" }).click();
-
     // Add both items to the setlist
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
@@ -116,10 +107,7 @@ test.describe("sessions page", () => {
   }) => {
     await page.goto("/sessions/new");
 
-    // Click "Custom Session" to enter the setlist builder
-    await page.getByRole("button", { name: "Custom Session" }).click();
-
-    // Should be on the builder
+    // Should be on the builder (auto-starts building)
     await expect(
       page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
@@ -142,7 +130,6 @@ test.describe("sessions page", () => {
     page,
   }) => {
     await page.goto("/sessions/new");
-    await page.getByRole("button", { name: "Custom Session" }).click();
     await expect(
       page.getByRole("heading", { name: "New Session" })
     ).toBeVisible();
@@ -187,9 +174,6 @@ test.describe("sessions page", () => {
   test("multi-item session with Next Item navigation", async ({ page }) => {
     await page.goto("/sessions/new");
 
-    // Click "Custom Session" to enter the setlist builder
-    await page.getByRole("button", { name: "Custom Session" }).click();
-
     // Add both items
     await page.getByText("Clair de Lune").click();
     await page.getByText("Hanon No. 1").click();
@@ -230,9 +214,6 @@ test.describe("sessions page", () => {
 
   test("end session early", async ({ page }) => {
     await page.goto("/sessions/new");
-
-    // Click "Custom Session" to enter the setlist builder
-    await page.getByRole("button", { name: "Custom Session" }).click();
 
     // Add both items
     await page.getByText("Clair de Lune").click();

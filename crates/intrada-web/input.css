@@ -759,6 +759,59 @@ body {
   min-width: 0;
 }
 
+/* ── Session action bar (fixed bottom toolbar for active session) ── */
+
+.session-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 4rem;
+  z-index: 51;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)) 1rem;
+  background: color-mix(in oklab, var(--color-surface-primary) 88%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--color-border-default);
+}
+@media (min-width: 640px) {
+  .session-action-bar {
+    bottom: 0;
+  }
+}
+.focus-mode-container .session-action-bar {
+  bottom: 0;
+}
+
+/* ── Chip (selectable pill) ────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-secondary);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--color-text-primary);
+}
+
+.chip.chip-active {
+  color: var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent-text) 12%, transparent);
+  border-color: var(--color-accent-text);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Typography Utilities
    ═══════════════════════════════════════════════════════════════════════
@@ -1033,14 +1086,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 14rem;   /* 224px — fits mobile with padding */
-  height: 14rem;
+  width: 16rem;   /* 256px — generous on mobile */
+  height: 16rem;
   margin-left: auto;
   margin-right: auto;
 
   @media (min-width: 640px) {
-    width: 18rem;  /* 288px — larger on desktop */
-    height: 18rem;
+    width: 20rem;  /* 320px — larger on desktop */
+    height: 20rem;
   }
 }
 
@@ -1394,14 +1447,20 @@ nav[aria-label="Mobile navigation"] {
   padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
 }
 
-/* No text selection on navigation chrome — preserve it on readable content */
-[data-platform="ios"] nav,
-[data-platform="ios"] header,
-[data-platform="ios"] footer,
-[data-platform="ios"] button,
-[data-platform="ios"] a {
+/* No text selection on app chrome — native iOS apps don't allow selecting
+   labels, headings, or card text. Opt content areas back in below. */
+[data-platform="ios"] body {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Re-enable selection on actual content where users expect to copy text */
+[data-platform="ios"] input,
+[data-platform="ios"] textarea,
+[data-platform="ios"] [contenteditable],
+[data-platform="ios"] .user-selectable {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Instant tap response — removes the 300ms delay on tappable elements */
@@ -1626,6 +1685,11 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
 
 .bottom-sheet--open {
   transform: translateY(0);
+}
+
+.bottom-sheet--compact {
+  height: auto;
+  max-height: 50vh;
 }
 
 /* Wraps the visible handle pill in a wider/taller hit area (1.5rem tall) so
