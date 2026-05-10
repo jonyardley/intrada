@@ -4,8 +4,53 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Intrada | Music practice with intent.</title>
+    <meta name="description" content="Plan, practise, and track your music sessions. Build setlists, run timed practice with scoring, and see your progress over time." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://myintrada.com/" />
+    <meta property="og:title" content="Intrada | Music practice with intent." />
+    <meta property="og:description" content="Plan, practise, and track your music sessions. Build setlists, run timed practice with scoring, and see your progress over time." />
+    <meta property="og:image" content="https://myintrada.com/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Intrada" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Intrada | Music practice with intent." />
+    <meta name="twitter:description" content="Plan, practise, and track your music sessions. Build setlists, run timed practice with scoring, and see your progress over time." />
+    <meta name="twitter:image" content="https://myintrada.com/og-image.svg" />
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Intrada",
+      "url": "https://myintrada.com",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Web, iOS",
+      "description": "Plan, practise, and track your music sessions. Build setlists, run timed practice with scoring, and see your progress over time.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Intrada",
+        "url": "https://myintrada.com"
+      }
+    }
+    </script>
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://myintrada.com/" />
     <link data-trunk rel="copy-file" href="favicon.svg" />
+    <link data-trunk rel="copy-file" href="static/robots.txt" />
+    <link data-trunk rel="copy-file" href="static/sitemap.xml" />
+    <link data-trunk rel="copy-file" href="static/og-image.svg" />
 
     <!-- Release tag for Sentry. Defaults to null (PR builds, local dev) and
          is replaced by CI's deploy step with `sed` before publishing to
@@ -303,9 +348,13 @@
   </head>
   <body>
     <noscript>
-      <div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif;">
-        <h1>JavaScript Required</h1>
+      <div style="padding: 2rem; max-width: 600px; margin: 0 auto; font-family: system-ui, sans-serif; color: #e8e6f0;">
+        <h1>Intrada — Music practice with intent</h1>
+        <p>Intrada is a practice companion for musicians. Build setlists from your library of pieces and exercises, run timed practice sessions with per-item scoring, and track your progress with analytics over time. Available on web and iOS.</p>
         <p>Intrada requires JavaScript to run. Please enable JavaScript in your browser settings and reload the page.</p>
+        <nav>
+          <a href="/login" style="color: #9180fa;">Sign in</a>
+        </nav>
       </div>
     </noscript>
     <!-- Branded loading state shown before WASM mounts. Matches the
