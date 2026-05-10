@@ -195,3 +195,41 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         })
         .build()
 }
+
+#[cfg(test)]
+mod tests {
+    //! Round-trip the literal payloads sent by the JS bridge in
+    //! `crates/intrada-web/src/background_audio.rs`. If anyone renames a
+    //! field on either side without updating the other, these fail at
+    //! `cargo test` instead of at runtime on a physical device. See
+    //! intrada#641.
+    //!
+    //! These don't exercise Tauri's outer `{ args: { ... } }` wrapping
+    //! — the macro handles that — only the inner struct shape that
+    //! Swift's `parseArgs(...)` mirror also has to accept.
+    use super::*;
+
+    #[test]
+    fn begin_session_args_match_js_bridge_payload() {
+        let payload = serde_json::json!({
+            "title": "Chromatic Scale",
+            "started_at": "2026-05-10T10:20:09.914+00:00",
+        });
+        let parsed: BeginSessionArgs = serde_json::from_value(payload).unwrap();
+        assert_eq!(parsed.title, "Chromatic Scale");
+        assert_eq!(parsed.started_at, "2026-05-10T10:20:09.914+00:00");
+    }
+
+    #[test]
+    fn now_playing_args_match_js_bridge_payload() {
+        let payload = serde_json::json!({
+            "title": "Chromatic Scale",
+            "position_label": "Item 2 of 5",
+            "started_at": "2026-05-10T10:25:30+00:00",
+        });
+        let parsed: NowPlayingArgs = serde_json::from_value(payload).unwrap();
+        assert_eq!(parsed.title, "Chromatic Scale");
+        assert_eq!(parsed.position_label, "Item 2 of 5");
+        assert_eq!(parsed.started_at, "2026-05-10T10:25:30+00:00");
+    }
+}
