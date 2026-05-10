@@ -231,15 +231,26 @@ jobs:
       - name: Add Live Activity widget target
         working-directory: crates/intrada-mobile
         run: ruby scripts/add-live-activity-target.rb
+      - name: Disable code signing in Xcode project (CI)
+        working-directory: crates/intrada-mobile/src-tauri/gen/apple
+        run: |
+          ruby -ryaml -e '
+            proj = YAML.load_file("project.yml")
+            (proj["targets"] || {}).each do |_, t|
+              s = t["settings"] ||= {}
+              base = s["base"] ||= {}
+              base["CODE_SIGN_IDENTITY"] = ""
+              base["CODE_SIGNING_REQUIRED"] = "NO"
+              base["CODE_SIGNING_ALLOWED"] = "NO"
+            end
+            File.write("project.yml", proj.to_yaml)
+          '
+          xcodegen generate --no-env --spec project.yml
       - name: Build iOS app (simulator, unsigned)
         working-directory: crates/intrada-mobile/src-tauri
         env:
           GIT_SHA: ${{ github.sha }}
-        run: |
-          cargo tauri ios build --ci --target aarch64-sim -- \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+        run: cargo tauri ios build --ci --target aarch64-sim
       - name: Locate built .app bundle
         id: find-app
         run: |
