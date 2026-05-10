@@ -18,3 +18,9 @@ serde_json = "1"
 ulid = "1"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.dev]
+debug = "line-tables-only"

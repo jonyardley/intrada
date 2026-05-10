@@ -104,6 +104,15 @@ ios-dev:
     sleep 0.3
     echo "Starting trunk dev server..."
     trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    TRUNK_PID=$!
+    echo "  Waiting for trunk to be ready on :8080..."
+    until curl -sf http://localhost:8080/ > /dev/null 2>&1; do
+        if ! kill -0 $TRUNK_PID 2>/dev/null; then
+            echo "❌ trunk exited before becoming ready"; exit 1
+        fi
+        sleep 2
+    done
+    echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (simulator)..."
     SIMS=()
     while IFS= read -r line; do SIMS+=("$line"); done < <(
@@ -196,6 +205,15 @@ ios-dev-device:
     # localhost is itself, not the Mac. build.rs detects the env change and
     # rebuilds. The Trunk proxy then forwards /api/* to localhost:3001.
     INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    TRUNK_PID=$!
+    echo "  Waiting for trunk to be ready on :8080..."
+    until curl -sf "http://$LAN_IP:8080/" > /dev/null 2>&1; do
+        if ! kill -0 $TRUNK_PID 2>/dev/null; then
+            echo "❌ trunk exited before becoming ready"; exit 1
+        fi
+        sleep 2
+    done
+    echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (device)..."
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev --host "$LAN_IP" "$DEVICE"
     wait

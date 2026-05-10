@@ -16,9 +16,9 @@ path = "src/main.rs"
 intrada-core = { path = "../intrada-core" }
 
 axum = { version = "0.8", features = ["multipart"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tower-http = { version = "0.6", features = ["cors", "limit", "trace"] }
-libsql = { version = "0.9", default-features = false, features = ["remote", "core"] }
+libsql = { version = "0.9", default-features = false, features = ["remote"] }
 libsql_migration = { version = "0.2", features = ["content"] }
 
 serde = { workspace = true }
@@ -51,6 +51,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sentry = { version = "0.48", default-features = false, features = ["backtrace", "contexts", "panic", "tracing", "tower-axum-matched-path", "reqwest", "rustls"] }
 
 [dev-dependencies]
+libsql = { version = "0.9", default-features = false, features = ["core"] }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 rsa = "0.9"
