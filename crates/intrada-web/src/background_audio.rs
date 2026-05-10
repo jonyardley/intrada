@@ -20,10 +20,10 @@ use wasm_bindgen::prelude::*;
         } catch(e) {}
     }
     export function begin_session(title, started_at) {
-        bg_audio_invoke('plugin:background-audio|begin_session', { title, started_at });
+        bg_audio_invoke('plugin:background-audio|begin_session', { args: { title, started_at } });
     }
     export function set_now_playing(title, position_label, started_at) {
-        bg_audio_invoke('plugin:background-audio|set_now_playing', { title, position_label, started_at });
+        bg_audio_invoke('plugin:background-audio|set_now_playing', { args: { title, position_label, started_at } });
     }
     export function end_session() {
         bg_audio_invoke('plugin:background-audio|end_session');
