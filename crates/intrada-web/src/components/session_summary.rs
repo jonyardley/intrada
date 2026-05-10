@@ -69,7 +69,7 @@ pub fn SessionSummary() -> impl IntoView {
                             // Hero header — flat, no Card chrome (matches the
                             // builder / review-sheet vocabulary). page-title
                             // for the celebratory beat, subtitle for context.
-                            <div class="text-center space-y-2">
+                            <div class="text-center space-y-2 pt-6 sm:pt-10">
                                 <h2 class="page-title">"Session Complete"</h2>
                                 <p class="text-sm text-secondary">
                                     "Great work! Review your session below."

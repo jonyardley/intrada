@@ -1681,6 +1681,11 @@ html:not([data-platform="ios"]) .pull-to-refresh-indicator {
   transform: translateY(0);
 }
 
+.bottom-sheet--compact {
+  height: auto;
+  max-height: 50vh;
+}
+
 /* Wraps the visible handle pill in a wider/taller hit area (1.5rem tall) so
    the swipe-to-dismiss gesture is grabbable without precise targeting.
    Touch listeners attach to this wrapper, not the whole sheet, so the body
