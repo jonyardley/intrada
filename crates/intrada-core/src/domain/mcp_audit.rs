@@ -47,11 +47,12 @@ pub fn handle_mcp_audit_event(event: McpAuditEvent, model: &mut Model) -> Comman
             model.mcp_audit = entries;
             model.mcp_audit_loaded = true;
             model.mcp_audit_loading = false;
+            model.record_success();
             crux_core::render::render()
         }
         McpAuditEvent::LoadAuditFailed(message) => {
             model.mcp_audit_loading = false;
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
     }

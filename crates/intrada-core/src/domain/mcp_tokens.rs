@@ -84,12 +84,13 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
             model.mcp_tokens = tokens;
             model.mcp_tokens_loaded = true;
             model.mcp_tokens_loading = false;
+            model.record_success();
             crux_core::render::render()
         }
 
         McpTokenEvent::LoadTokensFailed(message) => {
             model.mcp_tokens_loading = false;
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
 
@@ -113,11 +114,12 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
                 },
             );
             model.just_created_token = Some(created);
+            model.record_success();
             crux_core::render::render()
         }
 
         McpTokenEvent::CreateTokenFailed(message) => {
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
 
@@ -134,11 +136,12 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
             if let Some(token) = model.mcp_tokens.iter_mut().find(|t| t.id == id) {
                 token.revoked_at = Some(revoked_at);
             }
+            model.record_success();
             crux_core::render::render()
         }
 
         McpTokenEvent::RevokeTokenFailed { id: _, message } => {
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
     }

@@ -61,6 +61,7 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
 
         AccountEvent::PreferencesLoaded(prefs) => {
             model.account_preferences = Some(prefs);
+            model.record_success();
             crux_core::render::render()
         }
 
@@ -78,12 +79,13 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
 
         AccountEvent::PreferencesSaved(prefs) => {
             model.account_preferences = Some(prefs);
+            model.record_success();
             crux_core::render::render()
         }
 
         AccountEvent::SavePreferencesFailed { previous, message } => {
             model.account_preferences = previous;
-            model.last_error = Some(message);
+            model.surface_error(message);
             crux_core::render::render()
         }
 
@@ -98,12 +100,13 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
         AccountEvent::AccountDeleted => {
             model.delete_in_flight = false;
             model.account_deleted = true;
+            model.record_success();
             crux_core::render::render()
         }
 
         AccountEvent::DeleteAccountFailed(msg) => {
             model.delete_in_flight = false;
-            model.last_error = Some(msg);
+            model.surface_error(msg);
             crux_core::render::render()
         }
     }

@@ -25,14 +25,14 @@ pub struct Model {
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
-    /// Set when the user dismisses the error banner. While true, further
-    /// `LoadFailed` events are swallowed instead of re-popping the banner —
-    /// avoids the "dismiss → next refetch fails → banner reappears" loop
-    /// when the underlying problem (network down, auth expired) hasn't been
-    /// resolved. Cleared by any successful `*Loaded` callback, signalling
-    /// the system has recovered and new failures are worth surfacing again
-    /// (#346).
-    pub error_dismissed: bool,
+    /// Set when the user dismisses the error banner. While true, errors from
+    /// HTTP failures routed through [`Model::surface_error`] are silently
+    /// swallowed — avoids the "dismiss → next refetch fails → banner
+    /// reappears" loop when the underlying problem (network down, auth
+    /// expired) hasn't been resolved. Cleared by any confirmed API success
+    /// via [`Model::record_success`], signalling the system has recovered
+    /// and new failures are worth surfacing again (#346).
+    pub error_muted: bool,
     pub sets: Vec<Set>,
     pub lessons: Vec<Lesson>,
     pub current_lesson: Option<Lesson>,
@@ -70,6 +70,42 @@ pub struct Model {
     /// reacts by navigating the browser to this URL (which contains the
     /// auth code + state for the OAuth client).
     pub oauth_redirect_url: Option<String>,
+}
+
+impl Model {
+    /// Surface an error from a background HTTP failure. Respects the
+    /// dismiss-mute state set by [`Model::dismiss_error`]: if the user has
+    /// already dismissed the banner and the system has not yet recovered,
+    /// the error is silently swallowed to stop the banner re-popping. Also
+    /// dedupes identical messages to avoid render storms during burst
+    /// failures (#346).
+    pub fn surface_error(&mut self, msg: impl Into<String>) {
+        if self.error_muted {
+            return;
+        }
+        let msg = msg.into();
+        if self.last_error.as_deref() == Some(msg.as_str()) {
+            return;
+        }
+        self.last_error = Some(msg);
+    }
+
+    /// Mark a confirmed API success. Clears any active error and exits the
+    /// dismiss-mute state — the system has demonstrably recovered, so
+    /// future failures are worth showing again. Call from any handler that
+    /// receives a successful API response.
+    pub fn record_success(&mut self) {
+        self.last_error = None;
+        self.error_muted = false;
+    }
+
+    /// User explicitly dismissed the error banner. Clears the active error
+    /// and enters the mute state so subsequent background failures don't
+    /// immediately re-pop the banner.
+    pub fn dismiss_error(&mut self) {
+        self.last_error = None;
+        self.error_muted = true;
+    }
 }
 
 #[cfg(test)]
