@@ -337,12 +337,29 @@ pub struct ActiveSessionView {
 }
 
 /// View for the building phase setlist.
+/// Whether the builder's entries originate from, and relate to, a saved Set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub enum SetSourceStatus {
+    #[default]
+    NoSource,
+    UnmodifiedFromSource {
+        set_id: String,
+        set_name: String,
+    },
+    ModifiedFromSource {
+        set_id: String,
+        set_name: String,
+    },
+}
+
+/// View for the building phase setlist.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BuildingSetlistView {
     pub entries: Vec<SetlistEntryView>,
     pub item_count: usize,
     pub session_intention: Option<String>,
     pub target_duration_mins: Option<u32>,
+    pub source_status: SetSourceStatus,
 }
 
 /// View for the end-of-session summary.

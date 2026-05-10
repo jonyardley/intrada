@@ -136,14 +136,7 @@ pub fn SetlistBuilder() -> impl IntoView {
 
     view! {
         <div class="space-y-4 pb-32">
-            // Saved Sets — visible while the setlist is empty so the user
-            // can start from a saved Set rather than picking items
-            // individually. Hides once they've added their first item to
-            // keep the library list uncluttered (merge/replace flow is
-            // out of scope here — see #390).
-            <Show when=move || setlist_empty.get()>
-                <SetLoader />
-            </Show>
+            <SetLoader />
 
             // Search bar with built-in clear button (mirrors the library
             // list's affordance — clear the query without clearing tabs).

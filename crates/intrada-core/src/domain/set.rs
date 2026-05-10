@@ -51,6 +51,7 @@ pub enum SetEvent {
         name: String,
         entries: Vec<SetEntry>,
     },
+    UpdateSetFromBuilding,
 }
 
 // ── Handler ────────────────────────────────────────────────────────────
@@ -178,6 +179,17 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 }
             };
 
+            // Track which set was loaded so the review sheet can offer
+            // "Update" instead of "Save as new" when appropriate.
+            if building.entries.is_empty() {
+                building.source_set_id = Some(set_id.clone());
+                building.source_set_entry_snapshot =
+                    set.entries.iter().map(|e| e.item_id.clone()).collect();
+            } else if building.source_set_id.as_deref() != Some(&set_id) {
+                building.source_set_id = None;
+                building.source_set_entry_snapshot = vec![];
+            }
+
             // Create new SetlistEntry objects from set entries (fresh ULIDs)
             for entry in &set.entries {
                 building.entries.push(SetlistEntry {
@@ -258,6 +270,70 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 crux_core::render::render(),
             ])
         }
+
+        SetEvent::UpdateSetFromBuilding => {
+            let building = match &mut model.session_status {
+                SessionStatus::Building(b) => b,
+                _ => {
+                    model.last_error =
+                        Some("Can only update set during building phase".to_string());
+                    return crux_core::render::render();
+                }
+            };
+
+            let source_id = match &building.source_set_id {
+                Some(id) => id.clone(),
+                None => {
+                    model.last_error = Some("No source set to update".to_string());
+                    return crux_core::render::render();
+                }
+            };
+
+            let entries: Vec<SetEntry> = building
+                .entries
+                .iter()
+                .enumerate()
+                .map(|(i, e)| SetEntry {
+                    id: ulid::Ulid::new().to_string(),
+                    item_id: e.item_id.clone(),
+                    item_title: e.item_title.clone(),
+                    item_type: e.item_type.clone(),
+                    position: i,
+                })
+                .collect();
+
+            let set = match model.sets.iter_mut().find(|s| s.id == source_id) {
+                Some(s) => s,
+                None => {
+                    model.last_error = Some("Source set not found".to_string());
+                    return crux_core::render::render();
+                }
+            };
+
+            set.entries = entries;
+            set.updated_at = Utc::now();
+
+            for (i, entry) in set.entries.iter_mut().enumerate() {
+                entry.position = i;
+            }
+
+            let updated = set.clone();
+
+            // Update the snapshot so status flips to UnmodifiedFromSource
+            let building = match &mut model.session_status {
+                SessionStatus::Building(b) => b,
+                _ => unreachable!(),
+            };
+            building.source_set_entry_snapshot =
+                building.entries.iter().map(|e| e.item_id.clone()).collect();
+
+            model.last_error = None;
+
+            Command::all([
+                crate::http::update_set(&model.api_base_url, &updated),
+                crux_core::render::render(),
+            ])
+        }
     }
 }
 
@@ -275,6 +351,8 @@ mod tests {
                 entries,
                 session_intention: None,
                 target_duration_mins: None,
+                source_set_id: None,
+                source_set_entry_snapshot: vec![],
             }),
             ..Default::default()
         }
@@ -740,5 +818,228 @@ mod tests {
         } else {
             panic!("Expected building status");
         }
+    }
+
+    // ── Source-aware set save tests ───────────────────────────────────
+
+    #[test]
+    fn load_into_empty_builder_sets_source() {
+        let mut model = model_with_building(vec![]);
+        model.sets.push(sample_set());
+
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.source_set_id.as_deref(), Some("set-1"));
+            assert_eq!(b.source_set_entry_snapshot, vec!["item-a", "item-b"]);
+        } else {
+            panic!("Expected building status");
+        }
+    }
+
+    #[test]
+    fn load_different_set_clears_source() {
+        let mut model = model_with_building(vec![]);
+        model.sets.push(sample_set());
+        model.sets.push(Set {
+            id: "set-2".to_string(),
+            name: "Evening Cool-down".to_string(),
+            entries: vec![SetEntry {
+                id: "re-3".to_string(),
+                item_id: "item-c".to_string(),
+                item_title: "Arpeggios".to_string(),
+                item_type: ItemKind::Exercise,
+                position: 0,
+            }],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        });
+
+        // Load first set into empty builder — sets source
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        // Load different set — builder is non-empty, different set → clears source
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-2".to_string(),
+            },
+            &mut model,
+        );
+
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.source_set_id, None);
+            assert!(b.source_set_entry_snapshot.is_empty());
+        } else {
+            panic!("Expected building status");
+        }
+    }
+
+    #[test]
+    fn reload_same_set_preserves_source() {
+        let mut model = model_with_building(vec![]);
+        model.sets.push(sample_set());
+
+        // Load set into empty builder
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        // Re-load same set (non-empty, but same set_id)
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.source_set_id.as_deref(), Some("set-1"));
+            assert_eq!(b.source_set_entry_snapshot, vec!["item-a", "item-b"]);
+        } else {
+            panic!("Expected building status");
+        }
+    }
+
+    #[test]
+    fn load_into_non_empty_builder_clears_source() {
+        let mut model = model_with_building(sample_setlist_entries());
+        model.sets.push(sample_set());
+
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.source_set_id, None);
+            assert!(b.source_set_entry_snapshot.is_empty());
+        } else {
+            panic!("Expected building status");
+        }
+    }
+
+    #[test]
+    fn update_set_from_building_succeeds() {
+        let mut model = model_with_building(vec![]);
+        model.sets.push(sample_set());
+
+        // Load set to establish source
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        // Add an extra entry to make it modified
+        if let SessionStatus::Building(ref mut b) = model.session_status {
+            b.entries.push(SetlistEntry {
+                id: "entry-new".to_string(),
+                item_id: "item-c".to_string(),
+                item_title: "Arpeggios".to_string(),
+                item_type: ItemKind::Exercise,
+                position: 2,
+                duration_secs: 0,
+                status: EntryStatus::NotAttempted,
+                notes: None,
+                score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: None,
+            });
+        }
+
+        let _cmd = handle_set_event(SetEvent::UpdateSetFromBuilding, &mut model);
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.sets[0].entries.len(), 3);
+        assert_eq!(model.sets[0].entries[2].item_id, "item-c");
+    }
+
+    #[test]
+    fn update_set_from_building_fails_without_source() {
+        let mut model = model_with_building(sample_setlist_entries());
+
+        let _cmd = handle_set_event(SetEvent::UpdateSetFromBuilding, &mut model);
+
+        assert_eq!(model.last_error.as_deref(), Some("No source set to update"));
+    }
+
+    #[test]
+    fn update_set_from_building_updates_snapshot() {
+        use crate::model::SetSourceStatus;
+        use crux_core::App;
+
+        let mut model = model_with_building(vec![]);
+        model.sets.push(sample_set());
+
+        // Load set
+        let _cmd = handle_set_event(
+            SetEvent::LoadSetIntoSetlist {
+                set_id: "set-1".to_string(),
+            },
+            &mut model,
+        );
+
+        // Add entry to make it modified
+        if let SessionStatus::Building(ref mut b) = model.session_status {
+            b.entries.push(SetlistEntry {
+                id: "entry-new".to_string(),
+                item_id: "item-c".to_string(),
+                item_title: "Arpeggios".to_string(),
+                item_type: ItemKind::Exercise,
+                position: 2,
+                duration_secs: 0,
+                status: EntryStatus::NotAttempted,
+                notes: None,
+                score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: None,
+            });
+        }
+
+        // Update the source set
+        let _cmd = handle_set_event(SetEvent::UpdateSetFromBuilding, &mut model);
+
+        // After update, snapshot should match current entries
+        if let SessionStatus::Building(ref b) = model.session_status {
+            let current_ids: Vec<&str> = b.entries.iter().map(|e| e.item_id.as_str()).collect();
+            assert_eq!(b.source_set_entry_snapshot, current_ids);
+        } else {
+            panic!("Expected building status");
+        }
+
+        // Verify via view() that status is UnmodifiedFromSource
+        let app = crate::app::Intrada;
+        let vm = app.view(&model);
+        let status = &vm.building_setlist.unwrap().source_status;
+        assert!(matches!(
+            status,
+            SetSourceStatus::UnmodifiedFromSource { .. }
+        ));
     }
 }

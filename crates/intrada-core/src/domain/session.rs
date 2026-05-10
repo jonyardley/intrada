@@ -97,6 +97,10 @@ pub struct BuildingSession {
     /// Optional session-level time target (in minutes) set via presets.
     /// Purely a UI guide — not enforced.
     pub target_duration_mins: Option<u32>,
+    /// Which saved Set this builder was loaded from (if any).
+    pub source_set_id: Option<String>,
+    /// Ordered item_ids at load time — used to detect modifications.
+    pub source_set_entry_snapshot: Vec<String>,
 }
 
 /// State during active practice (Active phase).
@@ -399,6 +403,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entries: vec![],
                 session_intention: None,
                 target_duration_mins: None,
+                source_set_id: None,
+                source_set_entry_snapshot: vec![],
             });
             model.last_error = None;
             crux_core::render::render()
@@ -425,6 +431,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entries: vec![],
                 session_intention: None,
                 target_duration_mins: Some(target_duration_mins),
+                source_set_id: None,
+                source_set_entry_snapshot: vec![],
             });
             model.last_error = None;
             crux_core::render::render()
