@@ -172,18 +172,8 @@ class BackgroundAudioPlugin: Plugin {
   /// wall-clock timer keeps running, only lock-screen continuation is
   /// degraded.
   private func startSilentLoop() {
-    guard let url = Bundle.module.url(forResource: "silence", withExtension: "wav") else {
-      // If this fires it means the resource bundle didn't ship — see
-      // `Package.swift` `resources: [.process("Resources")]`. Logged
-      // explicitly so a future maintainer can grep for it; not
-      // user-visible since the bundle should always be present in a
-      // built plugin.
-      Logger.error("background-audio: silence.wav missing from plugin bundle")
-      return
-    }
-
     do {
-      let player = try AVAudioPlayer(contentsOf: url)
+      let player = try AVAudioPlayer(data: Self.silenceWav)
       player.numberOfLoops = -1  // loop indefinitely
       player.volume = 0.0  // belt + braces; the file is already silent
       player.prepareToPlay()
@@ -195,6 +185,42 @@ class BackgroundAudioPlugin: Plugin {
       Logger.error("background-audio: AVAudioPlayer init failed: \(error.localizedDescription)")
     }
   }
+
+  // 1s of PCM silence (8kHz mono 16-bit, ~16KB), synthesized inline
+  // instead of shipped as a SwiftPM resource. Tauri 2's iOS build
+  // pipeline doesn't reliably copy resource bundles emitted by local
+  // SwiftPM plugins into the host `.app`, which previously caused
+  // `Bundle.module` to fatalError on first `begin_session` — see
+  // crash 8470A7CD on iOS 26.4.2 (2026-05-10).
+  private static let silenceWav: Data = {
+    let sampleRate: UInt32 = 8000
+    let channels: UInt16 = 1
+    let bitsPerSample: UInt16 = 16
+    let blockAlign: UInt16 = channels * (bitsPerSample / 8)
+    let byteRate: UInt32 = sampleRate * UInt32(blockAlign)
+    let dataSize: UInt32 = sampleRate * UInt32(blockAlign)  // 1 second
+    let riffSize: UInt32 = 36 + dataSize
+
+    var d = Data(capacity: 44 + Int(dataSize))
+    func appendLE<T: FixedWidthInteger>(_ v: T) {
+      withUnsafeBytes(of: v.littleEndian) { d.append(contentsOf: $0) }
+    }
+    d.append(contentsOf: "RIFF".utf8)
+    appendLE(riffSize)
+    d.append(contentsOf: "WAVE".utf8)
+    d.append(contentsOf: "fmt ".utf8)
+    appendLE(UInt32(16))  // PCM fmt chunk size
+    appendLE(UInt16(1))  // format = PCM
+    appendLE(channels)
+    appendLE(sampleRate)
+    appendLE(byteRate)
+    appendLE(blockAlign)
+    appendLE(bitsPerSample)
+    d.append(contentsOf: "data".utf8)
+    appendLE(dataSize)
+    d.append(Data(count: Int(dataSize)))  // zeros = silence
+    return d
+  }()
 
   /// Caller must already be on the main queue.
   private func seedNowPlaying() {

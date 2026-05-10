@@ -25,10 +25,6 @@ let package = Package(
       dependencies: [
         .byName(name: "Tauri")
       ],
-      path: "Sources/BackgroundAudioPlugin",
-      // Process the silent loop bundle so `Bundle.module.url(forResource:
-      // "silence", withExtension: "wav")` resolves it at runtime. Without
-      // .process the file ships but isn't accessible via Bundle.module.
-      resources: [.process("Resources")])
+      path: "Sources/BackgroundAudioPlugin")
   ]
 )
