@@ -88,11 +88,14 @@ test("smoke: post-modification dist renders without runtime-blocking console err
 test("smoke: prerendered homepage contains marketing content", async ({
   page,
 }) => {
-  const response = await page.goto("/prerendered/index.html");
-  expect(response).not.toBeNull();
-  expect(response!.status()).toBe(200);
+  // Use page.request.get() instead of page.goto() to fetch the raw
+  // file without triggering page navigation / WASM mount. This
+  // returns exactly what serve sent on the wire.
+  const response = await page.request.get("/prerendered/index.html");
+  expect(response.status()).toBe(200);
 
-  const html = await response!.text();
+  const html = await response.text();
+  console.log(`prerendered/index.html: ${html.length} bytes`);
   expect(html).toContain("Practice with intent");
   expect(html).toContain("<h1");
 });
@@ -100,10 +103,10 @@ test("smoke: prerendered homepage contains marketing content", async ({
 test("smoke: prerendered login page contains sign-in content", async ({
   page,
 }) => {
-  const response = await page.goto("/prerendered/login.html");
-  expect(response).not.toBeNull();
-  expect(response!.status()).toBe(200);
+  const response = await page.request.get("/prerendered/login.html");
+  expect(response.status()).toBe(200);
 
-  const html = await response!.text();
+  const html = await response.text();
+  console.log(`prerendered/login.html: ${html.length} bytes`);
   expect(html).toContain("Sign in to continue");
 });
