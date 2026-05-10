@@ -58,7 +58,6 @@ test.describe("sets in Library", () => {
 
   test("save set from session builder", async ({ page }) => {
     await page.goto("/sessions/new");
-    await page.getByRole("button", { name: "Custom Session" }).click();
     await page.getByText("Clair de Lune").click();
     await page.getByRole("button", { name: "Review session" }).click();
     const reviewSheet = page.getByRole("dialog");
@@ -76,9 +75,9 @@ test.describe("sets in Library", () => {
     mockApi.sets = createSeedSetsWithStub();
 
     await page.goto("/sessions/new");
-    await page.getByRole("button", { name: "Custom Session" }).click();
 
-    await expect(page.getByText("Saved Sets")).toBeVisible();
+    // SetLoader is collapsed by default — expand it
+    await page.getByRole("button", { name: /Saved Sets/ }).click();
     await expect(page.getByText("Morning Warm-up")).toBeVisible();
     // Scope by row so the click stays unambiguous if more saved sets are
     // ever seeded — prevents future flakes when the loader has >1 row.
