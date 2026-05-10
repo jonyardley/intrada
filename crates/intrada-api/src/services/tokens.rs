@@ -30,7 +30,7 @@ fn validate_name(name: &str) -> Result<&str, ApiError> {
 /// its hex SHA-256 hash (stored at rest), and the visible prefix.
 fn generate_pat() -> (String, String, String) {
     let mut bytes = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().fill_bytes(&mut bytes);
     let body: String = bytes.iter().fold(String::with_capacity(64), |mut s, b| {
         use std::fmt::Write;
         let _ = write!(s, "{b:02x}");
