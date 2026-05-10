@@ -1447,14 +1447,20 @@ nav[aria-label="Mobile navigation"] {
   padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
 }
 
-/* No text selection on navigation chrome — preserve it on readable content */
-[data-platform="ios"] nav,
-[data-platform="ios"] header,
-[data-platform="ios"] footer,
-[data-platform="ios"] button,
-[data-platform="ios"] a {
+/* No text selection on app chrome — native iOS apps don't allow selecting
+   labels, headings, or card text. Opt content areas back in below. */
+body {
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Re-enable selection on actual content where users expect to copy text */
+input,
+textarea,
+[contenteditable],
+.user-selectable {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Instant tap response — removes the 300ms delay on tappable elements */
