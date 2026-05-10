@@ -3,7 +3,7 @@ use libsql::Connection;
 /// Single source of truth for all database migrations.
 ///
 /// Each entry is `(name, sql)` where `sql` must contain exactly ONE SQL statement.
-/// Production uses `run_migrations()` (via libsql_migration tracking).
+/// Production uses `run_migrations()` (idempotent tracking via `libsql_migrations` table).
 /// Tests use `run_migrations_direct()` (raw execution, same SQL).
 const MIGRATIONS: &[(&str, &str)] = &[
     (
@@ -605,7 +605,7 @@ mod tests {
             assert!(
                 !trimmed.contains(';'),
                 "Migration '{name}' contains multiple SQL statements. \
-                 libsql_migration only executes the first statement. \
+                 conn.execute() only runs the first statement. \
                  Split this into separate migrations."
             );
         }

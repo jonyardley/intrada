@@ -13,7 +13,7 @@ async fn fresh_db() -> libsql::Connection {
     db.connect().expect("Failed to connect to test database")
 }
 
-/// Test the production migration path (libsql_migration) creates all expected tables.
+/// Test the production migration path creates all expected tables.
 #[tokio::test]
 async fn run_migrations_creates_all_tables() {
     let conn = fresh_db().await;
@@ -22,7 +22,7 @@ async fn run_migrations_creates_all_tables() {
         .await
         .expect("run_migrations should succeed on fresh database");
 
-    // Query sqlite_master for all user-created tables (excluding libsql_migration internals).
+    // Query sqlite_master for all user-created tables (excluding migration tracking).
     let mut rows = conn
         .query(
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '\\__%' ESCAPE '\\' ORDER BY name",
