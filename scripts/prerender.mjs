@@ -70,6 +70,28 @@ async function main() {
     try {
       for (const route of ROUTES) {
         const page = await browser.newPage();
+
+        // Block the Clerk CDN script and stub window.__intrada_auth
+        // as an unauthenticated user so the WASM app renders marketing
+        // content without waiting for the real Clerk SDK.
+        await page.route("**/cdn.jsdelivr.net/npm/@clerk/**", (r) =>
+          r.fulfill({ status: 200, contentType: "application/javascript", body: "// blocked" }),
+        );
+        await page.addInitScript(() => {
+          window.__intrada_auth = {
+            _clerk: null,
+            _ready: true,
+            init() {},
+            isSignedIn() { return false; },
+            async getToken() { return null; },
+            getUserId() { return null; },
+            async signOut() {},
+            async signInWithGoogle() {},
+            addListener() {},
+          };
+          window.Clerk = class { async load() {} };
+        });
+
         const url = `http://127.0.0.1:${PORT}${route.path}`;
         console.log(`prerender: ${route.path} → ${route.output}`);
 
