@@ -203,3 +203,63 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         })
         .build()
 }
+
+#[cfg(test)]
+mod tests {
+    //! Round-trip the literal payloads sent by the JS bridge in
+    //! `crates/intrada-web/src/live_activity.rs`. If anyone renames a
+    //! field on either side without updating the other, these fail at
+    //! `cargo test` instead of at runtime on a physical device. See
+    //! intrada#641.
+    //!
+    //! These don't exercise Tauri's outer `{ args: { ... } }` wrapping
+    //! — the macro handles that — only the inner struct shape that
+    //! Swift's `parseArgs(...)` mirror also has to accept.
+    use super::*;
+
+    #[test]
+    fn begin_args_match_js_bridge_payload_with_planned_duration() {
+        let payload = serde_json::json!({
+            "item_title": "Chromatic Scale",
+            "position_label": "Item 1 of 5",
+            "started_at": "2026-05-10T10:20:09.914+00:00",
+            "planned_duration_secs": 300,
+        });
+        let parsed: BeginArgs = serde_json::from_value(payload).unwrap();
+        assert_eq!(parsed.item_title, "Chromatic Scale");
+        assert_eq!(parsed.position_label, "Item 1 of 5");
+        assert_eq!(parsed.started_at, "2026-05-10T10:20:09.914+00:00");
+        assert_eq!(parsed.planned_duration_secs, Some(300));
+    }
+
+    #[test]
+    fn begin_args_accept_null_planned_duration() {
+        // The JS bridge emits `planned_duration_secs ?? null`, so the
+        // None case is JSON `null`, not a missing key. serde maps both
+        // to `Option::None` for `Option<u32>`, but pin it down explicitly
+        // here so a future `#[serde(skip_serializing_if = ...)]` doesn't
+        // accidentally diverge from what the bridge sends.
+        let payload = serde_json::json!({
+            "item_title": "Free Practice",
+            "position_label": "Item 1 of 1",
+            "started_at": "2026-05-10T10:20:09Z",
+            "planned_duration_secs": null,
+        });
+        let parsed: BeginArgs = serde_json::from_value(payload).unwrap();
+        assert_eq!(parsed.planned_duration_secs, None);
+    }
+
+    #[test]
+    fn update_args_match_js_bridge_payload() {
+        let payload = serde_json::json!({
+            "item_title": "G Major Scale",
+            "position_label": "Item 2 of 5",
+            "started_at": "2026-05-10T10:30:00Z",
+            "planned_duration_secs": 180,
+        });
+        let parsed: UpdateArgs = serde_json::from_value(payload).unwrap();
+        assert_eq!(parsed.item_title, "G Major Scale");
+        assert_eq!(parsed.position_label, "Item 2 of 5");
+        assert_eq!(parsed.planned_duration_secs, Some(180));
+    }
+}

@@ -23,3 +23,11 @@ sentry = { version = "0.48", default-features = false }
 
 [build-dependencies]
 tauri-plugin = { version = "2", features = ["build"] }
+
+# Args struct round-trip tests (intrada#641) — verify the snake_case
+# field names match what the JS bridge in intrada-web sends. These are
+# only runnable on macOS (`cargo test -p tauri-plugin-background-audio`)
+# because the Linux CI runner can't link `tauri`'s GTK deps; see
+# `.github/workflows/ci.yml`.
+[dev-dependencies]
+serde_json = { workspace = true }
