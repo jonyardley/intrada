@@ -21,18 +21,22 @@ use wasm_bindgen::prelude::*;
     }
     export function begin(item_title, position_label, started_at, planned_duration_secs) {
         live_activity_invoke('plugin:live-activity|begin', {
-            item_title,
-            position_label,
-            started_at,
-            planned_duration_secs: planned_duration_secs ?? null,
+            args: {
+                item_title,
+                position_label,
+                started_at,
+                planned_duration_secs: planned_duration_secs ?? null,
+            },
         });
     }
     export function update(item_title, position_label, started_at, planned_duration_secs) {
         live_activity_invoke('plugin:live-activity|update', {
-            item_title,
-            position_label,
-            started_at,
-            planned_duration_secs: planned_duration_secs ?? null,
+            args: {
+                item_title,
+                position_label,
+                started_at,
+                planned_duration_secs: planned_duration_secs ?? null,
+            },
         });
     }
     export function end() {
