@@ -18,6 +18,12 @@ intrada-core = { path = "../intrada-core" }
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tower-http = { version = "0.6", features = ["cors", "limit", "trace"] }
+# `tls` is required for `remote` — Turso connections must use TLS. libsql 0.9
+# hardcodes the `tls` feature to `hyper-rustls` (no `native-tls` variant exists
+# in the v0.9 feature graph, verified against v0.9.30). The rest of the API
+# binary uses `native-tls` (reqwest, rust-s3, sentry, jsonwebtoken's
+# `rust_crypto`) per #623, so two TLS implementations are linked. Tracked at
+# intrada#639 — revisit if libsql adds a native-tls feature upstream.
 libsql = { version = "0.9", default-features = false, features = ["remote", "tls"] }
 
 serde = { workspace = true }
