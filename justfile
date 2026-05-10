@@ -17,7 +17,7 @@ dev:
     echo "Starting API server..."
     cargo run -p intrada-api &
     echo "Starting web dev server (trunk serve — watches for changes)..."
-    trunk serve --config crates/intrada-web/Trunk.toml &
+    trunk serve --config crates/intrada-web/Trunk.toml --filehash false &
     wait
 
 # Start only the API server
@@ -34,7 +34,7 @@ dev-web:
     set -e
     pkill -f "trunk serve" 2>/dev/null || true
     sleep 0.3
-    trunk serve --config crates/intrada-web/Trunk.toml
+    trunk serve --config crates/intrada-web/Trunk.toml --filehash false
 
 # Type-check only (no codegen) — fastest feedback for "does it compile?"
 check-fast:
@@ -56,23 +56,14 @@ lint:
 fmt:
     cargo fmt --all
 
-# Check everything (test + lint + format check)
+# Check everything (fmt → clippy → test, cheapest first)
 check:
-    cargo test --workspace
-    cargo clippy --workspace -- -D warnings
     cargo fmt --all -- --check
+    cargo clippy --workspace -- -D warnings
+    cargo test --workspace
 
-# Pre-push validation (matches CI — catches errors before the 3-min roundtrip)
-pre-push:
-    #!/usr/bin/env bash
-    set -e
-    echo "Checking format..."
-    cargo fmt --all -- --check
-    echo "Running clippy..."
-    cargo clippy --workspace -- -D warnings
-    echo "Running tests..."
-    cargo test --workspace
-    echo "✓ All checks passed"
+# Alias for check — catches errors before the 3-min CI roundtrip
+pre-push: check
 
 # Seed development data (API must be running)
 seed:
@@ -123,7 +114,7 @@ ios-dev:
     pkill -f "trunk serve" 2>/dev/null || true
     sleep 0.3
     echo "Starting trunk dev server..."
-    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 --filehash false &
     TRUNK_PID=$!
     echo "  Waiting for trunk to be ready on :8080..."
     until curl -sf http://localhost:8080/ > /dev/null 2>&1; do
@@ -224,7 +215,7 @@ ios-dev-device:
     # device) can reach Trunk over Wi-Fi. localhost won't work — the device's
     # localhost is itself, not the Mac. build.rs detects the env change and
     # rebuilds. The Trunk proxy then forwards /api/* to localhost:3001.
-    INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 &
+    INTRADA_API_URL="http://$LAN_IP:8080" trunk serve --config crates/intrada-web/Trunk.toml --address 0.0.0.0 --filehash false &
     TRUNK_PID=$!
     echo "  Waiting for trunk to be ready on :8080..."
     until curl -sf "http://$LAN_IP:8080/" > /dev/null 2>&1; do

@@ -1,9 +1,7 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
-# cmake is required by aws-lc-sys (transitive dep of jsonwebtoken's
-# `aws_lc_rs` feature, which we use to avoid the rsa Marvin advisory).
-# Installed in the base stage so both `chef prepare` and `chef cook` see it.
-RUN apt-get update && apt-get install -y --no-install-recommends cmake \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libssl-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 FROM chef AS planner
@@ -35,7 +33,8 @@ RUN cargo build --release --bin intrada-api
 # crashes on bookworm's 2.36 with `version `GLIBC_2.38' not found`).
 FROM debian:trixie-slim AS runtime
 WORKDIR /app
-# Install CA certificates for HTTPS connections to Turso
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/intrada-api /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/intrada-api"]
