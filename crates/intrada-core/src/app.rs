@@ -182,25 +182,30 @@ impl App for Intrada {
             Event::DataLoaded { items } => {
                 model.items = items;
                 model.last_error = None;
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::SessionsLoaded { sessions } => {
                 model.sessions = sessions;
                 model.practice_summaries = build_practice_summaries(&model.sessions);
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::SetsLoaded { sets } => {
                 model.sets = sets;
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::LessonsLoaded { lessons } => {
                 model.lessons = lessons;
                 model.last_error = None;
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::LessonLoaded { lesson } => {
                 model.current_lesson = Some(lesson);
                 model.last_error = None;
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
 
@@ -209,24 +214,34 @@ impl App for Intrada {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
                     *existing = item;
                 }
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::SetUpdated { set } => {
                 if let Some(existing) = model.sets.iter_mut().find(|r| r.id == set.id) {
                     *existing = set;
                 }
+                model.error_dismissed = false;
                 crux_core::render::render()
             }
             Event::DeleteConfirmed | Event::SessionSaved => {
                 // Model was already updated optimistically; no action needed.
+                model.error_dismissed = false;
                 Command::done()
             }
 
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
-                // Dedupe identical messages (#346) — avoids unnecessary
-                // re-renders. Distinct messages still replace the current
-                // error so user-action failures (save/delete) aren't
+                // After the user dismisses the banner, swallow further errors
+                // until a successful response confirms the system has
+                // recovered. Without this, every retry/refetch with a still-
+                // broken backend pops the banner back up — see #346.
+                if model.error_dismissed {
+                    return Command::done();
+                }
+                // Dedupe identical messages — avoids unnecessary re-renders
+                // during burst failures. Distinct messages still replace the
+                // current error so user-action failures (save/delete) aren't
                 // silently swallowed by a stale load-error banner. The
                 // slide-in animation only re-fires on a true None → Some
                 // transition; the shell mounts the banner stably, so
@@ -239,6 +254,7 @@ impl App for Intrada {
             }
             Event::ClearError => {
                 model.last_error = None;
+                model.error_dismissed = true;
                 crux_core::render::render()
             }
             Event::SetQuery(query) => {
@@ -1695,16 +1711,58 @@ mod tests {
     }
 
     #[test]
-    fn test_load_failed_after_clear_shows_new_error() {
-        // After the user dismisses, the next failure surfaces as expected.
+    fn test_load_failed_after_dismiss_is_muted_until_success() {
+        // After the user dismisses the banner, subsequent failures stay
+        // suppressed — otherwise every retry/refetch against a still-broken
+        // backend pops the banner back up (#346). Once a success arrives,
+        // the mute clears and new failures surface again.
         let app = Intrada;
         let mut model = Model::test_default();
 
         let _ = app.update(Event::LoadFailed("first".to_string()), &mut model);
         let _ = app.update(Event::ClearError, &mut model);
-        let _ = app.update(Event::LoadFailed("second".to_string()), &mut model);
+        assert!(model.error_dismissed);
 
-        assert_eq!(model.last_error, Some("second".to_string()));
+        // Muted: a different LoadFailed while still broken stays hidden.
+        let _ = app.update(Event::LoadFailed("second".to_string()), &mut model);
+        assert_eq!(model.last_error, None);
+
+        // Success unmutes — system has recovered.
+        let _ = app.update(Event::DataLoaded { items: vec![] }, &mut model);
+        assert!(!model.error_dismissed);
+
+        // Now a new failure surfaces.
+        let _ = app.update(Event::LoadFailed("third".to_string()), &mut model);
+        assert_eq!(model.last_error, Some("third".to_string()));
+    }
+
+    #[test]
+    fn test_clear_error_sets_dismissed_flag() {
+        let app = Intrada;
+        let mut model = Model {
+            last_error: Some("some error".to_string()),
+            ..Model::test_default()
+        };
+
+        let _ = app.update(Event::ClearError, &mut model);
+
+        assert_eq!(model.last_error, None);
+        assert!(model.error_dismissed);
+    }
+
+    #[test]
+    fn test_sessions_loaded_unmutes_dismissed_state() {
+        // Any successful Loaded event should unmute, not just DataLoaded —
+        // otherwise the dismissed state could persist forever if items
+        // never load again.
+        let app = Intrada;
+        let mut model = Model {
+            error_dismissed: true,
+            ..Model::test_default()
+        };
+
+        let _ = app.update(Event::SessionsLoaded { sessions: vec![] }, &mut model);
+        assert!(!model.error_dismissed);
     }
 
     #[test]

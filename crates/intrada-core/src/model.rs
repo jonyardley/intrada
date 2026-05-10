@@ -25,6 +25,14 @@ pub struct Model {
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
     pub last_error: Option<String>,
+    /// Set when the user dismisses the error banner. While true, further
+    /// `LoadFailed` events are swallowed instead of re-popping the banner —
+    /// avoids the "dismiss → next refetch fails → banner reappears" loop
+    /// when the underlying problem (network down, auth expired) hasn't been
+    /// resolved. Cleared by any successful `*Loaded` callback, signalling
+    /// the system has recovered and new failures are worth surfacing again
+    /// (#346).
+    pub error_dismissed: bool,
     pub sets: Vec<Set>,
     pub lessons: Vec<Lesson>,
     pub current_lesson: Option<Lesson>,
