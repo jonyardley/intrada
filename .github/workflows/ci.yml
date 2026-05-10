@@ -395,14 +395,18 @@ jobs:
         with:
           name: web-dist
           path: crates/intrada-web/dist
-      - name: List prerendered files (diagnostics)
+      - name: Diagnose prerendered file contents
         run: |
-          echo "Top-level dist:"
-          ls -la crates/intrada-web/dist/
-          echo "Prerendered:"
-          ls -la crates/intrada-web/dist/prerendered/ || echo "MISSING: prerendered/ directory"
-          echo "Login file size:"
-          wc -c crates/intrada-web/dist/prerendered/login.html || true
+          echo "=== Files ==="
+          ls -la crates/intrada-web/dist/prerendered/
+          echo "=== /login content check ==="
+          grep -c "Sign in to continue" crates/intrada-web/dist/prerendered/login.html || echo "NO MATCH for 'Sign in to continue'"
+          grep -c "Welcome" crates/intrada-web/dist/prerendered/login.html || echo "NO MATCH for 'Welcome'"
+          grep -c "<body" crates/intrada-web/dist/prerendered/login.html || echo "NO BODY TAG"
+          echo "=== / content check ==="
+          grep -c "Practice with intent" crates/intrada-web/dist/prerendered/index.html || echo "NO MATCH for 'Practice with intent'"
+          echo "=== login.html body excerpt ==="
+          sed -n '/<body/,/<\/body>/p' crates/intrada-web/dist/prerendered/login.html | head -50
       # Sentry-cli `sourcemaps inject` doesn't need a token (only the
       # `upload` subcommand does), so this runs unconditionally. The
       # WHOLE point of the smoke job is to fire the chain that broke
