@@ -281,6 +281,11 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 }
             };
 
+            if building.entries.is_empty() {
+                model.last_error = Some("Cannot update set with an empty setlist".to_string());
+                return crux_core::render::render();
+            }
+
             let source_id = match &building.source_set_id {
                 Some(id) => id.clone(),
                 None => {
