@@ -28,7 +28,8 @@ use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, lesson_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
+    SetSourceStatus, ViewModel,
 };
 
 /// Root Crux application for the music practice library.
@@ -295,6 +296,42 @@ impl App for Intrada {
             SessionStatus::Building(building) => {
                 let entries: Vec<_> = building.entries.iter().map(entry_to_view).collect();
                 let item_count = entries.len();
+                let source_status = match &building.source_set_id {
+                    None => SetSourceStatus::NoSource,
+                    Some(sid) => {
+                        let set_name = model
+                            .sets
+                            .iter()
+                            .find(|s| &s.id == sid)
+                            .map(|s| s.name.clone());
+                        match set_name {
+                            None => SetSourceStatus::NoSource,
+                            Some(name) => {
+                                let current_ids: Vec<&str> = building
+                                    .entries
+                                    .iter()
+                                    .map(|e| e.item_id.as_str())
+                                    .collect();
+                                let snapshot_ids: Vec<&str> = building
+                                    .source_set_entry_snapshot
+                                    .iter()
+                                    .map(|s| s.as_str())
+                                    .collect();
+                                if current_ids == snapshot_ids {
+                                    SetSourceStatus::UnmodifiedFromSource {
+                                        set_id: sid.clone(),
+                                        set_name: name,
+                                    }
+                                } else {
+                                    SetSourceStatus::ModifiedFromSource {
+                                        set_id: sid.clone(),
+                                        set_name: name,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
                 (
                     None,
                     Some(BuildingSetlistView {
@@ -302,6 +339,7 @@ impl App for Intrada {
                         item_count,
                         session_intention: building.session_intention.clone(),
                         target_duration_mins: building.target_duration_mins,
+                        source_status,
                     }),
                     None,
                 )
@@ -1799,6 +1837,8 @@ mod tests {
                 entries: vec![],
                 session_intention: Some("Focus on dynamics".to_string()),
                 target_duration_mins: None,
+                source_set_id: None,
+                source_set_entry_snapshot: vec![],
             }),
             ..Model::test_default()
         };

@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use intrada_core::{Event, SessionEvent, SetEvent, ViewModel};
+use intrada_core::{Event, SessionEvent, SetEvent, SetSourceStatus, ViewModel};
 
 use crate::components::{
     BottomSheet, Button, ButtonSize, ButtonVariant, EditorEntry, EntryListEditor, SetSaveForm,
@@ -272,23 +272,65 @@ fn ReviewSheetBody(
                 </Button>
             </Show>
 
-            // Save as Set — gated on a non-empty setlist (matches the
-            // core precondition; saving with no entries surfaces an
-            // error). Hidden until the user has at least one item so the
-            // sheet's empty state stays clean.
             <Show when=move || has_entries.get()>
                 {
                     let core_save = core_save_set.clone();
-                    view! {
-                        <SetSaveForm
-                            sheet_open=sheet_open
-                            on_save=Callback::new(move |name: String| {
-                                let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
-                                let core_ref = core_save.borrow();
-                                let effects = core_ref.process_event(event);
-                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-                            })
-                        />
+                    let core_update = core.clone();
+                    move || {
+                        let core_save_inner = core_save.clone();
+                        let core_update_inner = core_update.clone();
+                        let vm = view_model.get();
+                        let status = vm.building_setlist
+                            .as_ref()
+                            .map(|s| s.source_status.clone())
+                            .unwrap_or_default();
+                        match status {
+                            SetSourceStatus::UnmodifiedFromSource { .. } => {
+                                view! { <div></div> }.into_any()
+                            }
+                            SetSourceStatus::ModifiedFromSource { set_name, .. } => {
+                                let core_s = core_save_inner.clone();
+                                let label = format!("Update \u{201c}{set_name}\u{201d}");
+                                view! {
+                                    <div class="flex flex-col gap-2">
+                                        <Button
+                                            variant=ButtonVariant::Secondary
+                                            full_width=true
+                                            on_click=Callback::new(move |_| {
+                                                let event = Event::Set(SetEvent::UpdateSetFromBuilding);
+                                                let core_ref = core_update_inner.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            })
+                                        >
+                                            {label}
+                                        </Button>
+                                        <SetSaveForm
+                                            sheet_open=sheet_open
+                                            on_save=Callback::new(move |name: String| {
+                                                let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                                                let core_ref = core_s.borrow();
+                                                let effects = core_ref.process_event(event);
+                                                process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            })
+                                        />
+                                    </div>
+                                }.into_any()
+                            }
+                            SetSourceStatus::NoSource => {
+                                view! {
+                                    <SetSaveForm
+                                        sheet_open=sheet_open
+                                        on_save=Callback::new(move |name: String| {
+                                            let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                                            let core_ref = core_save_inner.borrow();
+                                            let effects = core_ref.process_event(event);
+                                            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                        })
+                                    />
+                                }.into_any()
+                            }
+                        }
                     }
                 }
             </Show>
