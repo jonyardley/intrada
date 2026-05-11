@@ -288,6 +288,18 @@ jobs:
           INTRADA_API_URL: https://intrada-api.fly.dev
           CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: trunk build --release
+      # Prerender marketing routes (/, /login) so crawlers see real
+      # HTML content. Runs headless Chromium via Playwright against
+      # the just-built dist/, writes to dist/prerendered/.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Install prerender dependencies
+        run: |
+          npm install playwright serve
+          npx playwright install chromium --with-deps
+      - name: Prerender marketing routes
+        run: node scripts/prerender.mjs crates/intrada-web/dist
       - name: Upload dist artifact
         uses: actions/upload-artifact@v7
         with:
@@ -395,7 +407,7 @@ jobs:
       # commit hash in dist/index.html, confusing post-merge triage.
       - name: Inject Sentry release placeholder (smoke)
         run: |
-          sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|pr-smoke|g" crates/intrada-web/dist/index.html
+          find crates/intrada-web/dist -name '*.html' -exec sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|pr-smoke|g" {} +
           grep -q "pr-smoke" crates/intrada-web/dist/index.html
       - name: Refresh SRI integrity hashes after inject
         run: python3 scripts/refresh-sri-hashes.py
@@ -520,9 +532,9 @@ jobs:
       # Inject the release id into the prebuilt index.html before publishing.
       # The placeholder is set in the source — this swap only happens in the
       # main-branch deploy path, so PR builds keep `release: undefined`.
-      - name: Inject Sentry release into index.html
+      - name: Inject Sentry release into HTML files
         run: |
-          sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" crates/intrada-web/dist/index.html
+          find crates/intrada-web/dist -name '*.html' -exec sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" {} +
           grep -q "${{ github.sha }}" crates/intrada-web/dist/index.html
       # Recompute SHA-384 integrity hashes — `sentry-cli sourcemaps
       # inject` modifies JS files in place, leaving the SRI attributes

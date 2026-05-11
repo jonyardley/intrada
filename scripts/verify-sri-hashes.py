@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Assert every SRI hash in dist/index.html matches the on-disk file.
+"""Assert every SRI hash in all HTML files under dist/ matches on-disk files.
 
 Walks every `<link>/<script integrity="sha384-…">` tag, recomputes
 SHA-384 from the file the tag references, and exits 1 with a pointed
 error message if any mismatch is found. Pure check — never modifies
 files.
+
+Scans index.html and any prerendered HTML files (dist/prerendered/*.html)
+so that SRI mismatches in prerendered pages are caught before deploy.
 
 Why this exists
 ───────────────
@@ -42,16 +45,14 @@ TAG_RE = re.compile(
 SRC_RE = re.compile(r'(?:href|src)="(/?[^"#?]+)"', re.IGNORECASE)
 
 
-def main() -> int:
-    dist = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DIST)
-    index = dist / "index.html"
-    if not index.is_file():
-        print(f"verify-sri-hashes: {index} not found", file=sys.stderr)
-        return 1
-
-    html = index.read_text()
+def verify_file(
+    html_path: pathlib.Path, dist: pathlib.Path
+) -> tuple[int, list[str]]:
+    """Verify SRI hashes in a single HTML file. Returns (checked, mismatches)."""
+    html = html_path.read_text()
     mismatches: list[str] = []
     checked = 0
+    rel_name = html_path.relative_to(dist)
     for match in TAG_RE.finditer(html):
         declared = match.group(1)
         src = SRC_RE.search(match.group(0))
@@ -60,19 +61,43 @@ def main() -> int:
         rel = src.group(1).lstrip("/")
         file = dist / rel
         if not file.is_file():
-            mismatches.append(f"  {src.group(1)}: referenced but not on disk")
+            mismatches.append(
+                f"  {rel_name}: {src.group(1)}: referenced but not on disk"
+            )
             continue
-        actual = base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode()
+        actual = base64.b64encode(
+            hashlib.sha384(file.read_bytes()).digest()
+        ).decode()
         if declared != actual:
             mismatches.append(
-                f"  {src.group(1)}: declared sha384-{declared[:12]}…, "
+                f"  {rel_name}: {src.group(1)}: declared sha384-{declared[:12]}…, "
                 f"actual sha384-{actual[:12]}…"
             )
         checked += 1
+    return checked, mismatches
 
-    if mismatches:
+
+def main() -> int:
+    dist = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_DIST)
+    index = dist / "index.html"
+    if not index.is_file():
+        print(f"verify-sri-hashes: {index} not found", file=sys.stderr)
+        return 1
+
+    html_files = [index] + sorted(
+        f for f in dist.rglob("*.html") if f != index
+    )
+
+    total_checked = 0
+    all_mismatches: list[str] = []
+    for html_path in html_files:
+        checked, mismatches = verify_file(html_path, dist)
+        total_checked += checked
+        all_mismatches.extend(mismatches)
+
+    if all_mismatches:
         print("verify-sri-hashes: SRI integrity mismatch — would ship a blank page:")
-        for line in mismatches:
+        for line in all_mismatches:
             print(line)
         print(
             "\nLikely cause: a step modified dist/ between the refresh-sri-hashes "
@@ -81,7 +106,10 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    print(f"verify-sri-hashes: {checked} integrity hashes match on-disk files")
+    print(
+        f"verify-sri-hashes: {total_checked} integrity hashes match on-disk "
+        f"files across {len(html_files)} file(s)"
+    )
     return 0
 
 
