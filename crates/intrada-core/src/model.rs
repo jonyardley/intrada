@@ -106,6 +106,21 @@ impl Model {
         self.last_error = None;
         self.error_muted = true;
     }
+
+    /// Reset all user-scoped state on sign-out so a subsequent sign-in
+    /// (potentially as a different user on the same browser) starts from a
+    /// clean slate. Preserves `api_base_url` (set once at app startup; not
+    /// per-user). Without this, the next user briefly sees the previous
+    /// user's data — most concerning for MCP tokens / audit which are a
+    /// soft information disclosure until the first refetch overwrites them
+    /// (#645).
+    pub fn reset_for_sign_out(&mut self) {
+        let api_base_url = std::mem::take(&mut self.api_base_url);
+        *self = Self {
+            api_base_url,
+            ..Self::default()
+        };
+    }
 }
 
 #[cfg(test)]

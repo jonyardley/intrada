@@ -197,6 +197,13 @@ pub fn App() -> impl IntoView {
 
             initialized.set(true);
         } else if !authed && initialized.get_untracked() {
+            // Reset the in-memory Model so the next sign-in (potentially a
+            // different user on the same browser) doesn't inherit the
+            // previous user's items, sessions, MCP tokens/audit, etc.
+            // (#645).
+            let core_ref = core_for_init.borrow();
+            let effects = core_ref.process_event(Event::SignedOut);
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
             initialized.set(false);
         }
     });
