@@ -175,7 +175,14 @@ impl App for Intrada {
             Event::RefetchLessons => http::fetch_lessons(&model.api_base_url),
             Event::SignedOut => {
                 model.reset_for_sign_out();
-                crux_core::render::render()
+                // Also clear the crash-recovery blob in localStorage —
+                // it isn't user-scoped, so user A's in-progress session
+                // would otherwise hydrate into user B's model on next
+                // sign-in (#645).
+                Command::all([
+                    Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
+                    crux_core::render::render(),
+                ])
             }
 
             // ── Domain handlers ──────────────────────────────────────
@@ -616,7 +623,7 @@ mod tests {
         let now = chrono::Utc::now();
 
         // Populate a model with state from a fully signed-in user across
-        // every field that could leak to the next user (#645).
+        // every sensitive field that could leak to the next user (#645).
         let mut model = Model {
             api_base_url: "http://localhost:3001".to_string(),
             items: vec![Item {
@@ -631,6 +638,24 @@ mod tests {
                 created_at: now,
                 updated_at: now,
             }],
+            sessions: vec![PracticeSession {
+                id: "sess1".to_string(),
+                entries: vec![],
+                session_notes: Some("private notes".to_string()),
+                session_intention: Some("focus".to_string()),
+                started_at: now,
+                completed_at: now,
+                total_duration_secs: 60,
+                completion_status: CompletionStatus::Completed,
+            }],
+            session_status: SessionStatus::Active(ActiveSession {
+                id: "active1".to_string(),
+                entries: vec![],
+                current_index: 0,
+                current_item_started_at: now,
+                session_started_at: now,
+                session_intention: Some("in-progress intention".to_string()),
+            }),
             last_error: Some("connection lost".to_string()),
             error_muted: true,
             mcp_tokens: vec![crate::domain::mcp_tokens::McpToken {
@@ -642,6 +667,16 @@ mod tests {
                 revoked_at: None,
             }],
             mcp_tokens_loaded: true,
+            mcp_audit: vec![crate::domain::mcp_audit::McpAuditEntry {
+                id: "audit1".to_string(),
+                token_id: None,
+                token_name: None,
+                token_prefix: None,
+                tool: "list_items".to_string(),
+                args_hash: "abc".to_string(),
+                created_at: now,
+            }],
+            mcp_audit_loaded: true,
             ..Default::default()
         };
 
@@ -649,12 +684,18 @@ mod tests {
 
         // api_base_url is set at startup, not per-user — must survive.
         assert_eq!(model.api_base_url, "http://localhost:3001");
-        // Everything else returns to Default.
+        // Everything else returns to Default — exhaustive checks across the
+        // most sensitive fields (anything visible in the ViewModel between
+        // sign-out and first refetch).
         assert!(model.items.is_empty());
+        assert!(model.sessions.is_empty());
+        assert!(matches!(model.session_status, SessionStatus::Idle));
         assert!(model.last_error.is_none());
         assert!(!model.error_muted);
         assert!(model.mcp_tokens.is_empty());
         assert!(!model.mcp_tokens_loaded);
+        assert!(model.mcp_audit.is_empty());
+        assert!(!model.mcp_audit_loaded);
     }
 
     #[test]
