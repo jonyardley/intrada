@@ -35,6 +35,8 @@ pub fn BrandMark(#[prop(optional)] size: BrandMarkSize) -> impl IntoView {
         BrandMarkSize::Lg => ("w-7 h-7 text-accent", "page-title"),
     };
 
+    // `brand-mark` is a stable selector kept for future styling /
+    // test hooks — no CSS rules attached today.
     view! {
         <span class="brand-mark inline-flex items-center gap-2.5">
             <svg class=icon_class viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
