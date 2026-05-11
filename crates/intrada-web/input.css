@@ -225,6 +225,17 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* Danger callout — chrome shared between the error banner and inline
+   destructive-action confirmations (e.g. delete-item prompt in detail
+   view). Was a hand-rolled `rounded-lg bg-danger-surface border
+   border-danger-text/20 p-4` string in multiple sites until #563. */
+@utility danger-callout {
+  border-radius: 0.5rem;       /* matches rounded-lg */
+  background-color: var(--color-danger-surface);
+  border: 1px solid color-mix(in srgb, var(--color-danger-text) 20%, transparent);
+  padding: 1rem;
+}
+
 /* Glassmorphism chrome — header and bottom tab bar.
    Uses gray-900 instead of indigo for a neutral navigation feel. */
 @utility glass-chrome {
@@ -524,6 +535,15 @@ body {
 .stat-card-faint-value {
   font-family: var(--font-body);
   font-size: 1.25rem;       /* 20px */
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+/* Classic stat-card value — 24px, sans (Inter). Used by the
+   non-faint variant in `<StatCard variant=StatVariant::Classic />`.
+   Was a hand-rolled `text-2xl font-bold text-primary` until #561. */
+.stat-card-value {
+  font-family: var(--font-body);
+  font-size: 1.5rem;        /* 24px / text-2xl */
   font-weight: 700;
   color: var(--color-text-primary);
 }

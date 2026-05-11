@@ -10,17 +10,17 @@ use intrada_core::{ItemKind, LibraryItemView, SetEntryView, SetView, TempoHistor
 #[cfg(debug_assertions)]
 use crate::components::welcome_carousel::reset_welcome_seen;
 use crate::components::{
-    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet,
-    BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton, CircularButtonSize,
-    CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell, DetailGroup, DetailRow,
-    EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError, GroupedList,
-    GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet, ItemReflectionTarget,
-    LibraryFilter, LibraryFilterTabs, LibraryItemCard, LibrarySetCard, LibraryTypeTabs, LineChart,
-    PageAddButton, PageHeading, ProgressRing, PullToRefresh, RatingChips, SectionLabel,
-    SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList, SkeletonItemCard, SkeletonLine,
-    StatCard, StatTone, StatusDot, StatusDotState, SwipeActions, TagInput, TempoProgressChart,
-    TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs, WeekStrip, WelcomeCard,
-    WelcomeMark,
+    AccentBar, AccentRow, Autocomplete, AutocompleteTextField, BackLink, BottomSheet, BrandMark,
+    BrandMarkSize, BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton,
+    CircularButtonSize, CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell,
+    DetailGroup, DetailRow, EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError,
+    GroupedList, GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet,
+    ItemReflectionTarget, LibraryFilter, LibraryFilterTabs, LibraryItemCard, LibrarySetCard,
+    LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing, PullToRefresh,
+    RatingChips, SectionLabel, SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
+    SkeletonItemCard, SkeletonLine, StatCard, StatTone, StatusDot, StatusDotState, SwipeActions,
+    TagInput, TempoProgressChart, TextArea, TextField, TransitionPrompt, TypeBadge, TypeTabs,
+    WeekStrip, WelcomeCard, WelcomeMark,
 };
 use wasm_bindgen::JsCast;
 
@@ -293,6 +293,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <p class="text-xs font-medium text-muted uppercase mb-1">"Components"</p>
                         <ul class="space-y-0.5 text-sm">
                             <li><a href="#section-label" class="text-accent-text hover:text-primary">"Section Label"</a></li>
+                            <li><a href="#brand-mark" class="text-accent-text hover:text-primary">"Brand Mark"</a></li>
                             <li><a href="#inline-type-indicator" class="text-accent-text hover:text-primary">"Inline Type Indicator"</a></li>
                             <li><a href="#accent-row" class="text-accent-text hover:text-primary">"Accent Row"</a></li>
                             <li><a href="#detail-group" class="text-accent-text hover:text-primary">"Detail Group"</a></li>
@@ -658,6 +659,28 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <Card>
                     <SectionLabel text="Recent Activity" />
                     <p class="text-sm text-secondary mt-2">"…content lives below the label."</p>
+                </Card>
+            </section>
+
+            // ── Brand Mark ────────────────────────────────────────────
+            <section id="brand-mark">
+                <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Brand Mark"</h3>
+                <p class="text-xs text-faint mb-3">"Heroicons musical-note icon + 'Intrada' wordmark. Used in app header, marketing nav, login screen, and auth loading splash. Caller wraps with an `<A>` for nav contexts or `<div>` for static — `BrandMark` only renders the inline content."</p>
+                <Card>
+                    <div class="flex flex-col gap-6">
+                        <div>
+                            <p class="field-label mb-2">"Sm — app header, marketing nav"</p>
+                            <BrandMark size=BrandMarkSize::Sm />
+                        </div>
+                        <div>
+                            <p class="field-label mb-2">"Md — login screen"</p>
+                            <BrandMark size=BrandMarkSize::Md />
+                        </div>
+                        <div>
+                            <p class="field-label mb-2">"Lg — auth loading splash"</p>
+                            <BrandMark size=BrandMarkSize::Lg />
+                        </div>
+                    </div>
                 </Card>
             </section>
 

@@ -109,7 +109,7 @@ pub fn DetailView() -> impl IntoView {
                                 let core_del = core_for_delete.clone();
                                 let navigate_del = navigate_for_delete.clone();
                                 Some(view! {
-                                    <div class="rounded-lg bg-danger-surface border border-danger/20 p-4" role="alert">
+                                    <div class="danger-callout" role="alert">
                                         <p class="text-sm text-danger-text mb-3">
                                             "Are you sure you want to delete this item? This action cannot be undone."
                                         </p>

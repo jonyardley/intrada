@@ -45,7 +45,7 @@ pub fn ErrorBanner() -> impl IntoView {
         <Show when=move || has_error.get()>
             <div
                 class=move || {
-                    let base = "error-banner rounded-lg bg-danger-surface border border-danger-text/20 p-4";
+                    let base = "error-banner danger-callout";
                     if is_dismissing.get() {
                         format!("{base} is-dismissing")
                     } else {

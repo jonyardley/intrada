@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use leptos_router::hooks::use_location;
 
-use crate::components::ProfileButton;
+use crate::components::{BrandMark, ProfileButton};
 
 /// Application header with name, tagline, and navigation.
 ///
@@ -48,11 +48,8 @@ pub fn AppHeader() -> impl IntoView {
         <header class="sm:glass-chrome sm:border-b sm:border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-4 flex items-center justify-between">
                 <div>
-                    <A href="/library" attr:class="flex items-center gap-2.5 no-underline">
-                        <svg class="w-5 h-5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-                        </svg>
-                        <span class="text-lg font-bold text-primary font-heading">"Intrada"</span>
+                    <A href="/library" attr:class="no-underline">
+                        <BrandMark />
                     </A>
                 </div>
                 <div class="hidden sm:flex items-center gap-4">
