@@ -14,7 +14,8 @@ use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
 use crate::components::welcome_carousel::welcome_already_seen;
 use crate::components::{
-    provide_toast, AppFooter, AppHeader, BottomTabBar, ErrorBanner, ToastStack, WelcomeCarousel,
+    provide_toast, AppFooter, AppHeader, BottomTabBar, BrandMark, BrandMarkSize, ErrorBanner,
+    ToastStack, WelcomeCarousel,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
@@ -408,11 +409,8 @@ fn AuthLoadingScreen() -> impl IntoView {
     view! {
         <div class="relative z-0 min-h-screen text-primary flex items-center justify-center">
             <div class="text-center">
-                <div class="flex items-center justify-center gap-2.5 mb-2">
-                    <svg class="w-7 h-7 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-                    </svg>
-                    <h1 class="page-title">"Intrada"</h1>
+                <div class="mb-2">
+                    <BrandMark size=BrandMarkSize::Lg />
                 </div>
                 <p class="text-muted">"Loading..."</p>
             </div>

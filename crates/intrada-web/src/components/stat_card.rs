@@ -69,7 +69,7 @@ pub fn StatCard(
         view! {
             <div class="card p-card-compact text-center">
                 <p class="field-label">{title}</p>
-                <p class="text-2xl font-bold text-primary mt-1">{value}</p>
+                <p class="stat-card-value mt-1">{value}</p>
                 {subtitle.map(|s| view! {
                     <p class="text-xs text-muted mt-0.5">{s}</p>
                 })}
