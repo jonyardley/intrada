@@ -120,14 +120,17 @@ jobs:
         run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
 
   ios-build:
-    # Full iOS CI — clippy lints (device target) + simulator build + smoke
-    # test. Combines the former ios-clippy job into one macOS runner to
-    # halve expensive macOS minutes when both would trigger.
+    # Full iOS CI — clippy lints (device target) + simulator build, with
+    # smoke test on main only. Combines the former ios-clippy job into one
+    # macOS runner to halve expensive macOS minutes when both would trigger.
     #
     # Clippy runs against aarch64-apple-ios (device) to lint iOS-only
     # #[cfg] branches that Linux runners can't compile. The full build
     # targets aarch64-apple-ios-sim (simulator, unsigned) to verify the
     # Tauri host, plugins, WASM frontend, and Xcode project all link.
+    #
+    # The smoke test (sim boot + install + launch + deep link) adds ~3.5 min
+    # and only runs on main pushes — PRs get the build-proves-linking gate.
     #
     # Path-filtered: fires on any change to mobile, web, or core crates.
     # Always runs on main pushes.
@@ -221,7 +224,12 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
         run: cargo tauri ios build --ci --target aarch64-sim
+      # ── Smoke test (main only) ─────────────────────────────────────────
+      # Simulator boot + install + launch + deep-link adds ~3.5 min.
+      # The build step already proves linking; smoke catches runtime crashes
+      # which are rare enough to gate on merge, not every PR.
       - name: Locate built .app bundle
+        if: github.event_name == 'push'
         id: find-app
         run: |
           APP_PATH=$(find crates/intrada-mobile/src-tauri/gen/apple/build \
@@ -234,11 +242,12 @@ jobs:
           echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
           echo "Found .app at: $APP_PATH"
       - name: Run iOS simulator smoke test
+        if: github.event_name == 'push'
         env:
           SMOKE_WAIT_SECS: "15"
         run: scripts/ios-simulator-smoke.sh "${{ steps.find-app.outputs.app_path }}"
       - name: Upload iOS screenshots
-        if: always()
+        if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-screenshots
