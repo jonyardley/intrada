@@ -14,6 +14,20 @@
 // `--grep "smoke:"`.
 
 import { test, expect } from "../fixtures/api-mock";
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+// Read prerendered files directly from disk rather than via the test
+// HTTP server. `npx serve` defaults to `cleanUrls: true` which strips
+// the `.html` extension and 301-redirects, breaking direct file serving
+// for `/prerendered/foo.html`. Production serves these via worker.js +
+// Cloudflare Workers Assets (exact-path lookup, no clean-URL stripping),
+// so the relevant invariant is "does the file on disk have the right
+// content after the post-build modification chain" — exactly what
+// fs.readFileSync verifies.
+const DIST_DIR =
+  process.env.DIST_DIR ||
+  path.resolve(__dirname, "../../crates/intrada-web/dist");
 
 test("smoke: post-modification dist renders without runtime-blocking console errors", async ({
   page,
@@ -81,32 +95,19 @@ test("smoke: post-modification dist renders without runtime-blocking console err
 });
 
 // Prerendered HTML check — verifies the build-time prerender step
-// produced files that contain real marketing content. In production
-// worker.js serves these for marketing routes; here we load the
-// prerendered file directly to confirm it has the expected content
-// before WASM even loads.
-test("smoke: prerendered homepage contains marketing content", async ({
-  page,
-}) => {
-  // Use page.request.get() instead of page.goto() to fetch the raw
-  // file without triggering page navigation / WASM mount. This
-  // returns exactly what serve sent on the wire.
-  const response = await page.request.get("/prerendered/index.html");
-  expect(response.status()).toBe(200);
-
-  const html = await response.text();
+// produced files containing real marketing content, and that the
+// post-build chain (sentry inject → sed → SRI refresh) preserved it.
+test("smoke: prerendered homepage contains marketing content", () => {
+  const filePath = path.join(DIST_DIR, "prerendered", "index.html");
+  const html = fs.readFileSync(filePath, "utf-8");
   console.log(`prerendered/index.html: ${html.length} bytes`);
   expect(html).toContain("Practice with intent");
   expect(html).toContain("<h1");
 });
 
-test("smoke: prerendered login page contains sign-in content", async ({
-  page,
-}) => {
-  const response = await page.request.get("/prerendered/login.html");
-  expect(response.status()).toBe(200);
-
-  const html = await response.text();
+test("smoke: prerendered login page contains sign-in content", () => {
+  const filePath = path.join(DIST_DIR, "prerendered", "login.html");
+  const html = fs.readFileSync(filePath, "utf-8");
   console.log(`prerendered/login.html: ${html.length} bytes`);
   expect(html).toContain("Sign in to continue");
 });
