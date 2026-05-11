@@ -192,7 +192,9 @@ pub fn SetEditView() -> impl IntoView {
                         let effects = core_ref.process_event(event);
                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
                         toast.show("Set updated");
-                        navigate("/library?type=set", NavigateOptions { replace: true, ..Default::default() });
+                        // Land back on the Set Detail surface the user came from,
+                        // not the Library list — preserves iPad split-view context.
+                        navigate(&format!("/library/sets/{}", set_id), NavigateOptions { replace: true, ..Default::default() });
                     }
                 }>
                     <div>
@@ -244,8 +246,9 @@ pub fn SetEditView() -> impl IntoView {
                         </Button>
                         <Button variant=ButtonVariant::Secondary on_click={
                             let navigate = navigate.clone();
+                            let set_id = set_id.clone();
                             Callback::new(move |_| {
-                                navigate("/library?type=set", NavigateOptions::default());
+                                navigate(&format!("/library/sets/{}", set_id), NavigateOptions::default());
                             })
                         }>"Cancel"</Button>
                     </div>

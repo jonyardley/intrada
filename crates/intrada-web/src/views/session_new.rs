@@ -26,6 +26,9 @@ pub fn SessionNewView() -> impl IntoView {
     // - Idle (first mount): auto-start building
     // - Idle (after cancel/abandon): navigate back to list
     // - Active (crash recovery or just started): navigate to active session
+    // - Summary (previous session not yet saved/discarded): redirect to
+    //   /sessions/summary so the user resolves it before starting a new one.
+    //   Without this branch the view renders an empty page (#503).
     Effect::new({
         let core = core.clone();
         move |_| {
@@ -34,6 +37,15 @@ pub fn SessionNewView() -> impl IntoView {
                 SessionStatusView::Active => {
                     navigate(
                         "/sessions/active",
+                        NavigateOptions {
+                            replace: true,
+                            ..Default::default()
+                        },
+                    );
+                }
+                SessionStatusView::Summary => {
+                    navigate(
+                        "/sessions/summary",
                         NavigateOptions {
                             replace: true,
                             ..Default::default()
