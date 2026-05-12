@@ -2133,4 +2133,267 @@ mod tests {
         };
         assert_eq!(tempo.format_display(), "Allegro (132 BPM)");
     }
+
+    // ── ViewModel projection tests (#554) ──────────────────────────────
+
+    fn make_item(
+        id: &str,
+        title: &str,
+        kind: ItemKind,
+        created_at: chrono::DateTime<chrono::Utc>,
+    ) -> Item {
+        Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at,
+            updated_at: created_at,
+        }
+    }
+
+    #[test]
+    fn view_items_sorted_newest_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let t1 = chrono::Utc::now() - chrono::Duration::hours(2);
+        let t2 = chrono::Utc::now() - chrono::Duration::hours(1);
+        let t3 = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Old", ItemKind::Piece, t1),
+            make_item("c", "Newest", ItemKind::Exercise, t3),
+            make_item("b", "Middle", ItemKind::Piece, t2),
+        ];
+        let vm = app.view(&model);
+        assert_eq!(vm.items[0].title, "Newest");
+        assert_eq!(vm.items[1].title, "Middle");
+        assert_eq!(vm.items[2].title, "Old");
+    }
+
+    #[test]
+    fn view_query_filters_by_item_type() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Piece One", ItemKind::Piece, now),
+            make_item("e1", "Exercise One", ItemKind::Exercise, now),
+        ];
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            key: None,
+            tags: vec![],
+            text: None,
+        });
+        let vm = app.view(&model);
+        assert_eq!(vm.items.len(), 1);
+        assert_eq!(vm.items[0].title, "Exercise One");
+    }
+
+    #[test]
+    fn view_query_filters_by_text_search() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Clair de Lune", ItemKind::Piece, now),
+            make_item("p2", "Moonlight Sonata", ItemKind::Piece, now),
+        ];
+        model.active_query = Some(ListQuery {
+            item_type: None,
+            key: None,
+            tags: vec![],
+            text: Some("clair".to_string()),
+        });
+        let vm = app.view(&model);
+        assert_eq!(vm.items.len(), 1);
+        assert_eq!(vm.items[0].title, "Clair de Lune");
+    }
+
+    #[test]
+    fn view_query_filters_by_tags() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mut tagged = make_item("p1", "Tagged", ItemKind::Piece, now);
+        tagged.tags = vec!["Warm-up".to_string(), "Scales".to_string()];
+        let untagged = make_item("p2", "Untagged", ItemKind::Piece, now);
+        model.items = vec![tagged, untagged];
+        model.active_query = Some(ListQuery {
+            item_type: None,
+            key: None,
+            tags: vec!["warm-up".to_string()],
+            text: None,
+        });
+        let vm = app.view(&model);
+        assert_eq!(vm.items.len(), 1);
+        assert_eq!(vm.items[0].title, "Tagged");
+    }
+
+    #[test]
+    fn view_sessions_sorted_newest_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let t1 = chrono::Utc::now() - chrono::Duration::hours(3);
+        let t2 = chrono::Utc::now() - chrono::Duration::hours(1);
+        model.sessions = vec![
+            PracticeSession {
+                id: "s1".to_string(),
+                started_at: t1,
+                completed_at: t1 + chrono::Duration::minutes(30),
+                total_duration_secs: 1800,
+                completion_status: CompletionStatus::Completed,
+                entries: vec![],
+                session_notes: None,
+                session_intention: None,
+            },
+            PracticeSession {
+                id: "s2".to_string(),
+                started_at: t2,
+                completed_at: t2 + chrono::Duration::minutes(15),
+                total_duration_secs: 900,
+                completion_status: CompletionStatus::Completed,
+                entries: vec![],
+                session_notes: None,
+                session_intention: None,
+            },
+        ];
+        let vm = app.view(&model);
+        assert_eq!(vm.sessions[0].id, "s2");
+        assert_eq!(vm.sessions[1].id, "s1");
+    }
+
+    #[test]
+    fn view_error_maps_from_last_error() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.last_error = Some("bad request".to_string());
+        let vm = app.view(&model);
+        assert_eq!(vm.error.as_deref(), Some("bad request"));
+    }
+
+    #[test]
+    fn view_empty_sessions_produces_no_analytics() {
+        let app = Intrada;
+        let model = Model::test_default();
+        let vm = app.view(&model);
+        assert!(vm.analytics.is_none());
+    }
+
+    #[test]
+    fn view_set_source_status_no_source() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![],
+            source_set_id: None,
+            source_set_entry_snapshot: vec![],
+            session_intention: None,
+            target_duration_mins: None,
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.source_status, SetSourceStatus::NoSource);
+    }
+
+    #[test]
+    fn view_set_source_status_unmodified() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.sets = vec![crate::domain::set::Set {
+            id: "set-1".to_string(),
+            name: "Morning".to_string(),
+            entries: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }];
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "item-a".to_string(),
+            item_title: "Scale".to_string(),
+            item_type: ItemKind::Exercise,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+        };
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![entry],
+            source_set_id: Some("set-1".to_string()),
+            source_set_entry_snapshot: vec!["item-a".to_string()],
+            session_intention: None,
+            target_duration_mins: None,
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert!(matches!(
+            building.source_status,
+            SetSourceStatus::UnmodifiedFromSource { .. }
+        ));
+    }
+
+    #[test]
+    fn view_set_source_status_modified() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.sets = vec![crate::domain::set::Set {
+            id: "set-1".to_string(),
+            name: "Morning".to_string(),
+            entries: vec![],
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }];
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "item-b".to_string(),
+            item_title: "Etude".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+        };
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![entry],
+            source_set_id: Some("set-1".to_string()),
+            source_set_entry_snapshot: vec!["item-a".to_string()],
+            session_intention: None,
+            target_duration_mins: None,
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert!(matches!(
+            building.source_status,
+            SetSourceStatus::ModifiedFromSource { .. }
+        ));
+    }
+
+    #[test]
+    fn view_set_saves_committed_mirrors_model() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.set_saves_committed = 42;
+        let vm = app.view(&model);
+        assert_eq!(vm.set_saves_committed, 42);
+    }
 }

@@ -483,3 +483,214 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         session_intention: session.session_intention.clone(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    fn make_entry(id: &str, item_id: &str, title: &str, position: usize) -> SetlistEntry {
+        SetlistEntry {
+            id: id.to_string(),
+            item_id: item_id.to_string(),
+            item_title: title.to_string(),
+            item_type: ItemKind::Piece,
+            position,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+        }
+    }
+
+    // ── Model error methods ────────────────────────────────────────────
+
+    #[test]
+    fn surface_error_sets_last_error() {
+        let mut model = Model::default();
+        model.surface_error("network down");
+        assert_eq!(model.last_error.as_deref(), Some("network down"));
+    }
+
+    #[test]
+    fn surface_error_dedupes_identical_messages() {
+        let mut model = Model::default();
+        model.surface_error("fail");
+        model.surface_error("fail");
+        assert_eq!(model.last_error.as_deref(), Some("fail"));
+    }
+
+    #[test]
+    fn surface_error_muted_after_dismiss() {
+        let mut model = Model::default();
+        model.surface_error("first");
+        model.dismiss_error();
+        model.surface_error("second");
+        assert!(model.last_error.is_none());
+        assert!(model.error_muted);
+    }
+
+    #[test]
+    fn record_success_clears_error_and_unmutes() {
+        let mut model = Model::default();
+        model.surface_error("oops");
+        model.dismiss_error();
+        model.record_success();
+        assert!(model.last_error.is_none());
+        assert!(!model.error_muted);
+        model.surface_error("new error");
+        assert_eq!(model.last_error.as_deref(), Some("new error"));
+    }
+
+    #[test]
+    fn reset_for_sign_out_preserves_api_base_url() {
+        let mut model = Model {
+            api_base_url: "https://api.example.com".to_string(),
+            ..Default::default()
+        };
+        model.items.push(Item {
+            id: "item-1".to_string(),
+            title: "leftover".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        });
+        model.set_saves_committed = 5;
+        model.reset_for_sign_out();
+        assert_eq!(model.api_base_url, "https://api.example.com");
+        assert!(model.items.is_empty());
+        assert_eq!(model.set_saves_committed, 0);
+    }
+
+    // ── entry_to_view ──────────────────────────────────────────────────
+
+    #[test]
+    fn entry_to_view_formats_duration() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.duration_secs = 125;
+        let view = entry_to_view(&entry);
+        assert_eq!(view.duration_display, "2m 5s");
+    }
+
+    #[test]
+    fn entry_to_view_planned_duration_whole_minutes() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.planned_duration_secs = Some(300);
+        let view = entry_to_view(&entry);
+        assert_eq!(view.planned_duration_display.as_deref(), Some("5 min"));
+    }
+
+    #[test]
+    fn entry_to_view_planned_duration_partial_minutes() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.planned_duration_secs = Some(90);
+        let view = entry_to_view(&entry);
+        assert_eq!(view.planned_duration_display.as_deref(), Some("1m 30s"));
+    }
+
+    // ── build_active_session_view ──────────────────────────────────────
+
+    #[test]
+    fn active_session_view_next_item_title() {
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Scale", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active);
+        assert_eq!(view.next_item_title.as_deref(), Some("Etude"));
+    }
+
+    #[test]
+    fn active_session_view_last_item_has_no_next() {
+        let active = ActiveSession {
+            id: "as2".to_string(),
+            entries: vec![
+                make_entry("e1", "i1", "Scale", 0),
+                make_entry("e2", "i2", "Etude", 1),
+            ],
+            current_index: 1,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active);
+        assert!(view.next_item_title.is_none());
+    }
+
+    // ── build_summary_view ─────────────────────────────────────────────
+
+    #[test]
+    fn summary_view_total_duration() {
+        let mut e1 = make_entry("e1", "i1", "Scale", 0);
+        e1.duration_secs = 60;
+        let mut e2 = make_entry("e2", "i2", "Etude", 1);
+        e2.duration_secs = 90;
+        let summary = crate::domain::session::SummarySession {
+            id: "sum1".to_string(),
+            entries: vec![e1, e2],
+            session_started_at: Utc::now(),
+            session_ended_at: Utc::now(),
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: Some("focus".to_string()),
+        };
+        let view = build_summary_view(&summary);
+        assert_eq!(view.total_duration_display, "2m 30s");
+        assert_eq!(view.session_intention.as_deref(), Some("focus"));
+    }
+
+    // ── lesson_to_view ─────────────────────────────────────────────────
+
+    #[test]
+    fn lesson_notes_preview_truncated_at_100_chars() {
+        let long_notes = "a".repeat(200);
+        let lesson = Lesson {
+            id: "l1".to_string(),
+            date: "2026-01-15".to_string(),
+            notes: Some(long_notes),
+            photos: vec![],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+        };
+        let view = lesson_to_view(&lesson);
+        assert_eq!(view.notes_preview.len(), 100);
+    }
+
+    #[test]
+    fn lesson_has_photos_flag() {
+        let lesson = Lesson {
+            id: "l1".to_string(),
+            date: "2026-01-15".to_string(),
+            notes: None,
+            photos: vec![crate::domain::lesson::LessonPhoto {
+                id: "p1".to_string(),
+                url: "https://example.com/photo.jpg".to_string(),
+                created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            }],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+        };
+        let view = lesson_to_view(&lesson);
+        assert!(view.has_photos);
+        assert_eq!(view.photos.len(), 1);
+    }
+}
