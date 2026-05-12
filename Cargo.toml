@@ -6,6 +6,7 @@ members = [
   "crates/intrada-mobile/src-tauri",
   "crates/intrada-mobile/plugins/background-audio",
   "crates/intrada-mobile/plugins/live-activity",
+  "crates/intrada-mobile/plugins/auth-session",
 ]
 resolver = "2"
 package.rust-version = "1.75"

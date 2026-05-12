@@ -12,6 +12,7 @@
     "haptics:allow-vibrate",
     "deep-link:default",
     "background-audio:default",
-    "live-activity:default"
+    "live-activity:default",
+    "auth-session:default"
   ]
 }

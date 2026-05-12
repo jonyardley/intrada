@@ -51,6 +51,7 @@
     <link data-trunk rel="copy-file" href="static/robots.txt" />
     <link data-trunk rel="copy-file" href="static/sitemap.xml" />
     <link data-trunk rel="copy-file" href="static/og-image.svg" />
+    <link data-trunk rel="copy-file" href="static/ios-auth.html" />
 
     <!-- Release tag for Sentry. Defaults to null (PR builds, local dev) and
          is replaced by CI's deploy step with `sed` before publishing to
@@ -246,37 +247,58 @@
     <script>
       // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
       // Skip if already defined (E2E tests inject a mock via addInitScript)
+      //
+      // iOS and web use completely different auth strategies:
+      // - Web: Clerk JS SDK (cookie-based sessions, CDN build)
+      // - iOS: PAT-based auth. OAuth happens in Safari via
+      //   ASWebAuthenticationSession (where Clerk JS works normally),
+      //   then the Clerk JWT is exchanged for a long-lived PAT via
+      //   POST /api/auth/ios/exchange. No Clerk JS in WKWebView.
       if (!window.__intrada_auth) window.__intrada_auth = {
         _clerk: null,
         _ready: false,
         _initFailed: false,
+        _isNative: location.protocol === 'tauri:',
+        _authListener: null,
         async init(publishableKey) {
           if (!publishableKey || this._ready) return;
+
+          // ── iOS: PAT-based auth, no Clerk JS needed ──
+          if (this._isNative) {
+            window.__clerk_publishable_key = publishableKey;
+            this._ready = true;
+            return;
+          }
+
+          // ── Web: standard Clerk JS flow ──
           try {
-            // Set the key globally BEFORE loading the SDK so its
-            // auto-init picks it up instead of throwing "Missing publishableKey".
             window.__clerk_publishable_key = publishableKey;
             if (!window.Clerk) {
-              await new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-                s.crossOrigin = 'anonymous';
-                s.onload = resolve;
-                s.onerror = reject;
-                document.head.appendChild(s);
-              });
+              try {
+                await new Promise((resolve, reject) => {
+                  const s = document.createElement('script');
+                  s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+                  s.crossOrigin = 'anonymous';
+                  s.onload = resolve;
+                  s.onerror = () => reject(new Error('CDN script load failed'));
+                  document.head.appendChild(s);
+                });
+              } catch (e) {
+                this._lastError = 'script_load: ' + e.message;
+                this._initFailed = true;
+                return;
+              }
             }
-            // After the SDK script loads it auto-initializes using
-            // __clerk_publishable_key and sets window.Clerk to the
-            // loaded instance. Use it directly.
             const clerk = window.Clerk;
-            if (!clerk) { this._initFailed = true; return; }
-            // The auto-init may still be loading; wait for it.
+            if (!clerk) {
+              this._lastError = 'no_clerk_object: SDK loaded but window.Clerk is ' + typeof clerk;
+              this._initFailed = true;
+              return;
+            }
             if (typeof clerk.load === 'function' && !clerk.loaded) {
               await clerk.load();
             }
             this._clerk = clerk;
-            // Handle SSO/OAuth callback if we landed on /sso-callback
             if (window.location.pathname === '/sso-callback') {
               try {
                 await clerk.handleRedirectCallback({
@@ -289,6 +311,7 @@
             this._ready = true;
           } catch (e) {
             console.error("Clerk init failed:", e);
+            this._lastError = String(e.message || e);
             this._initFailed = true;
           }
         },
@@ -296,11 +319,14 @@
           return this._initFailed;
         },
         isSignedIn() {
-          if (!this._ready || !this._clerk) return false;
-          return !!this._clerk.user;
+          if (!this._ready) return false;
+          if (this._isNative) return !!localStorage.getItem('__ios_pat');
+          return !!this._clerk?.user;
         },
         async getToken() {
-          if (!this._ready || !this._clerk || !this._clerk.session) return null;
+          if (!this._ready) return null;
+          if (this._isNative) return localStorage.getItem('__ios_pat');
+          if (!this._clerk?.session) return null;
           try {
             return await this._clerk.session.getToken();
           } catch (e) {
@@ -309,11 +335,14 @@
           }
         },
         getUserId() {
-          if (!this._ready || !this._clerk || !this._clerk.user) return null;
-          return this._clerk.user.id;
+          if (!this._ready) return null;
+          if (this._isNative) return localStorage.getItem('__ios_user_id');
+          return this._clerk?.user?.id || null;
         },
         getUserEmail() {
-          if (!this._ready || !this._clerk || !this._clerk.user) return null;
+          if (!this._ready) return null;
+          if (this._isNative) return localStorage.getItem('__ios_user_email');
+          if (!this._clerk?.user) return null;
           const user = this._clerk.user;
           if (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) {
             return user.primaryEmailAddress.emailAddress;
@@ -324,13 +353,80 @@
           return null;
         },
         async signOut() {
-          if (!this._ready || !this._clerk) return;
-          await this._clerk.signOut();
+          if (!this._ready) return;
+          if (this._isNative) {
+            localStorage.removeItem('__ios_pat');
+            localStorage.removeItem('__ios_user_id');
+            localStorage.removeItem('__ios_user_email');
+            if (this._authListener) this._authListener();
+            return;
+          }
+          if (this._clerk) await this._clerk.signOut();
         },
         async signInWithGoogle() {
-          if (!this._ready || !this._clerk) return;
-          // authenticateWithRedirect lives on the SignIn resource,
-          // accessed via clerk.client.signIn (Clerk JS v5 API).
+          if (!this._ready) return;
+          this._lastError = null;
+
+          // ── iOS: OAuth in Safari, exchange for PAT ──
+          if (this._isNative) {
+            const tauriInvoke =
+              window.__TAURI__?.core?.invoke ??
+              window.__TAURI_INTERNALS__?.invoke;
+            if (!tauriInvoke) {
+              this._lastError = 'ios_auth: Tauri invoke not available';
+              return;
+            }
+            try {
+              // Open ios-auth.html in ASWebAuthenticationSession (Safari).
+              // Clerk JS runs normally there (cookies work in Safari).
+              // After OAuth, the page redirects to our app scheme with a
+              // short-lived Clerk session JWT.
+              const pk = window.__clerk_publishable_key || '';
+              const authUrl = 'https://myintrada.com/ios-auth.html?pk=' + encodeURIComponent(pk);
+              const result = await tauriInvoke(
+                'plugin:auth-session|open',
+                { args: {
+                  url: authUrl,
+                  callback_scheme: 'com.intrada.app',
+                } }
+              );
+
+              // Extract the Clerk JWT from the callback URL
+              const callbackUrl = new URL(result.callback_url);
+              const clerkJwt = callbackUrl.searchParams.get('token');
+              if (!clerkJwt) throw new Error('No token in callback');
+
+              // Exchange the short-lived Clerk JWT for a long-lived PAT
+              const apiUrl = window.__intrada_api_url || 'https://intrada-api.fly.dev';
+              const resp = await fetch(apiUrl + '/api/auth/ios/exchange', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer ' + clerkJwt,
+                  'Content-Type': 'application/json',
+                },
+              });
+              if (!resp.ok) {
+                const body = await resp.text().catch(() => '');
+                throw new Error('Exchange failed (' + resp.status + '): ' + body);
+              }
+              const data = await resp.json();
+
+              // Store PAT and user info for subsequent API calls
+              localStorage.setItem('__ios_pat', data.token);
+              localStorage.setItem('__ios_user_id', data.user_id);
+              if (data.email) localStorage.setItem('__ios_user_email', data.email);
+
+              // Notify the Leptos app that auth state changed
+              if (this._authListener) this._authListener();
+            } catch (e) {
+              console.error('iOS auth flow failed:', e);
+              this._lastError = 'ios_auth: ' + (e.message || String(e));
+            }
+            return;
+          }
+
+          // ── Web: standard Clerk redirect flow ──
+          if (!this._clerk) return;
           const signIn = this._clerk.client?.signIn;
           if (signIn && typeof signIn.authenticateWithRedirect === 'function') {
             await signIn.authenticateWithRedirect({
@@ -339,13 +435,18 @@
               redirectUrlComplete: window.location.origin + "/",
             });
           } else {
-            // Fallback: use Clerk's built-in redirect helper
             await this._clerk.redirectToSignIn();
           }
         },
         addListener(callback) {
-          if (!this._ready || !this._clerk) return;
-          this._clerk.addListener(callback);
+          if (!this._ready) return;
+          if (this._isNative) {
+            this._authListener = callback;
+            // Invoke immediately with current state (matches Clerk behavior)
+            callback();
+            return;
+          }
+          if (this._clerk) this._clerk.addListener(callback);
         },
       };
     </script>

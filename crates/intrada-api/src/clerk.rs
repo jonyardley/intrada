@@ -1,9 +1,12 @@
 //! Clerk Backend API client.
 //!
-//! Used today only for user deletion (GDPR Art. 17). The frontend talks to
-//! Clerk directly for sign-in/out via `@clerk/clerk-js`; this server-side
-//! client uses the Backend API key to perform privileged operations the
-//! frontend can't.
+//! Used for user deletion (GDPR Art. 17) and iOS token exchange (fetching
+//! user profile after the iOS app authenticates via ASWebAuthenticationSession
+//! and exchanges the Clerk JWT for a long-lived PAT). The frontend talks to
+//! Clerk directly for sign-in/out via `@clerk/clerk-js` on web; this
+//! server-side client uses the Backend API key for privileged operations.
+
+use serde::Deserialize;
 
 use crate::error::ApiError;
 
@@ -29,6 +32,32 @@ impl ClerkClient {
         })
     }
 
+    /// Fetch a Clerk user's profile. Used by the iOS token exchange endpoint
+    /// to return the user's email alongside the minted PAT.
+    pub async fn get_user(&self, user_id: &str) -> Result<ClerkUser, ApiError> {
+        let url = format!("{CLERK_API_BASE}/users/{user_id}");
+        let response = self
+            .http
+            .get(&url)
+            .bearer_auth(&self.secret_key)
+            .send()
+            .await
+            .map_err(|e| ApiError::Internal(format!("Clerk get_user failed: {e}")))?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(ApiError::Internal(format!(
+                "Clerk get_user returned {status}: {body}"
+            )));
+        }
+
+        response
+            .json::<ClerkUser>()
+            .await
+            .map_err(|e| ApiError::Internal(format!("Clerk get_user parse failed: {e}")))
+    }
+
     /// Delete a Clerk user. Idempotent: 404 is treated as success so a
     /// retry after a partial deletion succeeds.
     pub async fn delete_user(&self, user_id: &str) -> Result<(), ApiError> {
@@ -50,5 +79,28 @@ impl ClerkClient {
         Err(ApiError::Internal(format!(
             "Clerk delete returned {status}: {body}"
         )))
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClerkUser {
+    pub id: String,
+    pub primary_email_address_id: Option<String>,
+    pub email_addresses: Vec<ClerkEmailAddress>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClerkEmailAddress {
+    pub id: String,
+    pub email_address: String,
+}
+
+impl ClerkUser {
+    pub fn primary_email(&self) -> Option<&str> {
+        let primary_id = self.primary_email_address_id.as_deref()?;
+        self.email_addresses
+            .iter()
+            .find(|e| e.id == primary_id)
+            .map(|e| e.email_address.as_str())
     }
 }
