@@ -40,6 +40,12 @@ pub fn SetSaveForm(
     // Snapshot of the success-counter at dispatch time. We promote `saved=true`
     // only when the live counter > this baseline.
     let baseline_counter = RwSignal::new(0u64);
+    // Snapshot of `view_model.error` at dispatch time. A pre-existing error
+    // (e.g. dismissed-but-not-cleared from an unrelated earlier failure)
+    // would otherwise immediately trigger the failure path on the first
+    // render after dispatch. We only count a NEW error (post-dispatch) as
+    // our save's failure signal.
+    let baseline_error = RwSignal::new(Option::<String>::None);
     let toast = use_toast();
 
     if let Some(open) = sheet_open {
@@ -52,8 +58,9 @@ pub fn SetSaveForm(
     }
 
     // Reactive bridge: pending → confirmed (success) or pending → expanded
-    // (failure). Driven by either the counter rising or `view_model.error`
-    // gaining a value while we're pending.
+    // (failure). Driven by either the counter rising or a NEW
+    // `view_model.error` appearing post-dispatch (distinguished from a
+    // pre-existing one via `baseline_error`).
     Effect::new(move |_| {
         let vm = view_model.get();
         if !pending.get_untracked() {
@@ -64,9 +71,10 @@ pub fn SetSaveForm(
             pending.set(false);
             saved.set(true);
             toast.show("Saved as Set");
-        } else if vm.error.is_some() {
-            // Failed: surface the form again so the user can retry. The
-            // error banner shows the message; we just exit the pending state.
+        } else if vm.error.is_some() && vm.error != baseline_error.get_untracked() {
+            // A new error surfaced after dispatch — treat as our save's
+            // failure. Re-expand the form so the user can retry; the error
+            // banner shows the message.
             pending.set(false);
             expanded.set(true);
         }
@@ -79,7 +87,9 @@ pub fn SetSaveForm(
             return;
         }
         error.set(None);
-        baseline_counter.set(view_model.get_untracked().set_saves_committed);
+        let vm = view_model.get_untracked();
+        baseline_counter.set(vm.set_saves_committed);
+        baseline_error.set(vm.error.clone());
         pending.set(true);
         on_save.run(trimmed);
         name.set(String::new());

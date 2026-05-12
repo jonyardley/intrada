@@ -636,6 +636,31 @@ mod tests {
     }
 
     #[test]
+    fn test_load_failed_does_not_bump_set_saves_counter() {
+        // The counter is the shell's signal for "save round-trip confirmed".
+        // A LoadFailed (the failure path from create_set's HTTP handler) must
+        // NOT bump it — otherwise SetSaveForm would flip to "Saved" on
+        // failure, the exact bug we're fixing (#449).
+        let app = Intrada;
+        let mut model = Model {
+            api_base_url: "http://localhost:3001".to_string(),
+            set_saves_committed: 3,
+            ..Default::default()
+        };
+
+        let _cmd = app.update(
+            Event::LoadFailed("Failed to save set: timeout".to_string()),
+            &mut model,
+        );
+
+        assert_eq!(model.set_saves_committed, 3, "counter must not bump on failure");
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("Failed to save set: timeout")
+        );
+    }
+
+    #[test]
     fn test_set_save_succeeded_bumps_counter_and_clears_error() {
         let app = Intrada;
         let mut model = Model {
