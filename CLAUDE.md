@@ -1,6 +1,6 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-05-07.
+> Last reviewed: 2026-05-12.
 
 ## Project Overview
 
@@ -121,6 +121,7 @@ User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Sh
 | Domain data | Crux `Model` → `ViewModel` (single source of truth) |
 | UI interaction | Leptos signals (web + iOS via Tauri) |
 | Crash recovery | localStorage (`intrada:session-in-progress` only) |
+| iOS auth credentials | localStorage (`__ios_pat`, `__ios_user_id`, `__ios_user_email`) |
 
 Domain state flows through `Event` → `Model` → `ViewModel`. Never store domain
 data in shell-local state. UI-only state stays in Leptos signals.
@@ -136,11 +137,23 @@ data in shell-local state. UI-only state stays in Leptos signals.
 
 ## Authentication
 
-- Clerk + Google OAuth. JWT RS256 validated against JWKS.
-- All DB queries scoped by `user_id` from JWT `sub` claim.
+Two auth paths, same API surface:
+
+- **Web**: Clerk JS (cookies) → short-lived JWT on every request. Standard
+  browser flow, Clerk handles Google OAuth natively.
+- **iOS**: Google OAuth runs in Safari via `ASWebAuthenticationSession` (Google
+  blocks OAuth in WKWebView). The resulting Clerk JWT is exchanged for a
+  long-lived PAT via `POST /api/auth/ios/exchange`, stored in localStorage.
+  All subsequent API calls use the PAT. No Clerk JS in the WKWebView.
+
+Common:
+- JWT RS256 validated against JWKS. PATs validated via SHA-256 hash lookup.
+- All DB queries scoped by `user_id` (from JWT `sub` or PAT owner).
 - When `CLERK_ISSUER_URL` unset: auth disabled (local dev only).
 - Frontend retries once with fresh token on 401.
-- Key files: `intrada-api/src/auth.rs`, `intrada-web/src/clerk_bindings.rs`
+- Key files: `intrada-api/src/auth.rs`, `intrada-api/src/routes/auth_ios.rs`,
+  `intrada-api/src/clerk.rs`, `intrada-web/index.html` (JS bridge),
+  `intrada-web/static/ios-auth.html`
 
 ## Environment Variables
 
@@ -230,6 +243,24 @@ queries alone.
 - Rust stable, 2021 edition. `cargo fmt` + `cargo clippy -- -D warnings` must pass.
 - No `unwrap()` without justification.
 - Prefer well-established libraries over custom implementations.
+
+## Testing
+
+**Default: ship tests with new code.** New API endpoints, DB functions, and
+non-trivial pure logic must include tests. The existing suite
+(`crates/intrada-api/tests/`) uses real SQLite via `common::setup_test_app()`
+— no mocks needed for DB-backed tests.
+
+What to test:
+- API endpoints: at minimum auth rejection paths; happy path when reachable
+  via the test harness (auth-disabled mode gives a fake user).
+- DB write functions: correct rows affected, idempotency, cross-user isolation.
+- Pure functions: edge cases, None/empty inputs.
+
+When skipping tests, say so explicitly in the PR description with the reason
+(e.g. "requires real HTTP to an external API and we don't have a mock server").
+"All 157 tests pass" is not coverage — those are existing tests, not tests
+for new code.
 
 ## Project-specific gotchas
 

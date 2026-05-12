@@ -79,6 +79,14 @@ pub async fn revoke_token(
     Ok(())
 }
 
+pub async fn revoke_tokens_by_name(
+    conn: &Connection,
+    user_id: &str,
+    name: &str,
+) -> Result<u64, ApiError> {
+    db::tokens::revoke_by_name(conn, user_id, name).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

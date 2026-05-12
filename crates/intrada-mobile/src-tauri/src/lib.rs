@@ -43,6 +43,7 @@ pub fn run() {
         // resolves with no ActivityKit calls yet; Phase C wires the
         // real Activity<...>.request / update / end.
         .plugin(tauri_plugin_live_activity::init())
+        .plugin(tauri_plugin_auth_session::init())
         .run(tauri::generate_context!())
         .expect("error while running intrada");
 }

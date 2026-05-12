@@ -38,11 +38,21 @@ pub fn LoginView() -> impl IntoView {
         }
     });
 
+    let sign_in_error = RwSignal::new(None::<String>);
+
     let on_sign_in = Callback::new(move |_| {
         signing_in.set(true);
+        sign_in_error.set(None);
         leptos::task::spawn_local(async move {
             js_bridge::sign_in_with_google().await;
-            // Clerk redirects the page — no need to update state here.
+            // If we reach here, the redirect didn't happen — something failed.
+            // On success the page navigates away and this code never runs.
+            signing_in.set(false);
+            if let Some(err) = js_bridge::init_error() {
+                sign_in_error.set(Some(err));
+            } else {
+                sign_in_error.set(Some("Sign-in failed. Please try again.".into()));
+            }
         });
     });
 
@@ -65,7 +75,14 @@ pub fn LoginView() -> impl IntoView {
                     <p class="text-danger-text text-sm mb-4">
                         "Sign-in is temporarily unavailable. Please try again later."
                     </p>
+                    {move || auth.auth_error_detail.get().map(|detail| view! {
+                        <p class="text-muted text-xs mb-4 font-mono break-all">{detail}</p>
+                    })}
                 </Show>
+
+                {move || sign_in_error.get().map(|err| view! {
+                    <p class="text-danger-text text-sm mb-4 font-mono break-all">{err}</p>
+                })}
 
                 <Button
                     variant=ButtonVariant::Primary

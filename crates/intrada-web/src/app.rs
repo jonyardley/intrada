@@ -52,6 +52,7 @@ pub struct AuthState {
     pub is_authenticated: RwSignal<bool>,
     pub auth_loading: RwSignal<bool>,
     pub auth_error: RwSignal<bool>,
+    pub auth_error_detail: RwSignal<Option<String>>,
 }
 
 /// Remembers the user's focus-mode toggle for the currently-active session,
@@ -70,11 +71,13 @@ pub fn App() -> impl IntoView {
         is_authenticated: RwSignal::new(false),
         auth_loading: RwSignal::new(true),
         auth_error: RwSignal::new(false),
+        auth_error_detail: RwSignal::new(None),
     };
     let AuthState {
         is_authenticated,
         auth_loading,
         auth_error,
+        auth_error_detail,
     } = auth;
 
     // Initialize Clerk
@@ -111,7 +114,7 @@ pub fn App() -> impl IntoView {
                     return;
                 }
                 if js_bridge::init_failed() {
-                    // Clerk failed to init (bad key, wrong domain, etc.)
+                    auth_error_detail.set(js_bridge::init_error());
                     auth_error.set(true);
                     auth_loading.set(false);
                     return;

@@ -241,8 +241,35 @@ ios-dev-device:
 # attributed to a release. Empty if not in a git checkout — the
 # `option_env!` filter in src-tauri/src/lib.rs treats empty as
 # no-release.
+# Production iOS build. Compile-time env vars are set explicitly here
+# so the build is correct regardless of what's in .env (which is for
+# local dev). Always clean-rebuilds the frontend to avoid stale WASM.
 ios-build:
-    cd crates/intrada-mobile/src-tauri && GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')" cargo tauri ios build
+    #!/usr/bin/env bash
+    set -e
+    export INTRADA_API_URL="https://intrada-api.fly.dev"
+    export CLERK_PUBLISHABLE_KEY="${CLERK_PUBLISHABLE_KEY:?Set CLERK_PUBLISHABLE_KEY in .env}"
+    export SENTRY_DSN_MOBILE="${SENTRY_DSN_MOBILE:-}"
+    export GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+    echo "Building frontend (INTRADA_API_URL=$INTRADA_API_URL)..."
+    rm -rf crates/intrada-web/dist
+    trunk build --config crates/intrada-web/Trunk.toml
+    echo "Building Tauri iOS (release)..."
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios build
+
+# Build for production and install on a connected physical device.
+# Requires ios-deploy (`brew install ios-deploy`).
+ios-run-device: ios-build
+    #!/usr/bin/env bash
+    set -e
+    APP=$(find crates/intrada-mobile/src-tauri/gen/apple/build -name "Intrada.app" -path "*/Products/Applications/*" 2>/dev/null | head -1)
+    if [ -z "$APP" ]; then
+        echo "❌ No .app found — did ios-build succeed?"
+        exit 1
+    fi
+    echo "Installing $APP on device..."
+    ios-deploy --bundle "$APP" --no-wifi
+    echo "✓ Installed and launched on device"
 
 # ─────────────────────────────────────────────
 # Diagnostics & cleanup

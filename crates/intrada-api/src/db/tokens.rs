@@ -156,6 +156,20 @@ pub async fn lookup_by_hash(conn: &Connection, hash: &str) -> Result<Option<PatL
     }
 }
 
+/// Revoke all non-revoked tokens with the given name for a user.
+/// Returns the number of tokens revoked.
+pub async fn revoke_by_name(conn: &Connection, user_id: &str, name: &str) -> Result<u64, ApiError> {
+    let now = Utc::now().to_rfc3339();
+    let rows = conn
+        .execute(
+            "UPDATE mcp_tokens SET revoked_at = ?1
+             WHERE user_id = ?2 AND name = ?3 AND revoked_at IS NULL",
+            libsql::params![now, user_id, name],
+        )
+        .await?;
+    Ok(rows)
+}
+
 /// Update `last_used_at` to now. Best-effort; auth extractor calls this
 /// after a successful PAT resolution but ignores errors.
 pub async fn mark_used(conn: &Connection, hash: &str) -> Result<(), ApiError> {

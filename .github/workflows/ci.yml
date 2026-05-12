@@ -93,9 +93,9 @@ jobs:
       # intrada-mobile + its plugins (Tauri 2) require GTK/glib system libs
       # not present on Ubuntu runners — iOS-only crates with no meaningful
       # unit tests on Linux.
-      - run: cargo nextest run --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity
+      - run: cargo nextest run --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
       - name: Doc tests
-        run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity
+        run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
 
   clippy:
     name: Clippy
@@ -115,7 +115,7 @@ jobs:
           prefix-key: "native"
           save-if: "false"
       # intrada-mobile + its plugins excluded: Tauri 2 needs GTK/glib system libs on Linux.
-      - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity -- -D warnings
+      - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session -- -D warnings
       - name: Clippy (WASM target)
         run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
 
@@ -155,6 +155,7 @@ jobs:
         run: |
           cargo clippy -p tauri-plugin-background-audio --target aarch64-apple-ios -- -D warnings
           cargo clippy -p tauri-plugin-live-activity --target aarch64-apple-ios -- -D warnings
+          cargo clippy -p tauri-plugin-auth-session --target aarch64-apple-ios -- -D warnings
       # ── Build (simulator target) ───────────────────────────────────────────
       - uses: taiki-e/install-action@v2
         with:

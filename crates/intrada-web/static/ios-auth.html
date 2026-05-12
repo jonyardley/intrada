@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intrada — Sign in</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to bottom, #161926, #0f111a);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      color: #e8e6f0;
+    }
+    .container { text-align: center; padding: 2rem; }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid rgba(145,128,250,0.3);
+      border-top-color: #9180fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 1rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { color: #f87171; font-size: 14px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <p id="status">Signing in...</p>
+    <p id="error" class="error" style="display:none"></p>
+  </div>
+  <script>
+    (async function () {
+      var statusEl = document.getElementById('status');
+      var errorEl = document.getElementById('error');
+
+      function showError(msg) {
+        statusEl.textContent = 'Sign-in failed';
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+      }
+
+      try {
+        // Load Clerk JS (full browser build — this runs in Safari, not WKWebView)
+        await new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+          s.crossOrigin = 'anonymous';
+          s.onload = resolve;
+          s.onerror = function () { reject(new Error('Failed to load Clerk SDK')); };
+          document.head.appendChild(s);
+        });
+
+        var clerk = window.Clerk;
+        if (!clerk) throw new Error('Clerk SDK not available');
+
+        var pk = new URLSearchParams(location.search).get('pk');
+        if (pk) {
+          sessionStorage.setItem('__ios_auth_pk', pk);
+        } else {
+          pk = sessionStorage.getItem('__ios_auth_pk');
+        }
+        if (!pk) throw new Error('Missing pk parameter');
+        window.__clerk_publishable_key = pk;
+        await clerk.load();
+
+        // If this is a callback from OAuth (Clerk appends status params)
+        if (location.search.includes('__clerk_status') ||
+            location.hash.includes('__clerk_status')) {
+          statusEl.textContent = 'Completing sign-in...';
+          await clerk.handleRedirectCallback({
+            redirectUrl: location.origin + '/ios-auth.html',
+          });
+          // handleRedirectCallback navigates away; if we reach here, wait
+          return;
+        }
+
+        // User is already signed in (e.g. returning after OAuth completed)
+        if (clerk.user && clerk.session) {
+          statusEl.textContent = 'Getting session token...';
+          var token = await clerk.session.getToken();
+          if (!token) throw new Error('No session token');
+          // The Clerk session persists in Safari cookies. This means
+          // re-auth reuses the same Google account silently (no picker).
+          // Acceptable for beta — switching accounts requires signing out
+          // of Google in Safari first.
+          window.location.href = 'com.intrada.app://oauth-callback?token=' + encodeURIComponent(token);
+          return;
+        }
+
+        // Not signed in — trigger Google OAuth. The redirect chain stays
+        // on this page: Google → Clerk verify → /ios-auth.html (callback)
+        // → /ios-auth.html (complete, now signed in) → app scheme.
+        statusEl.textContent = 'Redirecting to Google...';
+        var signIn = clerk.client && clerk.client.signIn;
+        if (signIn && typeof signIn.authenticateWithRedirect === 'function') {
+          await signIn.authenticateWithRedirect({
+            strategy: 'oauth_google',
+            redirectUrl: location.origin + '/ios-auth.html',
+            redirectUrlComplete: location.origin + '/ios-auth.html',
+          });
+        } else {
+          await clerk.redirectToSignIn();
+        }
+      } catch (e) {
+        showError(e.message || String(e));
+      }
+    })();
+  </script>
+</body>
+</html>

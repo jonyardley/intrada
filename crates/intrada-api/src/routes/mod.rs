@@ -1,5 +1,6 @@
 mod account;
 mod assets;
+mod auth_ios;
 mod health;
 mod items;
 mod lessons;
@@ -146,6 +147,15 @@ pub fn api_router(state: AppState) -> Router {
         ))
         .layer(oauth_cors);
 
+    // iOS auth exchange: IP rate-limit (innermost) → strict CORS (outermost)
+    // so 429s still carry the correct CORS headers for `tauri://localhost`.
+    let auth_ios_routes = auth_ios::router()
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::rate_limit::oauth_ip_rate_limit,
+        ))
+        .layer(strict_cors.clone());
+
     Router::new()
         // Sibling nests: axum routes by path specificity. The OAuth
         // surface (`.well-known/*` and `/oauth/*`) is rooted because RFC
@@ -155,6 +165,7 @@ pub fn api_router(state: AppState) -> Router {
         .merge(oauth_routes)
         .merge(asset_routes)
         .nest("/api/mcp", mcp_routes)
+        .nest("/api/auth/ios", auth_ios_routes)
         .nest("/api", api_routes().layer(strict_cors))
         .layer(trace)
         // Sentry layers: per-request hub + HTTP transaction (route-aware via

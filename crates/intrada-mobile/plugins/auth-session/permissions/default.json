@@ -1,0 +1,8 @@
+{
+  "default": {
+    "description": "Default permissions for the auth-session plugin: allow the WebView to open an OAuth URL in ASWebAuthenticationSession.",
+    "permissions": [
+      "allow-open"
+    ]
+  }
+}

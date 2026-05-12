@@ -75,8 +75,65 @@ mutated = false
   end
 end
 
+# ── Info.plist properties ────────────────────────────────────────────
+# Ensure production-ready plist values survive `cargo tauri ios init`.
+REQUIRED_PLIST = {
+  'UIInterfaceOrientationPortrait' => :orientation,
+  'CFBundleDisplayName'            => 'Intrada',
+  'UIUserInterfaceStyle'           => 'Dark',
+  'UIStatusBarStyle'               => 'UIStatusBarStyleLightContent',
+  'UIViewControllerBasedStatusBarAppearance' => false,
+  'ITSAppUsesNonExemptEncryption'  => false,
+  'UIRequiresFullScreen'           => true,
+  'UIBackgroundModes'              => ['audio'],
+  'NSCameraUsageDescription'       => 'Intrada uses your camera to take photos of your music.',
+  'NSPhotoLibraryUsageDescription' => 'Intrada accesses your photo library to add images to your pieces.',
+}.freeze
+
+(project['targets'] || {}).each do |name, target|
+  props = target.dig('info', 'properties')
+  next unless props.is_a?(Hash)
+
+  # Lock iPhone to portrait only
+  orientations = props['UISupportedInterfaceOrientations']
+  if orientations.is_a?(Array) && orientations != ['UIInterfaceOrientationPortrait']
+    props['UISupportedInterfaceOrientations'] = ['UIInterfaceOrientationPortrait']
+    mutated = true
+    puts "Locked iPhone to portrait-only in target: #{name}"
+  end
+
+  # Apply remaining plist properties
+  REQUIRED_PLIST.each do |key, value|
+    next if key == 'UIInterfaceOrientationPortrait' # handled above
+    next if props[key] == value
+
+    props[key] = value
+    mutated = true
+    puts "Set #{key} in target: #{name}"
+  end
+end
+
+# ── PATH fix for Xcode builds ────────────────────────────────────────
+# Xcode doesn't inherit the user's shell PATH, so `cargo` is not found
+# when building via the Run button. Prepend a PATH export to the
+# "Build Rust Code" preBuildScript.
+(project['targets'] || {}).each do |name, target|
+  scripts = target.dig('preBuildScripts')
+  next unless scripts.is_a?(Array)
+
+  scripts.each do |script|
+    next unless script.is_a?(Hash) && script['name'] == 'Build Rust Code'
+    body = script['script'].to_s
+    next if body.include?('.cargo/bin')
+
+    script['script'] = "export PATH=\"$HOME/.cargo/bin:/opt/homebrew/bin:$PATH\"\n#{body}"
+    mutated = true
+    puts "Patched Build Rust Code script with PATH export in target: #{name}"
+  end
+end
+
 if !mutated
-  puts 'OK: Externals paths already use buildPhase: none (or no Externals path found). Nothing to do.'
+  puts 'OK: nothing to patch. Externals already fixed and PATH already set.'
   exit 0
 end
 
