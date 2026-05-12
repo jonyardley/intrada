@@ -120,7 +120,8 @@
           beforeSend: function (event) {
             // Drop benign errors that can't be fixed in code:
             // - View transition skipped when app is backgrounded mid-nav
-            // - WASM LinkError from transient cache coherence mismatch
+            // - WASM LinkError / SyntaxError from transient cache coherence
+            //   mismatch during deployment (stale JS glue vs new WASM)
             try {
               var msg = (event.message || '');
               if (event.exception && Array.isArray(event.exception.values)) {
@@ -128,6 +129,7 @@
               }
               if (msg.indexOf('View transition was skipped') !== -1) return null;
               if (msg.indexOf('must be callable') !== -1 && msg.indexOf('LinkError') !== -1) return null;
+              if (msg.indexOf('Importing binding name') !== -1) return null;
             } catch(e) {}
             try {
               var EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;

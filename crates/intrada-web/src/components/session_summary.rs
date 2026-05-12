@@ -4,7 +4,8 @@ use intrada_core::{CompletionStatus, EntryStatus, Event, SessionEvent, SetEvent,
 use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{
-    AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, SetSaveForm, StatCard, StatTone,
+    use_toast, AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, SetSaveForm,
+    StatCard, StatTone,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::js_bridge;
@@ -18,6 +19,7 @@ pub fn SessionSummary() -> impl IntoView {
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
 
+    let toast = use_toast();
     let session_notes = RwSignal::new(String::new());
 
     let core_save = core.clone();
@@ -349,6 +351,7 @@ pub fn SessionSummary() -> impl IntoView {
                                             let core_ref = core_save.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                            toast.show("Session saved");
                                         })
                                     >
                                         "Save Session"
