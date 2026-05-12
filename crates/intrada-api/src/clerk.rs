@@ -104,3 +104,46 @@ impl ClerkUser {
             .map(|e| e.email_address.as_str())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn user(primary_id: Option<&str>, emails: &[(&str, &str)]) -> ClerkUser {
+        ClerkUser {
+            id: "user_123".into(),
+            primary_email_address_id: primary_id.map(Into::into),
+            email_addresses: emails
+                .iter()
+                .map(|(id, addr)| ClerkEmailAddress {
+                    id: (*id).into(),
+                    email_address: (*addr).into(),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn primary_email_matches_by_id() {
+        let u = user(Some("ea_2"), &[("ea_1", "a@x.com"), ("ea_2", "b@x.com")]);
+        assert_eq!(u.primary_email(), Some("b@x.com"));
+    }
+
+    #[test]
+    fn primary_email_none_when_no_primary_id() {
+        let u = user(None, &[("ea_1", "a@x.com")]);
+        assert_eq!(u.primary_email(), None);
+    }
+
+    #[test]
+    fn primary_email_none_when_id_not_found() {
+        let u = user(Some("ea_missing"), &[("ea_1", "a@x.com")]);
+        assert_eq!(u.primary_email(), None);
+    }
+
+    #[test]
+    fn primary_email_none_when_no_addresses() {
+        let u = user(Some("ea_1"), &[]);
+        assert_eq!(u.primary_email(), None);
+    }
+}
