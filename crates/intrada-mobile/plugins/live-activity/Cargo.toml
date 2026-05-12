@@ -2,6 +2,7 @@
 name = "tauri-plugin-live-activity"
 version = "0.0.1"
 edition = "2021"
+publish = false
 rust-version.workspace = true
 description = "Intrada-internal Tauri plugin: ActivityKit Live Activity for the active practice session — Lock Screen card + Dynamic Island compact / expanded views. iOS-only; layered alongside the background-audio plugin."
 # Required by tauri-plugin's build script (must match package.name).

@@ -2,6 +2,7 @@
 name = "intrada-mobile"
 version = "0.1.0"
 edition = "2021"
+publish = false
 rust-version.workspace = true
 
 # Tauri requires both staticlib (iOS) and cdylib (desktop) targets.

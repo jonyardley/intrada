@@ -2,6 +2,7 @@
 name = "tauri-plugin-background-audio"
 version = "0.0.1"
 edition = "2021"
+publish = false
 rust-version.workspace = true
 description = "Intrada-internal Tauri plugin: keeps the practice timer running while the app is backgrounded / the device is locked. Bridges to Swift on iOS for AVAudioSession + lock-screen Now Playing."
 # Required by tauri-plugin's build script (must match package.name).
