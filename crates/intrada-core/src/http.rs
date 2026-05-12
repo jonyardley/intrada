@@ -153,7 +153,10 @@ pub fn create_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<
         .expect("serialize CreateSetRequest")
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchSets,
+            // Success bumps the set_saves_committed counter (so SetSaveForm
+            // can flip from optimistic→confirmed) AND triggers a refetch via
+            // the SetSaveSucceeded handler — see app.rs (#449).
+            Ok(_) => Event::SetSaveSucceeded,
             Err(e) => Event::LoadFailed(format!("Failed to save set: {e}")),
         })
 }

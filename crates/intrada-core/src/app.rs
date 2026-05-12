@@ -94,6 +94,12 @@ pub enum Event {
     SetUpdated {
         set: Set,
     },
+    /// Server confirmed a set creation (SaveBuildingAsSet / SaveSummaryAsSet).
+    /// Increments `model.set_saves_committed` so shells can flip an optimistic
+    /// "saved" UI state to a confirmed one only after the round-trip succeeds.
+    /// Without this, a failed save leaves the button stuck on "Saved" while
+    /// the error toast contradicts it (#449).
+    SetSaveSucceeded,
     /// Server confirmed a delete — model already updated optimistically.
     DeleteConfirmed,
     /// Server confirmed session creation — model already updated optimistically.
@@ -244,6 +250,17 @@ impl App for Intrada {
                 // dismiss-mute).
                 model.record_success();
                 crux_core::render::render()
+            }
+            Event::SetSaveSucceeded => {
+                // Bump the monotonic counter so `SetSaveForm` can promote its
+                // optimistic state to confirmed. Also refetch sets — the
+                // optimistic push used a client-side ulid that the server
+                // may have replaced (mutate-response pattern is the standard
+                // for updates, but creates still rely on a follow-up
+                // refetch — known tech debt per CLAUDE.md).
+                model.set_saves_committed = model.set_saves_committed.wrapping_add(1);
+                model.record_success();
+                crate::http::fetch_sets(&model.api_base_url)
             }
 
             // ── Error handling ───────────────────────────────────────
@@ -440,6 +457,7 @@ impl App for Intrada {
             just_created_token: model.just_created_token.clone(),
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
+            set_saves_committed: model.set_saves_committed,
         }
     }
 }
@@ -615,6 +633,57 @@ mod tests {
         let _cmd = app.update(Event::ClearError, &mut model);
 
         assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn test_load_failed_does_not_bump_set_saves_counter() {
+        // The counter is the shell's signal for "save round-trip confirmed".
+        // A LoadFailed (the failure path from create_set's HTTP handler) must
+        // NOT bump it — otherwise SetSaveForm would flip to "Saved" on
+        // failure, the exact bug we're fixing (#449).
+        let app = Intrada;
+        let mut model = Model {
+            api_base_url: "http://localhost:3001".to_string(),
+            set_saves_committed: 3,
+            ..Default::default()
+        };
+
+        let _cmd = app.update(
+            Event::LoadFailed("Failed to save set: timeout".to_string()),
+            &mut model,
+        );
+
+        assert_eq!(
+            model.set_saves_committed, 3,
+            "counter must not bump on failure"
+        );
+        assert_eq!(
+            model.last_error.as_deref(),
+            Some("Failed to save set: timeout")
+        );
+    }
+
+    #[test]
+    fn test_set_save_succeeded_bumps_counter_and_clears_error() {
+        let app = Intrada;
+        let mut model = Model {
+            api_base_url: "http://localhost:3001".to_string(),
+            set_saves_committed: 7,
+            last_error: Some("Failed to save set: timeout".to_string()),
+            error_muted: true,
+            ..Default::default()
+        };
+
+        let _cmd = app.update(Event::SetSaveSucceeded, &mut model);
+
+        // Counter bumped so shells can detect the confirmed save.
+        assert_eq!(model.set_saves_committed, 8);
+        // Stale error cleared + dismiss-mute lifted (record_success contract).
+        assert!(model.last_error.is_none());
+        assert!(!model.error_muted);
+        // ViewModel mirror picks it up.
+        let vm = app.view(&model);
+        assert_eq!(vm.set_saves_committed, 8);
     }
 
     #[test]
