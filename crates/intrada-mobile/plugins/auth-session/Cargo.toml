@@ -2,6 +2,7 @@
 name = "tauri-plugin-auth-session"
 version = "0.0.1"
 edition = "2021"
+publish = false
 rust-version.workspace = true
 description = "Intrada-internal Tauri plugin: opens OAuth URLs in ASWebAuthenticationSession so Google doesn't reject the WKWebView user agent."
 links = "tauri-plugin-auth-session"
