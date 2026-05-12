@@ -653,7 +653,10 @@ mod tests {
             &mut model,
         );
 
-        assert_eq!(model.set_saves_committed, 3, "counter must not bump on failure");
+        assert_eq!(
+            model.set_saves_committed, 3,
+            "counter must not bump on failure"
+        );
         assert_eq!(
             model.last_error.as_deref(),
             Some("Failed to save set: timeout")
