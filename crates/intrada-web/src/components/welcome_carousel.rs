@@ -94,6 +94,17 @@ pub fn reset_welcome_seen() {
     }
 }
 
+fn prefers_reduced_motion() -> bool {
+    web_sys::window()
+        .and_then(|w| {
+            w.match_media("(prefers-reduced-motion: reduce)")
+                .ok()
+                .flatten()
+        })
+        .map(|mq| mq.matches())
+        .unwrap_or(false)
+}
+
 /// Full-screen welcome carousel overlay — shown once to new users.
 ///
 /// Renders five typographic cards with progress dots, Skip link, and a
@@ -113,7 +124,10 @@ pub fn WelcomeCarousel(
     // ── Card transition helpers ────────────────────────────────────────
 
     let transition_to = move |target: usize| {
-        // Fade out current card
+        if prefers_reduced_motion() {
+            card_index.set(target);
+            return;
+        }
         transitioning.set(true);
         leptos::task::spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(50).await;
@@ -188,32 +202,34 @@ pub fn WelcomeCarousel(
                 // Only recognise horizontal swipes
                 if dx.abs() > SWIPE_THRESHOLD && dx.abs() > dy.abs() {
                     if dx < 0.0 {
-                        // Swipe left → advance
                         let current = card_index.get_untracked();
                         if current < CARD_COUNT - 1 {
                             haptics::haptic_selection();
-                            transitioning.set(true);
-                            // Use gloo Timeout (not leptos::task::spawn_local)
-                            // because this closure runs outside the Leptos
-                            // owner context — raw addEventListener callbacks
-                            // don't have one. See CLAUDE.md gotcha.
-                            gloo_timers::callback::Timeout::new(50, move || {
+                            if prefers_reduced_motion() {
                                 card_index.set(current + 1);
-                                transitioning.set(false);
-                            })
-                            .forget();
+                            } else {
+                                transitioning.set(true);
+                                gloo_timers::callback::Timeout::new(50, move || {
+                                    card_index.set(current + 1);
+                                    transitioning.set(false);
+                                })
+                                .forget();
+                            }
                         }
                     } else {
-                        // Swipe right → go back
                         let current = card_index.get_untracked();
                         if current > 0 {
                             haptics::haptic_selection();
-                            transitioning.set(true);
-                            gloo_timers::callback::Timeout::new(50, move || {
+                            if prefers_reduced_motion() {
                                 card_index.set(current - 1);
-                                transitioning.set(false);
-                            })
-                            .forget();
+                            } else {
+                                transitioning.set(true);
+                                gloo_timers::callback::Timeout::new(50, move || {
+                                    card_index.set(current - 1);
+                                    transitioning.set(false);
+                                })
+                                .forget();
+                            }
                         }
                     }
                 }
@@ -223,14 +239,20 @@ pub fn WelcomeCarousel(
             touch_start_y.set(None);
         });
 
+        let touchcancel: Closure<dyn Fn(TouchEvent)> = Closure::new(move |_: TouchEvent| {
+            touch_start_x.set(None);
+            touch_start_y.set(None);
+        });
+
         let _ =
             el.add_event_listener_with_callback("touchstart", touchstart.as_ref().unchecked_ref());
         let _ = el.add_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+        let _ = el
+            .add_event_listener_with_callback("touchcancel", touchcancel.as_ref().unchecked_ref());
 
-        // SendWrapper: on_cleanup requires Send+Sync; Closure/HtmlElement
-        // aren't both. Safe on wasm32 — single-threaded by construction.
         let touchstart = SendWrapper::new(touchstart);
         let touchend = SendWrapper::new(touchend);
+        let touchcancel = SendWrapper::new(touchcancel);
         let el = SendWrapper::new(el);
         on_cleanup(move || {
             let _ = el.remove_event_listener_with_callback(
@@ -239,6 +261,10 @@ pub fn WelcomeCarousel(
             );
             let _ = el
                 .remove_event_listener_with_callback("touchend", touchend.as_ref().unchecked_ref());
+            let _ = el.remove_event_listener_with_callback(
+                "touchcancel",
+                touchcancel.as_ref().unchecked_ref(),
+            );
         });
     });
 
