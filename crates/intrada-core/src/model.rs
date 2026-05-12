@@ -70,6 +70,14 @@ pub struct Model {
     /// reacts by navigating the browser to this URL (which contains the
     /// auth code + state for the OAuth client).
     pub oauth_redirect_url: Option<String>,
+    /// Monotonic counter that increments each time the server confirms a
+    /// `SaveBuildingAsSet` / `SaveSummaryAsSet` write. `SetSaveForm` reads
+    /// the value at dispatch time and flips its "Saved" state only after
+    /// it observes the counter rise — turning the optimistic-success UX
+    /// into a confirmed-success UX. Without this, a failed save would
+    /// leave the button stuck on "Saved" while an error toast contradicted
+    /// it (#449).
+    pub set_saves_committed: u64,
 }
 
 impl Model {
@@ -177,6 +185,8 @@ pub struct ViewModel {
     pub mcp_audit_loading: bool,
     pub oauth_in_flight: bool,
     pub oauth_redirect_url: Option<String>,
+    /// Mirrors `Model::set_saves_committed`. See that field for the contract.
+    pub set_saves_committed: u64,
 }
 
 // Sanity-check that ViewModel field names mirror Model where applicable.

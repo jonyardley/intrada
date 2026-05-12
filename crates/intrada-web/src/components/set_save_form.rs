@@ -1,13 +1,17 @@
 use leptos::prelude::*;
 
+use intrada_core::ViewModel;
+
 use crate::components::{use_toast, Button, ButtonVariant, Card, Icon, IconName};
 
 /// Inline form for saving a setlist or summary as a named set.
 ///
 /// When collapsed, shows a "Save as Set" button. When expanded, shows a
 /// name input, Save, and Cancel buttons. Calls `on_save` with the entered name.
-/// After a successful save the button switches to a disabled "Saved" state to
-/// prevent duplicate Set creation.
+/// After the **server confirms** the save (via the `set_saves_committed`
+/// counter rising on the ViewModel), the button switches to a disabled
+/// "Saved" state. If the save fails, the form stays expanded so the user
+/// can retry — no false-success feedback (#449).
 ///
 /// When mounted inside a [`BottomSheet`], pass the sheet's `open` signal as
 /// `sheet_open` — the "Saved" state will reset when the sheet closes, so a
@@ -24,32 +28,62 @@ pub fn SetSaveForm(
     #[prop(optional, into)]
     sheet_open: Option<Signal<bool>>,
 ) -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
     let expanded = RwSignal::new(false);
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
     let saved = RwSignal::new(false);
+    // Pending = a save was dispatched and we're waiting for server confirmation
+    // (counter increment) OR an error to surface. Stops users double-dispatching
+    // while the request is in flight.
+    let pending = RwSignal::new(false);
+    // Snapshot of the success-counter at dispatch time. We promote `saved=true`
+    // only when the live counter > this baseline.
+    let baseline_counter = RwSignal::new(0u64);
     let toast = use_toast();
 
     if let Some(open) = sheet_open {
         Effect::new(move |_| {
             if !open.get() {
                 saved.set(false);
+                pending.set(false);
             }
         });
     }
+
+    // Reactive bridge: pending → confirmed (success) or pending → expanded
+    // (failure). Driven by either the counter rising or `view_model.error`
+    // gaining a value while we're pending.
+    Effect::new(move |_| {
+        let vm = view_model.get();
+        if !pending.get_untracked() {
+            return;
+        }
+        if vm.set_saves_committed > baseline_counter.get_untracked() {
+            // Confirmed: the round-trip succeeded.
+            pending.set(false);
+            saved.set(true);
+            toast.show("Saved as Set");
+        } else if vm.error.is_some() {
+            // Failed: surface the form again so the user can retry. The
+            // error banner shows the message; we just exit the pending state.
+            pending.set(false);
+            expanded.set(true);
+        }
+    });
 
     let try_save = move || {
         let trimmed = name.get_untracked().trim().to_string();
         if trimmed.is_empty() {
             error.set(Some("Name is required".to_string()));
-        } else {
-            error.set(None);
-            on_save.run(trimmed);
-            name.set(String::new());
-            expanded.set(false);
-            saved.set(true);
-            toast.show("Saved as Set");
+            return;
         }
+        error.set(None);
+        baseline_counter.set(view_model.get_untracked().set_saves_committed);
+        pending.set(true);
+        on_save.run(trimmed);
+        name.set(String::new());
+        expanded.set(false);
     };
 
     view! {
@@ -101,6 +135,17 @@ pub fn SetSaveForm(
                             </div>
                         </div>
                     </Card>
+                }.into_any()
+            } else if pending.get() {
+                // Awaiting server confirmation. Show a disabled "Saving…" so
+                // users see feedback but can't double-dispatch (#449).
+                view! {
+                    <button
+                        class="w-full rounded-lg border border-dashed border-border-default bg-surface-secondary px-4 py-3 text-sm font-medium text-muted inline-flex items-center justify-center gap-2 cursor-default"
+                        disabled
+                    >
+                        "Saving\u{2026}"
+                    </button>
                 }.into_any()
             } else if saved.get() {
                 view! {
