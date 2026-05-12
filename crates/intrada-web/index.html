@@ -119,7 +119,9 @@
           // and return the event unchanged on any failure.
           beforeSend: function (event) {
             // Drop benign errors that can't be fixed in code:
-            // - View transition skipped when app is backgrounded mid-nav
+            // - View Transitions API: AbortError / InvalidStateError when a
+            //   new nav fires before the previous transition settles. Leptos
+            //   calls startViewTransition internally; we can't catch there.
             // - WASM LinkError / SyntaxError from transient cache coherence
             //   mismatch during deployment (stale JS glue vs new WASM)
             try {
@@ -128,6 +130,8 @@
                 msg += ' ' + event.exception.values.map(function(v){ return v.value || ''; }).join(' ');
               }
               if (msg.indexOf('View transition was skipped') !== -1) return null;
+              if (msg.indexOf('Transition was skipped') !== -1) return null;
+              if (msg.indexOf('Transition was aborted') !== -1) return null;
               if (msg.indexOf('must be callable') !== -1 && msg.indexOf('LinkError') !== -1) return null;
               if (msg.indexOf('Importing binding name') !== -1) return null;
             } catch(e) {}

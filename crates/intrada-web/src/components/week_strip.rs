@@ -165,11 +165,15 @@ pub fn WeekStrip(
     // transition_disabled / snap_target) fires after the parent owner is
     // disposed and panics with "reactive value already disposed".
     let snap_timeout_handle: RwSignal<Option<i32>> = RwSignal::new(None);
+    let raf_handle: RwSignal<Option<i32>> = RwSignal::new(None);
 
     on_cleanup(move || {
-        if let Some(id) = snap_timeout_handle.get_untracked() {
-            if let Some(window) = web_sys::window() {
+        if let Some(window) = web_sys::window() {
+            if let Some(id) = snap_timeout_handle.get_untracked() {
                 window.clear_timeout_with_handle(id);
+            }
+            if let Some(id) = raf_handle.get_untracked() {
+                let _ = window.cancel_animation_frame(id);
             }
         }
     });
@@ -357,7 +361,11 @@ pub fn WeekStrip(
                     transition_disabled.set(false);
                 });
                 if let Some(window) = web_sys::window() {
-                    let _ = window.request_animation_frame(cb_re_enable.as_ref().unchecked_ref());
+                    if let Ok(id) =
+                        window.request_animation_frame(cb_re_enable.as_ref().unchecked_ref())
+                    {
+                        raf_handle.set(Some(id));
+                    }
                 }
                 cb_re_enable.forget();
             });

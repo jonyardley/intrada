@@ -209,11 +209,11 @@ pub fn WelcomeCarousel(
                                 card_index.set(current + 1);
                             } else {
                                 transitioning.set(true);
-                                gloo_timers::callback::Timeout::new(50, move || {
+                                leptos::task::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(50).await;
                                     card_index.set(current + 1);
                                     transitioning.set(false);
-                                })
-                                .forget();
+                                });
                             }
                         }
                     } else {
@@ -224,11 +224,11 @@ pub fn WelcomeCarousel(
                                 card_index.set(current - 1);
                             } else {
                                 transitioning.set(true);
-                                gloo_timers::callback::Timeout::new(50, move || {
+                                leptos::task::spawn_local(async move {
+                                    gloo_timers::future::TimeoutFuture::new(50).await;
                                     card_index.set(current - 1);
                                     transitioning.set(false);
-                                })
-                                .forget();
+                                });
                             }
                         }
                     }
