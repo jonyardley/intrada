@@ -458,25 +458,24 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  audit:
-    name: Cargo Audit
+  security:
+    name: Security (cargo-deny + Gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # Cache the RustSec advisory database to avoid re-cloning ~50MB on
-      # every run. Stale-OK: cargo-audit fetches incrementally on top.
-      - name: Cache advisory database
-        uses: actions/cache@v5
         with:
-          path: ~/.cargo/advisory-db
-          key: advisory-db-${{ github.run_id }}
-          restore-keys: advisory-db-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-audit
-      # Reads ignore list from .cargo/audit.toml — each entry must have a
-      # tracking issue and rationale comment. Anything new fails CI.
-      - run: cargo audit
+          fetch-depth: 0
+      # ── cargo-deny ─────────────────────────────────────────────────────
+      # Replaces cargo-audit. Checks advisories (same RustSec DB), license
+      # compliance, crate bans, and source restrictions in one pass.
+      # Config: deny.toml. Ignore list migrated from .cargo/audit.toml.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+      # ── Gitleaks ───────────────────────────────────────────────────────
+      # Scans for leaked secrets (API keys, tokens, credentials) in the
+      # diff. ~150 built-in regex patterns, runs in seconds.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   api-docker-build:
     # Catches Dockerfile / workspace-scoping bugs on PRs that would otherwise
