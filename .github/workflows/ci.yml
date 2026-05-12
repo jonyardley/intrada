@@ -16,6 +16,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  security-events: write
+
 env:
   RUST_VERSION: "1.89.0"
   TAILWIND_VERSION: "4.1.18"
@@ -93,9 +99,53 @@ jobs:
       # intrada-mobile + its plugins (Tauri 2) require GTK/glib system libs
       # not present on Ubuntu runners — iOS-only crates with no meaningful
       # unit tests on Linux.
-      - run: cargo nextest run --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+      - run: cargo nextest run --workspace --profile ci --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
       - name: Doc tests
         run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Unit Test Results
+          path: target/nextest/ci/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.rust == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "coverage"
+          cache-on-failure: true
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+      - name: Generate coverage
+        run: >
+          cargo llvm-cov nextest
+          --workspace
+          --exclude intrada-mobile
+          --exclude tauri-plugin-background-audio
+          --exclude tauri-plugin-live-activity
+          --exclude tauri-plugin-auth-session
+          --codecov
+          --output-path codecov.json
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: codecov.json
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   clippy:
     name: Clippy
@@ -114,10 +164,47 @@ jobs:
         with:
           prefix-key: "native"
           save-if: "false"
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: clippy-sarif,sarif-fmt
       # intrada-mobile + its plugins excluded: Tauri 2 needs GTK/glib system libs on Linux.
-      - run: cargo clippy --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session -- -D warnings
+      # Run clippy with JSON output piped through clippy-sarif for GitHub
+      # code scanning annotations, then check the exit code to fail the job.
+      - name: Clippy (native)
+        shell: bash
+        run: |
+          set +o pipefail
+          cargo clippy --workspace \
+            --exclude intrada-mobile \
+            --exclude tauri-plugin-background-audio \
+            --exclude tauri-plugin-live-activity \
+            --exclude tauri-plugin-auth-session \
+            --message-format=json -- -D warnings 2>&1 \
+            | clippy-sarif | tee clippy-native.sarif | sarif-fmt
+          exit ${PIPESTATUS[0]}
       - name: Clippy (WASM target)
-        run: cargo clippy --target wasm32-unknown-unknown -p intrada-web -- -D warnings
+        if: success() || failure()
+        shell: bash
+        run: |
+          set +o pipefail
+          cargo clippy --target wasm32-unknown-unknown -p intrada-web \
+            --message-format=json -- -D warnings 2>&1 \
+            | clippy-sarif | tee clippy-wasm.sarif | sarif-fmt
+          exit ${PIPESTATUS[0]}
+      - name: Upload Clippy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: clippy-native.sarif
+          category: clippy-native
+          wait-for-processing: true
+      - name: Upload Clippy WASM SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: clippy-wasm.sarif
+          category: clippy-wasm
+          wait-for-processing: true
 
   ios-build:
     # Full iOS CI — clippy lints (device target) + simulator build, with
@@ -373,11 +460,20 @@ jobs:
         working-directory: e2e
         env:
           DIST_DIR: ${{ github.workspace }}/web-dist
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results.xml
         # `--grep-invert "smoke:"` excludes the deploy-smoke spec — that
         # one runs against the *post-modification* dist in the
         # `deploy-smoke` job below (where SRI invalidation could be
         # caught), not the pristine artifact this job uses.
-        run: npx playwright test --grep-invert "smoke:"
+        run: npx playwright test --grep-invert "smoke:" --reporter=junit,list
+      - name: Publish E2E test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: E2E Test Results
+          path: e2e/results.xml
+          reporter: java-junit
+          fail-on-error: false
 
   # Deploy smoke — exercises the SAME post-build modification chain as
   # the production deploy (sentry-cli inject → release placeholder →
@@ -440,10 +536,19 @@ jobs:
         working-directory: e2e
         env:
           DIST_DIR: ${{ github.workspace }}/crates/intrada-web/dist
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: smoke-results.xml
         # `--grep "smoke:"` runs only the deploy-smoke.spec.ts test —
         # everything else in tests/ is the regular E2E suite, run in
         # the `e2e` job above (against the pristine artifact).
-        run: npx playwright test --grep "smoke:"
+        run: npx playwright test --grep "smoke:" --reporter=junit,list
+      - name: Publish smoke test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Deploy Smoke Results
+          path: e2e/smoke-results.xml
+          reporter: java-junit
+          fail-on-error: false
 
   fmt:
     name: Formatting
