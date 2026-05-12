@@ -244,6 +244,24 @@ queries alone.
 - No `unwrap()` without justification.
 - Prefer well-established libraries over custom implementations.
 
+## Testing
+
+**Default: ship tests with new code.** New API endpoints, DB functions, and
+non-trivial pure logic must include tests. The existing suite
+(`crates/intrada-api/tests/`) uses real SQLite via `common::setup_test_app()`
+— no mocks needed for DB-backed tests.
+
+What to test:
+- API endpoints: at minimum auth rejection paths; happy path when reachable
+  via the test harness (auth-disabled mode gives a fake user).
+- DB write functions: correct rows affected, idempotency, cross-user isolation.
+- Pure functions: edge cases, None/empty inputs.
+
+When skipping tests, say so explicitly in the PR description with the reason
+(e.g. "requires real HTTP to an external API and we don't have a mock server").
+"All 157 tests pass" is not coverage — those are existing tests, not tests
+for new code.
+
 ## Project-specific gotchas
 
 Bear-traps that have caught us at least once. Skim before you start; the cost
