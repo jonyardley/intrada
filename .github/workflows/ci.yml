@@ -213,8 +213,10 @@ jobs:
     # targets aarch64-apple-ios-sim (simulator, unsigned) to verify the
     # Tauri host, plugins, WASM frontend, and Xcode project all link.
     #
-    # The smoke test (sim boot + install + launch + deep link) adds ~3.5 min
-    # and only runs on main pushes — PRs get the build-proves-linking gate.
+    # PR optimisations (vs main):
+    #   - Debug builds for WASM + native (skips LTO/optimisations)
+    #   - Smoke test skipped (sim boot + install + deep link)
+    # Main pushes get full release builds + smoke test (gates deploy).
     #
     # Path-filtered: fires on any change to mobile, web, or core crates.
     # Always runs on main pushes.
@@ -262,7 +264,8 @@ jobs:
         env:
           INTRADA_API_URL: https://intrada-api.fly.dev
           CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        run: trunk build --release
+        # Debug WASM on PRs (faster); release on main (gates deploy).
+        run: trunk build ${{ github.event_name == 'push' && '--release' || '' }}
       - name: Cache Homebrew packages
         id: brew-cache
         uses: actions/cache@v5
@@ -308,7 +311,11 @@ jobs:
         working-directory: crates/intrada-mobile/src-tauri
         env:
           GIT_SHA: ${{ github.sha }}
-        run: cargo tauri ios build --ci --target aarch64-sim
+        # Debug build on PRs (skips LTO/optimisations, ~40-60% faster);
+        # release on main (gates deploy). Note: inverted condition because
+        # empty string is falsy in GHA expressions — `true && ''` would
+        # fall through to the `||` branch.
+        run: cargo tauri ios build --ci --target aarch64-sim ${{ github.event_name != 'push' && '--debug' || '' }}
       # ── Smoke test (main only) ─────────────────────────────────────────
       # Simulator boot + install + launch + deep-link adds ~3.5 min.
       # The build step already proves linking; smoke catches runtime crashes
