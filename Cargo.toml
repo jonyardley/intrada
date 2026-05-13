@@ -20,6 +20,14 @@ ulid = "1"
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 
+# jsonwebtoken v10.3.0 has a bug (#489): Header.extras is
+# HashMap<String, String> with #[serde(flatten)], so non-string header
+# fields (like Clerk's `oiat: <number>`) fail deserialization. PR #496
+# fixes this by changing extras to HashMap<String, serde_json::Value>.
+# Remove this patch once the fix lands in a released version.
+[patch.crates-io]
+jsonwebtoken = { git = "https://github.com/kp-timo-beyel/jsonwebtoken.git", branch = "fix/header-extras-non-string-values" }
+
 [profile.dev.package."*"]
 debug = false
 
