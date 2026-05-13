@@ -95,6 +95,7 @@ impl FromRequestParts<AppState> for AuthUser {
         validation.validate_aud = false;
 
         let keys = auth_config.decoding_keys.read().await;
+        let mut last_error = None;
         for key in keys.iter() {
             match decode::<Claims>(token, key, &validation) {
                 Ok(data) => {
@@ -107,11 +108,21 @@ impl FromRequestParts<AppState> for AuthUser {
                 }
                 Err(e) => {
                     tracing::debug!("JWT decode error: {e}");
+                    last_error = Some(e);
                     continue;
                 }
             }
         }
 
+        if let Some(e) = last_error {
+            tracing::warn!(
+                issuer = %auth_config.issuer,
+                key_count = keys.len(),
+                "JWT validation failed after trying all keys: {e}"
+            );
+        } else {
+            tracing::warn!("JWT validation failed: no decoding keys loaded");
+        }
         Err(ApiError::Unauthorized("Unauthorized".to_string()))
     }
 }
