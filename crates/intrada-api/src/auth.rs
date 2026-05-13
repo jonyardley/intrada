@@ -115,9 +115,45 @@ impl FromRequestParts<AppState> for AuthUser {
         }
 
         if let Some(e) = last_error {
+            // Decode payload (middle base64 segment) to log field names
+            // and types — helps diagnose deserialization mismatches without
+            // leaking user data.
+            let payload_info = token
+                .split('.')
+                .nth(1)
+                .and_then(|b64| {
+                    use base64::Engine;
+                    base64::engine::general_purpose::URL_SAFE_NO_PAD
+                        .decode(b64)
+                        .ok()
+                })
+                .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+                .map(|v| {
+                    if let serde_json::Value::Object(map) = &v {
+                        map.iter()
+                            .map(|(k, v)| {
+                                let ty = match v {
+                                    serde_json::Value::String(_) => "string",
+                                    serde_json::Value::Number(_) => "number",
+                                    serde_json::Value::Bool(_) => "bool",
+                                    serde_json::Value::Array(_) => "array",
+                                    serde_json::Value::Object(_) => "object",
+                                    serde_json::Value::Null => "null",
+                                };
+                                format!("{k}:{ty}")
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    } else {
+                        "non-object payload".to_string()
+                    }
+                })
+                .unwrap_or_else(|| "could not decode payload".to_string());
+
             tracing::warn!(
                 issuer = %auth_config.issuer,
                 key_count = keys.len(),
+                payload_fields = %payload_info,
                 "JWT validation failed after trying all keys: {e}"
             );
         } else {
@@ -319,5 +355,15 @@ mod tests {
 
         let result = resolve_pat(&state, token).await;
         assert!(matches!(result, Err(ApiError::Unauthorized(_))));
+    }
+
+    /// Verify that our Claims struct correctly deserializes a Clerk JWT payload.
+    /// Clerk JWTs contain numeric fields (iat, exp, nbf) alongside string
+    /// fields — serde must ignore the unknown ones without erroring.
+    #[test]
+    fn claims_deserializes_clerk_jwt_payload() {
+        let payload = r#"{"azp":"pk_test_xxx","exp":1778693283,"iat":1778693223,"iss":"https://clerk.myintrada.com","nbf":1778693213,"sid":"sess_abc","sub":"user_2abc"}"#;
+        let claims: Claims = serde_json::from_str(payload).expect("should parse");
+        assert_eq!(claims.sub, "user_2abc");
     }
 }
