@@ -312,8 +312,10 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
         # Debug build on PRs (skips LTO/optimisations, ~40-60% faster);
-        # release on main (gates deploy).
-        run: cargo tauri ios build --ci --target aarch64-sim ${{ github.event_name == 'push' && '' || '--debug' }}
+        # release on main (gates deploy). Note: inverted condition because
+        # empty string is falsy in GHA expressions — `true && ''` would
+        # fall through to the `||` branch.
+        run: cargo tauri ios build --ci --target aarch64-sim ${{ github.event_name != 'push' && '--debug' || '' }}
       # ── Smoke test (main only) ─────────────────────────────────────────
       # Simulator boot + install + launch + deep-link adds ~3.5 min.
       # The build step already proves linking; smoke catches runtime crashes
