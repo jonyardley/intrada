@@ -115,9 +115,42 @@ impl FromRequestParts<AppState> for AuthUser {
         }
 
         if let Some(e) = last_error {
-            // Decode payload (middle base64 segment) to log field names
-            // and types — helps diagnose deserialization mismatches without
-            // leaking user data.
+            // Decode header (first segment) + payload (middle segment) to
+            // log field names and types for diagnostics. Known bug: jsonwebtoken
+            // v10's Header has `extras: HashMap<String, String>` (#489) which
+            // rejects non-string header fields.
+            let header_info = token
+                .split('.')
+                .next()
+                .and_then(|b64| {
+                    use base64::Engine;
+                    base64::engine::general_purpose::URL_SAFE_NO_PAD
+                        .decode(b64)
+                        .ok()
+                })
+                .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+                .map(|v| {
+                    if let serde_json::Value::Object(map) = &v {
+                        map.iter()
+                            .map(|(k, v)| {
+                                let ty = match v {
+                                    serde_json::Value::String(s) => format!("str({s})"),
+                                    serde_json::Value::Number(n) => format!("num({n})"),
+                                    serde_json::Value::Bool(b) => format!("bool({b})"),
+                                    serde_json::Value::Array(_) => "array".to_string(),
+                                    serde_json::Value::Object(_) => "object".to_string(),
+                                    serde_json::Value::Null => "null".to_string(),
+                                };
+                                format!("{k}:{ty}")
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    } else {
+                        "non-object header".to_string()
+                    }
+                })
+                .unwrap_or_else(|| "could not decode header".to_string());
+
             let payload_info = token
                 .split('.')
                 .nth(1)
@@ -153,6 +186,7 @@ impl FromRequestParts<AppState> for AuthUser {
             tracing::warn!(
                 issuer = %auth_config.issuer,
                 key_count = keys.len(),
+                header_fields = %header_info,
                 payload_fields = %payload_info,
                 "JWT validation failed after trying all keys: {e}"
             );
@@ -365,5 +399,68 @@ mod tests {
         let payload = r#"{"azp":"pk_test_xxx","exp":1778693283,"iat":1778693223,"iss":"https://clerk.myintrada.com","nbf":1778693213,"sid":"sess_abc","sub":"user_2abc"}"#;
         let claims: Claims = serde_json::from_str(payload).expect("should parse");
         assert_eq!(claims.sub, "user_2abc");
+    }
+
+    /// Exact field set from production Clerk JWT (from Fly.io logs).
+    /// Includes fva (array), sts (string), v (number) — Clerk-specific claims.
+    #[test]
+    fn claims_deserializes_production_clerk_jwt() {
+        let payload = r#"{"azp":"pk_live_aW50cmFkYS5jbGVyay5hY2NvdW50cy5kZXYkxxxx","exp":1778695950,"fva":[19405,-1],"iat":1778695950,"iss":"https://clerk.myintrada.com","nbf":1778695940,"sid":"sess_2abc123","sts":"active","sub":"user_2abc123","v":2}"#;
+        let claims: Claims = serde_json::from_str(payload).expect("should parse");
+        assert_eq!(claims.sub, "user_2abc123");
+    }
+
+    /// Use `insecure_decode` (no signature check, no validation) to
+    /// confirm Claims deserialization works in isolation. If this passes
+    /// but full `decode()` fails, the bug is in jsonwebtoken's internal
+    /// `ClaimsForValidation` deserialization.
+    #[test]
+    fn insecure_decode_clerk_jwt_succeeds() {
+        use base64::Engine;
+        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
+            r#"{"alg":"RS256","typ":"JWT"}"#,
+        );
+        let payload_json = r#"{"azp":"pk_live_aW50cmFkYS5jbGVyay5hY2NvdW50cy5kZXYkxxxx","exp":1778695950,"fva":[19405,-1],"iat":1778695950,"iss":"https://clerk.myintrada.com","nbf":1778695940,"sid":"sess_2abc123","sts":"active","sub":"user_2abc123","v":2}"#;
+        let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json);
+        let fake_sig = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode("fake");
+        let token = format!("{header}.{payload}.{fake_sig}");
+
+        // insecure_decode: base64 → deserialize Claims only (no validate)
+        let result = jsonwebtoken::dangerous::insecure_decode::<Claims>(&token);
+        match &result {
+            Ok(data) => assert_eq!(data.claims.sub, "user_2abc123"),
+            Err(e) => panic!("insecure_decode failed: {e}"),
+        }
+    }
+
+    /// Deserialize the same payload into jsonwebtoken's internal
+    /// ClaimsForValidation-equivalent to isolate where the "expected a
+    /// string" error comes from. We can't import the private type, so
+    /// we replicate the relevant fields.
+    #[test]
+    fn validate_path_clerk_jwt() {
+        use base64::Engine;
+
+        let payload_json = r#"{"azp":"pk_live_aW50cmFkYS5jbGVyay5hY2NvdW50cy5kZXYkxxxx","exp":1778695950,"fva":[19405,-1],"iat":1778695950,"iss":"https://clerk.myintrada.com","nbf":1778695940,"sid":"sess_2abc123","sts":"active","sub":"user_2abc123","v":2}"#;
+
+        // Deserialize as serde_json::Value to confirm the JSON is valid
+        let val: serde_json::Value = serde_json::from_str(payload_json)
+            .expect("payload should be valid JSON");
+        let obj = val.as_object().unwrap();
+        assert_eq!(obj["sub"].as_str(), Some("user_2abc123"));
+        assert_eq!(obj["iat"].as_u64(), Some(1778695950));
+
+        // Mimic ClaimsForValidation: struct with only known fields
+        #[derive(Deserialize)]
+        struct FakeValidation {
+            exp: Option<u64>,
+            nbf: Option<u64>,
+            sub: Option<String>,
+            iss: Option<String>,
+        }
+        let fv: FakeValidation = serde_json::from_str(payload_json)
+            .expect("FakeValidation should parse");
+        assert_eq!(fv.sub.as_deref(), Some("user_2abc123"));
+        assert_eq!(fv.iss.as_deref(), Some("https://clerk.myintrada.com"));
     }
 }
