@@ -81,4 +81,8 @@ wildcards = "allow"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = []
+# jsonwebtoken v10.3.0 has a bug (#489): Header.extras is
+# HashMap<String, String>, so non-string header fields (like Clerk's
+# `oiat: <number>`) fail deserialization. PR #496 fixes this.
+# Remove this entry once the fix lands in a released version.
+allow-git = ["https://github.com/kp-timo-beyel/jsonwebtoken.git"]
