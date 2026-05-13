@@ -46,6 +46,18 @@
       }
 
       try {
+        var pk = new URLSearchParams(location.search).get('pk');
+        if (pk) {
+          sessionStorage.setItem('__ios_auth_pk', pk);
+        } else {
+          pk = sessionStorage.getItem('__ios_auth_pk');
+        }
+        if (!pk) throw new Error('Missing pk parameter');
+
+        // Set the key BEFORE loading the script — the Clerk browser build
+        // auto-detects this global during execution and sets window.Clerk.
+        window.__clerk_publishable_key = pk;
+
         // Load Clerk JS (full browser build — this runs in Safari, not WKWebView)
         await new Promise(function (resolve, reject) {
           var s = document.createElement('script');
@@ -58,15 +70,6 @@
 
         var clerk = window.Clerk;
         if (!clerk) throw new Error('Clerk SDK not available');
-
-        var pk = new URLSearchParams(location.search).get('pk');
-        if (pk) {
-          sessionStorage.setItem('__ios_auth_pk', pk);
-        } else {
-          pk = sessionStorage.getItem('__ios_auth_pk');
-        }
-        if (!pk) throw new Error('Missing pk parameter');
-        window.__clerk_publishable_key = pk;
         await clerk.load();
 
         // If this is a callback from OAuth (Clerk appends status params)
