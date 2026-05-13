@@ -417,9 +417,8 @@ mod tests {
     #[test]
     fn insecure_decode_clerk_jwt_succeeds() {
         use base64::Engine;
-        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(
-            r#"{"alg":"RS256","typ":"JWT"}"#,
-        );
+        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(r#"{"alg":"RS256","typ":"JWT"}"#);
         let payload_json = r#"{"azp":"pk_live_aW50cmFkYS5jbGVyay5hY2NvdW50cy5kZXYkxxxx","exp":1778695950,"fva":[19405,-1],"iat":1778695950,"iss":"https://clerk.myintrada.com","nbf":1778695940,"sid":"sess_2abc123","sts":"active","sub":"user_2abc123","v":2}"#;
         let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload_json);
         let fake_sig = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode("fake");
@@ -444,8 +443,8 @@ mod tests {
         let payload_json = r#"{"azp":"pk_live_aW50cmFkYS5jbGVyay5hY2NvdW50cy5kZXYkxxxx","exp":1778695950,"fva":[19405,-1],"iat":1778695950,"iss":"https://clerk.myintrada.com","nbf":1778695940,"sid":"sess_2abc123","sts":"active","sub":"user_2abc123","v":2}"#;
 
         // Deserialize as serde_json::Value to confirm the JSON is valid
-        let val: serde_json::Value = serde_json::from_str(payload_json)
-            .expect("payload should be valid JSON");
+        let val: serde_json::Value =
+            serde_json::from_str(payload_json).expect("payload should be valid JSON");
         let obj = val.as_object().unwrap();
         assert_eq!(obj["sub"].as_str(), Some("user_2abc123"));
         assert_eq!(obj["iat"].as_u64(), Some(1778695950));
@@ -458,8 +457,8 @@ mod tests {
             sub: Option<String>,
             iss: Option<String>,
         }
-        let fv: FakeValidation = serde_json::from_str(payload_json)
-            .expect("FakeValidation should parse");
+        let fv: FakeValidation =
+            serde_json::from_str(payload_json).expect("FakeValidation should parse");
         assert_eq!(fv.sub.as_deref(), Some("user_2abc123"));
         assert_eq!(fv.iss.as_deref(), Some("https://clerk.myintrada.com"));
     }
