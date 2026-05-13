@@ -262,11 +262,21 @@ When skipping tests, say so explicitly in the PR description with the reason
 "All 157 tests pass" is not coverage — those are existing tests, not tests
 for new code.
 
-**Codecov**: PRs get an automated patch-coverage comment (70% target,
-informational — not blocking). Before declaring a PR ready, check the
-Codecov comment: if new lines are uncovered, either add tests or note
-why in the PR description (e.g. "temporary diagnostic code", "UI glue
-not reachable from unit tests"). Config lives in `codecov.yml`.
+**Coverage** (Codecov, config in `codecov.yml`):
+PRs get an automated patch-coverage comment (70% target, informational
+— not blocking). How to use it depends on tier:
+
+- **Tier 1**: No coverage justification needed (typos, config, dep bumps).
+- **Tier 2+**: PR description must include a **Coverage** line noting
+  expected gaps *before* CI finishes (e.g. "Coverage: diagnostic logging
+  not reachable from unit tests" or "Coverage: full — new endpoint has
+  happy-path + auth-rejection tests"). When CI completes, check the
+  Codecov comment against your expectation. If patch coverage is below
+  70% for reasons you didn't anticipate, either push a follow-up commit
+  with tests or add an explanatory PR comment.
+
+Ignored paths (no coverage expected): `intrada-web` (WASM shell),
+`intrada-mobile` (iOS/Tauri), `migrations.rs` (SQL strings).
 
 ## Project-specific gotchas
 
@@ -419,9 +429,13 @@ If you're unsure whether a skill applies, default to the tier system. The skills
    (small fixes), then post the summary as a `gh pr comment` so it's visible
    on the PR alongside CI — the reviewer doesn't see in-conversation subagent
    output. Apply blockers / important findings inline; defer the rest as
-   tracked issues per (5). Skip self-review for Tier 1 trivia (typos, dep
+   tracked issues per (6). Skip self-review for Tier 1 trivia (typos, dep
    bumps, single-line config tweaks).
-5. **Open a tracked issue for every deferred / out-of-scope item**, with
+5. **Check Codecov after CI** (Tier 2+ only). Compare the patch-coverage
+   comment against the **Coverage** line in the PR description. If there
+   are unexpected gaps, push tests or explain in a PR comment. Don't
+   declare the PR ready until this is done.
+6. **Open a tracked issue for every deferred / out-of-scope item**, with
    appropriate labels (`horizon:now|next|later`, kind: `ux` / `architecture`
    / `bug` / `accessibility` / `ios` / `pillar:*`). PR descriptions are not
    tracking — they get auto-collapsed after merge. Mention the issue numbers
