@@ -262,6 +262,12 @@ When skipping tests, say so explicitly in the PR description with the reason
 "All 157 tests pass" is not coverage — those are existing tests, not tests
 for new code.
 
+**Codecov**: PRs get an automated patch-coverage comment (70% target,
+informational — not blocking). Before declaring a PR ready, check the
+Codecov comment: if new lines are uncovered, either add tests or note
+why in the PR description (e.g. "temporary diagnostic code", "UI glue
+not reachable from unit tests"). Config lives in `codecov.yml`.
+
 ## Project-specific gotchas
 
 Bear-traps that have caught us at least once. Skim before you start; the cost

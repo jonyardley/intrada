@@ -1,0 +1,37 @@
+# Codecov configuration — informational, not blocking.
+# Coverage data helps spot gaps; it doesn't gate merges.
+
+coverage:
+  status:
+    # Project-level coverage (overall %) — off. Too noisy at this stage
+    # and penalises PRs that touch uncovered legacy code.
+    project: false
+
+    # Patch coverage (new/changed lines) — informational only.
+    # Target 70%: low enough to not block diagnostic/glue code,
+    # high enough to flag PRs that ship zero tests for real logic.
+    patch:
+      default:
+        target: 70%
+        informational: true
+
+comment:
+  # Show the Codecov PR comment but keep it compact.
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true      # only comment when coverage data changes
+  require_base: false        # don't fail if base commit has no coverage
+  require_head: true
+
+ignore:
+  # Leptos web shell — UI code compiled to WASM, not covered by
+  # cargo-llvm-cov (excluded from the coverage job entirely).
+  - "crates/intrada-web/**"
+
+  # Tauri iOS host + plugins — excluded from coverage job (needs
+  # macOS + iOS target, not available on ubuntu runners).
+  - "crates/intrada-mobile/**"
+
+  # Migrations — pure SQL strings, validated by integration tests
+  # but the Rust wrapper lines are just string constants.
+  - "crates/intrada-api/src/migrations.rs"
