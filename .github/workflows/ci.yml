@@ -52,10 +52,7 @@ jobs:
               - '.github/workflows/ci.yml'
             api:
               - 'Dockerfile'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
               - 'crates/intrada-api/**'
-              - 'crates/intrada-core/**'
               - '.github/workflows/ci.yml'
             web:
               - 'Cargo.toml'
@@ -583,10 +580,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   api-docker-build:
-    # Catches Dockerfile / workspace-scoping bugs on PRs that would otherwise
-    # only surface when the Deploy API job runs on main. Only runs when paths
-    # that could affect the build change — most PRs (frontend/iOS only) skip
-    # this and stay fast. Always runs on main pushes (gates deploy).
+    # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered
+    # to Dockerfile + intrada-api crate only — Cargo.toml, Cargo.lock, and
+    # intrada-core changes are already validated by test/clippy jobs, so they
+    # don't need an ~8 min Docker build. Always runs on main pushes (gates
+    # deploy).
     #
     # On main pushes the resulting image is pushed to Fly's registry tagged
     # with the commit SHA, and `deploy-api` deploys that image instead of
