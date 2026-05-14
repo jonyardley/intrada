@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use leptos::prelude::*;
-use wasm_bindgen::JsValue;
 
 use crate::components::FormFieldError;
-use intrada_web::helpers::filter_suggestions;
+use intrada_web::helpers::{filter_suggestions, keyboard_event_key};
 
 /// Reusable autocomplete dropdown component.
 ///
@@ -76,12 +75,7 @@ pub fn Autocomplete(
 
     // Handle keyboard navigation
     let on_keydown = move |ev: web_sys::KeyboardEvent| {
-        // Android IME events can have event.key === undefined, which panics
-        // in wasm-bindgen's passStringToWasm0. Safely extract via Reflect.
-        let Some(key) = js_sys::Reflect::get(ev.as_ref(), &JsValue::from_str("key"))
-            .ok()
-            .and_then(|v| v.as_string())
-        else {
+        let Some(key) = keyboard_event_key(ev.as_ref()) else {
             return;
         };
         let items = filtered.get();
