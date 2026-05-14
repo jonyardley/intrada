@@ -114,7 +114,7 @@ pub fn SetSaveForm(
                                     placeholder="e.g. Morning Warm-up"
                                     bind:value=name
                                     on:keydown=move |ev: leptos::ev::KeyboardEvent| {
-                                        if ev.key() == "Enter" {
+                                        if intrada_web::helpers::keyboard_event_key(ev.as_ref()).as_deref() == Some("Enter") {
                                             try_save_enter();
                                         }
                                     }

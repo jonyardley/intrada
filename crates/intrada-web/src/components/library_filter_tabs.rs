@@ -91,8 +91,11 @@ pub fn LibraryFilterTabs(
     };
 
     let handle_keydown = move |ev: ev::KeyboardEvent| {
+        let Some(key) = intrada_web::helpers::keyboard_event_key(ev.as_ref()) else {
+            return;
+        };
         let current = active_index();
-        let target_index = match ev.key().as_str() {
+        let target_index = match key.as_str() {
             "ArrowLeft" if current > 0 => current - 1,
             "ArrowRight" if current + 1 < N_TABS => current + 1,
             "Home" => 0,

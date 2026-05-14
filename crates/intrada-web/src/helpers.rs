@@ -2,6 +2,18 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Datelike, Duration, NaiveDate, Weekday};
 use intrada_core::{LibraryItemView, PracticeSessionView, Tempo};
+use wasm_bindgen::JsValue;
+
+/// Safely extract the `key` property from a KeyboardEvent.
+///
+/// Android IME events can have `event.key === undefined`, which panics
+/// in wasm-bindgen's `passStringToWasm0`. This uses `Reflect::get` to
+/// return `None` instead. Pass `ev.as_ref()` from any `web_sys` event type.
+pub fn keyboard_event_key(ev: &JsValue) -> Option<String> {
+    js_sys::Reflect::get(ev, &JsValue::from_str("key"))
+        .ok()
+        .and_then(|v| v.as_string())
+}
 
 /// Format an ISO 8601 / RFC 3339 date string to "d Mon YYYY" (e.g. "4 Mar 2026").
 pub fn format_date_short(iso: &str) -> String {

@@ -56,7 +56,9 @@ pub fn TypeTabs(
         if !is_interactive {
             return;
         }
-        let key = ev.key();
+        let Some(key) = intrada_web::helpers::keyboard_event_key(ev.as_ref()) else {
+            return;
+        };
         match key.as_str() {
             "ArrowLeft" | "ArrowRight" => {
                 ev.prevent_default();

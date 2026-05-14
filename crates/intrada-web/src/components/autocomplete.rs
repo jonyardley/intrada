@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use leptos::prelude::*;
 
 use crate::components::FormFieldError;
-use intrada_web::helpers::filter_suggestions;
+use intrada_web::helpers::{filter_suggestions, keyboard_event_key};
 
 /// Reusable autocomplete dropdown component.
 ///
@@ -75,7 +75,9 @@ pub fn Autocomplete(
 
     // Handle keyboard navigation
     let on_keydown = move |ev: web_sys::KeyboardEvent| {
-        let key = ev.key();
+        let Some(key) = keyboard_event_key(ev.as_ref()) else {
+            return;
+        };
         let items = filtered.get();
         let len = items.len();
 

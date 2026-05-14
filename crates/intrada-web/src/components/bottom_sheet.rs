@@ -97,7 +97,7 @@ pub fn BottomSheet(
             return;
         };
         let on_keydown: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
-            if ev.key() == "Escape" {
+            if intrada_web::helpers::keyboard_event_key(ev.as_ref()).as_deref() == Some("Escape") {
                 close.run(());
             }
         });
