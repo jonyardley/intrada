@@ -198,6 +198,10 @@
       // device.
       if (location.protocol === 'tauri:') {
         document.documentElement.setAttribute('data-platform', 'ios');
+        // Suppress view-transition animations during initial load so the
+        // first route change (/ → /library or /login) is instant behind
+        // the splash. Removed by dismiss_splash after the splash fades.
+        document.documentElement.classList.add('app-loading');
         // Show the branded splash screen on iOS only — on web it feels
         // unnecessary and adds a flash before the app renders.
         var splash = document.getElementById('app-splash');
