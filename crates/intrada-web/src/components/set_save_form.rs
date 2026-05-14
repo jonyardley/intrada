@@ -114,7 +114,10 @@ pub fn SetSaveForm(
                                     placeholder="e.g. Morning Warm-up"
                                     bind:value=name
                                     on:keydown=move |ev: leptos::ev::KeyboardEvent| {
-                                        if ev.key() == "Enter" {
+                                        let key = js_sys::Reflect::get(ev.as_ref(), &wasm_bindgen::JsValue::from_str("key"))
+                                            .ok()
+                                            .and_then(|v| v.as_string());
+                                        if key.as_deref() == Some("Enter") {
                                             try_save_enter();
                                         }
                                     }

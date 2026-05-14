@@ -2,7 +2,7 @@ use leptos::portal::Portal;
 use leptos::prelude::*;
 use send_wrapper::SendWrapper;
 use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{AddEventListenerOptions, KeyboardEvent, TouchEvent};
 
 use intrada_web::haptics::haptic_light;
@@ -97,7 +97,10 @@ pub fn BottomSheet(
             return;
         };
         let on_keydown: Closure<dyn Fn(KeyboardEvent)> = Closure::new(move |ev: KeyboardEvent| {
-            if ev.key() == "Escape" {
+            let key = js_sys::Reflect::get(ev.as_ref(), &JsValue::from_str("key"))
+                .ok()
+                .and_then(|v| v.as_string());
+            if key.as_deref() == Some("Escape") {
                 close.run(());
             }
         });
