@@ -114,27 +114,20 @@ async fn revoke_by_name_revokes_prior_tokens() {
     .expect("revoke_by_name should succeed");
     assert_eq!(revoked, 2, "should revoke exactly the 2 'iOS App' tokens");
 
-    // List tokens and verify state.
+    // List tokens via the API. "iOS App" tokens are internal and should
+    // be hidden from the MCP tokens list — only the "Other" token appears.
     let (_, body) = common::get(app2, "/api/account/tokens").await;
     let tokens: Vec<Value> = common::json(&body);
-    assert_eq!(tokens.len(), 3);
-
-    for t in &tokens {
-        let name = t["name"].as_str().unwrap();
-        if name == "iOS App" {
-            assert!(
-                t["revoked_at"].is_string(),
-                "iOS App token {} should be revoked",
-                t["id"]
-            );
-        } else {
-            assert!(
-                t["revoked_at"].is_null(),
-                "Non-iOS token {} should NOT be revoked",
-                t["id"]
-            );
-        }
-    }
+    assert_eq!(
+        tokens.len(),
+        1,
+        "only the non-iOS token should appear in the list"
+    );
+    assert_eq!(tokens[0]["name"].as_str().unwrap(), "Other");
+    assert!(
+        tokens[0]["revoked_at"].is_null(),
+        "Non-iOS token should NOT be revoked"
+    );
 
     // Calling revoke_by_name again should return 0 (already revoked).
     let revoked_again = intrada_api::db::tokens::revoke_by_name(&conn, "", "iOS App")

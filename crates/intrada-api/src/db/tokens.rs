@@ -11,6 +11,11 @@ use crate::error::ApiError;
 /// generating new tokens.
 pub const TOKEN_PREFIX: &str = "intrada_pat_";
 
+/// Token name used for iOS app authentication. These are internal tokens
+/// created by the `/api/auth/ios/exchange` endpoint and should not appear
+/// in the user-facing MCP tokens list.
+pub const IOS_APP_TOKEN_NAME: &str = "iOS App";
+
 /// Request payload for `POST /api/account/tokens`.
 #[derive(Debug, Deserialize)]
 pub struct CreateTokenRequest {
@@ -75,8 +80,9 @@ pub async fn list(conn: &Connection, user_id: &str) -> Result<Vec<TokenListItem>
     let mut rows = conn
         .query(
             "SELECT id, name, prefix, last_used_at, created_at, revoked_at
-             FROM mcp_tokens WHERE user_id = ?1 ORDER BY created_at DESC",
-            libsql::params![user_id],
+             FROM mcp_tokens WHERE user_id = ?1 AND name != ?2
+             ORDER BY created_at DESC",
+            libsql::params![user_id, IOS_APP_TOKEN_NAME],
         )
         .await?;
 
