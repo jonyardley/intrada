@@ -464,6 +464,16 @@ fn dismiss_splash() {
             .set_property("opacity", "0");
         let remove_cb = Closure::once(move || {
             el_remove.remove();
+            // Re-enable view-transition animations now that the splash is
+            // gone and the app is showing the correct destination view.
+            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+                if let Some(root) = doc.document_element() {
+                    let _ = root
+                        .unchecked_ref::<web_sys::HtmlElement>()
+                        .class_list()
+                        .remove_1("app-loading");
+                }
+            }
         });
         if let Some(w) = web_sys::window() {
             let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(

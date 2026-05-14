@@ -12,12 +12,12 @@ use intrada_web::platform::is_ios;
 ///
 /// Pencil ref: `fWsUw` (desktop) and `vFOGv` (mobile-web).
 ///
-/// Shows a branded loading screen while Clerk initialises, then either
-/// redirects or renders the marketing page:
-/// - Authed users → redirect to /library.
-/// - Unauthed iOS users (Tauri WebView) → redirect to /login. They already
-///   downloaded the app; the marketing pitch is redundant.
-/// - Anyone else → render the marketing page.
+/// On iOS the splash screen covers the viewport until auth resolves, so
+/// this component renders nothing — the redirect Effect fires behind the
+/// splash and the user goes straight from splash → fade → destination.
+///
+/// On web, shows a branded loading screen while Clerk initialises, then
+/// either redirects (authed → /library) or renders the marketing page.
 ///
 /// Sub-sections live as private components in this file. Phone-frame
 /// graphics in the hero use a small reusable `PhoneFrame` shell with
@@ -49,7 +49,11 @@ pub fn WelcomeView() -> impl IntoView {
         }
     });
 
-    move || {
+    if on_ios {
+        return view! { <div></div> }.into_any();
+    }
+
+    (move || {
         if auth.auth_loading.get() {
             view! {
                 <div class="relative z-0 min-h-screen text-primary flex items-center justify-center">
@@ -109,7 +113,8 @@ pub fn WelcomeView() -> impl IntoView {
                 </div>
             }.into_any()
         }
-    }
+    })
+    .into_any()
 }
 
 // ════════════════════════════════════════════════════════════════════════
