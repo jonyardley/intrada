@@ -23,6 +23,9 @@ use wasm_bindgen::prelude::*;
         }
         return false;
     }
+    export function js_is_ready() {
+        return !!(window.__intrada_auth && window.__intrada_auth._ready);
+    }
     export function js_init_error() {
         if (window.__intrada_auth) {
             return window.__intrada_auth._lastError || null;
@@ -88,6 +91,7 @@ extern "C" {
     fn js_init_clerk(key: &str);
     fn js_is_signed_in() -> bool;
     fn js_init_failed() -> bool;
+    fn js_is_ready() -> bool;
     fn js_init_error() -> JsValue;
     async fn js_get_token() -> JsValue;
     fn js_get_user_id() -> JsValue;
@@ -116,6 +120,13 @@ pub fn is_signed_in() -> bool {
 /// Check whether Clerk initialization failed (bad key, wrong domain, network error).
 pub fn init_failed() -> bool {
     js_init_failed()
+}
+
+/// Check whether the auth bridge is ready (Clerk loaded on web, or PAT
+/// check possible on iOS). When ready and `is_signed_in()` is false, the
+/// user is genuinely unauthenticated — no need to keep polling.
+pub fn is_ready() -> bool {
+    js_is_ready()
 }
 
 /// Get the Clerk initialization error message, if any.
