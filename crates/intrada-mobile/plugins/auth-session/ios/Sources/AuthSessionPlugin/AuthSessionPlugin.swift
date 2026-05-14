@@ -63,7 +63,10 @@ class AuthSessionPlugin: Plugin {
       }
 
       session.presentationContextProvider = contextProvider
-      session.prefersEphemeralWebBrowserSession = false
+      // Ephemeral = true gives a clean cookie jar each time, so Google
+      // always shows the account picker instead of auto-selecting the
+      // previously used account from Safari's shared cookies.
+      session.prefersEphemeralWebBrowserSession = true
 
       self?.activeSession = session
 
