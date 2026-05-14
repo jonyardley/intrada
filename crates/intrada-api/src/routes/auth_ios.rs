@@ -5,6 +5,7 @@ use axum::{Json, Router};
 use serde::Serialize;
 
 use crate::auth::{AuthSource, AuthUser};
+use crate::db::tokens::IOS_APP_TOKEN_NAME;
 use crate::error::ApiError;
 use crate::services;
 use crate::state::AppState;
@@ -40,8 +41,8 @@ async fn exchange(
     };
 
     let conn = state.conn();
-    services::tokens::revoke_tokens_by_name(&conn, &user_id, "iOS App").await?;
-    let created = services::tokens::create_token(&conn, &user_id, "iOS App").await?;
+    services::tokens::revoke_tokens_by_name(&conn, &user_id, IOS_APP_TOKEN_NAME).await?;
+    let created = services::tokens::create_token(&conn, &user_id, IOS_APP_TOKEN_NAME).await?;
 
     Ok((
         StatusCode::CREATED,

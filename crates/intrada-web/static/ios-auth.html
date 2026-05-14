@@ -72,40 +72,52 @@
         if (!clerk) throw new Error('Clerk SDK not available');
         await clerk.load();
 
-        // If this is a callback from OAuth (Clerk appends status params)
-        if (location.search.includes('__clerk_status') ||
-            location.hash.includes('__clerk_status')) {
+        // Check if this is a callback from OAuth (Clerk appends status params)
+        var isCallback = location.search.includes('__clerk_status') ||
+            location.hash.includes('__clerk_status');
+
+        // Check if the URL includes the "completing" flag we set before
+        // redirecting to Google. This distinguishes a post-OAuth return
+        // (should grab token) from a fresh page load (should show picker).
+        var isCompleting = new URLSearchParams(location.search).get('completing') === '1';
+
+        if (isCallback) {
           statusEl.textContent = 'Completing sign-in...';
           await clerk.handleRedirectCallback({
-            redirectUrl: location.origin + '/ios-auth.html',
+            redirectUrl: location.origin + '/ios-auth.html?completing=1&pk=' + encodeURIComponent(pk),
           });
           // handleRedirectCallback navigates away; if we reach here, wait
           return;
         }
 
-        // User is already signed in (e.g. returning after OAuth completed)
-        if (clerk.user && clerk.session) {
+        // Post-OAuth: user is signed in after the redirect completed.
+        // Grab the session token and redirect back to the app.
+        if (isCompleting && clerk.user && clerk.session) {
           statusEl.textContent = 'Getting session token...';
           var token = await clerk.session.getToken();
           if (!token) throw new Error('No session token');
-          // The Clerk session persists in Safari cookies. This means
-          // re-auth reuses the same Google account silently (no picker).
-          // Acceptable for beta — switching accounts requires signing out
-          // of Google in Safari first.
           window.location.href = 'com.intrada.app://oauth-callback?token=' + encodeURIComponent(token);
           return;
         }
 
-        // Not signed in — trigger Google OAuth. The redirect chain stays
-        // on this page: Google → Clerk verify → /ios-auth.html (callback)
-        // → /ios-auth.html (complete, now signed in) → app scheme.
+        // Fresh sign-in attempt from the iOS app. If a previous Clerk
+        // session exists in Safari cookies, sign out first so the user
+        // always gets the Google account picker.
+        if (clerk.user) {
+          statusEl.textContent = 'Preparing sign-in...';
+          await clerk.signOut();
+        }
+
+        // Trigger Google OAuth. The redirect chain stays on this page:
+        // Google → Clerk verify → /ios-auth.html?__clerk_status (callback)
+        // → /ios-auth.html?completing=1 (signed in) → app scheme.
         statusEl.textContent = 'Redirecting to Google...';
         var signIn = clerk.client && clerk.client.signIn;
         if (signIn && typeof signIn.authenticateWithRedirect === 'function') {
           await signIn.authenticateWithRedirect({
             strategy: 'oauth_google',
-            redirectUrl: location.origin + '/ios-auth.html',
-            redirectUrlComplete: location.origin + '/ios-auth.html',
+            redirectUrl: location.origin + '/ios-auth.html?pk=' + encodeURIComponent(pk),
+            redirectUrlComplete: location.origin + '/ios-auth.html?completing=1&pk=' + encodeURIComponent(pk),
           });
         } else {
           await clerk.redirectToSignIn();
