@@ -475,6 +475,9 @@ fn dismiss_splash() {
                 }
             }
         });
+        // 400ms > the splash's 300ms CSS opacity transition — gives the
+        // fade a frame of headroom before removing the element and
+        // re-enabling view-transition animations.
         if let Some(w) = web_sys::window() {
             let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(
                 remove_cb.as_ref().unchecked_ref(),
