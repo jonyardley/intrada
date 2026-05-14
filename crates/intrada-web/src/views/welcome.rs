@@ -12,14 +12,11 @@ use intrada_web::platform::is_ios;
 ///
 /// Pencil ref: `fWsUw` (desktop) and `vFOGv` (mobile-web).
 ///
-/// Renders immediately — does not wait for Clerk to initialise. Auth-state-
-/// based redirects fire reactively via the Effect below as soon as Clerk
-/// resolves:
+/// Shows a branded loading screen while Clerk initialises, then either
+/// redirects or renders the marketing page:
 /// - Authed users → redirect to /library.
 /// - Unauthed iOS users (Tauri WebView) → redirect to /login. They already
-///   downloaded the app; the marketing pitch is redundant. Held until
-///   `auth_loading=false` so we know they're really unauthed (vs. Clerk
-///   still loading their session).
+///   downloaded the app; the marketing pitch is redundant.
 /// - Anyone else → render the marketing page.
 ///
 /// Sub-sections live as private components in this file. Phone-frame
