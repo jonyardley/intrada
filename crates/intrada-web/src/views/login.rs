@@ -45,8 +45,18 @@ pub fn LoginView() -> impl IntoView {
         sign_in_error.set(None);
         leptos::task::spawn_local(async move {
             js_bridge::sign_in_with_google().await;
-            // If we reach here, the redirect didn't happen — something failed.
-            // On success the page navigates away and this code never runs.
+            // Web: on success the page navigates away (Clerk redirect) and
+            // this code never runs. If we reach here, something failed.
+            //
+            // iOS: signInWithGoogle() completes in-process (Safari sheet →
+            // PAT exchange → auth listener fires). The user is already
+            // signed in when we get here — don't show an error.
+            if js_bridge::is_signed_in() {
+                // Auth listener already fired; the Effect above will
+                // redirect to /library. Just clear the spinner.
+                signing_in.set(false);
+                return;
+            }
             signing_in.set(false);
             if let Some(err) = js_bridge::init_error() {
                 sign_in_error.set(Some(err));
