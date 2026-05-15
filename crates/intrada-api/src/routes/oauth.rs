@@ -98,12 +98,16 @@ async fn authorize(
     State(state): State<AppState>,
     Query(params): Query<AuthorizeParams>,
 ) -> Result<Response, ApiError> {
-    let conn = state.conn();
     // Validate up-front so an invalid client_id / redirect_uri / response_type
     // surfaces an error here rather than after the user has signed in. We
     // don't redirect errors back to the (possibly attacker-controlled)
     // redirect_uri until we've validated it's the registered one — RFC 6749 §4.1.2.1.
-    services::oauth::validate_authorize_request(&conn, &params).await?;
+    state
+        .with_transient_retry(|conn| {
+            let params = params.clone();
+            async move { services::oauth::validate_authorize_request(&conn, &params).await }
+        })
+        .await?;
 
     // Redirect to the web app's consent page. The web app gates on
     // Clerk auth (existing flow), shows consent UI, and on Allow calls

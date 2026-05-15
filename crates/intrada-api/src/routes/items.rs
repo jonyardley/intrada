@@ -21,8 +21,12 @@ async fn list_items(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Item>>, ApiError> {
-    let conn = state.conn();
-    let items = services::items::list_items(&conn, &user_id).await?;
+    let items = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::items::list_items(&conn, &user_id).await }
+        })
+        .await?;
     Ok(Json(items))
 }
 
@@ -31,8 +35,13 @@ async fn get_item(
     AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Item>, ApiError> {
-    let conn = state.conn();
-    let item = services::items::get_item(&conn, &id, &user_id).await?;
+    let item = state
+        .with_transient_retry(|conn| {
+            let id = id.clone();
+            let user_id = user_id.clone();
+            async move { services::items::get_item(&conn, &id, &user_id).await }
+        })
+        .await?;
     Ok(Json(item))
 }
 

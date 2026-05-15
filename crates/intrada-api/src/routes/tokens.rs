@@ -19,8 +19,12 @@ async fn list_tokens(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<TokenListItem>>, ApiError> {
-    let conn = state.conn();
-    let tokens = services::tokens::list_tokens(&conn, &user_id).await?;
+    let tokens = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::tokens::list_tokens(&conn, &user_id).await }
+        })
+        .await?;
     Ok(Json(tokens))
 }
 
