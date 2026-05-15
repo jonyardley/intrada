@@ -384,7 +384,7 @@
               window.__TAURI_INTERNALS__?.invoke;
             if (!tauriInvoke) {
               this._lastError = 'ios_auth: Tauri invoke not available';
-              return;
+              return null;
             }
             try {
               // Open ios-auth.html in ASWebAuthenticationSession (Safari).
@@ -428,15 +428,22 @@
 
               // Notify the Leptos app that auth state changed
               if (this._authListener) this._authListener();
+              return 'ok';
             } catch (e) {
               console.error('iOS auth flow failed:', e);
+              if (e && typeof e.message === 'string' && e.message.includes('user cancelled')) {
+                return 'cancelled';
+              }
               this._lastError = 'ios_auth: ' + (e.message || String(e));
+              return null;
             }
-            return;
           }
 
           // ── Web: standard Clerk redirect flow ──
-          if (!this._clerk) return;
+          // authenticateWithRedirect resolves its Promise, then the browser
+          // starts navigating to Google. Return "redirect" so the caller
+          // knows not to show an error in the brief window before unload.
+          if (!this._clerk) return null;
           const signIn = this._clerk.client?.signIn;
           if (signIn && typeof signIn.authenticateWithRedirect === 'function') {
             await signIn.authenticateWithRedirect({
@@ -447,6 +454,7 @@
           } else {
             await this._clerk.redirectToSignIn();
           }
+          return 'redirect';
         },
         addListener(callback) {
           if (!this._ready) return;

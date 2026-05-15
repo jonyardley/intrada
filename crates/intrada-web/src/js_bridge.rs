@@ -57,8 +57,9 @@ use wasm_bindgen::prelude::*;
     }
     export async function js_sign_in_with_google() {
         if (window.__intrada_auth) {
-            await window.__intrada_auth.signInWithGoogle();
+            return await window.__intrada_auth.signInWithGoogle();
         }
+        return null;
     }
     export function js_add_auth_listener(callback) {
         if (window.__intrada_auth) {
@@ -97,7 +98,7 @@ extern "C" {
     fn js_get_user_id() -> JsValue;
     fn js_get_user_email() -> JsValue;
     async fn js_sign_out();
-    async fn js_sign_in_with_google();
+    async fn js_sign_in_with_google() -> JsValue;
     fn js_add_auth_listener(callback: &Closure<dyn Fn()>);
     fn js_sentry_set_user(id: &str);
     fn js_sentry_clear_user();
@@ -159,9 +160,13 @@ pub async fn sign_out() {
     js_sign_out().await;
 }
 
-/// Redirect to Google OAuth sign-in.
-pub async fn sign_in_with_google() {
-    js_sign_in_with_google().await;
+/// Start the Google OAuth sign-in flow. Returns a result string:
+/// - `"ok"` — sign-in completed (iOS: PAT stored, listener fired)
+/// - `"redirect"` — page is navigating to Google (web)
+/// - `"cancelled"` — user dismissed the sign-in sheet (iOS)
+/// - `None` — bridge not available or error (check `init_error()`)
+pub async fn sign_in_with_google() -> Option<String> {
+    js_sign_in_with_google().await.as_string()
 }
 
 /// Register a listener for auth state changes (sign-in/sign-out).

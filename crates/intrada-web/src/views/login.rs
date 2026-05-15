@@ -44,24 +44,31 @@ pub fn LoginView() -> impl IntoView {
         signing_in.set(true);
         sign_in_error.set(None);
         leptos::task::spawn_local(async move {
-            js_bridge::sign_in_with_google().await;
-            // Web: on success the page navigates away (Clerk redirect) and
-            // this code never runs. If we reach here, something failed.
-            //
-            // iOS: signInWithGoogle() completes in-process (Safari sheet →
-            // PAT exchange → auth listener fires). The user is already
-            // signed in when we get here — don't show an error.
-            if js_bridge::is_signed_in() {
-                // Auth listener already fired; the Effect above will
-                // redirect to /library. Just clear the spinner.
-                signing_in.set(false);
-                return;
-            }
-            signing_in.set(false);
-            if let Some(err) = js_bridge::init_error() {
-                sign_in_error.set(Some(err));
-            } else {
-                sign_in_error.set(Some("Sign-in failed. Please try again.".into()));
+            let result = js_bridge::sign_in_with_google().await;
+            match result.as_deref() {
+                // iOS: flow completed, PAT stored, auth listener fired.
+                // The Effect above will redirect to /library.
+                Some("ok") => {
+                    signing_in.set(false);
+                }
+                // Web: page is navigating to Google for OAuth. Keep the
+                // spinner visible — don't flash an error in the brief
+                // window before the browser unloads this page.
+                Some("redirect") => {}
+                // iOS: user dismissed the Safari sign-in sheet.
+                // Not an error — just reset to the initial state.
+                Some("cancelled") => {
+                    signing_in.set(false);
+                }
+                // Actual failure — show the error.
+                _ => {
+                    signing_in.set(false);
+                    if let Some(err) = js_bridge::init_error() {
+                        sign_in_error.set(Some(err));
+                    } else {
+                        sign_in_error.set(Some("Sign-in failed. Please try again.".into()));
+                    }
+                }
             }
         });
     });
