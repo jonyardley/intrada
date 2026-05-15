@@ -87,11 +87,15 @@ use wasm_bindgen::prelude::*;
             });
         }
     }
-    export function js_close_splashscreen() {
-        var invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
-        if (invoke) {
-            invoke('close_splashscreen');
-        }
+    export function js_dismiss_splash() {
+        var el = document.getElementById('app-splash');
+        if (!el || el.style.display === 'none') return;
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                el.style.opacity = '0';
+                setTimeout(function() { el.remove(); }, 400);
+            });
+        });
     }
 ")]
 extern "C" {
@@ -109,7 +113,7 @@ extern "C" {
     fn js_sentry_set_user(id: &str);
     fn js_sentry_clear_user();
     fn js_sentry_breadcrumb(category: &str, message: &str, level: &str);
-    fn js_close_splashscreen();
+    fn js_dismiss_splash();
 }
 
 /// Initialize Clerk with the publishable key.
@@ -204,8 +208,9 @@ pub fn sentry_breadcrumb(category: &str, message: &str, level: &str) {
     js_sentry_breadcrumb(category, message, level);
 }
 
-/// Close the Tauri native splash screen window and show the main window.
-/// No-op on web where `__TAURI__` doesn't exist.
-pub fn close_splashscreen() {
-    js_close_splashscreen();
+/// Fade out and remove the `#app-splash` HTML overlay.
+/// Two rAF cycles let the destination view paint before the fade begins.
+/// No-op on web where the overlay is `display:none`.
+pub fn dismiss_splash() {
+    js_dismiss_splash();
 }

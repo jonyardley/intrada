@@ -1,18 +1,6 @@
-use tauri::Manager;
-
 // SENTRY_DSN_MOBILE is baked at compile time. Pair with the rerun-if-env-changed
 // directive in build.rs so changing the env doesn't yield stale binaries.
 const SENTRY_DSN: Option<&str> = option_env!("SENTRY_DSN_MOBILE");
-
-#[tauri::command]
-async fn close_splashscreen(app: tauri::AppHandle) {
-    if let Some(splash) = app.get_webview_window("splashscreen") {
-        let _ = splash.close();
-    }
-    if let Some(main) = app.get_webview_window("main") {
-        let _ = main.show();
-    }
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -56,7 +44,6 @@ pub fn run() {
         // real Activity<...>.request / update / end.
         .plugin(tauri_plugin_live_activity::init())
         .plugin(tauri_plugin_auth_session::init())
-        .invoke_handler(tauri::generate_handler![close_splashscreen])
         .run(tauri::generate_context!())
         .expect("error while running intrada");
 }
