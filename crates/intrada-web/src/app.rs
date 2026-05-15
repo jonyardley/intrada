@@ -151,15 +151,25 @@ pub fn App() -> impl IntoView {
         closure.forget(); // leak intentionally — lives for app lifetime
     }
 
-    // ─── Splash screen dismissal ──────────────────────────────────────
-    // On iOS the splash stays visible until auth resolves and navigation
-    // Effects have settled, so the user goes directly from branded splash
-    // to the final destination (login or library) with no intermediate
-    // flicker. On web the splash element is hidden (display:none) so this
-    // is a no-op.
+    // ─── Splash screen dismissal (iOS only) ─────────────────────────
+    // On iOS the Tauri native splash window (a separate lightweight
+    // WebView defined in tauri.conf.json) shows instantly while the main
+    // WASM app loads in a hidden window. Once auth resolves we wait 300ms
+    // for the redirect Effect and view-transition animation (220ms) to
+    // complete behind the splash, then close the splash and show the
+    // main window. On web this is a no-op — there is no splash.
     Effect::new(move |_| {
         if !auth_loading.get() {
-            dismiss_splash();
+            let cb = Closure::once(move || {
+                js_bridge::close_splashscreen();
+            });
+            if let Some(w) = web_sys::window() {
+                let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(
+                    cb.as_ref().unchecked_ref(),
+                    300,
+                );
+            }
+            cb.forget();
         }
     });
 
@@ -437,57 +447,6 @@ fn AuthLoadingScreen() -> impl IntoView {
             </div>
         </div>
     }
-}
-
-/// Fade out and remove the `#app-splash` overlay. The splash has already been
-/// visible since HTML load (iOS) so we skip the hold and go straight to a
-/// 400ms opacity fade, then remove the element. No-op on web where the splash
-/// is `display: none`.
-fn dismiss_splash() {
-    use leptos::web_sys;
-    let Some(window) = web_sys::window() else {
-        return;
-    };
-    let Some(document) = window.document() else {
-        return;
-    };
-    let Some(el) = document.get_element_by_id("app-splash") else {
-        return;
-    };
-    // One-frame delay so navigation Effects that fire in the same reactive
-    // batch have time to update the DOM before we reveal what's underneath.
-    let raf_cb = Closure::once(move || {
-        let el_remove = el.clone();
-        let _ = el
-            .unchecked_ref::<web_sys::HtmlElement>()
-            .style()
-            .set_property("opacity", "0");
-        let remove_cb = Closure::once(move || {
-            el_remove.remove();
-            // Re-enable view-transition animations now that the splash is
-            // gone and the app is showing the correct destination view.
-            if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-                if let Some(root) = doc.document_element() {
-                    let _ = root
-                        .unchecked_ref::<web_sys::HtmlElement>()
-                        .class_list()
-                        .remove_1("app-loading");
-                }
-            }
-        });
-        // 400ms > the splash's 300ms CSS opacity transition — gives the
-        // fade a frame of headroom before removing the element and
-        // re-enabling view-transition animations.
-        if let Some(w) = web_sys::window() {
-            let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(
-                remove_cb.as_ref().unchecked_ref(),
-                400,
-            );
-        }
-        remove_cb.forget();
-    });
-    let _ = window.request_animation_frame(raf_cb.as_ref().unchecked_ref());
-    raf_cb.forget();
 }
 
 /// Design catalogue route — shows the component catalogue in debug builds,
