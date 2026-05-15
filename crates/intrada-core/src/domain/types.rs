@@ -135,20 +135,34 @@ impl UpdateSetRequest {
     }
 }
 
-// ── Lesson DTOs ────────────────────────────────────────────────────
+// ── Goal DTOs ──────────────────────────────────────────────────────
 
-/// Request body for creating a lesson via the REST API.
+/// Request body for creating a goal via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CreateLesson {
+pub struct CreateGoal {
     pub date: String,
+    pub title: Option<String>,
     pub notes: Option<String>,
+    pub deadline: Option<String>,
 }
 
-/// Request body for updating a lesson via the REST API.
+/// Request body for updating a goal via the REST API.
+/// Uses three-state `Option<Option<T>>` for clearable fields.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-pub struct UpdateLesson {
+pub struct UpdateGoal {
+    pub title: Option<Option<String>>,
     pub date: Option<String>,
     pub notes: Option<Option<String>>,
+    pub deadline: Option<Option<String>>,
+    pub status: Option<super::goal::GoalStatus>,
+}
+
+/// Request body for linking a library item to a goal.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct LinkGoalItem {
+    pub item_id: String,
+    pub item_title: String,
+    pub item_type: ItemKind,
 }
 
 /// Filters for listing/searching library items.

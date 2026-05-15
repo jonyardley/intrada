@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
+use crate::domain::goal::{handle_goal_event, Goal, GoalEvent};
 #[cfg(test)]
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
-use crate::domain::lesson::{handle_lesson_event, Lesson, LessonEvent};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
 use crate::domain::oauth::{handle_oauth_event, OAuthEvent};
@@ -27,7 +27,7 @@ use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, entry_to_view, lesson_to_view, session_to_view,
+    build_active_session_view, build_summary_view, entry_to_view, goal_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
     SetSourceStatus, ViewModel,
 };
@@ -51,7 +51,7 @@ pub enum Event {
     RefetchItems,
     RefetchSessions,
     RefetchSets,
-    RefetchLessons,
+    RefetchGoals,
     /// User signed out — reset all user-scoped state so the next sign-in
     /// (possibly a different user on the same browser) doesn't inherit the
     /// previous user's items, sessions, MCP tokens/audit, errors, etc.
@@ -62,7 +62,7 @@ pub enum Event {
     Item(ItemEvent),
     Session(SessionEvent),
     Set(SetEvent),
-    Lesson(LessonEvent),
+    Goal(GoalEvent),
     Account(AccountEvent),
     McpToken(McpTokenEvent),
     McpAudit(McpAuditEvent),
@@ -78,11 +78,11 @@ pub enum Event {
     SetsLoaded {
         sets: Vec<Set>,
     },
-    LessonsLoaded {
-        lessons: Vec<Lesson>,
+    GoalsLoaded {
+        goals: Vec<Goal>,
     },
-    LessonLoaded {
-        lesson: Lesson,
+    GoalLoaded {
+        goal: Goal,
     },
 
     // ── Write-confirmation callbacks ────────────────────────────────
@@ -178,7 +178,7 @@ impl App for Intrada {
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
             Event::RefetchSets => http::fetch_sets(&model.api_base_url),
-            Event::RefetchLessons => http::fetch_lessons(&model.api_base_url),
+            Event::RefetchGoals => http::fetch_goals(&model.api_base_url),
             Event::SignedOut => {
                 model.reset_for_sign_out();
                 // Also clear the crash-recovery blob in localStorage —
@@ -195,7 +195,7 @@ impl App for Intrada {
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Set(set_event) => handle_set_event(set_event, model),
-            Event::Lesson(lesson_event) => handle_lesson_event(lesson_event, model),
+            Event::Goal(goal_event) => handle_goal_event(goal_event, model),
             Event::Account(account_event) => handle_account_event(account_event, model),
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
@@ -218,13 +218,13 @@ impl App for Intrada {
                 model.record_success();
                 crux_core::render::render()
             }
-            Event::LessonsLoaded { lessons } => {
-                model.lessons = lessons;
+            Event::GoalsLoaded { goals } => {
+                model.goals = goals;
                 model.record_success();
                 crux_core::render::render()
             }
-            Event::LessonLoaded { lesson } => {
-                model.current_lesson = Some(lesson);
+            Event::GoalLoaded { goal } => {
+                model.current_goal = Some(goal);
                 model.record_success();
                 crux_core::render::render()
             }
@@ -427,11 +427,11 @@ impl App for Intrada {
             })
             .collect();
 
-        // Build lesson views sorted by date descending
-        let mut lessons: Vec<_> = model.lessons.iter().map(lesson_to_view).collect();
-        lessons.sort_by(|a, b| b.date.cmp(&a.date));
+        // Build goal views sorted by date descending
+        let mut goals: Vec<_> = model.goals.iter().map(goal_to_view).collect();
+        goals.sort_by(|a, b| b.date.cmp(&a.date));
 
-        let current_lesson = model.current_lesson.as_ref().map(lesson_to_view);
+        let current_goal = model.current_goal.as_ref().map(goal_to_view);
 
         ViewModel {
             items,
@@ -443,8 +443,8 @@ impl App for Intrada {
             error: model.last_error.clone(),
             analytics,
             sets,
-            lessons,
-            current_lesson,
+            goals,
+            current_goal,
             account_preferences: model.account_preferences.clone(),
             delete_in_flight: model.delete_in_flight,
             account_deleted: model.account_deleted,
@@ -1941,7 +1941,7 @@ mod tests {
             "Failed to load items: timeout",
             "Failed to load sessions: 503",
             "Failed to load sets: connection refused",
-            "Failed to load lessons: timeout",
+            "Failed to load goals: timeout",
         ] {
             let _ = app.update(Event::LoadFailed(msg.into()), &mut model);
             assert_eq!(model.last_error, None, "burst msg should stay muted: {msg}");

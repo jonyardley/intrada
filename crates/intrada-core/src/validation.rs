@@ -1,5 +1,5 @@
 use crate::domain::item::ItemKind;
-use crate::domain::types::{CreateItem, CreateLesson, Tempo, UpdateItem, UpdateLesson};
+use crate::domain::types::{CreateGoal, CreateItem, Tempo, UpdateGoal, UpdateItem};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
@@ -25,7 +25,8 @@ pub const MIN_SESSION_TARGET_MINS: u32 = 5;
 pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
-pub const MAX_LESSON_NOTES: usize = 10_000;
+pub const MAX_GOAL_NOTES: usize = 10_000;
+pub const MAX_GOAL_TITLE: usize = 200;
 
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || title.len() > MAX_TITLE {
@@ -315,9 +316,9 @@ pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), 
     Ok(())
 }
 
-// ── Lesson validation ──────────────────────────────────────────────
+// ── Goal validation ───────────────────────────────────────────────
 
-fn validate_lesson_date(date: &str) -> Result<(), LibraryError> {
+fn validate_goal_date(date: &str) -> Result<(), LibraryError> {
     let parsed = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
         LibraryError::Validation {
             field: "date".to_string(),
@@ -335,30 +336,62 @@ fn validate_lesson_date(date: &str) -> Result<(), LibraryError> {
     Ok(())
 }
 
-fn validate_lesson_notes(notes: Option<&str>) -> Result<(), LibraryError> {
+fn validate_goal_notes(notes: Option<&str>) -> Result<(), LibraryError> {
     if let Some(n) = notes {
-        if n.len() > MAX_LESSON_NOTES {
+        if n.len() > MAX_GOAL_NOTES {
             return Err(LibraryError::Validation {
                 field: "notes".to_string(),
-                message: format!("Notes must not exceed {MAX_LESSON_NOTES} characters"),
+                message: format!("Notes must not exceed {MAX_GOAL_NOTES} characters"),
             });
         }
     }
     Ok(())
 }
 
-pub fn validate_create_lesson(input: &CreateLesson) -> Result<(), LibraryError> {
-    validate_lesson_date(&input.date)?;
-    validate_lesson_notes(input.notes.as_deref())?;
+fn validate_goal_title(title: Option<&str>) -> Result<(), LibraryError> {
+    if let Some(t) = title {
+        if t.len() > MAX_GOAL_TITLE {
+            return Err(LibraryError::Validation {
+                field: "title".to_string(),
+                message: format!("Title must not exceed {MAX_GOAL_TITLE} characters"),
+            });
+        }
+    }
     Ok(())
 }
 
-pub fn validate_update_lesson(input: &UpdateLesson) -> Result<(), LibraryError> {
+/// Validate a deadline string. Must be YYYY-MM-DD format.
+/// No past-date restriction — deadlines can be in the past.
+fn validate_goal_deadline(deadline: Option<&str>) -> Result<(), LibraryError> {
+    if let Some(d) = deadline {
+        chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").map_err(|_| LibraryError::Validation {
+            field: "deadline".to_string(),
+            message: "Deadline must be in YYYY-MM-DD format".to_string(),
+        })?;
+    }
+    Ok(())
+}
+
+pub fn validate_create_goal(input: &CreateGoal) -> Result<(), LibraryError> {
+    validate_goal_date(&input.date)?;
+    validate_goal_title(input.title.as_deref())?;
+    validate_goal_notes(input.notes.as_deref())?;
+    validate_goal_deadline(input.deadline.as_deref())?;
+    Ok(())
+}
+
+pub fn validate_update_goal(input: &UpdateGoal) -> Result<(), LibraryError> {
     if let Some(ref date) = input.date {
-        validate_lesson_date(date)?;
+        validate_goal_date(date)?;
+    }
+    if let Some(ref title) = input.title {
+        validate_goal_title(title.as_deref())?;
     }
     if let Some(ref notes) = input.notes {
-        validate_lesson_notes(notes.as_deref())?;
+        validate_goal_notes(notes.as_deref())?;
+    }
+    if let Some(ref deadline) = input.deadline {
+        validate_goal_deadline(deadline.as_deref())?;
     }
     Ok(())
 }

@@ -8,14 +8,15 @@ use crux_core::Command;
 
 use crate::app::{Effect, Event};
 use crate::domain::account::{AccountEvent, AccountPreferences};
+use crate::domain::goal::Goal;
 use crate::domain::item::Item;
-use crate::domain::lesson::Lesson;
 use crate::domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 use crate::domain::oauth::{OAuthEvent, OAuthFinalizeParams};
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
-    CreateItem, CreateLesson, CreateSetRequest, UpdateItem, UpdateLesson, UpdateSetRequest,
+    CreateGoal, CreateItem, CreateSetRequest, LinkGoalItem, UpdateGoal, UpdateItem,
+    UpdateSetRequest,
 };
 
 type Http = crux_http::command::Http<Effect, Event>;
@@ -188,67 +189,106 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
-// ── Lesson operations ──────────────────────────────────────────────────
+// ── Goal operations ───────────────────────────────────────────────────
 
-pub fn fetch_lessons(api_base_url: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/lessons"))
-        .expect_json::<Vec<Lesson>>()
+pub fn fetch_goals(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/goals"))
+        .expect_json::<Vec<Goal>>()
         .build()
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
-                Some(lessons) => Event::LessonsLoaded { lessons },
-                None => Event::LoadFailed("Failed to parse lessons response".into()),
+                Some(goals) => Event::GoalsLoaded { goals },
+                None => Event::LoadFailed("Failed to parse goals response".into()),
             },
-            Err(e) => Event::LoadFailed(format!("Failed to load lessons: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to load goals: {e}")),
         })
 }
 
-pub fn fetch_lesson(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/lessons/{id}"))
-        .expect_json::<Lesson>()
+pub fn fetch_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/goals/{id}"))
+        .expect_json::<Goal>()
         .build()
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
-                Some(lesson) => Event::LessonLoaded { lesson },
-                None => Event::LoadFailed("Failed to parse lesson response".into()),
+                Some(goal) => Event::GoalLoaded { goal },
+                None => Event::LoadFailed("Failed to parse goal response".into()),
             },
-            Err(e) => Event::LoadFailed(format!("Failed to load lesson: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to load goal: {e}")),
         })
 }
 
-pub fn create_lesson(api_base_url: &str, input: &CreateLesson) -> Command<Effect, Event> {
-    Http::post(format!("{api_base_url}/api/lessons"))
+pub fn create_goal(api_base_url: &str, input: &CreateGoal) -> Command<Effect, Event> {
+    Http::post(format!("{api_base_url}/api/goals"))
         .body_json(input)
-        .expect("serialize CreateLesson")
+        .expect("serialize CreateGoal")
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchLessons,
-            Err(e) => Event::LoadFailed(format!("Failed to save lesson: {e}")),
+            Ok(_) => Event::RefetchGoals,
+            Err(e) => Event::LoadFailed(format!("Failed to save goal: {e}")),
         })
 }
 
-pub fn update_lesson(api_base_url: &str, id: &str, input: &UpdateLesson) -> Command<Effect, Event> {
-    Http::put(format!("{api_base_url}/api/lessons/{id}"))
+pub fn update_goal(api_base_url: &str, id: &str, input: &UpdateGoal) -> Command<Effect, Event> {
+    Http::put(format!("{api_base_url}/api/goals/{id}"))
         .body_json(input)
-        .expect("serialize UpdateLesson")
-        .expect_json::<Lesson>()
+        .expect("serialize UpdateGoal")
+        .expect_json::<Goal>()
         .build()
         .then_send(|result| match result {
             Ok(response) => match response.body().cloned() {
-                Some(lesson) => Event::LessonLoaded { lesson },
-                None => Event::LoadFailed("update_lesson: server returned no body".into()),
+                Some(goal) => Event::GoalLoaded { goal },
+                None => Event::LoadFailed("update_goal: server returned no body".into()),
             },
-            Err(e) => Event::LoadFailed(format!("Failed to update lesson: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to update goal: {e}")),
         })
 }
 
-pub fn delete_lesson(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::delete(format!("{api_base_url}/api/lessons/{id}"))
+pub fn complete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::post(format!("{api_base_url}/api/goals/{id}/complete"))
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::RefetchGoals,
+            Err(e) => Event::LoadFailed(format!("Failed to complete goal: {e}")),
+        })
+}
+
+pub fn delete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    Http::delete(format!("{api_base_url}/api/goals/{id}"))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete lesson: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to delete goal: {e}")),
         })
+}
+
+pub fn link_goal_item(
+    api_base_url: &str,
+    goal_id: &str,
+    item: &LinkGoalItem,
+) -> Command<Effect, Event> {
+    Http::post(format!("{api_base_url}/api/goals/{goal_id}/items"))
+        .body_json(item)
+        .expect("serialize LinkGoalItem")
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::RefetchGoals,
+            Err(e) => Event::LoadFailed(format!("Failed to link item to goal: {e}")),
+        })
+}
+
+pub fn unlink_goal_item(
+    api_base_url: &str,
+    goal_id: &str,
+    item_id: &str,
+) -> Command<Effect, Event> {
+    Http::delete(format!(
+        "{api_base_url}/api/goals/{goal_id}/items/{item_id}"
+    ))
+    .build()
+    .then_send(|result| match result {
+        Ok(_) => Event::RefetchGoals,
+        Err(e) => Event::LoadFailed(format!("Failed to unlink item from goal: {e}")),
+    })
 }
 
 // ── Account operations ─────────────────────────────────────────────────
