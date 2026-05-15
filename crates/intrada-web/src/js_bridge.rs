@@ -87,6 +87,12 @@ use wasm_bindgen::prelude::*;
             });
         }
     }
+    export function js_close_splashscreen() {
+        var invoke = window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke;
+        if (invoke) {
+            invoke('close_splashscreen');
+        }
+    }
 ")]
 extern "C" {
     fn js_init_clerk(key: &str);
@@ -103,6 +109,7 @@ extern "C" {
     fn js_sentry_set_user(id: &str);
     fn js_sentry_clear_user();
     fn js_sentry_breadcrumb(category: &str, message: &str, level: &str);
+    fn js_close_splashscreen();
 }
 
 /// Initialize Clerk with the publishable key.
@@ -195,4 +202,10 @@ pub fn sentry_clear_user() {
 /// No-op if Sentry isn't loaded.
 pub fn sentry_breadcrumb(category: &str, message: &str, level: &str) {
     js_sentry_breadcrumb(category, message, level);
+}
+
+/// Close the Tauri native splash screen window and show the main window.
+/// No-op on web where `__TAURI__` doesn't exist.
+pub fn close_splashscreen() {
+    js_close_splashscreen();
 }

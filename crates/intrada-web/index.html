@@ -52,6 +52,7 @@
     <link data-trunk rel="copy-file" href="static/sitemap.xml" />
     <link data-trunk rel="copy-file" href="static/og-image.svg" />
     <link data-trunk rel="copy-file" href="static/ios-auth.html" />
+    <link data-trunk rel="copy-file" href="static/splashscreen.html" />
 
     <!-- Release tag for Sentry. Defaults to null (PR builds, local dev) and
          is replaced by CI's deploy step with `sed` before publishing to
@@ -198,14 +199,6 @@
       // device.
       if (location.protocol === 'tauri:') {
         document.documentElement.setAttribute('data-platform', 'ios');
-        // Suppress view-transition animations during initial load so the
-        // first route change (/ → /library or /login) is instant behind
-        // the splash. Removed by dismiss_splash after the splash fades.
-        document.documentElement.classList.add('app-loading');
-        // Show the branded splash screen on iOS only — on web it feels
-        // unnecessary and adds a flash before the app renders.
-        var splash = document.getElementById('app-splash');
-        if (splash) splash.style.display = 'flex';
         // Native iOS apps don't have pinch-zoom on the page. Override the
         // viewport meta to disable it inside the Tauri WebView only —
         // regular browser users keep their accessibility zoom.
@@ -480,26 +473,5 @@
         </nav>
       </div>
     </noscript>
-    <!-- Branded splash screen — iOS only. Hidden by default (display:none);
-         the inline Tauri-detection script above sets display:flex on iOS.
-         Removed by app.rs dismiss_splash() once auth resolves.
-         Colors are hardcoded because CSS tokens aren't loaded yet —
-         keep in sync with input.css: #161926/#0f111a = surface bg,
-         #9180fa = accent, #e8e6f0 = text-primary. -->
-    <div id="app-splash" style="
-      position: fixed; inset: 0; z-index: 9999;
-      display: none; align-items: center; justify-content: center;
-      background: linear-gradient(to bottom, #161926, #0f111a);
-      transition: opacity 0.3s ease;
-    ">
-      <div style="text-align: center;">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px;">
-          <svg style="width: 28px; height: 28px; color: #9180fa;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
-          </svg>
-          <span style="font-family: 'Source Serif 4', Georgia, serif; font-size: 34px; font-weight: 700; letter-spacing: -0.02em; color: #e8e6f0;">Intrada</span>
-        </div>
-      </div>
-    </div>
   </body>
 </html>

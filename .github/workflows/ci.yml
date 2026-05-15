@@ -236,6 +236,14 @@ jobs:
         with:
           prefix-key: "ios-build"
           cache-on-failure: true
+      # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH when
+      # rustup is pre-installed on the macOS image. Without this, `cargo`
+      # resolves to Apple's /usr/bin/cargo stub (rustup-init shim) and
+      # every subsequent cargo command fails.
+      - name: Ensure cargo is on PATH
+        run: |
+          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
+          cargo --version
       # ── Clippy (device target) — lints #[cfg(target_os = "ios")] branches ──
       - name: Clippy iOS plugins (device target)
         run: |

@@ -4,7 +4,7 @@ use leptos_router::hooks::use_navigate;
 use leptos_router::NavigateOptions;
 
 use crate::app::AuthState;
-use crate::components::{BrandMark, BrandMarkSize, Button, ButtonVariant};
+use crate::components::{BrandMark, Button, ButtonVariant};
 use intrada_web::js_bridge;
 use intrada_web::platform::is_ios;
 
@@ -12,12 +12,13 @@ use intrada_web::platform::is_ios;
 ///
 /// Pencil ref: `fWsUw` (desktop) and `vFOGv` (mobile-web).
 ///
-/// On iOS the splash screen covers the viewport until auth resolves, so
-/// this component renders nothing — the redirect Effect fires behind the
-/// splash and the user goes straight from splash → fade → destination.
+/// On iOS the native Tauri splash window covers the viewport until auth
+/// resolves, so this component renders nothing — the redirect Effect
+/// fires behind the splash and the user goes straight from splash →
+/// fade → destination.
 ///
-/// On web, shows a branded loading screen while Clerk initialises, then
-/// either redirects (authed → /library) or renders the marketing page.
+/// On web, the marketing page renders immediately (no loading gate).
+/// When auth finishes, authed users redirect to /library.
 ///
 /// Sub-sections live as private components in this file. Phone-frame
 /// graphics in the hero use a small reusable `PhoneFrame` shell with
@@ -53,67 +54,52 @@ pub fn WelcomeView() -> impl IntoView {
         return view! { <div></div> }.into_any();
     }
 
-    (move || {
-        if auth.auth_loading.get() {
-            view! {
-                <div class="relative z-0 min-h-screen text-primary flex items-center justify-center">
-                    <div class="text-center">
-                        <div class="mb-2">
-                            <BrandMark size=BrandMarkSize::Lg />
-                        </div>
-                        <p class="text-muted">"Loading..."</p>
-                    </div>
-                </div>
-            }.into_any()
-        } else {
-            view! {
-                <div class="relative z-0 min-h-screen text-primary">
-                    <WelcomeNav />
-                    <WelcomeHero />
-                    <WelcomePillars />
-                    <WelcomeDifferentiators />
-                    <WelcomeFeature
-                        kicker="PLAN".to_string()
-                        title="The library that\nremembers for you.".to_string()
-                        description="Half of what your teacher gives you disappears within a week. Intrada catches it — tag by composer, key, or tempo, group what you actually run into reusable routines, and connect everything to the goals you're working towards.".to_string()
-                        bullets=vec![
-                            "Pieces, exercises, and patterns in one place".to_string(),
-                            "Reusable routines for the warm-ups and blocks you run every week".to_string(),
-                            "Goals that turn the library into a path".to_string(),
-                        ]
-                        reverse=false
-                        mock=Box::new(|| view! { <LibraryMock /> }.into_any())
-                    />
-                    <WelcomeFeature
-                        kicker="PRACTICE".to_string()
-                        title="One decision:\nstart.".to_string()
-                        description="Choosing what to practise is the silent killer of a session. Intrada plans the work for the time you've got — you tap start and play. Each item gets a timer and a quick rating, then on to the next. Big numbers, big buttons, no chrome.".to_string()
-                        bullets=vec![
-                            "A session ready every time you sit down".to_string(),
-                            "Resume right where you left off".to_string(),
-                            "Adjust duration and focus mid-session without losing your place".to_string(),
-                        ]
-                        reverse=true
-                        mock=Box::new(|| view! { <PracticeMock /> }.into_any())
-                    />
-                    <WelcomeFeature
-                        kicker="TRACK".to_string()
-                        title="Progress you\ncan't yet feel.".to_string()
-                        description="Music improves between sessions, not within them — so the work feels invisible while it's happening. Intrada turns weeks of mastery ratings, time, and tempo into evidence you can see today, before your ears catch up.".to_string()
-                        bullets=vec![
-                            "Mastery per piece, per key, across weeks".to_string(),
-                            "Time, sessions, and where your attention actually went".to_string(),
-                            "A welcome back when life happens — not a guilt trip".to_string(),
-                        ]
-                        reverse=false
-                        mock=Box::new(|| view! { <AnalyticsMock /> }.into_any())
-                    />
-                    <WelcomeFinalCta />
-                    <WelcomeFooter />
-                </div>
-            }.into_any()
-        }
-    })
+    view! {
+        <div class="relative z-0 min-h-screen text-primary">
+            <WelcomeNav />
+            <WelcomeHero />
+            <WelcomePillars />
+            <WelcomeDifferentiators />
+            <WelcomeFeature
+                kicker="PLAN".to_string()
+                title="The library that\nremembers for you.".to_string()
+                description="Half of what your teacher gives you disappears within a week. Intrada catches it — tag by composer, key, or tempo, group what you actually run into reusable routines, and connect everything to the goals you're working towards.".to_string()
+                bullets=vec![
+                    "Pieces, exercises, and patterns in one place".to_string(),
+                    "Reusable routines for the warm-ups and blocks you run every week".to_string(),
+                    "Goals that turn the library into a path".to_string(),
+                ]
+                reverse=false
+                mock=Box::new(|| view! { <LibraryMock /> }.into_any())
+            />
+            <WelcomeFeature
+                kicker="PRACTICE".to_string()
+                title="One decision:\nstart.".to_string()
+                description="Choosing what to practise is the silent killer of a session. Intrada plans the work for the time you've got — you tap start and play. Each item gets a timer and a quick rating, then on to the next. Big numbers, big buttons, no chrome.".to_string()
+                bullets=vec![
+                    "A session ready every time you sit down".to_string(),
+                    "Resume right where you left off".to_string(),
+                    "Adjust duration and focus mid-session without losing your place".to_string(),
+                ]
+                reverse=true
+                mock=Box::new(|| view! { <PracticeMock /> }.into_any())
+            />
+            <WelcomeFeature
+                kicker="TRACK".to_string()
+                title="Progress you\ncan't yet feel.".to_string()
+                description="Music improves between sessions, not within them — so the work feels invisible while it's happening. Intrada turns weeks of mastery ratings, time, and tempo into evidence you can see today, before your ears catch up.".to_string()
+                bullets=vec![
+                    "Mastery per piece, per key, across weeks".to_string(),
+                    "Time, sessions, and where your attention actually went".to_string(),
+                    "A welcome back when life happens — not a guilt trip".to_string(),
+                ]
+                reverse=false
+                mock=Box::new(|| view! { <AnalyticsMock /> }.into_any())
+            />
+            <WelcomeFinalCta />
+            <WelcomeFooter />
+        </div>
+    }
     .into_any()
 }
 
