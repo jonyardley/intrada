@@ -33,10 +33,13 @@ async fn get_audit_log(
     AuthUser { user_id, .. }: AuthUser,
     Query(q): Query<AuditQuery>,
 ) -> Result<Json<Vec<AuditLogEntry>>, ApiError> {
-    let conn = state.conn();
-    let entries =
-        services::audit::list_audit(&conn, &user_id, q.limit.unwrap_or(DEFAULT_AUDIT_LIMIT))
-            .await?;
+    let limit = q.limit.unwrap_or(DEFAULT_AUDIT_LIMIT);
+    let entries = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::audit::list_audit(&conn, &user_id, limit).await }
+        })
+        .await?;
     Ok(Json(entries))
 }
 
@@ -44,8 +47,12 @@ async fn get_preferences(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<AccountPreferences>, ApiError> {
-    let conn = state.conn();
-    let prefs = services::account::get_preferences(&conn, &user_id).await?;
+    let prefs = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::account::get_preferences(&conn, &user_id).await }
+        })
+        .await?;
     Ok(Json(prefs))
 }
 

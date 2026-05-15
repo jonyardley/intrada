@@ -38,9 +38,13 @@ async fn list_lessons(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<Lesson>>, ApiError> {
-    let conn = state.conn();
     let r2 = state.r2()?;
-    let lessons = services::lessons::list_lessons(&conn, r2, &user_id).await?;
+    let lessons = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::lessons::list_lessons(&conn, r2, &user_id).await }
+        })
+        .await?;
     Ok(Json(lessons))
 }
 
@@ -49,9 +53,14 @@ async fn get_lesson(
     AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Lesson>, ApiError> {
-    let conn = state.conn();
     let r2 = state.r2()?;
-    let lesson = services::lessons::get_lesson(&conn, r2, &id, &user_id).await?;
+    let lesson = state
+        .with_transient_retry(|conn| {
+            let id = id.clone();
+            let user_id = user_id.clone();
+            async move { services::lessons::get_lesson(&conn, r2, &id, &user_id).await }
+        })
+        .await?;
     Ok(Json(lesson))
 }
 

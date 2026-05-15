@@ -21,8 +21,12 @@ async fn list_sessions(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
 ) -> Result<Json<Vec<PracticeSession>>, ApiError> {
-    let conn = state.conn();
-    let sessions = services::sessions::list_sessions(&conn, &user_id).await?;
+    let sessions = state
+        .with_transient_retry(|conn| {
+            let user_id = user_id.clone();
+            async move { services::sessions::list_sessions(&conn, &user_id).await }
+        })
+        .await?;
     Ok(Json(sessions))
 }
 
@@ -31,8 +35,13 @@ async fn get_session(
     AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<PracticeSession>, ApiError> {
-    let conn = state.conn();
-    let session = services::sessions::get_session(&conn, &id, &user_id).await?;
+    let session = state
+        .with_transient_retry(|conn| {
+            let id = id.clone();
+            let user_id = user_id.clone();
+            async move { services::sessions::get_session(&conn, &id, &user_id).await }
+        })
+        .await?;
     Ok(Json(session))
 }
 
