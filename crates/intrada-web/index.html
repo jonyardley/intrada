@@ -197,6 +197,12 @@
          first paint. Web never gets data-platform, so the overlay
          stays display:none. */
       [data-platform="ios"] #app-splash { display: flex !important; }
+      /* Suppress view-transition slide animations while the splash is present.
+         Once dismiss_splash() removes #app-splash, normal transitions resume. */
+      html:has(#app-splash) ::view-transition-old(*),
+      html:has(#app-splash) ::view-transition-new(*) {
+        animation-duration: 0s !important;
+      }
     </style>
     <script>
       // Set data-platform="ios" early so [data-platform="ios"] CSS applies
