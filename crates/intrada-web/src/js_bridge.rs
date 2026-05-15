@@ -90,12 +90,10 @@ use wasm_bindgen::prelude::*;
     export function js_dismiss_splash() {
         var el = document.getElementById('app-splash');
         if (!el) return;
-        requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-                el.style.opacity = '0';
-                setTimeout(function() { el.remove(); }, 400);
-            });
-        });
+        setTimeout(function() {
+            el.style.opacity = '0';
+            setTimeout(function() { el.remove(); }, 400);
+        }, 300);
     }
 ")]
 extern "C" {
@@ -209,8 +207,8 @@ pub fn sentry_breadcrumb(category: &str, message: &str, level: &str) {
 }
 
 /// Fade out and remove the `#app-splash` HTML overlay.
-/// Two rAF cycles let the destination view paint before the fade begins.
-/// No-op on web where the overlay is `display:none`.
+/// 300ms hold lets route redirects and view transitions settle, then
+/// 400ms opacity fade reveals the destination. No-op on web (`display:none`).
 pub fn dismiss_splash() {
     js_dismiss_splash();
 }
