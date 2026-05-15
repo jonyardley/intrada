@@ -9,7 +9,6 @@ use leptos_router::path;
 use leptos_router::NavigateOptions;
 use send_wrapper::SendWrapper;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 
@@ -152,24 +151,16 @@ pub fn App() -> impl IntoView {
     }
 
     // ─── Splash screen dismissal (iOS only) ─────────────────────────
-    // On iOS the Tauri native splash window (a separate lightweight
-    // WebView defined in tauri.conf.json) shows instantly while the main
-    // WASM app loads in a hidden window. Once auth resolves we wait 300ms
-    // for the redirect Effect and view-transition animation (220ms) to
-    // complete behind the splash, then close the splash and show the
-    // main window. On web this is a no-op — there is no splash.
+    // On iOS the #app-splash overlay covers the viewport from first
+    // paint (dark html background eliminates any white flash before the
+    // overlay parses). Once auth resolves we fade it out. Two rAF
+    // cycles let the redirect Effect fire and the destination view
+    // paint before the fade begins — the 300ms CSS transition then
+    // reveals the fully-rendered app underneath. On web the overlay is
+    // display:none so this is a no-op.
     Effect::new(move |_| {
         if !auth_loading.get() {
-            let cb = Closure::once(move || {
-                js_bridge::close_splashscreen();
-            });
-            if let Some(w) = web_sys::window() {
-                let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(
-                    cb.as_ref().unchecked_ref(),
-                    300,
-                );
-            }
-            cb.forget();
+            js_bridge::dismiss_splash();
         }
     });
 
