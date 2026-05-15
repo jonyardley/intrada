@@ -89,7 +89,7 @@ use wasm_bindgen::prelude::*;
     }
     export function js_dismiss_splash() {
         var el = document.getElementById('app-splash');
-        if (!el || el.style.display === 'none') return;
+        if (!el) return;
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
                 el.style.opacity = '0';
