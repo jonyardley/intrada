@@ -88,6 +88,7 @@ REQUIRED_PLIST = {
   'UIBackgroundModes'              => ['audio'],
   'NSCameraUsageDescription'       => 'Intrada uses your camera to take photos of your music.',
   'NSPhotoLibraryUsageDescription' => 'Intrada accesses your photo library to add images to your pieces.',
+  'UILaunchScreen'                 => {},
 }.freeze
 
 (project['targets'] || {}).each do |name, target|
