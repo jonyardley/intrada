@@ -153,10 +153,10 @@ pub fn App() -> impl IntoView {
     // ─── Splash screen dismissal (iOS only) ─────────────────────────
     // On iOS the #app-splash overlay covers the viewport from first
     // paint (dark html background eliminates any white flash before the
-    // overlay parses). Once auth resolves we fade it out. Two rAF
-    // cycles let the redirect Effect fire and the destination view
-    // paint before the fade begins — the 300ms CSS transition then
-    // reveals the fully-rendered app underneath. On web the overlay is
+    // overlay parses). Once auth resolves we fade it out. The 300ms
+    // hold lets the route redirect + view transition (220ms) complete
+    // underneath the still-opaque splash, then the 400ms opacity fade
+    // reveals the fully-rendered destination. On web the overlay is
     // display:none so this is a no-op.
     Effect::new(move |_| {
         if !auth_loading.get() {
