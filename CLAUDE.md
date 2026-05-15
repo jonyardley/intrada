@@ -73,17 +73,12 @@ cargo install tauri-cli --version "^2" --locked   # Tauri CLI
 brew install cocoapods                             # CocoaPods (required by Tauri iOS)
 brew install xcodegen                              # xcodegen (required by Tauri iOS)
 # Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
-cd crates/intrada-mobile/src-tauri
-cargo tauri ios init       # generates the Xcode project under src-tauri/gen/apple/
-
-# Run the post-init scripts to (a) fix the libapp.a duplicate-output bug
-# (#476) and (b) add the Live Activity widget extension target (#474).
-# Both mutate gen/apple/project.yml and re-run xcodegen. Idempotent —
-# re-run after every `cargo tauri ios init`.
-cd ..   # back to crates/intrada-mobile/
-ruby scripts/fix-ios-build-config.rb
-ruby scripts/add-live-activity-target.rb
+just ios-init   # generates Xcode project + applies post-init patches
 ```
+
+`just ios-init` runs `cargo tauri ios init` then the two post-init Ruby scripts
+(`fix-ios-build-config.rb`, `add-live-activity-target.rb`) that patch the
+generated `project.yml`. Re-run it after any `cargo tauri ios init` regeneration.
 
 If you're forking this repo, update `bundle.iOS.developmentTeam` in
 `crates/intrada-mobile/src-tauri/tauri.conf.json` to your own Apple Team ID
