@@ -101,11 +101,12 @@ e2e: build
 ios-init:
     #!/usr/bin/env bash
     set -e
-    cd crates/intrada-mobile/src-tauri && cargo tauri ios init
-    cd crates/intrada-mobile
+    MOBILE="crates/intrada-mobile"
+    cd "$MOBILE/src-tauri" && cargo tauri ios init
+    cd - > /dev/null
     echo "Applying post-init patches..."
-    ruby scripts/fix-ios-build-config.rb
-    ruby scripts/add-live-activity-target.rb
+    ruby "$MOBILE/scripts/fix-ios-build-config.rb"
+    ruby "$MOBILE/scripts/add-live-activity-target.rb"
     echo "✓ iOS project ready. Run: just ios-dev"
 
 # Runs trunk serve (web) in background, then tauri ios dev.
