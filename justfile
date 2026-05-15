@@ -94,7 +94,19 @@ e2e: build
 # First-time setup:
 #   cargo install tauri-cli --version "^2" --locked
 #   brew install cocoapods
-#   cd crates/intrada-mobile/src-tauri && cargo tauri ios init
+#   just ios-init
+
+# Generate the Xcode project and apply post-init patches.
+# Run once after cloning, or after `cargo tauri ios init` regenerates gen/apple/.
+ios-init:
+    #!/usr/bin/env bash
+    set -e
+    cd crates/intrada-mobile/src-tauri && cargo tauri ios init
+    cd crates/intrada-mobile
+    echo "Applying post-init patches..."
+    ruby scripts/fix-ios-build-config.rb
+    ruby scripts/add-live-activity-target.rb
+    echo "✓ iOS project ready. Run: just ios-dev"
 
 # Runs trunk serve (web) in background, then tauri ios dev.
 # Pre-boots the simulator before handing off to tauri so `simctl install`

@@ -190,6 +190,14 @@
     <!-- Self-hosted Sentry browser SDK — see comment on the <script> tag
          in <head>. Re-vendor with scripts/vendor-sentry-sdk.sh. -->
     <link data-trunk rel="copy-dir" href="static/sentry" />
+    <style>
+      /* iOS splash: CSS activates the overlay the instant #app-splash
+         enters the DOM during body parse. data-platform="ios" is set
+         on <html> in the script below, so this rule matches before
+         first paint. Web never gets data-platform, so the overlay
+         stays display:none. */
+      [data-platform="ios"] #app-splash { display: flex !important; }
+    </style>
     <script>
       // Set data-platform="ios" early so [data-platform="ios"] CSS applies
       // before first paint — no flicker. Tauri WebView always serves pages
@@ -198,11 +206,6 @@
       // device.
       if (location.protocol === 'tauri:') {
         document.documentElement.setAttribute('data-platform', 'ios');
-        // Show the branded splash overlay on iOS. The dark html background
-        // (#0f111a) is already visible from first paint — this adds the
-        // logo on top. Dismissed by app.rs once auth resolves.
-        var splash = document.getElementById('app-splash');
-        if (splash) splash.style.display = 'flex';
         // Native iOS apps don't have pinch-zoom on the page. Override the
         // viewport meta to disable it inside the Tauri WebView only —
         // regular browser users keep their accessibility zoom.
@@ -477,10 +480,10 @@
         </nav>
       </div>
     </noscript>
-    <!-- Branded splash overlay — iOS only. Hidden by default; the
-         platform-detection script above sets display:flex on iOS.
-         Dismissed by app.rs once auth resolves. The dark html background
-         (#0f111a) fills the gap before this element even parses. -->
+    <!-- Branded splash overlay — iOS only. Hidden by default (inline
+         display:none); the CSS rule in <head> activates it via
+         [data-platform="ios"] #app-splash { display: flex !important }.
+         Dismissed by app.rs once auth resolves. -->
     <div id="app-splash" style="
       position: fixed; inset: 0; z-index: 9999;
       display: none; align-items: center; justify-content: center;
