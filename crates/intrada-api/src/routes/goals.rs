@@ -43,13 +43,14 @@ async fn list_goals(
     AuthUser { user_id, .. }: AuthUser,
     Query(query): Query<ListGoalsQuery>,
 ) -> Result<Json<Vec<Goal>>, ApiError> {
-    let r2 = state.r2()?;
+    let r2 = state.r2.clone();
     let goals = state
         .with_transient_retry(|conn| {
             let user_id = user_id.clone();
             let status = query.status.clone();
+            let r2 = r2.clone();
             async move {
-                services::goals::list_goals(&conn, r2, &user_id, status.as_deref()).await
+                services::goals::list_goals(&conn, r2.as_ref(), &user_id, status.as_deref()).await
             }
         })
         .await?;
@@ -61,12 +62,13 @@ async fn get_goal(
     AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<Goal>, ApiError> {
-    let r2 = state.r2()?;
+    let r2 = state.r2.clone();
     let goal = state
         .with_transient_retry(|conn| {
             let id = id.clone();
             let user_id = user_id.clone();
-            async move { services::goals::get_goal(&conn, r2, &id, &user_id).await }
+            let r2 = r2.clone();
+            async move { services::goals::get_goal(&conn, r2.as_ref(), &id, &user_id).await }
         })
         .await?;
     Ok(Json(goal))

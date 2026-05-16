@@ -114,8 +114,13 @@ fn row_to_goal_item(row: &libsql::Row) -> Result<GoalItem, ApiError> {
 async fn list_photos_for_goal(
     conn: &Connection,
     goal_id: &str,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
 ) -> Result<Vec<GoalPhoto>, ApiError> {
+    let r2 = match r2 {
+        Some(r2) => r2,
+        None => return Ok(Vec::new()),
+    };
+
     let mut rows = conn
         .query(
             &format!(
@@ -164,7 +169,7 @@ pub async fn list_goals(
     conn: &Connection,
     user_id: &str,
     status_filter: Option<&str>,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
 ) -> Result<Vec<Goal>, ApiError> {
     let filter = status_filter.unwrap_or("active");
 
@@ -201,7 +206,7 @@ pub async fn get_goal(
     conn: &Connection,
     id: &str,
     user_id: &str,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
 ) -> Result<Option<Goal>, ApiError> {
     let mut rows = conn
         .query(
@@ -228,7 +233,7 @@ pub async fn insert_goal(
     conn: &Connection,
     user_id: &str,
     input: &CreateGoal,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
 ) -> Result<Goal, ApiError> {
     let id = ulid::Ulid::new().to_string();
     let now = Utc::now();
@@ -261,7 +266,7 @@ pub async fn update_goal(
     id: &str,
     user_id: &str,
     input: &UpdateGoal,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
 ) -> Result<Option<Goal>, ApiError> {
     let current = match get_goal(conn, id, user_id, r2).await? {
         Some(g) => g,
@@ -313,13 +318,13 @@ pub async fn delete_goal(conn: &Connection, id: &str, user_id: &str) -> Result<b
     // Explicit child-row delete — FK cascade is disabled (Turso compatibility),
     // so application code owns the cleanup.
     conn.execute(
-        "DELETE FROM goal_items WHERE goal_id = ?1 AND user_id = ?2",
+        "DELETE FROM goal_photos WHERE goal_id = ?1 AND user_id = ?2",
         libsql::params![id, user_id],
     )
     .await?;
 
     conn.execute(
-        "DELETE FROM goal_photos WHERE goal_id = ?1 AND user_id = ?2",
+        "DELETE FROM goal_items WHERE goal_id = ?1 AND user_id = ?2",
         libsql::params![id, user_id],
     )
     .await?;
@@ -450,9 +455,10 @@ pub async fn insert_goal_item(
     item_title: &str,
     item_type: &ItemKind,
 ) -> Result<(), ApiError> {
+    let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT OR IGNORE INTO goal_items (goal_id, item_id, user_id, item_title, item_type) VALUES (?1, ?2, ?3, ?4, ?5)",
-        libsql::params![goal_id, item_id, user_id, item_title, item_kind_to_str(item_type)],
+        "INSERT OR IGNORE INTO goal_items (goal_id, item_id, user_id, item_title, item_type, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        libsql::params![goal_id, item_id, user_id, item_title, item_kind_to_str(item_type), now],
     )
     .await?;
     Ok(())

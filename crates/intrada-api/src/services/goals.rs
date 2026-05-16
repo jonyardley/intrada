@@ -27,7 +27,7 @@ fn sniff_image_content_type(bytes: &[u8]) -> Option<&'static str> {
 
 pub async fn list_goals(
     conn: &Connection,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
     user_id: &str,
     status_filter: Option<&str>,
 ) -> Result<Vec<Goal>, ApiError> {
@@ -36,7 +36,7 @@ pub async fn list_goals(
 
 pub async fn get_goal(
     conn: &Connection,
-    r2: &R2Client,
+    r2: Option<&R2Client>,
     id: &str,
     user_id: &str,
 ) -> Result<Goal, ApiError> {
@@ -51,10 +51,7 @@ pub async fn create_goal(
     user_id: &str,
     input: &CreateGoal,
 ) -> Result<Goal, ApiError> {
-    // Validate first so an invalid payload returns 422 even when R2 is
-    // unconfigured. Unwrap r2 only after validation passes.
     validation::validate_create_goal(input)?;
-    let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
     db::goals::insert_goal(conn, user_id, input, r2).await
 }
 
@@ -66,7 +63,6 @@ pub async fn update_goal(
     input: &UpdateGoal,
 ) -> Result<Goal, ApiError> {
     validation::validate_update_goal(input)?;
-    let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
     db::goals::update_goal(conn, id, user_id, input, r2)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Goal not found: {id}")))
