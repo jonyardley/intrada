@@ -93,7 +93,7 @@ pub fn AccountDeleteView() -> impl IntoView {
                 <li>"Your library (pieces and exercises)"</li>
                 <li>"Your practice sessions and analytics"</li>
                 <li>"Your routines and sets"</li>
-                <li>"Your lessons and lesson photos"</li>
+                <li>"Your goals and goal photos"</li>
                 <li>"Your sign-in account"</li>
             </ul>
 
