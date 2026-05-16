@@ -192,7 +192,7 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
 // ── Goal operations ───────────────────────────────────────────────────
 
 pub fn fetch_goals(api_base_url: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/goals"))
+    Http::get(format!("{api_base_url}/api/goals?status=all"))
         .expect_json::<Vec<Goal>>()
         .build()
         .then_send(|result| match result {
@@ -244,7 +244,15 @@ pub fn update_goal(api_base_url: &str, id: &str, input: &UpdateGoal) -> Command<
 }
 
 pub fn complete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::post(format!("{api_base_url}/api/goals/{id}/complete"))
+    use crate::domain::goal::GoalStatus;
+    use crate::domain::types::UpdateGoal;
+    let input = UpdateGoal {
+        status: Some(GoalStatus::Completed),
+        ..Default::default()
+    };
+    Http::put(format!("{api_base_url}/api/goals/{id}"))
+        .body_json(&input)
+        .expect("serialize UpdateGoal for complete")
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::RefetchGoals,

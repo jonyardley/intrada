@@ -75,7 +75,7 @@ pub async fn upsert_preferences(
 /// Sequential statements (no transaction) — Turso's HTTP layer doesn't
 /// reliably support multi-statement transactions across the same
 /// connection, and child tables already follow this pattern in
-/// `delete_session` / `delete_set` / `delete_lesson`. The DELETE endpoint
+/// `delete_session` / `delete_set` / `delete_goal`. The DELETE endpoint
 /// is idempotent, so a partial failure can be retried safely.
 pub async fn delete_all_user_data(conn: &Connection, user_id: &str) -> Result<(), ApiError> {
     // Child tables first (joined via parent's user_id) so we don't orphan

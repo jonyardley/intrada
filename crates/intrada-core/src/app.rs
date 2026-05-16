@@ -168,12 +168,14 @@ impl App for Intrada {
                     http::fetch_items(&model.api_base_url),
                     http::fetch_sessions(&model.api_base_url),
                     http::fetch_sets(&model.api_base_url),
+                    http::fetch_goals(&model.api_base_url),
                 ])
             }
             Event::FetchAll => Command::all([
                 http::fetch_items(&model.api_base_url),
                 http::fetch_sessions(&model.api_base_url),
                 http::fetch_sets(&model.api_base_url),
+                http::fetch_goals(&model.api_base_url),
             ]),
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),

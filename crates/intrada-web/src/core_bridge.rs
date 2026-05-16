@@ -592,14 +592,14 @@ mod tests {
     }
 
     #[test]
-    fn test_init_produces_three_http_fetches() {
+    fn test_init_produces_four_http_fetches() {
         let core = Core::<Intrada>::new();
         let effects = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
         });
 
         let http = http_effects(&effects);
-        assert_eq!(http.len(), 3, "Expected 3 HTTP GET fetches from Init");
+        assert_eq!(http.len(), 4, "Expected 4 HTTP GET fetches from Init");
         assert!(
             http.iter().all(|r| r.method == "GET"),
             "All Init HTTP effects should be GET requests"
