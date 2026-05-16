@@ -1,7 +1,7 @@
 use libsql::Connection;
 
-use intrada_core::domain::lesson::{Lesson, LessonPhoto};
-use intrada_core::domain::types::{CreateLesson, UpdateLesson};
+use intrada_core::domain::goal::{Goal, GoalPhoto};
+use intrada_core::domain::types::{CreateGoal, LinkGoalItem, UpdateGoal};
 use intrada_core::validation;
 
 use crate::db;
@@ -25,53 +25,54 @@ fn sniff_image_content_type(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-pub async fn list_lessons(
+pub async fn list_goals(
     conn: &Connection,
     r2: &R2Client,
     user_id: &str,
-) -> Result<Vec<Lesson>, ApiError> {
-    db::lessons::list_lessons(conn, user_id, r2).await
+    status_filter: Option<&str>,
+) -> Result<Vec<Goal>, ApiError> {
+    db::goals::list_goals(conn, user_id, status_filter, r2).await
 }
 
-pub async fn get_lesson(
+pub async fn get_goal(
     conn: &Connection,
     r2: &R2Client,
     id: &str,
     user_id: &str,
-) -> Result<Lesson, ApiError> {
-    db::lessons::get_lesson(conn, id, user_id, r2)
+) -> Result<Goal, ApiError> {
+    db::goals::get_goal(conn, id, user_id, r2)
         .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Lesson not found: {id}")))
+        .ok_or_else(|| ApiError::NotFound(format!("Goal not found: {id}")))
 }
 
-pub async fn create_lesson(
+pub async fn create_goal(
     conn: &Connection,
     r2: Option<&R2Client>,
     user_id: &str,
-    input: &CreateLesson,
-) -> Result<Lesson, ApiError> {
+    input: &CreateGoal,
+) -> Result<Goal, ApiError> {
     // Validate first so an invalid payload returns 422 even when R2 is
     // unconfigured. Unwrap r2 only after validation passes.
-    validation::validate_create_lesson(input)?;
+    validation::validate_create_goal(input)?;
     let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
-    db::lessons::insert_lesson(conn, user_id, input, r2).await
+    db::goals::insert_goal(conn, user_id, input, r2).await
 }
 
-pub async fn update_lesson(
+pub async fn update_goal(
     conn: &Connection,
     r2: Option<&R2Client>,
     id: &str,
     user_id: &str,
-    input: &UpdateLesson,
-) -> Result<Lesson, ApiError> {
-    validation::validate_update_lesson(input)?;
+    input: &UpdateGoal,
+) -> Result<Goal, ApiError> {
+    validation::validate_update_goal(input)?;
     let r2 = r2.ok_or_else(|| ApiError::Internal("Photo storage (R2) is not configured".into()))?;
-    db::lessons::update_lesson(conn, id, user_id, input, r2)
+    db::goals::update_goal(conn, id, user_id, input, r2)
         .await?
-        .ok_or_else(|| ApiError::NotFound(format!("Lesson not found: {id}")))
+        .ok_or_else(|| ApiError::NotFound(format!("Goal not found: {id}")))
 }
 
-pub async fn delete_lesson(
+pub async fn delete_goal(
     conn: &Connection,
     r2: Option<&R2Client>,
     id: &str,
@@ -80,28 +81,28 @@ pub async fn delete_lesson(
     // Delete photos from R2 if storage is configured. Log but don't fail
     // the request on R2 errors — DB is the source of truth.
     if let Some(r2) = r2 {
-        let keys = db::lessons::list_photo_storage_keys(conn, id, user_id).await?;
+        let keys = db::goals::list_photo_storage_keys(conn, id, user_id).await?;
         for key in keys {
             if let Err(e) = r2.delete(&key).await {
-                tracing::warn!(lesson_id = %id, storage_key = %key, error = ?e, "R2 photo delete failed; orphaning object");
+                tracing::warn!(goal_id = %id, storage_key = %key, error = ?e, "R2 photo delete failed; orphaning object");
             }
         }
     }
 
-    let deleted = db::lessons::delete_lesson(conn, id, user_id).await?;
+    let deleted = db::goals::delete_goal(conn, id, user_id).await?;
     if !deleted {
-        return Err(ApiError::NotFound(format!("Lesson not found: {id}")));
+        return Err(ApiError::NotFound(format!("Goal not found: {id}")));
     }
     Ok(())
 }
 
-pub async fn upload_lesson_photo(
+pub async fn upload_goal_photo(
     conn: &Connection,
     r2: &R2Client,
     user_id: &str,
-    lesson_id: &str,
+    goal_id: &str,
     bytes: &[u8],
-) -> Result<LessonPhoto, ApiError> {
+) -> Result<GoalPhoto, ApiError> {
     if bytes.len() > MAX_PHOTO_SIZE {
         return Err(ApiError::Validation(format!(
             "Photo exceeds maximum size of {} MB",
@@ -116,20 +117,20 @@ pub async fn upload_lesson_photo(
         .ok_or_else(|| ApiError::Validation("Photo must be JPEG or PNG".into()))?;
 
     let photo_id = ulid::Ulid::new().to_string();
-    let storage_key = R2Client::photo_key(user_id, lesson_id, &photo_id);
+    let storage_key = R2Client::photo_key(user_id, goal_id, &photo_id);
     r2.upload(&storage_key, bytes, content_type).await?;
 
-    db::lessons::insert_lesson_photo(conn, lesson_id, user_id, &storage_key, r2).await
+    db::goals::insert_goal_photo(conn, goal_id, user_id, &storage_key, r2).await
 }
 
-pub async fn delete_lesson_photo(
+pub async fn delete_goal_photo(
     conn: &Connection,
     r2: Option<&R2Client>,
     user_id: &str,
-    lesson_id: &str,
+    goal_id: &str,
     photo_id: &str,
 ) -> Result<(), ApiError> {
-    let storage_key = db::lessons::get_lesson_photo_storage_key(conn, photo_id, lesson_id, user_id)
+    let storage_key = db::goals::get_goal_photo_storage_key(conn, photo_id, goal_id, user_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Photo not found: {photo_id}")))?;
 
@@ -142,6 +143,40 @@ pub async fn delete_lesson_photo(
         }
     }
 
-    db::lessons::delete_lesson_photo(conn, photo_id, lesson_id, user_id).await?;
+    db::goals::delete_goal_photo(conn, photo_id, goal_id, user_id).await?;
+    Ok(())
+}
+
+// ── Goal item operations ───────────────────────────────────────────────
+
+pub async fn link_item(
+    conn: &Connection,
+    goal_id: &str,
+    user_id: &str,
+    input: &LinkGoalItem,
+) -> Result<(), ApiError> {
+    db::goals::insert_goal_item(
+        conn,
+        goal_id,
+        user_id,
+        &input.item_id,
+        &input.item_title,
+        &input.item_type,
+    )
+    .await
+}
+
+pub async fn unlink_item(
+    conn: &Connection,
+    goal_id: &str,
+    item_id: &str,
+    user_id: &str,
+) -> Result<(), ApiError> {
+    let deleted = db::goals::delete_goal_item(conn, goal_id, item_id, user_id).await?;
+    if !deleted {
+        return Err(ApiError::NotFound(format!(
+            "Goal item not found: {item_id}"
+        )));
+    }
     Ok(())
 }

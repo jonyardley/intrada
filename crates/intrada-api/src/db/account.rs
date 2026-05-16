@@ -92,8 +92,9 @@ pub async fn delete_all_user_data(conn: &Connection, user_id: &str) -> Result<()
     .await?;
 
     for sql in [
-        "DELETE FROM lesson_photos WHERE user_id = ?1",
-        "DELETE FROM lessons WHERE user_id = ?1",
+        "DELETE FROM goal_items WHERE user_id = ?1",
+        "DELETE FROM goal_photos WHERE user_id = ?1",
+        "DELETE FROM goals WHERE user_id = ?1",
         "DELETE FROM sessions WHERE user_id = ?1",
         "DELETE FROM items WHERE user_id = ?1",
         "DELETE FROM routines WHERE user_id = ?1",
