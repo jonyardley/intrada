@@ -680,7 +680,7 @@ jobs:
       - name: Verify SRI integrity hashes match on-disk files
         run: python3 scripts/verify-sri-hashes.py
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
