@@ -190,14 +190,14 @@ jobs:
           exit ${PIPESTATUS[0]}
       - name: Upload Clippy SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: clippy-native.sarif
           category: clippy-native
           wait-for-processing: true
       - name: Upload Clippy WASM SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: clippy-wasm.sarif
           category: clippy-wasm
