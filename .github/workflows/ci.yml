@@ -101,7 +101,7 @@ jobs:
         run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
       - name: Publish test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: Unit Test Results
           path: target/nextest/ci/junit.xml
@@ -480,7 +480,7 @@ jobs:
         run: npx playwright test --grep-invert "smoke:" --reporter=junit,list
       - name: Publish E2E test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: E2E Test Results
           path: e2e/results.xml
@@ -555,7 +555,7 @@ jobs:
         run: npx playwright test --grep "smoke:" --reporter=junit,list
       - name: Publish smoke test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         with:
           name: Deploy Smoke Results
           path: e2e/smoke-results.xml
