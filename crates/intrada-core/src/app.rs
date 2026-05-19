@@ -429,9 +429,38 @@ impl App for Intrada {
             })
             .collect();
 
-        // Build goal views sorted by date descending
+        // Build goal views. Sort active goals by deadline ascending (soonest
+        // first, no-deadline last) then created_at descending; completed goals
+        // by completed_at descending. Active goals come before completed so
+        // both tabs render in the right order from a single sorted vec.
         let mut goals: Vec<_> = model.goals.iter().map(goal_to_view).collect();
-        goals.sort_by(|a, b| b.date.cmp(&a.date));
+        goals.sort_by(|a, b| {
+            use crate::domain::goal::GoalStatus;
+            let status_ord = |s: &GoalStatus| match s {
+                GoalStatus::Active => 0,
+                GoalStatus::Completed => 1,
+            };
+            let sa = status_ord(&a.status);
+            let sb = status_ord(&b.status);
+            if sa != sb {
+                return sa.cmp(&sb);
+            }
+            match a.status {
+                GoalStatus::Active => {
+                    // deadline ASC, nulls last
+                    match (&a.deadline, &b.deadline) {
+                        (Some(da), Some(db)) => da.cmp(db).then(b.created_at.cmp(&a.created_at)),
+                        (Some(_), None) => std::cmp::Ordering::Less,
+                        (None, Some(_)) => std::cmp::Ordering::Greater,
+                        (None, None) => b.created_at.cmp(&a.created_at),
+                    }
+                }
+                GoalStatus::Completed => {
+                    // completed_at DESC
+                    b.completed_at.cmp(&a.completed_at)
+                }
+            }
+        });
 
         let current_goal = model.current_goal.as_ref().map(goal_to_view);
 
