@@ -78,4 +78,11 @@ EOF
   exit 1
 fi
 
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(git rev-parse --show-toplevel)
+density_check="$repo_root/scripts/check-comment-density.sh"
+if [ -x "$density_check" ]; then
+  "$density_check" || exit $?
+fi
+
 exit 0
