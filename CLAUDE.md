@@ -32,8 +32,8 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 
 ## Tech Stack
 
-- **Rust** stable (1.89.0 CI; MSRV 1.75+, intrada-api 1.78+)
-- **Core**: crux_core 0.17.0-rc3, serde, ulid, chrono, thiserror
+- **Rust** stable (1.90.0 CI; MSRV 1.75+, intrada-api 1.78+)
+- **Core**: crux_core 0.18.0, serde, ulid, chrono, thiserror
 - **API**: axum 0.8, tokio, libsql 0.9 (Turso), tower-http (CORS), jsonwebtoken 10
 - **Web + iOS UI**: leptos 0.8 (CSR), Tailwind CSS v4, trunk 0.21
 - **iOS host**: Tauri 2, iOS 17.0+, WKWebView, tauri-plugin-haptics, tauri-plugin-deep-link

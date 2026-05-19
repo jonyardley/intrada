@@ -23,7 +23,7 @@ permissions:
   security-events: write
 
 env:
-  RUST_VERSION: "1.89.0"
+  RUST_VERSION: "1.90.0"
   TAILWIND_VERSION: "4.1.18"
   SENTRY_ORG: jon-yardley
 
