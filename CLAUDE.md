@@ -470,6 +470,34 @@ If you're unsure whether a skill applies, default to the tier system. The skills
 
 **Re-evaluate** after the next 3 PRs that use any of these skills: did they catch a real issue, or did they add ceremony for its own sake? Expand scope, drop a skill, or trial another from the Superpowers set based on what we observe.
 
+### Lessons from recent skill use
+
+Captured after PR #719 / #724 — discipline tightening on top of the existing
+guidance above.
+
+- **TDD is the default for `intrada-core` changes.** When modifying handlers
+  (`domain/*.rs`), `validation.rs`, `http.rs`, or `model.rs`, invoke
+  `superpowers:test-driven-development` and **write the failing test first**.
+  The core test suite runs in under a second — there's no excuse for the
+  red-green-refactor shape to slip to "implement, then add tests." The
+  #719 delete-404 bug shipped because the test was written after the fix,
+  retrofit to pass rather than to constrain behaviour. Red phase forces you
+  to state what the model owes its callers.
+
+- **`requesting-code-review` is the standard channel for Tier 2+ PRs.**
+  Don't hand-roll prompts to the `code-reviewer` agent — load the skill,
+  use its structured invocation. Include "comment-policy violations are
+  Blockers, not Nits" (see Code Style → Comments). When the review comes
+  back, run `superpowers:receiving-code-review` on the findings before
+  acting on them — "I agree" before implementing.
+
+- **UI verification means driving the preview.** Tests don't catch flicker,
+  state-after-delete, or transition timing. Either start the dev server
+  yourself and exercise the flow, **or** state explicitly "I can't reach
+  the running preview — user verification required for X / Y / Z." Don't
+  claim "all green" when "all green" means cargo test green. CLAUDE.md
+  already says this under "Doing tasks"; the lesson is to actually do it.
+
 ### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
