@@ -69,6 +69,9 @@ pub enum GoalEvent {
     Complete {
         id: String,
     },
+    Reopen {
+        id: String,
+    },
     Delete {
         id: String,
     },
@@ -173,6 +176,22 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
 
             Command::all([
                 crate::http::complete_goal(&model.api_base_url, &id),
+                crux_core::render::render(),
+            ])
+        }
+        GoalEvent::Reopen { id } => {
+            let Some(goal) = model.goals.iter_mut().find(|g| g.id == id) else {
+                model.last_error = Some(format!("Goal not found: {id}"));
+                return crux_core::render::render();
+            };
+
+            goal.status = GoalStatus::Active;
+            goal.completed_at = None;
+            goal.updated_at = chrono::Utc::now();
+            model.last_error = None;
+
+            Command::all([
+                crate::http::reopen_goal(&model.api_base_url, &id),
                 crux_core::render::render(),
             ])
         }

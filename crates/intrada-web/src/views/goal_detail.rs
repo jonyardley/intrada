@@ -2,11 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use leptos::prelude::*;
+use leptos_router::components::A;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
 use intrada_core::domain::types::UpdateGoalItem;
-use intrada_core::{Event, GoalEvent, GoalItemView, GoalStatus, GoalView, LinkGoalItem, ViewModel};
+use intrada_core::{
+    Event, GoalEvent, GoalItemView, GoalStatus, GoalView, LibraryItemView, LinkGoalItem, ViewModel,
+};
 
 use crate::components::{
     AccentBar, AccentRow, BackLink, BottomSheet, BuilderItemRow, Button, ButtonVariant,
@@ -15,6 +18,19 @@ use crate::components::{
 use crate::views::GoalEditFormView;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+
+/// Sheet-state signals owned by `GoalDetailView`, not `GoalDetailContent`.
+/// The inner content component is rebuilt on every view-model update
+/// (its prop changes when the goal mutates); local signals there would
+/// reset mid-interaction. Hoisting them to the outer component keeps
+/// in-flight sheets open across optimistic updates.
+#[derive(Clone, Copy)]
+struct SheetState {
+    edit_open: RwSignal<bool>,
+    link_open: RwSignal<bool>,
+    targets_item_id: RwSignal<Option<String>>,
+    show_delete_confirm: RwSignal<bool>,
+}
 
 #[component]
 pub fn GoalDetailView() -> impl IntoView {
@@ -28,6 +44,27 @@ pub fn GoalDetailView() -> impl IntoView {
     // Sticky so a Delete that wipes the goal from the model doesn't flash
     // "not found" before the route transition unmounts the view.
     let goal_snapshot = RwSignal::new(None::<GoalView>);
+
+    let sheets = SheetState {
+        edit_open: RwSignal::new(false),
+        link_open: RwSignal::new(false),
+        targets_item_id: RwSignal::new(None),
+        show_delete_confirm: RwSignal::new(false),
+    };
+
+    // Reset sheets when the route id changes (navigating between goals).
+    let last_route_id = RwSignal::new(String::new());
+    Effect::new(move |_| {
+        let route_id = params.with(|p| p.get("id").unwrap_or_default().to_string());
+        let prev = last_route_id.get_untracked();
+        if !prev.is_empty() && prev != route_id {
+            sheets.edit_open.set(false);
+            sheets.link_open.set(false);
+            sheets.targets_item_id.set(None);
+            sheets.show_delete_confirm.set(false);
+        }
+        last_route_id.set(route_id);
+    });
 
     // Untracked view-model read: only `params` should re-fire this Effect,
     // otherwise the route transition out of the view re-triggers FetchGoal
@@ -82,7 +119,7 @@ pub fn GoalDetailView() -> impl IntoView {
             <Show when=move || !is_loading.get()>
                 {move || {
                     match goal.get() {
-                        Some(g) => view! { <GoalDetailContent goal=g /> }.into_any(),
+                        Some(g) => view! { <GoalDetailContent goal=g sheets=sheets /> }.into_any(),
                         None => view! {
                             <BackLink label="Back to Goals" href="/goals".to_string() />
                             <p class="text-muted text-sm">"Goal not found."</p>
@@ -95,7 +132,7 @@ pub fn GoalDetailView() -> impl IntoView {
 }
 
 #[component]
-fn GoalDetailContent(goal: GoalView) -> impl IntoView {
+fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
     let core = expect_context::<SharedCore>();
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let is_loading = expect_context::<IsLoading>();
@@ -108,15 +145,24 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     let goal_id_for_section = goal.id.clone();
     let goal_id_for_edit_sheet = goal.id.clone();
     let goal_id_for_link_sheet = goal.id.clone();
-    let is_completed = goal.status == GoalStatus::Completed;
+    let goal_id_for_status = goal.id.clone();
+    let is_completed_signal = Signal::derive(move || {
+        view_model.with(|vm| {
+            vm.goals
+                .iter()
+                .find(|g| g.id == goal_id_for_status)
+                .map(|g| g.status == GoalStatus::Completed)
+                .unwrap_or(false)
+        })
+    });
 
-    let edit_sheet_open = RwSignal::new(false);
+    let edit_sheet_open = sheets.edit_open;
     let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
-    let link_sheet_open = RwSignal::new(false);
+    let link_sheet_open = sheets.link_open;
     let close_link_sheet = Callback::new(move |_| link_sheet_open.set(false));
-    let targets_sheet_item_id: RwSignal<Option<String>> = RwSignal::new(None);
+    let targets_sheet_item_id = sheets.targets_item_id;
     let close_targets_sheet = Callback::new(move |_| targets_sheet_item_id.set(None));
-    let show_delete_confirm = RwSignal::new(false);
+    let show_delete_confirm = sheets.show_delete_confirm;
 
     let live_linked_items = {
         let goal_id_for_section = goal_id_for_section.clone();
@@ -132,6 +178,8 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     };
 
     let core_for_delete = core.clone();
+    let core_for_reopen = core.clone();
+    let goal_id_for_reopen = goal_id.clone();
     let on_complete = move |_: leptos::ev::MouseEvent| {
         let nav = navigate.clone();
         nav(
@@ -144,6 +192,16 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
         let core_ref = core.borrow();
         let effects = core_ref.process_event(Event::Goal(GoalEvent::Complete {
             id: goal_id.clone(),
+        }));
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+    };
+
+    // Reopen stays on the goal detail — user is reverting a decision, not
+    // finishing a flow, so no nav back to /goals.
+    let on_reopen = move |_: leptos::ev::MouseEvent| {
+        let core_ref = core_for_reopen.borrow();
+        let effects = core_ref.process_event(Event::Goal(GoalEvent::Reopen {
+            id: goal_id_for_reopen.clone(),
         }));
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
     };
@@ -205,8 +263,8 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
             <div class="space-y-2">
                 <h2 class="page-title">{title_display}</h2>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class=if is_completed { "badge badge--accent" } else { "badge badge--warm" }>
-                        {if is_completed { "Completed" } else { "Active" }}
+                    <span class=move || if is_completed_signal.get() { "badge badge--accent" } else { "badge badge--warm" }>
+                        {move || if is_completed_signal.get() { "Completed" } else { "Active" }}
                     </span>
                     {goal.deadline.clone().map(|d| {
                         let badge_class = if goal.is_overdue {
@@ -270,22 +328,28 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                             <ul class="space-y-2 list-none p-0" role="list">
                                 {items.into_iter().map(|item| {
                                     let item_id_for_tap = item.item_id.clone();
+                                    let item_id_for_library = item.item_id.clone();
                                     view! {
                                         <li>
-                                            <button
-                                                type="button"
-                                                class="w-full text-left no-underline appearance-none bg-transparent p-0"
-                                                on:click=move |_| targets_sheet_item_id.set(Some(item_id_for_tap.clone()))
-                                            >
-                                                <AccentRow bar=AccentBar::None>
-                                                    <div class="flex-1 min-w-0">
-                                                        <div class="text-sm text-primary truncate">
-                                                            {item.item_title.clone()}
-                                                        </div>
-                                                        <GoalItemTargetChips item=item.clone() />
+                                            <AccentRow bar=AccentBar::None>
+                                                <button
+                                                    type="button"
+                                                    class="flex-1 min-w-0 text-left appearance-none bg-transparent p-0"
+                                                    on:click=move |_| targets_sheet_item_id.set(Some(item_id_for_tap.clone()))
+                                                >
+                                                    <div class="text-sm text-primary truncate">
+                                                        {item.item_title.clone()}
                                                     </div>
-                                                </AccentRow>
-                                            </button>
+                                                    <GoalItemTargetChips item=item.clone() />
+                                                </button>
+                                                <A
+                                                    href=format!("/library/{}", item_id_for_library)
+                                                    attr:class="ml-2 px-2 py-1 text-muted hover:text-accent-text no-underline"
+                                                    attr:aria-label="Open in library"
+                                                >
+                                                    "›"
+                                                </A>
+                                            </AccentRow>
                                         </li>
                                     }
                                 }).collect::<Vec<_>>()}
@@ -297,20 +361,37 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
 
             // Actions
             <div class="space-y-3 pt-4 border-t border-border-default">
-                {move || (!is_completed && goal_looks_ready(&live_linked_items.get())).then(|| view! {
+                {move || (!is_completed_signal.get() && goal_looks_ready(&live_linked_items.get())).then(|| view! {
                     <div class="rounded-lg p-card-compact bg-surface-secondary text-sm text-accent-text">
                         "🎯 All targeted items meet their confidence target. Looks ready — mark complete?"
                     </div>
                 })}
-                {(!is_completed).then(|| view! {
-                    <Button
-                        variant=ButtonVariant::Primary
-                        on_click=Callback::new(on_complete)
-                        full_width=true
-                    >
-                        "Mark Complete"
-                    </Button>
-                })}
+                {
+                    let on_complete = Callback::new(on_complete);
+                    let on_reopen = Callback::new(on_reopen);
+                    view! {
+                        <Show
+                            when=move || is_completed_signal.get()
+                            fallback=move || view! {
+                                <Button
+                                    variant=ButtonVariant::Primary
+                                    on_click=on_complete
+                                    full_width=true
+                                >
+                                    "Mark Complete"
+                                </Button>
+                            }
+                        >
+                            <Button
+                                variant=ButtonVariant::Primary
+                                on_click=on_reopen
+                                full_width=true
+                            >
+                                "Reopen Goal"
+                            </Button>
+                        </Show>
+                    }
+                }
                 <Button
                     variant=ButtonVariant::Danger
                     on_click=Callback::new(move |_| { show_delete_confirm.set(true); })
@@ -353,6 +434,41 @@ fn goal_looks_ready(items: &[GoalItemView]) -> bool {
         }
     }
     any_targeted
+}
+
+#[component]
+fn ItemPracticeInfo(library: Signal<Option<LibraryItemView>>) -> impl IntoView {
+    view! {
+        {move || library.get().map(|item| {
+            let composer = (!item.subtitle.is_empty()).then(|| item.subtitle.clone());
+            let practice = item.practice.clone();
+            let latest_tempo = item.latest_achieved_tempo;
+            view! {
+                <div class="space-y-1 text-sm text-muted">
+                    {composer.map(|c| view! { <div>{c}</div> })}
+                    {practice.as_ref().map(|p| {
+                        let count = p.session_count;
+                        let score = p.latest_score;
+                        view! {
+                            <div>
+                                {format!("{count} session{} • ", if count == 1 { "" } else { "s" })}
+                                {match score {
+                                    Some(s) => format!("last score {s}/5"),
+                                    None => "no score yet".to_string(),
+                                }}
+                            </div>
+                        }
+                    })}
+                    {latest_tempo.map(|bpm| view! {
+                        <div>{format!("Last achieved tempo: {bpm} bpm")}</div>
+                    })}
+                    {(practice.is_none() && latest_tempo.is_none() && item.subtitle.is_empty()).then(|| view! {
+                        <div class="italic">"No practice yet for this item."</div>
+                    })}
+                </div>
+            }
+        })}
+    }
 }
 
 #[component]
@@ -440,6 +556,11 @@ fn GoalItemTargetsSheet(
         })
     });
 
+    let library_item = Signal::derive(move || {
+        let id = item_id.with(|i| i.clone())?;
+        view_model.with(|vm| vm.items.iter().find(|i| i.id == id).cloned())
+    });
+
     let goal_id_for_save = goal_id;
     // Full overwrite on Save: both fields are initialised from the item on
     // open, so wrapping each in Some(_) sends the form's current state
@@ -487,15 +608,10 @@ fn GoalItemTargetsSheet(
                     None => view! { <div></div> }.into_any(),
                     Some(item) => view! {
                         <div class="space-y-4">
-                            <div>
+                            <div class="space-y-1">
                                 <p class="field-label">"Item"</p>
                                 <p class="text-base text-primary">{item.item_title.clone()}</p>
-                                <a
-                                    href=format!("/library/{}", item.item_id)
-                                    class="text-sm text-accent-text"
-                                >
-                                    "Open in library →"
-                                </a>
+                                <ItemPracticeInfo library=library_item />
                             </div>
 
                             <div class="space-y-1">

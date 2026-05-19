@@ -280,6 +280,23 @@ pub fn complete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
+pub fn reopen_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    use crate::domain::goal::GoalStatus;
+    use crate::domain::types::UpdateGoal;
+    let input = UpdateGoal {
+        status: Some(GoalStatus::Active),
+        ..Default::default()
+    };
+    Http::put(format!("{api_base_url}/api/goals/{id}"))
+        .body_json(&input)
+        .expect("serialize UpdateGoal for reopen")
+        .build()
+        .then_send(|result| match result {
+            Ok(_) => Event::RefetchGoals,
+            Err(e) => Event::LoadFailed(format!("Failed to reopen goal: {e}")),
+        })
+}
+
 pub fn delete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::delete(format!("{api_base_url}/api/goals/{id}"))
         .build()
@@ -778,6 +795,18 @@ mod tests {
         );
         let body = body_as_json(&req);
         assert_eq!(body["status"], "completed");
+    }
+
+    #[test]
+    fn reopen_goal_sends_status_active() {
+        let req = take_http(&mut reopen_goal(BASE, "01HG0000000000000000000000"));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["status"], "active");
     }
 
     #[test]

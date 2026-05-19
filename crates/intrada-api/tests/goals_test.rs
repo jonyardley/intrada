@@ -290,6 +290,41 @@ async fn filter_goals_by_status() {
     assert_eq!(goals.len(), 2);
 }
 
+#[tokio::test]
+async fn reopen_goal_clears_completed_at() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let created: Goal = common::json(&body);
+
+    // Mark as completed
+    let (_, body) = common::put_json(
+        app.clone(),
+        &format!("/api/goals/{}", created.id),
+        json!({ "status": "completed" }),
+    )
+    .await;
+    let completed: Goal = common::json(&body);
+    assert_eq!(completed.status, GoalStatus::Completed);
+    assert!(completed.completed_at.is_some());
+
+    // Reopen by flipping status back to active
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "status": "active" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let reopened: Goal = common::json(&body);
+    assert_eq!(reopened.status, GoalStatus::Active);
+    assert!(
+        reopened.completed_at.is_none(),
+        "completed_at should be cleared on reopen, was {:?}",
+        reopened.completed_at
+    );
+}
+
 // ── Targets (Phase 1) ─────────────────────────────────────────────────
 
 #[tokio::test]
