@@ -459,7 +459,11 @@ impl App for Intrada {
         // first, no-deadline last) then created_at descending; completed goals
         // by completed_at descending. Active goals come before completed so
         // both tabs render in the right order from a single sorted vec.
-        let mut goals: Vec<_> = model.goals.iter().map(goal_to_view).collect();
+        let mut goals: Vec<_> = model
+            .goals
+            .iter()
+            .map(|g| goal_to_view(g, &items))
+            .collect();
         goals.sort_by(|a, b| {
             use crate::domain::goal::GoalStatus;
             let status_ord = |s: &GoalStatus| match s {
@@ -488,7 +492,7 @@ impl App for Intrada {
             }
         });
 
-        let current_goal = model.current_goal.as_ref().map(goal_to_view);
+        let current_goal = model.current_goal.as_ref().map(|g| goal_to_view(g, &items));
 
         ViewModel {
             items,

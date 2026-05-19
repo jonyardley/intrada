@@ -209,6 +209,9 @@ pub struct GoalView {
     pub has_photos: bool,
     pub created_at: String,
     pub updated_at: String,
+    /// Goal-level default confidence target (1-5). Items inherit this
+    /// unless they specify their own `target_confidence` override.
+    pub target_confidence: Option<u8>,
 }
 
 /// Photo metadata for display in the UI.
@@ -219,14 +222,24 @@ pub struct GoalPhotoView {
 }
 
 /// A linked library item for display in the UI.
+///
+/// `effective_target_confidence` is the inherited target — item override
+/// if set, otherwise the goal-level default. `latest_score` and
+/// `latest_achieved_tempo` are pulled from the library item's session
+/// history so progress is always derived, never stored on the goal.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct GoalItemView {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
+    pub target_date: Option<String>,
+    pub target_confidence: Option<u8>,
+    pub effective_target_confidence: Option<u8>,
+    pub latest_score: Option<u8>,
+    pub latest_achieved_tempo: Option<u16>,
 }
 
-pub fn goal_to_view(goal: &Goal) -> GoalView {
+pub fn goal_to_view(goal: &Goal, items: &[LibraryItemView]) -> GoalView {
     let notes_preview = goal
         .notes
         .as_deref()
@@ -242,6 +255,8 @@ pub fn goal_to_view(goal: &Goal) -> GoalView {
                 .unwrap_or(false)
         });
 
+    let goal_target_confidence = goal.target_confidence;
+
     GoalView {
         id: goal.id.clone(),
         title: goal.title.clone(),
@@ -255,10 +270,23 @@ pub fn goal_to_view(goal: &Goal) -> GoalView {
         items: goal
             .items
             .iter()
-            .map(|i| GoalItemView {
-                item_id: i.item_id.clone(),
-                item_title: i.item_title.clone(),
-                item_type: i.item_type.clone(),
+            .map(|gi| {
+                let library_item = items.iter().find(|i| i.id == gi.item_id);
+                let latest_score = library_item
+                    .and_then(|li| li.practice.as_ref())
+                    .and_then(|p| p.latest_score);
+                let latest_achieved_tempo = library_item.and_then(|li| li.latest_achieved_tempo);
+                let effective_target_confidence = gi.target_confidence.or(goal_target_confidence);
+                GoalItemView {
+                    item_id: gi.item_id.clone(),
+                    item_title: gi.item_title.clone(),
+                    item_type: gi.item_type.clone(),
+                    target_date: gi.target_date.clone(),
+                    target_confidence: gi.target_confidence,
+                    effective_target_confidence,
+                    latest_score,
+                    latest_achieved_tempo,
+                }
             })
             .collect(),
         photos: goal
@@ -272,6 +300,7 @@ pub fn goal_to_view(goal: &Goal) -> GoalView {
         has_photos: !goal.photos.is_empty(),
         created_at: goal.created_at.to_rfc3339(),
         updated_at: goal.updated_at.to_rfc3339(),
+        target_confidence: goal.target_confidence,
     }
 }
 
@@ -714,7 +743,7 @@ mod tests {
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
         };
-        let view = goal_to_view(&goal);
+        let view = goal_to_view(&goal, &[]);
         assert_eq!(view.notes_preview.len(), 100);
     }
 
@@ -738,7 +767,7 @@ mod tests {
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
         };
-        let view = goal_to_view(&goal);
+        let view = goal_to_view(&goal, &[]);
         assert!(view.has_photos);
         assert_eq!(view.photos.len(), 1);
     }
@@ -762,7 +791,7 @@ mod tests {
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
         };
-        let view = goal_to_view(&goal);
+        let view = goal_to_view(&goal, &[]);
         assert!(view.is_overdue);
     }
 
@@ -785,7 +814,7 @@ mod tests {
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
         };
-        let view = goal_to_view(&goal);
+        let view = goal_to_view(&goal, &[]);
         assert!(!view.is_overdue);
     }
 
@@ -811,7 +840,7 @@ mod tests {
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
         };
-        let view = goal_to_view(&goal);
+        let view = goal_to_view(&goal, &[]);
         assert_eq!(view.items.len(), 1);
         assert_eq!(view.items[0].item_title, "Moonlight Sonata");
     }

@@ -5,7 +5,8 @@ use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, GoalEvent, GoalStatus, GoalView, LinkGoalItem, ViewModel};
+use intrada_core::domain::types::UpdateGoalItem;
+use intrada_core::{Event, GoalEvent, GoalItemView, GoalStatus, GoalView, LinkGoalItem, ViewModel};
 
 use crate::components::{
     AccentBar, AccentRow, BackLink, BottomSheet, BuilderItemRow, Button, ButtonVariant,
@@ -113,6 +114,8 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
     let link_sheet_open = RwSignal::new(false);
     let close_link_sheet = Callback::new(move |_| link_sheet_open.set(false));
+    let targets_sheet_item_id: RwSignal<Option<String>> = RwSignal::new(None);
+    let close_targets_sheet = Callback::new(move |_| targets_sheet_item_id.set(None));
     let show_delete_confirm = RwSignal::new(false);
 
     let live_linked_items = {
@@ -265,19 +268,26 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                     } else {
                         view! {
                             <ul class="space-y-2 list-none p-0" role="list">
-                                {items.into_iter().map(|item| view! {
-                                    <li>
-                                        <a
-                                            href=format!("/library/{}", item.item_id)
-                                            class="no-underline"
-                                        >
-                                            <AccentRow bar=AccentBar::None>
-                                                <div class="flex-1 min-w-0 text-sm text-primary truncate">
-                                                    {item.item_title}
-                                                </div>
-                                            </AccentRow>
-                                        </a>
-                                    </li>
+                                {items.into_iter().map(|item| {
+                                    let item_id_for_tap = item.item_id.clone();
+                                    view! {
+                                        <li>
+                                            <button
+                                                type="button"
+                                                class="w-full text-left no-underline appearance-none bg-transparent p-0"
+                                                on:click=move |_| targets_sheet_item_id.set(Some(item_id_for_tap.clone()))
+                                            >
+                                                <AccentRow bar=AccentBar::None>
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="text-sm text-primary truncate">
+                                                            {item.item_title.clone()}
+                                                        </div>
+                                                        <GoalItemTargetChips item=item.clone() />
+                                                    </div>
+                                                </AccentRow>
+                                            </button>
+                                        </li>
+                                    }
                                 }).collect::<Vec<_>>()}
                             </ul>
                         }.into_any()
@@ -287,6 +297,11 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
 
             // Actions
             <div class="space-y-3 pt-4 border-t border-border-default">
+                {move || (!is_completed && goal_looks_ready(&live_linked_items.get())).then(|| view! {
+                    <div class="rounded-lg p-card-compact bg-surface-secondary text-sm text-accent-text">
+                        "🎯 All targeted items meet their confidence target. Looks ready — mark complete?"
+                    </div>
+                })}
                 {(!is_completed).then(|| view! {
                     <Button
                         variant=ButtonVariant::Primary
@@ -317,6 +332,208 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
             open=link_sheet_open
             on_close=close_link_sheet
         />
+        <GoalItemTargetsSheet
+            goal_id=goal.id.clone()
+            item_id=targets_sheet_item_id
+            on_close=close_targets_sheet
+        />
+    }
+}
+
+/// Returns true if the goal has at least one targeted item AND every
+/// targeted item's `latest_score` meets its `effective_target_confidence`.
+/// Untargeted items don't gate the suggestion (see spec, decision #5).
+fn goal_looks_ready(items: &[GoalItemView]) -> bool {
+    let targeted: Vec<&GoalItemView> = items
+        .iter()
+        .filter(|i| i.effective_target_confidence.is_some())
+        .collect();
+    if targeted.is_empty() {
+        return false;
+    }
+    targeted.iter().all(|i| {
+        let target = i.effective_target_confidence.unwrap();
+        i.latest_score.is_some_and(|s| s >= target)
+    })
+}
+
+#[component]
+fn GoalItemTargetChips(item: GoalItemView) -> impl IntoView {
+    let target_date = item.target_date.clone();
+    let effective_confidence = item.effective_target_confidence;
+    let latest_score = item.latest_score;
+    let has_any = target_date.is_some() || effective_confidence.is_some();
+
+    if !has_any {
+        return view! {
+            <div class="text-xs text-muted mt-0.5 italic">"No targets set"</div>
+        }
+        .into_any();
+    }
+
+    view! {
+        <div class="flex flex-wrap gap-1 mt-1">
+            {target_date.map(|d| view! {
+                <span class="badge badge--muted">{format!("📅 {d}")}</span>
+            })}
+            {effective_confidence.map(|target| {
+                let met = latest_score.is_some_and(|s| s >= target);
+                let badge_class = if met { "badge badge--accent" } else { "badge badge--muted" };
+                let label = match latest_score {
+                    Some(score) => format!("Confidence {score}/{target}"),
+                    None => format!("Confidence —/{target}"),
+                };
+                view! { <span class=badge_class>{label}</span> }
+            })}
+        </div>
+    }
+    .into_any()
+}
+
+#[component]
+fn GoalItemTargetsSheet(
+    goal_id: String,
+    item_id: RwSignal<Option<String>>,
+    on_close: Callback<()>,
+) -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
+
+    let open = RwSignal::new(false);
+    Effect::new(move |_| {
+        open.set(item_id.with(|i| i.is_some()));
+    });
+
+    let target_date = RwSignal::new(String::new());
+    let target_confidence = RwSignal::new(String::new());
+
+    let goal_id_for_effect = goal_id.clone();
+    Effect::new(move |_| {
+        let id = item_id.with(|i| i.clone());
+        let Some(id) = id else {
+            return;
+        };
+        let item = view_model.with_untracked(|vm| {
+            vm.goals
+                .iter()
+                .find(|g| g.id == goal_id_for_effect)
+                .and_then(|g| g.items.iter().find(|i| i.item_id == id).cloned())
+        });
+        if let Some(item) = item {
+            target_date.set(item.target_date.clone().unwrap_or_default());
+            target_confidence.set(
+                item.target_confidence
+                    .map(|c| c.to_string())
+                    .unwrap_or_default(),
+            );
+        }
+    });
+
+    let goal_id_for_view = goal_id.clone();
+    let item_view = Signal::derive(move || {
+        let id = item_id.with(|i| i.clone())?;
+        view_model.with(|vm| {
+            vm.goals
+                .iter()
+                .find(|g| g.id == goal_id_for_view)
+                .and_then(|g| g.items.iter().find(|i| i.item_id == id).cloned())
+        })
+    });
+
+    let goal_id_for_save = goal_id;
+    let on_save = Callback::new(move |_| {
+        let Some(id) = item_id.with_untracked(|i| i.clone()) else {
+            return;
+        };
+        let td = target_date.get_untracked();
+        let tc = target_confidence.get_untracked();
+
+        let target_date_val = if td.is_empty() { None } else { Some(td) };
+        let target_confidence_val: Option<u8> = if tc.is_empty() { None } else { tc.parse().ok() };
+
+        let input = UpdateGoalItem {
+            target_date: Some(target_date_val),
+            target_confidence: Some(target_confidence_val),
+        };
+
+        let core_ref = core.borrow();
+        let effects = core_ref.process_event(Event::Goal(GoalEvent::UpdateGoalItemTargets {
+            goal_id: goal_id_for_save.clone(),
+            item_id: id,
+            input,
+        }));
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        on_close.run(());
+    });
+
+    let submitting_signal = Signal::derive(move || is_submitting.get());
+
+    view! {
+        <BottomSheet
+            open=open
+            on_close=on_close
+            nav_title="Item Targets".to_string()
+            nav_action_label="Save".to_string()
+            on_nav_action=on_save
+            nav_action_disabled=submitting_signal
+        >
+            {move || {
+                let item = item_view.get();
+                match item {
+                    None => view! { <div></div> }.into_any(),
+                    Some(item) => view! {
+                        <div class="space-y-4">
+                            <div>
+                                <p class="field-label">"Item"</p>
+                                <p class="text-base text-primary">{item.item_title.clone()}</p>
+                                <a
+                                    href=format!("/library/{}", item.item_id)
+                                    class="text-sm text-accent-text"
+                                >
+                                    "Open in library →"
+                                </a>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="goal-item-target-date" class="form-label">
+                                    "Target date"
+                                </label>
+                                <input
+                                    id="goal-item-target-date"
+                                    type="date"
+                                    class="input-base"
+                                    bind:value=target_date
+                                />
+                                <p class="text-xs text-muted">
+                                    "When you want this piece ready. Overrides the goal's deadline for this item."
+                                </p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="goal-item-target-confidence" class="form-label">
+                                    "Target confidence"
+                                </label>
+                                <select
+                                    id="goal-item-target-confidence"
+                                    class="input-base"
+                                    prop:value=move || target_confidence.get()
+                                    on:change=move |ev| target_confidence.set(leptos::prelude::event_target_value(&ev))
+                                >
+                                    <option value="">"(use goal default)"</option>
+                                    <option value="1">"1 — Just starting"</option>
+                                    <option value="2">"2"</option>
+                                    <option value="3">"3 — Comfortable"</option>
+                                    <option value="4">"4"</option>
+                                    <option value="5">"5 — Performance ready"</option>
+                                </select>
+                            </div>
+                        </div>
+                    }.into_any()
+                }
+            }}
+        </BottomSheet>
     }
 }
 
