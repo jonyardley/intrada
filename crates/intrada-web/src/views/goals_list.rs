@@ -11,9 +11,6 @@ use crate::views::GoalFormView;
 use intrada_web::haptics::haptic_selection;
 use intrada_web::types::{IsLoading, IsSubmitting};
 
-/// Goals list view with Active/Completed toggle tabs.
-///
-/// Fetches goals on mount and displays them filtered by status.
 #[component]
 pub fn GoalsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -24,10 +21,6 @@ pub fn GoalsListView() -> impl IntoView {
     let add_sheet_open = RwSignal::new(false);
     let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
     let close_add_sheet = Callback::new(move |_| add_sheet_open.set(false));
-
-    // Goals are fetched as part of `init_core` at app start (alongside items,
-    // sessions, sets) — no per-mount refetch needed. Matches the Library
-    // pattern; pull-to-refresh is a separate future affordance.
 
     let filtered_goals = Memo::new(move |_| {
         let vm = view_model.get();
@@ -80,7 +73,6 @@ pub fn GoalsListView() -> impl IntoView {
                 }.into_any())
             />
 
-            // Active / Completed tabs — same `.tabs-underline` pattern as Library.
             <div
                 class="tabs-underline"
                 role="tablist"
@@ -158,9 +150,6 @@ pub fn GoalsListView() -> impl IntoView {
     }
 }
 
-/// Wraps `<GoalFormView>` inside a `<BottomSheet>` configured for the
-/// iOS Mail-compose pattern: Cancel on the left of the nav bar, Save on
-/// the right (triggers form submission via the form's NodeRef).
 #[component]
 fn AddGoalSheet(
     open: RwSignal<bool>,
@@ -188,7 +177,6 @@ fn AddGoalSheet(
     }
 }
 
-/// Individual goal card — uses the shared `AccentRow` primitive.
 #[component]
 fn GoalCard(goal: GoalView) -> impl IntoView {
     let href = format!("/goals/{}", goal.id);
@@ -234,7 +222,6 @@ fn GoalCard(goal: GoalView) -> impl IntoView {
     }
 }
 
-/// Format a deadline date string (YYYY-MM-DD) for display.
 fn format_deadline(deadline: &str) -> String {
     if let Ok(date) = chrono::NaiveDate::parse_from_str(deadline, "%Y-%m-%d") {
         let today = chrono::Utc::now().date_naive();

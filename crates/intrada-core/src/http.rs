@@ -66,10 +66,6 @@ pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
 
 // ── Item operations ─────────────────────────────────────────────────────
 
-/// `temp_id` is the optimistic client-generated ulid the caller pushed into
-/// `model.items` before sending the request. The server assigns its own id;
-/// the response replaces the optimistic entry by `temp_id` so the list keeps
-/// the same row position and avoids a full refetch / re-render flash.
 pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Effect, Event> {
     let create = CreateItem {
         title: item.title.clone(),
@@ -229,10 +225,6 @@ pub fn fetch_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
-/// `temp_id` is the optimistic client-generated ulid the caller pushed into
-/// `model.goals`. The server assigns its own id and returns the created goal;
-/// the response replaces the optimistic entry by `temp_id` (mutate-response,
-/// same pattern as `create_item`).
 pub fn create_goal(
     api_base_url: &str,
     input: &CreateGoal,

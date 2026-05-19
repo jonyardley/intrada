@@ -8,10 +8,6 @@ use crate::components::{AccentBar, AccentRow, BackLink, Button, ButtonVariant, S
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Detail view for a single goal.
-///
-/// Reached via `/goals/:id`. Shows full goal info including notes, photos,
-/// linked items, and actions (complete, delete).
 #[component]
 pub fn GoalDetailView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
@@ -21,22 +17,13 @@ pub fn GoalDetailView() -> impl IntoView {
 
     let params = use_params_map();
 
-    // Sticky snapshot of the displayed goal. Updated whenever a matching
-    // goal appears in the view model (current_goal or goals list), but
-    // never cleared by the view model — so a Delete that wipes the goal
-    // from the model doesn't trigger a "Goal not found" flash before the
-    // route transition unmounts the view. Same trick keeps the row stable
-    // when an optimistic-create's client ulid is replaced by the server's
-    // ulid (the row disappears from `vm.goals` for one frame).
+    // Sticky so a Delete that wipes the goal from the model doesn't flash
+    // "not found" before the route transition unmounts the view.
     let goal_snapshot = RwSignal::new(None::<GoalView>);
 
-    // Fetch the goal when the route id changes. Untracked-read the view
-    // model so the Effect's only reactive dependency is `params` — that
-    // way the route transition out of this view (e.g. after Delete) can't
-    // re-fire FetchGoal for the just-deleted id. Also skip the fetch when
-    // the goal is already loaded — either as `current_goal` from a prior
-    // fetch, or in the `goals` list from the initial app-load fetch (or
-    // an optimistic create the server hasn't acknowledged yet).
+    // Untracked view-model read: only `params` should re-fire this Effect,
+    // otherwise the route transition out of the view re-triggers FetchGoal
+    // for the just-deleted id.
     Effect::new(move |_| {
         let id = params.with(|p| p.get("id").unwrap_or_default().to_string());
         if id.is_empty() {
@@ -54,13 +41,6 @@ pub fn GoalDetailView() -> impl IntoView {
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
     });
 
-    // Watch the view model for a matching goal and keep `goal_snapshot`
-    // updated. Update when a matching goal appears; keep the existing
-    // snapshot when its id still matches the route (Delete / refetch
-    // briefly remove the goal — let the route transition dismiss the
-    // view, don't flash "not found"); clear when the route id moves on
-    // to a different goal so we don't render stale content from the
-    // previous route.
     Effect::new(move |_| {
         let route_id = params.with(|p| p.get("id").unwrap_or_default().to_string());
         let candidate = view_model.with(|vm| {
@@ -106,7 +86,6 @@ pub fn GoalDetailView() -> impl IntoView {
     }
 }
 
-/// Inner content for a loaded goal.
 #[component]
 fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     let core = expect_context::<SharedCore>();

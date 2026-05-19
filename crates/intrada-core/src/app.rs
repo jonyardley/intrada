@@ -86,25 +86,18 @@ pub enum Event {
     },
 
     // ── Write-confirmation callbacks ────────────────────────────────
-    /// Server confirmed an item create. `temp_id` is the optimistic ulid the
-    /// core generated locally on `ItemEvent::Add`; the handler replaces that
-    /// entry in `model.items` with the server's authoritative version (which
-    /// uses a different ulid). Mutate-response pattern, parallels
-    /// [`Event::GoalCreated`] and [`Event::ItemUpdated`].
+    // Temp-id mutate-response: see CLAUDE.md "Mutate response".
     ItemCreated {
         temp_id: String,
         item: Item,
     },
-    /// Server confirmed an item update — replace the optimistic copy.
     ItemUpdated {
         item: Item,
     },
-    /// Server confirmed a goal create. See [`Event::ItemCreated`].
     GoalCreated {
         temp_id: String,
         goal: Goal,
     },
-    /// Server confirmed a set update — replace the optimistic copy.
     SetUpdated {
         set: Set,
     },
@@ -250,9 +243,6 @@ impl App for Intrada {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == temp_id) {
                     *existing = item;
                 } else {
-                    // Optimistic entry not found (e.g. user navigated away
-                    // and back before the server response). Push fresh so
-                    // the item still ends up in the model.
                     model.items.push(item);
                 }
                 model.record_success();

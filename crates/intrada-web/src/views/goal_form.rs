@@ -13,27 +13,11 @@ use crate::components::{
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-/// Goal creation form.
-///
-/// Mirrors `AddLibraryItemForm`: renders the same body in both a standalone
-/// `/goals/new` route (with back-link + page heading + card chrome) and
-/// inside a `BottomSheet` from the goals list (the sheet supplies its own
-/// nav chrome).
 #[component]
 pub fn GoalFormView(
-    /// When rendered inside a BottomSheet (vs as a standalone route), drop
-    /// the back-link / page heading / card chrome — the sheet provides its
-    /// own. Cancel + Save call `on_dismiss` instead of navigating.
-    #[prop(optional)]
-    in_sheet: bool,
-    /// Fired when the user successfully saves or cancels. Required when
-    /// `in_sheet` is true; ignored otherwise (route mode navigates instead).
-    #[prop(optional, into)]
-    on_dismiss: Option<Callback<()>>,
-    /// Optional ref to the underlying `<form>` element so the sheet's
-    /// nav-bar Save can trigger `requestSubmit()` on it.
-    #[prop(optional, into)]
-    form_ref: Option<NodeRef<leptos::html::Form>>,
+    #[prop(optional)] in_sheet: bool,
+    #[prop(optional, into)] on_dismiss: Option<Callback<()>>,
+    #[prop(optional, into)] form_ref: Option<NodeRef<leptos::html::Form>>,
 ) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let core = expect_context::<SharedCore>();
