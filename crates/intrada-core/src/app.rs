@@ -86,9 +86,23 @@ pub enum Event {
     },
 
     // ── Write-confirmation callbacks ────────────────────────────────
+    /// Server confirmed an item create. `temp_id` is the optimistic ulid the
+    /// core generated locally on `ItemEvent::Add`; the handler replaces that
+    /// entry in `model.items` with the server's authoritative version (which
+    /// uses a different ulid). Mutate-response pattern, parallels
+    /// [`Event::GoalCreated`] and [`Event::ItemUpdated`].
+    ItemCreated {
+        temp_id: String,
+        item: Item,
+    },
     /// Server confirmed an item update — replace the optimistic copy.
     ItemUpdated {
         item: Item,
+    },
+    /// Server confirmed a goal create. See [`Event::ItemCreated`].
+    GoalCreated {
+        temp_id: String,
+        goal: Goal,
     },
     /// Server confirmed a set update — replace the optimistic copy.
     SetUpdated {
@@ -232,9 +246,30 @@ impl App for Intrada {
             }
 
             // ── Write-confirmation callbacks ─────────────────────────
+            Event::ItemCreated { temp_id, item } => {
+                if let Some(existing) = model.items.iter_mut().find(|i| i.id == temp_id) {
+                    *existing = item;
+                } else {
+                    // Optimistic entry not found (e.g. user navigated away
+                    // and back before the server response). Push fresh so
+                    // the goal still ends up in the model.
+                    model.items.push(item);
+                }
+                model.record_success();
+                crux_core::render::render()
+            }
             Event::ItemUpdated { item } => {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
                     *existing = item;
+                }
+                model.record_success();
+                crux_core::render::render()
+            }
+            Event::GoalCreated { temp_id, goal } => {
+                if let Some(existing) = model.goals.iter_mut().find(|g| g.id == temp_id) {
+                    *existing = goal;
+                } else {
+                    model.goals.push(goal);
                 }
                 model.record_success();
                 crux_core::render::render()
@@ -2426,5 +2461,206 @@ mod tests {
         model.set_saves_committed = 42;
         let vm = app.view(&model);
         assert_eq!(vm.set_saves_committed, 42);
+    }
+
+    #[test]
+    fn goal_delete_clears_current_goal_when_id_matches() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: Some("Test".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        model.goals.push(goal.clone());
+        model.current_goal = Some(goal);
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Delete {
+                id: "g1".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert!(model.goals.is_empty());
+        assert!(
+            model.current_goal.is_none(),
+            "current_goal should be cleared when the deleted goal matches"
+        );
+    }
+
+    #[test]
+    fn item_created_replaces_optimistic_by_temp_id() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let temp_id = "temp_ulid".to_string();
+        model.items.push(Item {
+            id: temp_id.clone(),
+            title: "Optimistic".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        });
+
+        let server_item = Item {
+            id: "server_ulid".to_string(),
+            title: "Optimistic".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+        let _cmd = app.update(
+            Event::ItemCreated {
+                temp_id: temp_id.clone(),
+                item: server_item.clone(),
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].id, "server_ulid");
+    }
+
+    #[test]
+    fn item_created_pushes_when_temp_id_absent() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let server_item = Item {
+            id: "server_ulid".to_string(),
+            title: "Late confirmation".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+        };
+
+        // No optimistic entry — caller may have navigated away and back.
+        let _cmd = app.update(
+            Event::ItemCreated {
+                temp_id: "missing_temp".into(),
+                item: server_item,
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].id, "server_ulid");
+    }
+
+    #[test]
+    fn goal_created_replaces_optimistic_by_temp_id() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let temp_id = "temp_ulid".to_string();
+        model.goals.push(Goal {
+            id: temp_id.clone(),
+            title: Some("Optimistic".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+        });
+
+        let server_goal = Goal {
+            id: "server_ulid".to_string(),
+            title: Some("Optimistic".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+        };
+
+        let _cmd = app.update(
+            Event::GoalCreated {
+                temp_id,
+                goal: server_goal,
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.goals.len(), 1);
+        assert_eq!(model.goals[0].id, "server_ulid");
+    }
+
+    #[test]
+    fn goal_delete_preserves_current_goal_when_id_differs() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let viewing = Goal {
+            id: "viewing".to_string(),
+            title: Some("Viewing".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+        };
+        let other = Goal {
+            id: "other".to_string(),
+            ..viewing.clone()
+        };
+        model.goals.push(viewing.clone());
+        model.goals.push(other);
+        model.current_goal = Some(viewing);
+
+        let _cmd = app.update(
+            Event::Goal(GoalEvent::Delete {
+                id: "other".to_string(),
+            }),
+            &mut model,
+        );
+
+        assert_eq!(model.goals.len(), 1);
+        assert_eq!(
+            model.current_goal.as_ref().map(|g| g.id.as_str()),
+            Some("viewing"),
+            "current_goal should be untouched when a different goal is deleted"
+        );
     }
 }

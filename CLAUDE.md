@@ -126,9 +126,16 @@ data in shell-local state. UI-only state stays in Leptos signals.
 - **Validation**: `intrada-core/src/validation.rs` is the single source of truth
 - **DB**: Positional column indexing with `SELECT_COLUMNS` const
 - **Migrations**: Sequential in `intrada-api/src/migrations.rs`, one SQL statement each
-- **Mutate response**: Updates/deletes use API response directly (no re-fetch).
-  Session creates use optimistic push (no re-fetch). Item creates re-fetch the
-  full list (server assigns ID).
+- **Mutate response**: Writes reconcile with the server response directly — no
+  full-list refetch. Creates use a temp-id pattern: the domain handler pushes
+  an optimistic entry with a client-generated ulid, the HTTP wrapper carries
+  that ulid into the response handler, and the `*Created { temp_id, … }` event
+  replaces the optimistic entry with the server's authoritative version
+  (different ulid). Applies to `Item` and `Goal` creates today; `Session`
+  creates already keep the client ulid (no server reassignment); `Set` creates
+  still use the `set_saves_committed` counter + refetch (separate flow tied to
+  the save-form's confirm UI). Updates use `*Updated { entity }` (server echoes
+  the row), deletes use `DeleteConfirmed` (model already mutated optimistically).
 
 ## Authentication
 
@@ -450,4 +457,13 @@ Colours must reference Pencil variables, not raw hex.
 
 ## Known Tech Debt
 
-- Creates still re-fetch the full collection (server assigns ID)
+- `Set` creates still bump `set_saves_committed` + refetch instead of using
+  the temp-id mutate-response pattern (see "Mutate response" under Other
+  patterns). The counter drives the save-form's optimistic→confirmed flip;
+  reworking it needs to keep that affordance.
+- `Goal` write ops other than `Add`/`Update`/`Delete` (Complete, LinkItem,
+  UnlinkItem) still dispatch `RefetchGoals` from the HTTP success handler.
+  Each is a candidate for the mutate-response treatment (e.g.
+  `GoalCompleted { goal }` / `GoalItemLinked { goal }`) — currently they're
+  cheap because the list `<For>` keys by goal id, so the visible row keeps
+  its DOM node.

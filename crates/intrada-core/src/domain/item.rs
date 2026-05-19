@@ -71,11 +71,12 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 updated_at: now,
             };
 
+            let temp_id = item.id.clone();
             model.items.push(item.clone());
             model.last_error = None;
 
             Command::all([
-                crate::http::create_item(&model.api_base_url, &item),
+                crate::http::create_item(&model.api_base_url, &item, &temp_id),
                 crux_core::render::render(),
             ])
         }

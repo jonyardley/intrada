@@ -71,13 +71,17 @@ async fn create_goal_invalid_date_returns_400() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
+// `validate_goal_date` previously rejected future dates, but that produced
+// false rejections for users east of UTC near midnight (the client form
+// fills `date` from local time and the server compares against UTC). The
+// restriction was dropped; we now accept any valid YYYY-MM-DD.
 #[tokio::test]
-async fn create_goal_future_date_returns_400() {
+async fn create_goal_far_future_date_accepted() {
     let app = common::setup_test_app().await;
     let (status, _body) =
         common::post_json(app, "/api/goals", json!({ "date": "2099-01-01" })).await;
 
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(status, StatusCode::CREATED);
 }
 
 // ── Get by ID ──────────────────────────────────────────────────────────

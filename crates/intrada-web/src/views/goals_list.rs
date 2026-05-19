@@ -1,35 +1,34 @@
 use leptos::prelude::*;
+use leptos_router::components::A;
 
-use intrada_core::{Event, GoalEvent, GoalStatus, GoalView, ViewModel};
+use intrada_core::{GoalStatus, GoalView, ViewModel};
 
-use crate::components::{EmptyState, IconName, PageHeading, SkeletonCardList};
-use intrada_web::core_bridge::process_effects_with_core;
-use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
+use crate::components::{
+    AccentBar, AccentRow, BottomSheet, EmptyState, IconName, PageAddButton, PageHeading,
+    SkeletonCardList,
+};
+use crate::views::GoalFormView;
+use intrada_web::haptics::haptic_selection;
+use intrada_web::types::{IsLoading, IsSubmitting};
 
 /// Goals list view with Active/Completed toggle tabs.
 ///
-/// Fetches goals on mount and displays them filtered by status. A floating
-/// action button links to the goal creation form.
+/// Fetches goals on mount and displays them filtered by status.
 #[component]
 pub fn GoalsListView() -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let is_loading = expect_context::<IsLoading>();
     let is_submitting = expect_context::<IsSubmitting>();
-    let core = expect_context::<SharedCore>();
 
-    // Active/Completed filter tab state
     let active_tab = RwSignal::new(GoalStatus::Active);
+    let add_sheet_open = RwSignal::new(false);
+    let open_add_sheet = Callback::new(move |_| add_sheet_open.set(true));
+    let close_add_sheet = Callback::new(move |_| add_sheet_open.set(false));
 
-    // Fetch goals on mount
-    Effect::new(move |_| {
-        let effects = {
-            let core_ref = core.borrow();
-            core_ref.process_event(Event::Goal(GoalEvent::FetchGoals))
-        };
-        process_effects_with_core(&core, effects, &view_model, &is_loading, &is_submitting);
-    });
+    // Goals are fetched as part of `init_core` at app start (alongside items,
+    // sessions, sets) — no per-mount refetch needed. Matches the Library
+    // pattern; pull-to-refresh is a separate future affordance.
 
-    // Filtered goals memo
     let filtered_goals = Memo::new(move |_| {
         let vm = view_model.get();
         let tab = active_tab.get();
@@ -41,86 +40,160 @@ pub fn GoalsListView() -> impl IntoView {
 
     let is_active_tab = move || active_tab.get() == GoalStatus::Active;
 
+    let set_tab = move |status: GoalStatus| {
+        if active_tab.get_untracked() == status {
+            return;
+        }
+        haptic_selection();
+        active_tab.set(status);
+    };
+
+    let active_tab_class = move || {
+        if is_active_tab() {
+            "tabs-underline-btn tabs-underline-btn--active"
+        } else {
+            "tabs-underline-btn"
+        }
+    };
+    let completed_tab_class = move || {
+        if !is_active_tab() {
+            "tabs-underline-btn tabs-underline-btn--active"
+        } else {
+            "tabs-underline-btn"
+        }
+    };
+
+    let indicator_style = move || {
+        let pct = if is_active_tab() { 0 } else { 100 };
+        format!("--tab-count: 2; --thumb-x: {pct}%")
+    };
+
     view! {
         <div class="space-y-4">
-            <PageHeading text="Goals" />
+            <PageHeading
+                text="Goals"
+                trailing=Box::new(move || view! {
+                    <PageAddButton
+                        aria_label="New Goal"
+                        on_click=Callback::new(move |_| open_add_sheet.run(()))
+                    />
+                }.into_any())
+            />
 
-            // Active / Completed toggle tabs
-            <div class="flex gap-2">
+            // Active / Completed tabs — same `.tabs-underline` pattern as Library.
+            <div
+                class="tabs-underline"
+                role="tablist"
+                aria-label="Filter goals by status"
+                style=indicator_style
+            >
+                <div class="tabs-underline-indicator" aria-hidden="true" />
                 <button
-                    class=move || if is_active_tab() {
-                        "px-4 py-2 rounded-lg text-sm font-medium bg-amber-500/15 text-amber-500"
-                    } else {
-                        "px-4 py-2 rounded-lg text-sm font-medium text-muted hover:text-secondary"
-                    }
-                    on:click=move |_| active_tab.set(GoalStatus::Active)
+                    type="button"
+                    role="tab"
+                    aria-selected=move || if is_active_tab() { "true" } else { "false" }
+                    aria-controls="goals-list"
+                    tabindex=move || if is_active_tab() { "0" } else { "-1" }
+                    class=active_tab_class
+                    on:click=move |_| set_tab(GoalStatus::Active)
                 >
                     "Active"
                 </button>
                 <button
-                    class=move || if !is_active_tab() {
-                        "px-4 py-2 rounded-lg text-sm font-medium bg-amber-500/15 text-amber-500"
-                    } else {
-                        "px-4 py-2 rounded-lg text-sm font-medium text-muted hover:text-secondary"
-                    }
-                    on:click=move |_| active_tab.set(GoalStatus::Completed)
+                    type="button"
+                    role="tab"
+                    aria-selected=move || if !is_active_tab() { "true" } else { "false" }
+                    aria-controls="goals-list"
+                    tabindex=move || if !is_active_tab() { "0" } else { "-1" }
+                    class=completed_tab_class
+                    on:click=move |_| set_tab(GoalStatus::Completed)
                 >
                     "Completed"
                 </button>
             </div>
 
-            // Loading skeleton
-            <Show when=move || is_loading.get()>
-                <SkeletonCardList />
-            </Show>
+            <section id="goals-list" aria-label="Goals">
+                <Show when=move || is_loading.get()>
+                    <SkeletonCardList />
+                </Show>
 
-            // Goal cards
-            <Show when=move || !is_loading.get()>
-                {move || {
-                    let goals = filtered_goals.get();
-                    if goals.is_empty() {
-                        let (title, body) = if is_active_tab() {
-                            ("No active goals yet", "Set a goal to focus your practice")
+                <Show when=move || !is_loading.get()>
+                    {move || {
+                        if filtered_goals.with(|g| g.is_empty()) {
+                            let (title, body) = if is_active_tab() {
+                                ("No active goals yet", "Set a goal to focus your practice")
+                            } else {
+                                ("No completed goals", "Goals you complete will appear here")
+                            };
+                            view! {
+                                <EmptyState
+                                    icon=IconName::Star
+                                    title=title
+                                    body=body
+                                />
+                            }.into_any()
                         } else {
-                            ("No completed goals", "Goals you complete will appear here")
-                        };
-                        view! {
-                            <EmptyState
-                                icon=IconName::Star
-                                title=title
-                                body=body
-                            />
-                        }.into_any()
-                    } else {
-                        view! {
-                            <div class="space-y-3">
-                                {goals.into_iter().map(|goal| {
-                                    view! { <GoalCard goal=goal /> }
-                                }).collect::<Vec<_>>()}
-                            </div>
-                        }.into_any()
-                    }
-                }}
-            </Show>
-
-            // FAB — create new goal
-            <a
-                href="/goals/new"
-                class="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-black text-2xl font-light shadow-lg sm:bottom-6"
-            >
-                "+"
-            </a>
+                            view! {
+                                <ul class="space-y-2 list-none p-0" role="list">
+                                    <For
+                                        each=move || filtered_goals.get()
+                                        key=|g| g.id.clone()
+                                        let:goal
+                                    >
+                                        <li><GoalCard goal=goal /></li>
+                                    </For>
+                                </ul>
+                            }.into_any()
+                        }
+                    }}
+                </Show>
+            </section>
         </div>
+
+        <AddGoalSheet
+            open=add_sheet_open
+            on_close=close_add_sheet
+            is_submitting=is_submitting
+        />
     }
 }
 
-/// Individual goal card.
+/// Wraps `<GoalFormView>` inside a `<BottomSheet>` configured for the
+/// iOS Mail-compose pattern: Cancel on the left of the nav bar, Save on
+/// the right (triggers form submission via the form's NodeRef).
+#[component]
+fn AddGoalSheet(
+    open: RwSignal<bool>,
+    on_close: Callback<()>,
+    is_submitting: IsSubmitting,
+) -> impl IntoView {
+    let form_ref = NodeRef::<leptos::html::Form>::new();
+    let on_save = Callback::new(move |_| {
+        if let Some(form) = form_ref.get() {
+            let _ = form.request_submit();
+        }
+    });
+    let submitting_signal = Signal::derive(move || is_submitting.get());
+    view! {
+        <BottomSheet
+            open=open
+            on_close=on_close
+            nav_title="New Goal".to_string()
+            nav_action_label="Save".to_string()
+            on_nav_action=on_save
+            nav_action_disabled=submitting_signal
+        >
+            <GoalFormView in_sheet=true on_dismiss=on_close form_ref=form_ref />
+        </BottomSheet>
+    }
+}
+
+/// Individual goal card — uses the shared `AccentRow` primitive.
 #[component]
 fn GoalCard(goal: GoalView) -> impl IntoView {
     let href = format!("/goals/{}", goal.id);
     let is_completed = goal.status == GoalStatus::Completed;
 
-    // Title or notes preview
     let display_title = if let Some(ref title) = goal.title {
         title.clone()
     } else if !goal.notes_preview.is_empty() {
@@ -128,98 +201,36 @@ fn GoalCard(goal: GoalView) -> impl IntoView {
     } else {
         "Untitled goal".to_string()
     };
-
     let has_title = goal.title.is_some();
     let deadline = goal.deadline.clone();
     let is_overdue = goal.is_overdue;
-    let has_photos = goal.has_photos;
-    let completed_at = goal.completed_at.clone();
+
+    let title_class = if is_completed {
+        "text-sm font-medium text-muted line-through truncate"
+    } else if has_title {
+        "text-sm font-semibold text-primary truncate"
+    } else {
+        "text-sm italic text-secondary truncate"
+    };
 
     view! {
-        <a
-            href=href
-            class="block rounded-lg bg-surface-secondary p-card hover:bg-surface-secondary/80 transition-colors"
-        >
-            <div class="flex items-center justify-between gap-3">
-                // Left: title/preview
-                <div class="flex-1 min-w-0">
-                    <p class=move || {
-                        if is_completed {
-                            "text-sm font-medium text-muted line-through"
-                        } else if has_title {
-                            "text-sm font-semibold text-primary"
-                        } else {
-                            "text-sm italic text-secondary"
-                        }
-                    }>
-                        {display_title.clone()}
-                    </p>
-                    // Photo count indicator
-                    {has_photos.then(|| view! {
-                        <span class="text-xs text-muted mt-0.5 inline-flex items-center gap-1">
-                            <PhotoIcon />
-                        </span>
-                    })}
-                    // Completed date
-                    {completed_at.clone().map(|date| view! {
-                        <span class="text-xs text-emerald-500 mt-0.5 inline-flex items-center gap-1">
-                            <CheckIcon />
-                            {format_completed_date(&date)}
-                        </span>
-                    })}
+        <A href=href attr:class="no-underline">
+            <AccentRow bar=AccentBar::None>
+                <div class="flex-1 min-w-0 text-left">
+                    <div class=title_class>{display_title}</div>
                 </div>
-
-                // Right: deadline badge
-                {deadline.clone().map(|d| {
+                {deadline.map(|d| {
                     let badge_class = if is_overdue {
-                        "text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-400"
+                        "badge badge--warning"
                     } else {
-                        "text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-500"
+                        "badge badge--muted"
                     };
                     view! {
-                        <span class=badge_class>
-                            {format_deadline(&d)}
-                        </span>
+                        <span class=badge_class>{format_deadline(&d)}</span>
                     }
                 })}
-            </div>
-        </a>
-    }
-}
-
-/// Small check icon for completed goals.
-#[component]
-fn CheckIcon() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2".to_string()
-            aria-hidden="true"
-        >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-    }
-}
-
-/// Small photo icon.
-#[component]
-fn PhotoIcon() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2".to_string()
-            aria-hidden="true"
-        >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-        </svg>
+            </AccentRow>
+        </A>
     }
 }
 
@@ -239,14 +250,5 @@ fn format_deadline(deadline: &str) -> String {
         }
     } else {
         deadline.to_string()
-    }
-}
-
-/// Format a completed_at date (RFC3339) for display.
-fn format_completed_date(date_str: &str) -> String {
-    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(date_str) {
-        dt.format("%b %d").to_string()
-    } else {
-        "Completed".to_string()
     }
 }
