@@ -1,11 +1,15 @@
+use std::collections::HashSet;
+use std::sync::Arc;
+
 use leptos::prelude::*;
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::NavigateOptions;
 
-use intrada_core::{Event, GoalEvent, GoalStatus, GoalView, ViewModel};
+use intrada_core::{Event, GoalEvent, GoalStatus, GoalView, LinkGoalItem, ViewModel};
 
 use crate::components::{
-    AccentBar, AccentRow, BackLink, BottomSheet, Button, ButtonVariant, SkeletonCardList,
+    AccentBar, AccentRow, BackLink, BottomSheet, BuilderItemRow, Button, ButtonVariant,
+    SkeletonCardList,
 };
 use crate::views::GoalEditFormView;
 use intrada_web::core_bridge::process_effects;
@@ -100,12 +104,29 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
 
     let goal_id = goal.id.clone();
     let goal_id_delete = goal.id.clone();
-    let goal_id_for_sheet = goal.id.clone();
+    let goal_id_for_section = goal.id.clone();
+    let goal_id_for_edit_sheet = goal.id.clone();
+    let goal_id_for_link_sheet = goal.id.clone();
     let is_completed = goal.status == GoalStatus::Completed;
 
     let edit_sheet_open = RwSignal::new(false);
     let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
+    let link_sheet_open = RwSignal::new(false);
+    let close_link_sheet = Callback::new(move |_| link_sheet_open.set(false));
     let show_delete_confirm = RwSignal::new(false);
+
+    let live_linked_items = {
+        let goal_id_for_section = goal_id_for_section.clone();
+        Signal::derive(move || {
+            view_model.with(|vm| {
+                vm.goals
+                    .iter()
+                    .find(|g| g.id == goal_id_for_section)
+                    .map(|g| g.items.clone())
+                    .unwrap_or_default()
+            })
+        })
+    };
 
     let core_for_delete = core.clone();
     let on_complete = move |_: leptos::ev::MouseEvent| {
@@ -224,31 +245,45 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                 }
             })}
 
-            // Linked items
-            {(!goal.items.is_empty()).then(|| {
-                let items = goal.items.clone();
-                view! {
-                    <div class="space-y-2">
-                        <p class="field-label">"Linked items"</p>
-                        <ul class="space-y-2 list-none p-0" role="list">
-                            {items.into_iter().map(|item| view! {
-                                <li>
-                                    <a
-                                        href=format!("/library/{}", item.item_id)
-                                        class="no-underline"
-                                    >
-                                        <AccentRow bar=AccentBar::None>
-                                            <div class="flex-1 min-w-0 text-sm text-primary truncate">
-                                                {item.item_title}
-                                            </div>
-                                        </AccentRow>
-                                    </a>
-                                </li>
-                            }).collect::<Vec<_>>()}
-                        </ul>
-                    </div>
-                }
-            })}
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="field-label">"Linked items"</p>
+                    <button
+                        type="button"
+                        class="text-sm font-medium text-accent-text hover:text-accent-hover"
+                        on:click=move |_| link_sheet_open.set(true)
+                    >
+                        {move || if live_linked_items.with(|items| items.is_empty()) { "+ Link" } else { "Edit" }}
+                    </button>
+                </div>
+                {move || {
+                    let items = live_linked_items.get();
+                    if items.is_empty() {
+                        view! {
+                            <p class="text-sm text-muted italic">"No items linked."</p>
+                        }.into_any()
+                    } else {
+                        view! {
+                            <ul class="space-y-2 list-none p-0" role="list">
+                                {items.into_iter().map(|item| view! {
+                                    <li>
+                                        <a
+                                            href=format!("/library/{}", item.item_id)
+                                            class="no-underline"
+                                        >
+                                            <AccentRow bar=AccentBar::None>
+                                                <div class="flex-1 min-w-0 text-sm text-primary truncate">
+                                                    {item.item_title}
+                                                </div>
+                                            </AccentRow>
+                                        </a>
+                                    </li>
+                                }).collect::<Vec<_>>()}
+                            </ul>
+                        }.into_any()
+                    }
+                }}
+            </div>
 
             // Actions
             <div class="space-y-3 pt-4 border-t border-border-default">
@@ -272,11 +307,107 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
         </div>
 
         <EditGoalSheet
-            goal_id=goal_id_for_sheet
+            goal_id=goal_id_for_edit_sheet
             open=edit_sheet_open
             on_close=close_edit_sheet
             is_submitting=is_submitting
         />
+        <LinkItemsSheet
+            goal_id=goal_id_for_link_sheet
+            open=link_sheet_open
+            on_close=close_link_sheet
+        />
+    }
+}
+
+#[component]
+fn LinkItemsSheet(goal_id: String, open: RwSignal<bool>, on_close: Callback<()>) -> impl IntoView {
+    let view_model = expect_context::<RwSignal<ViewModel>>();
+    let core = expect_context::<SharedCore>();
+    let is_loading = expect_context::<IsLoading>();
+    let is_submitting = expect_context::<IsSubmitting>();
+
+    let linked_set: Signal<Arc<HashSet<String>>> = {
+        let goal_id = goal_id.clone();
+        Signal::derive(move || {
+            Arc::new(view_model.with(|vm| {
+                vm.goals
+                    .iter()
+                    .find(|g| g.id == goal_id)
+                    .map(|g| g.items.iter().map(|i| i.item_id.clone()).collect())
+                    .unwrap_or_default()
+            }))
+        })
+    };
+
+    let on_toggle = {
+        let goal_id = goal_id.clone();
+        Callback::new(move |item_id: String| {
+            let item =
+                view_model.with_untracked(|vm| vm.items.iter().find(|i| i.id == item_id).cloned());
+            let Some(item) = item else {
+                return;
+            };
+
+            let is_linked = linked_set.with_untracked(|set| set.contains(&item_id));
+
+            let event = if is_linked {
+                Event::Goal(GoalEvent::UnlinkItem {
+                    goal_id: goal_id.clone(),
+                    item_id: item_id.clone(),
+                })
+            } else {
+                Event::Goal(GoalEvent::LinkItem {
+                    goal_id: goal_id.clone(),
+                    item: LinkGoalItem {
+                        item_id: item.id.clone(),
+                        item_title: item.title.clone(),
+                        item_type: item.item_type,
+                    },
+                })
+            };
+
+            let core_ref = core.borrow();
+            let effects = core_ref.process_event(event);
+            process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        })
+    };
+
+    view! {
+        <BottomSheet
+            open=open
+            on_close=on_close
+            nav_title="Link Items".to_string()
+            nav_action_label="Done".to_string()
+            on_nav_action=Callback::new(move |_| on_close.run(()))
+        >
+            {move || {
+                let items = view_model.with(|vm| vm.items.clone());
+                if items.is_empty() {
+                    view! {
+                        <p class="text-sm text-muted text-center py-8">"No library items available. Add a piece or exercise first."</p>
+                    }.into_any()
+                } else {
+                    view! {
+                        <div class="space-y-2">
+                            {items.into_iter().map(|item| {
+                                let item_id = item.id.clone();
+                                let is_selected = Signal::derive(move || {
+                                    linked_set.with(|set| set.contains(&item_id))
+                                });
+                                view! {
+                                    <BuilderItemRow
+                                        item=item
+                                        is_selected=is_selected
+                                        on_toggle=on_toggle
+                                    />
+                                }
+                            }).collect::<Vec<_>>()}
+                        </div>
+                    }.into_any()
+                }
+            }}
+        </BottomSheet>
     }
 }
 
