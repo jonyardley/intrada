@@ -61,6 +61,7 @@ pub fn GoalFormView(
                     title: if title_val.is_empty() { None } else { Some(title_val) },
                     notes: if notes_val.is_empty() { None } else { Some(notes_val) },
                     deadline: if deadline_val.is_empty() { None } else { Some(deadline_val) },
+                    target_confidence: None,
                 };
 
                 let core_ref = core.borrow();

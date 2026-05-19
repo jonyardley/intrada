@@ -712,6 +712,7 @@ mod tests {
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: None,
         };
         let view = goal_to_view(&goal);
         assert_eq!(view.notes_preview.len(), 100);
@@ -735,6 +736,7 @@ mod tests {
             }],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: None,
         };
         let view = goal_to_view(&goal);
         assert!(view.has_photos);
@@ -758,6 +760,7 @@ mod tests {
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: None,
         };
         let view = goal_to_view(&goal);
         assert!(view.is_overdue);
@@ -780,6 +783,7 @@ mod tests {
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: None,
         };
         let view = goal_to_view(&goal);
         assert!(!view.is_overdue);
@@ -799,10 +803,13 @@ mod tests {
                 item_id: "item-1".to_string(),
                 item_title: "Moonlight Sonata".to_string(),
                 item_type: ItemKind::Piece,
+                target_date: None,
+                target_confidence: None,
             }],
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: None,
         };
         let view = goal_to_view(&goal);
         assert_eq!(view.items.len(), 1);

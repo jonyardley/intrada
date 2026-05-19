@@ -15,7 +15,7 @@ use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 use crate::domain::oauth::{OAuthEvent, OAuthFinalizeParams};
 use crate::domain::session::PracticeSession;
 use crate::domain::types::{
-    CreateGoal, CreateItem, CreateSetRequest, LinkGoalItem, UpdateGoal, UpdateItem,
+    CreateGoal, CreateItem, CreateSetRequest, LinkGoalItem, UpdateGoal, UpdateGoalItem, UpdateItem,
     UpdateSetRequest,
 };
 
@@ -302,6 +302,24 @@ pub fn link_goal_item(
             Ok(_) => Event::RefetchGoals,
             Err(e) => Event::LoadFailed(format!("Failed to link item to goal: {e}")),
         })
+}
+
+pub fn update_goal_item(
+    api_base_url: &str,
+    goal_id: &str,
+    item_id: &str,
+    input: &UpdateGoalItem,
+) -> Command<Effect, Event> {
+    Http::patch(format!(
+        "{api_base_url}/api/goals/{goal_id}/items/{item_id}"
+    ))
+    .body_json(input)
+    .expect("serialize UpdateGoalItem")
+    .build()
+    .then_send(|result| match result {
+        Ok(_) => Event::RefetchGoals,
+        Err(e) => Event::LoadFailed(format!("Failed to update goal item targets: {e}")),
+    })
 }
 
 pub fn unlink_goal_item(
@@ -721,6 +739,7 @@ mod tests {
             title: Some("learn Etude".into()),
             notes: None,
             deadline: Some("2026-06-19".into()),
+            target_confidence: None,
         };
         let req = take_http(&mut create_goal(BASE, &input, "temp-goal"));
         assert_eq!(req.method, "POST");
@@ -777,6 +796,8 @@ mod tests {
             item_id: "01HX0000000000000000000000".into(),
             item_title: "Etude".into(),
             item_type: ItemKind::Piece,
+            target_date: None,
+            target_confidence: None,
         };
         let req = take_http(&mut link_goal_item(
             BASE,
@@ -805,6 +826,29 @@ mod tests {
             req.url,
             "https://api.example.com/api/goals/01HG0000000000000000000000/items/01HX0000000000000000000000"
         );
+    }
+
+    #[test]
+    fn update_goal_item_patches_targets() {
+        use crate::domain::types::UpdateGoalItem;
+        let input = UpdateGoalItem {
+            target_date: Some(Some("2026-06-01".into())),
+            target_confidence: Some(Some(4)),
+        };
+        let req = take_http(&mut update_goal_item(
+            BASE,
+            "01HG0000000000000000000000",
+            "01HX0000000000000000000000",
+            &input,
+        ));
+        assert_eq!(req.method, "PATCH");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000/items/01HX0000000000000000000000"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["target_date"], "2026-06-01");
+        assert_eq!(body["target_confidence"], 4);
     }
 
     // ── Account / MCP / OAuth endpoints ──────────────────────────────

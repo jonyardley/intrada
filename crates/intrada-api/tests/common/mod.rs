@@ -228,6 +228,32 @@ pub async fn put_json(
     (status, body)
 }
 
+/// Send a PATCH request with a JSON body and return the response.
+pub async fn patch_json(
+    router: Router,
+    uri: &str,
+    body: impl serde::Serialize,
+) -> (StatusCode, Vec<u8>) {
+    let json = serde_json::to_string(&body).unwrap();
+    let request = Request::builder()
+        .method("PATCH")
+        .uri(uri)
+        .header("content-type", "application/json")
+        .body(Body::from(json))
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = response
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+    (status, body)
+}
+
 /// Send a DELETE request and return the response.
 pub async fn delete(router: Router, uri: &str) -> (StatusCode, Vec<u8>) {
     let request = Request::builder()

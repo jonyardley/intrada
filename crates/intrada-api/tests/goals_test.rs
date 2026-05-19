@@ -289,3 +289,227 @@ async fn filter_goals_by_status() {
     let goals: Vec<Goal> = common::json(&body);
     assert_eq!(goals.len(), 2);
 }
+
+// ── Targets (Phase 1) ─────────────────────────────────────────────────
+
+#[tokio::test]
+async fn create_goal_with_target_confidence() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/goals",
+        json!({ "date": "2026-05-15", "target_confidence": 4 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let goal: Goal = common::json(&body);
+    assert_eq!(goal.target_confidence, Some(4));
+}
+
+#[tokio::test]
+async fn create_goal_target_confidence_out_of_range_returns_400() {
+    let app = common::setup_test_app().await;
+    let (status, _body) = common::post_json(
+        app,
+        "/api/goals",
+        json!({ "date": "2026-05-15", "target_confidence": 9 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn update_goal_clears_target_confidence() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/goals",
+        json!({ "date": "2026-05-15", "target_confidence": 3 }),
+    )
+    .await;
+    let created: Goal = common::json(&body);
+    assert_eq!(created.target_confidence, Some(3));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "target_confidence": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.target_confidence.is_none());
+}
+
+#[tokio::test]
+async fn link_item_with_targets() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    let (status, _body) = common::post_json(
+        app.clone(),
+        &format!("/api/goals/{}/items", goal.id),
+        json!({
+            "item_id": "piece-001",
+            "item_title": "Bach Prelude",
+            "item_type": "piece",
+            "target_date": "2026-06-01",
+            "target_confidence": 4
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+
+    let (status, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
+    assert_eq!(status, StatusCode::OK);
+    let fetched: Goal = common::json(&body);
+    assert_eq!(fetched.items.len(), 1);
+    assert_eq!(fetched.items[0].target_date.as_deref(), Some("2026-06-01"));
+    assert_eq!(fetched.items[0].target_confidence, Some(4));
+}
+
+#[tokio::test]
+async fn patch_goal_item_targets() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    common::post_json(
+        app.clone(),
+        &format!("/api/goals/{}/items", goal.id),
+        json!({
+            "item_id": "piece-001",
+            "item_title": "Bach",
+            "item_type": "piece"
+        }),
+    )
+    .await;
+
+    let (status, _body) = common::patch_json(
+        app.clone(),
+        &format!("/api/goals/{}/items/piece-001", goal.id),
+        json!({ "target_date": "2026-07-01", "target_confidence": 5 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
+    let fetched: Goal = common::json(&body);
+    assert_eq!(fetched.items[0].target_date.as_deref(), Some("2026-07-01"));
+    assert_eq!(fetched.items[0].target_confidence, Some(5));
+}
+
+#[tokio::test]
+async fn patch_goal_item_partial_update_preserves_other_fields() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    common::post_json(
+        app.clone(),
+        &format!("/api/goals/{}/items", goal.id),
+        json!({
+            "item_id": "piece-001",
+            "item_title": "Bach",
+            "item_type": "piece",
+            "target_date": "2026-06-01",
+            "target_confidence": 3
+        }),
+    )
+    .await;
+
+    // PATCH only confidence — date should be preserved
+    let (status, _body) = common::patch_json(
+        app.clone(),
+        &format!("/api/goals/{}/items/piece-001", goal.id),
+        json!({ "target_confidence": 5 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
+    let fetched: Goal = common::json(&body);
+    assert_eq!(fetched.items[0].target_date.as_deref(), Some("2026-06-01"));
+    assert_eq!(fetched.items[0].target_confidence, Some(5));
+}
+
+#[tokio::test]
+async fn patch_goal_item_clears_targets_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    common::post_json(
+        app.clone(),
+        &format!("/api/goals/{}/items", goal.id),
+        json!({
+            "item_id": "piece-001",
+            "item_title": "Bach",
+            "item_type": "piece",
+            "target_date": "2026-06-01",
+            "target_confidence": 3
+        }),
+    )
+    .await;
+
+    let (status, _body) = common::patch_json(
+        app.clone(),
+        &format!("/api/goals/{}/items/piece-001", goal.id),
+        json!({ "target_date": null, "target_confidence": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
+    let fetched: Goal = common::json(&body);
+    assert!(fetched.items[0].target_date.is_none());
+    assert!(fetched.items[0].target_confidence.is_none());
+}
+
+#[tokio::test]
+async fn patch_goal_item_target_confidence_out_of_range_returns_400() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    common::post_json(
+        app.clone(),
+        &format!("/api/goals/{}/items", goal.id),
+        json!({
+            "item_id": "piece-001",
+            "item_title": "Bach",
+            "item_type": "piece"
+        }),
+    )
+    .await;
+
+    let (status, _body) = common::patch_json(
+        app,
+        &format!("/api/goals/{}/items/piece-001", goal.id),
+        json!({ "target_confidence": 9 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn patch_goal_item_not_found_returns_404() {
+    let app = common::setup_test_app().await;
+    let (_, body) =
+        common::post_json(app.clone(), "/api/goals", json!({ "date": "2026-05-15" })).await;
+    let goal: Goal = common::json(&body);
+
+    let (status, _body) = common::patch_json(
+        app,
+        &format!("/api/goals/{}/items/nonexistent", goal.id),
+        json!({ "target_confidence": 4 }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}

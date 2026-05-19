@@ -3,7 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 
 use super::item::ItemKind;
-use super::types::{CreateGoal, LinkGoalItem, UpdateGoal};
+use super::types::{CreateGoal, LinkGoalItem, UpdateGoal, UpdateGoalItem};
 use crate::app::{Effect, Event};
 use crate::model::Model;
 use crate::validation;
@@ -31,6 +31,8 @@ pub struct Goal {
     pub photos: Vec<GoalPhoto>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_confidence: Option<u8>,
 }
 
 /// Photo metadata for a goal. Binary data lives in R2; core only sees metadata.
@@ -47,18 +49,42 @@ pub struct GoalItem {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_confidence: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum GoalEvent {
     FetchGoals,
-    FetchGoal { id: String },
+    FetchGoal {
+        id: String,
+    },
     Add(CreateGoal),
-    Update { id: String, input: UpdateGoal },
-    Complete { id: String },
-    Delete { id: String },
-    LinkItem { goal_id: String, item: LinkGoalItem },
-    UnlinkItem { goal_id: String, item_id: String },
+    Update {
+        id: String,
+        input: UpdateGoal,
+    },
+    Complete {
+        id: String,
+    },
+    Delete {
+        id: String,
+    },
+    LinkItem {
+        goal_id: String,
+        item: LinkGoalItem,
+    },
+    UnlinkItem {
+        goal_id: String,
+        item_id: String,
+    },
+    UpdateGoalItemTargets {
+        goal_id: String,
+        item_id: String,
+        input: UpdateGoalItem,
+    },
 }
 
 pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect, Event> {
@@ -84,6 +110,7 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
                 photos: Vec::new(),
                 created_at: now,
                 updated_at: now,
+                target_confidence: input.target_confidence,
             };
 
             let temp_id = goal.id.clone();
@@ -120,6 +147,9 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
             }
             if let Some(status) = &input.status {
                 goal.status = status.clone();
+            }
+            if let Some(target_confidence) = &input.target_confidence {
+                goal.target_confidence = *target_confidence;
             }
             goal.updated_at = chrono::Utc::now();
             model.last_error = None;
@@ -164,13 +194,18 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
             ])
         }
         GoalEvent::LinkItem { goal_id, item } => {
+            if let Err(e) = validation::validate_link_goal_item(&item) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
             if let Some(goal) = model.goals.iter_mut().find(|g| g.id == goal_id) {
                 let goal_item = GoalItem {
                     item_id: item.item_id.clone(),
                     item_title: item.item_title.clone(),
                     item_type: item.item_type.clone(),
+                    target_date: item.target_date.clone(),
+                    target_confidence: item.target_confidence,
                 };
-                // Avoid duplicates
                 if !goal.items.iter().any(|i| i.item_id == goal_item.item_id) {
                     goal.items.push(goal_item);
                 }
@@ -180,6 +215,33 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
 
             Command::all([
                 crate::http::link_goal_item(&model.api_base_url, &goal_id, &item),
+                crux_core::render::render(),
+            ])
+        }
+        GoalEvent::UpdateGoalItemTargets {
+            goal_id,
+            item_id,
+            input,
+        } => {
+            if let Err(e) = validation::validate_update_goal_item(&input) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+            if let Some(goal) = model.goals.iter_mut().find(|g| g.id == goal_id) {
+                if let Some(gi) = goal.items.iter_mut().find(|i| i.item_id == item_id) {
+                    if let Some(d) = &input.target_date {
+                        gi.target_date = d.clone();
+                    }
+                    if let Some(c) = &input.target_confidence {
+                        gi.target_confidence = *c;
+                    }
+                    goal.updated_at = chrono::Utc::now();
+                }
+            }
+            model.last_error = None;
+
+            Command::all([
+                crate::http::update_goal_item(&model.api_base_url, &goal_id, &item_id, &input),
                 crux_core::render::render(),
             ])
         }

@@ -2472,6 +2472,7 @@ mod tests {
             photos: Vec::new(),
             created_at: now,
             updated_at: now,
+            target_confidence: None,
         };
         model.goals.push(goal.clone());
         model.current_goal = Some(goal);
@@ -2584,6 +2585,7 @@ mod tests {
             photos: Vec::new(),
             created_at: now,
             updated_at: now,
+            target_confidence: None,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -2618,6 +2620,7 @@ mod tests {
             photos: Vec::new(),
             created_at: now,
             updated_at: now,
+            target_confidence: None,
         });
 
         let server_goal = Goal {
@@ -2632,6 +2635,7 @@ mod tests {
             photos: Vec::new(),
             created_at: now,
             updated_at: now,
+            target_confidence: None,
         };
 
         let _cmd = app.update(
@@ -2664,6 +2668,7 @@ mod tests {
             photos: Vec::new(),
             created_at: now,
             updated_at: now,
+            target_confidence: None,
         };
         let other = Goal {
             id: "other".to_string(),

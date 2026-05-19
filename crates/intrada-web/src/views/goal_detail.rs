@@ -363,6 +363,8 @@ fn LinkItemsSheet(goal_id: String, open: RwSignal<bool>, on_close: Callback<()>)
                         item_id: item.id.clone(),
                         item_title: item.title.clone(),
                         item_type: item.item_type,
+                        target_date: None,
+                        target_confidence: None,
                     },
                 })
             };

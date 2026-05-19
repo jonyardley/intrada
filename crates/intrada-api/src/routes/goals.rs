@@ -1,11 +1,11 @@
 use axum::extract::{DefaultBodyLimit, Multipart, Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use axum::{Json, Router};
 use tower_http::limit::RequestBodyLimitLayer;
 
 use intrada_core::domain::goal::Goal;
-use intrada_core::domain::types::{CreateGoal, LinkGoalItem, UpdateGoal};
+use intrada_core::domain::types::{CreateGoal, LinkGoalItem, UpdateGoal, UpdateGoalItem};
 
 use crate::auth::AuthUser;
 use crate::error::ApiError;
@@ -34,7 +34,10 @@ pub fn router() -> Router<AppState> {
         .route("/{id}", get(get_goal).put(update_goal).delete(delete_goal))
         .route("/{id}/photos/{photo_id}", delete(delete_photo))
         .route("/{id}/items", post(link_item))
-        .route("/{id}/items/{item_id}", delete(unlink_item))
+        .route(
+            "/{id}/items/{item_id}",
+            patch(update_item).delete(unlink_item),
+        )
         .merge(photo_upload)
 }
 
@@ -172,6 +175,17 @@ async fn link_item(
     let conn = state.conn();
     services::goals::link_item(&conn, &id, &user_id, &input).await?;
     Ok(StatusCode::CREATED)
+}
+
+async fn update_item(
+    State(state): State<AppState>,
+    AuthUser { user_id, .. }: AuthUser,
+    Path((id, item_id)): Path<(String, String)>,
+    Json(input): Json<UpdateGoalItem>,
+) -> Result<StatusCode, ApiError> {
+    let conn = state.conn();
+    services::goals::update_goal_item(&conn, &id, &item_id, &user_id, &input).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn unlink_item(

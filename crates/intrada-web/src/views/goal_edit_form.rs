@@ -134,6 +134,7 @@ pub fn GoalEditFormView(
                         notes: Some(if notes_val.is_empty() { None } else { Some(notes_val) }),
                         deadline: Some(if deadline_val.is_empty() { None } else { Some(deadline_val) }),
                         status: None,
+                        target_confidence: None,
                     };
 
                     let core_ref = core.borrow();
