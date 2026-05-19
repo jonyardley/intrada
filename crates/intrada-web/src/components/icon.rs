@@ -1,9 +1,17 @@
 use leptos::prelude::*;
-use leptos_icons::Icon as LucideIcon;
+use leptos::svg;
 
-/// Thin wrapper around `leptos_icons::Icon` that adds Tailwind class support.
-/// Pass an `icondata::Lu*` value for `icon`; size and colour come from class.
 #[component]
 pub fn Icon(icon: icondata::Icon, #[prop(optional, into)] class: String) -> impl IntoView {
-    view! { <LucideIcon icon=icon attr:class=class width="1em" height="1em" /> }
+    let data = format!("<g>{}</g>", icon.data);
+    svg::svg()
+        .attr("class", class)
+        .attr("viewBox", icon.view_box)
+        .attr("stroke-linecap", icon.stroke_linecap)
+        .attr("stroke-linejoin", icon.stroke_linejoin)
+        .attr("stroke-width", icon.stroke_width)
+        .attr("stroke", icon.stroke)
+        .attr("fill", icon.fill.unwrap_or("currentColor"))
+        .attr("role", "graphics-symbol")
+        .child(svg::InertElement::new(data))
 }

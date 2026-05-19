@@ -3033,7 +3033,6 @@ dependencies = [
  "intrada-core",
  "js-sys",
  "leptos",
- "leptos_icons",
  "leptos_router",
  "send_wrapper",
  "serde",
@@ -3329,16 +3328,6 @@ dependencies = [
  "serde",
  "syn 2.0.117",
  "walkdir",
-]
-
-[[package]]
-name = "leptos_icons"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "274959df1a852fc431b03f27d9cd3129fb0f8cca9c8d383e4d668f62543cbec9"
-dependencies = [
- "icondata_core",
- "leptos",
 ]
 
 [[package]]
