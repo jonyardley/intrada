@@ -11,6 +11,7 @@ use crate::components::{
     AccentBar, AccentRow, BackLink, BottomSheet, BuilderItemRow, Button, ButtonVariant,
     SkeletonCardList,
 };
+use crate::views::GoalEditFormView;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -72,9 +73,8 @@ pub fn GoalDetailView() -> impl IntoView {
 
     view! {
         <div class="space-y-4">
-            <BackLink label="Back to Goals" href="/goals".to_string() />
-
             <Show when=move || is_loading.get()>
+                <BackLink label="Back to Goals" href="/goals".to_string() />
                 <SkeletonCardList />
             </Show>
 
@@ -83,6 +83,7 @@ pub fn GoalDetailView() -> impl IntoView {
                     match goal.get() {
                         Some(g) => view! { <GoalDetailContent goal=g /> }.into_any(),
                         None => view! {
+                            <BackLink label="Back to Goals" href="/goals".to_string() />
                             <p class="text-muted text-sm">"Goal not found."</p>
                         }.into_any(),
                     }
@@ -104,11 +105,15 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     let goal_id = goal.id.clone();
     let goal_id_delete = goal.id.clone();
     let goal_id_for_section = goal.id.clone();
-    let goal_id_for_sheet = goal.id.clone();
+    let goal_id_for_edit_sheet = goal.id.clone();
+    let goal_id_for_link_sheet = goal.id.clone();
     let is_completed = goal.status == GoalStatus::Completed;
 
+    let edit_sheet_open = RwSignal::new(false);
+    let close_edit_sheet = Callback::new(move |_| edit_sheet_open.set(false));
     let link_sheet_open = RwSignal::new(false);
     let close_link_sheet = Callback::new(move |_| link_sheet_open.set(false));
+    let show_delete_confirm = RwSignal::new(false);
 
     let live_linked_items = {
         let goal_id_for_section = goal_id_for_section.clone();
@@ -140,29 +145,60 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
     };
 
-    let on_delete = move |_: leptos::ev::MouseEvent| {
-        let nav = navigate_delete.clone();
-        nav(
-            "/goals",
-            NavigateOptions {
-                replace: true,
-                ..Default::default()
-            },
-        );
-        let core_ref = core_for_delete.borrow();
-        let effects = core_ref.process_event(Event::Goal(GoalEvent::Delete {
-            id: goal_id_delete.clone(),
-        }));
-        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
-    };
-
     let title_display = goal
         .title
         .clone()
         .unwrap_or_else(|| "Untitled goal".to_string());
 
     view! {
+        <div class="flex items-center justify-between -mb-2">
+            <BackLink label="Back to Goals" href="/goals".to_string() />
+            <button
+                type="button"
+                class="text-sm font-medium text-accent-text hover:text-accent-hover"
+                on:click=move |_| edit_sheet_open.set(true)
+            >
+                "Edit"
+            </button>
+        </div>
+
         <div class="space-y-6">
+            {move || show_delete_confirm.get().then(|| {
+                let goal_id_del = goal_id_delete.clone();
+                let core_del = core_for_delete.clone();
+                let navigate_del = navigate_delete.clone();
+                view! {
+                    <div class="danger-callout" role="alert">
+                        <p class="text-sm text-danger-text mb-3">
+                            "Are you sure you want to delete this goal? This action cannot be undone."
+                        </p>
+                        <div class="flex gap-3">
+                            <Button
+                                variant=ButtonVariant::Danger
+                                loading=Signal::derive(move || is_submitting.get())
+                                on_click=Callback::new(move |_| {
+                                    navigate_del("/goals", NavigateOptions { replace: true, ..Default::default() });
+                                    let core_ref = core_del.borrow();
+                                    let effects = core_ref.process_event(Event::Goal(GoalEvent::Delete {
+                                        id: goal_id_del.clone(),
+                                    }));
+                                    process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+                                })
+                            >
+                                {move || if is_submitting.get() { "Deleting\u{2026}" } else { "Confirm Delete" }}
+                            </Button>
+                            <Button
+                                variant=ButtonVariant::Secondary
+                                on_click=Callback::new(move |_| { show_delete_confirm.set(false); })
+                            >
+                                "Cancel"
+                            </Button>
+                        </div>
+                    </div>
+                }
+            })}
+
+            // Title + status
             <div class="space-y-2">
                 <h2 class="page-title">{title_display}</h2>
                 <div class="flex items-center gap-2 flex-wrap">
@@ -182,6 +218,7 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                 </div>
             </div>
 
+            // Notes
             {goal.notes.clone().map(|notes| view! {
                 <div class="space-y-1">
                     <p class="field-label">"Notes"</p>
@@ -189,6 +226,7 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                 </div>
             })}
 
+            // Photos
             {(!goal.photos.is_empty()).then(|| {
                 let photos = goal.photos.clone();
                 view! {
@@ -247,6 +285,7 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                 }}
             </div>
 
+            // Actions
             <div class="space-y-3 pt-4 border-t border-border-default">
                 {(!is_completed).then(|| view! {
                     <Button
@@ -259,7 +298,7 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
                 })}
                 <Button
                     variant=ButtonVariant::Danger
-                    on_click=Callback::new(on_delete)
+                    on_click=Callback::new(move |_| { show_delete_confirm.set(true); })
                     full_width=true
                 >
                     "Delete Goal"
@@ -267,8 +306,14 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
             </div>
         </div>
 
+        <EditGoalSheet
+            goal_id=goal_id_for_edit_sheet
+            open=edit_sheet_open
+            on_close=close_edit_sheet
+            is_submitting=is_submitting
+        />
         <LinkItemsSheet
-            goal_id=goal_id_for_sheet
+            goal_id=goal_id_for_link_sheet
             open=link_sheet_open
             on_close=close_link_sheet
         />
@@ -362,6 +407,39 @@ fn LinkItemsSheet(goal_id: String, open: RwSignal<bool>, on_close: Callback<()>)
                     }.into_any()
                 }
             }}
+        </BottomSheet>
+    }
+}
+
+#[component]
+fn EditGoalSheet(
+    goal_id: String,
+    open: RwSignal<bool>,
+    on_close: Callback<()>,
+    is_submitting: IsSubmitting,
+) -> impl IntoView {
+    let form_ref = NodeRef::<leptos::html::Form>::new();
+    let on_save = Callback::new(move |_| {
+        if let Some(form) = form_ref.get() {
+            let _ = form.request_submit();
+        }
+    });
+    let submitting_signal = Signal::derive(move || is_submitting.get());
+    view! {
+        <BottomSheet
+            open=open
+            on_close=on_close
+            nav_title="Edit Goal".to_string()
+            nav_action_label="Save".to_string()
+            on_nav_action=on_save
+            nav_action_disabled=submitting_signal
+        >
+            <GoalEditFormView
+                goal_id=goal_id.clone()
+                in_sheet=true
+                on_dismiss=on_close
+                form_ref=form_ref
+            />
         </BottomSheet>
     }
 }

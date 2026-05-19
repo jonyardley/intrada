@@ -21,8 +21,8 @@ use crate::components::{
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    GoalDetailView, GoalFormView, GoalsListView, LibraryListView, LoginView, McpAuditView,
-    McpTokensView, NotFoundView, OAuthConsentView, SessionActiveView, SessionNewView,
+    GoalDetailView, GoalEditFormView, GoalFormView, GoalsListView, LibraryListView, LoginView,
+    McpAuditView, McpTokensView, NotFoundView, OAuthConsentView, SessionActiveView, SessionNewView,
     SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
     SettingsView, SsoCallbackView, WelcomeView,
 };
@@ -267,6 +267,9 @@ fn AppRoutes() -> impl IntoView {
             } />
             <Route path=path!("/goals/new") view=|| view! {
                 <AuthenticatedShell><GoalFormView /></AuthenticatedShell>
+            } />
+            <Route path=path!("/goals/:id/edit") view=|| view! {
+                <AuthenticatedShell><GoalEditFormView /></AuthenticatedShell>
             } />
             <Route path=path!("/goals/:id") view=|| view! {
                 <AuthenticatedShell><GoalDetailView /></AuthenticatedShell>

@@ -475,3 +475,429 @@ pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Comma
             ))),
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::Effect;
+    use crate::domain::goal::GoalStatus;
+    use crate::domain::item::ItemKind;
+    use crate::domain::set::{Set, SetEntry};
+    use crate::domain::types::{Tempo, UpdateGoal};
+    use chrono::TimeZone;
+    use crux_http::protocol::HttpRequest;
+    use serde_json::{json, Value};
+
+    const BASE: &str = "https://api.example.com";
+
+    fn take_http(cmd: &mut Command<Effect, Event>) -> HttpRequest {
+        for effect in cmd.effects() {
+            if let Effect::Http(req) = effect {
+                return req.operation.clone();
+            }
+        }
+        panic!("expected an Http effect");
+    }
+
+    fn body_as_json(req: &HttpRequest) -> Value {
+        serde_json::from_slice(&req.body).expect("body should parse as JSON")
+    }
+
+    fn fixed_time() -> chrono::DateTime<chrono::Utc> {
+        chrono::Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
+    }
+
+    fn sample_item() -> Item {
+        Item {
+            id: "01HX0000000000000000000000".into(),
+            title: "Etude Op. 10 No. 1".into(),
+            kind: ItemKind::Piece,
+            composer: Some("Chopin".into()),
+            key: Some("C major".into()),
+            tempo: Some(Tempo {
+                marking: Some("Allegro".into()),
+                bpm: Some(132),
+            }),
+            notes: Some("focus on RH evenness".into()),
+            tags: vec!["scale".into(), "warmup".into()],
+            created_at: fixed_time(),
+            updated_at: fixed_time(),
+        }
+    }
+
+    fn sample_set() -> Set {
+        Set {
+            id: "01HSET00000000000000000000".into(),
+            name: "Warmup".into(),
+            entries: vec![SetEntry {
+                id: "01HENT00000000000000000000".into(),
+                item_id: "01HX0000000000000000000000".into(),
+                item_title: "Etude".into(),
+                item_type: ItemKind::Piece,
+                position: 0,
+            }],
+            created_at: fixed_time(),
+            updated_at: fixed_time(),
+        }
+    }
+
+    // ── Fetch endpoints: URL + method ──────────────────────────────────
+
+    #[test]
+    fn fetch_items_is_get_to_items_collection() {
+        let req = take_http(&mut fetch_items(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/items");
+        assert!(req.body.is_empty());
+    }
+
+    #[test]
+    fn fetch_sessions_is_get_to_sessions_collection() {
+        let req = take_http(&mut fetch_sessions(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/sessions");
+    }
+
+    #[test]
+    fn fetch_sets_is_get_to_sets_collection() {
+        let req = take_http(&mut fetch_sets(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/sets");
+    }
+
+    #[test]
+    fn fetch_goals_includes_status_all_query() {
+        let req = take_http(&mut fetch_goals(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/goals?status=all");
+    }
+
+    #[test]
+    fn fetch_goal_uses_id_in_path() {
+        let req = take_http(&mut fetch_goal(BASE, "01HG0000000000000000000000"));
+        assert_eq!(req.method, "GET");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000"
+        );
+    }
+
+    // ── Item create/update/delete ─────────────────────────────────────
+
+    #[test]
+    fn create_item_posts_create_dto_without_id_or_timestamps() {
+        let item = sample_item();
+        let req = take_http(&mut create_item(BASE, &item, "temp-1"));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/api/items");
+
+        let body = body_as_json(&req);
+        assert_eq!(body["title"], "Etude Op. 10 No. 1");
+        assert_eq!(body["kind"], "piece");
+        assert_eq!(body["composer"], "Chopin");
+        assert_eq!(body["key"], "C major");
+        assert_eq!(body["tempo"]["marking"], "Allegro");
+        assert_eq!(body["tempo"]["bpm"], 132);
+        assert_eq!(body["notes"], "focus on RH evenness");
+        assert_eq!(body["tags"], json!(["scale", "warmup"]));
+        assert!(
+            body.get("id").is_none() && body.get("created_at").is_none(),
+            "create body must not include id or timestamps"
+        );
+    }
+
+    #[test]
+    fn update_item_puts_to_id_path_with_patch_body() {
+        let mut item = sample_item();
+        item.composer = None;
+        let req = take_http(&mut update_item(BASE, &item));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/items/01HX0000000000000000000000"
+        );
+
+        let body = body_as_json(&req);
+        assert_eq!(body["title"], "Etude Op. 10 No. 1");
+        assert!(
+            body["composer"].is_null(),
+            "cleared optional fields serialize as JSON null"
+        );
+    }
+
+    #[test]
+    fn delete_item_is_delete_to_id_path_with_empty_body() {
+        let req = take_http(&mut delete_item(BASE, "01HX0000000000000000000000"));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/items/01HX0000000000000000000000"
+        );
+        assert!(req.body.is_empty());
+    }
+
+    // ── Session endpoints ─────────────────────────────────────────────
+
+    #[test]
+    fn create_session_posts_the_session_as_body() {
+        let session = PracticeSession {
+            id: "01HSESS0000000000000000000".into(),
+            entries: vec![],
+            session_notes: None,
+            session_intention: Some("scales".into()),
+            started_at: fixed_time(),
+            completed_at: fixed_time(),
+            total_duration_secs: 600,
+            completion_status: crate::domain::session::CompletionStatus::Completed,
+        };
+        let req = take_http(&mut create_session(BASE, &session));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/api/sessions");
+
+        let body = body_as_json(&req);
+        assert_eq!(body["id"], "01HSESS0000000000000000000");
+        assert_eq!(body["session_intention"], "scales");
+        assert_eq!(body["total_duration_secs"], 600);
+    }
+
+    #[test]
+    fn delete_session_is_delete_to_id_path() {
+        let req = take_http(&mut delete_session(BASE, "01HSESS0000000000000000000"));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/sessions/01HSESS0000000000000000000"
+        );
+    }
+
+    // ── Set endpoints ─────────────────────────────────────────────────
+
+    #[test]
+    fn create_set_posts_create_dto_shape() {
+        let set = sample_set();
+        let req = take_http(&mut create_set(BASE, &set));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/api/sets");
+
+        let body = body_as_json(&req);
+        assert_eq!(body["name"], "Warmup");
+        assert_eq!(body["entries"][0]["item_id"], "01HX0000000000000000000000");
+        assert_eq!(body["entries"][0]["item_type"], "piece");
+        assert!(
+            body.get("id").is_none() && body["entries"][0].get("position").is_none(),
+            "create set body strips server-owned fields"
+        );
+    }
+
+    #[test]
+    fn update_set_puts_to_id_path() {
+        let set = sample_set();
+        let req = take_http(&mut update_set(BASE, &set));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/sets/01HSET00000000000000000000"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["name"], "Warmup");
+    }
+
+    #[test]
+    fn delete_set_is_delete_to_id_path() {
+        let req = take_http(&mut delete_set(BASE, "01HSET00000000000000000000"));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/sets/01HSET00000000000000000000"
+        );
+    }
+
+    // ── Goal endpoints ────────────────────────────────────────────────
+
+    #[test]
+    fn create_goal_posts_input_as_body() {
+        let input = CreateGoal {
+            date: "2026-05-19".into(),
+            title: Some("learn Etude".into()),
+            notes: None,
+            deadline: Some("2026-06-19".into()),
+        };
+        let req = take_http(&mut create_goal(BASE, &input, "temp-goal"));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/api/goals");
+
+        let body = body_as_json(&req);
+        assert_eq!(body["date"], "2026-05-19");
+        assert_eq!(body["title"], "learn Etude");
+        assert_eq!(body["deadline"], "2026-06-19");
+        assert!(body["notes"].is_null());
+    }
+
+    #[test]
+    fn update_goal_puts_to_id_path_with_status() {
+        let input = UpdateGoal {
+            status: Some(GoalStatus::Active),
+            ..Default::default()
+        };
+        let req = take_http(&mut update_goal(BASE, "01HG0000000000000000000000", &input));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["status"], "active");
+    }
+
+    #[test]
+    fn complete_goal_sends_status_completed() {
+        let req = take_http(&mut complete_goal(BASE, "01HG0000000000000000000000"));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["status"], "completed");
+    }
+
+    #[test]
+    fn delete_goal_is_delete_to_id_path() {
+        let req = take_http(&mut delete_goal(BASE, "01HG0000000000000000000000"));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000"
+        );
+    }
+
+    #[test]
+    fn link_goal_item_posts_to_nested_items_collection() {
+        let link = LinkGoalItem {
+            item_id: "01HX0000000000000000000000".into(),
+            item_title: "Etude".into(),
+            item_type: ItemKind::Piece,
+        };
+        let req = take_http(&mut link_goal_item(
+            BASE,
+            "01HG0000000000000000000000",
+            &link,
+        ));
+        assert_eq!(req.method, "POST");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000/items"
+        );
+        let body = body_as_json(&req);
+        assert_eq!(body["item_id"], "01HX0000000000000000000000");
+        assert_eq!(body["item_type"], "piece");
+    }
+
+    #[test]
+    fn unlink_goal_item_deletes_from_nested_item_path() {
+        let req = take_http(&mut unlink_goal_item(
+            BASE,
+            "01HG0000000000000000000000",
+            "01HX0000000000000000000000",
+        ));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/goals/01HG0000000000000000000000/items/01HX0000000000000000000000"
+        );
+    }
+
+    // ── Account / MCP / OAuth endpoints ──────────────────────────────
+
+    #[test]
+    fn get_account_preferences_is_get_to_preferences_path() {
+        let req = take_http(&mut get_account_preferences(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/account/preferences");
+    }
+
+    #[test]
+    fn save_account_preferences_puts_full_prefs_body() {
+        let prefs = AccountPreferences::default();
+        let req = take_http(&mut save_account_preferences(BASE, &prefs, None));
+        assert_eq!(req.method, "PUT");
+        assert_eq!(req.url, "https://api.example.com/api/account/preferences");
+        assert!(body_as_json(&req).is_object());
+    }
+
+    #[test]
+    fn delete_account_is_delete_to_account_root() {
+        let req = take_http(&mut delete_account(BASE));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(req.url, "https://api.example.com/api/account");
+    }
+
+    #[test]
+    fn list_mcp_tokens_is_get_to_tokens_collection() {
+        let req = take_http(&mut list_mcp_tokens(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/account/tokens");
+    }
+
+    #[test]
+    fn create_mcp_token_posts_name_only_body() {
+        let req = take_http(&mut create_mcp_token(BASE, "claude-cli"));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/api/account/tokens");
+
+        let body = body_as_json(&req);
+        let object = body.as_object().expect("name-only body is an object");
+        assert_eq!(object.len(), 1, "create token body has exactly one field");
+        assert_eq!(body["name"], "claude-cli");
+    }
+
+    #[test]
+    fn revoke_mcp_token_is_delete_to_id_path() {
+        let req = take_http(&mut revoke_mcp_token(BASE, "01HMCP0000000000000000000"));
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(
+            req.url,
+            "https://api.example.com/api/account/tokens/01HMCP0000000000000000000"
+        );
+    }
+
+    #[test]
+    fn list_mcp_audit_is_get_to_audit_path() {
+        let req = take_http(&mut list_mcp_audit(BASE));
+        assert_eq!(req.method, "GET");
+        assert_eq!(req.url, "https://api.example.com/api/account/audit");
+    }
+
+    #[test]
+    fn oauth_finalize_posts_params_to_oauth_finalize() {
+        let params = OAuthFinalizeParams {
+            response_type: "code".into(),
+            client_id: "client-abc".into(),
+            redirect_uri: "https://app.example.com/cb".into(),
+            state: Some("xyz".into()),
+            scope: Some("read".into()),
+            code_challenge: "challenge".into(),
+            code_challenge_method: "S256".into(),
+        };
+        let req = take_http(&mut oauth_finalize(BASE, &params));
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.url, "https://api.example.com/oauth/finalize");
+
+        let body = body_as_json(&req);
+        assert_eq!(body["response_type"], "code");
+        assert_eq!(body["client_id"], "client-abc");
+        assert_eq!(body["redirect_uri"], "https://app.example.com/cb");
+        assert_eq!(body["code_challenge_method"], "S256");
+    }
+
+    // ── Base URL trimming ────────────────────────────────────────────
+
+    #[test]
+    fn trailing_slash_in_base_url_produces_double_slash() {
+        // Documents current behaviour: api_base_url is concatenated as-is,
+        // so callers must pass it without a trailing slash. If this ever
+        // changes, expect a fan-out of URL bugs across every callsite.
+        let req = take_http(&mut fetch_items("https://api.example.com/"));
+        assert_eq!(req.url, "https://api.example.com//api/items");
+    }
+}
