@@ -66,7 +66,7 @@ pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
 
 // ── Item operations ─────────────────────────────────────────────────────
 
-pub fn create_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
+pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Effect, Event> {
     let create = CreateItem {
         title: item.title.clone(),
         kind: item.kind.clone(),
@@ -76,12 +76,20 @@ pub fn create_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         notes: item.notes.clone(),
         tags: item.tags.clone(),
     };
+    let temp_id = temp_id.to_string();
     Http::post(format!("{api_base_url}/api/items"))
         .body_json(&create)
         .expect("serialize CreateItem")
+        .expect_json::<Item>()
         .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::RefetchItems,
+        .then_send(move |result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(item) => Event::ItemCreated {
+                    temp_id: temp_id.clone(),
+                    item,
+                },
+                None => Event::LoadFailed("create_item: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to save item: {e}")),
         })
 }
@@ -217,13 +225,25 @@ pub fn fetch_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
-pub fn create_goal(api_base_url: &str, input: &CreateGoal) -> Command<Effect, Event> {
+pub fn create_goal(
+    api_base_url: &str,
+    input: &CreateGoal,
+    temp_id: &str,
+) -> Command<Effect, Event> {
+    let temp_id = temp_id.to_string();
     Http::post(format!("{api_base_url}/api/goals"))
         .body_json(input)
         .expect("serialize CreateGoal")
+        .expect_json::<Goal>()
         .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
+        .then_send(move |result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(goal) => Event::GoalCreated {
+                    temp_id: temp_id.clone(),
+                    goal,
+                },
+                None => Event::LoadFailed("create_goal: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to save goal: {e}")),
         })
 }

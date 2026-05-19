@@ -599,7 +599,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.last_error = None;
 
             Command::all([
-                crate::http::create_item(&model.api_base_url, &item),
+                crate::http::create_item(&model.api_base_url, &item, &new_item_id),
                 crux_core::render::render(),
             ])
         }
@@ -825,7 +825,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             let save_effect_session = AppEffect::SaveSessionInProgress(active.clone());
             Command::all([
-                crate::http::create_item(&model.api_base_url, &item),
+                crate::http::create_item(&model.api_base_url, &item, &new_item_id),
                 Command::notify_shell(save_effect_session).into(),
                 crux_core::render::render(),
             ])

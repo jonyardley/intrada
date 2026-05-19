@@ -319,20 +319,16 @@ pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), 
 // ── Goal validation ───────────────────────────────────────────────
 
 fn validate_goal_date(date: &str) -> Result<(), LibraryError> {
-    let parsed = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| {
-        LibraryError::Validation {
-            field: "date".to_string(),
-            message: "Date must be in YYYY-MM-DD format".to_string(),
-        }
+    // No past-only restriction: the form fills this from the client's local
+    // date, but the server compares against UTC. Around midnight UTC the
+    // two diverge, so a strict past-or-today check would reject legitimate
+    // "today" submissions from users east of UTC. The `date` field is a
+    // semantic creation date for the goal (server also tracks `created_at`
+    // independently) so allowing any valid date is fine.
+    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| LibraryError::Validation {
+        field: "date".to_string(),
+        message: "Date must be in YYYY-MM-DD format".to_string(),
     })?;
-
-    let today = chrono::Utc::now().date_naive();
-    if parsed > today {
-        return Err(LibraryError::Validation {
-            field: "date".to_string(),
-            message: "Date cannot be in the future".to_string(),
-        });
-    }
     Ok(())
 }
 

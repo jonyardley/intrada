@@ -86,11 +86,12 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
                 updated_at: now,
             };
 
+            let temp_id = goal.id.clone();
             model.goals.push(goal);
             model.last_error = None;
 
             Command::all([
-                crate::http::create_goal(&model.api_base_url, &input),
+                crate::http::create_goal(&model.api_base_url, &input, &temp_id),
                 crux_core::render::render(),
             ])
         }
@@ -151,6 +152,9 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
             if model.goals.len() == len_before {
                 model.last_error = Some(format!("Goal not found: {id}"));
                 return crux_core::render::render();
+            }
+            if model.current_goal.as_ref().is_some_and(|g| g.id == id) {
+                model.current_goal = None;
             }
             model.last_error = None;
 
