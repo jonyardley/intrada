@@ -63,6 +63,12 @@ const PRERENDERED = {
   "/login": "/prerendered/login.html",
 };
 
+// Trunk-hashed outputs only. copy-file/copy-dir paths (fonts/, static/sentry/,
+// favicon.svg, etc.) aren't content-hashed and must not be marked immutable.
+const HASHED_ASSET = /^\/(intrada-web|tailwind-output)-[0-9a-f]{8,}.*\.(js|wasm|css)$/;
+const IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+const NO_CACHE = "no-cache";
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -80,12 +86,30 @@ export default {
     if (prerendered) {
       const prerenderUrl = new URL(request.url);
       prerenderUrl.pathname = prerendered;
-      return env.ASSETS.fetch(new Request(prerenderUrl, request));
+      const response = await env.ASSETS.fetch(new Request(prerenderUrl, request));
+      return withCacheControl(response, NO_CACHE);
     }
 
-    return env.ASSETS.fetch(request);
+    const response = await env.ASSETS.fetch(request);
+    if (HASHED_ASSET.test(url.pathname)) {
+      return withCacheControl(response, IMMUTABLE_CACHE);
+    }
+    if (url.pathname === "/" || url.pathname.endsWith(".html")) {
+      return withCacheControl(response, NO_CACHE);
+    }
+    return response;
   },
 };
+
+function withCacheControl(response, value) {
+  const headers = new Headers(response.headers);
+  headers.set("Cache-Control", value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 async function tunnelToSentry(request) {
   // Same-origin POSTs from `myintrada.com` don't preflight, but a
