@@ -209,8 +209,6 @@ pub struct GoalView {
     pub has_photos: bool,
     pub created_at: String,
     pub updated_at: String,
-    /// Goal-level default confidence target (1-5). Items inherit this
-    /// unless they specify their own `target_confidence` override.
     pub target_confidence: Option<u8>,
 }
 
@@ -221,12 +219,6 @@ pub struct GoalPhotoView {
     pub url: String,
 }
 
-/// A linked library item for display in the UI.
-///
-/// `effective_target_confidence` is the inherited target — item override
-/// if set, otherwise the goal-level default. `latest_score` and
-/// `latest_achieved_tempo` are pulled from the library item's session
-/// history so progress is always derived, never stored on the goal.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct GoalItemView {
     pub item_id: String,
@@ -843,5 +835,87 @@ mod tests {
         let view = goal_to_view(&goal, &[]);
         assert_eq!(view.items.len(), 1);
         assert_eq!(view.items[0].item_title, "Moonlight Sonata");
+    }
+
+    #[test]
+    fn goal_item_view_derives_progress_and_inheritance_from_library() {
+        // Item override beats goal default; latest_score / tempo flow through.
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: None,
+            date: "2026-01-15".to_string(),
+            notes: None,
+            deadline: None,
+            status: GoalStatus::Active,
+            completed_at: None,
+            items: vec![
+                GoalItem {
+                    item_id: "item-a".to_string(),
+                    item_title: "Bach".to_string(),
+                    item_type: ItemKind::Piece,
+                    target_date: None,
+                    target_confidence: Some(5),
+                },
+                GoalItem {
+                    item_id: "item-b".to_string(),
+                    item_title: "Chromatic".to_string(),
+                    item_type: ItemKind::Exercise,
+                    target_date: None,
+                    target_confidence: None,
+                },
+            ],
+            photos: vec![],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            target_confidence: Some(3),
+        };
+
+        let items = vec![
+            LibraryItemView {
+                id: "item-a".to_string(),
+                item_type: ItemKind::Piece,
+                title: "Bach".to_string(),
+                subtitle: String::new(),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: String::new(),
+                updated_at: String::new(),
+                practice: Some(ItemPracticeSummary {
+                    session_count: 2,
+                    total_minutes: 30,
+                    latest_score: Some(4),
+                    score_history: vec![],
+                    latest_tempo: None,
+                    tempo_history: vec![],
+                }),
+                latest_achieved_tempo: Some(120),
+            },
+            LibraryItemView {
+                id: "item-b".to_string(),
+                item_type: ItemKind::Exercise,
+                title: "Chromatic".to_string(),
+                subtitle: String::new(),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: String::new(),
+                updated_at: String::new(),
+                practice: None,
+                latest_achieved_tempo: None,
+            },
+        ];
+
+        let view = goal_to_view(&goal, &items);
+
+        // Item A: per-item override wins (5), latest_score reflects session data
+        assert_eq!(view.items[0].effective_target_confidence, Some(5));
+        assert_eq!(view.items[0].latest_score, Some(4));
+        assert_eq!(view.items[0].latest_achieved_tempo, Some(120));
+        // Item B: inherits goal-level default (3), no practice yet
+        assert_eq!(view.items[1].effective_target_confidence, Some(3));
+        assert_eq!(view.items[1].latest_score, None);
     }
 }

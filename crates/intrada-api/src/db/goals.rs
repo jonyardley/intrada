@@ -47,7 +47,7 @@ fn row_to_goal(
     let created_at_str: String = col!(row, 8)?;
     let updated_at_str: String = col!(row, 9)?;
     let target_confidence: Option<i64> = col!(row, 10)?;
-    let target_confidence: Option<u8> = target_confidence.map(|n| n as u8);
+    let target_confidence: Option<u8> = target_confidence.and_then(|n| u8::try_from(n).ok());
 
     let status = goal_status_from_str(&status_str);
 
@@ -109,7 +109,7 @@ fn row_to_goal_item(row: &libsql::Row) -> Result<GoalItem, ApiError> {
     let item_type: ItemKind = item_kind_from_str(&item_type_str)?;
     let target_date: Option<String> = col!(row, 4)?;
     let target_confidence: Option<i64> = col!(row, 5)?;
-    let target_confidence: Option<u8> = target_confidence.map(|n| n as u8);
+    let target_confidence: Option<u8> = target_confidence.and_then(|n| u8::try_from(n).ok());
 
     Ok(GoalItem {
         item_id,

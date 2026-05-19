@@ -340,21 +340,19 @@ fn GoalDetailContent(goal: GoalView) -> impl IntoView {
     }
 }
 
-/// Returns true if the goal has at least one targeted item AND every
-/// targeted item's `latest_score` meets its `effective_target_confidence`.
-/// Untargeted items don't gate the suggestion (see spec, decision #5).
+// Untargeted items don't gate the suggestion — see specs/goals-targets.md decision #5.
 fn goal_looks_ready(items: &[GoalItemView]) -> bool {
-    let targeted: Vec<&GoalItemView> = items
-        .iter()
-        .filter(|i| i.effective_target_confidence.is_some())
-        .collect();
-    if targeted.is_empty() {
-        return false;
+    let mut any_targeted = false;
+    for item in items {
+        let Some(target) = item.effective_target_confidence else {
+            continue;
+        };
+        any_targeted = true;
+        if !item.latest_score.is_some_and(|s| s >= target) {
+            return false;
+        }
     }
-    targeted.iter().all(|i| {
-        let target = i.effective_target_confidence.unwrap();
-        i.latest_score.is_some_and(|s| s >= target)
-    })
+    any_targeted
 }
 
 #[component]
@@ -443,6 +441,10 @@ fn GoalItemTargetsSheet(
     });
 
     let goal_id_for_save = goal_id;
+    // Full overwrite on Save: both fields are initialised from the item on
+    // open, so wrapping each in Some(_) sends the form's current state
+    // (including explicit clears as Some(None)). No per-field dirty
+    // tracking — form is the single source of truth.
     let on_save = Callback::new(move |_| {
         let Some(id) = item_id.with_untracked(|i| i.clone()) else {
             return;
