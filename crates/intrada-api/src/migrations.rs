@@ -465,6 +465,67 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0066_mcp_audit_log_recreate_index",
         "CREATE INDEX IF NOT EXISTS idx_mcp_audit_log_user_created ON mcp_audit_log(user_id, created_at DESC);",
     ),
+    // Migrations 0067-0074: rename lessons → goals with new schema.
+    // No production data exists in the lesson tables, so drop-and-recreate
+    // is safe. The new goals table adds title, deadline, status, completed_at
+    // fields and a goal_items join table for linking library items to goals.
+    (
+        "0067_drop_lesson_photos",
+        "DROP TABLE IF EXISTS lesson_photos;",
+    ),
+    (
+        "0068_drop_lessons",
+        "DROP TABLE IF EXISTS lessons;",
+    ),
+    (
+        "0069_create_goals",
+        "CREATE TABLE IF NOT EXISTS goals (
+            id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            title TEXT,
+            date TEXT NOT NULL,
+            notes TEXT,
+            deadline TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            completed_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0070_index_goals_user_status",
+        "CREATE INDEX IF NOT EXISTS idx_goals_user_status ON goals(user_id, status, deadline);",
+    ),
+    (
+        "0071_create_goal_photos",
+        "CREATE TABLE IF NOT EXISTS goal_photos (
+            id TEXT PRIMARY KEY NOT NULL,
+            goal_id TEXT NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            storage_key TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );",
+    ),
+    (
+        "0072_index_goal_photos_goal",
+        "CREATE INDEX IF NOT EXISTS idx_goal_photos_goal ON goal_photos(goal_id);",
+    ),
+    (
+        "0073_create_goal_items",
+        "CREATE TABLE IF NOT EXISTS goal_items (
+            goal_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            item_title TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (goal_id, item_id)
+        );",
+    ),
+    (
+        "0074_index_goal_items_goal",
+        "CREATE INDEX IF NOT EXISTS idx_goal_items_goal ON goal_items(goal_id);",
+    ),
 ];
 
 /// Backoff schedule for transient-error retries during migration: try

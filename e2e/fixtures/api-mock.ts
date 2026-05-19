@@ -313,6 +313,15 @@ async function setupApiMock(page: Page, store: MockStore) {
       }
     }
 
+    // ---- Goals ----
+    if (path === "/api/goals" && method === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([]),
+      });
+    }
+
     // Unmatched routes
     return route.fulfill({
       status: 404,

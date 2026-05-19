@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
+use crate::domain::goal::{Goal, GoalStatus};
 use crate::domain::item::{Item, ItemKind};
-use crate::domain::lesson::Lesson;
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
@@ -34,8 +34,8 @@ pub struct Model {
     /// and new failures are worth surfacing again (#346).
     pub error_muted: bool,
     pub sets: Vec<Set>,
-    pub lessons: Vec<Lesson>,
-    pub current_lesson: Option<Lesson>,
+    pub goals: Vec<Goal>,
+    pub current_goal: Option<Goal>,
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
     /// Per-user practice defaults; `None` until first load completes.
     pub account_preferences: Option<AccountPreferences>,
@@ -171,8 +171,8 @@ pub struct ViewModel {
     pub error: Option<String>,
     pub analytics: Option<AnalyticsView>,
     pub sets: Vec<SetView>,
-    pub lessons: Vec<LessonView>,
-    pub current_lesson: Option<LessonView>,
+    pub goals: Vec<GoalView>,
+    pub current_goal: Option<GoalView>,
     pub account_preferences: Option<AccountPreferences>,
     pub delete_in_flight: bool,
     pub account_deleted: bool,
@@ -192,14 +192,20 @@ pub struct ViewModel {
 // Sanity-check that ViewModel field names mirror Model where applicable.
 // (No code; just keeps model + viewmodel in sync mentally.)
 
-/// Represents a lesson for display in the UI.
+/// Represents a goal for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct LessonView {
+pub struct GoalView {
     pub id: String,
+    pub title: Option<String>,
     pub date: String,
     pub notes: Option<String>,
     pub notes_preview: String,
-    pub photos: Vec<LessonPhotoView>,
+    pub deadline: Option<String>,
+    pub status: GoalStatus,
+    pub completed_at: Option<String>,
+    pub is_overdue: bool,
+    pub items: Vec<GoalItemView>,
+    pub photos: Vec<GoalPhotoView>,
     pub has_photos: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -207,35 +213,65 @@ pub struct LessonView {
 
 /// Photo metadata for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct LessonPhotoView {
+pub struct GoalPhotoView {
     pub id: String,
     pub url: String,
 }
 
-pub fn lesson_to_view(lesson: &Lesson) -> LessonView {
-    let notes_preview = lesson
+/// A linked library item for display in the UI.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct GoalItemView {
+    pub item_id: String,
+    pub item_title: String,
+    pub item_type: ItemKind,
+}
+
+pub fn goal_to_view(goal: &Goal) -> GoalView {
+    let notes_preview = goal
         .notes
         .as_deref()
         .unwrap_or("")
         .chars()
         .take(100)
         .collect::<String>();
-    LessonView {
-        id: lesson.id.clone(),
-        date: lesson.date.clone(),
-        notes: lesson.notes.clone(),
+
+    let is_overdue = matches!(goal.status, GoalStatus::Active)
+        && goal.deadline.as_ref().is_some_and(|d| {
+            chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d")
+                .map(|deadline_date| deadline_date < chrono::Utc::now().date_naive())
+                .unwrap_or(false)
+        });
+
+    GoalView {
+        id: goal.id.clone(),
+        title: goal.title.clone(),
+        date: goal.date.clone(),
+        notes: goal.notes.clone(),
         notes_preview,
-        photos: lesson
+        deadline: goal.deadline.clone(),
+        status: goal.status.clone(),
+        completed_at: goal.completed_at.map(|dt| dt.to_rfc3339()),
+        is_overdue,
+        items: goal
+            .items
+            .iter()
+            .map(|i| GoalItemView {
+                item_id: i.item_id.clone(),
+                item_title: i.item_title.clone(),
+                item_type: i.item_type.clone(),
+            })
+            .collect(),
+        photos: goal
             .photos
             .iter()
-            .map(|p| LessonPhotoView {
+            .map(|p| GoalPhotoView {
                 id: p.id.clone(),
                 url: p.url.clone(),
             })
             .collect(),
-        has_photos: !lesson.photos.is_empty(),
-        created_at: lesson.created_at.to_rfc3339(),
-        updated_at: lesson.updated_at.to_rfc3339(),
+        has_photos: !goal.photos.is_empty(),
+        created_at: goal.created_at.to_rfc3339(),
+        updated_at: goal.updated_at.to_rfc3339(),
     }
 }
 
@@ -487,6 +523,7 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::goal::{GoalItem, GoalPhoto};
     use chrono::{TimeZone, Utc};
 
     fn make_entry(id: &str, item_id: &str, title: &str, position: usize) -> SetlistEntry {
@@ -658,30 +695,40 @@ mod tests {
         assert_eq!(view.session_intention.as_deref(), Some("focus"));
     }
 
-    // ── lesson_to_view ─────────────────────────────────────────────────
+    // ── goal_to_view ──────────────────────────────────────────────────
 
     #[test]
-    fn lesson_notes_preview_truncated_at_100_chars() {
+    fn goal_notes_preview_truncated_at_100_chars() {
         let long_notes = "a".repeat(200);
-        let lesson = Lesson {
-            id: "l1".to_string(),
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: Some("Practice scales".to_string()),
             date: "2026-01-15".to_string(),
             notes: Some(long_notes),
+            deadline: None,
+            status: GoalStatus::Active,
+            completed_at: None,
+            items: vec![],
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
         };
-        let view = lesson_to_view(&lesson);
+        let view = goal_to_view(&goal);
         assert_eq!(view.notes_preview.len(), 100);
     }
 
     #[test]
-    fn lesson_has_photos_flag() {
-        let lesson = Lesson {
-            id: "l1".to_string(),
+    fn goal_has_photos_flag() {
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: None,
             date: "2026-01-15".to_string(),
             notes: None,
-            photos: vec![crate::domain::lesson::LessonPhoto {
+            deadline: None,
+            status: GoalStatus::Active,
+            completed_at: None,
+            items: vec![],
+            photos: vec![GoalPhoto {
                 id: "p1".to_string(),
                 url: "https://example.com/photo.jpg".to_string(),
                 created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
@@ -689,8 +736,76 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
         };
-        let view = lesson_to_view(&lesson);
+        let view = goal_to_view(&goal);
         assert!(view.has_photos);
         assert_eq!(view.photos.len(), 1);
+    }
+
+    #[test]
+    fn goal_is_overdue_when_deadline_in_past_and_active() {
+        let yesterday = (chrono::Utc::now().date_naive() - chrono::Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string();
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: None,
+            date: "2026-01-15".to_string(),
+            notes: None,
+            deadline: Some(yesterday),
+            status: GoalStatus::Active,
+            completed_at: None,
+            items: vec![],
+            photos: vec![],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+        };
+        let view = goal_to_view(&goal);
+        assert!(view.is_overdue);
+    }
+
+    #[test]
+    fn goal_not_overdue_when_completed() {
+        let yesterday = (chrono::Utc::now().date_naive() - chrono::Duration::days(1))
+            .format("%Y-%m-%d")
+            .to_string();
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: None,
+            date: "2026-01-15".to_string(),
+            notes: None,
+            deadline: Some(yesterday),
+            status: GoalStatus::Completed,
+            completed_at: Some(Utc.with_ymd_and_hms(2026, 1, 14, 10, 0, 0).unwrap()),
+            items: vec![],
+            photos: vec![],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+        };
+        let view = goal_to_view(&goal);
+        assert!(!view.is_overdue);
+    }
+
+    #[test]
+    fn goal_items_appear_in_view() {
+        let goal = Goal {
+            id: "g1".to_string(),
+            title: Some("Learn sonata".to_string()),
+            date: "2026-01-15".to_string(),
+            notes: None,
+            deadline: None,
+            status: GoalStatus::Active,
+            completed_at: None,
+            items: vec![GoalItem {
+                item_id: "item-1".to_string(),
+                item_title: "Moonlight Sonata".to_string(),
+                item_type: ItemKind::Piece,
+            }],
+            photos: vec![],
+            created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+            updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
+        };
+        let view = goal_to_view(&goal);
+        assert_eq!(view.items.len(), 1);
+        assert_eq!(view.items[0].item_title, "Moonlight Sonata");
     }
 }

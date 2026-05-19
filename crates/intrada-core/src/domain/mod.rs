@@ -1,6 +1,6 @@
 pub mod account;
+pub mod goal;
 pub mod item;
-pub mod lesson;
 pub mod mcp_audit;
 pub mod mcp_tokens;
 pub mod oauth;
@@ -9,8 +9,8 @@ pub mod set;
 pub mod types;
 
 pub use account::{AccountEvent, AccountPreferences};
+pub use goal::{Goal, GoalEvent, GoalItem, GoalPhoto, GoalStatus};
 pub use item::{Item, ItemEvent, ItemKind};
-pub use lesson::{Lesson, LessonEvent, LessonPhoto};
 pub use mcp_audit::{McpAuditEntry, McpAuditEvent};
 pub use mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 pub use oauth::{OAuthEvent, OAuthFinalizeParams};
@@ -20,6 +20,6 @@ pub use session::{
 };
 pub use set::{Set, SetEntry};
 pub use types::{
-    CreateItem, CreateLesson, CreateSetEntryRequest, CreateSetRequest, LibraryData, ListQuery,
-    SessionsData, Tempo, UpdateItem, UpdateLesson, UpdateSetRequest,
+    CreateGoal, CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, LinkGoalItem,
+    ListQuery, Tempo, UpdateGoal, UpdateItem, UpdateSetRequest,
 };
