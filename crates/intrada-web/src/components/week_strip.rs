@@ -6,7 +6,7 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::PointerEvent;
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 use intrada_web::haptics::haptic_selection;
 use intrada_web::helpers::{day_abbrev, get_month_label, get_week_dates};
 
@@ -431,7 +431,7 @@ pub fn WeekStrip(
                     aria-label="Previous week"
                     on:click=move |_| on_prev_week.run(())
                 >
-                    <Icon name=IconName::ChevronLeft class="w-4 h-4" />
+                    <Icon icon=icondata::LuChevronLeft class="w-4 h-4" />
                 </button>
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-medium text-secondary">{move || month_label.get()}</span>
@@ -452,7 +452,7 @@ pub fn WeekStrip(
                     aria-label="Next week"
                     on:click=move |_| on_next_week.run(())
                 >
-                    <Icon name=IconName::ChevronRight class="w-4 h-4" />
+                    <Icon icon=icondata::LuChevronRight class="w-4 h-4" />
                 </button>
             </div>
 

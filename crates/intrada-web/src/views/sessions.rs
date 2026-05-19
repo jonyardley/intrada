@@ -11,8 +11,8 @@ use intrada_core::{
 
 use crate::components::{
     ButtonSize, ButtonVariant, ContextMenu, ContextMenuAction, EmptyState, GroupedList,
-    GroupedListRow, Icon, IconName, LinkButton, PageAddButton, PageHeading, SkeletonCardList,
-    SwipeActions, WeekStrip,
+    GroupedListRow, Icon, LinkButton, PageAddButton, PageHeading, SkeletonCardList, SwipeActions,
+    WeekStrip,
 };
 use intrada_web::core_bridge::process_effects_with_core;
 use intrada_web::helpers::{
@@ -191,7 +191,7 @@ pub fn SessionsListView() -> impl IntoView {
                 if sessions.is_empty() {
                     view! {
                         <EmptyState
-                            icon=IconName::CalendarDays
+                            icon=icondata::LuCalendarDays
                             title="No sessions on this day"
                             body="Start a practice session to see it here."
                         >
@@ -336,9 +336,9 @@ pub(crate) fn SessionRow(
                                 <div class="mt-1 pt-2 space-y-1.5">
                                     {entries.into_iter().map(|entry| {
                                     let (status_icon, status_color) = match entry.status {
-                                        EntryStatus::Completed => (IconName::Check, "text-success-text"),
-                                        EntryStatus::Skipped => (IconName::Ban, "text-warning-text"),
-                                        EntryStatus::NotAttempted => (IconName::Minus, "text-faint"),
+                                        EntryStatus::Completed => (icondata::LuCheck, "text-success-text"),
+                                        EntryStatus::Skipped => (icondata::LuBan, "text-warning-text"),
+                                        EntryStatus::NotAttempted => (icondata::LuMinus, "text-faint"),
                                     };
                                     let entry_intention = entry.intention.clone();
                                     let entry_rep_target = entry.rep_target;
@@ -350,7 +350,7 @@ pub(crate) fn SessionRow(
                                             <div class="flex items-center justify-between">
                                                 <div class="flex items-center gap-2 min-w-0">
                                                     <span class={format!("font-medium {}", status_color)}>
-                                                        <Icon name=status_icon class="w-3.5 h-3.5" />
+                                                        <Icon icon=status_icon class="w-3.5 h-3.5" />
                                                     </span>
                                                     <span class="text-primary truncate">{entry.item_title}</span>
                                                     <span class="text-faint shrink-0">{entry.duration_display}</span>

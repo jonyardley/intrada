@@ -6,7 +6,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 
 use crate::components::{
-    AccentBar, AccentRow, Card, EmptyState, Icon, IconName, LineChart, PageHeading, SectionLabel,
+    AccentBar, AccentRow, Card, EmptyState, Icon, LineChart, PageHeading, SectionLabel,
     SkeletonBlock, StatCard, StatTone,
 };
 use intrada_web::core_bridge::init_core;
@@ -49,7 +49,7 @@ pub fn AnalyticsPage() -> impl IntoView {
                     }.into_any(),
                     None => view! {
                         <EmptyState
-                            icon=IconName::BarChart
+                            icon=icondata::LuChartBar
                             title="No session data yet"
                             body="Complete some sessions to see your analytics. Track your progress, streaks, and most practised items."
                         >
@@ -320,9 +320,9 @@ fn ComparisonMetric(
     has_prev: bool,
 ) -> impl IntoView {
     let (icon, color) = match direction {
-        Direction::Up => (IconName::ArrowRight, "text-success-text"),
-        Direction::Down => (IconName::ArrowRight, "text-muted"),
-        Direction::Same => (IconName::ArrowRight, "text-muted"),
+        Direction::Up => (icondata::LuArrowRight, "text-success-text"),
+        Direction::Down => (icondata::LuArrowRight, "text-muted"),
+        Direction::Same => (icondata::LuArrowRight, "text-muted"),
     };
     let rotate_class = match direction {
         Direction::Up => "w-3 h-3 inline-block -rotate-45",
@@ -337,7 +337,7 @@ fn ComparisonMetric(
                 {if has_prev {
                     view! {
                         <span class="inline-flex items-center gap-0.5">
-                            <Icon name=icon class=rotate_class />
+                            <Icon icon=icon class=rotate_class />
                             {format!("from {prev_value}")}
                         </span>
                     }.into_any()

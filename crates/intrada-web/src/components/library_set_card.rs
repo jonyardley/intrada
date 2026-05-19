@@ -5,9 +5,7 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::SetView;
 
-use crate::components::{
-    AccentBar, AccentRow, ContextMenu, ContextMenuAction, Icon, IconName, SwipeActions,
-};
+use crate::components::{AccentBar, AccentRow, ContextMenu, ContextMenuAction, Icon, SwipeActions};
 
 /// A single library list row for a Set.
 ///
@@ -51,7 +49,7 @@ pub fn LibrarySetCard(
                     <span class="text-sm font-semibold text-primary truncate">{name}</span>
                     <span class="text-xs text-muted truncate">{count_label}</span>
                 </div>
-                <Icon name=IconName::ChevronRight class="w-4 h-4 text-faint shrink-0" />
+                <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-faint shrink-0" />
             </AccentRow>
         </A>
     };

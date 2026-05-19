@@ -8,8 +8,7 @@ use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{
-    BackLink, Button, ButtonVariant, Card, EmptyState, GroupedList, GroupedListRow, IconName,
-    TextField,
+    BackLink, Button, ButtonVariant, Card, EmptyState, GroupedList, GroupedListRow, TextField,
 };
 
 /// Account-settings sub-page for managing MCP Personal Access Tokens —
@@ -253,7 +252,7 @@ pub fn McpTokensView() -> impl IntoView {
                     view! {
                         <Show when=move || loaded && !loading fallback=|| view! { <></> }>
                             <EmptyState
-                                icon=IconName::ListChecks
+                                icon=icondata::LuListChecks
                                 title="No tokens yet"
                                 body="Create your first token above to connect an AI client."
                             />

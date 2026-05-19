@@ -10,6 +10,8 @@ intrada-core = { path = "../intrada-core" }
 crux_core = { workspace = true }
 leptos = { version = "0.8", features = ["csr"] }
 leptos_router = { version = "0.8" }
+leptos_icons = "0.7"
+icondata = { version = "0.7", default-features = false, features = ["lucide"] }
 console_error_panic_hook = "0.1"
 wasm-bindgen = "0.2"
 chrono = { workspace = true }

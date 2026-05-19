@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use intrada_core::ViewModel;
 
-use crate::components::{use_toast, Button, ButtonVariant, Card, Icon, IconName};
+use crate::components::{use_toast, Button, ButtonVariant, Card, Icon};
 
 /// Inline form for saving a setlist or summary as a named set.
 ///
@@ -163,7 +163,7 @@ pub fn SetSaveForm(
                         class="w-full rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm font-medium text-success-text inline-flex items-center justify-center gap-2 cursor-default"
                         disabled
                     >
-                        <Icon name=IconName::Check class="w-4 h-4" />
+                        <Icon icon=icondata::LuCheck class="w-4 h-4" />
                         "Saved"
                     </button>
                 }.into_any()

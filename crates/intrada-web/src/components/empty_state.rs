@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 
 /// Empty-state primitive — large icon, heading, body, optional CTA slot.
 ///
@@ -12,7 +12,7 @@ use crate::components::{Icon, IconName};
 #[component]
 pub fn EmptyState(
     /// Icon shown above the title.
-    icon: IconName,
+    icon: icondata::Icon,
     /// Short headline — what the screen is currently showing none of.
     #[prop(into)]
     title: String,
@@ -26,7 +26,7 @@ pub fn EmptyState(
     view! {
         <div class="empty-state text-center py-12 px-4 sm:px-6 lg:px-0">
             <div class="empty-state-icon mx-auto mb-4 text-faint">
-                <Icon name=icon class="w-full h-full" />
+                <Icon icon=icon class="w-full h-full" />
             </div>
             <p class="empty-state-title text-base font-semibold text-secondary">{title}</p>
             <p class="empty-state-body text-sm text-faint mt-2 max-w-xs mx-auto">{body}</p>

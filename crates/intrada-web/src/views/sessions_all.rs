@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use intrada_core::ViewModel;
 
-use crate::components::{BackLink, EmptyState, IconName, PageHeading, SkeletonCardList};
+use crate::components::{BackLink, EmptyState, PageHeading, SkeletonCardList};
 use crate::views::sessions::SessionRow;
 use intrada_web::types::{IsLoading, SharedCore};
 
@@ -37,7 +37,7 @@ pub fn SessionsAllView() -> impl IntoView {
                 if vm.sessions.is_empty() {
                     view! {
                         <EmptyState
-                            icon=IconName::Clock
+                            icon=icondata::LuClock
                             title="No sessions yet"
                             body="Start a session to begin tracking your progress."
                         />

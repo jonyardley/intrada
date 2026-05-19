@@ -8,7 +8,7 @@ use intrada_core::{EntryStatus, Event, ItemKind, SessionEvent, ViewModel};
 
 use crate::app::FocusMode;
 use crate::components::{
-    Button, ButtonSize, ButtonVariant, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet,
+    Button, ButtonSize, ButtonVariant, Icon, InlineTypeIndicator, ItemReflectionSheet,
     ItemReflectionTarget, ProgressRing, SectionLabel, SetlistEntryRow, TransitionPrompt,
 };
 use intrada_web::core_bridge::process_effects;
@@ -288,7 +288,7 @@ pub fn SessionTimer() -> impl IntoView {
                                                     rep_dismissed_at_position.set(Some(position));
                                                 }
                                             >
-                                                <Icon name=IconName::X class="w-4 h-4" />
+                                                <Icon icon=icondata::LuX class="w-4 h-4" />
                                             </button>
                                         </div>
                                         <div class="text-center space-y-2 pt-1">
@@ -352,7 +352,7 @@ pub fn SessionTimer() -> impl IntoView {
                                             }
                                         })>
                                             <span class="inline-flex items-center gap-1.5">
-                                                <Icon name=IconName::RotateCcw class="w-4 h-4" />
+                                                <Icon icon=icondata::LuRotateCcw class="w-4 h-4" />
                                                 "Rep Counter"
                                             </span>
                                         </Button>

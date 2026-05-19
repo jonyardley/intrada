@@ -7,7 +7,7 @@ use wasm_bindgen::JsCast;
 use intrada_core::{Event, ItemEvent, ItemKind, LibraryItemView, SetEvent, SetView, ViewModel};
 
 use crate::components::{
-    BottomSheet, EmptyState, Icon, IconName, LibraryFilter, LibraryFilterTabs, LibraryItemCard,
+    BottomSheet, EmptyState, Icon, LibraryFilter, LibraryFilterTabs, LibraryItemCard,
     LibrarySetCard, PageAddButton, PageHeading, PullToRefresh, SkeletonItemCard,
 };
 use crate::views::AddLibraryItemForm;
@@ -206,7 +206,7 @@ pub fn LibraryListView() -> impl IntoView {
             // Search bar — title / composer / tag, case-insensitive,
             // substring match. Empty query falls through (tab still filters).
             <div class="search-bar">
-                <Icon name=IconName::Search class="search-bar-icon" />
+                <Icon icon=icondata::LuSearch class="search-bar-icon" />
                 <input
                     type="search"
                     class="search-bar-input"
@@ -291,7 +291,7 @@ pub fn LibraryListView() -> impl IntoView {
                             if vm.sets.is_empty() {
                                 view! {
                                     <EmptyState
-                                        icon=IconName::ListChecks
+                                        icon=icondata::LuListChecks
                                         title="No saved sets yet"
                                         body="Save a setlist as a set to reuse it later."
                                     />
@@ -315,7 +315,7 @@ pub fn LibraryListView() -> impl IntoView {
                                 };
                                 view! {
                                     <EmptyState
-                                        icon=IconName::Search
+                                        icon=icondata::LuSearch
                                         title=title
                                         body=body
                                     />
@@ -338,7 +338,7 @@ pub fn LibraryListView() -> impl IntoView {
                             if vm.items.is_empty() {
                                 view! {
                                     <EmptyState
-                                        icon=IconName::Music
+                                        icon=icondata::LuMusic
                                         title="No items in your library yet"
                                         body="Add a piece or exercise to get started."
                                     >
@@ -391,7 +391,7 @@ pub fn LibraryListView() -> impl IntoView {
                                 };
                                 view! {
                                     <EmptyState
-                                        icon=IconName::Search
+                                        icon=icondata::LuSearch
                                         title=title
                                         body=body
                                     />

@@ -79,7 +79,7 @@ pub use error_banner::ErrorBanner;
 pub use field_label::FieldLabel;
 pub use form_field_error::FormFieldError;
 pub use grouped_list::{GroupedList, GroupedListRow};
-pub use icon::{Icon, IconName};
+pub use icon::Icon;
 pub use inline_type_indicator::InlineTypeIndicator;
 pub use item_reflection_sheet::{ItemReflectionSheet, ItemReflectionTarget};
 pub use library_filter_tabs::{LibraryFilter, LibraryFilterTabs};
