@@ -239,6 +239,46 @@ queries alone.
 - No `unwrap()` without justification.
 - Prefer well-established libraries over custom implementations.
 
+### Comments
+
+Default to **no comments**. Self-explanatory code with well-named identifiers
+beats commented code. A reader who knows the language and framework should be
+able to answer "what does this do?" from the code alone.
+
+Add a comment only when one of these holds:
+
+- **Non-obvious WHY** — a hidden constraint, subtle invariant, workaround for a
+  specific bug, or framework quirk that would surprise a reader. Cite the
+  reason concretely: an issue number, an incident, a doc link, a `BUG:` tag.
+  Vague WHY is no better than restating WHAT.
+- **Cross-file context** — pointing at a related file, a CLAUDE.md rule, or
+  an external doc the reader could miss. One line max.
+- **Section structure** — single-line dividers like `// ── Validation ──` in a
+  long file. Never more than one line.
+
+Do **not** write a comment that:
+
+- Restates WHAT the code does (`// Filter by status` above `.filter(|g| g.status == tab)`)
+- References the current task / PR (`// Added for #719`) — rots, belongs in
+  the PR description
+- Apologises or hedges (`// quick fix`, `// TODO come back to this`) — open a
+  tracked issue instead
+- Notes that a function "Mirrors X" when the shapes already make it obvious
+- Is a `///` doc comment on a private item or a single-purpose component
+  whose signature is self-evident
+
+Two-line cap as a smell test: if a comment is more than two lines, ask "can
+this be a function name? a type? a CLAUDE.md entry?". Usually yes.
+
+The `pre-push` hook (under `.githooks/`) flags branches that push too many
+comment lines relative to code. Bypass for genuinely-justified cases
+(an incident write-up, a copy-pasted upstream notice) with
+`SKIP_COMMENT_CHECK=1 git push`.
+
+When invoking the `superpowers:code-reviewer` agent, include "comment-policy
+violations are Blockers, not Nits" in the prompt so the review treats drift
+as a merge-blocker.
+
 ## Testing
 
 **Default: ship tests with new code.** New API endpoints, DB functions, and
