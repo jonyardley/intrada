@@ -28,7 +28,7 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto", "use_pem"] }
-reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json", "multipart"] }
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "json", "multipart"] }
 rust-s3 = { version = "0.37", default-features = false, features = ["tokio-native-tls"] }
 
 # MCP Personal Access Tokens: cryptographically secure RNG for token bytes,
