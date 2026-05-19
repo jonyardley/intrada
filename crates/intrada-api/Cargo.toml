@@ -33,7 +33,7 @@ rust-s3 = { version = "0.37", default-features = false, features = ["tokio-nativ
 
 # MCP Personal Access Tokens: cryptographically secure RNG for token bytes,
 # SHA-256 for at-rest hashing.
-rand = "0.9"
+rand = "0.10"
 sha2 = "0.11"
 
 # OAuth 2.1: PKCE S256 verification (base64url-no-pad of the SHA-256 of

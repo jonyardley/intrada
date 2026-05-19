@@ -1,6 +1,6 @@
 use chrono::Utc;
 use libsql::Connection;
-use rand::RngCore;
+use rand::Rng;
 
 use crate::db;
 use crate::db::tokens::{CreatedTokenResponse, TokenListItem, TOKEN_PREFIX};
