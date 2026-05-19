@@ -252,7 +252,7 @@ impl App for Intrada {
                 } else {
                     // Optimistic entry not found (e.g. user navigated away
                     // and back before the server response). Push fresh so
-                    // the goal still ends up in the model.
+                    // the item still ends up in the model.
                     model.items.push(item);
                 }
                 model.record_success();
@@ -292,9 +292,10 @@ impl App for Intrada {
                 // Bump the monotonic counter so `SetSaveForm` can promote its
                 // optimistic state to confirmed. Also refetch sets — the
                 // optimistic push used a client-side ulid that the server
-                // may have replaced (mutate-response pattern is the standard
-                // for updates, but creates still rely on a follow-up
-                // refetch — known tech debt per CLAUDE.md).
+                // may have replaced. `Item` and `Goal` creates use the temp-id
+                // mutate-response pattern instead; `Set` still refetches
+                // because the counter is wired into the save-form's UI state
+                // — known tech debt per CLAUDE.md.
                 model.set_saves_committed = model.set_saves_committed.wrapping_add(1);
                 model.record_success();
                 crate::http::fetch_sets(&model.api_base_url)
@@ -2573,6 +2574,39 @@ mod tests {
 
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].id, "server_ulid");
+    }
+
+    #[test]
+    fn goal_created_pushes_when_temp_id_absent() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let server_goal = Goal {
+            id: "server_ulid".to_string(),
+            title: Some("Late confirmation".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+        };
+
+        // No optimistic entry — caller may have navigated away and back.
+        let _cmd = app.update(
+            Event::GoalCreated {
+                temp_id: "missing_temp".into(),
+                goal: server_goal,
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.goals.len(), 1);
+        assert_eq!(model.goals[0].id, "server_ulid");
     }
 
     #[test]

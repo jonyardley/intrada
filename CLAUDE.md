@@ -127,15 +127,23 @@ data in shell-local state. UI-only state stays in Leptos signals.
 - **DB**: Positional column indexing with `SELECT_COLUMNS` const
 - **Migrations**: Sequential in `intrada-api/src/migrations.rs`, one SQL statement each
 - **Mutate response**: Writes reconcile with the server response directly — no
-  full-list refetch. Creates use a temp-id pattern: the domain handler pushes
-  an optimistic entry with a client-generated ulid, the HTTP wrapper carries
-  that ulid into the response handler, and the `*Created { temp_id, … }` event
-  replaces the optimistic entry with the server's authoritative version
-  (different ulid). Applies to `Item` and `Goal` creates today; `Session`
-  creates already keep the client ulid (no server reassignment); `Set` creates
-  still use the `set_saves_committed` counter + refetch (separate flow tied to
-  the save-form's confirm UI). Updates use `*Updated { entity }` (server echoes
-  the row), deletes use `DeleteConfirmed` (model already mutated optimistically).
+  full-list refetch. Three create variants live in the codebase; pick the one
+  that matches the entity's shape:
+  - **Temp-id mutate-response** (`Item`, `Goal`): domain handler pushes the
+    optimistic entry with a client-generated ulid; HTTP wrapper carries that
+    ulid; `*Created { temp_id, entity }` event replaces the optimistic entry
+    (server-assigned ulid differs from the client one). Default for new
+    entities — use this unless one of the others applies.
+  - **Client-owned ulid** (`Session`): client ulid is the canonical id. POST
+    is fire-and-forget — `SessionSaved` just clears the error state and the
+    model keeps the optimistic write.
+  - **Save-counter + refetch** (`Set`): optimistic push + bump
+    `set_saves_committed` + full refetch via `SetSaveSucceeded`. The counter
+    drives the save-form's optimistic→confirmed UI flip; tracked as tech debt
+    to migrate to temp-id once the counter is decoupled from the UI state.
+
+  Updates use `*Updated { entity }` (server echoes the row); deletes use
+  `DeleteConfirmed` (model already mutated optimistically).
 
 ## Authentication
 
