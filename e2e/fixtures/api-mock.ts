@@ -322,6 +322,15 @@ async function setupApiMock(page: Page, store: MockStore) {
       });
     }
 
+    // ---- Feature flags ----
+    if (path === "/api/features" && method === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ goals: true }),
+      });
+    }
+
     // Unmatched routes
     return route.fulfill({
       status: 404,
