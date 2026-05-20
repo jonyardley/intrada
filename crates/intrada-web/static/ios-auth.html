@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intrada — Sign in</title>
+  <!-- Self-hosted (#580); re-vendor with scripts/vendor-clerk-sdk.sh. -->
+  <script src="/clerk/clerk.browser.js"></script>
   <style>
     body {
       margin: 0;
@@ -54,19 +56,9 @@
         }
         if (!pk) throw new Error('Missing pk parameter');
 
-        // Set the key BEFORE loading the script — the Clerk browser build
-        // auto-detects this global during execution and sets window.Clerk.
+        // Set before clerk.load() reads the global (#580 changed the
+        // SDK load order from in-body to head-blocking).
         window.__clerk_publishable_key = pk;
-
-        // Load Clerk JS (full browser build — this runs in Safari, not WKWebView)
-        await new Promise(function (resolve, reject) {
-          var s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-          s.crossOrigin = 'anonymous';
-          s.onload = resolve;
-          s.onerror = function () { reject(new Error('Failed to load Clerk SDK')); };
-          document.head.appendChild(s);
-        });
 
         var clerk = window.Clerk;
         if (!clerk) throw new Error('Clerk SDK not available');
