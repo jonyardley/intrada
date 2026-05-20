@@ -97,10 +97,8 @@ pub enum Event {
         temp_id: String,
         goal: Goal,
     },
-    /// Mutate-response confirmation for goal-item write paths (link, unlink,
-    /// per-item targets update, complete, reopen). Replaces the matching
-    /// goal in `model.goals` and `model.current_goal`. Cheaper than a list
-    /// refetch; keeps DOM stable since the `<For>` keys by goal id.
+    /// Mutate-response confirmation for goal-item write paths. See CLAUDE.md
+    /// "Mutate response".
     GoalUpdated {
         goal: Goal,
     },
