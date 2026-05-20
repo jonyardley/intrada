@@ -21,7 +21,7 @@ Goal {
 
   // new (goal-level defaults — items inherit unless overridden)
   target_confidence: Option<u8>   // 1..=5
-  target_tempo:      Option<u32>  // bpm  [Phase C — deferred]
+  target_tempo:      Option<u16>  // bpm  [Phase 2]
   // note: no `target_date` at goal level — `deadline` IS the goal-level date
 }
 
@@ -32,7 +32,7 @@ GoalItem {
   // new (overrides goal-level defaults)
   target_date:       Option<String>  // ISO date "YYYY-MM-DD"
   target_confidence: Option<u8>      // 1..=5
-  target_tempo:      Option<u32>     // bpm  [Phase C — deferred]
+  target_tempo:      Option<u16>     // bpm  [Phase 2]
 }
 ```
 
