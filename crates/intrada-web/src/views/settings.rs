@@ -10,7 +10,7 @@ use intrada_web::js_bridge;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
 use crate::components::{
-    Button, ButtonVariant, GroupedList, GroupedListRow, Icon, IconName, PageHeading, TextField,
+    Button, ButtonVariant, GroupedList, GroupedListRow, Icon, PageHeading, TextField,
 };
 
 /// Settings route — account info, practice defaults, sign-out, and the
@@ -185,7 +185,7 @@ pub fn SettingsView() -> impl IntoView {
                             on:click=move |ev| go_tokens.run(ev)
                         >
                             <span>"MCP tokens"</span>
-                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                            <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                         </button>
                     </GroupedListRow>
                     <GroupedListRow>
@@ -195,7 +195,7 @@ pub fn SettingsView() -> impl IntoView {
                             on:click=move |ev| go_audit.run(ev)
                         >
                             <span>"MCP activity"</span>
-                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                            <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                         </button>
                     </GroupedListRow>
                     <GroupedListRow>
@@ -205,7 +205,7 @@ pub fn SettingsView() -> impl IntoView {
                             on:click=sign_out_click
                         >
                             <span>"Sign out"</span>
-                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                            <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                         </button>
                     </GroupedListRow>
                     <GroupedListRow>
@@ -215,7 +215,7 @@ pub fn SettingsView() -> impl IntoView {
                             on:click=move |ev| go_delete.run(ev)
                         >
                             <span>"Delete account"</span>
-                            <Icon name=IconName::ChevronRight class="w-4 h-4 text-danger-text" />
+                            <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-danger-text" />
                         </button>
                     </GroupedListRow>
                 </GroupedList>

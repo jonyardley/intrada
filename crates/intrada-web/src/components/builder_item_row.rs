@@ -3,7 +3,7 @@ use leptos::prelude::*;
 use intrada_core::{ItemKind, LibraryItemView};
 use intrada_web::types::ItemType;
 
-use crate::components::{AccentBar, AccentRow, Icon, IconName, InlineTypeIndicator};
+use crate::components::{AccentBar, AccentRow, Icon, InlineTypeIndicator};
 
 /// Library row used inside the session builder: title + subtitle + type badge,
 /// with a toggle on the right that switches between "+ add" (idle) and
@@ -54,11 +54,11 @@ pub fn BuilderItemRow(
                     {move || {
                         if is_selected.get() {
                             view! {
-                                <Icon name=IconName::CheckCircle class="w-5 h-5 text-accent-text" />
+                                <Icon icon=icondata::LuCircleCheck class="w-5 h-5 text-accent-text" />
                             }.into_any()
                         } else {
                             view! {
-                                <Icon name=IconName::Plus class="w-5 h-5 text-muted" />
+                                <Icon icon=icondata::LuPlus class="w-5 h-5 text-muted" />
                             }.into_any()
                         }
                     }}

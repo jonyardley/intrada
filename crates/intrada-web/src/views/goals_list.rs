@@ -4,8 +4,7 @@ use leptos_router::components::A;
 use intrada_core::{GoalStatus, GoalView, ViewModel};
 
 use crate::components::{
-    AccentBar, AccentRow, BottomSheet, EmptyState, IconName, PageAddButton, PageHeading,
-    SkeletonCardList,
+    AccentBar, AccentRow, BottomSheet, EmptyState, PageAddButton, PageHeading, SkeletonCardList,
 };
 use crate::views::GoalFormView;
 use intrada_web::haptics::haptic_selection;
@@ -119,7 +118,7 @@ pub fn GoalsListView() -> impl IntoView {
                             };
                             view! {
                                 <EmptyState
-                                    icon=IconName::Star
+                                    icon=icondata::LuStar
                                     title=title
                                     body=body
                                 />

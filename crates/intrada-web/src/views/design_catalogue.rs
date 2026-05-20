@@ -14,7 +14,7 @@ use crate::components::{
     BrandMarkSize, BuilderItemRow, Button, ButtonSize, ButtonVariant, Card, CircularButton,
     CircularButtonSize, CircularButtonVariant, ContextMenu, ContextMenuAction, DayCell,
     DetailGroup, DetailRow, EditorEntry, EmptyState, EntryListEditor, FieldLabel, FormFieldError,
-    GroupedList, GroupedListRow, Icon, IconName, InlineTypeIndicator, ItemReflectionSheet,
+    GroupedList, GroupedListRow, Icon, InlineTypeIndicator, ItemReflectionSheet,
     ItemReflectionTarget, LibraryFilter, LibraryFilterTabs, LibraryItemCard, LibrarySetCard,
     LibraryTypeTabs, LineChart, PageAddButton, PageHeading, ProgressRing, PullToRefresh,
     RatingChips, SectionLabel, SetSaveForm, SetlistEntryRow, SkeletonBlock, SkeletonCardList,
@@ -814,21 +814,21 @@ pub fn DesignCatalogue() -> impl IntoView {
                 <div class="flex items-center gap-8">
                     <div class="flex flex-col items-center gap-2">
                         <span class="relative inline-flex">
-                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <Icon icon=icondata::LuClock class="w-6 h-6 text-secondary" />
                             <StatusDot state=Signal::derive(|| None) />
                         </span>
                         <span class="text-xs text-muted">"Idle"</span>
                     </div>
                     <div class="flex flex-col items-center gap-2">
                         <span class="relative inline-flex">
-                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <Icon icon=icondata::LuClock class="w-6 h-6 text-secondary" />
                             <StatusDot state=Signal::derive(|| Some(StatusDotState::Building)) />
                         </span>
                         <span class="text-xs text-muted">"Building (amber)"</span>
                     </div>
                     <div class="flex flex-col items-center gap-2">
                         <span class="relative inline-flex">
-                            <Icon name=IconName::Clock class="w-6 h-6 text-secondary" />
+                            <Icon icon=icondata::LuClock class="w-6 h-6 text-secondary" />
                             <StatusDot state=Signal::derive(|| Some(StatusDotState::Live)) />
                         </span>
                         <span class="text-xs text-muted">"Live (coral, pulse)"</span>
@@ -913,24 +913,24 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Player controls (medium primary + small secondary)"</p>
                             <div class="flex items-center justify-center gap-6">
-                                <CircularButton icon=IconName::Play aria_label="Play" />
-                                <CircularButton icon=IconName::RotateCcw aria_label="Reset" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=icondata::LuPlay aria_label="Play" />
+                                <CircularButton icon=icondata::LuRotateCcw aria_label="Reset" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
                             </div>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"All variants"</p>
                             <div class="flex items-center justify-center gap-4">
-                                <CircularButton icon=IconName::Play aria_label="Primary medium" />
-                                <CircularButton icon=IconName::Pause aria_label="Primary small" size=CircularButtonSize::Small />
-                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
-                                <CircularButton icon=IconName::RotateCcw aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=icondata::LuPlay aria_label="Primary medium" />
+                                <CircularButton icon=icondata::LuPause aria_label="Primary small" size=CircularButtonSize::Small />
+                                <CircularButton icon=icondata::LuRotateCcw aria_label="Secondary medium" variant=CircularButtonVariant::Secondary />
+                                <CircularButton icon=icondata::LuRotateCcw aria_label="Secondary small" size=CircularButtonSize::Small variant=CircularButtonVariant::Secondary />
                             </div>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"Disabled"</p>
                             <div class="flex items-center justify-center gap-4">
-                                <CircularButton icon=IconName::Play aria_label="Disabled primary" disabled=Signal::derive(|| true) />
-                                <CircularButton icon=IconName::RotateCcw aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
+                                <CircularButton icon=icondata::LuPlay aria_label="Disabled primary" disabled=Signal::derive(|| true) />
+                                <CircularButton icon=icondata::LuRotateCcw aria_label="Disabled secondary" variant=CircularButtonVariant::Secondary disabled=Signal::derive(|| true) />
                             </div>
                         </div>
                     </div>
@@ -1160,7 +1160,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Library"</p>
                             <EmptyState
-                                icon=IconName::Music
+                                icon=icondata::LuMusic
                                 title="No items in your library yet"
                                 body="Add a piece or exercise to get started."
                             >
@@ -1170,7 +1170,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Sets"</p>
                             <EmptyState
-                                icon=IconName::ListChecks
+                                icon=icondata::LuListChecks
                                 title="No saved sets yet"
                                 body="Save a setlist as a set when building a session."
                             >
@@ -1180,7 +1180,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"With CTA — Sessions"</p>
                             <EmptyState
-                                icon=IconName::CalendarDays
+                                icon=icondata::LuCalendarDays
                                 title="No sessions on this day"
                                 body="Start a practice session to see it here."
                             >
@@ -1190,7 +1190,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                         <div>
                             <p class="text-xs font-medium text-muted uppercase mb-2">"No CTA — Analytics"</p>
                             <EmptyState
-                                icon=IconName::BarChart
+                                icon=icondata::LuChartBar
                                 title="No session data yet"
                                 body="Complete some sessions to see your analytics."
                             />
@@ -1559,7 +1559,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                     <div class="text-sm font-medium text-primary">"Mon 12 May"</div>
                                     <div class="text-xs text-muted">"3 items \u{2022} 45 min"</div>
                                 </div>
-                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                                <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                             </div>
                         </GroupedListRow>
                         <GroupedListRow>
@@ -1568,7 +1568,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                     <div class="text-sm font-medium text-primary">"Sun 11 May"</div>
                                     <div class="text-xs text-muted">"5 items \u{2022} 1h 12m"</div>
                                 </div>
-                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                                <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                             </div>
                         </GroupedListRow>
                         <GroupedListRow>
@@ -1577,7 +1577,7 @@ pub fn DesignCatalogue() -> impl IntoView {
                                     <div class="text-sm font-medium text-primary">"Sat 10 May"</div>
                                     <div class="text-xs text-muted">"2 items \u{2022} 28 min"</div>
                                 </div>
-                                <Icon name=IconName::ChevronRight class="w-4 h-4 text-muted" />
+                                <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-muted" />
                             </div>
                         </GroupedListRow>
                     </GroupedList>

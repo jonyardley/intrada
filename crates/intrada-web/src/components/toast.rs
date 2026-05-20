@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use leptos::prelude::*;
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 use intrada_web::haptics;
 
 /// Auto-dismiss delay for a toast. Long enough for the eye to land on
@@ -107,7 +107,7 @@ pub fn ToastStack() -> impl IntoView {
 #[component]
 fn ToastItem(entry: ToastEntry) -> impl IntoView {
     let icon = match entry.kind {
-        ToastKind::Success => IconName::Check,
+        ToastKind::Success => icondata::LuCheck,
     };
     let kind_attr = match entry.kind {
         ToastKind::Success => "success",
@@ -115,7 +115,7 @@ fn ToastItem(entry: ToastEntry) -> impl IntoView {
     let message = entry.message.clone();
     view! {
         <div class="toast" data-toast-kind=kind_attr>
-            <Icon name=icon class="w-4 h-4" />
+            <Icon icon=icon class="w-4 h-4" />
             <span>{message}</span>
         </div>
     }

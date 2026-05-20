@@ -2,7 +2,7 @@ use leptos::ev;
 use leptos::prelude::*;
 use leptos_router::components::A;
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 
 /// Trailing action for top-level list pages — a circular icon-only "+"
 /// rendered in a [`PageHeading`]'s trailing slot.
@@ -35,7 +35,7 @@ pub fn PageAddButton(
     #[prop(optional)]
     on_click: Option<Callback<ev::MouseEvent>>,
 ) -> impl IntoView {
-    let icon = view! { <Icon name=IconName::Plus class="page-add-button-icon" /> };
+    let icon = view! { <Icon icon=icondata::LuPlus class="page-add-button-icon" /> };
 
     match (href, on_click) {
         (Some(href), _) => view! {

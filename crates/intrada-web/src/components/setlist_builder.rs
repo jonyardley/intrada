@@ -8,8 +8,7 @@ use wasm_bindgen::JsCast;
 use intrada_core::{Event, ItemKind, LibraryItemView, SessionEvent, ViewModel};
 
 use crate::components::{
-    BuilderItemRow, Button, ButtonVariant, Icon, IconName, LibraryTypeTabs, SessionReviewSheet,
-    SetLoader,
+    BuilderItemRow, Button, ButtonVariant, Icon, LibraryTypeTabs, SessionReviewSheet, SetLoader,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -141,7 +140,7 @@ pub fn SetlistBuilder() -> impl IntoView {
             // Search bar with built-in clear button (mirrors the library
             // list's affordance — clear the query without clearing tabs).
             <div class="search-bar">
-                <Icon name=IconName::Search class="search-bar-icon" />
+                <Icon icon=icondata::LuSearch class="search-bar-icon" />
                 <input
                     type="search"
                     class="search-bar-input"

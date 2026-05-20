@@ -5,7 +5,7 @@ use leptos_router::NavigateOptions;
 use intrada_core::{SessionStatusView, ViewModel};
 
 use crate::app::{FocusMode, SessionFocusPref};
-use crate::components::{Icon, IconName, SessionTimer};
+use crate::components::{Icon, SessionTimer};
 
 /// Active session view: wraps the SessionTimer, redirects when session state changes.
 #[component]
@@ -113,9 +113,9 @@ pub fn SessionActiveView() -> impl IntoView {
                     on:click=move |_| focus_signal.set(!focus_signal.get_untracked())
                 >
                     {move || if focus_signal.get() {
-                        view! { <Icon name=IconName::Minimize class="w-5 h-5" /> }
+                        view! { <Icon icon=icondata::LuMinimize class="w-5 h-5" /> }
                     } else {
-                        view! { <Icon name=IconName::Maximize class="w-5 h-5" /> }
+                        view! { <Icon icon=icondata::LuMaximize class="w-5 h-5" /> }
                     }}
                 </button>
             </div>

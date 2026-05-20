@@ -3,7 +3,7 @@ use leptos::task::spawn_local;
 
 use intrada_core::{Event, ViewModel};
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 use intrada_web::core_bridge::process_effects;
 use intrada_web::haptics::haptic_selection;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
@@ -81,7 +81,7 @@ pub fn ErrorBanner() -> impl IntoView {
                             }
                         }
                     >
-                        <Icon name=IconName::X class="w-4 h-4" />
+                        <Icon icon=icondata::LuX class="w-4 h-4" />
                     </button>
                 </div>
             </div>

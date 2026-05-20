@@ -8,8 +8,8 @@ use intrada_core::{Event, ItemEvent, ItemKind, ViewModel};
 
 use crate::components::{
     parse_target_bpm, AccentBar, BackLink, BottomSheet, Button, ButtonSize, ButtonVariant, Card,
-    DetailGroup, DetailRow, Icon, IconName, InlineTypeIndicator, LinkButton, SkeletonBlock,
-    SkeletonLine, StatCard, StatTone, TempoProgressChart,
+    DetailGroup, DetailRow, Icon, InlineTypeIndicator, LinkButton, SkeletonBlock, SkeletonLine,
+    StatCard, StatTone, TempoProgressChart,
 };
 use crate::views::EditLibraryItemForm;
 use intrada_web::core_bridge::process_effects;
@@ -272,7 +272,7 @@ pub fn DetailView() -> impl IntoView {
                             full_width=true
                             href="/sessions/new"
                         >
-                            <Icon name=IconName::Play class="w-4 h-4" />
+                            <Icon icon=icondata::LuPlay class="w-4 h-4" />
                             "Start Practice"
                         </LinkButton>
 

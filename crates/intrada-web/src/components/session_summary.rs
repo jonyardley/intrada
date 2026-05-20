@@ -4,8 +4,7 @@ use intrada_core::{CompletionStatus, EntryStatus, Event, SessionEvent, SetEvent,
 use intrada_web::validation::validate_achieved_tempo_input;
 
 use crate::components::{
-    use_toast, AccentBar, Button, ButtonVariant, Icon, IconName, RatingChips, SetSaveForm,
-    StatCard, StatTone,
+    use_toast, AccentBar, Button, ButtonVariant, Icon, RatingChips, SetSaveForm, StatCard, StatTone,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::js_bridge;
@@ -137,16 +136,16 @@ pub fn SessionSummary() -> impl IntoView {
                                         let notes_label = format!("Notes for {}", entry.item_title);
                                         let notes_input_id = format!("entry-notes-{}", entry.id);
                                         let (status_icon, status_color) = match entry.status {
-                                            EntryStatus::Completed => (IconName::Check, "text-success-text"),
-                                            EntryStatus::Skipped => (IconName::Ban, "text-warning-text"),
-                                            EntryStatus::NotAttempted => (IconName::Minus, "text-faint"),
+                                            EntryStatus::Completed => (icondata::LuCheck, "text-success-text"),
+                                            EntryStatus::Skipped => (icondata::LuBan, "text-warning-text"),
+                                            EntryStatus::NotAttempted => (icondata::LuMinus, "text-faint"),
                                         };
                                         view! {
                                             <div class="rounded-lg bg-surface-secondary p-3 space-y-2">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
                                                         <span class={format!("text-sm font-medium {}", status_color)}>
-                                                            <Icon name=status_icon class="w-4 h-4" />
+                                                            <Icon icon=status_icon class="w-4 h-4" />
                                                         </span>
                                                         <span class="text-sm font-medium text-primary">{entry.item_title}</span>
                                                         <span class="text-xs text-faint">{entry.item_type.to_string()}</span>

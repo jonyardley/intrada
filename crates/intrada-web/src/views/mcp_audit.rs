@@ -4,7 +4,7 @@ use intrada_core::{Event, McpAuditEntry, McpAuditEvent, ViewModel};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
-use crate::components::{BackLink, EmptyState, GroupedList, GroupedListRow, IconName};
+use crate::components::{BackLink, EmptyState, GroupedList, GroupedListRow};
 
 /// Account-settings sub-page that shows the user's MCP audit log —
 /// every successful write tool call attributed to one of their PATs.
@@ -49,7 +49,7 @@ pub fn McpAuditView() -> impl IntoView {
                     view! {
                         <Show when=move || ld && !l fallback=|| view! { <></> }>
                             <EmptyState
-                                icon=IconName::Clock
+                                icon=icondata::LuClock
                                 title="No activity yet"
                                 body="When an AI client uses one of your tokens to create or edit something, it'll appear here."
                             />

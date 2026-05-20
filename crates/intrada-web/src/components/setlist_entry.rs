@@ -4,7 +4,7 @@ use web_sys::PointerEvent;
 use intrada_core::ItemKind;
 use intrada_web::types::ItemType;
 
-use crate::components::{DragHandle, Icon, IconName, InlineTypeIndicator};
+use crate::components::{DragHandle, Icon, InlineTypeIndicator};
 
 /// A single entry in the setlist (building or active phase).
 ///
@@ -129,7 +129,7 @@ pub fn SetlistEntryRow(
                                     title="Move up"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    <Icon name=IconName::ChevronUp class="w-4 h-4" />
+                                    <Icon icon=icondata::LuChevronUp class="w-4 h-4" />
                                 </button>
                             }
                         })}
@@ -141,7 +141,7 @@ pub fn SetlistEntryRow(
                                     title="Move down"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    <Icon name=IconName::ChevronDown class="w-4 h-4" />
+                                    <Icon icon=icondata::LuChevronDown class="w-4 h-4" />
                                 </button>
                             }
                         })}
@@ -153,7 +153,7 @@ pub fn SetlistEntryRow(
                                     title="Remove"
                                     on:click=move |_| cb.run(id.clone())
                                 >
-                                    <Icon name=IconName::X class="w-4 h-4" />
+                                    <Icon icon=icondata::LuX class="w-4 h-4" />
                                 </button>
                             }
                         })}

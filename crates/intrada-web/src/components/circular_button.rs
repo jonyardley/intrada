@@ -2,7 +2,7 @@ use intrada_web::haptics;
 use leptos::ev;
 use leptos::prelude::*;
 
-use crate::components::{Icon, IconName};
+use crate::components::Icon;
 
 /// Size of the circular button. Medium (56px) is the play/pause primary
 /// action; Small (44px) is for secondary actions sitting next to it
@@ -32,7 +32,7 @@ pub enum CircularButtonVariant {
 #[component]
 pub fn CircularButton(
     /// The icon to render in the centre of the button.
-    icon: IconName,
+    icon: icondata::Icon,
     /// Accessible label — required because the button has no visible text.
     #[prop(into)]
     aria_label: String,
@@ -72,7 +72,7 @@ pub fn CircularButton(
                 }
             }
         >
-            <Icon name=icon class=icon_size />
+            <Icon icon=icon class=icon_size />
         </button>
     }
 }

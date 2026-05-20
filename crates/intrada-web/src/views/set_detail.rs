@@ -6,8 +6,8 @@ use leptos_router::NavigateOptions;
 use intrada_core::{Event, ItemKind, SessionEvent, SetEvent, SetView, ViewModel};
 
 use crate::components::{
-    AccentBar, AccentRow, BackLink, Button, ButtonSize, ButtonVariant, Icon, IconName,
-    InlineTypeIndicator, SkeletonBlock, SkeletonLine,
+    AccentBar, AccentRow, BackLink, Button, ButtonSize, ButtonVariant, Icon, InlineTypeIndicator,
+    SkeletonBlock, SkeletonLine,
 };
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, ItemType, SharedCore};
@@ -203,7 +203,7 @@ fn render_loaded(
             on_click=on_start_practice
         >
             <span class="inline-flex items-center gap-1.5">
-                <Icon name=IconName::Play class="w-4 h-4" />
+                <Icon icon=icondata::LuPlay class="w-4 h-4" />
                 "Start Practice"
             </span>
         </Button>

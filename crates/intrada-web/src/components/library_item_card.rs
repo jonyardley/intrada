@@ -6,8 +6,7 @@ use leptos_router::NavigateOptions;
 use intrada_core::{ItemKind, LibraryItemView};
 
 use crate::components::{
-    AccentBar, AccentRow, ContextMenu, ContextMenuAction, Icon, IconName, InlineTypeIndicator,
-    SwipeActions,
+    AccentBar, AccentRow, ContextMenu, ContextMenuAction, Icon, InlineTypeIndicator, SwipeActions,
 };
 use intrada_web::types::ItemType;
 
@@ -56,7 +55,7 @@ pub fn LibraryItemCard(
                     }}
                 </div>
                 <InlineTypeIndicator item_type=indicator_type />
-                <Icon name=IconName::ChevronRight class="w-4 h-4 text-faint shrink-0" />
+                <Icon icon=icondata::LuChevronRight class="w-4 h-4 text-faint shrink-0" />
             </AccentRow>
         </A>
     };

@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use intrada_core::{Event, SetEvent, ViewModel};
 
-use crate::components::{AccentBar, AccentRow, Button, ButtonVariant, Icon, IconName};
+use crate::components::{AccentBar, AccentRow, Button, ButtonVariant, Icon};
 use intrada_web::core_bridge::process_effects;
 use intrada_web::types::{IsLoading, IsSubmitting, SharedCore};
 
@@ -45,8 +45,8 @@ pub fn SetLoader() -> impl IntoView {
                                 "inline-flex transition-transform"
                             }>
                                 <Icon
-                                    name=IconName::ChevronRight
-                                    class="w-4 h-4 text-muted".to_string()
+                                    icon=icondata::LuChevronRight
+                                    class="w-4 h-4 text-muted"
                                 />
                             </span>
                             <span class="section-title" style="margin-bottom: 0">
