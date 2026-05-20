@@ -45,6 +45,15 @@ mod tests {
     }
 
     #[test]
+    fn allowlist_tolerates_empty_segments() {
+        std::env::set_var("INTRADA_TEST_FF_ALLOW_3", ",,user_abc,,user_def,");
+        assert!(user_in_allowlist("INTRADA_TEST_FF_ALLOW_3", "user_abc"));
+        assert!(user_in_allowlist("INTRADA_TEST_FF_ALLOW_3", "user_def"));
+        assert!(!user_in_allowlist("INTRADA_TEST_FF_ALLOW_3", ""));
+        std::env::remove_var("INTRADA_TEST_FF_ALLOW_3");
+    }
+
+    #[test]
     fn allowlist_empty_or_unset_rejects() {
         std::env::set_var("INTRADA_TEST_FF_ALLOW_2", "");
         assert!(!user_in_allowlist("INTRADA_TEST_FF_ALLOW_2", "anyone"));
