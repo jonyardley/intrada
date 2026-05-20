@@ -753,3 +753,100 @@ async fn patch_goal_item_target_tempo_out_of_range_returns_400() {
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
+
+// ── Three-state clear-via-null tests (double_option deserializer) ─────
+//
+// JSON `null` on an `Option<Option<T>>` field must decode as `Some(None)`
+// (clear), not `None` (skip).
+
+#[tokio::test]
+async fn update_goal_clears_title_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/goals",
+        json!({ "date": "2026-05-15", "title": "Old Title" }),
+    )
+    .await;
+    let created: Goal = common::json(&body);
+    assert_eq!(created.title.as_deref(), Some("Old Title"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "title": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.title.is_none());
+}
+
+#[tokio::test]
+async fn update_goal_clears_notes_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/goals",
+        json!({ "date": "2026-05-15", "notes": "Bars 12-24" }),
+    )
+    .await;
+    let created: Goal = common::json(&body);
+    assert_eq!(created.notes.as_deref(), Some("Bars 12-24"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "notes": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.notes.is_none());
+}
+
+#[tokio::test]
+async fn update_goal_clears_deadline_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/goals",
+        json!({ "date": "2026-05-15", "deadline": "2026-06-01" }),
+    )
+    .await;
+    let created: Goal = common::json(&body);
+    assert_eq!(created.deadline.as_deref(), Some("2026-06-01"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "deadline": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.deadline.is_none());
+}
+
+#[tokio::test]
+async fn update_goal_skip_preserves_existing_when_field_omitted() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/goals",
+        json!({ "date": "2026-05-15", "title": "Recital", "deadline": "2026-06-01" }),
+    )
+    .await;
+    let created: Goal = common::json(&body);
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/goals/{}", created.id),
+        json!({ "title": "Recital (final)" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert_eq!(updated.title.as_deref(), Some("Recital (final)"));
+    assert_eq!(updated.deadline.as_deref(), Some("2026-06-01"));
+}
