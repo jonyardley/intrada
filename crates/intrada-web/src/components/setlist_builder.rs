@@ -61,6 +61,25 @@ pub fn SetlistBuilder() -> impl IntoView {
     let close_review = Callback::new(move |_| review_open.set(false));
     let open_review = move |_| review_open.set(true);
 
+    // Pre-loaded setlist (e.g. "Practice this goal") auto-opens the review
+    // sheet on mount. Guarded by `auto_opened` so dismissing the sheet
+    // doesn't bounce it back open.
+    let auto_opened = RwSignal::new(false);
+    Effect::new(move |_| {
+        if auto_opened.get_untracked() {
+            return;
+        }
+        let has_entries = view_model.with(|vm| {
+            vm.building_setlist
+                .as_ref()
+                .is_some_and(|s| !s.entries.is_empty())
+        });
+        if has_entries {
+            review_open.set(true);
+            auto_opened.set(true);
+        }
+    });
+
     // Set of item ids currently in the setlist — used to render the toggle
     // state on each library row.
     let selected_ids = Memo::new(move |_| {

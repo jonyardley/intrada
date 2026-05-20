@@ -92,9 +92,9 @@ The user clicks "Mark Complete" — auto-suggest never auto-completes. This pres
 
 | Phase | Scope | Status |
 |---|---|---|
-| **1 (A+B bundled)** | Date target on `GoalItem` + Confidence target (goal-level default + per-item override) + per-item edit UI + countdown badges + progress display pulling `latest_score` + auto-suggest banner on completion criterion | **This spec ships with Phase 1's PR** |
-| **2 (C)** | Tempo target (goal-level default + per-item override) + tempo progress from `latest_achieved_tempo` + auto-suggest extended | Separate PR |
-| **3 (D)** | "Practice this goal" button on goal detail → starts a session pre-loaded with the goal's items in order of "least ready" | Separate PR; depends on session-builder reuse |
+| **1 (A+B bundled)** | Date target on `GoalItem` + Confidence target (goal-level default + per-item override) + per-item edit UI + countdown badges + progress display pulling `latest_score` + auto-suggest banner on completion criterion | Shipped in #733 |
+| **2 (C)** | Tempo target (goal-level default + per-item override) + tempo progress from `latest_achieved_tempo` + auto-suggest extended | Shipped in #736 |
+| **3 (D)** | "Practice this goal" button on goal detail → loads the goal's items into the existing session builder ordered "least ready first", then opens the review sheet | Stacked on #736; spec extended below |
 | **4 (Future)** | Cross-goal session builder ("show me what's due across all active goals") + spaced-practice / interleaving suggester | Out of scope for this spec; revisit after Phase 3 |
 
 ### Phase 1 — file inventory
@@ -107,6 +107,61 @@ The user clicks "Mark Complete" — auto-suggest never auto-completes. This pres
 - **UI — goal edit form**: [crates/intrada-web/src/views/goal_edit_form.rs](crates/intrada-web/src/views/goal_edit_form.rs) (introduced in #726) — add goal-level `target_confidence` field.
 - **UI — goal detail**: [crates/intrada-web/src/views/goal_detail.rs](crates/intrada-web/src/views/goal_detail.rs) — linked-item rows show "target X / current Y" pill; tapping an item opens a per-item target editor (BottomSheet); auto-suggest banner above actions when criterion met.
 - **UI — new component**: `GoalItemTargetsSheet` (private to `goal_detail.rs`, mirrors `LinkItemsSheet` shape from #732).
+
+### Phase 3 — "Practice this goal"
+
+**Goal**: from `goal_detail`, one tap loads all of the goal's linked items into the existing session builder, ordered "least ready first," and opens the review sheet. The user confirms / tweaks / starts.
+
+**No new screen.** No goal/session coupling. Goal stays untouched — sessions update `latest_score` and `latest_achieved_tempo` on library items, which reshape the goal's chips on the next render.
+
+#### UX
+
+- New primary `<Button>` on `goal_detail.rs` ("Practice this goal") **above the linked-items list**. Hidden when the goal has zero items or is completed.
+- Tap dispatches `SessionEvent::LoadGoalIntoSetlist { goal_id }` and navigates to `/sessions/new`. The review sheet auto-opens once the builder mounts and sees `building.entries` is non-empty (a small `Effect` on mount). The new event handler:
+  1. Reads the goal from `model.goals`.
+  2. Reads each linked item from `model.items` to get `latest_score` / `latest_achieved_tempo`.
+  3. Orders items via the bucket sort (below). Stale links (item id no longer in library) are skipped silently.
+  4. Populates `building.entries` with one `SetlistEntry` per surviving item.
+  5. Renders.
+- The existing builder + review sheet handle the rest. User can drop items, reorder, set session intention, then `Start practising`.
+
+#### Ordering — bucket sort
+
+For each linked item, compute a bucket:
+
+| Bucket | Predicate |
+|---|---|
+| 0 (top, most urgent) | item has no `practice` summary at all (never practised) |
+| 1 | item has an effective target (confidence or tempo) that hasn't been met by the latest session |
+| 2 (bottom) | everything else (no target set, or all set targets met) |
+
+Stable sort by bucket ascending. Within a bucket, preserve the goal's existing item order (the order they appear in `goal.items`).
+
+This is intentionally crude. Tracked for evolution in [#738](https://github.com/jonyardley/intrada/issues/738) once we have user-behaviour data — possible refinements: gap-ratio, recency weighting, last-N-sessions, user-configurable. Same eventual formula likely also tightens the Phase 1 "looks ready" rule (Open question #1).
+
+#### No-coupling decision
+
+The active session does not store a `source_goal_id`. The goal launched it, but the session is just a session — same as today's flow from a Set. Post-session, the goal detail surfaces "ready" derivation from the updated `latest_score` and the existing auto-suggest banner; no new wiring needed.
+
+If we later want "this session contributed to Goal X" provenance for analytics or post-session UX, that's a separate Phase 4-ish concern and is easier to bolt on cleanly than to retrofit out.
+
+#### File inventory
+
+- **Core handler**: new `SessionEvent::LoadGoalIntoSetlist { goal_id }` in [crates/intrada-core/src/domain/session.rs](crates/intrada-core/src/domain/session.rs). Mirrors `SetEvent::LoadSetIntoSetlist` from #732 — same shape, same model mutation. Ordering helper kept private to the module.
+- **UI — goal detail**: new "Practice this goal" button + dispatch in [crates/intrada-web/src/views/goal_detail.rs](crates/intrada-web/src/views/goal_detail.rs). Hidden when `items.is_empty() || status == Completed`.
+- **UI — builder**: no changes. The builder already renders whatever `building.entries` it's given.
+- **No API changes.** No new DB columns. No new HTTP endpoints.
+
+#### Coverage
+
+- **Core**: bucket-sort unit tests against synthetic `Model` snapshots — never-practised items first, then targeted-unmet, then met/no-target; stale links skipped; existing `goal.items` order preserved within a bucket. ≥ 5 tests.
+- **API**: none — no API surface added.
+- **UI**: WASM shell, excluded.
+
+#### Open questions for Phase 3
+
+1. **Goal title visible during the session?** The active session screen currently shows no goal context. Spec says "no new screen" and "no coupling." Recommend: leave as-is for Phase 3; revisit if users ask "which goal was I practising again?"
+2. **Empty case after stale-link skip.** If every item was deleted from the library since being linked, the builder ends up empty. Recommend: still navigate to builder (consistent UX); empty builder already has its own empty state.
 
 ### Phase 1 — what stays the same
 

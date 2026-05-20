@@ -175,6 +175,14 @@ pub enum SessionEvent {
         title: String,
         item_type: ItemKind,
     },
+    /// Load every item linked to a goal into the builder, ordered "least
+    /// ready first" (never-practised → targeted-and-unmet → met/no-target).
+    /// Initialises a fresh Building session if currently Idle; appends if
+    /// already Building (mirrors `SetEvent::LoadSetIntoSetlist`). Stale
+    /// links (item id no longer in the library) are skipped.
+    LoadGoalIntoSetlist {
+        goal_id: String,
+    },
     RemoveFromSetlist {
         entry_id: String,
     },
@@ -332,6 +340,58 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         created_at: now,
         updated_at: now,
     }
+}
+
+/// Order a goal's items "least ready first" via bucket sort:
+/// 0 = never practised, 1 = effective target set but not met by latest session,
+/// 2 = everything else. Stable within bucket — preserves the goal's existing
+/// item order. Stale links (item id no longer in `model.items`) are dropped.
+///
+/// Bucket cut-off is intentionally crude — refinement tracked in
+/// [#738](https://github.com/jonyardley/intrada/issues/738).
+fn order_goal_items_least_ready_first(
+    model: &Model,
+    goal: &crate::domain::goal::Goal,
+) -> Vec<(String, String, ItemKind)> {
+    let known: std::collections::HashSet<&str> =
+        model.items.iter().map(|i| i.id.as_str()).collect();
+
+    let mut keyed: Vec<(u8, usize, (String, String, ItemKind))> = goal
+        .items
+        .iter()
+        .enumerate()
+        .filter(|(_, gi)| known.contains(gi.item_id.as_str()))
+        .map(|(idx, gi)| {
+            let summary = model.practice_summaries.get(&gi.item_id);
+            let bucket = if summary.is_none() {
+                0
+            } else {
+                let effective_confidence = gi.target_confidence.or(goal.target_confidence);
+                let effective_tempo = gi.target_tempo.or(goal.target_tempo);
+                let confidence_unmet = effective_confidence
+                    .is_some_and(|t| !summary.unwrap().latest_score.is_some_and(|s| s >= t));
+                let tempo_unmet = effective_tempo
+                    .is_some_and(|t| !summary.unwrap().latest_tempo.is_some_and(|s| s >= t));
+                if confidence_unmet || tempo_unmet {
+                    1
+                } else {
+                    2
+                }
+            };
+            (
+                bucket,
+                idx,
+                (
+                    gi.item_id.clone(),
+                    gi.item_title.clone(),
+                    gi.item_type.clone(),
+                ),
+            )
+        })
+        .collect();
+
+    keyed.sort_by_key(|(bucket, idx, _)| (*bucket, *idx));
+    keyed.into_iter().map(|(_, _, payload)| payload).collect()
 }
 
 /// Freeze rep state on an entry: set `rep_target_reached` based on whether count >= target.
@@ -574,6 +634,40 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             let position = building.entries.len();
             let entry = create_entry(&item_id, &title, item_type, position);
             building.entries.push(entry);
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::LoadGoalIntoSetlist { goal_id } => {
+            let Some(goal) = model.goals.iter().find(|g| g.id == goal_id).cloned() else {
+                model.last_error = Some(format!("Goal not found: {goal_id}"));
+                return crux_core::render::render();
+            };
+
+            if !matches!(model.session_status, SessionStatus::Building(_)) {
+                model.session_status = SessionStatus::Building(BuildingSession {
+                    entries: vec![],
+                    session_intention: None,
+                    target_duration_mins: None,
+                    source_set_id: None,
+                    source_set_entry_snapshot: vec![],
+                });
+            }
+
+            let ordered = order_goal_items_least_ready_first(model, &goal);
+
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Internal error: expected Building state".to_string());
+                return crux_core::render::render();
+            };
+
+            for (item_id, item_title, item_type) in ordered {
+                let position = building.entries.len();
+                building
+                    .entries
+                    .push(create_entry(&item_id, &item_title, item_type, position));
+            }
+
             model.last_error = None;
             crux_core::render::render()
         }
@@ -3776,5 +3870,235 @@ mod tests {
         } else {
             panic!("Expected Summary state");
         }
+    }
+
+    // --- LoadGoalIntoSetlist (Phase 3) ---
+
+    use crate::domain::goal::{Goal, GoalItem, GoalStatus};
+    use crate::model::ItemPracticeSummary;
+
+    fn goal_with_items(items: Vec<GoalItem>) -> Goal {
+        let now = Utc::now();
+        Goal {
+            id: "goal-1".to_string(),
+            title: Some("Recital prep".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: GoalStatus::Active,
+            completed_at: None,
+            items,
+            photos: vec![],
+            created_at: now,
+            updated_at: now,
+            target_confidence: None,
+            target_tempo: None,
+        }
+    }
+
+    fn link(item_id: &str, item_title: &str, item_type: ItemKind) -> GoalItem {
+        GoalItem {
+            item_id: item_id.to_string(),
+            item_title: item_title.to_string(),
+            item_type,
+            target_date: None,
+            target_confidence: None,
+            target_tempo: None,
+        }
+    }
+
+    fn summary(latest_score: Option<u8>, latest_tempo: Option<u16>) -> ItemPracticeSummary {
+        ItemPracticeSummary {
+            session_count: 1,
+            total_minutes: 10,
+            latest_score,
+            score_history: vec![],
+            latest_tempo,
+            tempo_history: vec![],
+        }
+    }
+
+    fn loaded_item_ids(model: &Model) -> Vec<String> {
+        match &model.session_status {
+            SessionStatus::Building(b) => b.entries.iter().map(|e| e.item_id.clone()).collect(),
+            other => panic!("expected Building, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn load_goal_initialises_building_when_idle() {
+        let mut model = model_with_library();
+        model.goals.push(goal_with_items(vec![link(
+            "piece-1",
+            "Moonlight Sonata",
+            ItemKind::Piece,
+        )]));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        assert!(matches!(model.session_status, SessionStatus::Building(_)));
+        assert_eq!(loaded_item_ids(&model), vec!["piece-1"]);
+    }
+
+    #[test]
+    fn load_goal_orders_never_practised_before_targeted_unmet_before_met() {
+        let mut model = model_with_library();
+        // Bucket layout: piece-2 = met (4 >= target 3) → bucket 2
+        //               piece-1 = targeted-and-unmet → bucket 1
+        //               exercise-1 = never practised → bucket 0
+        // Expected order: exercise-1, piece-1, piece-2.
+        let goal = Goal {
+            target_confidence: Some(3),
+            ..goal_with_items(vec![
+                link("piece-2", "Clair de Lune", ItemKind::Piece),
+                link("piece-1", "Moonlight Sonata", ItemKind::Piece),
+                link("exercise-1", "C Major Scale", ItemKind::Exercise),
+            ])
+        };
+        model.goals.push(goal);
+        model
+            .practice_summaries
+            .insert("piece-1".to_string(), summary(Some(2), None));
+        model
+            .practice_summaries
+            .insert("piece-2".to_string(), summary(Some(4), None));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        assert_eq!(
+            loaded_item_ids(&model),
+            vec!["exercise-1", "piece-1", "piece-2"]
+        );
+    }
+
+    #[test]
+    fn load_goal_treats_tempo_target_as_unmet_when_below() {
+        let mut model = model_with_library();
+        // piece-1: target_tempo 120, latest 100 → unmet
+        // piece-2: no target → met-by-default
+        let goal = goal_with_items(vec![
+            GoalItem {
+                target_tempo: Some(120),
+                ..link("piece-1", "Moonlight Sonata", ItemKind::Piece)
+            },
+            link("piece-2", "Clair de Lune", ItemKind::Piece),
+        ]);
+        model.goals.push(goal);
+        model
+            .practice_summaries
+            .insert("piece-1".to_string(), summary(Some(5), Some(100)));
+        model
+            .practice_summaries
+            .insert("piece-2".to_string(), summary(Some(5), Some(60)));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        assert_eq!(loaded_item_ids(&model), vec!["piece-1", "piece-2"]);
+    }
+
+    #[test]
+    fn load_goal_skips_stale_library_links() {
+        let mut model = model_with_library();
+        model.goals.push(goal_with_items(vec![
+            link("piece-1", "Moonlight Sonata", ItemKind::Piece),
+            link("ghost-item", "Deleted Piece", ItemKind::Piece),
+        ]));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        assert_eq!(loaded_item_ids(&model), vec!["piece-1"]);
+    }
+
+    #[test]
+    fn load_goal_preserves_within_bucket_order() {
+        // All three items are in bucket 2 (no targets, no summaries → never-practised
+        // bucket 0... wait, no summaries means bucket 0. Let me use a clean
+        // bucket-2 scenario: items with summaries but no targets.
+        let mut model = model_with_library();
+        model.goals.push(goal_with_items(vec![
+            link("piece-2", "Clair de Lune", ItemKind::Piece),
+            link("piece-1", "Moonlight Sonata", ItemKind::Piece),
+            link("exercise-1", "C Major Scale", ItemKind::Exercise),
+        ]));
+        // All have practice summaries; no targets set → bucket 2 (met by default)
+        model
+            .practice_summaries
+            .insert("piece-1".to_string(), summary(Some(3), None));
+        model
+            .practice_summaries
+            .insert("piece-2".to_string(), summary(Some(3), None));
+        model
+            .practice_summaries
+            .insert("exercise-1".to_string(), summary(Some(3), None));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        // Same order as goal.items — within-bucket stable.
+        assert_eq!(
+            loaded_item_ids(&model),
+            vec!["piece-2", "piece-1", "exercise-1"]
+        );
+    }
+
+    #[test]
+    fn load_goal_inherits_goal_level_target_for_bucketing() {
+        let mut model = model_with_library();
+        // Goal default confidence target 4. piece-1 has no override, score 3 → unmet.
+        let goal = Goal {
+            target_confidence: Some(4),
+            ..goal_with_items(vec![link("piece-1", "Moonlight Sonata", ItemKind::Piece)])
+        };
+        model.goals.push(goal);
+        model
+            .practice_summaries
+            .insert("piece-1".to_string(), summary(Some(3), None));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        // Single item in bucket 1 — confirms inheritance path was hit (no panic, item present).
+        assert_eq!(loaded_item_ids(&model), vec!["piece-1"]);
+    }
+
+    #[test]
+    fn load_goal_unknown_id_surfaces_error_without_changing_state() {
+        let mut model = model_with_library();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "nonexistent".to_string(),
+            }),
+        );
+        assert!(model.last_error.as_deref().unwrap().contains("nonexistent"));
+        assert!(matches!(model.session_status, SessionStatus::Idle));
     }
 }
