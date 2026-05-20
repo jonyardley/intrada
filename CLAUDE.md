@@ -516,8 +516,12 @@ guidance above.
 6. **Open a tracked issue for every deferred / out-of-scope item**, with
    appropriate labels (`horizon:now|next|later`, kind: `ux` / `architecture`
    / `bug` / `accessibility` / `ios` / `pillar:*`). PR descriptions are not
-   tracking — they get auto-collapsed after merge. Mention the issue numbers
-   in the self-review comment so the link is bidirectional.
+   tracking — they get auto-collapsed after merge. Open the issues *before*
+   posting the self-review comment, not after: phrasings like "will open a
+   follow-up if it bites" are not acceptable. Every self-review comment
+   must end with an explicit `Deferred items tracked: #N, #M` line (or
+   `none — all flagged items addressed inline`) so the question is always
+   answered. Silent omission is the failure mode.
 
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.
