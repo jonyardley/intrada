@@ -51,7 +51,6 @@ pub enum Event {
     RefetchItems,
     RefetchSessions,
     RefetchSets,
-    RefetchGoals,
     /// User signed out — reset all user-scoped state so the next sign-in
     /// (possibly a different user on the same browser) doesn't inherit the
     /// previous user's items, sessions, MCP tokens/audit, errors, etc.
@@ -96,6 +95,13 @@ pub enum Event {
     },
     GoalCreated {
         temp_id: String,
+        goal: Goal,
+    },
+    /// Mutate-response confirmation for goal-item write paths (link, unlink,
+    /// per-item targets update, complete, reopen). Replaces the matching
+    /// goal in `model.goals` and `model.current_goal`. Cheaper than a list
+    /// refetch; keeps DOM stable since the `<For>` keys by goal id.
+    GoalUpdated {
         goal: Goal,
     },
     SetUpdated {
@@ -186,7 +192,6 @@ impl App for Intrada {
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
             Event::RefetchSets => http::fetch_sets(&model.api_base_url),
-            Event::RefetchGoals => http::fetch_goals(&model.api_base_url),
             Event::SignedOut => {
                 model.reset_for_sign_out();
                 // Also clear the crash-recovery blob in localStorage —
@@ -259,6 +264,18 @@ impl App for Intrada {
                     *existing = goal;
                 } else {
                     model.goals.push(goal);
+                }
+                model.record_success();
+                crux_core::render::render()
+            }
+            Event::GoalUpdated { goal } => {
+                if let Some(existing) = model.goals.iter_mut().find(|g| g.id == goal.id) {
+                    *existing = goal.clone();
+                }
+                if let Some(current) = &model.current_goal {
+                    if current.id == goal.id {
+                        model.current_goal = Some(goal);
+                    }
                 }
                 model.record_success();
                 crux_core::render::render()
@@ -2675,6 +2692,101 @@ mod tests {
 
         assert_eq!(model.goals.len(), 1);
         assert_eq!(model.goals[0].id, "server_ulid");
+    }
+
+    #[test]
+    fn goal_updated_replaces_list_entry_and_current_goal() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let now = chrono::Utc::now();
+        let original = Goal {
+            id: "g1".to_string(),
+            title: Some("v1".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+            target_confidence: None,
+            target_tempo: None,
+        };
+        model.goals.push(original.clone());
+        model.current_goal = Some(original);
+
+        let updated = Goal {
+            title: Some("v2".to_string()),
+            target_confidence: Some(4),
+            ..model.goals[0].clone()
+        };
+        let _cmd = app.update(
+            Event::GoalUpdated {
+                goal: updated.clone(),
+            },
+            &mut model,
+        );
+
+        assert_eq!(model.goals.len(), 1);
+        assert_eq!(model.goals[0].title.as_deref(), Some("v2"));
+        assert_eq!(model.goals[0].target_confidence, Some(4));
+        assert_eq!(
+            model.current_goal.as_ref().unwrap().title.as_deref(),
+            Some("v2")
+        );
+    }
+
+    #[test]
+    fn goal_updated_leaves_current_goal_alone_when_id_differs() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let other_current = Goal {
+            id: "g-other".to_string(),
+            title: Some("untouched".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+            target_confidence: None,
+            target_tempo: None,
+        };
+        model.current_goal = Some(other_current);
+        model.goals.push(Goal {
+            id: "g1".to_string(),
+            title: Some("v1".to_string()),
+            date: "2026-05-19".to_string(),
+            notes: None,
+            deadline: None,
+            status: crate::domain::goal::GoalStatus::Active,
+            completed_at: None,
+            items: Vec::new(),
+            photos: Vec::new(),
+            created_at: now,
+            updated_at: now,
+            target_confidence: None,
+            target_tempo: None,
+        });
+
+        let updated = Goal {
+            title: Some("v2".to_string()),
+            ..model.goals[0].clone()
+        };
+        let _cmd = app.update(Event::GoalUpdated { goal: updated }, &mut model);
+
+        assert_eq!(model.goals[0].title.as_deref(), Some("v2"));
+        assert_eq!(
+            model.current_goal.as_ref().unwrap().title.as_deref(),
+            Some("untouched")
+        );
     }
 
     #[test]
