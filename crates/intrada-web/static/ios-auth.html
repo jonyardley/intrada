@@ -4,9 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intrada — Sign in</title>
-  <!-- Self-hosted Clerk SDK (#580). Loaded same-origin in parallel with
-       the inline script below to cut iOS-on-cellular sign-in latency.
-       Re-vendor with scripts/vendor-clerk-sdk.sh. -->
+  <!-- Self-hosted (#580); re-vendor with scripts/vendor-clerk-sdk.sh. -->
   <script src="/clerk/clerk.browser.js"></script>
   <style>
     body {
@@ -58,10 +56,8 @@
         }
         if (!pk) throw new Error('Missing pk parameter');
 
-        // The Clerk browser build reads this global during its own
-        // execution and sets window.Clerk. Set it before the head-loaded
-        // script's load event fires (it's almost certainly already loaded
-        // by this point, but if not, window.Clerk is gated on it).
+        // Set before clerk.load() reads the global (#580 changed the
+        // SDK load order from in-body to head-blocking).
         window.__clerk_publishable_key = pk;
 
         var clerk = window.Clerk;

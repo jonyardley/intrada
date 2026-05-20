@@ -190,9 +190,7 @@
     <!-- Self-hosted Sentry browser SDK — see comment on the <script> tag
          in <head>. Re-vendor with scripts/vendor-sentry-sdk.sh. -->
     <link data-trunk rel="copy-dir" href="static/sentry" />
-    <!-- Self-hosted Clerk browser SDK — kicked off in <head> so it loads
-         in parallel with the WASM bundle. Re-vendor with
-         scripts/vendor-clerk-sdk.sh. -->
+    <!-- Re-vendor with scripts/vendor-clerk-sdk.sh. -->
     <link data-trunk rel="copy-dir" href="static/clerk" />
     <style>
       /* iOS splash: CSS activates the overlay the instant #app-splash
@@ -265,11 +263,7 @@
       }
     </script>
     <script>
-      // Self-hosted Clerk SDK — kicked off during HTML parse so it loads
-      // in parallel with the WASM bundle, not serially after WASM init
-      // (#580). The Tauri iOS shell never uses Clerk JS (PAT-based auth,
-      // see __intrada_auth below) so we skip the 312KB download there.
-      // Re-vendor with scripts/vendor-clerk-sdk.sh.
+      // Parallel-with-WASM SDK load (#580); Tauri shell uses PATs, skipped.
       if (location.protocol !== 'tauri:') {
         var s = document.createElement('script');
         s.src = '/clerk/clerk.browser.js';

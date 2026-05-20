@@ -42,8 +42,8 @@ mkdir -p "$DEST_DIR"
 echo "Downloading Clerk SDK v${CLERK_SDK_VERSION}…"
 curl -sLf "$URL" -o "$DEST_FILE"
 
-# Quick sanity check: file should reference Clerk somewhere near the top.
-if ! head -c 4096 "$DEST_FILE" | grep -qi "clerk"; then
+# Clerk-specific token from the minified bundle, not just "clerk" anywhere.
+if ! head -c 8192 "$DEST_FILE" | grep -q "__clerk_modal_state"; then
     echo "❌ Downloaded file doesn't look like the Clerk SDK — aborting."
     rm -f "$DEST_FILE"
     exit 1
@@ -51,11 +51,3 @@ fi
 
 printf '✓ Vendored %s (%s)\n' "$DEST_FILE" "$(wc -c < "$DEST_FILE" | awk '{printf "%.1fKB", $1/1024}')"
 printf '  Version : %s\n' "$CLERK_SDK_VERSION"
-printf '\n'
-printf 'Remember to commit the vendored bundle and update the comment\n'
-printf 'in crates/intrada-web/index.html if the version changed.\n'
-printf '\n'
-printf 'No SRI integrity attribute is needed — the bundle is served from\n'
-printf 'the same origin as index.html, so the same TLS termination + same\n'
-printf 'deploy pipeline already gates trust. Adding integrity would just\n'
-printf 'double-bookkeep without adding security.\n'
