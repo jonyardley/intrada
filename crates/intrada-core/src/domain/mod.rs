@@ -1,4 +1,5 @@
 pub mod account;
+pub mod features;
 pub mod goal;
 pub mod item;
 pub mod mcp_audit;
@@ -9,6 +10,7 @@ pub mod set;
 pub mod types;
 
 pub use account::{AccountEvent, AccountPreferences};
+pub use features::FeatureFlags;
 pub use goal::{Goal, GoalEvent, GoalItem, GoalPhoto, GoalStatus};
 pub use item::{Item, ItemEvent, ItemKind};
 pub use mcp_audit::{McpAuditEntry, McpAuditEvent};

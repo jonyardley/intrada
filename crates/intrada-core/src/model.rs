@@ -39,6 +39,8 @@ pub struct Model {
     pub practice_summaries: HashMap<String, ItemPracticeSummary>,
     /// Per-user practice defaults; `None` until first load completes.
     pub account_preferences: Option<AccountPreferences>,
+    /// `None` until first load. See `routes/features.rs` server-side.
+    pub features: Option<crate::domain::FeatureFlags>,
     /// True while a `DELETE /api/account` request is outstanding.
     pub delete_in_flight: bool,
     /// One-shot terminal signal: server confirmed the account was
@@ -169,6 +171,7 @@ pub struct ViewModel {
     pub goals: Vec<GoalView>,
     pub current_goal: Option<GoalView>,
     pub account_preferences: Option<AccountPreferences>,
+    pub features: Option<crate::domain::FeatureFlags>,
     pub delete_in_flight: bool,
     pub account_deleted: bool,
     pub mcp_tokens: Vec<McpToken>,

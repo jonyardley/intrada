@@ -83,6 +83,9 @@ pub enum Event {
     GoalLoaded {
         goal: Goal,
     },
+    FeaturesLoaded {
+        features: crate::domain::FeatureFlags,
+    },
 
     // ── Write-confirmation callbacks ────────────────────────────────
     // Temp-id mutate-response: see CLAUDE.md "Mutate response".
@@ -179,6 +182,7 @@ impl App for Intrada {
                     http::fetch_sessions(&model.api_base_url),
                     http::fetch_sets(&model.api_base_url),
                     http::fetch_goals(&model.api_base_url),
+                    http::fetch_features(&model.api_base_url),
                 ])
             }
             Event::FetchAll => Command::all([
@@ -186,6 +190,7 @@ impl App for Intrada {
                 http::fetch_sessions(&model.api_base_url),
                 http::fetch_sets(&model.api_base_url),
                 http::fetch_goals(&model.api_base_url),
+                http::fetch_features(&model.api_base_url),
             ]),
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
@@ -236,6 +241,11 @@ impl App for Intrada {
             }
             Event::GoalLoaded { goal } => {
                 model.current_goal = Some(goal);
+                model.record_success();
+                crux_core::render::render()
+            }
+            Event::FeaturesLoaded { features } => {
+                model.features = Some(features);
                 model.record_success();
                 crux_core::render::render()
             }
@@ -514,6 +524,7 @@ impl App for Intrada {
             goals,
             current_goal,
             account_preferences: model.account_preferences.clone(),
+            features: model.features.clone(),
             delete_in_flight: model.delete_in_flight,
             account_deleted: model.account_deleted,
             mcp_tokens: model.mcp_tokens.clone(),

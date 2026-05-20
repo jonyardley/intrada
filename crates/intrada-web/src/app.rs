@@ -15,7 +15,7 @@ use intrada_core::{Event, Intrada, SessionEvent, ViewModel};
 use crate::components::welcome_carousel::welcome_already_seen;
 use crate::components::{
     provide_toast, AppFooter, AppHeader, BottomTabBar, BrandMark, BrandMarkSize, ErrorBanner,
-    ToastStack, WelcomeCarousel,
+    FeatureGate, ToastStack, WelcomeCarousel,
 };
 #[cfg(debug_assertions)]
 use crate::views::DesignCatalogue;
@@ -263,16 +263,32 @@ fn AppRoutes() -> impl IntoView {
             // /goals/new MUST come before /goals/:id to avoid "new"
             // matching :id.
             <Route path=path!("/goals") view=|| view! {
-                <AuthenticatedShell><GoalsListView /></AuthenticatedShell>
+                <AuthenticatedShell>
+                    <FeatureGate select=|f| f.goals>
+                        <GoalsListView />
+                    </FeatureGate>
+                </AuthenticatedShell>
             } />
             <Route path=path!("/goals/new") view=|| view! {
-                <AuthenticatedShell><GoalFormView /></AuthenticatedShell>
+                <AuthenticatedShell>
+                    <FeatureGate select=|f| f.goals>
+                        <GoalFormView />
+                    </FeatureGate>
+                </AuthenticatedShell>
             } />
             <Route path=path!("/goals/:id/edit") view=|| view! {
-                <AuthenticatedShell><GoalEditFormView /></AuthenticatedShell>
+                <AuthenticatedShell>
+                    <FeatureGate select=|f| f.goals>
+                        <GoalEditFormView />
+                    </FeatureGate>
+                </AuthenticatedShell>
             } />
             <Route path=path!("/goals/:id") view=|| view! {
-                <AuthenticatedShell><GoalDetailView /></AuthenticatedShell>
+                <AuthenticatedShell>
+                    <FeatureGate select=|f| f.goals>
+                        <GoalDetailView />
+                    </FeatureGate>
+                </AuthenticatedShell>
             } />
             // /library/new MUST come before /library/:id to avoid "new"
             // matching :id.

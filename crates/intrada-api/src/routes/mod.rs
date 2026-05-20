@@ -1,6 +1,7 @@
 mod account;
 mod assets;
 mod auth_ios;
+mod features;
 mod goals;
 mod health;
 mod items;
@@ -184,4 +185,5 @@ fn api_routes() -> Router<AppState> {
         .nest("/sessions", sessions::router())
         .nest("/sets", sets::router())
         .nest("/goals", goals::router())
+        .nest("/features", features::router())
 }

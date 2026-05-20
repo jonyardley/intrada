@@ -8,6 +8,7 @@ use crux_core::Command;
 
 use crate::app::{Effect, Event};
 use crate::domain::account::{AccountEvent, AccountPreferences};
+use crate::domain::features::FeatureFlags;
 use crate::domain::goal::Goal;
 use crate::domain::item::Item;
 use crate::domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
@@ -195,6 +196,21 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
             Err(e) => Event::LoadFailed(format!("Failed to delete set: {e}")),
+        })
+}
+
+// ── Feature flag operations ───────────────────────────────────────────
+
+pub fn fetch_features(api_base_url: &str) -> Command<Effect, Event> {
+    Http::get(format!("{api_base_url}/api/features"))
+        .expect_json::<FeatureFlags>()
+        .build()
+        .then_send(|result| match result {
+            Ok(response) => match response.body().cloned() {
+                Some(features) => Event::FeaturesLoaded { features },
+                None => Event::LoadFailed("Failed to parse features response".into()),
+            },
+            Err(e) => Event::LoadFailed(format!("Failed to load features: {e}")),
         })
 }
 

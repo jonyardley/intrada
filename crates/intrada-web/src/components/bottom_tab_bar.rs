@@ -86,6 +86,9 @@ pub fn BottomTabBar() -> impl IntoView {
     let active = "flex flex-col items-center gap-0.5 text-accent-text min-w-[64px] min-h-[44px] justify-center";
     let inactive = "flex flex-col items-center gap-0.5 text-muted hover:text-secondary motion-safe:transition-colors min-w-[64px] min-h-[44px] justify-center";
 
+    let goals_enabled =
+        Signal::derive(move || view_model.with(|vm| vm.features.as_ref().is_some_and(|f| f.goals)));
+
     view! {
         <nav
             class="fixed inset-x-0 bottom-0 z-50 h-16 glass-chrome border-t border-border-default pb-safe sm:hidden"
@@ -94,25 +97,27 @@ pub fn BottomTabBar() -> impl IntoView {
         >
             <div class="flex h-full items-center justify-around">
                 // Goals tab — flag
-                <A
-                    href="/goals"
-                    attr:class=move || {
-                        if is_goals_active() {
-                            if has_tapped.get() { spring } else { active }
-                        } else {
-                            inactive
+                <Show when=move || goals_enabled.get()>
+                    <A
+                        href="/goals"
+                        attr:class=move || {
+                            if is_goals_active() {
+                                if has_tapped.get() { spring } else { active }
+                            } else {
+                                inactive
+                            }
                         }
-                    }
-                    attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
-                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
-                >
-                    {move || if is_goals_active() {
-                        view! { <GoalsIconSolid /> }.into_any()
-                    } else {
-                        view! { <GoalsIconOutline /> }.into_any()
-                    }}
-                    <span class="text-xs font-medium">"Goals"</span>
-                </A>
+                        attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
+                        on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
+                    >
+                        {move || if is_goals_active() {
+                            view! { <GoalsIconSolid /> }.into_any()
+                        } else {
+                            view! { <GoalsIconOutline /> }.into_any()
+                        }}
+                        <span class="text-xs font-medium">"Goals"</span>
+                    </A>
+                </Show>
 
                 // Library tab — music note
                 <A

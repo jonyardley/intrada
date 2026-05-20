@@ -49,6 +49,9 @@ pub fn AppHeader() -> impl IntoView {
         })
     };
 
+    let goals_enabled =
+        Signal::derive(move || view_model.with(|vm| vm.features.as_ref().is_some_and(|f| f.goals)));
+
     view! {
         <header class="sm:glass-chrome sm:border-b sm:border-border-default" role="banner">
             <div class="max-w-4xl mx-auto px-card sm:px-card-comfortable py-4 flex items-center justify-between">
@@ -59,19 +62,21 @@ pub fn AppHeader() -> impl IntoView {
                 </div>
                 <div class="hidden sm:flex items-center gap-4">
                     <nav class="flex items-center gap-4">
-                        <A
-                            href="/goals"
-                            attr:class=move || {
-                                if is_goals_active() {
-                                    "text-sm font-medium text-accent-text motion-safe:transition-colors"
-                                } else {
-                                    "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                        <Show when=move || goals_enabled.get()>
+                            <A
+                                href="/goals"
+                                attr:class=move || {
+                                    if is_goals_active() {
+                                        "text-sm font-medium text-accent-text motion-safe:transition-colors"
+                                    } else {
+                                        "text-sm font-medium text-secondary hover:text-primary motion-safe:transition-colors"
+                                    }
                                 }
-                            }
-                            attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
-                        >
-                            "Goals"
-                        </A>
+                                attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
+                            >
+                                "Goals"
+                            </A>
+                        </Show>
                         <A
                             href="/library"
                             attr:class=move || {
