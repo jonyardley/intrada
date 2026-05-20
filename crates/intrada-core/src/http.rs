@@ -274,9 +274,13 @@ pub fn complete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::put(format!("{api_base_url}/api/goals/{id}"))
         .body_json(&input)
         .expect("serialize UpdateGoal for complete")
+        .expect_json::<Goal>()
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
+            Ok(response) => match response.body().cloned() {
+                Some(goal) => Event::GoalUpdated { goal },
+                None => Event::LoadFailed("complete_goal: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to complete goal: {e}")),
         })
 }
@@ -291,9 +295,13 @@ pub fn reopen_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     Http::put(format!("{api_base_url}/api/goals/{id}"))
         .body_json(&input)
         .expect("serialize UpdateGoal for reopen")
+        .expect_json::<Goal>()
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
+            Ok(response) => match response.body().cloned() {
+                Some(goal) => Event::GoalUpdated { goal },
+                None => Event::LoadFailed("reopen_goal: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to reopen goal: {e}")),
         })
 }
@@ -315,9 +323,13 @@ pub fn link_goal_item(
     Http::post(format!("{api_base_url}/api/goals/{goal_id}/items"))
         .body_json(item)
         .expect("serialize LinkGoalItem")
+        .expect_json::<Goal>()
         .build()
         .then_send(|result| match result {
-            Ok(_) => Event::RefetchGoals,
+            Ok(response) => match response.body().cloned() {
+                Some(goal) => Event::GoalUpdated { goal },
+                None => Event::LoadFailed("link_goal_item: server returned no body".into()),
+            },
             Err(e) => Event::LoadFailed(format!("Failed to link item to goal: {e}")),
         })
 }
@@ -333,9 +345,13 @@ pub fn update_goal_item(
     ))
     .body_json(input)
     .expect("serialize UpdateGoalItem")
+    .expect_json::<Goal>()
     .build()
     .then_send(|result| match result {
-        Ok(_) => Event::RefetchGoals,
+        Ok(response) => match response.body().cloned() {
+            Some(goal) => Event::GoalUpdated { goal },
+            None => Event::LoadFailed("update_goal_item: server returned no body".into()),
+        },
         Err(e) => Event::LoadFailed(format!("Failed to update goal item targets: {e}")),
     })
 }
@@ -348,9 +364,13 @@ pub fn unlink_goal_item(
     Http::delete(format!(
         "{api_base_url}/api/goals/{goal_id}/items/{item_id}"
     ))
+    .expect_json::<Goal>()
     .build()
     .then_send(|result| match result {
-        Ok(_) => Event::RefetchGoals,
+        Ok(response) => match response.body().cloned() {
+            Some(goal) => Event::GoalUpdated { goal },
+            None => Event::LoadFailed("unlink_goal_item: server returned no body".into()),
+        },
         Err(e) => Event::LoadFailed(format!("Failed to unlink item from goal: {e}")),
     })
 }

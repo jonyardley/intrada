@@ -194,8 +194,8 @@ async fn link_and_unlink_item() {
     let created: Goal = common::json(&body);
     assert!(created.items.is_empty());
 
-    // Link an item
-    let (status, _body) = common::post_json(
+    // Link an item — response body is the updated goal (mutate-response).
+    let (status, body) = common::post_json(
         app.clone(),
         &format!("/api/goals/{}/items", created.id),
         json!({
@@ -206,28 +206,20 @@ async fn link_and_unlink_item() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED);
+    let after_link: Goal = common::json(&body);
+    assert_eq!(after_link.items.len(), 1);
+    assert_eq!(after_link.items[0].item_id, "piece-001");
+    assert_eq!(after_link.items[0].item_title, "Bach Prelude");
 
-    // Verify the item is present on the goal
-    let (status, body) = common::get(app.clone(), &format!("/api/goals/{}", created.id)).await;
-    assert_eq!(status, StatusCode::OK);
-    let fetched: Goal = common::json(&body);
-    assert_eq!(fetched.items.len(), 1);
-    assert_eq!(fetched.items[0].item_id, "piece-001");
-    assert_eq!(fetched.items[0].item_title, "Bach Prelude");
-
-    // Unlink the item
-    let (status, _body) = common::delete(
+    // Unlink the item — response body is the updated goal.
+    let (status, body) = common::delete(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", created.id),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    // Verify the item is gone
-    let (status, body) = common::get(app, &format!("/api/goals/{}", created.id)).await;
     assert_eq!(status, StatusCode::OK);
-    let fetched: Goal = common::json(&body);
-    assert!(fetched.items.is_empty());
+    let after_unlink: Goal = common::json(&body);
+    assert!(after_unlink.items.is_empty());
 }
 
 // ── Filter by status ──────────────────────────────────────────────────
@@ -423,18 +415,16 @@ async fn patch_goal_item_targets() {
     )
     .await;
 
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_date": "2026-07-01", "target_confidence": 5 }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert_eq!(fetched.items[0].target_date.as_deref(), Some("2026-07-01"));
-    assert_eq!(fetched.items[0].target_confidence, Some(5));
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert_eq!(updated.items[0].target_date.as_deref(), Some("2026-07-01"));
+    assert_eq!(updated.items[0].target_confidence, Some(5));
 }
 
 #[tokio::test]
@@ -458,18 +448,16 @@ async fn patch_goal_item_partial_update_preserves_other_fields() {
     .await;
 
     // PATCH only confidence — date should be preserved
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_confidence": 5 }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert_eq!(fetched.items[0].target_date.as_deref(), Some("2026-06-01"));
-    assert_eq!(fetched.items[0].target_confidence, Some(5));
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert_eq!(updated.items[0].target_date.as_deref(), Some("2026-06-01"));
+    assert_eq!(updated.items[0].target_confidence, Some(5));
 }
 
 #[tokio::test]
@@ -492,18 +480,16 @@ async fn patch_goal_item_clears_targets_with_null() {
     )
     .await;
 
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_date": null, "target_confidence": null }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert!(fetched.items[0].target_date.is_none());
-    assert!(fetched.items[0].target_confidence.is_none());
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.items[0].target_date.is_none());
+    assert!(updated.items[0].target_confidence.is_none());
 }
 
 #[tokio::test]
@@ -667,17 +653,15 @@ async fn patch_goal_item_target_tempo() {
     )
     .await;
 
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_tempo": 140 }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert_eq!(fetched.items[0].target_tempo, Some(140));
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert_eq!(updated.items[0].target_tempo, Some(140));
 }
 
 #[tokio::test]
@@ -699,17 +683,15 @@ async fn patch_goal_item_clears_target_tempo_with_null() {
     )
     .await;
 
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_tempo": null }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert!(fetched.items[0].target_tempo.is_none());
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert!(updated.items[0].target_tempo.is_none());
 }
 
 #[tokio::test]
@@ -733,18 +715,16 @@ async fn patch_goal_item_partial_update_preserves_tempo() {
     .await;
 
     // PATCH only confidence — tempo should be preserved
-    let (status, _body) = common::patch_json(
+    let (status, body) = common::patch_json(
         app.clone(),
         &format!("/api/goals/{}/items/piece-001", goal.id),
         json!({ "target_confidence": 5 }),
     )
     .await;
-    assert_eq!(status, StatusCode::NO_CONTENT);
-
-    let (_, body) = common::get(app, &format!("/api/goals/{}", goal.id)).await;
-    let fetched: Goal = common::json(&body);
-    assert_eq!(fetched.items[0].target_tempo, Some(100));
-    assert_eq!(fetched.items[0].target_confidence, Some(5));
+    assert_eq!(status, StatusCode::OK);
+    let updated: Goal = common::json(&body);
+    assert_eq!(updated.items[0].target_tempo, Some(100));
+    assert_eq!(updated.items[0].target_confidence, Some(5));
 }
 
 #[tokio::test]

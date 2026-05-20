@@ -171,10 +171,10 @@ async fn link_item(
     AuthUser { user_id, .. }: AuthUser,
     Path(id): Path<String>,
     Json(input): Json<LinkGoalItem>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<(StatusCode, Json<Goal>), ApiError> {
     let conn = state.conn();
-    services::goals::link_item(&conn, &id, &user_id, &input).await?;
-    Ok(StatusCode::CREATED)
+    let goal = services::goals::link_item(&conn, state.r2.as_ref(), &id, &user_id, &input).await?;
+    Ok((StatusCode::CREATED, Json(goal)))
 }
 
 async fn update_item(
@@ -182,18 +182,27 @@ async fn update_item(
     AuthUser { user_id, .. }: AuthUser,
     Path((id, item_id)): Path<(String, String)>,
     Json(input): Json<UpdateGoalItem>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<Goal>, ApiError> {
     let conn = state.conn();
-    services::goals::update_goal_item(&conn, &id, &item_id, &user_id, &input).await?;
-    Ok(StatusCode::NO_CONTENT)
+    let goal = services::goals::update_goal_item(
+        &conn,
+        state.r2.as_ref(),
+        &id,
+        &item_id,
+        &user_id,
+        &input,
+    )
+    .await?;
+    Ok(Json(goal))
 }
 
 async fn unlink_item(
     State(state): State<AppState>,
     AuthUser { user_id, .. }: AuthUser,
     Path((id, item_id)): Path<(String, String)>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<Goal>, ApiError> {
     let conn = state.conn();
-    services::goals::unlink_item(&conn, &id, &item_id, &user_id).await?;
-    Ok(StatusCode::NO_CONTENT)
+    let goal =
+        services::goals::unlink_item(&conn, state.r2.as_ref(), &id, &item_id, &user_id).await?;
+    Ok(Json(goal))
 }

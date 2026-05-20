@@ -147,10 +147,11 @@ pub async fn delete_goal_photo(
 
 pub async fn link_item(
     conn: &Connection,
+    r2: Option<&R2Client>,
     goal_id: &str,
     user_id: &str,
     input: &LinkGoalItem,
-) -> Result<(), ApiError> {
+) -> Result<Goal, ApiError> {
     validation::validate_link_goal_item(input)?;
     db::goals::insert_goal_item(
         conn,
@@ -165,16 +166,18 @@ pub async fn link_item(
             target_tempo: input.target_tempo,
         },
     )
-    .await
+    .await?;
+    get_goal(conn, r2, goal_id, user_id).await
 }
 
 pub async fn update_goal_item(
     conn: &Connection,
+    r2: Option<&R2Client>,
     goal_id: &str,
     item_id: &str,
     user_id: &str,
     input: &UpdateGoalItem,
-) -> Result<(), ApiError> {
+) -> Result<Goal, ApiError> {
     validation::validate_update_goal_item(input)?;
     let updated = db::goals::update_goal_item(conn, goal_id, item_id, user_id, input).await?;
     if !updated {
@@ -182,20 +185,21 @@ pub async fn update_goal_item(
             "Goal item not found: {item_id}"
         )));
     }
-    Ok(())
+    get_goal(conn, r2, goal_id, user_id).await
 }
 
 pub async fn unlink_item(
     conn: &Connection,
+    r2: Option<&R2Client>,
     goal_id: &str,
     item_id: &str,
     user_id: &str,
-) -> Result<(), ApiError> {
+) -> Result<Goal, ApiError> {
     let deleted = db::goals::delete_goal_item(conn, goal_id, item_id, user_id).await?;
     if !deleted {
         return Err(ApiError::NotFound(format!(
             "Goal item not found: {item_id}"
         )));
     }
-    Ok(())
+    get_goal(conn, r2, goal_id, user_id).await
 }
