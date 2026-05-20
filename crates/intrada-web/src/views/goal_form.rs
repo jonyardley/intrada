@@ -31,6 +31,7 @@ pub fn GoalFormView(
     let notes = RwSignal::new(String::new());
     let deadline = RwSignal::new(String::new());
     let target_confidence = RwSignal::new(String::new());
+    let target_tempo = RwSignal::new(String::new());
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
     let dismiss_save = on_dismiss;
@@ -59,6 +60,8 @@ pub fn GoalFormView(
 
                 let tc_str = target_confidence.get();
                 let tc_parsed: Option<u8> = if tc_str.is_empty() { None } else { tc_str.parse().ok() };
+                let tt_str = target_tempo.get();
+                let tt_parsed: Option<u16> = if tt_str.is_empty() { None } else { tt_str.parse().ok() };
 
                 let input = CreateGoal {
                     date,
@@ -66,6 +69,7 @@ pub fn GoalFormView(
                     notes: if notes_val.is_empty() { None } else { Some(notes_val) },
                     deadline: if deadline_val.is_empty() { None } else { Some(deadline_val) },
                     target_confidence: tc_parsed,
+                    target_tempo: tt_parsed,
                 };
 
                 let core_ref = core.borrow();
@@ -133,6 +137,26 @@ pub fn GoalFormView(
                 </select>
                 <p class="text-xs text-muted">
                     "Default target for items in this goal. Individual items can override."
+                </p>
+            </div>
+
+            <div class="space-y-1">
+                <label for="goal-target-tempo" class="form-label">
+                    "Target tempo (BPM)"
+                </label>
+                <input
+                    id="goal-target-tempo"
+                    class="input-base"
+                    type="number"
+                    inputmode="numeric"
+                    min="20"
+                    max="400"
+                    placeholder="(no target)"
+                    prop:value=move || target_tempo.get()
+                    on:input=move |ev| target_tempo.set(leptos::prelude::event_target_value(&ev))
+                />
+                <p class="text-xs text-muted">
+                    "Default tempo target for items in this goal. Individual items can override."
                 </p>
             </div>
 

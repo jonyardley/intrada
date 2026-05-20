@@ -33,6 +33,8 @@ pub struct Goal {
     pub updated_at: DateTime<Utc>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_confidence: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_tempo: Option<u16>,
 }
 
 /// Photo metadata for a goal. Binary data lives in R2; core only sees metadata.
@@ -53,6 +55,8 @@ pub struct GoalItem {
     pub target_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_confidence: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_tempo: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -114,6 +118,7 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
                 created_at: now,
                 updated_at: now,
                 target_confidence: input.target_confidence,
+                target_tempo: input.target_tempo,
             };
 
             let temp_id = goal.id.clone();
@@ -153,6 +158,9 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
             }
             if let Some(target_confidence) = &input.target_confidence {
                 goal.target_confidence = *target_confidence;
+            }
+            if let Some(target_tempo) = &input.target_tempo {
+                goal.target_tempo = *target_tempo;
             }
             goal.updated_at = chrono::Utc::now();
             model.last_error = None;
@@ -224,6 +232,7 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
                     item_type: item.item_type.clone(),
                     target_date: item.target_date.clone(),
                     target_confidence: item.target_confidence,
+                    target_tempo: item.target_tempo,
                 };
                 if !goal.items.iter().any(|i| i.item_id == goal_item.item_id) {
                     goal.items.push(goal_item);
@@ -253,6 +262,9 @@ pub fn handle_goal_event(event: GoalEvent, model: &mut Model) -> Command<Effect,
                     }
                     if let Some(c) = &input.target_confidence {
                         gi.target_confidence = *c;
+                    }
+                    if let Some(t) = &input.target_tempo {
+                        gi.target_tempo = *t;
                     }
                     goal.updated_at = chrono::Utc::now();
                 }

@@ -425,12 +425,17 @@ fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
 fn goal_looks_ready(items: &[GoalItemView]) -> bool {
     let mut any_targeted = false;
     for item in items {
-        let Some(target) = item.effective_target_confidence else {
-            continue;
-        };
-        any_targeted = true;
-        if !item.latest_score.is_some_and(|s| s >= target) {
-            return false;
+        if let Some(target) = item.effective_target_confidence {
+            any_targeted = true;
+            if !item.latest_score.is_some_and(|s| s >= target) {
+                return false;
+            }
+        }
+        if let Some(target) = item.effective_target_tempo {
+            any_targeted = true;
+            if !item.latest_achieved_tempo.is_some_and(|t| t >= target) {
+                return false;
+            }
         }
     }
     any_targeted
@@ -475,8 +480,11 @@ fn ItemPracticeInfo(library: Signal<Option<LibraryItemView>>) -> impl IntoView {
 fn GoalItemTargetChips(item: GoalItemView) -> impl IntoView {
     let target_date = item.target_date.clone();
     let effective_confidence = item.effective_target_confidence;
+    let effective_tempo = item.effective_target_tempo;
     let latest_score = item.latest_score;
-    let has_any = target_date.is_some() || effective_confidence.is_some();
+    let latest_tempo = item.latest_achieved_tempo;
+    let has_any =
+        target_date.is_some() || effective_confidence.is_some() || effective_tempo.is_some();
 
     if !has_any {
         return view! {
@@ -496,6 +504,15 @@ fn GoalItemTargetChips(item: GoalItemView) -> impl IntoView {
                 let label = match latest_score {
                     Some(score) => format!("Confidence {score}/{target}"),
                     None => format!("Confidence —/{target}"),
+                };
+                view! { <span class=badge_class>{label}</span> }
+            })}
+            {effective_tempo.map(|target| {
+                let met = latest_tempo.is_some_and(|t| t >= target);
+                let badge_class = if met { "badge badge--accent" } else { "badge badge--muted" };
+                let label = match latest_tempo {
+                    Some(bpm) => format!("Tempo {bpm}/{target} bpm"),
+                    None => format!("Tempo —/{target} bpm"),
                 };
                 view! { <span class=badge_class>{label}</span> }
             })}
@@ -522,6 +539,7 @@ fn GoalItemTargetsSheet(
 
     let target_date = RwSignal::new(String::new());
     let target_confidence = RwSignal::new(String::new());
+    let target_tempo = RwSignal::new(String::new());
 
     let goal_id_for_effect = goal_id.clone();
     Effect::new(move |_| {
@@ -542,6 +560,7 @@ fn GoalItemTargetsSheet(
                     .map(|c| c.to_string())
                     .unwrap_or_default(),
             );
+            target_tempo.set(item.target_tempo.map(|t| t.to_string()).unwrap_or_default());
         }
     });
 
@@ -572,13 +591,16 @@ fn GoalItemTargetsSheet(
         };
         let td = target_date.get_untracked();
         let tc = target_confidence.get_untracked();
+        let tt = target_tempo.get_untracked();
 
         let target_date_val = if td.is_empty() { None } else { Some(td) };
         let target_confidence_val: Option<u8> = if tc.is_empty() { None } else { tc.parse().ok() };
+        let target_tempo_val: Option<u16> = if tt.is_empty() { None } else { tt.parse().ok() };
 
         let input = UpdateGoalItem {
             target_date: Some(target_date_val),
             target_confidence: Some(target_confidence_val),
+            target_tempo: Some(target_tempo_val),
         };
 
         let core_ref = core.borrow();
@@ -647,6 +669,23 @@ fn GoalItemTargetsSheet(
                                     <option value="5">"5 — Performance ready"</option>
                                 </select>
                             </div>
+
+                            <div class="space-y-1">
+                                <label for="goal-item-target-tempo" class="form-label">
+                                    "Target tempo (BPM)"
+                                </label>
+                                <input
+                                    id="goal-item-target-tempo"
+                                    class="input-base"
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="20"
+                                    max="400"
+                                    placeholder="(use goal default)"
+                                    prop:value=move || target_tempo.get()
+                                    on:input=move |ev| target_tempo.set(leptos::prelude::event_target_value(&ev))
+                                />
+                            </div>
                         </div>
                     }.into_any()
                 }
@@ -700,6 +739,7 @@ fn LinkItemsSheet(goal_id: String, open: RwSignal<bool>, on_close: Callback<()>)
                         item_type: item.item_type,
                         target_date: None,
                         target_confidence: None,
+                        target_tempo: None,
                     },
                 })
             };

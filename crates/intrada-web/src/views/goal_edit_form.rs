@@ -111,6 +111,7 @@ pub fn GoalEditFormView(
             .map(|c| c.to_string())
             .unwrap_or_default(),
     );
+    let target_tempo = RwSignal::new(goal.target_tempo.map(|t| t.to_string()).unwrap_or_default());
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
     let navigate_cancel = navigate.clone();
@@ -139,6 +140,12 @@ pub fn GoalEditFormView(
                     } else {
                         tc_str.parse().ok()
                     };
+                    let tt_str = target_tempo.get();
+                    let tt_parsed: Option<u16> = if tt_str.is_empty() {
+                        None
+                    } else {
+                        tt_str.parse().ok()
+                    };
 
                     let input = UpdateGoal {
                         title: Some(if title_val.is_empty() { None } else { Some(title_val) }),
@@ -147,6 +154,7 @@ pub fn GoalEditFormView(
                         deadline: Some(if deadline_val.is_empty() { None } else { Some(deadline_val) }),
                         status: None,
                         target_confidence: Some(tc_parsed),
+                        target_tempo: Some(tt_parsed),
                     };
 
                     let core_ref = core.borrow();
@@ -218,6 +226,26 @@ pub fn GoalEditFormView(
                 </select>
                 <p class="text-xs text-muted">
                     "Default target for items in this goal. Individual items can override."
+                </p>
+            </div>
+
+            <div class="space-y-1">
+                <label for="goal-edit-target-tempo" class="form-label">
+                    "Target tempo (BPM)"
+                </label>
+                <input
+                    id="goal-edit-target-tempo"
+                    class="input-base"
+                    type="number"
+                    inputmode="numeric"
+                    min="20"
+                    max="400"
+                    placeholder="(no target)"
+                    prop:value=move || target_tempo.get()
+                    on:input=move |ev| target_tempo.set(leptos::prelude::event_target_value(&ev))
+                />
+                <p class="text-xs text-muted">
+                    "Default tempo target for items in this goal. Individual items can override."
                 </p>
             </div>
 

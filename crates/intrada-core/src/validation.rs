@@ -29,6 +29,8 @@ pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 pub const MAX_GOAL_NOTES: usize = 10_000;
 pub const MAX_GOAL_TITLE: usize = 200;
+pub const MIN_TARGET_TEMPO: u16 = 20;
+pub const MAX_TARGET_TEMPO: u16 = 400;
 
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || title.len() > MAX_TITLE {
@@ -380,6 +382,18 @@ fn validate_target_confidence(value: u8) -> Result<(), LibraryError> {
     Ok(())
 }
 
+fn validate_target_tempo(value: u16) -> Result<(), LibraryError> {
+    if !(MIN_TARGET_TEMPO..=MAX_TARGET_TEMPO).contains(&value) {
+        return Err(LibraryError::Validation {
+            field: "target_tempo".to_string(),
+            message: format!(
+                "Target tempo must be between {MIN_TARGET_TEMPO} and {MAX_TARGET_TEMPO} BPM"
+            ),
+        });
+    }
+    Ok(())
+}
+
 fn validate_target_date(date: &str) -> Result<(), LibraryError> {
     chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| LibraryError::Validation {
         field: "target_date".to_string(),
@@ -395,6 +409,9 @@ pub fn validate_create_goal(input: &CreateGoal) -> Result<(), LibraryError> {
     validate_goal_deadline(input.deadline.as_deref())?;
     if let Some(c) = input.target_confidence {
         validate_target_confidence(c)?;
+    }
+    if let Some(t) = input.target_tempo {
+        validate_target_tempo(t)?;
     }
     Ok(())
 }
@@ -415,6 +432,9 @@ pub fn validate_update_goal(input: &UpdateGoal) -> Result<(), LibraryError> {
     if let Some(Some(c)) = input.target_confidence {
         validate_target_confidence(c)?;
     }
+    if let Some(Some(t)) = input.target_tempo {
+        validate_target_tempo(t)?;
+    }
     Ok(())
 }
 
@@ -426,6 +446,9 @@ pub fn validate_link_goal_item(input: &LinkGoalItem) -> Result<(), LibraryError>
     if let Some(c) = input.target_confidence {
         validate_target_confidence(c)?;
     }
+    if let Some(t) = input.target_tempo {
+        validate_target_tempo(t)?;
+    }
     Ok(())
 }
 
@@ -435,6 +458,9 @@ pub fn validate_update_goal_item(input: &UpdateGoalItem) -> Result<(), LibraryEr
     }
     if let Some(Some(c)) = input.target_confidence {
         validate_target_confidence(c)?;
+    }
+    if let Some(Some(t)) = input.target_tempo {
+        validate_target_tempo(t)?;
     }
     Ok(())
 }
@@ -1352,6 +1378,7 @@ mod tests {
             notes: None,
             deadline: None,
             target_confidence: Some(4),
+            target_tempo: None,
         };
         assert!(validate_create_goal(&input).is_ok());
     }
@@ -1364,6 +1391,7 @@ mod tests {
             notes: None,
             deadline: None,
             target_confidence: Some(0),
+            target_tempo: None,
         };
         let err = validate_create_goal(&input).unwrap_err();
         match err {
@@ -1382,8 +1410,72 @@ mod tests {
             notes: None,
             deadline: None,
             target_confidence: Some(6),
+            target_tempo: None,
         };
         assert!(validate_create_goal(&input).is_err());
+    }
+
+    #[test]
+    fn test_create_goal_with_target_tempo_in_range() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: Some("recital prep".to_string()),
+            notes: None,
+            deadline: None,
+            target_confidence: None,
+            target_tempo: Some(120),
+        };
+        assert!(validate_create_goal(&input).is_ok());
+    }
+
+    #[test]
+    fn test_create_goal_target_tempo_too_low_rejected() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: None,
+            notes: None,
+            deadline: None,
+            target_confidence: None,
+            target_tempo: Some(19),
+        };
+        let err = validate_create_goal(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "target_tempo");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_create_goal_target_tempo_too_high_rejected() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: None,
+            notes: None,
+            deadline: None,
+            target_confidence: None,
+            target_tempo: Some(401),
+        };
+        assert!(validate_create_goal(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_target_tempo_clear_is_ok() {
+        let input = UpdateGoal {
+            target_tempo: Some(None),
+            ..Default::default()
+        };
+        assert!(validate_update_goal(&input).is_ok());
+    }
+
+    #[test]
+    fn test_update_goal_target_tempo_out_of_range_rejected() {
+        let input = UpdateGoal {
+            target_tempo: Some(Some(500)),
+            ..Default::default()
+        };
+        assert!(validate_update_goal(&input).is_err());
     }
 
     #[test]
@@ -1412,6 +1504,7 @@ mod tests {
             item_type: ItemKind::Piece,
             target_date: Some("2026-06-01".to_string()),
             target_confidence: Some(4),
+            target_tempo: Some(120),
         };
         assert!(validate_link_goal_item(&input).is_ok());
     }
@@ -1424,11 +1517,31 @@ mod tests {
             item_type: ItemKind::Piece,
             target_date: Some("not-a-date".to_string()),
             target_confidence: None,
+            target_tempo: None,
         };
         let err = validate_link_goal_item(&input).unwrap_err();
         match err {
             LibraryError::Validation { field, .. } => {
                 assert_eq!(field, "target_date");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_link_goal_item_bad_target_tempo_rejected() {
+        let input = LinkGoalItem {
+            item_id: "item-1".to_string(),
+            item_title: "Bach".to_string(),
+            item_type: ItemKind::Piece,
+            target_date: None,
+            target_confidence: None,
+            target_tempo: Some(0),
+        };
+        let err = validate_link_goal_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "target_tempo");
             }
             _ => panic!("Expected Validation error"),
         }
@@ -1442,6 +1555,7 @@ mod tests {
             item_type: ItemKind::Piece,
             target_date: None,
             target_confidence: None,
+            target_tempo: None,
         };
         assert!(validate_link_goal_item(&input).is_err());
     }
@@ -1451,6 +1565,7 @@ mod tests {
         let input = UpdateGoalItem {
             target_date: Some(None),
             target_confidence: Some(None),
+            target_tempo: Some(None),
         };
         assert!(validate_update_goal_item(&input).is_ok());
     }
@@ -1460,6 +1575,7 @@ mod tests {
         let input = UpdateGoalItem {
             target_date: Some(Some("2026/06/01".to_string())),
             target_confidence: None,
+            target_tempo: None,
         };
         assert!(validate_update_goal_item(&input).is_err());
     }
@@ -1469,8 +1585,25 @@ mod tests {
         let input = UpdateGoalItem {
             target_date: None,
             target_confidence: Some(Some(0)),
+            target_tempo: None,
         };
         assert!(validate_update_goal_item(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_item_bad_tempo_rejected() {
+        let input = UpdateGoalItem {
+            target_date: None,
+            target_confidence: None,
+            target_tempo: Some(Some(401)),
+        };
+        let err = validate_update_goal_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "target_tempo");
+            }
+            _ => panic!("Expected Validation error"),
+        }
     }
 
     #[test]

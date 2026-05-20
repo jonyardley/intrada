@@ -757,6 +757,7 @@ mod tests {
             notes: None,
             deadline: Some("2026-06-19".into()),
             target_confidence: None,
+            target_tempo: None,
         };
         let req = take_http(&mut create_goal(BASE, &input, "temp-goal"));
         assert_eq!(req.method, "POST");
@@ -827,6 +828,7 @@ mod tests {
             item_type: ItemKind::Piece,
             target_date: None,
             target_confidence: None,
+            target_tempo: None,
         };
         let req = take_http(&mut link_goal_item(
             BASE,
@@ -863,6 +865,7 @@ mod tests {
         let input = UpdateGoalItem {
             target_date: Some(Some("2026-06-01".into())),
             target_confidence: Some(Some(4)),
+            target_tempo: Some(Some(120)),
         };
         let req = take_http(&mut update_goal_item(
             BASE,
@@ -878,6 +881,7 @@ mod tests {
         let body = body_as_json(&req);
         assert_eq!(body["target_date"], "2026-06-01");
         assert_eq!(body["target_confidence"], 4);
+        assert_eq!(body["target_tempo"], 120);
     }
 
     // ── Account / MCP / OAuth endpoints ──────────────────────────────

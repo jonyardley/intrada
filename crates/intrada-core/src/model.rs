@@ -210,6 +210,7 @@ pub struct GoalView {
     pub created_at: String,
     pub updated_at: String,
     pub target_confidence: Option<u8>,
+    pub target_tempo: Option<u16>,
 }
 
 /// Photo metadata for display in the UI.
@@ -226,7 +227,9 @@ pub struct GoalItemView {
     pub item_type: ItemKind,
     pub target_date: Option<String>,
     pub target_confidence: Option<u8>,
+    pub target_tempo: Option<u16>,
     pub effective_target_confidence: Option<u8>,
+    pub effective_target_tempo: Option<u16>,
     pub latest_score: Option<u8>,
     pub latest_achieved_tempo: Option<u16>,
 }
@@ -248,6 +251,7 @@ pub fn goal_to_view(goal: &Goal, items: &[LibraryItemView]) -> GoalView {
         });
 
     let goal_target_confidence = goal.target_confidence;
+    let goal_target_tempo = goal.target_tempo;
 
     GoalView {
         id: goal.id.clone(),
@@ -269,13 +273,16 @@ pub fn goal_to_view(goal: &Goal, items: &[LibraryItemView]) -> GoalView {
                     .and_then(|p| p.latest_score);
                 let latest_achieved_tempo = library_item.and_then(|li| li.latest_achieved_tempo);
                 let effective_target_confidence = gi.target_confidence.or(goal_target_confidence);
+                let effective_target_tempo = gi.target_tempo.or(goal_target_tempo);
                 GoalItemView {
                     item_id: gi.item_id.clone(),
                     item_title: gi.item_title.clone(),
                     item_type: gi.item_type.clone(),
                     target_date: gi.target_date.clone(),
                     target_confidence: gi.target_confidence,
+                    target_tempo: gi.target_tempo,
                     effective_target_confidence,
+                    effective_target_tempo,
                     latest_score,
                     latest_achieved_tempo,
                 }
@@ -293,6 +300,7 @@ pub fn goal_to_view(goal: &Goal, items: &[LibraryItemView]) -> GoalView {
         created_at: goal.created_at.to_rfc3339(),
         updated_at: goal.updated_at.to_rfc3339(),
         target_confidence: goal.target_confidence,
+        target_tempo: goal.target_tempo,
     }
 }
 
@@ -734,6 +742,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
+            target_tempo: None,
         };
         let view = goal_to_view(&goal, &[]);
         assert_eq!(view.notes_preview.len(), 100);
@@ -758,6 +767,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
+            target_tempo: None,
         };
         let view = goal_to_view(&goal, &[]);
         assert!(view.has_photos);
@@ -782,6 +792,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
+            target_tempo: None,
         };
         let view = goal_to_view(&goal, &[]);
         assert!(view.is_overdue);
@@ -805,6 +816,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
+            target_tempo: None,
         };
         let view = goal_to_view(&goal, &[]);
         assert!(!view.is_overdue);
@@ -826,11 +838,13 @@ mod tests {
                 item_type: ItemKind::Piece,
                 target_date: None,
                 target_confidence: None,
+                target_tempo: None,
             }],
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: None,
+            target_tempo: None,
         };
         let view = goal_to_view(&goal, &[]);
         assert_eq!(view.items.len(), 1);
@@ -855,6 +869,7 @@ mod tests {
                     item_type: ItemKind::Piece,
                     target_date: None,
                     target_confidence: Some(5),
+                    target_tempo: Some(140),
                 },
                 GoalItem {
                     item_id: "item-b".to_string(),
@@ -862,12 +877,14 @@ mod tests {
                     item_type: ItemKind::Exercise,
                     target_date: None,
                     target_confidence: None,
+                    target_tempo: None,
                 },
             ],
             photos: vec![],
             created_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             updated_at: Utc.with_ymd_and_hms(2026, 1, 15, 10, 0, 0).unwrap(),
             target_confidence: Some(3),
+            target_tempo: Some(100),
         };
 
         let items = vec![
@@ -910,12 +927,14 @@ mod tests {
 
         let view = goal_to_view(&goal, &items);
 
-        // Item A: per-item override wins (5), latest_score reflects session data
+        // Item A: per-item override wins (5/140), latest_score and tempo reflect session data
         assert_eq!(view.items[0].effective_target_confidence, Some(5));
+        assert_eq!(view.items[0].effective_target_tempo, Some(140));
         assert_eq!(view.items[0].latest_score, Some(4));
         assert_eq!(view.items[0].latest_achieved_tempo, Some(120));
-        // Item B: inherits goal-level default (3), no practice yet
+        // Item B: inherits goal-level defaults (3/100), no practice yet
         assert_eq!(view.items[1].effective_target_confidence, Some(3));
+        assert_eq!(view.items[1].effective_target_tempo, Some(100));
         assert_eq!(view.items[1].latest_score, None);
     }
 }
