@@ -396,3 +396,153 @@ async fn exercise_optional_composer() {
     let updated: Item = common::json(&body);
     assert_eq!(updated.composer.as_deref(), Some("Teacher"));
 }
+
+// ── Three-state clear-via-null tests (double_option deserializer) ─────
+//
+// JSON `null` on an `Option<Option<T>>` field must decode as `Some(None)`
+// (clear), not `None` (skip). Each test seeds a value, then sends `null`
+// and asserts the field cleared.
+
+#[tokio::test]
+async fn update_item_clears_composer_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({
+            "title": "Etude",
+            "kind": "piece",
+            "composer": "Chopin",
+            "tags": []
+        }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+    assert_eq!(created.composer.as_deref(), Some("Chopin"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "composer": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.composer.is_none());
+}
+
+#[tokio::test]
+async fn update_item_clears_key_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({
+            "title": "Etude",
+            "kind": "piece",
+            "composer": "Chopin",
+            "key": "C# minor",
+            "tags": []
+        }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+    assert_eq!(created.key.as_deref(), Some("C# minor"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "key": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.key.is_none());
+}
+
+#[tokio::test]
+async fn update_item_clears_tempo_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({
+            "title": "Etude",
+            "kind": "piece",
+            "composer": "Chopin",
+            "tempo": { "marking": "Allegro", "bpm": 120 },
+            "tags": []
+        }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+    assert!(created.tempo.is_some());
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "tempo": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.tempo.is_none());
+}
+
+#[tokio::test]
+async fn update_item_clears_notes_with_null() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({
+            "title": "Etude",
+            "kind": "piece",
+            "composer": "Chopin",
+            "notes": "Bars 12-24",
+            "tags": []
+        }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+    assert_eq!(created.notes.as_deref(), Some("Bars 12-24"));
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "notes": null }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.notes.is_none());
+}
+
+#[tokio::test]
+async fn update_item_skip_preserves_existing_when_field_omitted() {
+    // Counterpart to the above: omit the field entirely → no change.
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({
+            "title": "Etude",
+            "kind": "piece",
+            "composer": "Chopin",
+            "tags": []
+        }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "title": "Etude (rev.)" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert_eq!(updated.title, "Etude (rev.)");
+    assert_eq!(updated.composer.as_deref(), Some("Chopin"));
+}

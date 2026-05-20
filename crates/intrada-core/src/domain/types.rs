@@ -68,9 +68,29 @@ pub struct CreateItem {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct UpdateItem {
     pub title: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub composer: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub key: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub tempo: Option<Option<Tempo>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub notes: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
 }
@@ -165,9 +185,24 @@ pub struct CreateGoal {
 /// Uses three-state `Option<Option<T>>` for clearable fields.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 pub struct UpdateGoal {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub title: Option<Option<String>>,
     pub date: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub notes: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
     pub deadline: Option<Option<String>>,
     pub status: Option<super::goal::GoalStatus>,
     #[serde(
