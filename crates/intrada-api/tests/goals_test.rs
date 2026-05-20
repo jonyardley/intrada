@@ -850,7 +850,6 @@ async fn update_goal_clears_deadline_with_null() {
 
 #[tokio::test]
 async fn update_goal_skip_preserves_existing_when_field_omitted() {
-    // Counterpart: omit a field → no change.
     let app = common::setup_test_app().await;
     let (_, body) = common::post_json(
         app.clone(),
