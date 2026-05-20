@@ -190,6 +190,10 @@
     <!-- Self-hosted Sentry browser SDK — see comment on the <script> tag
          in <head>. Re-vendor with scripts/vendor-sentry-sdk.sh. -->
     <link data-trunk rel="copy-dir" href="static/sentry" />
+    <!-- Self-hosted Clerk browser SDK — kicked off in <head> so it loads
+         in parallel with the WASM bundle. Re-vendor with
+         scripts/vendor-clerk-sdk.sh. -->
+    <link data-trunk rel="copy-dir" href="static/clerk" />
     <style>
       /* iOS splash: CSS activates the overlay the instant #app-splash
          enters the DOM during body parse. data-platform="ios" is set
@@ -261,11 +265,27 @@
       }
     </script>
     <script>
+      // Self-hosted Clerk SDK — kicked off during HTML parse so it loads
+      // in parallel with the WASM bundle, not serially after WASM init
+      // (#580). The Tauri iOS shell never uses Clerk JS (PAT-based auth,
+      // see __intrada_auth below) so we skip the 312KB download there.
+      // Re-vendor with scripts/vendor-clerk-sdk.sh.
+      if (location.protocol !== 'tauri:') {
+        var s = document.createElement('script');
+        s.src = '/clerk/clerk.browser.js';
+        window.__clerkLoadPromise = new Promise(function (resolve, reject) {
+          s.onload = resolve;
+          s.onerror = function () { reject(new Error('Clerk SDK load failed')); };
+        });
+        document.head.appendChild(s);
+      }
+    </script>
+    <script>
       // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
       // Skip if already defined (E2E tests inject a mock via addInitScript)
       //
       // iOS and web use completely different auth strategies:
-      // - Web: Clerk JS SDK (cookie-based sessions, CDN build)
+      // - Web: Clerk JS SDK (cookie-based sessions, self-hosted bundle)
       // - iOS: PAT-based auth. OAuth happens in Safari via
       //   ASWebAuthenticationSession (where Clerk JS works normally),
       //   then the Clerk JWT is exchanged for a long-lived PAT via
@@ -291,14 +311,7 @@
             window.__clerk_publishable_key = publishableKey;
             if (!window.Clerk) {
               try {
-                await new Promise((resolve, reject) => {
-                  const s = document.createElement('script');
-                  s.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-                  s.crossOrigin = 'anonymous';
-                  s.onload = resolve;
-                  s.onerror = () => reject(new Error('CDN script load failed'));
-                  document.head.appendChild(s);
-                });
+                await window.__clerkLoadPromise;
               } catch (e) {
                 this._lastError = 'script_load: ' + e.message;
                 this._initFailed = true;
