@@ -154,13 +154,16 @@ pub async fn link_item(
     validation::validate_link_goal_item(input)?;
     db::goals::insert_goal_item(
         conn,
-        goal_id,
-        user_id,
-        &input.item_id,
-        &input.item_title,
-        &input.item_type,
-        input.target_date.as_deref(),
-        input.target_confidence,
+        db::goals::GoalItemInsert {
+            goal_id,
+            user_id,
+            item_id: &input.item_id,
+            item_title: &input.item_title,
+            item_type: &input.item_type,
+            target_date: input.target_date.as_deref(),
+            target_confidence: input.target_confidence,
+            target_tempo: input.target_tempo,
+        },
     )
     .await
 }

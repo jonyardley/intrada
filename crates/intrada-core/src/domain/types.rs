@@ -157,6 +157,8 @@ pub struct CreateGoal {
     pub deadline: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_confidence: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_tempo: Option<u16>,
 }
 
 /// Request body for updating a goal via the REST API.
@@ -174,6 +176,12 @@ pub struct UpdateGoal {
         deserialize_with = "double_option"
     )]
     pub target_confidence: Option<Option<u8>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub target_tempo: Option<Option<u16>>,
 }
 
 /// Request body for linking a library item to a goal.
@@ -186,6 +194,8 @@ pub struct LinkGoalItem {
     pub target_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target_confidence: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_tempo: Option<u16>,
 }
 
 /// Request body for updating the targets on a goal/item link.
@@ -204,6 +214,12 @@ pub struct UpdateGoalItem {
         deserialize_with = "double_option"
     )]
     pub target_confidence: Option<Option<u8>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub target_tempo: Option<Option<u16>>,
 }
 
 /// Filters for listing/searching library items.

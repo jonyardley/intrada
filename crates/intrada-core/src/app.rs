@@ -2477,6 +2477,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             target_confidence: None,
+            target_tempo: None,
         };
         model.goals.push(goal.clone());
         model.current_goal = Some(goal);
@@ -2590,6 +2591,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             target_confidence: None,
+            target_tempo: None,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -2625,6 +2627,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             target_confidence: None,
+            target_tempo: None,
         });
 
         let server_goal = Goal {
@@ -2640,6 +2643,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             target_confidence: None,
+            target_tempo: None,
         };
 
         let _cmd = app.update(
@@ -2673,6 +2677,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             target_confidence: None,
+            target_tempo: None,
         };
         let other = Goal {
             id: "other".to_string(),
