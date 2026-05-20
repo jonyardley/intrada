@@ -62,21 +62,17 @@ pub fn SetlistBuilder() -> impl IntoView {
     let open_review = move |_| review_open.set(true);
 
     // Pre-loaded setlist (e.g. "Practice this goal") auto-opens the review
-    // sheet on mount. Guarded by `auto_opened` so dismissing the sheet
-    // doesn't bounce it back open.
-    let auto_opened = RwSignal::new(false);
+    // sheet on mount. `with_untracked` so this Effect doesn't subscribe to
+    // `view_model` — otherwise the manual flow's first `AddToSetlist` would
+    // also trigger it. We only care about state *at mount time*.
     Effect::new(move |_| {
-        if auto_opened.get_untracked() {
-            return;
-        }
-        let has_entries = view_model.with(|vm| {
+        let has_entries = view_model.with_untracked(|vm| {
             vm.building_setlist
                 .as_ref()
                 .is_some_and(|s| !s.entries.is_empty())
         });
         if has_entries {
             review_open.set(true);
-            auto_opened.set(true);
         }
     });
 

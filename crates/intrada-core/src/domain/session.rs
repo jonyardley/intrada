@@ -178,8 +178,9 @@ pub enum SessionEvent {
     /// Load every item linked to a goal into the builder, ordered "least
     /// ready first" (never-practised → targeted-and-unmet → met/no-target).
     /// Initialises a fresh Building session if currently Idle; appends if
-    /// already Building (mirrors `SetEvent::LoadSetIntoSetlist`). Stale
-    /// links (item id no longer in the library) are skipped.
+    /// already Building. Rejected if a session is Active or in Summary —
+    /// surfaces `last_error` rather than silently destroying in-progress
+    /// state. Stale links (item id no longer in the library) are skipped.
     LoadGoalIntoSetlist {
         goal_id: String,
     },
@@ -362,20 +363,20 @@ fn order_goal_items_least_ready_first(
         .enumerate()
         .filter(|(_, gi)| known.contains(gi.item_id.as_str()))
         .map(|(idx, gi)| {
-            let summary = model.practice_summaries.get(&gi.item_id);
-            let bucket = if summary.is_none() {
-                0
-            } else {
-                let effective_confidence = gi.target_confidence.or(goal.target_confidence);
-                let effective_tempo = gi.target_tempo.or(goal.target_tempo);
-                let confidence_unmet = effective_confidence
-                    .is_some_and(|t| !summary.unwrap().latest_score.is_some_and(|s| s >= t));
-                let tempo_unmet = effective_tempo
-                    .is_some_and(|t| !summary.unwrap().latest_tempo.is_some_and(|s| s >= t));
-                if confidence_unmet || tempo_unmet {
-                    1
-                } else {
-                    2
+            let bucket = match model.practice_summaries.get(&gi.item_id) {
+                None => 0,
+                Some(s) => {
+                    let effective_confidence = gi.target_confidence.or(goal.target_confidence);
+                    let effective_tempo = gi.target_tempo.or(goal.target_tempo);
+                    let confidence_unmet = effective_confidence
+                        .is_some_and(|t| !s.latest_score.is_some_and(|score| score >= t));
+                    let tempo_unmet = effective_tempo
+                        .is_some_and(|t| !s.latest_tempo.is_some_and(|tempo| tempo >= t));
+                    if confidence_unmet || tempo_unmet {
+                        1
+                    } else {
+                        2
+                    }
                 }
             };
             (
@@ -639,12 +640,25 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         SessionEvent::LoadGoalIntoSetlist { goal_id } => {
+            // Reject when Active or in Summary — silently overwriting would
+            // destroy in-progress practice state. Idle and Building are both
+            // safe (Idle bootstraps fresh, Building appends).
+            match model.session_status {
+                SessionStatus::Idle | SessionStatus::Building(_) => {}
+                _ => {
+                    model.last_error = Some(
+                        "Can't load a goal into the builder while a session is active or being reviewed".to_string(),
+                    );
+                    return crux_core::render::render();
+                }
+            }
+
             let Some(goal) = model.goals.iter().find(|g| g.id == goal_id).cloned() else {
                 model.last_error = Some(format!("Goal not found: {goal_id}"));
                 return crux_core::render::render();
             };
 
-            if !matches!(model.session_status, SessionStatus::Building(_)) {
+            if matches!(model.session_status, SessionStatus::Idle) {
                 model.session_status = SessionStatus::Building(BuildingSession {
                     entries: vec![],
                     session_intention: None,
@@ -3948,10 +3962,6 @@ mod tests {
     #[test]
     fn load_goal_orders_never_practised_before_targeted_unmet_before_met() {
         let mut model = model_with_library();
-        // Bucket layout: piece-2 = met (4 >= target 3) → bucket 2
-        //               piece-1 = targeted-and-unmet → bucket 1
-        //               exercise-1 = never practised → bucket 0
-        // Expected order: exercise-1, piece-1, piece-2.
         let goal = Goal {
             target_confidence: Some(3),
             ..goal_with_items(vec![
@@ -4031,25 +4041,20 @@ mod tests {
 
     #[test]
     fn load_goal_preserves_within_bucket_order() {
-        // All three items are in bucket 2 (no targets, no summaries → never-practised
-        // bucket 0... wait, no summaries means bucket 0. Let me use a clean
-        // bucket-2 scenario: items with summaries but no targets.
+        // All items in bucket 2 — same summaries (score 3), no targets, so the
+        // bucket reduces to "met-by-default." Goal items in order [piece-2,
+        // piece-1, exercise-1] must come out in that order.
         let mut model = model_with_library();
         model.goals.push(goal_with_items(vec![
             link("piece-2", "Clair de Lune", ItemKind::Piece),
             link("piece-1", "Moonlight Sonata", ItemKind::Piece),
             link("exercise-1", "C Major Scale", ItemKind::Exercise),
         ]));
-        // All have practice summaries; no targets set → bucket 2 (met by default)
-        model
-            .practice_summaries
-            .insert("piece-1".to_string(), summary(Some(3), None));
-        model
-            .practice_summaries
-            .insert("piece-2".to_string(), summary(Some(3), None));
-        model
-            .practice_summaries
-            .insert("exercise-1".to_string(), summary(Some(3), None));
+        for id in ["piece-1", "piece-2", "exercise-1"] {
+            model
+                .practice_summaries
+                .insert(id.to_string(), summary(Some(3), None));
+        }
 
         update(
             &mut model,
@@ -4058,7 +4063,6 @@ mod tests {
             }),
         );
 
-        // Same order as goal.items — within-bucket stable.
         assert_eq!(
             loaded_item_ids(&model),
             vec!["piece-2", "piece-1", "exercise-1"]
@@ -4067,16 +4071,25 @@ mod tests {
 
     #[test]
     fn load_goal_inherits_goal_level_target_for_bucketing() {
+        // Goal default confidence 4 (no per-item override). piece-1 score 3 →
+        // unmet under inheritance (bucket 1). piece-2 score 5 → met under
+        // inheritance (bucket 2). Ordering must reflect inheritance, not the
+        // per-item raw absence-of-target.
         let mut model = model_with_library();
-        // Goal default confidence target 4. piece-1 has no override, score 3 → unmet.
         let goal = Goal {
             target_confidence: Some(4),
-            ..goal_with_items(vec![link("piece-1", "Moonlight Sonata", ItemKind::Piece)])
+            ..goal_with_items(vec![
+                link("piece-2", "Clair de Lune", ItemKind::Piece),
+                link("piece-1", "Moonlight Sonata", ItemKind::Piece),
+            ])
         };
         model.goals.push(goal);
         model
             .practice_summaries
             .insert("piece-1".to_string(), summary(Some(3), None));
+        model
+            .practice_summaries
+            .insert("piece-2".to_string(), summary(Some(5), None));
 
         update(
             &mut model,
@@ -4085,8 +4098,7 @@ mod tests {
             }),
         );
 
-        // Single item in bucket 1 — confirms inheritance path was hit (no panic, item present).
-        assert_eq!(loaded_item_ids(&model), vec!["piece-1"]);
+        assert_eq!(loaded_item_ids(&model), vec!["piece-1", "piece-2"]);
     }
 
     #[test]
@@ -4100,5 +4112,35 @@ mod tests {
         );
         assert!(model.last_error.as_deref().unwrap().contains("nonexistent"));
         assert!(matches!(model.session_status, SessionStatus::Idle));
+    }
+
+    #[test]
+    fn load_goal_rejected_when_session_active() {
+        let mut model = model_with_library();
+        model.goals.push(goal_with_items(vec![link(
+            "piece-1",
+            "Moonlight Sonata",
+            ItemKind::Piece,
+        )]));
+        let now = Utc::now();
+        model.session_status = SessionStatus::Active(ActiveSession {
+            id: "active-1".to_string(),
+            entries: vec![],
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        });
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::LoadGoalIntoSetlist {
+                goal_id: "goal-1".to_string(),
+            }),
+        );
+
+        // Active session preserved; error surfaced.
+        assert!(matches!(model.session_status, SessionStatus::Active(_)));
+        assert!(model.last_error.is_some());
     }
 }

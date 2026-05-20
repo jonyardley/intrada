@@ -216,6 +216,9 @@ fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
             goal_id: goal_id_for_practice.clone(),
         }));
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        // Drop the RefCell borrow before navigating — the route change
+        // re-renders subscribed views, some of which `core.borrow()` again
+        // and would panic if we still held this guard.
         drop(core_ref);
         navigate_practice.clone()("/sessions/new", NavigateOptions::default());
     };
