@@ -3,18 +3,19 @@ use libsql::Connection;
 
 use intrada_core::domain::goal::{Goal, GoalItem, GoalPhoto, GoalStatus};
 use intrada_core::domain::item::ItemKind;
-use intrada_core::domain::types::{CreateGoal, UpdateGoal};
+use intrada_core::domain::types::{CreateGoal, UpdateGoal, UpdateGoalItem};
 
 use super::{col, item_kind_from_str, item_kind_to_str};
 use crate::error::ApiError;
 use crate::storage::R2Client;
 
 const SELECT_COLUMNS: &str =
-    "id, user_id, title, date, notes, deadline, status, completed_at, created_at, updated_at";
+    "id, user_id, title, date, notes, deadline, status, completed_at, created_at, updated_at, target_confidence";
 
 const PHOTO_SELECT_COLUMNS: &str = "id, goal_id, user_id, storage_key, created_at";
 
-const GOAL_ITEMS_SELECT_COLUMNS: &str = "goal_id, item_id, item_title, item_type";
+const GOAL_ITEMS_SELECT_COLUMNS: &str =
+    "goal_id, item_id, item_title, item_type, target_date, target_confidence";
 
 fn goal_status_from_str(s: &str) -> GoalStatus {
     match s {
@@ -45,6 +46,8 @@ fn row_to_goal(
     let completed_at_str: Option<String> = col!(row, 7)?;
     let created_at_str: String = col!(row, 8)?;
     let updated_at_str: String = col!(row, 9)?;
+    let target_confidence: Option<i64> = col!(row, 10)?;
+    let target_confidence: Option<u8> = target_confidence.and_then(|n| u8::try_from(n).ok());
 
     let status = goal_status_from_str(&status_str);
 
@@ -74,6 +77,7 @@ fn row_to_goal(
         photos,
         created_at,
         updated_at,
+        target_confidence,
     })
 }
 
@@ -103,11 +107,16 @@ fn row_to_goal_item(row: &libsql::Row) -> Result<GoalItem, ApiError> {
     let item_title: String = col!(row, 2)?;
     let item_type_str: String = col!(row, 3)?;
     let item_type: ItemKind = item_kind_from_str(&item_type_str)?;
+    let target_date: Option<String> = col!(row, 4)?;
+    let target_confidence: Option<i64> = col!(row, 5)?;
+    let target_confidence: Option<u8> = target_confidence.and_then(|n| u8::try_from(n).ok());
 
     Ok(GoalItem {
         item_id,
         item_title,
         item_type,
+        target_date,
+        target_confidence,
     })
 }
 
@@ -239,8 +248,9 @@ pub async fn insert_goal(
     let now = Utc::now();
     let now_str = now.to_rfc3339();
 
+    let target_confidence_val: Option<i64> = input.target_confidence.map(|c| c as i64);
     conn.execute(
-        "INSERT INTO goals (id, user_id, title, date, notes, deadline, status, completed_at, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        "INSERT INTO goals (id, user_id, title, date, notes, deadline, status, completed_at, created_at, updated_at, target_confidence) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         libsql::params![
             id.as_str(),
             user_id,
@@ -251,7 +261,8 @@ pub async fn insert_goal(
             "active",
             Option::<String>::None,
             now_str.as_str(),
-            now_str.as_str()
+            now_str.as_str(),
+            target_confidence_val
         ],
     )
     .await?;
@@ -302,12 +313,17 @@ pub async fn update_goal(
         GoalStatus::Active => None,
     };
 
+    let target_confidence: Option<i64> = match &input.target_confidence {
+        None => current.target_confidence.map(|c| c as i64),
+        Some(opt) => opt.map(|c| c as i64),
+    };
+
     let now = Utc::now();
     let now_str = now.to_rfc3339();
 
     conn.execute(
-        "UPDATE goals SET title = ?1, date = ?2, notes = ?3, deadline = ?4, status = ?5, completed_at = ?6, updated_at = ?7 WHERE id = ?8 AND user_id = ?9",
-        libsql::params![title, date, notes, deadline, status_str, completed_at_str.as_deref(), now_str.as_str(), id, user_id],
+        "UPDATE goals SET title = ?1, date = ?2, notes = ?3, deadline = ?4, status = ?5, completed_at = ?6, updated_at = ?7, target_confidence = ?8 WHERE id = ?9 AND user_id = ?10",
+        libsql::params![title, date, notes, deadline, status_str, completed_at_str.as_deref(), now_str.as_str(), target_confidence, id, user_id],
     )
     .await?;
 
@@ -447,6 +463,7 @@ pub async fn list_photo_storage_keys(
 
 // ── Goal item DB operations ────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_goal_item(
     conn: &Connection,
     goal_id: &str,
@@ -454,14 +471,59 @@ pub async fn insert_goal_item(
     item_id: &str,
     item_title: &str,
     item_type: &ItemKind,
+    target_date: Option<&str>,
+    target_confidence: Option<u8>,
 ) -> Result<(), ApiError> {
     let now = chrono::Utc::now().to_rfc3339();
+    let target_confidence_val: Option<i64> = target_confidence.map(|c| c as i64);
     conn.execute(
-        "INSERT OR IGNORE INTO goal_items (goal_id, item_id, user_id, item_title, item_type, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        libsql::params![goal_id, item_id, user_id, item_title, item_kind_to_str(item_type), now],
+        "INSERT OR IGNORE INTO goal_items (goal_id, item_id, user_id, item_title, item_type, created_at, target_date, target_confidence) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        libsql::params![
+            goal_id,
+            item_id,
+            user_id,
+            item_title,
+            item_kind_to_str(item_type),
+            now,
+            target_date,
+            target_confidence_val
+        ],
     )
     .await?;
     Ok(())
+}
+
+pub async fn update_goal_item(
+    conn: &Connection,
+    goal_id: &str,
+    item_id: &str,
+    user_id: &str,
+    input: &UpdateGoalItem,
+) -> Result<bool, ApiError> {
+    let current = list_items_for_goal(conn, goal_id)
+        .await?
+        .into_iter()
+        .find(|i| i.item_id == item_id);
+    let Some(current) = current else {
+        return Ok(false);
+    };
+
+    let target_date: Option<String> = match &input.target_date {
+        None => current.target_date.clone(),
+        Some(opt) => opt.clone(),
+    };
+    let target_confidence: Option<i64> = match &input.target_confidence {
+        None => current.target_confidence.map(|c| c as i64),
+        Some(opt) => opt.map(|c| c as i64),
+    };
+
+    let rows_affected = conn
+        .execute(
+            "UPDATE goal_items SET target_date = ?1, target_confidence = ?2 WHERE goal_id = ?3 AND item_id = ?4 AND user_id = ?5",
+            libsql::params![target_date, target_confidence, goal_id, item_id, user_id],
+        )
+        .await?;
+    Ok(rows_affected > 0)
 }
 
 pub async fn delete_goal_item(

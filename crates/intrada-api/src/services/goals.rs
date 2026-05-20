@@ -1,7 +1,7 @@
 use libsql::Connection;
 
 use intrada_core::domain::goal::{Goal, GoalPhoto};
-use intrada_core::domain::types::{CreateGoal, LinkGoalItem, UpdateGoal};
+use intrada_core::domain::types::{CreateGoal, LinkGoalItem, UpdateGoal, UpdateGoalItem};
 use intrada_core::validation;
 
 use crate::db;
@@ -151,6 +151,7 @@ pub async fn link_item(
     user_id: &str,
     input: &LinkGoalItem,
 ) -> Result<(), ApiError> {
+    validation::validate_link_goal_item(input)?;
     db::goals::insert_goal_item(
         conn,
         goal_id,
@@ -158,8 +159,27 @@ pub async fn link_item(
         &input.item_id,
         &input.item_title,
         &input.item_type,
+        input.target_date.as_deref(),
+        input.target_confidence,
     )
     .await
+}
+
+pub async fn update_goal_item(
+    conn: &Connection,
+    goal_id: &str,
+    item_id: &str,
+    user_id: &str,
+    input: &UpdateGoalItem,
+) -> Result<(), ApiError> {
+    validation::validate_update_goal_item(input)?;
+    let updated = db::goals::update_goal_item(conn, goal_id, item_id, user_id, input).await?;
+    if !updated {
+        return Err(ApiError::NotFound(format!(
+            "Goal item not found: {item_id}"
+        )));
+    }
+    Ok(())
 }
 
 pub async fn unlink_item(

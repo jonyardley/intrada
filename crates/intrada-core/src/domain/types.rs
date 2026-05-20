@@ -1,6 +1,17 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use super::item::{Item, ItemKind};
+
+/// Deserialize an `Option<Option<T>>` field with three-state semantics:
+/// absent → `None` (skip), `null` → `Some(None)` (clear), `v` → `Some(Some(v))` (set).
+/// Pair with `#[serde(default, deserialize_with = "double_option")]`.
+fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
+}
 
 /// Top-level serialisation unit for library data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -144,6 +155,8 @@ pub struct CreateGoal {
     pub title: Option<String>,
     pub notes: Option<String>,
     pub deadline: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_confidence: Option<u8>,
 }
 
 /// Request body for updating a goal via the REST API.
@@ -155,6 +168,12 @@ pub struct UpdateGoal {
     pub notes: Option<Option<String>>,
     pub deadline: Option<Option<String>>,
     pub status: Option<super::goal::GoalStatus>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub target_confidence: Option<Option<u8>>,
 }
 
 /// Request body for linking a library item to a goal.
@@ -163,6 +182,28 @@ pub struct LinkGoalItem {
     pub item_id: String,
     pub item_title: String,
     pub item_type: ItemKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_confidence: Option<u8>,
+}
+
+/// Request body for updating the targets on a goal/item link.
+/// Three-state options: None = skip, Some(None) = clear, Some(Some(v)) = set.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct UpdateGoalItem {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub target_date: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub target_confidence: Option<Option<u8>>,
 }
 
 /// Filters for listing/searching library items.

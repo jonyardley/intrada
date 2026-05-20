@@ -1,5 +1,7 @@
 use crate::domain::item::ItemKind;
-use crate::domain::types::{CreateGoal, CreateItem, Tempo, UpdateGoal, UpdateItem};
+use crate::domain::types::{
+    CreateGoal, CreateItem, LinkGoalItem, Tempo, UpdateGoal, UpdateGoalItem, UpdateItem,
+};
 use crate::error::LibraryError;
 
 /// Validation limits shared across shells (web, CLI).
@@ -368,11 +370,32 @@ fn validate_goal_deadline(deadline: Option<&str>) -> Result<(), LibraryError> {
     Ok(())
 }
 
+fn validate_target_confidence(value: u8) -> Result<(), LibraryError> {
+    if !(MIN_SCORE..=MAX_SCORE).contains(&value) {
+        return Err(LibraryError::Validation {
+            field: "target_confidence".to_string(),
+            message: format!("Target confidence must be between {MIN_SCORE} and {MAX_SCORE}"),
+        });
+    }
+    Ok(())
+}
+
+fn validate_target_date(date: &str) -> Result<(), LibraryError> {
+    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| LibraryError::Validation {
+        field: "target_date".to_string(),
+        message: "Target date must be in YYYY-MM-DD format".to_string(),
+    })?;
+    Ok(())
+}
+
 pub fn validate_create_goal(input: &CreateGoal) -> Result<(), LibraryError> {
     validate_goal_date(&input.date)?;
     validate_goal_title(input.title.as_deref())?;
     validate_goal_notes(input.notes.as_deref())?;
     validate_goal_deadline(input.deadline.as_deref())?;
+    if let Some(c) = input.target_confidence {
+        validate_target_confidence(c)?;
+    }
     Ok(())
 }
 
@@ -388,6 +411,30 @@ pub fn validate_update_goal(input: &UpdateGoal) -> Result<(), LibraryError> {
     }
     if let Some(ref deadline) = input.deadline {
         validate_goal_deadline(deadline.as_deref())?;
+    }
+    if let Some(Some(c)) = input.target_confidence {
+        validate_target_confidence(c)?;
+    }
+    Ok(())
+}
+
+pub fn validate_link_goal_item(input: &LinkGoalItem) -> Result<(), LibraryError> {
+    validate_set_entry_fields(&input.item_id, &input.item_title)?;
+    if let Some(ref d) = input.target_date {
+        validate_target_date(d)?;
+    }
+    if let Some(c) = input.target_confidence {
+        validate_target_confidence(c)?;
+    }
+    Ok(())
+}
+
+pub fn validate_update_goal_item(input: &UpdateGoalItem) -> Result<(), LibraryError> {
+    if let Some(Some(ref d)) = input.target_date {
+        validate_target_date(d)?;
+    }
+    if let Some(Some(c)) = input.target_confidence {
+        validate_target_confidence(c)?;
     }
     Ok(())
 }
@@ -1293,5 +1340,142 @@ mod tests {
             }
             _ => panic!("Expected Validation error"),
         }
+    }
+
+    // --- Goal target validation ---
+
+    #[test]
+    fn test_create_goal_with_target_confidence_in_range() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: Some("recital prep".to_string()),
+            notes: None,
+            deadline: None,
+            target_confidence: Some(4),
+        };
+        assert!(validate_create_goal(&input).is_ok());
+    }
+
+    #[test]
+    fn test_create_goal_target_confidence_zero_rejected() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: None,
+            notes: None,
+            deadline: None,
+            target_confidence: Some(0),
+        };
+        let err = validate_create_goal(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "target_confidence");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_create_goal_target_confidence_too_high_rejected() {
+        let input = CreateGoal {
+            date: "2026-05-19".to_string(),
+            title: None,
+            notes: None,
+            deadline: None,
+            target_confidence: Some(6),
+        };
+        assert!(validate_create_goal(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_target_confidence_clear_is_ok() {
+        let input = UpdateGoal {
+            target_confidence: Some(None),
+            ..Default::default()
+        };
+        assert!(validate_update_goal(&input).is_ok());
+    }
+
+    #[test]
+    fn test_update_goal_target_confidence_out_of_range_rejected() {
+        let input = UpdateGoal {
+            target_confidence: Some(Some(7)),
+            ..Default::default()
+        };
+        assert!(validate_update_goal(&input).is_err());
+    }
+
+    #[test]
+    fn test_link_goal_item_with_targets() {
+        let input = LinkGoalItem {
+            item_id: "item-1".to_string(),
+            item_title: "Bach".to_string(),
+            item_type: ItemKind::Piece,
+            target_date: Some("2026-06-01".to_string()),
+            target_confidence: Some(4),
+        };
+        assert!(validate_link_goal_item(&input).is_ok());
+    }
+
+    #[test]
+    fn test_link_goal_item_bad_target_date_rejected() {
+        let input = LinkGoalItem {
+            item_id: "item-1".to_string(),
+            item_title: "Bach".to_string(),
+            item_type: ItemKind::Piece,
+            target_date: Some("not-a-date".to_string()),
+            target_confidence: None,
+        };
+        let err = validate_link_goal_item(&input).unwrap_err();
+        match err {
+            LibraryError::Validation { field, .. } => {
+                assert_eq!(field, "target_date");
+            }
+            _ => panic!("Expected Validation error"),
+        }
+    }
+
+    #[test]
+    fn test_link_goal_item_still_requires_item_fields() {
+        let input = LinkGoalItem {
+            item_id: "".to_string(),
+            item_title: "Bach".to_string(),
+            item_type: ItemKind::Piece,
+            target_date: None,
+            target_confidence: None,
+        };
+        assert!(validate_link_goal_item(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_item_clear_targets_ok() {
+        let input = UpdateGoalItem {
+            target_date: Some(None),
+            target_confidence: Some(None),
+        };
+        assert!(validate_update_goal_item(&input).is_ok());
+    }
+
+    #[test]
+    fn test_update_goal_item_bad_date_rejected() {
+        let input = UpdateGoalItem {
+            target_date: Some(Some("2026/06/01".to_string())),
+            target_confidence: None,
+        };
+        assert!(validate_update_goal_item(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_item_bad_confidence_rejected() {
+        let input = UpdateGoalItem {
+            target_date: None,
+            target_confidence: Some(Some(0)),
+        };
+        assert!(validate_update_goal_item(&input).is_err());
+    }
+
+    #[test]
+    fn test_update_goal_item_empty_skip_is_ok() {
+        let input = UpdateGoalItem::default();
+        assert!(validate_update_goal_item(&input).is_ok());
     }
 }

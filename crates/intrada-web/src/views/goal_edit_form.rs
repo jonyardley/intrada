@@ -106,6 +106,11 @@ pub fn GoalEditFormView(
     let title = RwSignal::new(goal.title.clone().unwrap_or_default());
     let notes = RwSignal::new(goal.notes.clone().unwrap_or_default());
     let deadline = RwSignal::new(goal.deadline.clone().unwrap_or_default());
+    let target_confidence = RwSignal::new(
+        goal.target_confidence
+            .map(|c| c.to_string())
+            .unwrap_or_default(),
+    );
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
     let navigate_cancel = navigate.clone();
@@ -128,12 +133,20 @@ pub fn GoalEditFormView(
                     let notes_val = notes.get().trim().to_string();
                     let deadline_val = deadline.get().trim().to_string();
 
+                    let tc_str = target_confidence.get();
+                    let tc_parsed: Option<u8> = if tc_str.is_empty() {
+                        None
+                    } else {
+                        tc_str.parse().ok()
+                    };
+
                     let input = UpdateGoal {
                         title: Some(if title_val.is_empty() { None } else { Some(title_val) }),
                         date: None,
                         notes: Some(if notes_val.is_empty() { None } else { Some(notes_val) }),
                         deadline: Some(if deadline_val.is_empty() { None } else { Some(deadline_val) }),
                         status: None,
+                        target_confidence: Some(tc_parsed),
                     };
 
                     let core_ref = core.borrow();
@@ -185,6 +198,28 @@ pub fn GoalEditFormView(
                 errors=errors
                 input_type="date"
             />
+
+            <div class="space-y-1">
+                <label for="goal-edit-target-confidence" class="form-label">
+                    "Target confidence"
+                </label>
+                <select
+                    id="goal-edit-target-confidence"
+                    class="input-base"
+                    prop:value=move || target_confidence.get()
+                    on:change=move |ev| target_confidence.set(leptos::prelude::event_target_value(&ev))
+                >
+                    <option value="">"(no target)"</option>
+                    <option value="1">"1 — Just starting"</option>
+                    <option value="2">"2"</option>
+                    <option value="3">"3 — Comfortable"</option>
+                    <option value="4">"4"</option>
+                    <option value="5">"5 — Performance ready"</option>
+                </select>
+                <p class="text-xs text-muted">
+                    "Default target for items in this goal. Individual items can override."
+                </p>
+            </div>
 
             <div class="flex flex-col pt-2">
                 <Button

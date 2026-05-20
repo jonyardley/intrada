@@ -30,6 +30,7 @@ pub fn GoalFormView(
     let title = RwSignal::new(String::new());
     let notes = RwSignal::new(String::new());
     let deadline = RwSignal::new(String::new());
+    let target_confidence = RwSignal::new(String::new());
     let errors: RwSignal<HashMap<String, String>> = RwSignal::new(HashMap::new());
 
     let dismiss_save = on_dismiss;
@@ -56,11 +57,15 @@ pub fn GoalFormView(
                 let notes_val = notes.get();
                 let deadline_val = deadline.get();
 
+                let tc_str = target_confidence.get();
+                let tc_parsed: Option<u8> = if tc_str.is_empty() { None } else { tc_str.parse().ok() };
+
                 let input = CreateGoal {
                     date,
                     title: if title_val.is_empty() { None } else { Some(title_val) },
                     notes: if notes_val.is_empty() { None } else { Some(notes_val) },
                     deadline: if deadline_val.is_empty() { None } else { Some(deadline_val) },
+                    target_confidence: tc_parsed,
                 };
 
                 let core_ref = core.borrow();
@@ -108,6 +113,28 @@ pub fn GoalFormView(
                 errors=errors
                 input_type="date"
             />
+
+            <div class="space-y-1">
+                <label for="goal-target-confidence" class="form-label">
+                    "Target confidence"
+                </label>
+                <select
+                    id="goal-target-confidence"
+                    class="input-base"
+                    prop:value=move || target_confidence.get()
+                    on:change=move |ev| target_confidence.set(leptos::prelude::event_target_value(&ev))
+                >
+                    <option value="">"(no target)"</option>
+                    <option value="1">"1 — Just starting"</option>
+                    <option value="2">"2"</option>
+                    <option value="3">"3 — Comfortable"</option>
+                    <option value="4">"4"</option>
+                    <option value="5">"5 — Performance ready"</option>
+                </select>
+                <p class="text-xs text-muted">
+                    "Default target for items in this goal. Individual items can override."
+                </p>
+            </div>
 
             <div class="flex flex-col pt-2">
                 <Button

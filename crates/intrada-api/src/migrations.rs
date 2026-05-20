@@ -526,6 +526,22 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0074_index_goal_items_goal",
         "CREATE INDEX IF NOT EXISTS idx_goal_items_goal ON goal_items(goal_id);",
     ),
+    (
+        "0075_goals_target_confidence",
+        "ALTER TABLE goals ADD COLUMN target_confidence INTEGER;",
+    ),
+    (
+        "0076_goal_items_targets",
+        "ALTER TABLE goal_items ADD COLUMN target_date TEXT;",
+    ),
+    (
+        "0077_goal_items_target_confidence",
+        "ALTER TABLE goal_items ADD COLUMN target_confidence INTEGER;",
+    ),
+    (
+        "0078_goal_items_target_tempo",
+        "ALTER TABLE goal_items ADD COLUMN target_tempo INTEGER;",
+    ),
 ];
 
 /// Backoff schedule for transient-error retries during migration: try
