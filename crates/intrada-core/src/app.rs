@@ -101,12 +101,11 @@ pub enum Event {
     SetUpdated {
         set: Set,
     },
-    /// Server confirmed a set creation (SaveBuildingAsSet / SaveSummaryAsSet).
-    /// Increments `model.set_saves_committed` so shells can flip an optimistic
-    /// "saved" UI state to a confirmed one only after the round-trip succeeds.
-    /// Without this, a failed save leaves the button stuck on "Saved" while
-    /// the error toast contradicts it (#449).
-    SetSaveSucceeded,
+    /// Server confirmed `Save{Building,Summary}AsSet`. `request_id` echoes
+    /// the shell's dispatch tag so per-form promotion stays isolated (#663).
+    SetSaveSucceeded {
+        request_id: String,
+    },
     /// Server confirmed a delete — model already updated optimistically.
     DeleteConfirmed,
     /// Server confirmed session creation — model already updated optimistically.
@@ -278,15 +277,8 @@ impl App for Intrada {
                 model.record_success();
                 crux_core::render::render()
             }
-            Event::SetSaveSucceeded => {
-                // Bump the monotonic counter so `SetSaveForm` can promote its
-                // optimistic state to confirmed. Also refetch sets — the
-                // optimistic push used a client-side ulid that the server
-                // may have replaced. `Item` and `Goal` creates use the temp-id
-                // mutate-response pattern instead; `Set` still refetches
-                // because the counter is wired into the save-form's UI state
-                // — known tech debt per CLAUDE.md.
-                model.set_saves_committed = model.set_saves_committed.wrapping_add(1);
+            Event::SetSaveSucceeded { request_id } => {
+                model.last_set_save_request_id = Some(request_id);
                 model.record_success();
                 crate::http::fetch_sets(&model.api_base_url)
             }
@@ -518,7 +510,7 @@ impl App for Intrada {
             just_created_token: model.just_created_token.clone(),
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
-            set_saves_committed: model.set_saves_committed,
+            last_set_save_request_id: model.last_set_save_request_id.clone(),
         }
     }
 }
@@ -697,15 +689,13 @@ mod tests {
     }
 
     #[test]
-    fn test_load_failed_does_not_bump_set_saves_counter() {
-        // The counter is the shell's signal for "save round-trip confirmed".
-        // A LoadFailed (the failure path from create_set's HTTP handler) must
-        // NOT bump it — otherwise SetSaveForm would flip to "Saved" on
-        // failure, the exact bug we're fixing (#449).
+    fn test_load_failed_does_not_set_last_set_save_request_id() {
+        // Failure must not surface a request_id — would flip "Saved" on a
+        // failed save (#449).
         let app = Intrada;
         let mut model = Model {
             api_base_url: "http://localhost:3001".to_string(),
-            set_saves_committed: 3,
+            last_set_save_request_id: Some("req-old".to_string()),
             ..Default::default()
         };
 
@@ -715,8 +705,9 @@ mod tests {
         );
 
         assert_eq!(
-            model.set_saves_committed, 3,
-            "counter must not bump on failure"
+            model.last_set_save_request_id.as_deref(),
+            Some("req-old"),
+            "request_id must not change on failure"
         );
         assert_eq!(
             model.last_error.as_deref(),
@@ -725,26 +716,54 @@ mod tests {
     }
 
     #[test]
-    fn test_set_save_succeeded_bumps_counter_and_clears_error() {
+    fn test_set_save_succeeded_records_request_id_and_clears_error() {
         let app = Intrada;
         let mut model = Model {
             api_base_url: "http://localhost:3001".to_string(),
-            set_saves_committed: 7,
+            last_set_save_request_id: Some("req-old".to_string()),
             last_error: Some("Failed to save set: timeout".to_string()),
             error_muted: true,
             ..Default::default()
         };
 
-        let _cmd = app.update(Event::SetSaveSucceeded, &mut model);
+        let _cmd = app.update(
+            Event::SetSaveSucceeded {
+                request_id: "req-new".to_string(),
+            },
+            &mut model,
+        );
 
-        // Counter bumped so shells can detect the confirmed save.
-        assert_eq!(model.set_saves_committed, 8);
-        // Stale error cleared + dismiss-mute lifted (record_success contract).
+        assert_eq!(model.last_set_save_request_id.as_deref(), Some("req-new"));
         assert!(model.last_error.is_none());
         assert!(!model.error_muted);
-        // ViewModel mirror picks it up.
         let vm = app.view(&model);
-        assert_eq!(vm.set_saves_committed, 8);
+        assert_eq!(vm.last_set_save_request_id.as_deref(), Some("req-new"));
+    }
+
+    #[test]
+    fn test_concurrent_set_saves_only_promote_matching_form() {
+        // The invariant behind #663: each success overwrites with its own id.
+        let app = Intrada;
+        let mut model = Model {
+            api_base_url: "http://localhost:3001".to_string(),
+            ..Default::default()
+        };
+
+        let _cmd = app.update(
+            Event::SetSaveSucceeded {
+                request_id: "req-A".to_string(),
+            },
+            &mut model,
+        );
+        assert_eq!(model.last_set_save_request_id.as_deref(), Some("req-A"));
+
+        let _cmd = app.update(
+            Event::SetSaveSucceeded {
+                request_id: "req-B".to_string(),
+            },
+            &mut model,
+        );
+        assert_eq!(model.last_set_save_request_id.as_deref(), Some("req-B"));
     }
 
     #[test]
@@ -2450,12 +2469,12 @@ mod tests {
     }
 
     #[test]
-    fn view_set_saves_committed_mirrors_model() {
+    fn view_last_set_save_request_id_mirrors_model() {
         let app = Intrada;
         let mut model = Model::test_default();
-        model.set_saves_committed = 42;
+        model.last_set_save_request_id = Some("req-42".to_string());
         let vm = app.view(&model);
-        assert_eq!(vm.set_saves_committed, 42);
+        assert_eq!(vm.last_set_save_request_id.as_deref(), Some("req-42"));
     }
 
     #[test]

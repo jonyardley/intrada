@@ -36,9 +36,12 @@ pub struct SetEntry {
 pub enum SetEvent {
     SaveBuildingAsSet {
         name: String,
+        /// Shell-generated ulid echoed back via `SetSaveSucceeded` (#663).
+        request_id: String,
     },
     SaveSummaryAsSet {
         name: String,
+        request_id: String,
     },
     LoadSetIntoSetlist {
         set_id: String,
@@ -58,7 +61,7 @@ pub enum SetEvent {
 
 pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        SetEvent::SaveBuildingAsSet { name } => {
+        SetEvent::SaveBuildingAsSet { name, request_id } => {
             // Precondition: must be in Building status
             let building = match &model.session_status {
                 SessionStatus::Building(b) => b,
@@ -104,12 +107,12 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
             model.last_error = None;
 
             Command::all([
-                crate::http::create_set(&model.api_base_url, &set),
+                crate::http::create_set(&model.api_base_url, &set, request_id),
                 crux_core::render::render(),
             ])
         }
 
-        SetEvent::SaveSummaryAsSet { name } => {
+        SetEvent::SaveSummaryAsSet { name, request_id } => {
             // Precondition: must be in Summary status
             let summary = match &model.session_status {
                 SessionStatus::Summary(s) => s,
@@ -155,7 +158,7 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
             model.last_error = None;
 
             Command::all([
-                crate::http::create_set(&model.api_base_url, &set),
+                crate::http::create_set(&model.api_base_url, &set, request_id),
                 crux_core::render::render(),
             ])
         }
@@ -435,6 +438,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "Morning Warm-up".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -454,6 +458,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -472,6 +477,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -486,6 +492,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "   ".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -500,6 +507,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "x".repeat(201),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -514,6 +522,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "x".repeat(200),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -528,6 +537,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -542,6 +552,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveBuildingAsSet {
                 name: "Test".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -571,6 +582,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveSummaryAsSet {
                 name: "Post-Session Set".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );
@@ -587,6 +599,7 @@ mod tests {
         let _cmd = handle_set_event(
             SetEvent::SaveSummaryAsSet {
                 name: "Test".to_string(),
+                request_id: "req-test".to_string(),
             },
             &mut model,
         );

@@ -155,17 +155,18 @@ pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
 
 // ── Set operations ──────────────────────────────────────────────────
 
-pub fn create_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<Effect, Event> {
+pub fn create_set(
+    api_base_url: &str,
+    set: &crate::domain::set::Set,
+    request_id: String,
+) -> Command<Effect, Event> {
     let create = CreateSetRequest::from_set(set);
     Http::post(format!("{api_base_url}/api/sets"))
         .body_json(&create)
         .expect("serialize CreateSetRequest")
         .build()
-        .then_send(|result| match result {
-            // Success bumps the set_saves_committed counter (so SetSaveForm
-            // can flip from optimistic→confirmed) AND triggers a refetch via
-            // the SetSaveSucceeded handler — see app.rs (#449).
-            Ok(_) => Event::SetSaveSucceeded,
+        .then_send(move |result| match result {
+            Ok(_) => Event::SetSaveSucceeded { request_id },
             Err(e) => Event::LoadFailed(format!("Failed to save set: {e}")),
         })
 }
@@ -710,7 +711,7 @@ mod tests {
     #[test]
     fn create_set_posts_create_dto_shape() {
         let set = sample_set();
-        let req = take_http(&mut create_set(BASE, &set));
+        let req = take_http(&mut create_set(BASE, &set, "req-test".to_string()));
         assert_eq!(req.method, "POST");
         assert_eq!(req.url, "https://api.example.com/api/sets");
 

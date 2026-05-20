@@ -307,8 +307,8 @@ fn ReviewSheetBody(
                                         </Button>
                                         <SetSaveForm
                                             sheet_open=sheet_open
-                                            on_save=Callback::new(move |name: String| {
-                                                let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                                            on_save=Callback::new(move |(name, request_id): (String, String)| {
+                                                let event = Event::Set(SetEvent::SaveBuildingAsSet { name, request_id });
                                                 let core_ref = core_s.borrow();
                                                 let effects = core_ref.process_event(event);
                                                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
@@ -321,8 +321,8 @@ fn ReviewSheetBody(
                                 view! {
                                     <SetSaveForm
                                         sheet_open=sheet_open
-                                        on_save=Callback::new(move |name: String| {
-                                            let event = Event::Set(SetEvent::SaveBuildingAsSet { name });
+                                        on_save=Callback::new(move |(name, request_id): (String, String)| {
+                                            let event = Event::Set(SetEvent::SaveBuildingAsSet { name, request_id });
                                             let core_ref = core_save_inner.borrow();
                                             let effects = core_ref.process_event(event);
                                             process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
