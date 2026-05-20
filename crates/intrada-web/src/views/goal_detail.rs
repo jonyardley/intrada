@@ -8,7 +8,8 @@ use leptos_router::NavigateOptions;
 
 use intrada_core::domain::types::UpdateGoalItem;
 use intrada_core::{
-    Event, GoalEvent, GoalItemView, GoalStatus, GoalView, LibraryItemView, LinkGoalItem, ViewModel,
+    Event, GoalEvent, GoalItemView, GoalStatus, GoalView, LibraryItemView, LinkGoalItem,
+    SessionEvent, ViewModel,
 };
 
 use crate::components::{
@@ -179,7 +180,10 @@ fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
 
     let core_for_delete = core.clone();
     let core_for_reopen = core.clone();
+    let core_for_practice = core.clone();
     let goal_id_for_reopen = goal_id.clone();
+    let goal_id_for_practice = goal_id.clone();
+    let navigate_practice = use_navigate();
     let on_complete = move |_: leptos::ev::MouseEvent| {
         let nav = navigate.clone();
         nav(
@@ -204,6 +208,19 @@ fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
             id: goal_id_for_reopen.clone(),
         }));
         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+    };
+
+    let on_practice = move |_: leptos::ev::MouseEvent| {
+        let core_ref = core_for_practice.borrow();
+        let effects = core_ref.process_event(Event::Session(SessionEvent::LoadGoalIntoSetlist {
+            goal_id: goal_id_for_practice.clone(),
+        }));
+        process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
+        // Drop the RefCell borrow before navigating — the route change
+        // re-renders subscribed views, some of which `core.borrow()` again
+        // and would panic if we still held this guard.
+        drop(core_ref);
+        navigate_practice.clone()("/sessions/new", NavigateOptions::default());
     };
 
     let title_display = goal
@@ -305,6 +322,24 @@ fn GoalDetailContent(goal: GoalView, sheets: SheetState) -> impl IntoView {
                     </div>
                 }
             })}
+
+            {
+                let on_practice = Callback::new(on_practice);
+                view! {
+                    <Show when=move || {
+                        !is_completed_signal.get()
+                            && live_linked_items.with(|items| !items.is_empty())
+                    }>
+                        <Button
+                            variant=ButtonVariant::Primary
+                            on_click=on_practice
+                            full_width=true
+                        >
+                            "Practice this goal"
+                        </Button>
+                    </Show>
+                }
+            }
 
             <div class="space-y-2">
                 <div class="flex items-center justify-between">
