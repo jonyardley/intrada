@@ -4,48 +4,27 @@ use intrada_core::ViewModel;
 
 use crate::components::{use_toast, Button, ButtonVariant, Card, Icon};
 
-/// Inline form for saving a setlist or summary as a named set.
-///
-/// When collapsed, shows a "Save as Set" button. When expanded, shows a
-/// name input, Save, and Cancel buttons. Calls `on_save` with the entered name.
-/// After the **server confirms** the save (via the `set_saves_committed`
-/// counter rising on the ViewModel), the button switches to a disabled
-/// "Saved" state. If the save fails, the form stays expanded so the user
-/// can retry — no false-success feedback (#449).
-///
-/// When mounted inside a [`BottomSheet`], pass the sheet's `open` signal as
-/// `sheet_open` — the "Saved" state will reset when the sheet closes, so a
-/// close→reopen cycle starts fresh. Bottom sheets keep their children
-/// mounted (translated off-screen), so without this the button would stay
-/// stuck in the "Saved" state forever. Full-screen mounts (e.g. session
-/// summary) can omit it.
+/// Inline form for saving a setlist or summary as a named set. Generates a
+/// `request_id` ulid per dispatch and only promotes its own "Saved" state when
+/// that id surfaces on `ViewModel::last_set_save_request_id` — isolating
+/// concurrent instances (#663). On failure the form re-expands; bottom-sheet
+/// mounts must pass `sheet_open` so a close/reopen resets state (sheets keep
+/// children mounted off-screen).
 #[component]
 pub fn SetSaveForm(
-    /// Callback invoked with the set name when the user taps Save.
-    on_save: Callback<String>,
-    /// Optional parent-sheet open signal. If provided, the "Saved" state
-    /// resets when this transitions to false.
-    #[prop(optional, into)]
-    sheet_open: Option<Signal<bool>>,
+    on_save: Callback<(String, String)>,
+    #[prop(optional, into)] sheet_open: Option<Signal<bool>>,
 ) -> impl IntoView {
     let view_model = expect_context::<RwSignal<ViewModel>>();
     let expanded = RwSignal::new(false);
     let name = RwSignal::new(String::new());
     let error = RwSignal::new(Option::<String>::None);
     let saved = RwSignal::new(false);
-    // Pending = a save was dispatched and we're waiting for server confirmation
-    // (counter increment) OR an error to surface. Stops users double-dispatching
-    // while the request is in flight.
     let pending = RwSignal::new(false);
-    // Snapshot of the success-counter at dispatch time. We promote `saved=true`
-    // only when the live counter > this baseline.
-    let baseline_counter = RwSignal::new(0u64);
-    // Snapshot of `view_model.error` at dispatch time. A pre-existing error
-    // (e.g. dismissed-but-not-cleared from an unrelated earlier failure)
-    // would otherwise immediately trigger the failure path on the first
-    // render after dispatch. We only count a NEW error (post-dispatch) as
-    // our save's failure signal.
-    let baseline_error = RwSignal::new(Option::<String>::None);
+    let my_request_id = RwSignal::new(Option::<String>::None);
+    // Snapshot pre-dispatch error so a dismissed-but-not-cleared earlier
+    // failure doesn't immediately trigger our failure path (#449).
+    let error_before_dispatch = RwSignal::new(Option::<String>::None);
     let toast = use_toast();
 
     if let Some(open) = sheet_open {
@@ -53,29 +32,25 @@ pub fn SetSaveForm(
             if !open.get() {
                 saved.set(false);
                 pending.set(false);
+                my_request_id.set(None);
             }
         });
     }
 
-    // Reactive bridge: pending → confirmed (success) or pending → expanded
-    // (failure). Driven by either the counter rising or a NEW
-    // `view_model.error` appearing post-dispatch (distinguished from a
-    // pre-existing one via `baseline_error`).
     Effect::new(move |_| {
         let vm = view_model.get();
         if !pending.get_untracked() {
             return;
         }
-        if vm.set_saves_committed > baseline_counter.get_untracked() {
-            // Confirmed: the round-trip succeeded.
+        let my_id = my_request_id.get_untracked();
+        if my_id.is_some() && vm.last_set_save_request_id == my_id {
             pending.set(false);
+            my_request_id.set(None);
             saved.set(true);
             toast.show("Saved as Set");
-        } else if vm.error.is_some() && vm.error != baseline_error.get_untracked() {
-            // A new error surfaced after dispatch — treat as our save's
-            // failure. Re-expand the form so the user can retry; the error
-            // banner shows the message.
+        } else if vm.error.is_some() && vm.error != error_before_dispatch.get_untracked() {
             pending.set(false);
+            my_request_id.set(None);
             expanded.set(true);
         }
     });
@@ -88,10 +63,14 @@ pub fn SetSaveForm(
         }
         error.set(None);
         let vm = view_model.get_untracked();
-        baseline_counter.set(vm.set_saves_committed);
-        baseline_error.set(vm.error.clone());
+        let request_id = ulid::Ulid::new().to_string();
+        // Order matters: set `my_request_id` BEFORE `pending` so the
+        // tracked-Effect's early-return guard never sees a pending state
+        // without an id to match against.
+        my_request_id.set(Some(request_id.clone()));
+        error_before_dispatch.set(vm.error.clone());
         pending.set(true);
-        on_save.run(trimmed);
+        on_save.run((trimmed, request_id));
         name.set(String::new());
         expanded.set(false);
     };
@@ -147,8 +126,6 @@ pub fn SetSaveForm(
                     </Card>
                 }.into_any()
             } else if pending.get() {
-                // Awaiting server confirmation. Show a disabled "Saving…" so
-                // users see feedback but can't double-dispatch (#449).
                 view! {
                     <button
                         class="w-full rounded-lg border border-dashed border-border-default bg-surface-secondary px-4 py-3 text-sm font-medium text-muted inline-flex items-center justify-center gap-2 cursor-default"

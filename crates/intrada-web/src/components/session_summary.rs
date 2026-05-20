@@ -315,8 +315,8 @@ pub fn SessionSummary() -> impl IntoView {
                             {
                                 let core_save_set = core_set_save.clone();
                                 view! {
-                                    <SetSaveForm on_save=Callback::new(move |name: String| {
-                                        let event = Event::Set(SetEvent::SaveSummaryAsSet { name });
+                                    <SetSaveForm on_save=Callback::new(move |(name, request_id): (String, String)| {
+                                        let event = Event::Set(SetEvent::SaveSummaryAsSet { name, request_id });
                                         let core_ref = core_save_set.borrow();
                                         let effects = core_ref.process_event(event);
                                         process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);

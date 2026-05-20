@@ -1597,7 +1597,7 @@ pub fn DesignCatalogue() -> impl IntoView {
             <section id="set-save">
                 <h3 class="text-lg font-semibold text-primary mb-4 font-heading">"Set Save Form"</h3>
                 <p class="text-xs text-faint mb-3">"Click the dashed button to expand the form. Interactive — try saving without a name."</p>
-                <SetSaveForm on_save=Callback::new(|_name: String| {}) />
+                <SetSaveForm on_save=Callback::new(|_: (String, String)| {}) />
             </section>
 
             // ── Loading States ────────────────────────────────────────
