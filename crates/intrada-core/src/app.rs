@@ -278,9 +278,6 @@ impl App for Intrada {
                 crux_core::render::render()
             }
             Event::SetSaveSucceeded { request_id } => {
-                // Refetch reconciles the optimistic push's client-side ulid
-                // with whatever the server assigned (save-counter+refetch
-                // pattern; tech debt to migrate to temp-id per CLAUDE.md).
                 model.last_set_save_request_id = Some(request_id);
                 model.record_success();
                 crate::http::fetch_sets(&model.api_base_url)
@@ -693,10 +690,8 @@ mod tests {
 
     #[test]
     fn test_load_failed_does_not_set_last_set_save_request_id() {
-        // The request_id is the shell's signal for "save round-trip confirmed".
-        // A LoadFailed (the failure path from create_set's HTTP handler) must
-        // NOT touch it — otherwise SetSaveForm would flip to "Saved" on
-        // failure (#449).
+        // Failure must not surface a request_id — would flip "Saved" on a
+        // failed save (#449).
         let app = Intrada;
         let mut model = Model {
             api_base_url: "http://localhost:3001".to_string(),
@@ -738,22 +733,16 @@ mod tests {
             &mut model,
         );
 
-        // Latest confirmed request_id is recorded so shells can detect it.
         assert_eq!(model.last_set_save_request_id.as_deref(), Some("req-new"));
-        // Stale error cleared + dismiss-mute lifted (record_success contract).
         assert!(model.last_error.is_none());
         assert!(!model.error_muted);
-        // ViewModel mirror picks it up.
         let vm = app.view(&model);
         assert_eq!(vm.last_set_save_request_id.as_deref(), Some("req-new"));
     }
 
     #[test]
     fn test_concurrent_set_saves_only_promote_matching_form() {
-        // Two SetSaveForm instances dispatch with distinct request_ids. Each
-        // success event must overwrite the field with that specific id, so
-        // only the matching form sees its own confirmation — this is the
-        // core invariant behind the fix for #663.
+        // The invariant behind #663: each success overwrites with its own id.
         let app = Intrada;
         let mut model = Model {
             api_base_url: "http://localhost:3001".to_string(),

@@ -4,12 +4,9 @@ use intrada_core::ViewModel;
 
 use crate::components::{use_toast, Button, ButtonVariant, Card, Icon};
 
-/// Inline form for saving a setlist or summary as a named set. Generates a
-/// `request_id` ulid per dispatch and only promotes its own "Saved" state when
-/// that id surfaces on `ViewModel::last_set_save_request_id` — isolating
-/// concurrent instances (#663). On failure the form re-expands; bottom-sheet
-/// mounts must pass `sheet_open` so a close/reopen resets state (sheets keep
-/// children mounted off-screen).
+/// Inline "Save as Set" form. Per-dispatch `request_id` isolates concurrent
+/// instances (#663); `sheet_open` is required for bottom-sheet mounts since
+/// sheets keep children mounted off-screen.
 #[component]
 pub fn SetSaveForm(
     on_save: Callback<(String, String)>,
@@ -22,8 +19,7 @@ pub fn SetSaveForm(
     let saved = RwSignal::new(false);
     let pending = RwSignal::new(false);
     let my_request_id = RwSignal::new(Option::<String>::None);
-    // Snapshot pre-dispatch error so a dismissed-but-not-cleared earlier
-    // failure doesn't immediately trigger our failure path (#449).
+    // Avoid a dismissed earlier failure tripping our failure path (#449).
     let error_before_dispatch = RwSignal::new(Option::<String>::None);
     let toast = use_toast();
 
@@ -64,9 +60,7 @@ pub fn SetSaveForm(
         error.set(None);
         let vm = view_model.get_untracked();
         let request_id = ulid::Ulid::new().to_string();
-        // Order matters: set `my_request_id` BEFORE `pending` so the
-        // tracked-Effect's early-return guard never sees a pending state
-        // without an id to match against.
+        // Must precede `pending.set(true)` — Effect guards on `my_id.is_some()`.
         my_request_id.set(Some(request_id.clone()));
         error_before_dispatch.set(vm.error.clone());
         pending.set(true);
