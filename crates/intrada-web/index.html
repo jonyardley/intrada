@@ -263,18 +263,6 @@
       }
     </script>
     <script>
-      // Parallel-with-WASM SDK load (#580); Tauri shell uses PATs, skipped.
-      if (location.protocol !== 'tauri:') {
-        var s = document.createElement('script');
-        s.src = '/clerk/clerk.browser.js';
-        window.__clerkLoadPromise = new Promise(function (resolve, reject) {
-          s.onload = resolve;
-          s.onerror = function () { reject(new Error('Clerk SDK load failed')); };
-        });
-        document.head.appendChild(s);
-      }
-    </script>
-    <script>
       // Auth helper bridge — used by WASM via wasm_bindgen(inline_js)
       // Skip if already defined (E2E tests inject a mock via addInitScript)
       //
@@ -301,11 +289,21 @@
           }
 
           // ── Web: standard Clerk JS flow ──
+          // Set the publishable key BEFORE injecting the script: the Clerk
+          // bundle auto-runs `new Clerk(window.__clerk_publishable_key || "")`
+          // at script-load time, which throws synchronously if the key is
+          // empty. See INTRADA-WEB-N.
           try {
             window.__clerk_publishable_key = publishableKey;
             if (!window.Clerk) {
               try {
-                await window.__clerkLoadPromise;
+                await new Promise((resolve, reject) => {
+                  const s = document.createElement('script');
+                  s.src = '/clerk/clerk.browser.js';
+                  s.onload = resolve;
+                  s.onerror = () => reject(new Error('Clerk SDK load failed'));
+                  document.head.appendChild(s);
+                });
               } catch (e) {
                 this._lastError = 'script_load: ' + e.message;
                 this._initFailed = true;
