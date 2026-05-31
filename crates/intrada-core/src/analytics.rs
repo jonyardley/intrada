@@ -1175,6 +1175,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            priority: false,
         }
     }
 

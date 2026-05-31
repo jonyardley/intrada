@@ -519,6 +519,91 @@ async fn update_item_clears_notes_with_null() {
 }
 
 #[tokio::test]
+async fn update_priority_is_scoped_to_owner() {
+    use intrada_api::db::items;
+
+    let (_app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+
+    let created = items::insert_item(
+        &conn,
+        "owner",
+        &intrada_core::domain::types::CreateItem {
+            title: "Arabesque".to_string(),
+            kind: intrada_core::domain::item::ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        },
+    )
+    .await
+    .unwrap();
+
+    let result = items::update_item(
+        &conn,
+        &created.id,
+        "intruder",
+        &intrada_core::domain::types::UpdateItem {
+            priority: Some(true),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(result.is_none(), "non-owner update must not match the row");
+
+    let still = items::get_item(&conn, &created.id, "owner")
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!still.priority, "owner's row must be unchanged");
+}
+
+#[tokio::test]
+async fn update_toggles_item_priority() {
+    let app = common::setup_test_app().await;
+
+    let (status, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({ "title": "Gymnopedie", "kind": "piece", "composer": "Satie", "tags": [] }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let created: Item = common::json(&body);
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "priority": true }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.priority);
+
+    assert_eq!(updated.title, "Gymnopedie");
+}
+
+#[tokio::test]
+async fn created_item_defaults_to_not_priority() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({ "title": "Nocturne", "kind": "piece", "composer": "Chopin", "tags": [] }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert!(!item.priority);
+}
+
+#[tokio::test]
 async fn update_item_skip_preserves_existing_when_field_omitted() {
     // Counterpart to the above: omit the field entirely → no change.
     let app = common::setup_test_app().await;

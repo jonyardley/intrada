@@ -90,6 +90,7 @@ pub fn DetailView() -> impl IntoView {
                         updated_at: _,
                         practice,
                         latest_achieved_tempo: _,
+                        priority: _,
                     } = item;
 
                     let indicator_type = item_kind_to_type(item_type);

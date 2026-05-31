@@ -332,6 +332,7 @@ pub struct LibraryItemView {
     pub updated_at: String,
     pub practice: Option<ItemPracticeSummary>,
     pub latest_achieved_tempo: Option<u16>,
+    pub priority: bool,
 }
 
 /// Practice summary for a library item.
@@ -626,6 +627,7 @@ mod tests {
             tags: vec![],
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            priority: false,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -902,6 +904,7 @@ mod tests {
                     tempo_history: vec![],
                 }),
                 latest_achieved_tempo: Some(120),
+                priority: false,
             },
             LibraryItemView {
                 id: "item-b".to_string(),
@@ -916,6 +919,7 @@ mod tests {
                 updated_at: String::new(),
                 practice: None,
                 latest_achieved_tempo: None,
+                priority: false,
             },
         ];
 

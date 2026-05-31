@@ -38,6 +38,8 @@ pub struct Item {
     pub tags: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub priority: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -69,6 +71,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 tags: input.tags,
                 created_at: now,
                 updated_at: now,
+                priority: false,
             };
 
             let temp_id = item.id.clone();
@@ -108,6 +111,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
             if let Some(tags) = input.tags {
                 item.tags = tags;
+            }
+            if let Some(priority) = input.priority {
+                item.priority = priority;
             }
             item.updated_at = chrono::Utc::now();
             model.last_error = None;

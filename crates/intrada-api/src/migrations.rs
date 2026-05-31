@@ -546,6 +546,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0079_goals_target_tempo",
         "ALTER TABLE goals ADD COLUMN target_tempo INTEGER;",
     ),
+    (
+        "0080_add_priority_to_items",
+        "ALTER TABLE items ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;",
+    ),
 ];
 
 /// Backoff schedule for transient-error retries during migration: try
