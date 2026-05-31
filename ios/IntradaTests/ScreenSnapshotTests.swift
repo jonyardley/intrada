@@ -43,11 +43,12 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryScreen() {
-    assertSnapshot(of: host(LibraryScreen()), as: config)
+    assertSnapshot(of: host(NavigationStack { LibraryScreen() }), as: config)
   }
 
   func testLibraryScreenPopulated() {
-    assertSnapshot(of: host(LibraryScreen(), store: .previewLibrary), as: config)
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: config)
   }
 
   func testPracticeScreen() {
@@ -60,6 +61,26 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
+  }
+
+  func testLibraryDetailScreen() {
+    // Push via a preset path so the snapshot covers the real navigation chrome
+    // (back chevron + transparent bar over the serif title), not just the body.
+    let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail])) {
+      LibraryScreen()
+    }
+    assertSnapshot(of: host(pushed, store: .previewLibrary), as: config)
+  }
+
+  func testTypeBadges() {
+    let badges = ZStack {
+      PaperBackground()
+      HStack(spacing: 12) {
+        TypeBadge(kind: .piece)
+        TypeBadge(kind: .exercise)
+      }
+    }
+    assertSnapshot(of: host(badges), as: config)
   }
 
   func testLibraryFilterTabs() {

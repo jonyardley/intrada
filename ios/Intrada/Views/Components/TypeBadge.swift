@@ -1,0 +1,49 @@
+import SharedTypes
+import SwiftUI
+
+/// Tinted icon-chip badge for an item's type — used where a type-coded list bar
+/// isn't present (e.g. the detail header). Piece = indigo, Exercise = gold.
+struct TypeBadge: View {
+  let kind: ItemKind
+
+  var body: some View {
+    HStack(spacing: 5) {
+      Image(systemName: kind.iconName)
+        .font(.system(size: 11, weight: .semibold))
+      Text(kind.label)
+        .font(.system(size: 12, weight: .semibold))
+    }
+    .foregroundStyle(foreground)
+    .padding(.vertical, 5)
+    .padding(.horizontal, 10)
+    .background(background, in: Capsule())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(kind.label)
+  }
+
+  private var foreground: Color {
+    switch kind {
+    case .piece: IntradaColor.pieceBadgeFg
+    case .exercise: IntradaColor.exerciseBadgeFg
+    }
+  }
+
+  private var background: Color {
+    switch kind {
+    case .piece: IntradaColor.pieceBadgeBg
+    case .exercise: IntradaColor.exerciseBadgeBg
+    }
+  }
+}
+
+#if DEBUG
+  #Preview {
+    ZStack {
+      PaperBackground()
+      HStack(spacing: 12) {
+        TypeBadge(kind: .piece)
+        TypeBadge(kind: .exercise)
+      }
+    }
+  }
+#endif

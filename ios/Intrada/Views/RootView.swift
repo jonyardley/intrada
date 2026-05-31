@@ -12,12 +12,15 @@ struct RootView: View {
 
   init() {
     Self.applyTabBarAppearance()
+    Self.applyNavBarAppearance()
   }
 
   var body: some View {
     TabView {
-      LibraryScreen()
-        .tabItem { Label("Library", systemImage: "books.vertical") }
+      NavigationStack {
+        LibraryScreen()
+      }
+      .tabItem { Label("Library", systemImage: "books.vertical") }
       PracticeScreen()
         .tabItem { Label("Practice", systemImage: "music.note") }
       RoutinesScreen()
@@ -49,6 +52,16 @@ struct RootView: View {
 
     UITabBar.appearance().standardAppearance = appearance
     UITabBar.appearance().scrollEdgeAppearance = appearance
+  }
+
+  /// Transparent nav bar so the paper background shows through; the back chevron
+  /// (indigo via `tint`) floats over it. Screens draw their own serif headers.
+  private static func applyNavBarAppearance() {
+    let appearance = UINavigationBarAppearance()
+    appearance.configureWithTransparentBackground()
+    UINavigationBar.appearance().standardAppearance = appearance
+    UINavigationBar.appearance().scrollEdgeAppearance = appearance
+    UINavigationBar.appearance().compactAppearance = appearance
   }
 }
 
