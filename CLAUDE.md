@@ -184,6 +184,11 @@ The Leptos shell uses a dark-on-dark glassmorphism aesthetic. Web and iOS run
 the same UI codebase; iOS-specific look-and-feel is layered on with platform
 gating (see iOS native-feel rules below).
 
+**Interaction & design principles** (the *why* behind the visual rules, plus how
+we think about friction, simplicity, and clutter) live in
+`docs/design-principles.md`. Read it before designing a new surface; it also
+carries a dated log of design decisions and their reasoning.
+
 ### Hierarchy: Tokens → Utilities → Components → Views
 
 1. **Tokens first**: Every colour traces to a named token. Never use raw colours
