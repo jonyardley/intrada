@@ -22,17 +22,14 @@ private final class StubBridge: CoreBridge {
 final class RootViewSnapshotTests: XCTestCase {
   func testFoundationScreen() {
     let store = Store(bridge: StubBridge())
-    let view = RootView().environment(store)
-    // Pin displayScale AND color scheme so the bitmap is identical across
-    // machines/CI — otherwise the host sim's screen scale and light/dark default
-    // leak in (scale → size diverges; dark vs light → ~inverted pixels).
-    let traits = UITraitCollection(traitsFrom: [
-      UITraitCollection(displayScale: 2),
-      UITraitCollection(userInterfaceStyle: .light),
-    ])
+    // Force light mode at the controller level (SwiftUI reads colorScheme from
+    // here, not the snapshot `traits:`) so CI's dark-default sim can't invert
+    // the image. Pin displayScale too so the size is host-independent.
+    let vc = UIHostingController(rootView: RootView().environment(store))
+    vc.overrideUserInterfaceStyle = .light
     assertSnapshot(
-      of: UIHostingController(rootView: view),
-      as: .image(on: .iPhone13, perceptualPrecision: 0.98, traits: traits)
+      of: vc,
+      as: .image(on: .iPhone13, perceptualPrecision: 0.98, traits: .init(displayScale: 2))
     )
   }
 }
