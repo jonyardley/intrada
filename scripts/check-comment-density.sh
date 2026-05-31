@@ -24,7 +24,7 @@ fi
 range="origin/main...HEAD"
 
 files=$(git diff --name-only "$range" -- \
-  '*.rs' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
+  '*.rs' '*.swift' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
 if [ -z "$files" ]; then
   exit 0
 fi
@@ -70,7 +70,7 @@ if [ "$over" = "1" ]; then
 
    Inspect what tripped the check:
 
-     git diff origin/main...HEAD -- '*.rs' '*.ts' '*.tsx' \\
+     git diff origin/main...HEAD -- '*.rs' '*.swift' '*.ts' '*.tsx' \\
        | grep -E '^\+[[:space:]]*(//|/\*|\*)'
 
    If the comments are genuinely justified (incident write-up, vendored
