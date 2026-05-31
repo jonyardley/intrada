@@ -1,47 +1,60 @@
 import SharedTypes
 import SwiftUI
 
-/// The minimal foundation screen: sends `StartApp` on appear and renders the
-/// core's `ViewModel`. Proves the bridge → store → SwiftUI render path. Real
-/// library UI (and auth) come with the screen-by-screen rewrite (Phase C).
+/// The app shell: a four-tab bar over the three pillars — Plan (Library,
+/// Routines), Practice, and Track (Analytics). Each tab is a placeholder
+/// screen; the real UI lands tab-by-tab in the screen rewrite (Phase C).
+/// Owns the one-time `StartApp` kick so the core bridge boots behind the tabs.
 struct RootView: View {
   @Environment(Store.self) private var store
 
   private let apiBaseURL = "https://intrada-api.fly.dev"
 
+  init() {
+    Self.applyTabBarAppearance()
+  }
+
   var body: some View {
-    NavigationStack {
-      Group {
-        if let viewModel = store.viewModel {
-          summary(viewModel)
-        } else {
-          ProgressView("Loading…")
-        }
-      }
-      .navigationTitle("Intrada")
+    TabView {
+      LibraryScreen()
+        .tabItem { Label("Library", systemImage: "books.vertical") }
+      PracticeScreen()
+        .tabItem { Label("Practice", systemImage: "music.note") }
+      RoutinesScreen()
+        .tabItem { Label("Routines", systemImage: "repeat") }
+      AnalyticsScreen()
+        .tabItem { Label("Analytics", systemImage: "chart.line.uptrend.xyaxis") }
     }
+    .tint(IntradaColor.accent)
     .task {
       store.send(.startApp(apiBaseUrl: apiBaseURL))
     }
   }
 
-  private func summary(_ viewModel: ViewModel) -> some View {
-    VStack(spacing: 16) {
-      Image(systemName: "music.note.list")
-        .font(.system(size: 48))
-        .foregroundStyle(.tint)
-      Text("\(viewModel.items.count) pieces")
-        .font(.title2.weight(.semibold))
-      if let error = viewModel.error {
-        Text(error)
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-          .multilineTextAlignment(.center)
-      }
-    }
-    .padding()
-    .dynamicTypeSize(...DynamicTypeSize.accessibility3)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("Library — \(viewModel.items.count) pieces")
+  /// Paint the UIKit tab bar with the paper theme: cream fill, faint inactive
+  /// glyphs/labels, indigo for the selected tab. `tint` above colours selection
+  /// at the SwiftUI layer; this carries the rest UIKit owns.
+  private static func applyTabBarAppearance() {
+    let appearance = UITabBarAppearance()
+    appearance.configureWithOpaqueBackground()
+    appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
+
+    let normal = appearance.stackedLayoutAppearance.normal
+    normal.iconColor = UIColor(IntradaColor.tabBarInactiveIcon)
+    normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkFaint)]
+
+    let selected = appearance.stackedLayoutAppearance.selected
+    selected.iconColor = UIColor(IntradaColor.accent)
+    selected.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.accent)]
+
+    UITabBar.appearance().standardAppearance = appearance
+    UITabBar.appearance().scrollEdgeAppearance = appearance
   }
 }
+
+#if DEBUG
+  #Preview {
+    RootView()
+      .environment(Store.preview)
+  }
+#endif
