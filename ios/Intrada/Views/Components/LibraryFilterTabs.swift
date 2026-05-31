@@ -25,23 +25,33 @@ enum LibraryFilter: CaseIterable, Identifiable {
   }
 }
 
-/// Segmented pill control: indigo-filled selected pill, ghost for the rest.
+/// Segmented pill control: the indigo selected pill slides between options via
+/// a shared `matchedGeometryEffect`. Spring approximates the iOS default.
 struct LibraryFilterTabs: View {
   @Binding var selection: LibraryFilter
+  @Namespace private var pill
 
   var body: some View {
     HStack(spacing: 8) {
       ForEach(LibraryFilter.allCases) { filter in
         let isSelected = filter == selection
         Button {
-          selection = filter
+          withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            selection = filter
+          }
         } label: {
           Text(filter.label)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
             .padding(.vertical, 6)
             .padding(.horizontal, 14)
-            .background(isSelected ? IntradaColor.accent : .clear, in: Capsule())
+            .background {
+              if isSelected {
+                Capsule()
+                  .fill(IntradaColor.accent)
+                  .matchedGeometryEffect(id: "selectedPill", in: pill)
+              }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel(filter.label)
