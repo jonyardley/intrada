@@ -30,11 +30,13 @@ struct RootView: View {
     }
     .tint(IntradaColor.accent)
     .task {
-      store.send(.startApp(apiBaseUrl: apiBaseURL))
-      // Opt-in demo data for CI screenshots / local demos / E2E — the core
-      // owns the dataset (Event.loadSampleData); production never passes this.
+      // Demo mode (CI screenshots / local / E2E) seeds offline via the core and
+      // skips StartApp's fetches — otherwise a late fetch response would clobber
+      // the seed. Production never passes the arg.
       if ProcessInfo.processInfo.arguments.contains("--seed-sample-data") {
         store.send(.loadSampleData)
+      } else {
+        store.send(.startApp(apiBaseUrl: apiBaseURL))
       }
     }
   }

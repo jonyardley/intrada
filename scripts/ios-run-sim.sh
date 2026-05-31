@@ -48,7 +48,8 @@ xcrun simctl install "$UDID" "$APP"
 # Override with SEED=0 to launch against the empty/real-data state.
 LAUNCH_ARGS=()
 [ "${SEED:-1}" = "1" ] && LAUNCH_ARGS+=(--seed-sample-data)
-xcrun simctl launch "$UDID" "$APP_ID" "${LAUNCH_ARGS[@]}" >/dev/null
+# `${arr[@]+...}` guards the empty-array case under `set -u` on bash 3.2 (macOS).
+xcrun simctl launch "$UDID" "$APP_ID" "${LAUNCH_ARGS[@]+"${LAUNCH_ARGS[@]}"}" >/dev/null
 sleep 3
 xcrun simctl io "$UDID" screenshot "$SHOT" >/dev/null
 echo "✓ launched on $UDID — screenshot: $SHOT"
