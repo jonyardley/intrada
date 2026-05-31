@@ -407,6 +407,23 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+      # Snapshot test = deterministic UI-regression "eyes" (renders RootView
+      # against a committed reference). Shares build/dd with the launch step.
+      - name: Run snapshot tests
+        working-directory: ios
+        run: |
+          UDID=$(xcrun simctl list devices available --json | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];devs=[x for k in sorted(d) if 'iOS' in k for x in d[k] if 'iPhone' in x['name']];print(devs[-1]['udid'] if devs else '')")
+          xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+            -destination "id=$UDID" -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Upload snapshot failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshot-failures
+          path: ios/IntradaTests/__Snapshots__/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Build + launch on simulator + screenshot
         run: bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
       - name: Upload screenshot
