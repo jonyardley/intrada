@@ -424,8 +424,10 @@ jobs:
           path: ios/IntradaTests/__Snapshots__/
           retention-days: 7
           if-no-files-found: ignore
-      - name: Build + launch on simulator + screenshot
-        run: bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
+      # REUSE_BUILD: the snapshot-test step above already built the app into
+      # build/dd — install + launch it for the screenshot without rebuilding.
+      - name: Launch on simulator + screenshot
+        run: REUSE_BUILD=1 bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
       - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v7

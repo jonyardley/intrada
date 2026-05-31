@@ -27,16 +27,22 @@ fi
 
 xcrun simctl boot "$UDID" 2>/dev/null || true
 
-echo "building…"
-xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-    -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
-    build CODE_SIGNING_ALLOWED=NO >/tmp/ios-build.log 2>&1 || {
-    echo "✗ build failed:" >&2
-    grep -E "error:" /tmp/ios-build.log | tail -20 >&2
-    exit 1
-}
+# REUSE_BUILD=1 reuses an existing build/dd .app (e.g. CI, right after the
+# snapshot-test step already built it) — avoids a second xcodebuild. Local
+# `just ios-run` leaves it unset and always builds fresh.
+if [ -z "${REUSE_BUILD:-}" ]; then
+    echo "building…"
+    xcodebuild -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+        -destination "id=$UDID" -derivedDataPath "$DD" -configuration Debug \
+        build CODE_SIGNING_ALLOWED=NO >/tmp/ios-build.log 2>&1 || {
+        echo "✗ build failed:" >&2
+        grep -E "error:" /tmp/ios-build.log | tail -20 >&2
+        exit 1
+    }
+fi
 
 APP=$(find "$DD/Build/Products" -name "Intrada.app" -type d | head -1)
+[ -n "$APP" ] || { echo "✗ no Intrada.app in $DD (build first)" >&2; exit 1; }
 xcrun simctl install "$UDID" "$APP"
 xcrun simctl launch "$UDID" "$APP_ID" >/dev/null
 sleep 3
