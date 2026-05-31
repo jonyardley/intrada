@@ -408,11 +408,14 @@ jobs:
         working-directory: ios
         run: xcodegen generate
       # Snapshot test = deterministic UI-regression "eyes" (renders RootView
-      # against a committed reference). Shares build/dd with the launch step.
+      # against a committed reference). PINNED to an iOS 18.x simulator: the
+      # reference is recorded on that runtime, and snapshots are runtime-
+      # sensitive. Re-record (and bump this pin) when CI's Xcode/iOS moves.
       - name: Run snapshot tests
         working-directory: ios
         run: |
-          UDID=$(xcrun simctl list devices available --json | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];devs=[x for k in sorted(d) if 'iOS' in k for x in d[k] if 'iPhone' in x['name']];print(devs[-1]['udid'] if devs else '')")
+          UDID=$(xcrun simctl list devices available --json | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];ks=[k for k in d if 'iOS-18' in k];devs=[x for k in sorted(ks) for x in d[k] if 'iPhone' in x['name']];print(devs[-1]['udid'] if devs else '')")
+          test -n "$UDID" || { echo '::error::no iOS 18.x simulator available'; exit 1; }
           xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
             -destination "id=$UDID" -derivedDataPath build/dd \
             CODE_SIGNING_ALLOWED=NO

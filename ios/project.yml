@@ -58,6 +58,10 @@ targets:
     platform: iOS
     sources:
       - path: IntradaTests
+        # Reference snapshots are read from disk at runtime (via #file), not
+        # bundled — keep them out of the target's build inputs/resources.
+        excludes:
+          - "__Snapshots__/**"
     dependencies:
       - target: Intrada
       - package: SnapshotTesting
