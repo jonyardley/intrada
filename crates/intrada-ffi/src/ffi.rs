@@ -5,11 +5,8 @@ use crux_core::{
 
 use crate::Intrada;
 
-/// Error surfaced across the FFI boundary when the bridge fails to
-/// (de)serialize an event/effect or resolve a request. The shell handles it as
-/// a thrown error — the dumb-pipe contract bans `try!`/force-unwrap, so the
-/// bridge returns a `Result` rather than panicking (cf. the crux `counter`
-/// example, which panics and notes "in production handle the error properly").
+// Returned (not panicked) so the shell handles it per the no-`try!` contract —
+// the crux `counter` example panics but says to do this in production.
 #[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
 #[derive(Debug, thiserror::Error)]
 pub enum CoreError {
@@ -17,8 +14,6 @@ pub enum CoreError {
     Bridge(String),
 }
 
-/// The single FFI surface the native shell talks to. Wraps the Crux `Bridge`
-/// and exposes the three byte-buffer methods (bincode in, bincode out).
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 pub struct CoreFFI {
     core: Bridge<Intrada>,
@@ -40,7 +35,6 @@ impl CoreFFI {
         }
     }
 
-    /// Process a serialized `Event`; returns the serialized effect requests.
     pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
         self.core
@@ -49,7 +43,6 @@ impl CoreFFI {
         Ok(effects)
     }
 
-    /// Resolve an outstanding effect by id; returns any follow-up requests.
     pub fn resolve(&self, id: u32, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
         self.core
@@ -58,7 +51,6 @@ impl CoreFFI {
         Ok(effects)
     }
 
-    /// Serialize the current `ViewModel`.
     pub fn view(&self) -> Result<Vec<u8>, CoreError> {
         let mut view = Vec::new();
         self.core

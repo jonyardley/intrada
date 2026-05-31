@@ -1,6 +1,4 @@
-//! Generates the Swift `SharedTypes` package (Event / Effect / ViewModel +
-//! bincode serializers) from the Crux core via facet reflection. Mirrors the
-//! crux `counter` example's codegen bin, Swift-only (Android comes later).
+//! Generates the Swift `SharedTypes` package from the core via facet typegen.
 
 use std::path::PathBuf;
 
@@ -13,7 +11,6 @@ use intrada_ffi::{Intrada, ListQuery};
 #[derive(Parser)]
 #[command(version, about)]
 struct Args {
-    /// Directory to write the generated Swift package into.
     #[arg(short, long)]
     output_dir: PathBuf,
 }
