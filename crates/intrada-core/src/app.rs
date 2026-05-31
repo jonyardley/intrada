@@ -11,9 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
-#[cfg(test)]
-use crate::domain::item::ItemKind;
-use crate::domain::item::{handle_item_event, Item, ItemEvent};
+use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
 use crate::domain::mcp_tokens::{handle_mcp_token_event, McpTokenEvent};
 use crate::domain::oauth::{handle_oauth_event, OAuthEvent};
@@ -46,6 +44,10 @@ pub enum Event {
     StartApp {
         api_base_url: String,
     },
+    /// Replace the library with a canonical demo dataset. Sent by a shell only
+    /// under an explicit opt-in (e.g. iOS `--seed-sample-data` launch arg) for
+    /// CI screenshots / local demos / E2E — never in production.
+    LoadSampleData,
     /// Fetch all data from the API (items, sessions, sets).
     FetchAll,
     /// Re-fetch a single resource kind after a mutation (refresh-after-mutate).
@@ -166,6 +168,11 @@ impl App for Intrada {
                     http::fetch_sessions(&model.api_base_url),
                     http::fetch_sets(&model.api_base_url),
                 ])
+            }
+            Event::LoadSampleData => {
+                model.items = sample_items();
+                model.last_error = None;
+                crux_core::render::render()
             }
             Event::FetchAll => Command::all([
                 http::fetch_items(&model.api_base_url),
@@ -560,6 +567,105 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
         .collect()
 }
 
+/// Canonical demo dataset for `Event::LoadSampleData` — shared by every shell
+/// (CI screenshots, local demos, E2E). Stable ids; staggered timestamps so the
+/// newest-first sort is deterministic.
+fn sample_items() -> Vec<Item> {
+    use crate::domain::types::Tempo;
+    let now = chrono::Utc::now();
+
+    #[allow(clippy::too_many_arguments)]
+    let item = |minutes_ago: i64,
+                id: &str,
+                title: &str,
+                kind: ItemKind,
+                composer: Option<&str>,
+                key: Option<&str>,
+                marking: Option<&str>,
+                bpm: Option<u16>,
+                notes: Option<&str>,
+                tags: &[&str]|
+     -> Item {
+        let ts = now - chrono::Duration::minutes(minutes_ago);
+        Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: composer.map(str::to_string),
+            key: key.map(str::to_string),
+            tempo: Tempo::from_parts(marking.map(str::to_string), bpm),
+            notes: notes.map(str::to_string),
+            tags: tags.iter().map(|s| s.to_string()).collect(),
+            created_at: ts,
+            updated_at: ts,
+            priority: false,
+        }
+    };
+
+    vec![
+        item(
+            0,
+            "sample-clair",
+            "Clair de Lune",
+            ItemKind::Piece,
+            Some("Claude Debussy"),
+            Some("D♭ major"),
+            Some("Andante"),
+            Some(72),
+            Some("Focus on the rubato in the opening phrase; keep the left hand soft."),
+            &["recital", "impressionist"],
+        ),
+        item(
+            1,
+            "sample-gymnopedie",
+            "Gymnopédie No. 1",
+            ItemKind::Piece,
+            Some("Erik Satie"),
+            Some("D major"),
+            Some("Lent"),
+            Some(70),
+            None,
+            &["recital"],
+        ),
+        item(
+            2,
+            "sample-nocturne",
+            "Nocturne Op. 9 No. 2",
+            ItemKind::Piece,
+            Some("Frédéric Chopin"),
+            Some("E♭ major"),
+            Some("Andante"),
+            Some(68),
+            None,
+            &[],
+        ),
+        item(
+            3,
+            "sample-hanon",
+            "Hanon No. 1",
+            ItemKind::Exercise,
+            Some("Charles-Louis Hanon"),
+            Some("C major"),
+            None,
+            Some(108),
+            Some("Even tone, relaxed wrist."),
+            &["warm-up"],
+        ),
+        item(
+            4,
+            "sample-scales",
+            "Major Scales",
+            ItemKind::Exercise,
+            None,
+            None,
+            None,
+            Some(120),
+            None,
+            &["technique"],
+        ),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -790,6 +896,23 @@ mod tests {
         assert_eq!(vm.items.len(), 0);
         assert!(vm.error.is_none());
         assert_eq!(vm.session_status, SessionStatusView::Idle);
+    }
+
+    #[test]
+    fn test_load_sample_data_populates_pieces_and_exercises() {
+        let app = Intrada;
+        let mut model = Model::default();
+
+        let _ = app.update(Event::LoadSampleData, &mut model);
+
+        assert!(model.items.len() >= 4, "expected a few sample items");
+        assert!(model.items.iter().any(|i| i.kind == ItemKind::Piece));
+        assert!(model.items.iter().any(|i| i.kind == ItemKind::Exercise));
+        // At least one carries structured tempo so the card's ♩ = bpm shows.
+        assert!(model
+            .items
+            .iter()
+            .any(|i| i.tempo.as_ref().and_then(|t| t.bpm).is_some()));
     }
 
     #[test]
