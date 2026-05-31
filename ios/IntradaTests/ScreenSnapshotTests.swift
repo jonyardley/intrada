@@ -26,8 +26,9 @@ private final class StubBridge: CoreBridge {
 /// are recorded on iOS 26.5 / Xcode 26.5 to match CI (see ci.yml).
 @MainActor
 final class ScreenSnapshotTests: XCTestCase {
-  private func host(_ view: some View) -> UIViewController {
-    let store = Store(bridge: StubBridge())
+  private func host(_ view: some View, store: Store = Store(bridge: StubBridge()))
+    -> UIViewController
+  {
     let vc = UIHostingController(rootView: view.environment(store))
     vc.overrideUserInterfaceStyle = .light
     return vc
@@ -45,6 +46,10 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(LibraryScreen()), as: config)
   }
 
+  func testLibraryScreenPopulated() {
+    assertSnapshot(of: host(LibraryScreen(), store: .previewLibrary), as: config)
+  }
+
   func testPracticeScreen() {
     assertSnapshot(of: host(PracticeScreen()), as: config)
   }
@@ -55,6 +60,19 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
+  }
+
+  func testLibraryFilterTabs() {
+    let tabs = ZStack {
+      PaperBackground()
+      VStack(alignment: .leading, spacing: 16) {
+        LibraryFilterTabs(selection: .constant(.all))
+        LibraryFilterTabs(selection: .constant(.pieces))
+        LibraryFilterTabs(selection: .constant(.exercises))
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(tabs), as: config)
   }
 
   func testLibraryItemCards() {

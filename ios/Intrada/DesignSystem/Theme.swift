@@ -18,6 +18,7 @@ enum IntradaColor {
   static let inkFaint = Color(hex: 0x9A927F)
 
   static let accent = Color(hex: 0x4C3FA6)
+  static let onAccent = Color(hex: 0xF2EFE8)
   static let brandGradientStart = Color(hex: 0x6346E5)
   static let brandGradientEnd = Color(hex: 0x4C3FA6)
 
