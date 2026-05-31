@@ -17,9 +17,25 @@ use crate::domain::types::{CreateItem, CreateSetRequest, UpdateItem, UpdateSetRe
 
 type Http = crux_http::command::Http<Effect, Event>;
 
+/// crux_http `.build()` panics on a relative URL, and a panic mid-`update`
+/// poisons the Model RwLock — bricking the core for the session. Guard every
+/// request builder: a non-absolute base yields a soft `LoadFailed` instead.
+fn require_absolute_base(api_base_url: &str) -> Option<Command<Effect, Event>> {
+    if api_base_url.starts_with("http://") || api_base_url.starts_with("https://") {
+        None
+    } else {
+        Some(Command::event(Event::LoadFailed(
+            "No API base URL configured".to_string(),
+        )))
+    }
+}
+
 // ── Fetch operations ────────────────────────────────────────────────────
 
 pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::get(format!("{api_base_url}/api/items"))
         .expect_json::<Vec<Item>>()
         .build()
@@ -33,6 +49,9 @@ pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
 }
 
 pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::get(format!("{api_base_url}/api/sessions"))
         .expect_json::<Vec<PracticeSession>>()
         .build()
@@ -46,6 +65,9 @@ pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
 }
 
 pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     use crate::domain::set::Set;
 
     Http::get(format!("{api_base_url}/api/sets"))
@@ -63,6 +85,9 @@ pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
 // ── Item operations ─────────────────────────────────────────────────────
 
 pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     let create = CreateItem {
         title: item.title.clone(),
         kind: item.kind.clone(),
@@ -91,6 +116,9 @@ pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Ef
 }
 
 pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     let update = UpdateItem {
         title: Some(item.title.clone()),
         composer: Some(item.composer.clone()),
@@ -115,6 +143,9 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
 }
 
 pub fn delete_item(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::delete(format!("{api_base_url}/api/items/{id}"))
         .build()
         .then_send(|result| match result {
@@ -126,6 +157,9 @@ pub fn delete_item(api_base_url: &str, id: &str) -> Command<Effect, Event> {
 // ── Session operations ──────────────────────────────────────────────────
 
 pub fn create_session(api_base_url: &str, session: &PracticeSession) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::post(format!("{api_base_url}/api/sessions"))
         .body_json(session)
         .expect("serialize PracticeSession")
@@ -142,6 +176,9 @@ pub fn create_session(api_base_url: &str, session: &PracticeSession) -> Command<
 }
 
 pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::delete(format!("{api_base_url}/api/sessions/{id}"))
         .build()
         .then_send(|result| match result {
@@ -157,6 +194,9 @@ pub fn create_set(
     set: &crate::domain::set::Set,
     request_id: String,
 ) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     let create = CreateSetRequest::from_set(set);
     Http::post(format!("{api_base_url}/api/sets"))
         .body_json(&create)
@@ -169,6 +209,9 @@ pub fn create_set(
 }
 
 pub fn update_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     use crate::domain::set::Set;
 
     let update = UpdateSetRequest::from_set(set);
@@ -187,6 +230,9 @@ pub fn update_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<
 }
 
 pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::delete(format!("{api_base_url}/api/sets/{id}"))
         .build()
         .then_send(|result| match result {
@@ -198,6 +244,9 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
 // ── Account operations ─────────────────────────────────────────────────
 
 pub fn get_account_preferences(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::get(format!("{api_base_url}/api/account/preferences"))
         .expect_json::<AccountPreferences>()
         .build()
@@ -215,6 +264,9 @@ pub fn save_account_preferences(
     prefs: &AccountPreferences,
     previous: Option<AccountPreferences>,
 ) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::put(format!("{api_base_url}/api/account/preferences"))
         .body_json(prefs)
         .expect("serialize AccountPreferences")
@@ -236,6 +288,9 @@ pub fn save_account_preferences(
 }
 
 pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::delete(format!("{api_base_url}/api/account"))
         .build()
         .then_send(|result| match result {
@@ -249,6 +304,9 @@ pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
 // ── MCP Personal Access Tokens ─────────────────────────────────────────
 
 pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::get(format!("{api_base_url}/api/account/tokens"))
         .expect_json::<Vec<McpToken>>()
         .build()
@@ -266,6 +324,9 @@ pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
 }
 
 pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     #[derive(serde::Serialize)]
     struct Body<'a> {
         name: &'a str,
@@ -290,6 +351,9 @@ pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event
 }
 
 pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     let id_for_callback = id.to_string();
     Http::delete(format!("{api_base_url}/api/account/tokens/{id}"))
         .build()
@@ -308,6 +372,9 @@ pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> 
 // ── MCP Audit Log ──────────────────────────────────────────────────────
 
 pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::get(format!("{api_base_url}/api/account/audit"))
         .expect_json::<Vec<McpAuditEntry>>()
         .build()
@@ -332,6 +399,9 @@ struct OAuthFinalizeResponse {
 }
 
 pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Command<Effect, Event> {
+    if let Some(cmd) = require_absolute_base(api_base_url) {
+        return cmd;
+    }
     Http::post(format!("{api_base_url}/oauth/finalize"))
         .body_json(params)
         .expect("serialize OAuthFinalizeParams")
@@ -415,6 +485,14 @@ mod tests {
             created_at: fixed_time(),
             updated_at: fixed_time(),
         }
+    }
+
+    #[test]
+    fn relative_base_url_emits_soft_error_not_panic() {
+        // crux_http panics on a relative URL; the guard must intercept it.
+        let mut cmd = delete_item("", "id");
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+        assert!(cmd.events().any(|e| matches!(e, Event::LoadFailed(_))));
     }
 
     // ── Fetch endpoints: URL + method ──────────────────────────────────
