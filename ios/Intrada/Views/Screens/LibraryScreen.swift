@@ -20,6 +20,11 @@ struct LibraryScreen: View {
     .onChange(of: filter) { _, newValue in
       store.send(.setQuery(query(for: newValue)))
     }
+    // Re-assert the pill's filter onto the core so a recreated view (future
+    // detail-nav / iPad split) or a core reset can't leave them out of sync.
+    .onAppear {
+      store.send(.setQuery(query(for: filter)))
+    }
   }
 
   @ViewBuilder private var content: some View {
