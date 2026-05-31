@@ -35,6 +35,7 @@
     /// (`Event.loadSampleData` → `sample_items()`). Render-only, so it completes
     /// synchronously and offline. Use in screen previews: same data as the CI
     /// screenshot, and the filter pills actually work in the canvas.
+    /// Not for snapshot tests — `sample_items()` stamps wall-clock timestamps.
     static var previewSeeded: Store {
       let store = Store()
       store.send(.loadSampleData)
