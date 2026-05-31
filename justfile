@@ -29,6 +29,7 @@ dev-api:
     cargo run -p intrada-api
 
 # Start only the web dev server
+[group('Web (on hold)')]
 dev-web:
     #!/usr/bin/env bash
     set -e
@@ -41,6 +42,7 @@ check-fast:
     cargo check --workspace
 
 # Type-check just the web WASM target
+[group('Web (on hold)')]
 check-web:
     cargo check -p intrada-web --target wasm32-unknown-unknown
 
@@ -70,12 +72,14 @@ seed:
     bash scripts/seed-dev-data.sh
 
 # Build WASM for production or E2E testing
+[group('Web (on hold)')]
 build:
     trunk build --config crates/intrada-web/Trunk.toml
 
 # Kills any stale trunk-serve on 8080 — Playwright spins up its own preview
 # server, so a leftover trunk would either steal the port or serve old WASM.
 # Run E2E tests (builds WASM first).
+[group('Web (on hold)')]
 e2e: build
     #!/usr/bin/env bash
     set -e
@@ -89,16 +93,17 @@ e2e: build
     npx playwright test --project=chromium
 
 # ─────────────────────────────────────────────
-# iOS — Tauri/Leptos shell
+# Tauri/Leptos iOS shell — ON HOLD (being replaced by the native app above)
 # ─────────────────────────────────────────────
 # First-time setup:
 #   cargo install tauri-cli --version "^2" --locked
 #   brew install cocoapods
-#   just ios-init
+#   just tauri-init
 
 # Generate the Xcode project and apply post-init patches.
 # Run once after cloning, or after `cargo tauri ios init` regenerates gen/apple/.
-ios-init:
+[group('Tauri (on hold)')]
+tauri-init:
     #!/usr/bin/env bash
     set -e
     MOBILE="crates/intrada-mobile"
@@ -107,14 +112,15 @@ ios-init:
     echo "Applying post-init patches..."
     ruby "$MOBILE/scripts/fix-ios-build-config.rb"
     ruby "$MOBILE/scripts/add-live-activity-target.rb"
-    echo "✓ iOS project ready. Run: just ios-dev"
+    echo "✓ iOS project ready. Run: just tauri-dev"
 
 # Runs trunk serve (web) in background, then tauri ios dev.
 # Pre-boots the simulator before handing off to tauri so `simctl install`
 # doesn't race against a Shutdown sim (the "Unable to lookup in current
 # state: Shutdown" 405 error).
 # Start the Tauri iOS dev session on simulator.
-ios-dev:
+[group('Tauri (on hold)')]
+tauri-dev:
     #!/usr/bin/env bash
     set -e
     # Tag local mobile builds with the current commit so events from the
@@ -181,7 +187,8 @@ ios-dev:
 # Device must be connected via USB and trusted. Requires Wi-Fi for the
 # dev server (device can't reach localhost — uses the host's LAN IP).
 # Start the Tauri iOS dev session on a connected physical device.
-ios-dev-device:
+[group('Tauri (on hold)')]
+tauri-dev-device:
     #!/usr/bin/env bash
     set -e
     # Tag local device builds with the current commit so events from the
@@ -257,7 +264,8 @@ ios-dev-device:
 # Production iOS build. Compile-time env vars are set explicitly here
 # so the build is correct regardless of what's in .env (which is for
 # local dev). Always clean-rebuilds the frontend to avoid stale WASM.
-ios-build:
+[group('Tauri (on hold)')]
+tauri-build:
     #!/usr/bin/env bash
     set -e
     export INTRADA_API_URL="https://intrada-api.fly.dev"
@@ -272,7 +280,8 @@ ios-build:
 
 # Build for production and install on a connected physical device.
 # Requires ios-deploy (`brew install ios-deploy`).
-ios-run-device: ios-build
+[group('Tauri (on hold)')]
+tauri-run-device: tauri-build
     #!/usr/bin/env bash
     set -e
     APP=$(find crates/intrada-mobile/src-tauri/gen/apple/build -name "Intrada.app" -path "*/Products/Applications/*" 2>/dev/null | head -1)
@@ -305,6 +314,7 @@ ports:
 # usually reliable, but a `git clean`-equivalent is occasionally useful when
 # diagnosing weird wasm-bindgen mismatches after a major dep bump.
 # Remove the trunk build output for the web app.
+[group('Web (on hold)')]
 web-clean:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -312,21 +322,44 @@ web-clean:
     echo "✓ Removed crates/intrada-web/dist"
 
 
-# ── Native iOS (SwiftUI on the Crux core) ───────────────────────────────
-# Generated Swift packages are a BUILD PRECONDITION, not source — gitignored
-# and regenerated. Never hand-edit them; fix the Rust type and regenerate.
+# ─────────────────────────────────────────────
+# iOS — native SwiftUI app (on the Crux core)
+# ─────────────────────────────────────────────
+# Daily loop: `just ios` (Xcode) or `just ios-run` (headless). Both regenerate
+# the Swift bindings ONLY when the core changed, so they stay in sync without
+# slowing pure-Swift edits. ios/generated is a build precondition (gitignored,
+# regenerated) — never hand-edit it; fix the Rust type and regenerate.
 
-# Generate the Swift value-type package (Event/Effect/ViewModel + bincode
-# serializers) from the core via facet typegen → ios/generated/SharedTypes.
-native-typegen:
+# Open the app in Xcode (regenerates bindings first if the core changed).
+[group('iOS')]
+ios: _ios-sync
+    cd ios && xcodegen generate
+    xed ios/Intrada.xcodeproj
+
+# Build + launch on a simulator and screenshot (regen if the core changed).
+[group('iOS')]
+ios-run: _ios-sync
+    cd ios && xcodegen generate
+    bash scripts/ios-run-sim.sh
+
+# Force a full regenerate of both Swift packages + refresh the change-stamp.
+[group('iOS')]
+ios-gen: ios-typegen ios-package
+    @mkdir -p ios/generated
+    @just _ios-src-hash > ios/generated/.gen-stamp
+    @echo "✓ bindings regenerated"
+
+# Facet typegen → ios/generated/SharedTypes (Event/Effect/ViewModel + bincode).
+[group('iOS')]
+ios-typegen:
     # Pre-clean so a renamed/removed core type can't leave an orphan Swift file
     # (crux's swift typegen overwrites but never deletes) — keeps typegen in sync.
     rm -rf ios/generated/SharedTypes
     RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir ios/generated
 
-# Build intrada-ffi into a Swift package (CoreFFI + RustFramework.xcframework)
-# via cargo-swift → ios/generated/IntradaCoreFFI.
-native-package:
+# cargo-swift → ios/generated/IntradaCoreFFI (CoreFFI + RustFramework.xcframework).
+[group('iOS')]
+ios-package:
     #!/usr/bin/env bash
     set -euo pipefail
     cd crates/intrada-ffi
@@ -334,20 +367,34 @@ native-package:
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
-    # cargo-swift (0.11) places the modulemap+header one level too deep in
-    # headers/RustFramework/, but the xcframework Info.plist declares
-    # HeadersPath=Headers — so `canImport(intrada_ffiFFI)` fails and the FFI
-    # types go missing. Move them up to match. (Same class of fix as the crux
-    # counter example's 0.9 workaround.)
+    # cargo-swift (0.11) nests the modulemap+header one level too deep; the
+    # xcframework Info.plist declares HeadersPath=Headers, so canImport fails
+    # and the FFI types vanish. Move them up (crux counter example's 0.9 fix).
     xcf=../../ios/generated/IntradaCoreFFI/RustFramework.xcframework
-    for slice in "$xcf"/*/; do \
-        hd="$slice/headers"; \
-        if [ -d "$hd/RustFramework" ]; then \
-            mv "$hd/RustFramework/"* "$hd/"; \
-            rmdir "$hd/RustFramework"; \
-        fi; \
+    moved=0
+    for slice in "$xcf"/*/; do
+        hd="$slice/headers"
+        if [ -d "$hd/RustFramework" ]; then
+            mv "$hd/RustFramework/"* "$hd/"; rmdir "$hd/RustFramework"; moved=1
+        fi
     done
+    [ "$moved" = 1 ] || echo "⚠️  cargo-swift header layout changed — verify canImport(intrada_ffiFFI)"
     echo "✓ ios/generated/IntradaCoreFFI"
 
-# Regenerate both Swift packages (run before building the iOS app).
-native-gen: native-typegen native-package
+# Regenerate bindings only if intrada-core / intrada-ffi changed since last gen.
+[private]
+_ios-sync:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    stamp=ios/generated/.gen-stamp
+    current=$(just _ios-src-hash)
+    if [ ! -d ios/generated/IntradaCoreFFI ] || [ ! -d ios/generated/SharedTypes ] || [ "$(cat "$stamp" 2>/dev/null)" != "$current" ]; then
+        echo "↻ core changed (or no bindings) — regenerating…"
+        just ios-gen
+    else
+        echo "✓ bindings up to date"
+    fi
+
+[private]
+_ios-src-hash:
+    @find crates/intrada-core/src crates/intrada-ffi/src crates/intrada-core/Cargo.toml crates/intrada-ffi/Cargo.toml -type f -exec shasum {} \; | shasum | cut -d' ' -f1

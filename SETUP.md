@@ -240,7 +240,7 @@ Add to your `.env` file at the repo root:
 SENTRY_DSN_MOBILE=https://...@...ingest.de.sentry.io/...
 ```
 
-`just ios-dev` will pick it up via `set dotenv-load`. Changing the value
+`just tauri-dev` will pick it up via `set dotenv-load`. Changing the value
 triggers a rebuild thanks to `cargo:rerun-if-env-changed` in `build.rs`.
 
 ### Web DSN

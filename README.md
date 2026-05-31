@@ -69,10 +69,14 @@ just check        # Run test + clippy + format check
 just build        # Build WASM for production/E2E
 just e2e          # Build + run Playwright E2E tests
 
-# iOS (Tauri)
-just ios-dev          # Run on simulator (trunk serve + tauri ios dev)
-just ios-dev-device   # Run on a connected physical device
-just ios-build        # Build for device (Xcode sideload, no TestFlight)
+# iOS (native SwiftUI — the active app)
+just ios              # Regenerate bindings (if core changed) + open in Xcode
+just ios-run          # Build + launch on a simulator + screenshot
+
+# iOS (Tauri shell — on hold, being replaced)
+just tauri-dev        # Run on simulator (trunk serve + tauri ios dev)
+just tauri-dev-device # Run on a connected physical device
+just tauri-build      # Build for device (Xcode sideload, no TestFlight)
 
 # Data
 just seed         # Seed development data (API must be running)

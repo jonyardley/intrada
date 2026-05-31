@@ -49,9 +49,15 @@ cargo fmt --check          # must pass before commit AND before push (CI runs bo
 cargo test                 # all workspace tests
 cargo clippy               # lint check — must pass before push
 cargo test -p intrada-api  # API tests only
-just ios-dev               # start Tauri iOS dev session (sim) — runs trunk serve + tauri ios dev
-just ios-build             # build Tauri iOS app for device (no TestFlight)
+just ios                   # native app: regen bindings (if core changed) + open Xcode
+just ios-run               # native app: build + launch on simulator + screenshot
+just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 ```
+
+`just ios` / `just ios-run` auto-regenerate the Swift bindings only when
+`intrada-core`/`intrada-ffi` changed (a `ios/generated/.gen-stamp` hash), so
+they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
+full regenerate. The Tauri `tauri-*` recipes are the on-hold WKWebView shell.
 
 Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushing* —
 not just before committing. Pushing then watching CI fail wastes a full ~3-minute
@@ -73,10 +79,10 @@ cargo install tauri-cli --version "^2" --locked   # Tauri CLI
 brew install cocoapods                             # CocoaPods (required by Tauri iOS)
 brew install xcodegen                              # xcodegen (required by Tauri iOS)
 # Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
-just ios-init   # generates Xcode project + applies post-init patches
+just tauri-init   # generates Xcode project + applies post-init patches
 ```
 
-`just ios-init` runs `cargo tauri ios init` then the two post-init Ruby scripts
+`just tauri-init` runs `cargo tauri ios init` then the two post-init Ruby scripts
 (`fix-ios-build-config.rb`, `add-live-activity-target.rb`) that patch the
 generated `project.yml`. Re-run it after any `cargo tauri ios init` regeneration.
 
@@ -84,14 +90,14 @@ If you're forking this repo, update `bundle.iOS.developmentTeam` in
 `crates/intrada-mobile/src-tauri/tauri.conf.json` to your own Apple Team ID
 (find it at developer.apple.com → Membership, or Xcode → Settings → Accounts).
 
-`just ios-dev` reads `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY` from your
+`just tauri-dev` reads `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY` from your
 shell or a `.env` file at the repo root (the justfile uses `set dotenv-load`).
 Without them set, the build will use defaults and Clerk auth won't work.
 
-**Development security warning**: `just ios-dev` binds the Trunk dev server to
+**Development security warning**: `just tauri-dev` binds the Trunk dev server to
 `0.0.0.0:8080` so the iOS simulator can reach it via the host's LAN IP.
 Anyone on your Wi-Fi network can reach it (and the proxied `/api/`) while it's
-running. Don't run `ios-dev` on public/untrusted Wi-Fi.
+running. Don't run `tauri-dev` on public/untrusted Wi-Fi.
 
 ## Architecture (Non-Negotiables)
 
