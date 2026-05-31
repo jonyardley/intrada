@@ -25,8 +25,13 @@ struct LibraryScreen: View {
     .onAppear {
       store.send(.setQuery(query(for: filter)))
     }
-    .navigationDestination(for: LibraryItemView.self) { item in
-      LibraryDetailScreen(item: item)
+    // Key on the id (not the value) so an edit — which changes the item's
+    // hash — doesn't break the pushed destination; the detail re-reads the
+    // fresh item from the store, so edits reflect without re-navigating.
+    .navigationDestination(for: String.self) { id in
+      if let found = items.first(where: { $0.id == id }) {
+        LibraryDetailScreen(item: found)
+      }
     }
     // The list draws its own serif header, so suppress the nav bar here; the
     // detail keeps it for the back chevron.
@@ -42,7 +47,7 @@ struct LibraryScreen: View {
       ScrollView {
         LazyVStack(spacing: 14) {
           ForEach(items, id: \.id) { item in
-            NavigationLink(value: item) {
+            NavigationLink(value: item.id) {
               LibraryItemCard(item: item)
             }
             .buttonStyle(.plain)

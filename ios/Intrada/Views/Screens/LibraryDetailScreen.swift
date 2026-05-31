@@ -8,6 +8,7 @@ struct LibraryDetailScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @State private var confirmingDelete = false
+  @State private var editing = false
 
   var body: some View {
     ScreenScaffold(title: item.title, subtitle: subtitle) {
@@ -47,6 +48,15 @@ struct LibraryDetailScreen: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button("Edit") { editing = true }
+      }
+    }
+    .sheet(isPresented: $editing) {
+      LibraryEditScreen(item: item)
+        .environment(store)
+    }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
     .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
