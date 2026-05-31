@@ -37,6 +37,8 @@ pub struct Intrada;
 
 /// All events the application can process.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Event {
     // ── Lifecycle ────────────────────────────────────────────────────
     /// Shell provides the API base URL on startup.
@@ -114,7 +116,7 @@ pub enum Event {
 /// HTTP API calls go through `Http` (crux_http). The shell executes the raw
 /// HTTP request and feeds the response back; all request construction and
 /// response parsing happens in the core (see `http.rs`).
-#[effect]
+#[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
     Http(HttpRequest),
@@ -127,6 +129,8 @@ pub enum Effect {
 /// After the crux_http migration, only localStorage crash-recovery operations
 /// remain here. All API calls now go through the `Http` effect variant.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum AppEffect {
     /// Persist the active session to localStorage for crash recovery (FR-008).
     SaveSessionInProgress(ActiveSession),

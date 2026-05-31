@@ -145,6 +145,44 @@ data in shell-local state. UI-only state stays in Leptos signals.
   Updates use `*Updated { entity }` (server echoes the row); deletes use
   `DeleteConfirmed` (model already mutated optimistically).
 
+## Native iOS Shell (SwiftUI + Crux)
+
+> Applies once Phase A lands. The native SwiftUI app is replacing the Tauri
+> shell — see [`specs/native-ios.md`](specs/native-ios.md). App-first,
+> local-first. These rules are non-negotiable when touching the native shell.
+
+**The shell is a dumb pipe — it owns ZERO domain logic.** It sends `Event`s,
+fulfils `Effect`s (HTTP via `URLSession`, persistence via GRDB, etc.), and
+renders the `ViewModel`. No business rules, no validation, no domain decisions
+in Swift. If you're tempted to write logic in Swift, the logic belongs in
+`intrada-core` as an `Event`/`Command`.
+
+- **Bindings are a build precondition, never source.** The Swift `Event` /
+  `Effect` / `ViewModel` types and serializers are **generated** (facet-generate
+  + UniFFI). **Never hand-edit generated bindings.** If a generated type is
+  wrong or missing, **fix the Rust type in `intrada-core` and regenerate** —
+  the typegen run is part of the build, not an optional step. A diff that edits
+  generated Swift is a blocker.
+- **`@Observable`, not `ObservableObject`.** The core-wrapping store is an
+  `@Observable @MainActor` object exposing the `ViewModel` and an `update(Event)`
+  method. Effect handlers run off the main actor, then hop back to resolve.
+- **`try!` is banned like `unwrap()`.** No `try!` / force-unwraps / `as!`
+  without a written justification (same bar as Rust `unwrap()`). FFI calls and
+  bincode (de)serialization return real errors — handle them.
+- **Persistence is a core `Effect` driven by `Command`, not Swift logic.** GRDB
+  owns the SQLite tables and executes typed query/mutation effects; the core
+  decides what to read/write and runs LWW reconciliation. `crux_kv` is for small
+  singletons only, never relational data.
+- **Quality is per-screen, not deferred.** Every screen ships with a
+  swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
+  built *with* the screen. Sentry is wired from the first build.
+- **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
+  `MainActor`-default isolation ([uniffi-rs#2818]). Keep the generated package
+  non-MainActor-defaulted (build recipe handles it); don't "fix" it by editing
+  generated code.
+
+[uniffi-rs#2818]: https://github.com/mozilla/uniffi-rs/issues/2818
+
 ## Authentication
 
 Two auth paths, same API surface:
