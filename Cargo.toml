@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/intrada-core",
+  "crates/intrada-ffi",
   "crates/intrada-api",
   "crates/intrada-web",
   "crates/intrada-mobile/src-tauri",
