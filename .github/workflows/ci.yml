@@ -590,7 +590,7 @@ jobs:
       # ── Gitleaks ───────────────────────────────────────────────────────
       # Scans for leaked secrets (API keys, tokens, credentials) in the
       # diff. ~150 built-in regex patterns, runs in seconds.
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
