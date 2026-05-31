@@ -224,7 +224,9 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 40
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
+    # iOS-pivot focus mode: Tauri host is on hold — run on main only, not PRs.
+    # Revert to `|| needs.changes.outputs.mobile == 'true'` at parity.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -360,7 +362,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
+    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
+    # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -421,7 +425,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.web == 'true'
+    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
+    # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -443,6 +449,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: wasm-build
+    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -501,6 +509,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: wasm-build
+    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -609,7 +619,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.api == 'true'
+    # iOS-pivot focus mode: API on hold — run on main only, not PRs.
+    # Revert to `|| needs.changes.outputs.api == 'true'` at parity.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v4
