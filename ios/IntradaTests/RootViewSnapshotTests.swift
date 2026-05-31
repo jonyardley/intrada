@@ -23,9 +23,11 @@ final class RootViewSnapshotTests: XCTestCase {
   func testFoundationScreen() {
     let store = Store(bridge: StubBridge())
     let view = RootView().environment(store)
+    // Pin displayScale so the image is identical across machines/CI — otherwise
+    // the host simulator's screen scale leaks in and the sizes diverge.
     assertSnapshot(
       of: UIHostingController(rootView: view),
-      as: .image(on: .iPhone13, perceptualPrecision: 0.98)
+      as: .image(on: .iPhone13, perceptualPrecision: 0.98, traits: .init(displayScale: 2))
     )
   }
 }
