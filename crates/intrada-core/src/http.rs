@@ -17,16 +17,19 @@ use crate::domain::types::{CreateItem, CreateSetRequest, UpdateItem, UpdateSetRe
 
 type Http = crux_http::command::Http<Effect, Event>;
 
-/// crux_http `.build()` panics on a relative URL, and a panic mid-`update`
-/// poisons the Model RwLock — bricking the core for the session. Guard every
-/// request builder: a non-absolute base yields a soft `LoadFailed` instead.
+/// crux_http panics building a request from a relative URL, and a panic
+/// mid-`update` poisons the Model RwLock — bricking the core for the session.
+/// Guard every builder: a base without an `http(s)://` scheme and host yields a
+/// soft `LoadFailed` instead.
 fn require_absolute_base(api_base_url: &str) -> Option<Command<Effect, Event>> {
-    if api_base_url.starts_with("http://") || api_base_url.starts_with("https://") {
-        None
-    } else {
-        Some(Command::event(Event::LoadFailed(
+    let host = api_base_url
+        .strip_prefix("http://")
+        .or_else(|| api_base_url.strip_prefix("https://"));
+    match host {
+        Some(rest) if !rest.is_empty() => None,
+        _ => Some(Command::event(Event::LoadFailed(
             "No API base URL configured".to_string(),
-        )))
+        ))),
     }
 }
 
@@ -489,10 +492,13 @@ mod tests {
 
     #[test]
     fn relative_base_url_emits_soft_error_not_panic() {
-        // crux_http panics on a relative URL; the guard must intercept it.
-        let mut cmd = delete_item("", "id");
-        assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
-        assert!(cmd.events().any(|e| matches!(e, Event::LoadFailed(_))));
+        // crux_http panics on a relative URL or a bare scheme; the guard must
+        // intercept both.
+        for base in ["", "https://"] {
+            let mut cmd = delete_item(base, "id");
+            assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
+            assert!(cmd.events().any(|e| matches!(e, Event::LoadFailed(_))));
+        }
     }
 
     // ── Fetch endpoints: URL + method ──────────────────────────────────
