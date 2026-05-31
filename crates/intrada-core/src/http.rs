@@ -8,16 +8,12 @@ use crux_core::Command;
 
 use crate::app::{Effect, Event};
 use crate::domain::account::{AccountEvent, AccountPreferences};
-use crate::domain::goal::Goal;
 use crate::domain::item::Item;
 use crate::domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 use crate::domain::oauth::{OAuthEvent, OAuthFinalizeParams};
 use crate::domain::session::PracticeSession;
-use crate::domain::types::{
-    CreateGoal, CreateItem, CreateSetRequest, LinkGoalItem, UpdateGoal, UpdateGoalItem, UpdateItem,
-    UpdateSetRequest,
-};
+use crate::domain::types::{CreateItem, CreateSetRequest, UpdateItem, UpdateSetRequest};
 
 type Http = crux_http::command::Http<Effect, Event>;
 
@@ -199,183 +195,6 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         })
 }
 
-// ── Goal operations ───────────────────────────────────────────────────
-
-pub fn fetch_goals(api_base_url: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/goals?status=all"))
-        .expect_json::<Vec<Goal>>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goals) => Event::GoalsLoaded { goals },
-                None => Event::LoadFailed("Failed to parse goals response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load goals: {e}")),
-        })
-}
-
-pub fn fetch_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::get(format!("{api_base_url}/api/goals/{id}"))
-        .expect_json::<Goal>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalLoaded { goal },
-                None => Event::LoadFailed("Failed to parse goal response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load goal: {e}")),
-        })
-}
-
-pub fn create_goal(
-    api_base_url: &str,
-    input: &CreateGoal,
-    temp_id: &str,
-) -> Command<Effect, Event> {
-    let temp_id = temp_id.to_string();
-    Http::post(format!("{api_base_url}/api/goals"))
-        .body_json(input)
-        .expect("serialize CreateGoal")
-        .expect_json::<Goal>()
-        .build()
-        .then_send(move |result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalCreated {
-                    temp_id: temp_id.clone(),
-                    goal,
-                },
-                None => Event::LoadFailed("create_goal: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to save goal: {e}")),
-        })
-}
-
-pub fn update_goal(api_base_url: &str, id: &str, input: &UpdateGoal) -> Command<Effect, Event> {
-    Http::put(format!("{api_base_url}/api/goals/{id}"))
-        .body_json(input)
-        .expect("serialize UpdateGoal")
-        .expect_json::<Goal>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalLoaded { goal },
-                None => Event::LoadFailed("update_goal: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to update goal: {e}")),
-        })
-}
-
-pub fn complete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    use crate::domain::goal::GoalStatus;
-    use crate::domain::types::UpdateGoal;
-    let input = UpdateGoal {
-        status: Some(GoalStatus::Completed),
-        ..Default::default()
-    };
-    Http::put(format!("{api_base_url}/api/goals/{id}"))
-        .body_json(&input)
-        .expect("serialize UpdateGoal for complete")
-        .expect_json::<Goal>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalUpdated { goal },
-                None => Event::LoadFailed("complete_goal: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to complete goal: {e}")),
-        })
-}
-
-pub fn reopen_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    use crate::domain::goal::GoalStatus;
-    use crate::domain::types::UpdateGoal;
-    let input = UpdateGoal {
-        status: Some(GoalStatus::Active),
-        ..Default::default()
-    };
-    Http::put(format!("{api_base_url}/api/goals/{id}"))
-        .body_json(&input)
-        .expect("serialize UpdateGoal for reopen")
-        .expect_json::<Goal>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalUpdated { goal },
-                None => Event::LoadFailed("reopen_goal: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to reopen goal: {e}")),
-        })
-}
-
-pub fn delete_goal(api_base_url: &str, id: &str) -> Command<Effect, Event> {
-    Http::delete(format!("{api_base_url}/api/goals/{id}"))
-        .build()
-        .then_send(|result| match result {
-            Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete goal: {e}")),
-        })
-}
-
-pub fn link_goal_item(
-    api_base_url: &str,
-    goal_id: &str,
-    item: &LinkGoalItem,
-) -> Command<Effect, Event> {
-    Http::post(format!("{api_base_url}/api/goals/{goal_id}/items"))
-        .body_json(item)
-        .expect("serialize LinkGoalItem")
-        .expect_json::<Goal>()
-        .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(goal) => Event::GoalUpdated { goal },
-                None => Event::LoadFailed("link_goal_item: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to link item to goal: {e}")),
-        })
-}
-
-pub fn update_goal_item(
-    api_base_url: &str,
-    goal_id: &str,
-    item_id: &str,
-    input: &UpdateGoalItem,
-) -> Command<Effect, Event> {
-    Http::patch(format!(
-        "{api_base_url}/api/goals/{goal_id}/items/{item_id}"
-    ))
-    .body_json(input)
-    .expect("serialize UpdateGoalItem")
-    .expect_json::<Goal>()
-    .build()
-    .then_send(|result| match result {
-        Ok(response) => match response.body().cloned() {
-            Some(goal) => Event::GoalUpdated { goal },
-            None => Event::LoadFailed("update_goal_item: server returned no body".into()),
-        },
-        Err(e) => Event::LoadFailed(format!("Failed to update goal item targets: {e}")),
-    })
-}
-
-pub fn unlink_goal_item(
-    api_base_url: &str,
-    goal_id: &str,
-    item_id: &str,
-) -> Command<Effect, Event> {
-    Http::delete(format!(
-        "{api_base_url}/api/goals/{goal_id}/items/{item_id}"
-    ))
-    .expect_json::<Goal>()
-    .build()
-    .then_send(|result| match result {
-        Ok(response) => match response.body().cloned() {
-            Some(goal) => Event::GoalUpdated { goal },
-            None => Event::LoadFailed("unlink_goal_item: server returned no body".into()),
-        },
-        Err(e) => Event::LoadFailed(format!("Failed to unlink item from goal: {e}")),
-    })
-}
-
 // ── Account operations ─────────────────────────────────────────────────
 
 pub fn get_account_preferences(api_base_url: &str) -> Command<Effect, Event> {
@@ -537,10 +356,9 @@ pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Comma
 mod tests {
     use super::*;
     use crate::app::Effect;
-    use crate::domain::goal::GoalStatus;
     use crate::domain::item::ItemKind;
     use crate::domain::set::{Set, SetEntry};
-    use crate::domain::types::{Tempo, UpdateGoal};
+    use crate::domain::types::Tempo;
     use chrono::TimeZone;
     use crux_http::protocol::HttpRequest;
     use serde_json::{json, Value};
@@ -621,23 +439,6 @@ mod tests {
         let req = take_http(&mut fetch_sets(BASE));
         assert_eq!(req.method, "GET");
         assert_eq!(req.url, "https://api.example.com/api/sets");
-    }
-
-    #[test]
-    fn fetch_goals_includes_status_all_query() {
-        let req = take_http(&mut fetch_goals(BASE));
-        assert_eq!(req.method, "GET");
-        assert_eq!(req.url, "https://api.example.com/api/goals?status=all");
-    }
-
-    #[test]
-    fn fetch_goal_uses_id_in_path() {
-        let req = take_http(&mut fetch_goal(BASE, "01HG0000000000000000000000"));
-        assert_eq!(req.method, "GET");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000"
-        );
     }
 
     // ── Item create/update/delete ─────────────────────────────────────
@@ -768,143 +569,6 @@ mod tests {
             req.url,
             "https://api.example.com/api/sets/01HSET00000000000000000000"
         );
-    }
-
-    // ── Goal endpoints ────────────────────────────────────────────────
-
-    #[test]
-    fn create_goal_posts_input_as_body() {
-        let input = CreateGoal {
-            date: "2026-05-19".into(),
-            title: Some("learn Etude".into()),
-            notes: None,
-            deadline: Some("2026-06-19".into()),
-            target_confidence: None,
-            target_tempo: None,
-        };
-        let req = take_http(&mut create_goal(BASE, &input, "temp-goal"));
-        assert_eq!(req.method, "POST");
-        assert_eq!(req.url, "https://api.example.com/api/goals");
-
-        let body = body_as_json(&req);
-        assert_eq!(body["date"], "2026-05-19");
-        assert_eq!(body["title"], "learn Etude");
-        assert_eq!(body["deadline"], "2026-06-19");
-        assert!(body["notes"].is_null());
-    }
-
-    #[test]
-    fn update_goal_puts_to_id_path_with_status() {
-        let input = UpdateGoal {
-            status: Some(GoalStatus::Active),
-            ..Default::default()
-        };
-        let req = take_http(&mut update_goal(BASE, "01HG0000000000000000000000", &input));
-        assert_eq!(req.method, "PUT");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000"
-        );
-        let body = body_as_json(&req);
-        assert_eq!(body["status"], "active");
-    }
-
-    #[test]
-    fn complete_goal_sends_status_completed() {
-        let req = take_http(&mut complete_goal(BASE, "01HG0000000000000000000000"));
-        assert_eq!(req.method, "PUT");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000"
-        );
-        let body = body_as_json(&req);
-        assert_eq!(body["status"], "completed");
-    }
-
-    #[test]
-    fn reopen_goal_sends_status_active() {
-        let req = take_http(&mut reopen_goal(BASE, "01HG0000000000000000000000"));
-        assert_eq!(req.method, "PUT");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000"
-        );
-        let body = body_as_json(&req);
-        assert_eq!(body["status"], "active");
-    }
-
-    #[test]
-    fn delete_goal_is_delete_to_id_path() {
-        let req = take_http(&mut delete_goal(BASE, "01HG0000000000000000000000"));
-        assert_eq!(req.method, "DELETE");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000"
-        );
-    }
-
-    #[test]
-    fn link_goal_item_posts_to_nested_items_collection() {
-        let link = LinkGoalItem {
-            item_id: "01HX0000000000000000000000".into(),
-            item_title: "Etude".into(),
-            item_type: ItemKind::Piece,
-            target_date: None,
-            target_confidence: None,
-            target_tempo: None,
-        };
-        let req = take_http(&mut link_goal_item(
-            BASE,
-            "01HG0000000000000000000000",
-            &link,
-        ));
-        assert_eq!(req.method, "POST");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000/items"
-        );
-        let body = body_as_json(&req);
-        assert_eq!(body["item_id"], "01HX0000000000000000000000");
-        assert_eq!(body["item_type"], "piece");
-    }
-
-    #[test]
-    fn unlink_goal_item_deletes_from_nested_item_path() {
-        let req = take_http(&mut unlink_goal_item(
-            BASE,
-            "01HG0000000000000000000000",
-            "01HX0000000000000000000000",
-        ));
-        assert_eq!(req.method, "DELETE");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000/items/01HX0000000000000000000000"
-        );
-    }
-
-    #[test]
-    fn update_goal_item_patches_targets() {
-        use crate::domain::types::UpdateGoalItem;
-        let input = UpdateGoalItem {
-            target_date: Some(Some("2026-06-01".into())),
-            target_confidence: Some(Some(4)),
-            target_tempo: Some(Some(120)),
-        };
-        let req = take_http(&mut update_goal_item(
-            BASE,
-            "01HG0000000000000000000000",
-            "01HX0000000000000000000000",
-            &input,
-        ));
-        assert_eq!(req.method, "PATCH");
-        assert_eq!(
-            req.url,
-            "https://api.example.com/api/goals/01HG0000000000000000000000/items/01HX0000000000000000000000"
-        );
-        let body = body_as_json(&req);
-        assert_eq!(body["target_date"], "2026-06-01");
-        assert_eq!(body["target_confidence"], 4);
-        assert_eq!(body["target_tempo"], 120);
     }
 
     // ── Account / MCP / OAuth endpoints ──────────────────────────────
