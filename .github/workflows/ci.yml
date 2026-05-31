@@ -358,16 +358,20 @@ jobs:
 
   native-ios:
     # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
-    # build for the simulator, launch, and screenshot. The automated "eyes" on
-    # the iOS app until snapshot tests land (A4b). The intrada-ffi bridge + core
-    # typegen are also covered by the Linux `test`/`clippy` jobs.
-    name: Native iOS (build + launch)
-    runs-on: macos-latest
+    # run the snapshot test, build, launch, and screenshot. Pinned to macos-26 +
+    # Xcode 26.5 so the toolchain matches local dev (and the spec's iOS 26 SDK):
+    # SwiftUI snapshots are renderer-specific, so dev and CI MUST share Xcode/iOS.
+    name: Native iOS (build + test)
+    runs-on: macos-26
     timeout-minutes: 40
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
     steps:
       - uses: actions/checkout@v6
+      # Pin Xcode 26.5 to match local dev + the recorded snapshot reference.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -412,14 +416,15 @@ jobs:
         working-directory: ios
         run: xcodegen generate
       # Snapshot test = deterministic UI-regression "eyes" (renders RootView
-      # against a committed reference). PINNED to an iOS 18.x simulator: the
-      # reference is recorded on that runtime, and snapshots are runtime-
-      # sensitive. Re-record (and bump this pin) when CI's Xcode/iOS moves.
+      # against a committed reference). Create a deterministic iOS 26.5 sim —
+      # the reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev), and
+      # SwiftUI snapshots are renderer-specific. Bump (here + the reference)
+      # when local dev moves to a newer Xcode/iOS.
       - name: Run snapshot tests
         working-directory: ios
         run: |
-          UDID=$(xcrun simctl list devices available --json | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];ks=[k for k in d if 'iOS-18' in k];devs=[x for k in sorted(ks) for x in d[k] if 'iPhone' in x['name']];print(devs[-1]['udid'] if devs else '')")
-          test -n "$UDID" || { echo '::error::no iOS 18.x simulator available'; exit 1; }
+          UDID=$(xcrun simctl create snap-26-5 "iPhone 16" "iOS26.5")
+          test -n "$UDID" || { echo '::error::could not create iOS 26.5 simulator'; exit 1; }
           xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
             -destination "id=$UDID" -derivedDataPath build/dd \
             CODE_SIGNING_ALLOWED=NO
