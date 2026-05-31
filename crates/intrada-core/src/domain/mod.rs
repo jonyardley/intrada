@@ -1,5 +1,4 @@
 pub mod account;
-pub mod goal;
 pub mod item;
 pub mod mcp_audit;
 pub mod mcp_tokens;
@@ -9,7 +8,6 @@ pub mod set;
 pub mod types;
 
 pub use account::{AccountEvent, AccountPreferences};
-pub use goal::{Goal, GoalEvent, GoalItem, GoalPhoto, GoalStatus};
 pub use item::{Item, ItemEvent, ItemKind};
 pub use mcp_audit::{McpAuditEntry, McpAuditEvent};
 pub use mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
@@ -20,6 +18,6 @@ pub use session::{
 };
 pub use set::{Set, SetEntry};
 pub use types::{
-    CreateGoal, CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, LinkGoalItem,
-    ListQuery, Tempo, UpdateGoal, UpdateItem, UpdateSetRequest,
+    CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, ListQuery, Tempo, UpdateItem,
+    UpdateSetRequest,
 };

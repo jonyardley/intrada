@@ -149,10 +149,7 @@ These are unresolved product questions. Each one likely produces issues
    The teacher-assignment capture (#267) addressed the immediate capture
    problem without teacher-facing features.
 
-5. **Goals redesign.** Goals were removed for a ground-up rethink. The
-   five layers don't depend on goals short-term; they become important
-   at Layer 5 (gap analysis, pathways). Deferring is intentional, not
-   an oversight.
+5. **Goals → priority flag (resolved).** Goals were judged too complex from a user's perspective and removed. Direction is now a lightweight per-item `priority` flag (see `specs/priority-items.md`); "Plan" is a view over the library. Foundation shipped (#765); the priority UI and a Track "neglected priority" signal are tracked in #763 / #764.
 
 6. **Lessons / photos / R2 surface.** A lessons + photos surface
    (#274–#281) has started shipping without a roadmap home. Decide

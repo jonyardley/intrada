@@ -550,6 +550,18 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0080_add_priority_to_items",
         "ALTER TABLE items ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;",
     ),
+    (
+        "0081_drop_goal_items",
+        "DROP TABLE IF EXISTS goal_items;",
+    ),
+    (
+        "0082_drop_goal_photos",
+        "DROP TABLE IF EXISTS goal_photos;",
+    ),
+    (
+        "0083_drop_goals",
+        "DROP TABLE IF EXISTS goals;",
+    ),
 ];
 
 /// Backoff schedule for transient-error retries during migration: try

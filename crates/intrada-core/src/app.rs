@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
-use crate::domain::goal::{handle_goal_event, Goal, GoalEvent};
 #[cfg(test)]
 use crate::domain::item::ItemKind;
 use crate::domain::item::{handle_item_event, Item, ItemEvent};
@@ -27,7 +26,7 @@ use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::ListQuery;
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, entry_to_view, goal_to_view, session_to_view,
+    build_active_session_view, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
     SetSourceStatus, ViewModel,
 };
@@ -61,7 +60,6 @@ pub enum Event {
     Item(ItemEvent),
     Session(SessionEvent),
     Set(SetEvent),
-    Goal(GoalEvent),
     Account(AccountEvent),
     McpToken(McpTokenEvent),
     McpAudit(McpAuditEvent),
@@ -77,12 +75,6 @@ pub enum Event {
     SetsLoaded {
         sets: Vec<Set>,
     },
-    GoalsLoaded {
-        goals: Vec<Goal>,
-    },
-    GoalLoaded {
-        goal: Goal,
-    },
 
     // ── Write-confirmation callbacks ────────────────────────────────
     // Temp-id mutate-response: see CLAUDE.md "Mutate response".
@@ -92,15 +84,6 @@ pub enum Event {
     },
     ItemUpdated {
         item: Item,
-    },
-    GoalCreated {
-        temp_id: String,
-        goal: Goal,
-    },
-    /// Mutate-response confirmation for goal-item write paths. See CLAUDE.md
-    /// "Mutate response".
-    GoalUpdated {
-        goal: Goal,
     },
     SetUpdated {
         set: Set,
@@ -178,14 +161,12 @@ impl App for Intrada {
                     http::fetch_items(&model.api_base_url),
                     http::fetch_sessions(&model.api_base_url),
                     http::fetch_sets(&model.api_base_url),
-                    http::fetch_goals(&model.api_base_url),
                 ])
             }
             Event::FetchAll => Command::all([
                 http::fetch_items(&model.api_base_url),
                 http::fetch_sessions(&model.api_base_url),
                 http::fetch_sets(&model.api_base_url),
-                http::fetch_goals(&model.api_base_url),
             ]),
             Event::RefetchItems => http::fetch_items(&model.api_base_url),
             Event::RefetchSessions => http::fetch_sessions(&model.api_base_url),
@@ -206,7 +187,6 @@ impl App for Intrada {
             Event::Item(item_event) => handle_item_event(item_event, model),
             Event::Session(session_event) => handle_session_event(session_event, model),
             Event::Set(set_event) => handle_set_event(set_event, model),
-            Event::Goal(goal_event) => handle_goal_event(goal_event, model),
             Event::Account(account_event) => handle_account_event(account_event, model),
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
@@ -229,16 +209,6 @@ impl App for Intrada {
                 model.record_success();
                 crux_core::render::render()
             }
-            Event::GoalsLoaded { goals } => {
-                model.goals = goals;
-                model.record_success();
-                crux_core::render::render()
-            }
-            Event::GoalLoaded { goal } => {
-                model.current_goal = Some(goal);
-                model.record_success();
-                crux_core::render::render()
-            }
 
             // ── Write-confirmation callbacks ─────────────────────────
             Event::ItemCreated { temp_id, item } => {
@@ -253,27 +223,6 @@ impl App for Intrada {
             Event::ItemUpdated { item } => {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
                     *existing = item;
-                }
-                model.record_success();
-                crux_core::render::render()
-            }
-            Event::GoalCreated { temp_id, goal } => {
-                if let Some(existing) = model.goals.iter_mut().find(|g| g.id == temp_id) {
-                    *existing = goal;
-                } else {
-                    model.goals.push(goal);
-                }
-                model.record_success();
-                crux_core::render::render()
-            }
-            Event::GoalUpdated { goal } => {
-                if let Some(existing) = model.goals.iter_mut().find(|g| g.id == goal.id) {
-                    *existing = goal.clone();
-                }
-                if let Some(current) = &model.current_goal {
-                    if current.id == goal.id {
-                        model.current_goal = Some(goal);
-                    }
                 }
                 model.record_success();
                 crux_core::render::render()
@@ -463,45 +412,6 @@ impl App for Intrada {
             })
             .collect();
 
-        // Build goal views. Sort active goals by deadline ascending (soonest
-        // first, no-deadline last) then created_at descending; completed goals
-        // by completed_at descending. Active goals come before completed so
-        // both tabs render in the right order from a single sorted vec.
-        let mut goals: Vec<_> = model
-            .goals
-            .iter()
-            .map(|g| goal_to_view(g, &items))
-            .collect();
-        goals.sort_by(|a, b| {
-            use crate::domain::goal::GoalStatus;
-            let status_ord = |s: &GoalStatus| match s {
-                GoalStatus::Active => 0,
-                GoalStatus::Completed => 1,
-            };
-            let sa = status_ord(&a.status);
-            let sb = status_ord(&b.status);
-            if sa != sb {
-                return sa.cmp(&sb);
-            }
-            match a.status {
-                GoalStatus::Active => {
-                    // deadline ASC, nulls last
-                    match (&a.deadline, &b.deadline) {
-                        (Some(da), Some(db)) => da.cmp(db).then(b.created_at.cmp(&a.created_at)),
-                        (Some(_), None) => std::cmp::Ordering::Less,
-                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                        (None, None) => b.created_at.cmp(&a.created_at),
-                    }
-                }
-                GoalStatus::Completed => {
-                    // completed_at DESC
-                    b.completed_at.cmp(&a.completed_at)
-                }
-            }
-        });
-
-        let current_goal = model.current_goal.as_ref().map(|g| goal_to_view(g, &items));
-
         ViewModel {
             items,
             sessions,
@@ -512,8 +422,6 @@ impl App for Intrada {
             error: model.last_error.clone(),
             analytics,
             sets,
-            goals,
-            current_goal,
             account_preferences: model.account_preferences.clone(),
             delete_in_flight: model.delete_in_flight,
             account_deleted: model.account_deleted,
@@ -2061,7 +1969,7 @@ mod tests {
             "Failed to load items: timeout",
             "Failed to load sessions: 503",
             "Failed to load sets: connection refused",
-            "Failed to load goals: timeout",
+            "Failed to load analytics: timeout",
         ] {
             let _ = app.update(Event::LoadFailed(msg.into()), &mut model);
             assert_eq!(model.last_error, None, "burst msg should stay muted: {msg}");
@@ -2519,44 +2427,6 @@ mod tests {
     }
 
     #[test]
-    fn goal_delete_clears_current_goal_when_id_matches() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-
-        let now = chrono::Utc::now();
-        let goal = Goal {
-            id: "g1".to_string(),
-            title: Some("Test".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-        model.goals.push(goal.clone());
-        model.current_goal = Some(goal);
-
-        let _cmd = app.update(
-            Event::Goal(GoalEvent::Delete {
-                id: "g1".to_string(),
-            }),
-            &mut model,
-        );
-
-        assert!(model.goals.is_empty());
-        assert!(
-            model.current_goal.is_none(),
-            "current_goal should be cleared when the deleted goal matches"
-        );
-    }
-
-    #[test]
     fn item_created_replaces_optimistic_by_temp_id() {
         let app = Intrada;
         let mut model = Model::test_default();
@@ -2633,231 +2503,6 @@ mod tests {
 
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].id, "server_ulid");
-    }
-
-    #[test]
-    fn goal_created_pushes_when_temp_id_absent() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-
-        let now = chrono::Utc::now();
-        let server_goal = Goal {
-            id: "server_ulid".to_string(),
-            title: Some("Late confirmation".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-
-        // No optimistic entry — caller may have navigated away and back.
-        let _cmd = app.update(
-            Event::GoalCreated {
-                temp_id: "missing_temp".into(),
-                goal: server_goal,
-            },
-            &mut model,
-        );
-
-        assert_eq!(model.goals.len(), 1);
-        assert_eq!(model.goals[0].id, "server_ulid");
-    }
-
-    #[test]
-    fn goal_created_replaces_optimistic_by_temp_id() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-
-        let now = chrono::Utc::now();
-        let temp_id = "temp_ulid".to_string();
-        model.goals.push(Goal {
-            id: temp_id.clone(),
-            title: Some("Optimistic".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        });
-
-        let server_goal = Goal {
-            id: "server_ulid".to_string(),
-            title: Some("Optimistic".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-
-        let _cmd = app.update(
-            Event::GoalCreated {
-                temp_id,
-                goal: server_goal,
-            },
-            &mut model,
-        );
-
-        assert_eq!(model.goals.len(), 1);
-        assert_eq!(model.goals[0].id, "server_ulid");
-    }
-
-    #[test]
-    fn goal_updated_replaces_list_entry_and_current_goal() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-
-        let now = chrono::Utc::now();
-        let original = Goal {
-            id: "g1".to_string(),
-            title: Some("v1".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-        model.goals.push(original.clone());
-        model.current_goal = Some(original);
-
-        let updated = Goal {
-            title: Some("v2".to_string()),
-            target_confidence: Some(4),
-            ..model.goals[0].clone()
-        };
-        let _cmd = app.update(
-            Event::GoalUpdated {
-                goal: updated.clone(),
-            },
-            &mut model,
-        );
-
-        assert_eq!(model.goals.len(), 1);
-        assert_eq!(model.goals[0].title.as_deref(), Some("v2"));
-        assert_eq!(model.goals[0].target_confidence, Some(4));
-        assert_eq!(
-            model.current_goal.as_ref().unwrap().title.as_deref(),
-            Some("v2")
-        );
-    }
-
-    #[test]
-    fn goal_updated_leaves_current_goal_alone_when_id_differs() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        let now = chrono::Utc::now();
-        let other_current = Goal {
-            id: "g-other".to_string(),
-            title: Some("untouched".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-        model.current_goal = Some(other_current);
-        model.goals.push(Goal {
-            id: "g1".to_string(),
-            title: Some("v1".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        });
-
-        let updated = Goal {
-            title: Some("v2".to_string()),
-            ..model.goals[0].clone()
-        };
-        let _cmd = app.update(Event::GoalUpdated { goal: updated }, &mut model);
-
-        assert_eq!(model.goals[0].title.as_deref(), Some("v2"));
-        assert_eq!(
-            model.current_goal.as_ref().unwrap().title.as_deref(),
-            Some("untouched")
-        );
-    }
-
-    #[test]
-    fn goal_delete_preserves_current_goal_when_id_differs() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-
-        let now = chrono::Utc::now();
-        let viewing = Goal {
-            id: "viewing".to_string(),
-            title: Some("Viewing".to_string()),
-            date: "2026-05-19".to_string(),
-            notes: None,
-            deadline: None,
-            status: crate::domain::goal::GoalStatus::Active,
-            completed_at: None,
-            items: Vec::new(),
-            photos: Vec::new(),
-            created_at: now,
-            updated_at: now,
-            target_confidence: None,
-            target_tempo: None,
-        };
-        let other = Goal {
-            id: "other".to_string(),
-            ..viewing.clone()
-        };
-        model.goals.push(viewing.clone());
-        model.goals.push(other);
-        model.current_goal = Some(viewing);
-
-        let _cmd = app.update(
-            Event::Goal(GoalEvent::Delete {
-                id: "other".to_string(),
-            }),
-            &mut model,
-        );
-
-        assert_eq!(model.goals.len(), 1);
-        assert_eq!(
-            model.current_goal.as_ref().map(|g| g.id.as_str()),
-            Some("viewing"),
-            "current_goal should be untouched when a different goal is deleted"
-        );
     }
 
     #[test]

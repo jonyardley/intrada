@@ -49,10 +49,9 @@ pub async fn delete_account(
     //    can re-run.
     db::account::delete_all_user_data(conn, user_id).await?;
 
-    // 2. R2 photo blobs. Best-effort: log but don't fail. The DB
-    //    `goal_photos` rows are already gone, so the blobs are
-    //    orphaned-but-private (keys include user_id; bucket has no public
-    //    listing).
+    // 2. R2 photo blobs. Best-effort: log but don't fail. Keys are
+    //    prefixed by user_id and the bucket has no public listing, so any
+    //    residual blobs are orphaned-but-private.
     if let Some(r2) = r2 {
         if let Err(err) = r2.delete_user_photos(user_id).await {
             tracing::warn!(?err, %user_id, "R2 photo cleanup failed during account delete");

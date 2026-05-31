@@ -21,10 +21,9 @@ use crate::components::{
 use crate::views::DesignCatalogue;
 use crate::views::{
     AccountDeleteView, AddLibraryItemForm, AnalyticsPage, DetailView, EditLibraryItemForm,
-    GoalDetailView, GoalEditFormView, GoalFormView, GoalsListView, LibraryListView, LoginView,
-    McpAuditView, McpTokensView, NotFoundView, OAuthConsentView, SessionActiveView, SessionNewView,
-    SessionSummaryView, SessionsAllView, SessionsListView, SetDetailView, SetEditView,
-    SettingsView, SsoCallbackView, WelcomeView,
+    LibraryListView, LoginView, McpAuditView, McpTokensView, NotFoundView, OAuthConsentView,
+    SessionActiveView, SessionNewView, SessionSummaryView, SessionsAllView, SessionsListView,
+    SetDetailView, SetEditView, SettingsView, SsoCallbackView, WelcomeView,
 };
 use intrada_web::core_bridge::{init_core, load_session_in_progress, process_effects};
 use intrada_web::js_bridge;
@@ -260,20 +259,6 @@ fn AppRoutes() -> impl IntoView {
             <Route path=path!("/sso-callback") view=|| view! { <SsoCallbackView /> } />
 
             // ─── Private routes ───────────────────────────────────────
-            // /goals/new MUST come before /goals/:id to avoid "new"
-            // matching :id.
-            <Route path=path!("/goals") view=|| view! {
-                <AuthenticatedShell><GoalsListView /></AuthenticatedShell>
-            } />
-            <Route path=path!("/goals/new") view=|| view! {
-                <AuthenticatedShell><GoalFormView /></AuthenticatedShell>
-            } />
-            <Route path=path!("/goals/:id/edit") view=|| view! {
-                <AuthenticatedShell><GoalEditFormView /></AuthenticatedShell>
-            } />
-            <Route path=path!("/goals/:id") view=|| view! {
-                <AuthenticatedShell><GoalDetailView /></AuthenticatedShell>
-            } />
             // /library/new MUST come before /library/:id to avoid "new"
             // matching :id.
             <Route path=path!("/library") view=|| view! {
