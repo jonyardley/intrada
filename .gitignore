@@ -36,9 +36,15 @@ crates/intrada-mobile/plugins/*/.tauri/
 # Swift package resolution lockfile — regenerated on each iOS build.
 crates/intrada-mobile/plugins/*/ios/Package.resolved
 *.xcuserdata/
+# Xcode/SwiftPM per-user data (schemes, breakpoints) — not just *.xcuserdata dirs
+.swiftpm/
 DerivedData/
 *.ipa
 *.dSYM.zip
 *.dSYM
 crates/intrada-web/test-results/
 design/images/generated-*.png
+# Ad-hoc macOS screenshots dropped into design/ — scratch, not design sources
+design/Screenshot*.png
+# Superpowers plugin scratch (brainstorm servers, etc.)
+.superpowers/
