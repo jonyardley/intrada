@@ -46,6 +46,7 @@ struct LibraryDetailScreen: View {
         }
         .padding(16)
       }
+      .scrollEdgeShadow()
     }
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
