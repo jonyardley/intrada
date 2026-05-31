@@ -39,6 +39,7 @@ jobs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
       mobile: ${{ steps.filter.outputs.mobile }}
+      native: ${{ steps.filter.outputs.native }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -70,6 +71,14 @@ jobs:
               - 'scripts/ios-simulator-smoke.sh'
               - 'scripts/fix-ios-build-config.rb'
               - 'scripts/add-live-activity-target.rb'
+              - '.github/workflows/ci.yml'
+            native:
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'crates/intrada-core/**'
+              - 'crates/intrada-ffi/**'
+              - 'ios/**'
+              - 'scripts/ios-run-sim.sh'
               - '.github/workflows/ci.yml'
 
   test:
@@ -343,6 +352,68 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-screenshots
+          path: ios-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  native-ios:
+    # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
+    # build for the simulator, launch, and screenshot. The automated "eyes" on
+    # the iOS app until snapshot tests land (A4b). The intrada-ffi bridge + core
+    # typegen are also covered by the Linux `test`/`clippy` jobs.
+    name: Native iOS (build + launch)
+    runs-on: macos-latest
+    timeout-minutes: 40
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "native-ios"
+          cache-on-failure: true
+      # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH on the macOS
+      # image; without this `cargo` resolves to Apple's stub. (See ios-build.)
+      - name: Ensure cargo is on PATH
+        run: |
+          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
+          cargo --version
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Cache cargo-swift
+        id: cargo-swift-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin/cargo-swift
+          key: cargo-swift-0.11-${{ runner.os }}-${{ runner.arch }}
+      - name: Install cargo-swift
+        if: steps.cargo-swift-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-swift --version "^0.11" --locked
+      - name: Cache Homebrew packages
+        id: brew-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Regenerate Swift bindings (facet typegen + cargo-swift)
+        run: just ios-gen
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Build + launch on simulator + screenshot
+        run: bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-ios-screenshot
           path: ios-screenshots/
           retention-days: 7
           if-no-files-found: ignore

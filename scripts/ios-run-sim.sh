@@ -11,6 +11,7 @@ cd "$(dirname "$0")/../ios"
 APP_ID="com.intrada.native"
 DD="build/dd"
 SHOT="${1:-/tmp/intrada-native.png}"
+mkdir -p "$(dirname "$SHOT")"
 
 # Newest available iPhone simulator.
 UDID=$(xcrun simctl list devices available --json | python3 -c "
