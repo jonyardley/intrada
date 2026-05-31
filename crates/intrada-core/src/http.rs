@@ -102,6 +102,7 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         tempo: Some(item.tempo.clone()),
         notes: Some(item.notes.clone()),
         tags: Some(item.tags.clone()),
+        priority: Some(item.priority),
     };
     Http::put(format!("{api_base_url}/api/items/{}", item.id))
         .body_json(&update)
