@@ -184,6 +184,17 @@ The Leptos shell uses a dark-on-dark glassmorphism aesthetic. Web and iOS run
 the same UI codebase; iOS-specific look-and-feel is layered on with platform
 gating (see iOS native-feel rules below).
 
+**Interaction & design principles** (the *why* behind the visual rules, plus how
+we think about friction, simplicity, and clutter) live in
+`docs/design-principles.md`. **Consult it before making any UI/UX design
+decision** — new surface, layout, flow, or interaction. It is the source of
+truth for *how the app should feel*: the "spend friction deliberately" model
+(remove admin/setup friction, keep intention-before and reflection-after
+friction), one-primary-action-per-screen, content-over-chrome, progressive
+disclosure, and reversible-by-default. It also carries a dated decisions log
+(T1–T6) recording the reasoning behind each ruling — when a new decision is
+made, append to that log rather than deciding silently.
+
 ### Hierarchy: Tokens → Utilities → Components → Views
 
 1. **Tokens first**: Every colour traces to a named token. Never use raw colours
