@@ -578,6 +578,7 @@ mod tests {
             tags: vec!["scale".into(), "warmup".into()],
             created_at: fixed_time(),
             updated_at: fixed_time(),
+            priority: false,
         }
     }
 

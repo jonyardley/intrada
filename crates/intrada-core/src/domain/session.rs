@@ -340,6 +340,7 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         tags: vec![],
         created_at: now,
         updated_at: now,
+        priority: false,
     }
 }
 
@@ -1264,6 +1265,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    priority: false,
                 },
                 Item {
                     id: "piece-2".to_string(),
@@ -1276,6 +1278,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    priority: false,
                 },
                 Item {
                     id: "exercise-1".to_string(),
@@ -1288,6 +1291,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    priority: false,
                 },
             ],
             api_base_url: "http://localhost:3001".to_string(),

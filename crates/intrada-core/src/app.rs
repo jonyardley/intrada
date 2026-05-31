@@ -343,6 +343,7 @@ impl App for Intrada {
                 updated_at: item.updated_at.to_rfc3339(),
                 practice,
                 latest_achieved_tempo,
+                priority: item.priority,
             });
         }
 
@@ -667,6 +668,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             },
             Item {
                 id: "ex1".to_string(),
@@ -679,6 +681,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             },
         ];
 
@@ -801,6 +804,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -894,6 +898,7 @@ mod tests {
                     tags: vec!["classical".to_string()],
                     created_at: now,
                     updated_at: now,
+                    priority: false,
                 },
                 Item {
                     id: "e1".to_string(),
@@ -906,6 +911,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    priority: false,
                 },
             ],
             ..Default::default()
@@ -961,6 +967,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -973,6 +980,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         // No filter — both items
@@ -1014,6 +1022,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1026,6 +1035,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         model.active_query = Some(ListQuery {
@@ -1055,6 +1065,7 @@ mod tests {
             tags: vec!["classical".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1067,6 +1078,7 @@ mod tests {
             tags: vec!["romantic".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         model.active_query = Some(ListQuery {
@@ -1153,6 +1165,7 @@ mod tests {
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             });
         }
         for i in 0..5000 {
@@ -1171,6 +1184,7 @@ mod tests {
                 tags: vec![format!("etag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             });
         }
         let populate_time = start.elapsed();
@@ -1311,6 +1325,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -1323,6 +1338,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
         model.items = vec![p1, p2];
 
@@ -1418,6 +1434,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         use crate::domain::session::{
@@ -1515,6 +1532,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         use crate::domain::session::{
@@ -1576,6 +1594,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         use crate::domain::session::{
@@ -1662,6 +1681,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         use crate::domain::session::{
@@ -1826,6 +1846,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             }],
             ..Model::test_default()
         };
@@ -1841,6 +1862,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -1865,6 +1887,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                priority: false,
             }],
             ..Model::test_default()
         };
@@ -1880,6 +1903,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -1933,6 +1957,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            priority: false,
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -2248,6 +2273,7 @@ mod tests {
             tags: vec![],
             created_at,
             updated_at: created_at,
+            priority: false,
         }
     }
 
@@ -2548,6 +2574,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         });
 
         let server_item = Item {
@@ -2561,6 +2588,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -2591,6 +2619,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -2829,5 +2858,30 @@ mod tests {
             Some("viewing"),
             "current_goal should be untouched when a different goal is deleted"
         );
+    }
+
+    #[test]
+    fn test_new_item_defaults_to_not_priority() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _cmd = app.update(
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Prelude".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Bach".to_string()),
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
+            &mut model,
+        );
+
+        assert_eq!(model.items.len(), 1);
+        assert!(!model.items[0].priority);
+
+        let vm = app.view(&model);
+        assert!(!vm.items[0].priority);
     }
 }
