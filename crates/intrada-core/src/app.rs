@@ -290,6 +290,8 @@ impl App for Intrada {
                     .as_ref()
                     .map(|t| t.format_display())
                     .filter(|s| !s.is_empty()),
+                tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
+                tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
                 notes: item.notes.clone(),
                 tags: item.tags.clone(),
                 created_at: item.created_at.to_rfc3339(),
@@ -813,6 +815,22 @@ mod tests {
                     priority: false,
                 },
                 Item {
+                    id: "p2".to_string(),
+                    title: "Etude".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: None,
+                        bpm: Some(96),
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    priority: false,
+                },
+                Item {
                     id: "e1".to_string(),
                     title: "Scales".to_string(),
                     kind: ItemKind::Exercise,
@@ -831,21 +849,31 @@ mod tests {
 
         let vm = app.view(&model);
 
-        assert_eq!(vm.items.len(), 2);
+        assert_eq!(vm.items.len(), 3);
 
-        // Check piece
+        // Check piece — keeps the flattened string (web) AND exposes structured
+        // marking + bpm so the iOS card can render "Allegro · ♩ = 132".
         let piece_view = vm.items.iter().find(|i| i.id == "p1").unwrap();
         assert_eq!(piece_view.item_type, ItemKind::Piece);
         assert_eq!(piece_view.title, "Sonata");
         assert_eq!(piece_view.subtitle, "Beethoven");
         assert_eq!(piece_view.tempo, Some("Allegro (132 BPM)".to_string()));
+        assert_eq!(piece_view.tempo_marking, Some("Allegro".to_string()));
+        assert_eq!(piece_view.tempo_bpm, Some(132));
         assert_eq!(piece_view.tags, vec!["classical".to_string()]);
 
-        // Check exercise
+        // bpm-only item: marking and bpm pass through independently.
+        let etude_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
+        assert_eq!(etude_view.tempo_marking, None);
+        assert_eq!(etude_view.tempo_bpm, Some(96));
+
+        // Check exercise — no tempo at all.
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();
         assert_eq!(ex_view.item_type, ItemKind::Exercise);
         assert_eq!(ex_view.title, "Scales");
         assert_eq!(ex_view.subtitle, "");
+        assert_eq!(ex_view.tempo_marking, None);
+        assert_eq!(ex_view.tempo_bpm, None);
     }
 
     #[test]

@@ -19,4 +19,23 @@
     /// A deterministic, offline store for `#Preview` blocks.
     static var preview: Store { Store(bridge: PreviewBridge()) }
   }
+
+  extension LibraryItemView {
+    static var previewPiece: LibraryItemView {
+      LibraryItemView(
+        id: "piece-1", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+        key: "D♭ major", tempo: "Andante (72 BPM)", tempoMarking: "Andante", tempoBpm: 72,
+        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        latestAchievedTempo: nil, priority: false)
+    }
+
+    static var previewExercise: LibraryItemView {
+      LibraryItemView(
+        id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
+        subtitle: "Charles-Louis Hanon",
+        key: "C major", tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
+        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        latestAchievedTempo: nil, priority: false)
+    }
+  }
 #endif

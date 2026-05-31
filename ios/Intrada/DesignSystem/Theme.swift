@@ -26,6 +26,7 @@ enum IntradaColor {
 
   static let pieceBadgeBg = Color(hex: 0xE7E3F4)
   static let pieceBadgeFg = Color(hex: 0x4C3FA6)
+  static let exerciseAccent = Color(hex: 0x9E7B33)
   static let exerciseBadgeBg = Color(hex: 0xF0E5CC)
   static let exerciseBadgeFg = Color(hex: 0x8A6A2E)
 }
@@ -37,6 +38,10 @@ extension LinearGradient {
 
   static let brandBar = LinearGradient(
     colors: [IntradaColor.brandGradientStart, IntradaColor.brandGradientEnd],
+    startPoint: .top, endPoint: .bottom)
+
+  static let exerciseBar = LinearGradient(
+    colors: [IntradaColor.exerciseAccent, IntradaColor.exerciseBadgeFg],
     startPoint: .top, endPoint: .bottom)
 }
 

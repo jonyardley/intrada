@@ -56,4 +56,16 @@ final class ScreenSnapshotTests: XCTestCase {
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
   }
+
+  func testLibraryItemCards() {
+    let cards = ZStack {
+      PaperBackground()
+      VStack(spacing: 14) {
+        LibraryItemCard(item: .previewPiece)
+        LibraryItemCard(item: .previewExercise)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(cards), as: config)
+  }
 }

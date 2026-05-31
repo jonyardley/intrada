@@ -418,6 +418,8 @@ mod tests {
             subtitle: subtitle.to_string(),
             key: None,
             tempo: None,
+            tempo_marking: None,
+            tempo_bpm: None,
             notes: None,
             tags: tags.iter().map(|s| s.to_string()).collect(),
             created_at: String::new(),
