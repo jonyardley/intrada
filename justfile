@@ -319,6 +319,9 @@ web-clean:
 # Generate the Swift value-type package (Event/Effect/ViewModel + bincode
 # serializers) from the core via facet typegen → ios/generated/SharedTypes.
 native-typegen:
+    # Pre-clean so a renamed/removed core type can't leave an orphan Swift file
+    # (crux's swift typegen overwrites but never deletes) — keeps typegen in sync.
+    rm -rf ios/generated/SharedTypes
     RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir ios/generated
 
 # Build intrada-ffi into a Swift package (CoreFFI + RustFramework.xcframework)
