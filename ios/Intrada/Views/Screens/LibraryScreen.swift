@@ -25,6 +25,12 @@ struct LibraryScreen: View {
     .onAppear {
       store.send(.setQuery(query(for: filter)))
     }
+    .navigationDestination(for: LibraryItemView.self) { item in
+      LibraryDetailScreen(item: item)
+    }
+    // The list draws its own serif header, so suppress the nav bar here; the
+    // detail keeps it for the back chevron.
+    .toolbar(.hidden, for: .navigationBar)
   }
 
   @ViewBuilder private var content: some View {
@@ -36,7 +42,10 @@ struct LibraryScreen: View {
       ScrollView {
         LazyVStack(spacing: 14) {
           ForEach(items, id: \.id) { item in
-            LibraryItemCard(item: item)
+            NavigationLink(value: item) {
+              LibraryItemCard(item: item)
+            }
+            .buttonStyle(.plain)
           }
         }
         .padding(16)
@@ -71,12 +80,12 @@ struct LibraryScreen: View {
 
 #if DEBUG
   #Preview("Populated") {
-    LibraryScreen()
+    NavigationStack { LibraryScreen() }
       .environment(Store.previewLibrary)
   }
 
   #Preview("Empty") {
-    LibraryScreen()
+    NavigationStack { LibraryScreen() }
       .environment(Store.preview)
   }
 #endif

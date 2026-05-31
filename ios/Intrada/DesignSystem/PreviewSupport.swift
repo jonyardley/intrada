@@ -49,6 +49,15 @@
         latestAchievedTempo: nil, priority: false)
     }
 
+    static var previewDetail: LibraryItemView {
+      LibraryItemView(
+        id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+        key: "D♭ major", tempo: "Andante (72 BPM)", tempoMarking: "Andante", tempoBpm: 72,
+        notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
+        tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false)
+    }
+
     static var previewMinimal: LibraryItemView {
       LibraryItemView(
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",

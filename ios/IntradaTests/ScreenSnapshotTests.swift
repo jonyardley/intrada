@@ -43,11 +43,12 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryScreen() {
-    assertSnapshot(of: host(LibraryScreen()), as: config)
+    assertSnapshot(of: host(NavigationStack { LibraryScreen() }), as: config)
   }
 
   func testLibraryScreenPopulated() {
-    assertSnapshot(of: host(LibraryScreen(), store: .previewLibrary), as: config)
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: config)
   }
 
   func testPracticeScreen() {
@@ -60,6 +61,22 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
+  }
+
+  func testLibraryDetailScreen() {
+    let detail = NavigationStack { LibraryDetailScreen(item: .previewDetail) }
+    assertSnapshot(of: host(detail), as: config)
+  }
+
+  func testTypeBadges() {
+    let badges = ZStack {
+      PaperBackground()
+      HStack(spacing: 12) {
+        TypeBadge(kind: .piece)
+        TypeBadge(kind: .exercise)
+      }
+    }
+    assertSnapshot(of: host(badges), as: config)
   }
 
   func testLibraryFilterTabs() {

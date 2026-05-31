@@ -42,25 +42,16 @@ struct LibraryItemCard: View {
     .accessibilityLabel(accessibilityLabel)
   }
 
-  // ♩ (U+2669) renders the tempo as a musical marking: "Allegro · ♩ = 132".
-  private var tempoText: String? {
-    let parts = [item.tempoMarking, item.tempoBpm.map { "♩ = \($0)" }]
-      .compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
-  }
-
   private var metaLine: String? {
-    let parts = [item.key, tempoText].compactMap { $0 }.filter { !$0.isEmpty }
+    let parts = [item.key, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
-  // Spell the tempo out for VoiceOver rather than voicing the ♩ glyph.
   private var accessibilityLabel: String {
     var parts = [item.itemType.label, item.title]
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.key, !key.isEmpty { parts.append(key) }
-    if let marking = item.tempoMarking, !marking.isEmpty { parts.append(marking) }
-    if let bpm = item.tempoBpm { parts.append("\(bpm) beats per minute") }
+    if let tempo = item.tempoSpoken { parts.append(tempo) }
     return parts.joined(separator: ", ")
   }
 }
