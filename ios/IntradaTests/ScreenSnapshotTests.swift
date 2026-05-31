@@ -64,8 +64,12 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryDetailScreen() {
-    let detail = NavigationStack { LibraryDetailScreen(item: .previewDetail) }
-    assertSnapshot(of: host(detail), as: config)
+    // Push via a preset path so the snapshot covers the real navigation chrome
+    // (back chevron + transparent bar over the serif title), not just the body.
+    let pushed = NavigationStack(path: .constant([LibraryItemView.previewDetail])) {
+      LibraryScreen()
+    }
+    assertSnapshot(of: host(pushed, store: .previewLibrary), as: config)
   }
 
   func testTypeBadges() {
