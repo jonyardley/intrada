@@ -30,7 +30,14 @@ struct RootView: View {
     }
     .tint(IntradaColor.accent)
     .task {
-      store.send(.startApp(apiBaseUrl: apiBaseURL))
+      // Demo mode (CI screenshots / local / E2E) seeds offline via the core and
+      // skips StartApp's fetches — otherwise a late fetch response would clobber
+      // the seed. Production never passes the arg.
+      if ProcessInfo.processInfo.arguments.contains("--seed-sample-data") {
+        store.send(.loadSampleData)
+      } else {
+        store.send(.startApp(apiBaseUrl: apiBaseURL))
+      }
     }
   }
 
@@ -68,6 +75,6 @@ struct RootView: View {
 #if DEBUG
   #Preview {
     RootView()
-      .environment(Store.preview)
+      .environment(Store.previewSeeded)
   }
 #endif

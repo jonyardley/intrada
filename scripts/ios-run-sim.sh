@@ -44,7 +44,12 @@ fi
 APP=$(find "$DD/Build/Products" -name "Intrada.app" -type d | head -1)
 [ -n "$APP" ] || { echo "✗ no Intrada.app in $DD (build first)" >&2; exit 1; }
 xcrun simctl install "$UDID" "$APP"
-xcrun simctl launch "$UDID" "$APP_ID" >/dev/null
+# Seed the core's demo dataset so the screenshot shows a populated app.
+# Override with SEED=0 to launch against the empty/real-data state.
+LAUNCH_ARGS=()
+[ "${SEED:-1}" = "1" ] && LAUNCH_ARGS+=(--seed-sample-data)
+# `${arr[@]+...}` guards the empty-array case under `set -u` on bash 3.2 (macOS).
+xcrun simctl launch "$UDID" "$APP_ID" "${LAUNCH_ARGS[@]+"${LAUNCH_ARGS[@]}"}" >/dev/null
 sleep 3
 xcrun simctl io "$UDID" screenshot "$SHOT" >/dev/null
 echo "✓ launched on $UDID — screenshot: $SHOT"

@@ -81,7 +81,7 @@ struct LibraryScreen: View {
 #if DEBUG
   #Preview("Populated") {
     NavigationStack { LibraryScreen() }
-      .environment(Store.previewLibrary)
+      .environment(Store.previewSeeded)
   }
 
   #Preview("Empty") {
