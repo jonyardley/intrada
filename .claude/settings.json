@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$f\" >/dev/null 2>&1 ;; *.swift) command -v swift-format >/dev/null 2>&1 && swift-format format -i \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
           }
         ]
       }
