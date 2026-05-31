@@ -14,6 +14,7 @@ use crate::model::Model;
 /// A single PAT in the user's account, as surfaced by the list endpoint.
 /// Fields mirror `intrada-api`'s `TokenListItem`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct McpToken {
     pub id: String,
     pub name: String,
@@ -26,6 +27,7 @@ pub struct McpToken {
 /// Response from the create endpoint. The `token` field is the only place the
 /// full bearer string is ever returned — UI shows it once and never again.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreatedMcpToken {
     pub id: String,
     pub name: String,
@@ -35,6 +37,8 @@ pub struct CreatedMcpToken {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum McpTokenEvent {
     /// Fetch the user's tokens.
     LoadTokens,

@@ -15,6 +15,7 @@ where
 
 /// Top-level serialisation unit for library data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryData {
     #[serde(default)]
     pub items: Vec<Item>,
@@ -22,6 +23,7 @@ pub struct LibraryData {
 
 /// Tempo representation with optional marking (e.g. "Allegro") and BPM.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Tempo {
     pub marking: Option<String>,
     pub bpm: Option<u16>,
@@ -51,6 +53,7 @@ impl Tempo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateItem {
     pub title: String,
     pub kind: ItemKind,
@@ -66,6 +69,7 @@ pub struct CreateItem {
 /// - `Some(None)` = clear the field
 /// - `Some(Some(v))` = set to new value
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
     pub title: Option<String>,
     #[serde(
@@ -101,6 +105,7 @@ use super::session::PracticeSession;
 
 /// Top-level serialisation unit for `sessions.json` / `intrada:sessions`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SessionsData {
     #[serde(default)]
     pub sessions: Vec<PracticeSession>,
@@ -110,6 +115,7 @@ pub struct SessionsData {
 
 /// Request body for creating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateSetRequest {
     pub name: String,
     pub entries: Vec<CreateSetEntryRequest>,
@@ -117,6 +123,7 @@ pub struct CreateSetRequest {
 
 /// Entry within a create/update set API request.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateSetEntryRequest {
     pub item_id: String,
     pub item_title: String,
@@ -125,6 +132,7 @@ pub struct CreateSetEntryRequest {
 
 /// Request body for updating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateSetRequest {
     pub name: String,
     pub entries: Vec<CreateSetEntryRequest>,
@@ -170,6 +178,7 @@ impl UpdateSetRequest {
 
 /// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ListQuery {
     pub text: Option<String>,
     pub item_type: Option<ItemKind>,

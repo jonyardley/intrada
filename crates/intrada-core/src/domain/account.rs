@@ -15,6 +15,7 @@ use crate::model::Model;
 /// `intrada-api/src/db/account.rs`) so the same JSON deserialises on both
 /// sides.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AccountPreferences {
     pub default_focus_minutes: u32,
     pub default_rep_count: u32,
@@ -30,6 +31,8 @@ impl Default for AccountPreferences {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum AccountEvent {
     /// Fetch the current user's preferences from the API.
     LoadPreferences,

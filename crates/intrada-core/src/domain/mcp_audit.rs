@@ -12,6 +12,7 @@ use crate::app::{Effect, Event};
 use crate::model::Model;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct McpAuditEntry {
     pub id: String,
     /// `None` for JWT-authenticated MCP writes (browser/iOS session, no PAT).
@@ -28,6 +29,8 @@ pub struct McpAuditEntry {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum McpAuditEvent {
     LoadAudit,
     AuditLoaded(Vec<McpAuditEntry>),

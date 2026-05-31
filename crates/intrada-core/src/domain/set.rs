@@ -12,6 +12,7 @@ use crate::validation;
 
 /// A named, reusable setlist template containing an ordered list of library item references.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Set {
     pub id: String,
     pub name: String,
@@ -22,6 +23,7 @@ pub struct Set {
 
 /// A single item within a set, representing a library piece or exercise.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetEntry {
     pub id: String,
     pub item_id: String,
@@ -33,6 +35,8 @@ pub struct SetEntry {
 // ── Events ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum SetEvent {
     SaveBuildingAsSet {
         name: String,

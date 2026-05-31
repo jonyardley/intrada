@@ -15,6 +15,7 @@ use crate::app::{Effect, Event};
 use crate::model::Model;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct OAuthFinalizeParams {
     pub response_type: String,
     pub client_id: String,
@@ -28,6 +29,8 @@ pub struct OAuthFinalizeParams {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum OAuthEvent {
     /// User clicked Allow on the consent screen.
     FinalizeConsent(OAuthFinalizeParams),

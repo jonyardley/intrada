@@ -50,9 +50,9 @@ iOS Shell" section).
 - **Typegen:** `facet-generate` (≥0.17) + the `facet_typegen` feature on
   `crux_core` 0.18 generates a Swift package of `Event` / `Effect` /
   `ViewModel` + domain types and their bincode (BCS) serializers. The core
-  types in `app.rs` (`Event`, `Effect` via `#[effect]`, `AppEffect`) get their
-  `#[derive(Facet)]` / `#[repr(C)]` attributes restored behind the feature
-  (they were stripped in #382).
+  types in `app.rs` (`Event`, `AppEffect`, and `Effect` via
+  `#[effect(facet_typegen)]`) get their `#[derive(Facet)]` (+ `#[repr(C)]` on
+  enums) restored behind the feature (they were stripped in #382).
 - **Packaging:** **spike `cargo-swift`** (the Crux book's current documented
   path: `cargo-swift` + `xcodegen` + `just`) which produces a Swift package
   wrapping the compiled static lib. **Fallback:** revive the hand-rolled
