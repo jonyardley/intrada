@@ -160,5 +160,5 @@ navigate?* If it's ornament only, cut it.
 Rule adopted: **recoverable actions → optimistic + undo toast; only genuinely
 irreversible actions → confirm dialog.** New destructive actions default to the
 undo-toast path unless the data loss is unrecoverable. Existing destructive
-actions (e.g. goal delete's confirm sheet) need a per-action audit to reclassify
+actions (e.g. item delete's confirm sheet) need a per-action audit to reclassify
 — tracked as a follow-on issue.

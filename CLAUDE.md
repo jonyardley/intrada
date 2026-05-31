@@ -129,7 +129,7 @@ data in shell-local state. UI-only state stays in Leptos signals.
 - **Mutate response**: Writes reconcile with the server response directly — no
   full-list refetch. Three create variants live in the codebase; pick the one
   that matches the entity's shape:
-  - **Temp-id mutate-response** (`Item`, `Goal`): domain handler pushes the
+  - **Temp-id mutate-response** (`Item`): domain handler pushes the
     optimistic entry with a client-generated ulid; HTTP wrapper carries that
     ulid; `*Created { temp_id, entity }` event replaces the optimistic entry
     (server-assigned ulid differs from the client one). Default for new
@@ -552,9 +552,3 @@ Colours must reference Pencil variables, not raw hex.
   the temp-id mutate-response pattern (see "Mutate response" under Other
   patterns). The counter drives the save-form's optimistic→confirmed flip;
   reworking it needs to keep that affordance.
-- `Goal` write ops other than `Add`/`Update`/`Delete` (Complete, LinkItem,
-  UnlinkItem) still dispatch `RefetchGoals` from the HTTP success handler.
-  Each is a candidate for the mutate-response treatment (e.g.
-  `GoalCompleted { goal }` / `GoalItemLinked { goal }`) — currently they're
-  cheap because the list `<For>` keys by goal id, so the visible row keeps
-  its DOM node.
