@@ -96,9 +96,12 @@ jobs:
       # intrada-mobile + its plugins (Tauri 2) require GTK/glib system libs
       # not present on Ubuntu runners — iOS-only crates with no meaningful
       # unit tests on Linux.
-      - run: cargo nextest run --workspace --profile ci --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+      # intrada-web excluded too: iOS-pivot focus mode — the Leptos web shell is
+      # on hold and allowed to drift. It's still built+tested for wasm on main
+      # (wasm-build/wasm-test). intrada-api stays in (the iOS app's sync target).
+      - run: cargo nextest run --workspace --profile ci --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
       - name: Doc tests
-        run: cargo test --doc --workspace --exclude intrada-mobile --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+        run: cargo test --doc --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
       - name: Publish test results
         if: always()
         uses: dorny/test-reporter@v3
@@ -132,6 +135,7 @@ jobs:
           cargo llvm-cov nextest
           --workspace
           --exclude intrada-mobile
+          --exclude intrada-web
           --exclude tauri-plugin-background-audio
           --exclude tauri-plugin-live-activity
           --exclude tauri-plugin-auth-session
@@ -156,7 +160,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native"
@@ -167,26 +170,20 @@ jobs:
       # intrada-mobile + its plugins excluded: Tauri 2 needs GTK/glib system libs on Linux.
       # Run clippy with JSON output piped through clippy-sarif for GitHub
       # code scanning annotations, then check the exit code to fail the job.
+      # iOS-pivot focus mode: web shell on hold — intrada-web excluded and the
+      # WASM clippy pass dropped. Restore both at parity.
       - name: Clippy (native)
         shell: bash
         run: |
           set +o pipefail
           cargo clippy --workspace \
             --exclude intrada-mobile \
+            --exclude intrada-web \
             --exclude tauri-plugin-background-audio \
             --exclude tauri-plugin-live-activity \
             --exclude tauri-plugin-auth-session \
             --message-format=json -- -D warnings 2>&1 \
             | clippy-sarif | tee clippy-native.sarif | sarif-fmt
-          exit ${PIPESTATUS[0]}
-      - name: Clippy (WASM target)
-        if: success() || failure()
-        shell: bash
-        run: |
-          set +o pipefail
-          cargo clippy --target wasm32-unknown-unknown -p intrada-web \
-            --message-format=json -- -D warnings 2>&1 \
-            | clippy-sarif | tee clippy-wasm.sarif | sarif-fmt
           exit ${PIPESTATUS[0]}
       - name: Upload Clippy SARIF
         if: always()
@@ -194,13 +191,6 @@ jobs:
         with:
           sarif_file: clippy-native.sarif
           category: clippy-native
-          wait-for-processing: true
-      - name: Upload Clippy WASM SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: clippy-wasm.sarif
-          category: clippy-wasm
           wait-for-processing: true
 
   ios-build:
