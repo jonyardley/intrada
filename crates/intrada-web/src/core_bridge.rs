@@ -371,6 +371,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            priority: false,
         };
         let _ = core.process_event(Event::DataLoaded { items: vec![item] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });

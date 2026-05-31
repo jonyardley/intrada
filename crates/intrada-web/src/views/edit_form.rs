@@ -212,6 +212,7 @@ pub fn EditLibraryItemForm(
                                 tempo: tempo_val,
                                 notes: notes_val,
                                 tags: Some(tags_val),
+                                priority: None,
                             };
                             let event = Event::Item(ItemEvent::Update {
                                 id: item_id.clone(),

@@ -77,6 +77,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         updated_at: "2025-02-01".to_string(),
         practice: None,
         latest_achieved_tempo: None,
+        priority: false,
     };
 
     let sample_exercise = LibraryItemView {
@@ -92,6 +93,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         updated_at: "2025-01-20".to_string(),
         practice: None,
         latest_achieved_tempo: None,
+        priority: false,
     };
 
     let sample_minimal = LibraryItemView {
@@ -107,6 +109,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         updated_at: "2025-03-01".to_string(),
         practice: None,
         latest_achieved_tempo: None,
+        priority: false,
     };
 
     let sample_long_title = LibraryItemView {
@@ -129,6 +132,7 @@ pub fn DesignCatalogue() -> impl IntoView {
         updated_at: "2025-02-20".to_string(),
         practice: None,
         latest_achieved_tempo: None,
+        priority: false,
     };
 
     let sample_set_short = SetView {
