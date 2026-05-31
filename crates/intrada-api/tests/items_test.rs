@@ -563,7 +563,7 @@ async fn update_priority_is_scoped_to_owner() {
 
 #[tokio::test]
 async fn update_toggles_item_priority() {
-    let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+    let app = common::setup_test_app().await;
 
     let (status, body) = common::post_json(
         app.clone(),
@@ -586,7 +586,6 @@ async fn update_toggles_item_priority() {
     assert!(updated.priority);
 
     assert_eq!(updated.title, "Gymnopedie");
-    let _ = conn;
 }
 
 #[tokio::test]
