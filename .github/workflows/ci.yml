@@ -415,6 +415,23 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+      # Cache DerivedData (resolved + compiled SwiftPM deps — Sentry,
+      # swift-snapshot-testing — plus build intermediates) so `xcodebuild test`
+      # rebuilds incrementally instead of recompiling the whole dependency tree
+      # every run. derivedDataPath is the stable relative `build/dd`, so cached
+      # absolute paths line up across runs. The exact key rarely hits (Swift
+      # source changes per PR); the restore-key pulls the most recent DerivedData
+      # and Xcode rebuilds only what changed. Safe for snapshot determinism: this
+      # caches compilation only — rendering happens at runtime in the simulator,
+      # so a cache hit can't alter a snapshot result (a stale incremental build
+      # fails loud, it can't silently pass). Bump the key prefix to force-evict.
+      - name: Cache iOS DerivedData
+        uses: actions/cache@v5
+        with:
+          path: ios/build/dd
+          key: ios-dd-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
+          restore-keys: |
+            ios-dd-v1-${{ runner.os }}-
       # Snapshot test = deterministic UI-regression "eyes" (renders RootView
       # against a committed reference). Create a deterministic iOS 26.5 sim —
       # the reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev), and
@@ -738,7 +755,11 @@ jobs:
   deploy:
     name: Deploy to Cloudflare
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke, ios-build]
+    # ios-build (Tauri) is intentionally NOT a gate here: the native app isn't
+    # deployed by this job and the Tauri host is on hold, so blocking the web
+    # deploy on its ~14 min macOS build only added latency. It still runs on
+    # main pushes for its own signal — it just no longer holds up the deploy.
+    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
@@ -810,7 +831,9 @@ jobs:
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, ios-build, api-docker-build]
+    # See `deploy`: ios-build (Tauri) deliberately omitted — it gated nothing
+    # the API deploy depends on and only added ~14 min of latency.
+    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, api-docker-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
