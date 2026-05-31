@@ -1,10 +1,13 @@
 import SharedTypes
 import SwiftUI
 
-/// Read-only detail for a library item: type badge, key/tempo, notes, tags.
-/// Pushed from `LibraryScreen`. Edit/delete come in a later increment.
+/// Detail for a library item: type badge, key/tempo, notes, tags, and delete.
 struct LibraryDetailScreen: View {
   let item: LibraryItemView
+
+  @Environment(Store.self) private var store
+  @Environment(\.dismiss) private var dismiss
+  @State private var confirmingDelete = false
 
   var body: some View {
     ScreenScaffold(title: item.title, subtitle: subtitle) {
@@ -36,11 +39,41 @@ struct LibraryDetailScreen: View {
           if !item.tags.isEmpty {
             tags
           }
+
+          deleteButton
+            .padding(.top, 8)
         }
         .padding(16)
       }
     }
     .navigationBarTitleDisplayMode(.inline)
+    .confirmationDialog(
+      "Delete \(item.title)?", isPresented: $confirmingDelete, titleVisibility: .visible
+    ) {
+      Button("Delete", role: .destructive, action: delete)
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("This can't be undone.")
+    }
+  }
+
+  private var deleteButton: some View {
+    Button(role: .destructive) {
+      confirmingDelete = true
+    } label: {
+      Label("Delete \(item.itemType.label.lowercased())", systemImage: "trash")
+        .font(.system(size: 15, weight: .medium))
+        .foregroundStyle(IntradaColor.danger)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func delete() {
+    UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    store.send(.item(.delete(id: item.id)))
+    dismiss()
   }
 
   private var subtitle: String? {
@@ -98,11 +131,13 @@ private struct DetailRow: View {
     NavigationStack {
       LibraryDetailScreen(item: .previewDetail)
     }
+    .environment(Store.preview)
   }
 
   #Preview("Minimal") {
     NavigationStack {
       LibraryDetailScreen(item: .previewMinimal)
     }
+    .environment(Store.preview)
   }
 #endif

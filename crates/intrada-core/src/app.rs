@@ -171,6 +171,10 @@ impl App for Intrada {
             }
             Event::LoadSampleData => {
                 model.items = sample_items();
+                // crux_http panics on a relative URL; demo mode skips StartApp, so set one.
+                if model.api_base_url.is_empty() {
+                    "http://localhost:3001".clone_into(&mut model.api_base_url);
+                }
                 model.last_error = None;
                 crux_core::render::render()
             }
@@ -896,6 +900,22 @@ mod tests {
         assert_eq!(vm.items.len(), 0);
         assert!(vm.error.is_none());
         assert_eq!(vm.session_status, SessionStatusView::Idle);
+    }
+
+    #[test]
+    fn test_delete_after_seed_does_not_panic() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::LoadSampleData, &mut model);
+        assert_eq!(model.api_base_url, "http://localhost:3001");
+        let id = model.items[0].id.clone();
+
+        let _ = app.update(
+            Event::Item(ItemEvent::Delete { id: id.clone() }),
+            &mut model,
+        );
+
+        assert!(!model.items.iter().any(|i| i.id == id));
     }
 
     #[test]
