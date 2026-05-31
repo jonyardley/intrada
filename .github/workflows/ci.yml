@@ -442,9 +442,12 @@ jobs:
         run: |
           UDID=$(xcrun simctl create snap-26-5 "iPhone 16" "iOS26.5")
           test -n "$UDID" || { echo '::error::could not create iOS 26.5 simulator'; exit 1; }
+          # COMPILER_INDEX_STORE_ENABLE=NO skips building the IDE code-navigation
+          # index store — pure dead weight in CI (nothing reads it). -quiet trims
+          # the per-file build log noise.
           xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-            -destination "id=$UDID" -derivedDataPath build/dd \
-            CODE_SIGNING_ALLOWED=NO
+            -destination "id=$UDID" -derivedDataPath build/dd -quiet \
+            COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
       - name: Upload snapshot failures
         if: failure()
         uses: actions/upload-artifact@v7
