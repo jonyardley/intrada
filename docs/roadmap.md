@@ -91,15 +91,26 @@ ships and as we learn.
 
 ## Mobile shell
 
-iOS ships through the Tauri 2 + Leptos shell — the SwiftUI shell has
-been removed. The Leptos UI is the single codebase; iOS-specific
-look-and-feel is layered in via `[data-platform="ios"]` rules and Tauri
-plugins (haptics, deep-link, background audio). Every web feature ships
-on iOS at the same time.
+**Pivoting to a native SwiftUI app (2026-05-31).** iOS is moving off the
+Tauri 2 + Leptos WKWebView to a **fully native SwiftUI app on the shared
+Crux (Rust) core** — finally using Crux as designed (pure core + thin
+native shell over FFI/typegen). This is app-first (native iOS now, native
+Android later) and **local-first** (on-device SQLite is the source of
+truth; the Axum+Turso backend becomes a sync target). The web app stays on
+Leptos, untouched.
 
-See [`specs/tauri-leptos-ios-shell.md`](../specs/tauri-leptos-ios-shell.md)
-for the phased plan. Active mobile-shell work tracks under the
-[`ios`](https://github.com/jonyardley/intrada/labels/ios) label.
+This resurrects-and-modernizes the SwiftUI shell that was removed in #382,
+rather than starting from scratch. The Tauri shell stays shipping until the
+native app reaches parity, then retires.
+
+See [`specs/native-ios.md`](../specs/native-ios.md) for the phased plan
+(Phase A bridge spike → B local-first persistence → C screen parity → D
+sync + retire Tauri). Active work tracks under the
+[`ios`](https://github.com/jonyardley/intrada/labels/ios) label and the
+native-iOS [`epic`](https://github.com/jonyardley/intrada/labels/epic).
+The prior Tauri/Leptos plan in
+[`specs/tauri-leptos-ios-shell.md`](../specs/tauri-leptos-ios-shell.md)
+remains the reference for the shell being retired.
 
 ---
 
