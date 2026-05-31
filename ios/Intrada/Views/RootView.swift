@@ -75,6 +75,6 @@ struct RootView: View {
 #if DEBUG
   #Preview {
     RootView()
-      .environment(Store.preview)
+      .environment(Store.previewSeeded)
   }
 #endif

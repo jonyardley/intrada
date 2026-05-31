@@ -25,9 +25,20 @@
     /// A deterministic, offline store for `#Preview` blocks.
     static var preview: Store { Store(bridge: PreviewBridge()) }
 
-    /// An offline store seeded with sample library items.
+    /// An offline store with curated sample items (specific edge cases).
+    /// Used by snapshot tests where the exact data must be deterministic.
     static var previewLibrary: Store {
       Store(bridge: PreviewBridge(items: [.previewPiece, .previewExercise, .previewMinimal]))
+    }
+
+    /// A store driven by the *real* core seeded with the canonical demo dataset
+    /// (`Event.loadSampleData` → `sample_items()`). Render-only, so it completes
+    /// synchronously and offline. Use in screen previews: same data as the CI
+    /// screenshot, and the filter pills actually work in the canvas.
+    static var previewSeeded: Store {
+      let store = Store()
+      store.send(.loadSampleData)
+      return store
     }
   }
 
