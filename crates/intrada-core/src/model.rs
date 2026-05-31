@@ -215,6 +215,8 @@ pub struct LibraryItemView {
     pub subtitle: String,
     pub key: Option<String>,
     pub tempo: Option<String>,
+    pub tempo_marking: Option<String>,
+    pub tempo_bpm: Option<u16>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
     pub created_at: String,

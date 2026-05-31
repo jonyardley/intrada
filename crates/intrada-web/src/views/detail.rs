@@ -84,6 +84,8 @@ pub fn DetailView() -> impl IntoView {
                         item_type,
                         key,
                         tempo,
+                        tempo_marking: _,
+                        tempo_bpm: _,
                         notes,
                         tags,
                         created_at,
