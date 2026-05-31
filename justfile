@@ -367,7 +367,10 @@ ios-package:
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
-    # cargo-swift (0.11) nests the modulemap+header one level too deep; the
+    # Requires cargo-swift 0.9.0 (`cargo install cargo-swift --version =0.9.0`):
+    # its bundled uniffi-bindgen matches our uniffi=0.29.4 crate's runtime
+    # contract; newer cargo-swift crashes the app with a contract mismatch.
+    # cargo-swift nests the modulemap+header one level too deep; the
     # xcframework Info.plist declares HeadersPath=Headers, so canImport fails
     # and the FFI types vanish. Move them up (crux counter example's 0.9 fix).
     xcf=../../ios/generated/IntradaCoreFFI/RustFramework.xcframework
