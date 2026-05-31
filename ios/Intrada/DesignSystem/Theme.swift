@@ -20,7 +20,7 @@ enum IntradaColor {
   static let accent = Color(hex: 0x4C3FA6)
   static let onAccent = Color(hex: 0xF2EFE8)
   static let danger = Color(hex: 0xB3261E)
-  static let shadow = Color.black.opacity(0.08)
+  static let shadow = Color.black.opacity(0.06)
   static let brandGradientStart = Color(hex: 0x6346E5)
   static let brandGradientEnd = Color(hex: 0x4C3FA6)
 
