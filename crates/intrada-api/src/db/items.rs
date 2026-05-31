@@ -44,6 +44,7 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
     let tags_json: String = col!(row, 8)?;
     let created_at_str: String = col!(row, 9)?;
     let updated_at_str: String = col!(row, 10)?;
+    let priority_int: i64 = col!(row, 11)?;
 
     let created_at: DateTime<Utc> = created_at_str
         .parse()
@@ -63,11 +64,12 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
         tags: tags_from_json(&tags_json),
         created_at,
         updated_at,
+        priority: priority_int != 0,
     })
 }
 
 const SELECT_COLUMNS: &str =
-    "id, kind, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at";
+    "id, kind, title, composer, key_signature, tempo_marking, tempo_bpm, notes, tags, created_at, updated_at, priority";
 
 pub async fn list_items(conn: &Connection, user_id: &str) -> Result<Vec<Item>, ApiError> {
     let mut rows = conn
@@ -160,6 +162,7 @@ pub async fn insert_item(
         tags: input.tags.clone(),
         created_at: now,
         updated_at: now,
+        priority: false,
     })
 }
 
@@ -197,6 +200,7 @@ pub async fn update_item(
     };
 
     let tags = input.tags.as_ref().unwrap_or(&current.tags);
+    let priority = input.priority.unwrap_or(current.priority);
 
     let (tempo_marking, tempo_bpm) = match &tempo {
         Some(t) => (t.marking.clone(), t.bpm.map(|b| b as i64)),
@@ -208,7 +212,7 @@ pub async fn update_item(
     let tags_json = tags_to_json(tags);
 
     conn.execute(
-        "UPDATE items SET title = ?1, composer = ?2, key_signature = ?3, tempo_marking = ?4, tempo_bpm = ?5, notes = ?6, tags = ?7, updated_at = ?8 WHERE id = ?9 AND user_id = ?10",
+        "UPDATE items SET title = ?1, composer = ?2, key_signature = ?3, tempo_marking = ?4, tempo_bpm = ?5, notes = ?6, tags = ?7, updated_at = ?8, priority = ?9 WHERE id = ?10 AND user_id = ?11",
         libsql::params![
             title.as_str(),
             composer,
@@ -218,6 +222,7 @@ pub async fn update_item(
             notes,
             tags_json.as_str(),
             now_str.as_str(),
+            priority as i64,
             id,
             user_id
         ],
@@ -235,6 +240,7 @@ pub async fn update_item(
         tags: tags.clone(),
         created_at: current.created_at,
         updated_at: now,
+        priority,
     }))
 }
 

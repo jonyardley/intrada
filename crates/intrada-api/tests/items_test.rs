@@ -519,6 +519,49 @@ async fn update_item_clears_notes_with_null() {
 }
 
 #[tokio::test]
+async fn update_toggles_item_priority() {
+    let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+
+    let (status, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({ "title": "Gymnopedie", "kind": "piece", "composer": "Satie", "tags": [] }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let created: Item = common::json(&body);
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "priority": true }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert!(updated.priority);
+
+    assert_eq!(updated.title, "Gymnopedie");
+    let _ = conn;
+}
+
+#[tokio::test]
+async fn created_item_defaults_to_not_priority() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({ "title": "Nocturne", "kind": "piece", "composer": "Chopin", "tags": [] }),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert!(!item.priority);
+}
+
+#[tokio::test]
 async fn update_item_skip_preserves_existing_when_field_omitted() {
     // Counterpart to the above: omit the field entirely → no change.
     let app = common::setup_test_app().await;
