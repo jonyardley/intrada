@@ -331,6 +331,19 @@ native-package:
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
+    # cargo-swift (0.11) places the modulemap+header one level too deep in
+    # headers/RustFramework/, but the xcframework Info.plist declares
+    # HeadersPath=Headers — so `canImport(intrada_ffiFFI)` fails and the FFI
+    # types go missing. Move them up to match. (Same class of fix as the crux
+    # counter example's 0.9 workaround.)
+    xcf=../../ios/generated/IntradaCoreFFI/RustFramework.xcframework
+    for slice in "$xcf"/*/; do \
+        hd="$slice/headers"; \
+        if [ -d "$hd/RustFramework" ]; then \
+            mv "$hd/RustFramework/"* "$hd/"; \
+            rmdir "$hd/RustFramework"; \
+        fi; \
+    done
     echo "✓ ios/generated/IntradaCoreFFI"
 
 # Regenerate both Swift packages (run before building the iOS app).

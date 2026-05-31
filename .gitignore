@@ -53,3 +53,6 @@ design/Screenshot*.png
 ios/generated/
 crates/intrada-ffi/generated/
 crates/intrada-ffi/IntradaCoreFFI/
+# xcodegen-generated project + xcodebuild output (regenerated from project.yml)
+ios/*.xcodeproj/
+ios/build/
