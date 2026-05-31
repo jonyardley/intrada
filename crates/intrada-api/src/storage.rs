@@ -1,7 +1,7 @@
 //! Cloudflare R2 storage client for photo upload/delete.
 //!
 //! R2 is S3-compatible; we use the `rust-s3` crate for operations.
-//! Photos are stored as `{user_id}/{goal_id}/{photo_id}.jpg`.
+//! Photos are stored under a `{user_id}/` key prefix.
 
 use s3::bucket::Bucket;
 use s3::creds::Credentials;
@@ -54,11 +54,6 @@ impl R2Client {
         })
     }
 
-    /// Generate the storage key for a goal photo.
-    pub fn photo_key(user_id: &str, goal_id: &str, photo_id: &str) -> String {
-        format!("{user_id}/{goal_id}/{photo_id}.jpg")
-    }
-
     /// Get the public URL for a storage key.
     pub fn public_url(&self, key: &str) -> String {
         format!("{}/{key}", self.public_url_base)
@@ -79,26 +74,6 @@ impl R2Client {
             .delete_object(key)
             .await
             .map_err(|e| ApiError::Internal(format!("R2 delete failed: {e}")))?;
-        Ok(())
-    }
-
-    /// Delete all photos for a goal (by prefix).
-    pub async fn delete_goal_photos(&self, user_id: &str, goal_id: &str) -> Result<(), ApiError> {
-        let prefix = format!("{user_id}/{goal_id}/");
-        let list = self
-            .bucket
-            .list(prefix, None)
-            .await
-            .map_err(|e| ApiError::Internal(format!("R2 list failed: {e}")))?;
-
-        for result in list {
-            for obj in result.contents {
-                self.bucket
-                    .delete_object(&obj.key)
-                    .await
-                    .map_err(|e| ApiError::Internal(format!("R2 delete failed: {e}")))?;
-            }
-        }
         Ok(())
     }
 
