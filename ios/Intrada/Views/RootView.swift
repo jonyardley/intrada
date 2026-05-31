@@ -30,15 +30,26 @@ struct RootView: View {
     }
     .tint(IntradaColor.accent)
     .task {
-      // Demo mode (CI screenshots / local / E2E) seeds offline via the core and
-      // skips StartApp's fetches — otherwise a late fetch response would clobber
-      // the seed. Production never passes the arg.
-      if ProcessInfo.processInfo.arguments.contains("--seed-sample-data") {
+      // Seed mode loads demo data offline via the core; it skips StartApp so a
+      // late fetch can't clobber the seed. Until there's a real backend/auth,
+      // DEBUG builds seed by default (pass --no-seed-sample-data to hit the API).
+      // Release seeds only via the explicit arg (CI screenshots / E2E).
+      if seedSampleData {
         store.send(.loadSampleData)
       } else {
         store.send(.startApp(apiBaseUrl: apiBaseURL))
       }
     }
+  }
+
+  private var seedSampleData: Bool {
+    let args = ProcessInfo.processInfo.arguments
+    if args.contains("--no-seed-sample-data") { return false }
+    #if DEBUG
+      return true
+    #else
+      return args.contains("--seed-sample-data")
+    #endif
   }
 
   /// Paint the UIKit tab bar with the paper theme: cream fill, faint inactive

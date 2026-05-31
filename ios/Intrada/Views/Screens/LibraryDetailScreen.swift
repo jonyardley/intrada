@@ -47,9 +47,9 @@ struct LibraryDetailScreen: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .confirmationDialog(
-      "Delete \(item.title)?", isPresented: $confirmingDelete, titleVisibility: .visible
-    ) {
+    // Alert (not confirmationDialog): always renders the Cancel button, incl.
+    // iPad/regular-width where a confirmationDialog popover hides it.
+    .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
       Button("Delete", role: .destructive, action: delete)
       Button("Cancel", role: .cancel) {}
     } message: {
