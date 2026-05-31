@@ -14,6 +14,7 @@ struct LibraryScreen: View {
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.horizontal, 16)
           .padding(.top, 12)
+          .padding(.bottom, 14)
         content
       }
     }
@@ -53,8 +54,11 @@ struct LibraryScreen: View {
             .buttonStyle(.plain)
           }
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
       }
+      .scrollEdgeShadow()
     }
   }
 
