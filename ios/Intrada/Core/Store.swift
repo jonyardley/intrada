@@ -17,11 +17,11 @@ final class Store {
     self.session = session
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
-    self.viewModel = try? bridge.view()
+    self.viewModel = guarded { try bridge.view() }
   }
 
   func send(_ event: Event) {
-    process((try? bridge.update(event)) ?? [])
+    process(guarded { try bridge.update(event) } ?? [])
   }
 
   private func process(_ requests: [Request]) {
@@ -34,20 +34,30 @@ final class Store {
       case .app:
         // Foundation: localStorage effects are no-ops for now — ack so
         // the core can continue its command chain.
-        process((try? bridge.resolveEmpty(request.id)) ?? [])
+        process(guarded { try bridge.resolveEmpty(request.id) } ?? [])
       }
     }
   }
 
   private func refreshView() {
-    if let next = try? bridge.view() {
+    if let next = guarded({ try bridge.view() }) {
       viewModel = next
     }
   }
 
   private func handleHttp(_ request: HttpRequest, id: UInt32) async {
     let result = await Self.execute(request, session: session)
-    process((try? bridge.resolve(id, httpResult: result)) ?? [])
+    process(guarded { try bridge.resolve(id, httpResult: result) } ?? [])
+  }
+
+  // A bridge failure means a serialization/protocol break (e.g. stale bindings
+  // vs a regenerated core) — unrecoverable at runtime, so report it rather than
+  // swallow it silently, and fail soft.
+  private func guarded<T>(_ work: () throws -> T) -> T? {
+    do { return try work() } catch {
+      report(error)
+      return nil
+    }
   }
 
   /// Execute a core-built HTTP request via URLSession and map the raw response

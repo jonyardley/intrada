@@ -358,16 +358,20 @@ jobs:
 
   native-ios:
     # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
-    # build for the simulator, launch, and screenshot. The automated "eyes" on
-    # the iOS app until snapshot tests land (A4b). The intrada-ffi bridge + core
-    # typegen are also covered by the Linux `test`/`clippy` jobs.
-    name: Native iOS (build + launch)
-    runs-on: macos-latest
+    # run the snapshot test, build, launch, and screenshot. Pinned to macos-26 +
+    # Xcode 26.5 so the toolchain matches local dev (and the spec's iOS 26 SDK):
+    # SwiftUI snapshots are renderer-specific, so dev and CI MUST share Xcode/iOS.
+    name: Native iOS (build + test)
+    runs-on: macos-26
     timeout-minutes: 40
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
     steps:
       - uses: actions/checkout@v6
+      # Pin Xcode 26.5 to match local dev + the recorded snapshot reference.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -390,10 +394,14 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cargo/bin/cargo-swift
-          key: cargo-swift-0.11-${{ runner.os }}-${{ runner.arch }}
+          key: cargo-swift-0.9.0-${{ runner.os }}-${{ runner.arch }}
+      # Pinned to 0.9.0: its bundled uniffi-bindgen matches our uniffi=0.29.4
+      # crate's runtime contract version (the combo the crux example uses).
+      # Newer cargo-swift bundles a different bindgen → runtime contract
+      # mismatch crash. Bump this WITH the uniffi crate, in lockstep.
       - name: Install cargo-swift
         if: steps.cargo-swift-cache.outputs.cache-hit != 'true'
-        run: cargo install cargo-swift --version "^0.11" --locked
+        run: cargo install cargo-swift --version "=0.9.0" --locked
       - name: Cache Homebrew packages
         id: brew-cache
         uses: actions/cache@v5
@@ -407,8 +415,31 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
-      - name: Build + launch on simulator + screenshot
-        run: bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
+      # Snapshot test = deterministic UI-regression "eyes" (renders RootView
+      # against a committed reference). Create a deterministic iOS 26.5 sim —
+      # the reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev), and
+      # SwiftUI snapshots are renderer-specific. Bump (here + the reference)
+      # when local dev moves to a newer Xcode/iOS.
+      - name: Run snapshot tests
+        working-directory: ios
+        run: |
+          UDID=$(xcrun simctl create snap-26-5 "iPhone 16" "iOS26.5")
+          test -n "$UDID" || { echo '::error::could not create iOS 26.5 simulator'; exit 1; }
+          xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+            -destination "id=$UDID" -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Upload snapshot failures
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshot-failures
+          path: ios/IntradaTests/__Snapshots__/
+          retention-days: 7
+          if-no-files-found: ignore
+      # REUSE_BUILD: the snapshot-test step above already built the app into
+      # build/dd — install + launch it for the screenshot without rebuilding.
+      - name: Launch on simulator + screenshot
+        run: REUSE_BUILD=1 bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
       - name: Upload screenshot
         if: always()
         uses: actions/upload-artifact@v7
