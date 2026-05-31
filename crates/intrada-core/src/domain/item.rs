@@ -112,6 +112,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             if let Some(tags) = input.tags {
                 item.tags = tags;
             }
+            if let Some(priority) = input.priority {
+                item.priority = priority;
+            }
             item.updated_at = chrono::Utc::now();
             model.last_error = None;
 

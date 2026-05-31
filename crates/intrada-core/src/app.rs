@@ -2884,4 +2884,40 @@ mod tests {
         let vm = app.view(&model);
         assert!(!vm.items[0].priority);
     }
+
+    #[test]
+    fn test_update_sets_item_priority() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "p1".to_string(),
+                title: "Etude".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            }],
+            ..Model::test_default()
+        };
+
+        let _cmd = app.update(
+            Event::Item(ItemEvent::Update {
+                id: "p1".to_string(),
+                input: crate::domain::types::UpdateItem {
+                    priority: Some(true),
+                    ..Default::default()
+                },
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert!(model.items[0].priority);
+    }
 }
