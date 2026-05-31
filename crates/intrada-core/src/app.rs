@@ -831,6 +831,22 @@ mod tests {
                     priority: false,
                 },
                 Item {
+                    id: "p3".to_string(),
+                    title: "Nocturne".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: Some("Largo".to_string()),
+                        bpm: None,
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    priority: false,
+                },
+                Item {
                     id: "e1".to_string(),
                     title: "Scales".to_string(),
                     kind: ItemKind::Exercise,
@@ -849,7 +865,7 @@ mod tests {
 
         let vm = app.view(&model);
 
-        assert_eq!(vm.items.len(), 3);
+        assert_eq!(vm.items.len(), 4);
 
         // Check piece — keeps the flattened string (web) AND exposes structured
         // marking + bpm so the iOS card can render "Allegro · ♩ = 132".
@@ -866,6 +882,12 @@ mod tests {
         let etude_view = vm.items.iter().find(|i| i.id == "p2").unwrap();
         assert_eq!(etude_view.tempo_marking, None);
         assert_eq!(etude_view.tempo_bpm, Some(96));
+
+        // marking-only item.
+        let nocturne_view = vm.items.iter().find(|i| i.id == "p3").unwrap();
+        assert_eq!(nocturne_view.tempo_marking, Some("Largo".to_string()));
+        assert_eq!(nocturne_view.tempo_bpm, None);
+        assert_eq!(nocturne_view.tempo, Some("Largo".to_string()));
 
         // Check exercise — no tempo at all.
         let ex_view = vm.items.iter().find(|i| i.id == "e1").unwrap();

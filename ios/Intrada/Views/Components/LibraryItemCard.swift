@@ -44,7 +44,8 @@ struct LibraryItemCard: View {
 
   // ♩ (U+2669) renders the tempo as a musical marking: "Allegro · ♩ = 132".
   private var tempoText: String? {
-    let parts = [item.tempoMarking, item.tempoBpm.map { "♩ = \($0)" }].compactMap { $0 }
+    let parts = [item.tempoMarking, item.tempoBpm.map { "♩ = \($0)" }]
+      .compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
@@ -58,7 +59,7 @@ struct LibraryItemCard: View {
     var parts = [item.itemType.label, item.title]
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.key, !key.isEmpty { parts.append(key) }
-    if let marking = item.tempoMarking { parts.append(marking) }
+    if let marking = item.tempoMarking, !marking.isEmpty { parts.append(marking) }
     if let bpm = item.tempoBpm { parts.append("\(bpm) beats per minute") }
     return parts.joined(separator: ", ")
   }
