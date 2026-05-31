@@ -54,6 +54,10 @@ struct ScreenScaffold<Content: View>: View {
             .foregroundStyle(IntradaColor.inkFaint)
         }
       }
+      // Combine only the title block so the trailing action stays its own
+      // VoiceOver element rather than being merged into the heading.
+      .accessibilityElement(children: .combine)
+      .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
       Spacer(minLength: 12)
       if let trailing {
         Button(trailing.label, action: trailing.action)
@@ -63,8 +67,6 @@ struct ScreenScaffold<Content: View>: View {
     }
     .padding(.horizontal, 16)
     .padding(.top, 8)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
   }
 }
 

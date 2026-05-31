@@ -31,12 +31,10 @@ enum IntradaColor {
 }
 
 extension LinearGradient {
-  /// The cream page wash behind every screen.
   static let paper = LinearGradient(
     colors: [IntradaColor.paperTop, IntradaColor.paperBottom],
     startPoint: .top, endPoint: .bottom)
 
-  /// The signature indigo left bar that codes a card as a Piece.
   static let brandBar = LinearGradient(
     colors: [IntradaColor.brandGradientStart, IntradaColor.brandGradientEnd],
     startPoint: .top, endPoint: .bottom)

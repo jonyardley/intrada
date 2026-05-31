@@ -1,8 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-/// Plan pillar — the library of pieces and exercises. Placeholder for now; the
-/// live item count proves the core bridge still feeds the new tab shell.
+/// The live item count proves the core bridge still feeds the new tab shell.
 struct LibraryScreen: View {
   @Environment(Store.self) private var store
 

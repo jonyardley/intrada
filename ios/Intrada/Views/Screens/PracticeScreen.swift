@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Practice pillar — timed sessions, focus mode, scoring. Placeholder for now.
 struct PracticeScreen: View {
   var body: some View {
     ScreenScaffold(title: "Practice") {

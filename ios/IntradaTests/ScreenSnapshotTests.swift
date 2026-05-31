@@ -20,9 +20,10 @@ private final class StubBridge: CoreBridge {
 
 /// UI-regression "eyes" for the tab shell and each placeholder screen. Force
 /// light mode at the controller level (SwiftUI reads colorScheme from here, not
-/// the snapshot `traits:`) so a dark-default sim can't invert the image, and pin
-/// displayScale so the size is host-independent. Reference images are recorded
-/// on iPhone 16 / iOS 26.5 / Xcode 26.5 to match CI exactly (see ci.yml).
+/// the snapshot `traits:`) so a dark-default sim can't invert the image. The
+/// `.iPhone13` config + pinned displayScale fix the geometry regardless of host
+/// sim, so the rasterizing iOS renderer is the only host variable — references
+/// are recorded on iOS 26.5 / Xcode 26.5 to match CI (see ci.yml).
 @MainActor
 final class ScreenSnapshotTests: XCTestCase {
   private func host(_ view: some View) -> UIViewController {

@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Track pillar — practice analytics and insights. Placeholder for now.
 struct AnalyticsScreen: View {
   var body: some View {
     ScreenScaffold(title: "Analytics") {
