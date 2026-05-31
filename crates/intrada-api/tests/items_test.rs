@@ -519,6 +519,49 @@ async fn update_item_clears_notes_with_null() {
 }
 
 #[tokio::test]
+async fn update_priority_is_scoped_to_owner() {
+    use intrada_api::db::items;
+
+    let (_app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
+
+    let created = items::insert_item(
+        &conn,
+        "owner",
+        &intrada_core::domain::types::CreateItem {
+            title: "Arabesque".to_string(),
+            kind: intrada_core::domain::item::ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        },
+    )
+    .await
+    .unwrap();
+
+    let result = items::update_item(
+        &conn,
+        &created.id,
+        "intruder",
+        &intrada_core::domain::types::UpdateItem {
+            priority: Some(true),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(result.is_none(), "non-owner update must not match the row");
+
+    let still = items::get_item(&conn, &created.id, "owner")
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!still.priority, "owner's row must be unchanged");
+}
+
+#[tokio::test]
 async fn update_toggles_item_priority() {
     let (app, conn) = common::setup_test_app_with_conn(None, "http://localhost:3000").await;
 
