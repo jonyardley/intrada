@@ -4,6 +4,21 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # iOS-pivot focus mode: pause bumps for the web/Tauri shells (on hold).
+    # Core + API deps still auto-update. Remove this ignore list at parity.
+    ignore:
+      - dependency-name: "tauri"
+      - dependency-name: "tauri-*"
+      - dependency-name: "leptos"
+      - dependency-name: "leptos_*"
+      - dependency-name: "leptos-*"
+      - dependency-name: "trunk"
+      - dependency-name: "wasm-bindgen"
+      - dependency-name: "wasm-bindgen-*"
+      - dependency-name: "web-sys"
+      - dependency-name: "js-sys"
+      - dependency-name: "gloo"
+      - dependency-name: "gloo-*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
