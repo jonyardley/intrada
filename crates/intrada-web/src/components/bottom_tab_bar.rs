@@ -24,11 +24,6 @@ pub fn BottomTabBar() -> impl IntoView {
     // first tab is already active. Only animate after the user taps.
     let has_tapped = RwSignal::new(false);
 
-    let is_goals_active = move || {
-        let path = location.pathname.get();
-        path.starts_with("/goals")
-    };
-
     let is_library_active = move || {
         let path = location.pathname.get();
         path.starts_with("/library")
@@ -93,27 +88,6 @@ pub fn BottomTabBar() -> impl IntoView {
             aria-label="Mobile navigation"
         >
             <div class="flex h-full items-center justify-around">
-                // Goals tab — flag
-                <A
-                    href="/goals"
-                    attr:class=move || {
-                        if is_goals_active() {
-                            if has_tapped.get() { spring } else { active }
-                        } else {
-                            inactive
-                        }
-                    }
-                    attr:aria-current=move || if is_goals_active() { Some("page") } else { None }
-                    on:click=move |_| { has_tapped.set(true); haptics::haptic_selection(); }
-                >
-                    {move || if is_goals_active() {
-                        view! { <GoalsIconSolid /> }.into_any()
-                    } else {
-                        view! { <GoalsIconOutline /> }.into_any()
-                    }}
-                    <span class="text-xs font-medium">"Goals"</span>
-                </A>
-
                 // Library tab — music note
                 <A
                     href="/library"
@@ -340,38 +314,6 @@ fn UserCircleIconSolid() -> impl IntoView {
             aria-hidden="true"
         >
             <path fill-rule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clip-rule="evenodd" />
-        </svg>
-    }
-}
-
-#[component]
-fn GoalsIconOutline() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            aria-hidden="true"
-        >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5" />
-        </svg>
-    }
-}
-
-#[component]
-fn GoalsIconSolid() -> impl IntoView {
-    view! {
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-6 w-6"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
-        >
-            <path fill-rule="evenodd" d="M3 2.25a.75.75 0 01.75.75v.54l1.838-.46a9.75 9.75 0 016.725.738l.108.054a8.25 8.25 0 005.58.652l3.109-.732a.75.75 0 01.917.81 47.784 47.784 0 00.005 10.337.75.75 0 01-.574.812l-3.114.733a9.75 9.75 0 01-6.594-.77l-.108-.054a8.25 8.25 0 00-5.69-.625l-2.202.55V21a.75.75 0 01-1.5 0V3A.75.75 0 013 2.25z" clip-rule="evenodd" />
         </svg>
     }
 }

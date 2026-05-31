@@ -61,8 +61,8 @@ pub fn SetlistBuilder() -> impl IntoView {
     let close_review = Callback::new(move |_| review_open.set(false));
     let open_review = move |_| review_open.set(true);
 
-    // Pre-loaded setlist (e.g. "Practice this goal") auto-opens the review
-    // sheet on mount. `with_untracked` so this Effect doesn't subscribe to
+    // A pre-loaded setlist auto-opens the review sheet on mount.
+    // `with_untracked` so this Effect doesn't subscribe to
     // `view_model` — otherwise the manual flow's first `AddToSetlist` would
     // also trigger it. We only care about state *at mount time*.
     Effect::new(move |_| {

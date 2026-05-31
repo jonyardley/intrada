@@ -63,11 +63,11 @@ pub fn WelcomeView() -> impl IntoView {
             <WelcomeFeature
                 kicker="PLAN".to_string()
                 title="The library that\nremembers for you.".to_string()
-                description="Half of what your teacher gives you disappears within a week. Intrada catches it — tag by composer, key, or tempo, group what you actually run into reusable routines, and connect everything to the goals you're working towards.".to_string()
+                description="Half of what your teacher gives you disappears within a week. Intrada catches it — tag by composer, key, or tempo, group what you actually run into reusable routines, and connect everything you practise.".to_string()
                 bullets=vec![
                     "Pieces, exercises, and patterns in one place".to_string(),
                     "Reusable routines for the warm-ups and blocks you run every week".to_string(),
-                    "Goals that turn the library into a path".to_string(),
+                    "Mark what matters most so it surfaces first".to_string(),
                 ]
                 reverse=false
                 mock=Box::new(|| view! { <LibraryMock /> }.into_any())
