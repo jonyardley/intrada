@@ -29,6 +29,7 @@ enum LibraryFilter: CaseIterable, Identifiable {
 /// a shared `matchedGeometryEffect`. Spring approximates the iOS default.
 struct LibraryFilterTabs: View {
   @Binding var selection: LibraryFilter
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Namespace private var pill
 
   var body: some View {
@@ -36,7 +37,7 @@ struct LibraryFilterTabs: View {
       ForEach(LibraryFilter.allCases) { filter in
         let isSelected = filter == selection
         Button {
-          withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+          withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
             selection = filter
           }
         } label: {
