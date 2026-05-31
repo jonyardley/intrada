@@ -311,3 +311,43 @@ web-clean:
     rm -rf crates/intrada-web/dist
     echo "✓ Removed crates/intrada-web/dist"
 
+
+# ── Native iOS (SwiftUI on the Crux core) ───────────────────────────────
+# Generated Swift packages are a BUILD PRECONDITION, not source — gitignored
+# and regenerated. Never hand-edit them; fix the Rust type and regenerate.
+
+# Generate the Swift value-type package (Event/Effect/ViewModel + bincode
+# serializers) from the core via facet typegen → ios/generated/SharedTypes.
+native-typegen:
+    # Pre-clean so a renamed/removed core type can't leave an orphan Swift file
+    # (crux's swift typegen overwrites but never deletes) — keeps typegen in sync.
+    rm -rf ios/generated/SharedTypes
+    RUST_LOG=info cargo run -p intrada-ffi --bin codegen --features codegen -- --output-dir ios/generated
+
+# Build intrada-ffi into a Swift package (CoreFFI + RustFramework.xcframework)
+# via cargo-swift → ios/generated/IntradaCoreFFI.
+native-package:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd crates/intrada-ffi
+    cargo swift package --name IntradaCoreFFI --platforms ios --lib-type static --features uniffi --accept-all
+    rm -rf ../../ios/generated/IntradaCoreFFI
+    mkdir -p ../../ios/generated
+    mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
+    # cargo-swift (0.11) places the modulemap+header one level too deep in
+    # headers/RustFramework/, but the xcframework Info.plist declares
+    # HeadersPath=Headers — so `canImport(intrada_ffiFFI)` fails and the FFI
+    # types go missing. Move them up to match. (Same class of fix as the crux
+    # counter example's 0.9 workaround.)
+    xcf=../../ios/generated/IntradaCoreFFI/RustFramework.xcframework
+    for slice in "$xcf"/*/; do \
+        hd="$slice/headers"; \
+        if [ -d "$hd/RustFramework" ]; then \
+            mv "$hd/RustFramework/"* "$hd/"; \
+            rmdir "$hd/RustFramework"; \
+        fi; \
+    done
+    echo "✓ ios/generated/IntradaCoreFFI"
+
+# Regenerate both Swift packages (run before building the iOS app).
+native-gen: native-typegen native-package
