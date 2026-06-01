@@ -334,6 +334,7 @@ impl App for Intrada {
                 title: item.title.clone(),
                 subtitle,
                 key: item.key.clone(),
+                modality: item.modality,
                 tempo: item
                     .tempo
                     .as_ref()
@@ -648,6 +649,7 @@ fn sample_items() -> Vec<Item> {
             kind,
             composer: composer.map(str::to_string),
             key: key.map(str::to_string),
+            modality: None,
             tempo: Tempo::from_parts(marking.map(str::to_string), bpm),
             notes: notes.map(str::to_string),
             tags: tags.iter().map(|s| s.to_string()).collect(),
@@ -738,6 +740,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Debussy".to_string()),
                 key: Some("Db Major".to_string()),
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -751,6 +754,7 @@ mod tests {
                 kind: ItemKind::Exercise,
                 composer: None,
                 key: Some("C Major".to_string()),
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -874,6 +878,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Debussy".to_string()),
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -998,6 +1003,7 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: Some("Beethoven".to_string()),
                     key: None,
+                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
                         bpm: Some(132),
@@ -1014,6 +1020,7 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
+                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: None,
                         bpm: Some(96),
@@ -1030,6 +1037,7 @@ mod tests {
                     kind: ItemKind::Piece,
                     composer: None,
                     key: None,
+                    modality: None,
                     tempo: Some(crate::domain::types::Tempo {
                         marking: Some("Largo".to_string()),
                         bpm: None,
@@ -1046,6 +1054,7 @@ mod tests {
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: None,
+                    modality: None,
                     tempo: None,
                     notes: None,
                     tags: vec![],
@@ -1118,6 +1127,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1131,6 +1141,7 @@ mod tests {
             kind: ItemKind::Exercise,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1173,6 +1184,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1186,6 +1198,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Debussy".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1216,6 +1229,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["classical".to_string(), "piano".to_string()],
@@ -1229,6 +1243,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec!["romantic".to_string(), "piano".to_string()],
@@ -1260,6 +1275,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Dvořák".to_string()),
                 key: Some("ré mineur".to_string()),
+                modality: None,
                 tempo: None,
                 notes: Some("Pièce très jolie — «superbe»".to_string()),
                 tags: vec!["日本語タグ".to_string()],
@@ -1305,6 +1321,7 @@ mod tests {
                 } else {
                     None
                 },
+                modality: None,
                 tempo: if i % 5 == 0 {
                     Some(crate::domain::types::Tempo {
                         marking: Some("Allegro".to_string()),
@@ -1335,6 +1352,7 @@ mod tests {
                 } else {
                     None
                 },
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![format!("etag{}", i % 10)],
@@ -1431,6 +1449,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("New Composer".to_string()),
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -1476,6 +1495,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1489,6 +1509,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1585,6 +1606,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1683,6 +1705,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1745,6 +1768,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1832,6 +1856,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Beethoven".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -1998,6 +2023,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Composer".to_string()),
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -2014,6 +2040,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Composer".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2039,6 +2066,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: None,
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -2055,6 +2083,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2109,6 +2138,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2425,6 +2455,7 @@ mod tests {
             kind,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2735,6 +2766,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2749,6 +2781,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2780,6 +2813,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
@@ -2812,6 +2846,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: Some("Bach".to_string()),
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -2837,6 +2872,7 @@ mod tests {
                 kind: ItemKind::Piece,
                 composer: None,
                 key: None,
+                modality: None,
                 tempo: None,
                 notes: None,
                 tags: vec![],
@@ -2860,5 +2896,95 @@ mod tests {
 
         assert!(model.last_error.is_none());
         assert!(model.items[0].priority);
+    }
+
+    #[test]
+    fn test_add_item_carries_modality() {
+        use crate::domain::item::Modality;
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _cmd = app.update(
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Clair de Lune".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("Debussy".to_string()),
+                key: Some("Db".to_string()),
+                modality: Some(Modality::Major),
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
+            &mut model,
+        );
+
+        assert_eq!(model.items[0].key.as_deref(), Some("Db"));
+        assert_eq!(model.items[0].modality, Some(Modality::Major));
+        let vm = app.view(&model);
+        assert_eq!(vm.items[0].modality, Some(Modality::Major));
+    }
+
+    #[test]
+    fn test_update_modality_is_three_state() {
+        use crate::domain::item::Modality;
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "p1".to_string(),
+                title: "Etude".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: Some("F#".to_string()),
+                modality: Some(Modality::Major),
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            }],
+            ..Model::test_default()
+        };
+
+        let update = |m: &mut Model, input: crate::domain::types::UpdateItem| {
+            app.update(
+                Event::Item(ItemEvent::Update {
+                    id: "p1".to_string(),
+                    input,
+                }),
+                m,
+            );
+        };
+
+        // set → Minor
+        update(
+            &mut model,
+            crate::domain::types::UpdateItem {
+                modality: Some(Some(Modality::Minor)),
+                ..Default::default()
+            },
+        );
+        assert_eq!(model.items[0].modality, Some(Modality::Minor));
+
+        // skip (modality absent) → unchanged
+        update(
+            &mut model,
+            crate::domain::types::UpdateItem {
+                priority: Some(true),
+                ..Default::default()
+            },
+        );
+        assert_eq!(model.items[0].modality, Some(Modality::Minor));
+
+        // clear → None
+        update(
+            &mut model,
+            crate::domain::types::UpdateItem {
+                modality: Some(None),
+                ..Default::default()
+            },
+        );
+        assert_eq!(model.items[0].modality, None);
     }
 }

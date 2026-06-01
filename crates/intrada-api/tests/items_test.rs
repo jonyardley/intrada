@@ -532,6 +532,7 @@ async fn update_priority_is_scoped_to_owner() {
             kind: intrada_core::domain::item::ItemKind::Piece,
             composer: Some("Debussy".to_string()),
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],

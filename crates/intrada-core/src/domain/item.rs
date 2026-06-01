@@ -28,6 +28,18 @@ impl fmt::Display for ItemKind {
     }
 }
 
+/// Major/minor tonality, paired with `Item.key` (the tonic, e.g. "F#").
+/// Selection/spelling logic lives in the shell's key picker; this is just the
+/// stored shape.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+#[serde(rename_all = "lowercase")]
+pub enum Modality {
+    Major,
+    Minor,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Item {
@@ -36,6 +48,8 @@ pub struct Item {
     pub kind: ItemKind,
     pub composer: Option<String>,
     pub key: Option<String>,
+    #[serde(default)]
+    pub modality: Option<Modality>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
@@ -90,6 +104,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 kind: input.kind,
                 composer: input.composer,
                 key: input.key,
+                modality: input.modality,
                 tempo: input.tempo,
                 notes: input.notes,
                 tags: input.tags,
@@ -137,6 +152,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
             if let Some(key) = input.key {
                 item.key = key;
+            }
+            if let Some(modality) = input.modality {
+                item.modality = modality;
             }
             if let Some(tempo) = input.tempo {
                 item.tempo = tempo;

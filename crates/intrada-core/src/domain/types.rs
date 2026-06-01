@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::item::{Item, ItemKind};
+use super::item::{Item, ItemKind, Modality};
 
 /// Deserialize an `Option<Option<T>>` field with three-state semantics:
 /// absent → `None` (skip), `null` → `Some(None)` (clear), `v` → `Some(Some(v))` (set).
@@ -59,6 +59,8 @@ pub struct CreateItem {
     pub kind: ItemKind,
     pub composer: Option<String>,
     pub key: Option<String>,
+    #[serde(default)]
+    pub modality: Option<Modality>,
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
@@ -84,6 +86,12 @@ pub struct UpdateItem {
         deserialize_with = "double_option"
     )]
     pub key: Option<Option<String>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "double_option"
+    )]
+    pub modality: Option<Option<Modality>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",

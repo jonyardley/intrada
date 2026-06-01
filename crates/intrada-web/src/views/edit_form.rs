@@ -209,6 +209,7 @@ pub fn EditLibraryItemForm(
                                 title: Some(title_val),
                                 composer: composer_val,
                                 key: key_val,
+                                modality: None,
                                 tempo: tempo_val,
                                 notes: notes_val,
                                 tags: Some(tags_val),

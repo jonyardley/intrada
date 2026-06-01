@@ -1181,6 +1181,7 @@ mod tests {
             kind: crate::domain::item::ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
