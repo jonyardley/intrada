@@ -82,6 +82,7 @@ struct LibraryEditScreen: View {
       tags: nil,
       priority: nil)
     store.send(.item(.update(id: item.id, input: input)))
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
     dismiss()
   }
 

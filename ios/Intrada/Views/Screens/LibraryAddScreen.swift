@@ -2,8 +2,8 @@ import SharedTypes
 import SwiftUI
 
 /// Create sheet for a new library item. Sends `Event.item(.add)` — the core
-/// validates and reconciles via the temp-id mutate-response pattern; the shell
-/// only collects field values. Tags are deferred to a later increment.
+/// validates and (in local-first mode) persists locally with a client-minted
+/// ulid; the shell only collects field values. Tags deferred to a later increment.
 struct LibraryAddScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
