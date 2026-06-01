@@ -196,9 +196,46 @@ pub struct ListQuery {
     pub tags: Vec<String>,
 }
 
+/// Which library column the list is ordered by.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SortField {
+    #[default]
+    DateAdded,
+    LastPracticed,
+    Title,
+}
+
+/// Ascending vs descending. Defaults to descending (newest/most-recent first).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum SortDirection {
+    #[default]
+    Descending,
+    Ascending,
+}
+
+/// The library list's sort order. Default = Date Added, newest first
+/// (the historical hardcoded order).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LibrarySort {
+    pub field: SortField,
+    pub direction: SortDirection,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn library_sort_defaults_to_date_added_descending() {
+        let sort = LibrarySort::default();
+        assert_eq!(sort.field, SortField::DateAdded);
+        assert_eq!(sort.direction, SortDirection::Descending);
+    }
 
     #[test]
     fn test_from_parts_both_none_returns_none() {

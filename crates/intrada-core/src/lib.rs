@@ -18,7 +18,10 @@ pub use domain::session::{
     SetlistEntry,
 };
 pub use domain::set::{Set, SetEntry, SetEvent};
-pub use domain::types::{CreateItem, LibraryData, ListQuery, SessionsData, Tempo, UpdateItem};
+pub use domain::types::{
+    CreateItem, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection, SortField, Tempo,
+    UpdateItem,
+};
 pub use error::LibraryError;
 pub use persistence::{PersistenceOperation, PersistenceOutput};
 
