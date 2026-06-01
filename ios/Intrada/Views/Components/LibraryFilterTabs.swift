@@ -41,30 +41,35 @@ struct LibraryFilterTabs: View {
   @Namespace private var pill
 
   var body: some View {
-    HStack(spacing: 8) {
-      ForEach(LibraryFilter.allCases) { filter in
-        let isSelected = filter == selection
-        Button {
-          withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
-            selection = filter
-          }
-        } label: {
-          Text(filter.label)
-            .font(IntradaFont.tab)
-            .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 14)
-            .background {
-              if isSelected {
-                Capsule()
-                  .fill(IntradaColor.accent)
-                  .matchedGeometryEffect(id: "selectedPill", in: pill)
-              }
+    // Horizontal scroll so the pills slide rather than wrap mid-word once the
+    // labels grow past the width at large Dynamic Type (#810).
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 8) {
+        ForEach(LibraryFilter.allCases) { filter in
+          let isSelected = filter == selection
+          Button {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
+              selection = filter
             }
+          } label: {
+            Text(filter.label)
+              .font(IntradaFont.tab)
+              .lineLimit(1)
+              .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
+              .padding(.vertical, 6)
+              .padding(.horizontal, 14)
+              .background {
+                if isSelected {
+                  Capsule()
+                    .fill(IntradaColor.accent)
+                    .matchedGeometryEffect(id: "selectedPill", in: pill)
+                }
+              }
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(filter.label)
+          .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(filter.label)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
       }
     }
   }

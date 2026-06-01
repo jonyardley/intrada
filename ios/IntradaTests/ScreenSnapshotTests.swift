@@ -44,6 +44,16 @@ final class ScreenSnapshotTests: XCTestCase {
     .image(on: .iPhone13, perceptualPrecision: 0.98, traits: .init(displayScale: 2))
   }
 
+  /// Largest accessibility text size — proves layouts reflow rather than clip/wrap.
+  private var axConfig: Snapshotting<UIViewController, UIImage> {
+    .image(
+      on: .iPhone13, perceptualPrecision: 0.98,
+      traits: UITraitCollection(traitsFrom: [
+        UITraitCollection(displayScale: 2),
+        UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge),
+      ]))
+  }
+
   func testRootShell() {
     assertSnapshot(of: host(RootView()), as: config)
   }
@@ -119,6 +129,16 @@ final class ScreenSnapshotTests: XCTestCase {
       .padding(16)
     }
     assertSnapshot(of: host(tabs), as: config)
+  }
+
+  // #810: at the largest a11y size the pills stay one line + scroll, not wrap.
+  func testLibraryFilterTabsAccessibility() {
+    let tabs = ZStack {
+      PaperBackground()
+      LibraryFilterTabs(selection: .constant(.exercises))
+        .padding(16)
+    }
+    assertSnapshot(of: host(tabs), as: axConfig)
   }
 
   func testKeyPickerCollapsed() {
