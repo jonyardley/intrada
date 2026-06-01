@@ -123,6 +123,29 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
   - Offline-first: writes apply locally immediately; sync is deferred and
     retried.
 
+### Sync engine — evaluated 2026-06 (deep-research, verified)
+
+We surveyed the landscape before committing. Outcome: **build the local store
+sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
+
+- **Turso/libSQL offline-sync** — the tempting "we already use Turso" path — is
+  **still beta in 2026 with a documented "data loss is possible" warning**, and
+  Turso is mid-rewrite (Rust "Turso DB" also beta). Disqualifying for a *paid*
+  tier today. (Its default row-level Last-Push-Wins *does* match our LWW, so it
+  stays a candidate once it GAs with durability.)
+- **Automerge 3.0** (CRDT, Rust-native; `autosurgeon` reconcile in the core) is
+  the strongest *conceptual* fit and the fallback if we ever want CRDT-grade
+  resilience — but its **Swift sync layer is alpha/stale**, so it'd mean driving
+  sync from the Rust core with hand-rolled Swift glue. Not now.
+- **CloudKit / SwiftData** — free (can't monetize), iOS-only (breaks Android),
+  and bypasses the core (Swift owns the schema). Architecturally out.
+- **PowerSync / ElectricSQL** — assume the client owns the DB in Swift/JS; poor
+  fit for a Rust core. Out.
+- **Decision:** the local SQLite schema bakes in `updated_at` + soft-delete
+  tombstones from B2 so **both** survivors — custom LWW-to-Turso *or*
+  Automerge-in-the-core — can sit on it later. We commit to neither yet. The
+  biggest risk to avoid: shipping Turso's offline-sync beta to paying users.
+
 ## Phased plan
 
 - **Phase 0 (done):** focus-mode CI + iOS agent tooling.
@@ -139,10 +162,14 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
     core (TDD); the Swift shell stubs it. No behaviour change — just the pipe.
   - **B2** — GRDB store: the shell fulfils the effect against real SQLite;
     schema + sequential migrations (mirroring the API's migration discipline).
+    Schema is **sync-agnostic** — `updated_at` + soft-delete tombstone columns
+    baked in now so a later sync engine can sit on it (see Sync engine above).
   - **B3** — migrate Library *reads* to local SQLite. Settles the existing-data
     question (seed empty vs. one-time import of the user's server data).
   - **B4** — migrate Library *writes* to local-first — always succeed, no HTTP.
-    **The app becomes genuinely offline here.**
+    **The app becomes genuinely offline here.** Must first fix the ack-on-error
+    data-loss risk from B2 (a failed local write currently resolves `.ack`,
+    which the core trusts as success) — see #816.
   - **B5** — decouple auth: the app runs with no account; sign-in is inert until
     sync exists.
   - **Gate:** full Library CRUD works in airplane mode, with no account.
@@ -198,6 +225,11 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
   model for offline-first; the error-surface folds into Phase D sync.
 - 2026-06-01 — **Phase B (local-first persistence) promoted to the active
   critical path**, retrofitting under the already-built online Library screens.
+- 2026-06-01 — **Sync engine deferred; local store built sync-agnostic**
+  (verified deep-research). Turso offline-sync ruled out for the paid tier
+  while beta/lossy; roll-our-own LWW-to-Turso is the lead, Automerge-in-the-core
+  the fallback. B2 schema bakes in `updated_at` + tombstones so the choice
+  stays open.
 
 ## YAGNI (explicitly out of scope for now)
 

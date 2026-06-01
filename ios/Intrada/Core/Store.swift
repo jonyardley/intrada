@@ -11,10 +11,17 @@ final class Store {
 
   private let bridge: CoreBridge
   private let session: URLSession
+  private let store: LibraryStore?
 
-  init(bridge: CoreBridge = LiveBridge(), session: URLSession = .shared) {
+  init(
+    bridge: CoreBridge = LiveBridge(), session: URLSession = .shared, store: LibraryStore? = nil
+  ) {
     self.bridge = bridge
     self.session = session
+    // Default to in-memory so tests/previews never touch disk; the real app
+    // passes an on-disk store. `try?` (not `guarded`) because `self` isn't fully
+    // initialized yet here; in-memory creation effectively never fails.
+    self.store = store ?? (try? LibraryStore.inMemory())
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
     self.viewModel = guarded { try bridge.view() }
@@ -36,13 +43,7 @@ final class Store {
         // the core can continue its command chain.
         process(guarded { try bridge.resolveEmpty(request.id) } ?? [])
       case .persistence(let operation):
-        // B1 stub — no GRDB yet (B2); answer with the empty/ack shape the core
-        // expects so the contract + typed-Output round-trip are exercised.
-        let output: PersistenceOutput =
-          switch operation {
-          case .loadItems: .items([])
-          case .saveItem, .deleteItem: .ack
-          }
+        let output = persistenceOutput(for: operation)
         process(guarded { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
       }
     }
@@ -57,6 +58,35 @@ final class Store {
   private func handleHttp(_ request: HttpRequest, id: UInt32) async {
     let result = await Self.execute(request, session: session)
     process(guarded { try bridge.resolve(id, httpResult: result) } ?? [])
+  }
+
+  /// Run a persistence op against the local store. A store failure is reported
+  /// and answered with the empty/ack shape so the core's command chain still
+  /// completes (offline-first assumes local writes succeed; failures are rare
+  /// disk/corruption cases worth surfacing, not silently dropping the effect).
+  private func persistenceOutput(for operation: PersistenceOperation) -> PersistenceOutput {
+    guard let store else { return Self.emptyOutput(for: operation) }
+    do {
+      switch operation {
+      case .loadItems: return .items(try store.loadItems())
+      case .saveItem(let item):
+        try store.save(item)
+        return .ack
+      case .deleteItem(let id):
+        try store.delete(id: id)
+        return .ack
+      }
+    } catch {
+      report(error)
+      return Self.emptyOutput(for: operation)
+    }
+  }
+
+  private static func emptyOutput(for operation: PersistenceOperation) -> PersistenceOutput {
+    switch operation {
+    case .loadItems: .items([])
+    case .saveItem, .deleteItem: .ack
+    }
   }
 
   // A bridge failure means a serialization/protocol break (e.g. stale bindings

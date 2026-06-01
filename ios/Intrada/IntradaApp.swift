@@ -3,7 +3,19 @@ import SwiftUI
 
 @main
 struct IntradaApp: App {
-  @State private var store = Store()
+  // On-disk store for the real app; on failure we report it and Store falls
+  // back to in-memory (this session won't persist). Tests/previews pass nil and
+  // get the in-memory default.
+  @State private var store = Store(store: IntradaApp.openOnDiskStore())
+
+  private static func openOnDiskStore() -> LibraryStore? {
+    do {
+      return try LibraryStore.onDisk()
+    } catch {
+      report(error)
+      return nil
+    }
+  }
 
   init() {
     IntradaFonts.register()
