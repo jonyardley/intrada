@@ -50,6 +50,21 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(bridge.emptyResolved, [7], "app effect should ack via resolveEmpty")
   }
 
+  func testPersistenceLoadResolvesWithStubItems() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Request(id: 8, effect: .persistence(.loadItems))] }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(bridge.persistenceResolved.first?.id, 8)
+    guard case .items(let items) = bridge.persistenceResolved.first?.output else {
+      return XCTFail(
+        "expected .items, got \(String(describing: bridge.persistenceResolved.first?.output))")
+    }
+    XCTAssertTrue(items.isEmpty, "B1 stub returns no rows (GRDB lands in B2)")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -269,6 +284,7 @@ private final class FakeBridge: CoreBridge {
 
   private(set) var events: [Event] = []
   private(set) var resolved: [(id: UInt32, result: HttpResult)] = []
+  private(set) var persistenceResolved: [(id: UInt32, output: PersistenceOutput)] = []
   private(set) var emptyResolved: [UInt32] = []
   private(set) var viewCallCount = 0
 
@@ -282,6 +298,12 @@ private final class FakeBridge: CoreBridge {
     resolved.append((id, httpResult))
     onResolve?()
     return resolveHandler(id, httpResult)
+  }
+
+  func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] {
+    persistenceResolved.append((id, persistenceOutput))
+    onResolve?()
+    return []
   }
 
   func resolveEmpty(_ id: UInt32) throws -> [Request] {

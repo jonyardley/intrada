@@ -1,10 +1,11 @@
 # Native iOS Shell (SwiftUI + Crux)
 
 > Tier 3 (Crux FFI bridge + new persistence/sync capability, multi-week,
-> spans core + a net-new native shell). Spec rides with the Phase A branch per
-> CLAUDE.md. Reverses PR #382, which removed the prior SwiftUI shell — the
-> "app-first + local-first" framing below is the deliberate answer to *why
-> reverse it*.
+> spans core + a net-new native shell). The original spec rode with the Phase A
+> branch; the 2026-06-01 **offline-first / paid-sync reframe** (see Decisions
+> log) rides with the Phase B (B1) branch, per CLAUDE.md. Reverses PR #382,
+> which removed the prior SwiftUI shell — the "app-first + offline-first"
+> framing below is the deliberate answer to *why reverse it*.
 
 ## Problem
 
@@ -34,10 +35,31 @@ Strategic decisions (settled; not re-litigated here):
 
 - **App-first.** Native iOS now, native Android later — both on the shared
   Crux core. Web stays on Leptos, untouched. Web's data model is decided later.
-- **Local-first.** On-device SQLite is the source of truth. The existing
-  Axum+Turso backend demotes from live data source to a **sync target**.
+- **Offline-first is the product model.** On-device SQLite is the source of
+  truth. The app is fully functional with **no network and no account** — local
+  writes always succeed. The existing Axum+Turso backend demotes from live data
+  source to an **optional sync target**.
+- **Sync is the paid tier.** Free tier = a complete single-device offline app.
+  Paid tier (subscription) = multi-device sync + backup/restore. The backend
+  earns its keep as a sync/backup service, not as the data source. **Auth is
+  therefore optional** — only required to enable sync.
 - **Sync scope is deliberately small.** Single-user, multi-device,
   **last-write-wins on `updated_at` — not CRDTs**, not multi-user collaboration.
+- **Rethink as we build.** The native build is **not** a 1:1 port of the web
+  app. Each feature area gets a fresh design pass (Pencil + HIG, grounded in how
+  the app is actually used at the piano — see `docs/design-principles.md`)
+  *before* implementation. The Crux domain model stays the stable foundation;
+  the UX/feature framing is open to reinvention per pillar.
+
+### What offline-first changes about "robustness"
+
+Online-first, a failed mutation `POST` needs a per-action error banner + rollback
+(tracked as [#800]). Offline-first, **local writes don't fail** — there is no
+per-action HTTP to roll back. Failures live only at the *sync* layer, where they
+are background and retryable, not per-tap banners. So #800 is **parked**: a
+lighter error-surface folds into the Phase D sync work, not the mutation path.
+
+[#800]: https://github.com/jonyardley/intrada/issues/800
 
 ## The Crux → Swift bridge
 
@@ -103,22 +125,37 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
 
 ## Phased plan
 
-- **Phase 0 (done):** focus mode (web/Tauri/API CI main-only + Dependabot
-  pause) and iOS agent tooling (XcodeBuildMCP, swift-format hook, sourcekit-lsp
-  plugin).
-- **Phase A (this spec):** restore typegen attrs to core (TDD); new
-  `crates/intrada-ffi` (UniFFI + facet typegen); cargo-swift spike → minimal
-  SwiftUI app that sends one `Event` and renders the `ViewModel`. Bake in from
-  day one: swift-snapshot-testing (pinned sim + runtime, perceptual tolerance),
-  Sentry, accessibility (VoiceOver + Dynamic Type). **Gate:** pipeline green on
-  device + simulator, #2818 mitigated.
-- **Phase B:** persistence `Effect` + GRDB store + schema + LWW scaffolding;
-  first real screen (Library) end-to-end local-first. **Gate:** per-screen cost
-  + persistence design validated.
-- **Phase C:** screen-by-screen parity (Plan → Practice → Track), each with
-  iPad `SplitView` built *with* the screen (not retrofit), per-screen
-  accessibility, snapshot tests, and HIG-referenced native shape/behaviour.
-- **Phase D:** LWW sync to the Axum API; retire the Tauri host at parity.
+- **Phase 0 (done):** focus-mode CI + iOS agent tooling.
+- **Phase A (done):** `crates/intrada-ffi` (UniFFI + facet typegen), the
+  cargo-swift pipeline, and a minimal SwiftUI app rendering the `ViewModel`.
+  swift-snapshot-testing, Sentry, and accessibility baked in from day one.
+- **Phase C-early (done — but online-first):** Library screens — list, detail,
+  add, edit, delete — plus filter-from-ViewModel, fonts + Dynamic Type, and a
+  Store effect-loop test harness. Built over HTTP-through-core *ahead* of
+  persistence. **Phase B now retrofits local-first underneath these screens.**
+- **Phase B (ACTIVE — the critical path):** make the app genuinely offline,
+  built as small reviewable increments:
+  - **B1** — `Persistence` Effect *contract*: typed query/mutation ops in the
+    core (TDD); the Swift shell stubs it. No behaviour change — just the pipe.
+  - **B2** — GRDB store: the shell fulfils the effect against real SQLite;
+    schema + sequential migrations (mirroring the API's migration discipline).
+  - **B3** — migrate Library *reads* to local SQLite. Settles the existing-data
+    question (seed empty vs. one-time import of the user's server data).
+  - **B4** — migrate Library *writes* to local-first — always succeed, no HTTP.
+    **The app becomes genuinely offline here.**
+  - **B5** — decouple auth: the app runs with no account; sign-in is inert until
+    sync exists.
+  - **Gate:** full Library CRUD works in airplane mode, with no account.
+- **Phase C (rethink + build the other pillars):** Practice, then Track, each on
+  the local-first foundation. "Rethink as we build" lands here — a design pass
+  (Pencil + HIG, reconsidering vs. web) *starts* each pillar, then local-first
+  data, then per-screen quality (snapshot + accessibility) and iPad `SplitView`
+  built *with* the screen. A redesign on a stable core, not a port.
+- **Phase D (sync = the paid tier):** LWW sync to the Axum API (server-
+  authoritative `updated_at`, tombstones, deterministic tiebreak — designed
+  above); account/sign-in gates sync; StoreKit subscription + entitlement
+  gating; backup/restore. The parked #800 error-surface folds in here. Retire
+  the Tauri host at parity.
 
 ## Quality baked in (day one, not retrofit)
 
@@ -131,9 +168,13 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
 
 ## Open questions
 
+- **Existing server data on first local-first launch** — seed empty vs. a
+  one-time import of the user's server data. Settled at B3.
+- **Free-tier auth shape** — fully account-free vs. an anonymous local account
+  (eases later linking to a sync subscription). Decided before B5.
+- **Android timing** — onto the same local core soon, or stays deferred? Affects
+  how much Phase B generalises now vs. later.
 - **Web data model** — deferred; web shell stays online-only for now.
-- **Per-screen rewrite cost** — answered at the Phase B gate (first real screen).
-- **cargo-swift vs build-ios.sh** — answered by the Phase A spike.
 - **Sync transport detail** (full-table vs delta, batching) — designed in Phase D.
 
 ## Decisions log
@@ -145,6 +186,18 @@ persistence is **not** a custom capability; it's a **custom `Effect` driven by
 - 2026-05-31 — SQLite owned by the Swift shell (GRDB); reconciliation in core.
 - 2026-05-31 — Mitigate UniFFI #2818 in the build recipe (non-MainActor /
   `nonisolated` post-process).
+- 2026-06-01 — **Offline-first is the product model**, not just an
+  implementation detail: the app is fully functional with no network and no
+  account. (Strengthens the 2026-05-31 local-first decision.)
+- 2026-06-01 — **Sync is the paid tier.** Free = single-device offline; paid
+  subscription = multi-device sync + backup/restore. Backend = sync/backup
+  service. Auth is optional (only gates sync).
+- 2026-06-01 — **Rethink as we build:** native is not a web port; each pillar
+  gets a design pass before implementation.
+- 2026-06-01 — **#800 parked** (online-mutation error banner + rollback) — wrong
+  model for offline-first; the error-surface folds into Phase D sync.
+- 2026-06-01 — **Phase B (local-first persistence) promoted to the active
+  critical path**, retrofitting under the already-built online Library screens.
 
 ## YAGNI (explicitly out of scope for now)
 

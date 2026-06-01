@@ -12,6 +12,7 @@ private final class StubBridge: CoreBridge {
   private let core = CoreFfi()
   func update(_ event: Event) throws -> [Request] { [] }
   func resolve(_ id: UInt32, httpResult: HttpResult) throws -> [Request] { [] }
+  func resolve(_ id: UInt32, persistenceOutput: PersistenceOutput) throws -> [Request] { [] }
   func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
   func view() throws -> ViewModel {
     try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
