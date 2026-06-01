@@ -56,6 +56,25 @@ pub enum ItemEvent {
     RemoveTags { id: String, tags: Vec<String> },
 }
 
+/// Persist a just-saved item locally (local-first) or PUT it to the server
+/// (online). Shared by Update / AddTags / RemoveTags.
+fn save_or_put(model: &mut Model, item: Item) -> Command<Effect, Event> {
+    if model.local_first {
+        // No server callback to clear the dismiss-mute later (online does that
+        // on ItemUpdated), so record the success here.
+        model.record_success();
+        Command::all([
+            crate::persistence::save_item(item),
+            crux_core::render::render(),
+        ])
+    } else {
+        Command::all([
+            crate::http::update_item(&model.api_base_url, &item),
+            crux_core::render::render(),
+        ])
+    }
+}
+
 pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         ItemEvent::Add(input) => {
@@ -79,14 +98,25 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 priority: false,
             };
 
-            let temp_id = item.id.clone();
             model.items.push(item.clone());
             model.last_error = None;
 
-            Command::all([
-                crate::http::create_item(&model.api_base_url, &item, &temp_id),
-                crux_core::render::render(),
-            ])
+            if model.local_first {
+                // The client ulid is canonical — persist locally, no server
+                // round-trip, no temp-id replacement. Record success here since
+                // there's no ItemCreated callback to clear the dismiss-mute.
+                model.record_success();
+                Command::all([
+                    crate::persistence::save_item(item),
+                    crux_core::render::render(),
+                ])
+            } else {
+                let temp_id = item.id.clone();
+                Command::all([
+                    crate::http::create_item(&model.api_base_url, &item, &temp_id),
+                    crux_core::render::render(),
+                ])
+            }
         }
         ItemEvent::Update { id, input } => {
             if let Err(e) = validation::validate_update_item(&input) {
@@ -124,10 +154,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             let item = item.clone();
-            Command::all([
-                crate::http::update_item(&model.api_base_url, &item),
-                crux_core::render::render(),
-            ])
+            save_or_put(model, item)
         }
         ItemEvent::Delete { id } => {
             let len_before = model.items.len();
@@ -138,12 +165,18 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
             model.last_error = None;
 
-            Command::all([
-                crate::http::delete_item(&model.api_base_url, &id),
-                // Write-through: soft-delete locally too (web ignores it).
-                crate::persistence::delete_item(id),
-                crux_core::render::render(),
-            ])
+            if model.local_first {
+                model.record_success();
+                Command::all([
+                    crate::persistence::delete_item(id),
+                    crux_core::render::render(),
+                ])
+            } else {
+                Command::all([
+                    crate::http::delete_item(&model.api_base_url, &id),
+                    crux_core::render::render(),
+                ])
+            }
         }
         ItemEvent::AddTags { id, tags } => {
             if let Err(e) = validation::validate_tags(&tags) {
@@ -166,10 +199,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             let item = item.clone();
-            Command::all([
-                crate::http::update_item(&model.api_base_url, &item),
-                crux_core::render::render(),
-            ])
+            save_or_put(model, item)
         }
         ItemEvent::RemoveTags { id, tags } => {
             let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
@@ -184,10 +214,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             let item = item.clone();
-            Command::all([
-                crate::http::update_item(&model.api_base_url, &item),
-                crux_core::render::render(),
-            ])
+            save_or_put(model, item)
         }
     }
 }
