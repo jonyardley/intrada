@@ -212,6 +212,36 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 
 [uniffi-rs#2818]: https://github.com/mozilla/uniffi-rs/issues/2818
 
+### Snapshot test hygiene
+
+The `swift-snapshot-test` references (`ios/IntradaTests/__Snapshots__/**/*.png`)
+are PNGs committed to git and **re-recorded on every intentional UI change** —
+binaries don't delta-compress, so each re-record adds a *full* copy to history
+forever. Left unmanaged this compounds (a single theme/token sweep re-records
+the whole suite at once). On the free offline tier this is the only quality
+gate for the UI, so we keep the suite but keep it lean:
+
+- **One device + scale, deterministic host.** Pin `.iPhone13` + `displayScale`,
+  force light mode at the controller, use the stub bridge (already done). Do
+  **not** multiply references by device/theme/size-class variants — snapshot a
+  variant only when it can independently regress.
+- **Snapshot load-bearing states, not the cross-product.** Prefer
+  component-level (`sizeThatFits`) or structural/text snapshots where the
+  assertion isn't pixel-perfect (e.g. "pills reflow, don't wrap").
+- **Optimize before committing.** After (re)recording, run
+  `just ios-snapshots-optimize` — losslessly drops Xcode's redundant all-opaque
+  alpha channel (~75% smaller; pixels + sRGB preserved, so the comparison still
+  passes). CI's **Snapshot Hygiene** job enforces a per-file size ceiling and
+  fails on un-optimized references.
+- **No orphans.** Delete a test → delete its PNG. The Snapshot Hygiene job
+  fails any reference with no matching `func test…` (renamed/removed tests
+  otherwise leave dead images in history). Run it locally with
+  `just ios-snapshots-check`.
+- **Escalation path.** In-repo is fine now. When history gets heavy or the suite
+  crosses ~50–100 references, move to Git LFS (note: adds a fetch to every CI
+  run) or external hashed storage (S3 by SHA-256 / Screenshotbot). Don't reach
+  for that machinery early.
+
 ### Offline-first invariants (non-negotiable)
 
 The native app is **offline-first**: on-device SQLite is the source of truth,
