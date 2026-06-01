@@ -73,7 +73,7 @@ struct LibraryDetailScreen: View {
       confirmingDelete = true
     } label: {
       Label("Delete \(item.itemType.label.lowercased())", systemImage: "trash")
-        .font(.system(size: 15, weight: .medium))
+        .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.danger)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -103,7 +103,7 @@ struct LibraryDetailScreen: View {
       HStack(spacing: 8) {
         ForEach(item.tags, id: \.self) { tag in
           Text(tag)
-            .font(.system(size: 12, weight: .medium))
+            .font(IntradaFont.metaMedium)
             .foregroundStyle(IntradaColor.inkSecondary)
             .padding(.vertical, 5)
             .padding(.horizontal, 10)

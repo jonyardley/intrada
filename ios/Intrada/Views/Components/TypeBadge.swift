@@ -9,10 +9,10 @@ struct TypeBadge: View {
   var body: some View {
     HStack(spacing: 5) {
       Image(systemName: kind.iconName)
-        .font(.system(size: 11, weight: .semibold))
+        .imageScale(.small)
       Text(kind.label)
-        .font(.system(size: 12, weight: .semibold))
     }
+    .font(IntradaFont.badge)
     .foregroundStyle(foreground)
     .padding(.vertical, 5)
     .padding(.horizontal, 10)

@@ -50,7 +50,7 @@ struct LibraryFilterTabs: View {
           }
         } label: {
           Text(filter.label)
-            .font(.system(size: 13, weight: .medium))
+            .font(IntradaFont.tab)
             .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
             .padding(.vertical, 6)
             .padding(.horizontal, 14)

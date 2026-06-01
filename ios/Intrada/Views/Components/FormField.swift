@@ -13,10 +13,10 @@ struct FormField: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       Text(label)
-        .font(.system(size: 12, weight: .medium))
+        .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkFaint)
       TextField(placeholder, text: $text, axis: axis)
-        .font(.system(size: 16))
+        .font(IntradaFont.field)
         .foregroundStyle(IntradaColor.ink)
         .keyboardType(keyboard)
         .textInputAutocapitalization(autocapitalization)

@@ -41,6 +41,8 @@ struct ScreenScaffold<Content: View>: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
+    // Cap the top end: the largest accessibility steps overflow the header rule.
+    .dynamicTypeSize(.xSmall ... .accessibility2)
   }
 
   private var header: some View {

@@ -6,6 +6,8 @@ struct IntradaApp: App {
   @State private var store = Store()
 
   init() {
+    IntradaFonts.register()
+
     // No DSN in dev/CI → Sentry stays disabled. Set SENTRY_DSN for real builds.
     if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String, !dsn.isEmpty {
       SentrySDK.start { options in
