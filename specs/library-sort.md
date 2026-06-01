@@ -133,6 +133,11 @@ view type, not a persisted table).
 - Whether `Title` sort should be locale-aware (`localizedStandardCompare`) in
   the shell vs. a plain case-insensitive compare in the core. Core-side keeps
   it shared/testable; revisit if non-ASCII titles sort oddly.
+- The natural-default direction per field (the `LibrarySort.selecting` table)
+  lives in Swift, since it's a menu-interaction decision (the core receives a
+  fully-formed `LibrarySort`). A future Android shell would reimplement the
+  table from this spec rather than share it — acceptable for v1; move it into
+  the core only if cross-platform parity proves it should be shared.
 
 ## Testing
 

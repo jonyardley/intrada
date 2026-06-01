@@ -42,6 +42,18 @@ enum LibrarySortField: CaseIterable, Identifiable {
   }
 }
 
+extension LibrarySort {
+  /// The sort to apply when the user taps `field` in the menu: flip direction
+  /// if it's already the active field, else switch to it at its natural default.
+  static func selecting(_ field: LibrarySortField, from current: LibrarySort) -> LibrarySort {
+    guard field.core == current.field else {
+      return LibrarySort(field: field.core, direction: field.naturalDefault)
+    }
+    let flipped: SortDirection = current.direction == .ascending ? .descending : .ascending
+    return LibrarySort(field: current.field, direction: flipped)
+  }
+}
+
 /// Native pull-down sort control (Files/Mail idiom). Tapping the active field
 /// flips direction; tapping another switches to it at its natural default.
 struct LibrarySortMenu: View {
@@ -52,7 +64,7 @@ struct LibrarySortMenu: View {
     Menu {
       ForEach(LibrarySortField.allCases) { field in
         Button {
-          onChange(next(for: field))
+          onChange(.selecting(field, from: current))
         } label: {
           if field.core == current.field {
             Label(field.label, systemImage: directionSymbol)
@@ -77,14 +89,6 @@ struct LibrarySortMenu: View {
 
   private var directionAccessibility: String {
     current.direction == .ascending ? "ascending" : "descending"
-  }
-
-  private func next(for field: LibrarySortField) -> LibrarySort {
-    if field.core == current.field {
-      let flipped: SortDirection = current.direction == .ascending ? .descending : .ascending
-      return LibrarySort(field: current.field, direction: flipped)
-    }
-    return LibrarySort(field: field.core, direction: field.naturalDefault)
   }
 }
 

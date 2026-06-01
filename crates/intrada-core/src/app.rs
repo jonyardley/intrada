@@ -388,7 +388,6 @@ impl App for Intrada {
             items = apply_query_filter(items, query);
         }
 
-        // Sort by the active order (defaults to newest-added first).
         sort_library_items(&mut items, &model.active_sort);
 
         // Build completed session views sorted newest-first
