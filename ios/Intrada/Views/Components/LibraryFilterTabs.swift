@@ -8,6 +8,14 @@ enum LibraryFilter: CaseIterable, Identifiable {
 
   var id: Self { self }
 
+  init(kind: ItemKind?) {
+    switch kind {
+    case .none: self = .all
+    case .piece: self = .pieces
+    case .exercise: self = .exercises
+    }
+  }
+
   var label: String {
     switch self {
     case .all: "All"
