@@ -76,4 +76,13 @@ final class LibraryStoreTests: XCTestCase {
     try store.save(item("new", title: "New", createdAt: "2026-02-01T00:00:00Z"))
     XCTAssertEqual(try store.loadItems().map(\.id), ["new", "old"])
   }
+
+  /// Offline-first invariant #2 (CLAUDE.md): persisted tables carry the sync columns.
+  func testSchemaHasSyncColumns() throws {
+    let columns = try makeStore().columnNames(ofTable: "item")
+    XCTAssertTrue(
+      columns.contains("updated_at"), "item table must carry updated_at; has \(columns)")
+    XCTAssertTrue(
+      columns.contains("deleted_at"), "item table must carry deleted_at; has \(columns)")
+  }
 }

@@ -298,4 +298,48 @@ mod tests {
         assert!(has_http(&mut cmd));
         assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
     }
+
+    /// Offline-first invariant #1 (CLAUDE.md): the full local-first lifecycle
+    /// (launch/create/update/delete) emits zero HTTP — a regression sentinel.
+    #[test]
+    fn offline_invariant_local_first_lifecycle_makes_no_http() {
+        use crate::domain::item::ItemEvent;
+        use crate::domain::types::UpdateItem;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+
+        let mut launch = app.update(
+            Event::StartApp {
+                api_base_url: "http://x".into(),
+                local_first: true,
+            },
+            &mut model,
+        );
+        assert!(!has_http(&mut launch), "launch");
+
+        let mut add = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
+        assert!(!has_http(&mut add), "create");
+        let id = model.items[0].id.clone();
+
+        let input = UpdateItem {
+            title: Some("Renamed".into()),
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: None,
+            priority: None,
+        };
+        let mut update = app.update(
+            Event::Item(ItemEvent::Update {
+                id: id.clone(),
+                input,
+            }),
+            &mut model,
+        );
+        assert!(!has_http(&mut update), "update");
+
+        let mut delete = app.update(Event::Item(ItemEvent::Delete { id }), &mut model);
+        assert!(!has_http(&mut delete), "delete");
+    }
 }
