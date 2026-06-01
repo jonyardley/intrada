@@ -12,6 +12,7 @@ struct LibraryAddScreen: View {
   @State private var title = ""
   @State private var composer = ""
   @State private var key = ""
+  @State private var modality: Modality?
   @State private var marking = ""
   @State private var bpm = ""
   @State private var notes = ""
@@ -33,7 +34,7 @@ struct LibraryAddScreen: View {
               divider
               FormField(label: "Composer", text: $composer)
               divider
-              KeyPicker(label: "Key", text: $key)
+              KeyPicker(label: "Key", key: $key, modality: $modality)
             }
             .cardSurface()
 
@@ -74,6 +75,7 @@ struct LibraryAddScreen: View {
       kind: kind,
       composer: emptyToNil(composer),
       key: emptyToNil(key),
+      modality: modality,
       tempo: buildTempo(),
       notes: emptyToNil(notes),
       tags: [])

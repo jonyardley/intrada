@@ -125,8 +125,12 @@ final class ScreenSnapshotTests: XCTestCase {
     let pickers = ZStack {
       PaperBackground()
       VStack(spacing: 16) {
-        VStack(spacing: 0) { KeyPicker(label: "Key", text: .constant("")) }.cardSurface()
-        VStack(spacing: 0) { KeyPicker(label: "Key", text: .constant("Gb major")) }.cardSurface()
+        VStack(spacing: 0) {
+          KeyPicker(label: "Key", key: .constant(""), modality: .constant(nil))
+        }.cardSurface()
+        VStack(spacing: 0) {
+          KeyPicker(label: "Key", key: .constant("Gb"), modality: .constant(.major))
+        }.cardSurface()
       }
       .padding(16)
     }
@@ -137,7 +141,8 @@ final class ScreenSnapshotTests: XCTestCase {
     let picker = ZStack {
       PaperBackground()
       VStack(spacing: 0) {
-        KeyPicker(label: "Key", text: .constant(""), initiallyExpanded: true)
+        KeyPicker(
+          label: "Key", key: .constant(""), modality: .constant(nil), initiallyExpanded: true)
       }
       .cardSurface()
       .padding(16)
@@ -149,7 +154,8 @@ final class ScreenSnapshotTests: XCTestCase {
     let picker = ZStack {
       PaperBackground()
       VStack(spacing: 0) {
-        KeyPicker(label: "Key", text: .constant("Gb major"), initiallyExpanded: true)
+        KeyPicker(
+          label: "Key", key: .constant("Gb"), modality: .constant(.major), initiallyExpanded: true)
       }
       .cardSurface()
       .padding(16)

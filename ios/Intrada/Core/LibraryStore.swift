@@ -56,17 +56,19 @@ final class LibraryStore: ItemStore {
       try db.execute(
         sql: """
           INSERT INTO item
-            (id, title, kind, composer, key, tempo_marking, tempo_bpm, notes, tags,
+            (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
              created_at, updated_at, priority, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
           ON CONFLICT(id) DO UPDATE SET
             title = excluded.title, kind = excluded.kind, composer = excluded.composer,
-            key = excluded.key, tempo_marking = excluded.tempo_marking,
+            key = excluded.key, modality = excluded.modality,
+            tempo_marking = excluded.tempo_marking,
             tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
             updated_at = excluded.updated_at, priority = excluded.priority, deleted_at = NULL
           """,
         arguments: [
           item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
+          Self.modalityString(item.modality),
           item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
           Self.encodeTags(item.tags),
           item.createdAt, item.updatedAt, item.priority,
@@ -114,6 +116,9 @@ final class LibraryStore: ItemStore {
           )
           """)
     }
+    migrator.registerMigration("v2_add_modality") { db in
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN modality TEXT")
+    }
     return migrator
   }
 
@@ -125,7 +130,8 @@ final class LibraryStore: ItemStore {
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
     return Item(
       id: row["id"], title: row["title"], kind: kind(from: row["kind"]),
-      composer: row["composer"], key: row["key"], tempo: tempo, notes: row["notes"],
+      composer: row["composer"], key: row["key"], modality: modality(from: row["modality"]),
+      tempo: tempo, notes: row["notes"],
       tags: decodeTags(row["tags"]), createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"])
   }
@@ -134,6 +140,22 @@ final class LibraryStore: ItemStore {
     switch kind {
     case .piece: "piece"
     case .exercise: "exercise"
+    }
+  }
+
+  private static func modalityString(_ modality: Modality?) -> String? {
+    switch modality {
+    case .major: "major"
+    case .minor: "minor"
+    case nil: nil
+    }
+  }
+
+  private static func modality(from raw: String?) -> Modality? {
+    switch raw {
+    case "major": .major
+    case "minor": .minor
+    default: nil
     }
   }
 

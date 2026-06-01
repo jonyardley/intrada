@@ -14,7 +14,7 @@ final class LibraryStoreTests: XCTestCase {
     createdAt: String = "2026-01-01T00:00:00Z"
   ) -> Item {
     Item(
-      id: id, title: title, kind: kind, composer: "Chopin", key: "C major",
+      id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
       tags: ["scale", "warmup"], createdAt: createdAt, updatedAt: createdAt, priority: true)
   }
@@ -27,6 +27,8 @@ final class LibraryStoreTests: XCTestCase {
     let got = try XCTUnwrap(loaded.first)
     XCTAssertEqual(got.id, "p1")
     XCTAssertEqual(got.kind, .piece)
+    XCTAssertEqual(got.key, "C")
+    XCTAssertEqual(got.modality, .major)
     XCTAssertEqual(got.tempo, Tempo(marking: "Allegro", bpm: 132))
     XCTAssertEqual(got.tags, ["scale", "warmup"])
     XCTAssertTrue(got.priority)

@@ -68,7 +68,8 @@
     static var previewPiece: LibraryItemView {
       LibraryItemView(
         id: "piece-1", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
-        key: "D♭ major", tempo: "Andante (72 BPM)", tempoMarking: "Andante", tempoBpm: 72,
+        key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
+        tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false)
     }
@@ -77,7 +78,7 @@
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
-        key: "C major", tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
+        key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false)
     }
@@ -85,7 +86,8 @@
     static var previewDetail: LibraryItemView {
       LibraryItemView(
         id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
-        key: "D♭ major", tempo: "Andante (72 BPM)", tempoMarking: "Andante", tempoBpm: 72,
+        key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
+        tempoBpm: 72,
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false)
@@ -94,7 +96,7 @@
     static var previewMinimal: LibraryItemView {
       LibraryItemView(
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",
-        key: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false)
     }

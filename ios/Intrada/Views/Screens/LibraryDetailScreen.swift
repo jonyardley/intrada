@@ -93,7 +93,7 @@ struct LibraryDetailScreen: View {
 
   private var detailRows: [(label: String, value: String)] {
     var rows: [(String, String)] = []
-    if let key = item.key, !key.isEmpty { rows.append(("Key", key)) }
+    if let key = item.keyDisplay { rows.append(("Key", key)) }
     if let tempo = item.tempoDisplay { rows.append(("Tempo", tempo)) }
     return rows
   }

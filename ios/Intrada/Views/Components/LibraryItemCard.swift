@@ -43,14 +43,14 @@ struct LibraryItemCard: View {
   }
 
   private var metaLine: String? {
-    let parts = [item.key, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
+    let parts = [item.keyDisplay, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
   private var accessibilityLabel: String {
     var parts = [item.itemType.label, item.title]
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
-    if let key = item.key, !key.isEmpty { parts.append(key) }
+    if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }
     return parts.joined(separator: ", ")
   }
