@@ -64,7 +64,7 @@ enum IntradaFont {
   static let metaMedium = Font.custom(Inter.medium, size: 12, relativeTo: .caption)
   static let badge = Font.custom(Inter.semibold, size: 12, relativeTo: .caption)
   static let tab = Font.custom(Inter.medium, size: 13, relativeTo: .footnote)
-  static let action = Font.custom(Inter.medium, size: 14, relativeTo: .subheadline)
+  static let segment = Font.custom(Inter.medium, size: 14, relativeTo: .subheadline)
   static let field = Font.custom(Inter.regular, size: 16, relativeTo: .callout)
 
   private enum Inter {
