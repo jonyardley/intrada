@@ -2,6 +2,13 @@ import Foundation
 import GRDB
 import SharedTypes
 
+/// Persistence ops the Store resolves against — a protocol so tests can inject a failing fake (#816).
+protocol ItemStore {
+  func loadItems() throws -> [Item]
+  func save(_ item: Item) throws
+  func delete(id: String) throws
+}
+
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
 /// `Effect.persistence` operations resolve against. The schema is deliberately
 /// **sync-agnostic**: every row carries `updated_at` + a soft-delete tombstone
@@ -11,7 +18,7 @@ import SharedTypes
 /// Calls are synchronous; the dataset is single-user and tiny, so GRDB's own
 /// serialization is enough and an off-main hop isn't worth the Sendable dance
 /// against the non-Sendable generated `Item`. Revisit if data volume grows.
-final class LibraryStore {
+final class LibraryStore: ItemStore {
   private let dbQueue: DatabaseQueue
 
   init(_ dbQueue: DatabaseQueue) throws {

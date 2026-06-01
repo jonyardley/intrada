@@ -25,6 +25,8 @@ pub enum PersistenceOperation {
 pub enum PersistenceOutput {
     Items(Vec<Item>),
     Ack,
+    /// Local store failed the op — surfaced, not trusted as success (#816).
+    Failed,
 }
 
 impl Operation for PersistenceOperation {
@@ -105,6 +107,17 @@ mod tests {
         );
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].id, "fresh");
+    }
+
+    #[test]
+    fn store_loaded_failed_surfaces_an_error() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let _ = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+        assert!(
+            model.last_error.is_some(),
+            "a failed local write must surface an error"
+        );
     }
 
     #[test]

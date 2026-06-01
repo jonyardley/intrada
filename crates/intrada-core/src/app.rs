@@ -311,6 +311,12 @@ impl App for Intrada {
                 }
                 // Write-through ack — model already updated; nothing to render.
                 PersistenceOutput::Ack => Command::done(),
+                // Don't trust a write that never reached disk (#816). Message is
+                // op-agnostic since Failed covers load + save + delete.
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't access local storage.");
+                    crux_core::render::render()
+                }
             },
         }
     }
