@@ -83,6 +83,7 @@ pub fn DetailView() -> impl IntoView {
                         subtitle,
                         item_type,
                         key,
+                        modality: _,
                         tempo,
                         tempo_marking: _,
                         tempo_bpm: _,

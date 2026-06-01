@@ -59,6 +59,9 @@ fn row_to_item(row: &libsql::Row) -> Result<Item, ApiError> {
         title,
         composer,
         key,
+        // Turso has no modality column yet — server-side modality is deferred
+        // until online sync is wired (#829); the local-first iOS store owns it.
+        modality: None,
         tempo: tempo_from_row(tempo_marking, tempo_bpm),
         notes,
         tags: tags_from_json(&tags_json),
@@ -157,6 +160,9 @@ pub async fn insert_item(
         title: input.title.clone(),
         composer: input.composer.clone(),
         key: input.key.clone(),
+        // Not persisted server-side yet (#829); kept None for consistency with
+        // reads until the Turso modality column lands with online sync.
+        modality: None,
         tempo: input.tempo.clone(),
         notes: input.notes.clone(),
         tags: input.tags.clone(),
@@ -235,6 +241,7 @@ pub async fn update_item(
         title: title.to_string(),
         composer: composer.map(|s| s.to_string()),
         key: key.map(|s| s.to_string()),
+        modality: None,
         tempo,
         notes: notes.map(|s| s.to_string()),
         tags: tags.clone(),

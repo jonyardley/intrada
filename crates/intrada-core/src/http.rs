@@ -96,6 +96,7 @@ pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Ef
         kind: item.kind.clone(),
         composer: item.composer.clone(),
         key: item.key.clone(),
+        modality: item.modality,
         tempo: item.tempo.clone(),
         notes: item.notes.clone(),
         tags: item.tags.clone(),
@@ -126,6 +127,7 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         title: Some(item.title.clone()),
         composer: Some(item.composer.clone()),
         key: Some(item.key.clone()),
+        modality: Some(item.modality),
         tempo: Some(item.tempo.clone()),
         notes: Some(item.notes.clone()),
         tags: Some(item.tags.clone()),
@@ -462,6 +464,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: Some("Chopin".into()),
             key: Some("C major".into()),
+            modality: None,
             tempo: Some(Tempo {
                 marking: Some("Allegro".into()),
                 bpm: Some(132),

@@ -1,13 +1,14 @@
+import SharedTypes
 import XCTest
 
 @testable import Intrada
 
 final class KeyHelperTests: XCTestCase {
   func testParsesCanonicalMajorAndMinor() {
-    let major = KeyHelper.parse("F# major")
-    XCTAssertEqual(major, KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
-    let minor = KeyHelper.parse("A minor")
-    XCTAssertEqual(minor, KeyHelper.Selection(ring: 0, mode: .minor, spelling: "A"))
+    XCTAssertEqual(
+      KeyHelper.parse("F# major"), KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
+    XCTAssertEqual(
+      KeyHelper.parse("A minor"), KeyHelper.Selection(ring: 0, mode: .minor, spelling: "A"))
   }
 
   func testParseIsCaseAndAccidentalInsensitive() {
@@ -20,12 +21,16 @@ final class KeyHelperTests: XCTestCase {
   }
 
   func testParsesEnharmonicAlternateSpelling() {
-    let gb = KeyHelper.parse("Gb major")
-    XCTAssertEqual(gb?.ring, 6)
-    XCTAssertEqual(gb?.spelling, "Gb")
-    let eb = KeyHelper.parse("Eb minor")
-    XCTAssertEqual(eb?.ring, 6)
-    XCTAssertEqual(eb?.spelling, "Eb")
+    XCTAssertEqual(KeyHelper.parse("Gb major")?.spelling, "Gb")
+    XCTAssertEqual(
+      KeyHelper.parse("Eb minor"), KeyHelper.Selection(ring: 6, mode: .minor, spelling: "Eb"))
+  }
+
+  func testParsesRingFiveEnharmonicAlternates() {
+    XCTAssertEqual(
+      KeyHelper.parse("Cb major"), KeyHelper.Selection(ring: 5, mode: .major, spelling: "Cb"))
+    XCTAssertEqual(
+      KeyHelper.parse("Ab minor"), KeyHelper.Selection(ring: 5, mode: .minor, spelling: "Ab"))
   }
 
   func testRejectsEmptyAndGarbage() {
@@ -37,48 +42,75 @@ final class KeyHelperTests: XCTestCase {
     XCTAssertNil(KeyHelper.parse("C dorian"))
   }
 
-  func testFormatsCanonicalString() {
-    XCTAssertEqual(KeyHelper.format(tonic: "F#", mode: .major), "F# major")
-    XCTAssertEqual(KeyHelper.format(tonic: "Bb", mode: .minor), "Bb minor")
+  func testSelectionPrefersStructuredAndFallsBackToLegacy() {
+    // Structured: key is the tonic, modality given.
+    XCTAssertEqual(
+      KeyHelper.selection(key: "F#", modality: .major),
+      KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
+    // Legacy: combined string, no modality.
+    XCTAssertEqual(
+      KeyHelper.selection(key: "F# major", modality: nil),
+      KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
+    XCTAssertNil(KeyHelper.selection(key: "", modality: nil))
   }
 
   func testPrettifyConvertsAccidentalsOnly() {
-    XCTAssertEqual(KeyHelper.prettify("F# major"), "F\u{266F} major")
+    XCTAssertEqual(KeyHelper.prettify("F#"), "F\u{266F}")
     XCTAssertEqual(KeyHelper.prettify("Bb major"), "B\u{266D} major")
-    XCTAssertEqual(KeyHelper.prettify("Db minor"), "D\u{266D} minor")
     // The 'b' inside mode words must survive untouched.
     XCTAssertEqual(KeyHelper.prettify("C minor"), "C minor")
   }
 
+  func testDisplayComposesAndHandlesLegacy() {
+    XCTAssertEqual(KeyHelper.display(key: "F#", modality: .major), "F\u{266F} Major")
+    XCTAssertEqual(KeyHelper.display(key: "Db", modality: .minor), "D\u{266D} minor")
+    // Legacy combined value with no modality still prettifies (no modality word).
+    XCTAssertEqual(KeyHelper.display(key: "F# major", modality: nil), "F\u{266F} major")
+    XCTAssertNil(KeyHelper.display(key: "", modality: nil))
+    XCTAssertNil(KeyHelper.display(key: nil, modality: .major))
+  }
+
   func testTapSelectsThenFlipsEnharmonic() {
     // Fresh tap on the F#/Gb spoke selects the default spelling.
-    let first = KeyHelper.nextValueOnTap(current: "", ring: 6, mode: .major)
-    XCTAssertEqual(first.value, "F# major")
+    let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 6, mode: .major)
+    XCTAssertEqual(first.tonic, "F#")
+    XCTAssertEqual(first.modality, .major)
     XCTAssertFalse(first.flipped)
     // Second tap flips to the alternate.
-    let second = KeyHelper.nextValueOnTap(current: first.value, ring: 6, mode: .major)
-    XCTAssertEqual(second.value, "Gb major")
+    let second = KeyHelper.nextOnTap(
+      currentKey: first.tonic, currentModality: first.modality, ring: 6, mode: .major)
+    XCTAssertEqual(second.tonic, "Gb")
     XCTAssertTrue(second.flipped)
     // Third tap flips back.
-    let third = KeyHelper.nextValueOnTap(current: second.value, ring: 6, mode: .major)
-    XCTAssertEqual(third.value, "F# major")
+    let third = KeyHelper.nextOnTap(
+      currentKey: second.tonic, currentModality: second.modality, ring: 6, mode: .major)
+    XCTAssertEqual(third.tonic, "F#")
     XCTAssertTrue(third.flipped)
   }
 
   func testTapFlipsEnharmonicOnMinorSpoke() {
-    let first = KeyHelper.nextValueOnTap(current: "", ring: 5, mode: .minor)
-    XCTAssertEqual(first.value, "G# minor")
+    let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 5, mode: .minor)
+    XCTAssertEqual(first.tonic, "G#")
     XCTAssertFalse(first.flipped)
-    let second = KeyHelper.nextValueOnTap(current: first.value, ring: 5, mode: .minor)
-    XCTAssertEqual(second.value, "Ab minor")
+    let second = KeyHelper.nextOnTap(
+      currentKey: first.tonic, currentModality: first.modality, ring: 5, mode: .minor)
+    XCTAssertEqual(second.tonic, "Ab")
     XCTAssertTrue(second.flipped)
   }
 
-  func testParsesRingFiveEnharmonicAlternates() {
-    XCTAssertEqual(
-      KeyHelper.parse("Cb major"), KeyHelper.Selection(ring: 5, mode: .major, spelling: "Cb"))
-    XCTAssertEqual(
-      KeyHelper.parse("Ab minor"), KeyHelper.Selection(ring: 5, mode: .minor, spelling: "Ab"))
+  func testTapOnNonEnharmonicSpokeNeverFlips() {
+    let result = KeyHelper.nextOnTap(
+      currentKey: "C", currentModality: .major, ring: 0, mode: .major)
+    XCTAssertEqual(result.tonic, "C")
+    XCTAssertFalse(result.flipped)
+  }
+
+  func testTapSwitchingSpokeIsAFreshSelection() {
+    let result = KeyHelper.nextOnTap(
+      currentKey: "F#", currentModality: .major, ring: 0, mode: .major)
+    XCTAssertEqual(result.tonic, "C")
+    XCTAssertEqual(result.modality, .major)
+    XCTAssertFalse(result.flipped)
   }
 
   func testEnharmonicAltOnlyExistsForAmbiguousSpokes() {
@@ -87,29 +119,17 @@ final class KeyHelperTests: XCTestCase {
     XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .minor), "Eb")
   }
 
-  func testTapOnNonEnharmonicSpokeNeverFlips() {
-    let result = KeyHelper.nextValueOnTap(current: "C major", ring: 0, mode: .major)
-    XCTAssertEqual(result.value, "C major")
-    XCTAssertFalse(result.flipped)
-  }
-
-  func testTapSwitchingSpokeIsAFreshSelection() {
-    let result = KeyHelper.nextValueOnTap(current: "F# major", ring: 0, mode: .major)
-    XCTAssertEqual(result.value, "C major")
-    XCTAssertFalse(result.flipped)
-  }
-
   func testAccessibilityLabelSpeaksAccidentals() {
-    XCTAssertEqual(KeyHelper.accessibilityLabel("F#", mode: .major), "F sharp major")
+    XCTAssertEqual(KeyHelper.accessibilityLabel("F#", mode: .major), "F sharp Major")
     XCTAssertEqual(KeyHelper.accessibilityLabel("Db", mode: .minor), "D flat minor")
-    XCTAssertEqual(KeyHelper.accessibilityLabel("C", mode: .major), "C major")
+    XCTAssertEqual(KeyHelper.accessibilityLabel("C", mode: .major), "C Major")
   }
 
   func testWedgeAccessibilityAnnouncesBothEnharmonicSpellings() {
     XCTAssertEqual(
-      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "F sharp or G flat major")
+      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "F sharp or G flat Major")
     XCTAssertEqual(
       KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .minor), "D sharp or E flat minor")
-    XCTAssertEqual(KeyHelper.wedgeAccessibilityLabel(ring: 0, mode: .major), "C major")
+    XCTAssertEqual(KeyHelper.wedgeAccessibilityLabel(ring: 0, mode: .major), "C Major")
   }
 }

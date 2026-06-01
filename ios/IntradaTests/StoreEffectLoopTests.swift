@@ -273,7 +273,8 @@ final class StoreEffectLoopTests: XCTestCase {
   }
 
   static let sampleItem = Item(
-    id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, tempo: nil,
+    id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+    tempo: nil,
     notes: nil, tags: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
     priority: false)
 

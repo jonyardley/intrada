@@ -417,6 +417,7 @@ mod tests {
             title: String::new(),
             subtitle: subtitle.to_string(),
             key: None,
+            modality: None,
             tempo: None,
             tempo_marking: None,
             tempo_bpm: None,

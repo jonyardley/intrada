@@ -12,6 +12,7 @@ struct LibraryEditScreen: View {
   @State private var title: String
   @State private var composer: String
   @State private var key: String
+  @State private var modality: Modality?
   @State private var marking: String
   @State private var bpm: String
   @State private var notes: String
@@ -20,7 +21,11 @@ struct LibraryEditScreen: View {
     self.item = item
     _title = State(initialValue: item.title)
     _composer = State(initialValue: item.subtitle)
-    _key = State(initialValue: item.key ?? "")
+    // Normalise on load so editing self-heals legacy combined values
+    // ("F# major") into tonic + modality even if the user never re-taps a spoke.
+    let selection = KeyHelper.selection(key: item.key ?? "", modality: item.modality)
+    _key = State(initialValue: selection?.spelling ?? item.key ?? "")
+    _modality = State(initialValue: selection?.mode ?? item.modality)
     _marking = State(initialValue: item.tempoMarking ?? "")
     _bpm = State(initialValue: item.tempoBpm.map(String.init) ?? "")
     _notes = State(initialValue: item.notes ?? "")
@@ -37,7 +42,7 @@ struct LibraryEditScreen: View {
               divider
               FormField(label: "Composer", text: $composer)
               divider
-              KeyPicker(label: "Key", text: $key)
+              KeyPicker(label: "Key", key: $key, modality: $modality)
             }
             .cardSurface()
 
@@ -77,6 +82,7 @@ struct LibraryEditScreen: View {
       title: title,
       composer: .some(emptyToNil(composer)),
       key: .some(emptyToNil(key)),
+      modality: .some(modality),
       tempo: .some(buildTempo()),
       notes: .some(emptyToNil(notes)),
       tags: nil,

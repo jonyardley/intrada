@@ -4,6 +4,12 @@ import SharedTypes
 /// structured `tempoMarking` / `tempoBpm`; how iOS renders them ("Allegro · ♩ =
 /// 132") is the shell's call, shared here so the card and detail agree.
 extension LibraryItemView {
+  /// Composed key for display: "F♯ major". Falls back to the prettified raw
+  /// value for legacy keys that predate the modality split.
+  var keyDisplay: String? {
+    KeyHelper.display(key: key, modality: modality)
+  }
+
   /// Visual tempo: "Allegro · ♩ = 132". ♩ is U+2669 (no SF Symbol equivalent).
   var tempoDisplay: String? {
     let parts = [tempoMarking, tempoBpm.map { "♩ = \($0)" }]

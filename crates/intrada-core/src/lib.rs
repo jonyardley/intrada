@@ -9,7 +9,7 @@ pub mod validation;
 
 pub use app::{AppEffect, Effect, Event, Intrada};
 pub use domain::account::{AccountEvent, AccountPreferences};
-pub use domain::item::{Item, ItemEvent, ItemKind};
+pub use domain::item::{Item, ItemEvent, ItemKind, Modality};
 pub use domain::mcp_audit::{McpAuditEntry, McpAuditEvent};
 pub use domain::mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 pub use domain::oauth::{OAuthEvent, OAuthFinalizeParams};

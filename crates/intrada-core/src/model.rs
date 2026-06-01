@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
-use crate::domain::item::{Item, ItemKind};
+use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
 use crate::domain::session::{
@@ -223,6 +223,7 @@ pub struct LibraryItemView {
     pub title: String,
     pub subtitle: String,
     pub key: Option<String>,
+    pub modality: Option<Modality>,
     pub tempo: Option<String>,
     pub tempo_marking: Option<String>,
     pub tempo_bpm: Option<u16>,
@@ -531,6 +532,7 @@ mod tests {
             kind: ItemKind::Piece,
             composer: None,
             key: None,
+            modality: None,
             tempo: None,
             notes: None,
             tags: vec![],
