@@ -12,6 +12,7 @@ struct ScreenScaffold<Content: View>: View {
 
   struct TrailingAction {
     let label: String
+    var systemImage: String = "plus"
     let action: () -> Void
   }
 
@@ -60,9 +61,20 @@ struct ScreenScaffold<Content: View>: View {
       .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
       Spacer(minLength: 12)
       if let trailing {
-        Button(trailing.label, action: trailing.action)
-          .font(.system(size: 14, weight: .medium))
-          .foregroundStyle(IntradaColor.accent)
+        Button(action: trailing.action) {
+          Image(systemName: trailing.systemImage)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(IntradaColor.onAccent)
+            .frame(width: 30, height: 30)
+            .background(IntradaColor.accent, in: Circle())
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(trailing.label)
+        // Centre the circular button on the title's baseline rather than
+        // letting it hang below it.
+        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
       }
     }
     .padding(.horizontal, 16)
@@ -75,7 +87,7 @@ struct ScreenScaffold<Content: View>: View {
     ScreenScaffold(
       title: "Library",
       subtitle: "12 items",
-      trailing: .init(label: "+ Add", action: {})
+      trailing: .init(label: "Add", action: {})
     ) {
       PlaceholderContent(
         systemImage: "books.vertical",
