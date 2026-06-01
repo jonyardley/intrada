@@ -37,7 +37,8 @@ struct RootView: View {
       if seedSampleData {
         store.send(.loadSampleData)
       } else {
-        store.send(.startApp(apiBaseUrl: apiBaseURL))
+        // local-first: the Library hydrates from the on-device store, no HTTP.
+        store.send(.startApp(apiBaseUrl: apiBaseURL, localFirst: true))
       }
     }
   }

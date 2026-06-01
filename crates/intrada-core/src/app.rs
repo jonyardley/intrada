@@ -44,6 +44,8 @@ pub enum Event {
     /// Named `StartApp` (not `Init`) to avoid Swift keyword collision.
     StartApp {
         api_base_url: String,
+        /// iOS passes true (Library local-first); web passes false (online).
+        local_first: bool,
     },
     /// Replace the library with a canonical demo dataset. Sent by a shell only
     /// under an explicit opt-in (e.g. iOS `--seed-sample-data` launch arg) for
@@ -167,17 +169,29 @@ impl App for Intrada {
     ) -> Command<Self::Effect, Self::Event> {
         match event {
             // ── Lifecycle ────────────────────────────────────────────
-            Event::StartApp { api_base_url } => {
+            Event::StartApp {
+                api_base_url,
+                local_first,
+            } => {
                 model.api_base_url = api_base_url;
-                // Immediately fetch all data
-                Command::all([
-                    http::fetch_items(&model.api_base_url),
-                    http::fetch_sessions(&model.api_base_url),
-                    http::fetch_sets(&model.api_base_url),
-                ])
+                model.local_first = local_first;
+                if local_first {
+                    // Library is local: hydrate from the on-device store, no HTTP.
+                    // (Sessions/sets aren't on the native shell yet — migrated later.)
+                    persistence::load_items()
+                } else {
+                    Command::all([
+                        http::fetch_items(&model.api_base_url),
+                        http::fetch_sessions(&model.api_base_url),
+                        http::fetch_sets(&model.api_base_url),
+                    ])
+                }
             }
             Event::LoadSampleData => {
                 model.items = sample_items();
+                // Seed mode is offline (DEBUG/CI) — keep writes local so a demo
+                // edit doesn't surprise-POST to the API.
+                model.local_first = true;
                 // crux_http panics on a relative URL; demo mode skips StartApp, so set one.
                 if model.api_base_url.is_empty() {
                     "http://localhost:3001".clone_into(&mut model.api_base_url);
@@ -240,16 +254,14 @@ impl App for Intrada {
                     model.items.push(item.clone());
                 }
                 model.record_success();
-                // Persist on confirmation (real id, not the temp id); web ignores
-                // the Persistence effect, so this is iOS-only write-through.
-                Command::all([persistence::save_item(item), crux_core::render::render()])
+                crux_core::render::render()
             }
             Event::ItemUpdated { item } => {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
-                    *existing = item.clone();
+                    *existing = item;
                 }
                 model.record_success();
-                Command::all([persistence::save_item(item), crux_core::render::render()])
+                crux_core::render::render()
             }
             Event::SetUpdated { set } => {
                 if let Some(existing) = model.sets.iter_mut().find(|r| r.id == set.id) {
@@ -1875,6 +1887,7 @@ mod tests {
         let _cmd = app.update(
             Event::StartApp {
                 api_base_url: "https://api.example.com".to_string(),
+                local_first: false,
             },
             &mut model,
         );

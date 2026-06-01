@@ -19,6 +19,10 @@ use crate::domain::ListQuery;
 pub struct Model {
     /// Base URL for the REST API (set via `Event::StartApp`).
     pub api_base_url: String,
+    /// When true (set by the iOS shell at `StartApp`), the Library is local-
+    /// first: reads hydrate from the on-device store and writes persist locally
+    /// with no HTTP. The web shell leaves this false and stays online.
+    pub local_first: bool,
     pub items: Vec<Item>,
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,

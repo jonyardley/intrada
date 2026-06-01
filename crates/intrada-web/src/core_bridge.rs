@@ -72,6 +72,7 @@ pub fn init_core(
         let core_ref = core.borrow();
         let effects = core_ref.process_event(Event::StartApp {
             api_base_url: api_client::API_BASE_URL.to_string(),
+            local_first: false,
         });
         view_model.set(core_ref.view());
         effects
@@ -362,6 +363,7 @@ mod tests {
         // Set API base URL via Init (ignore the 3 HTTP fetch effects)
         let _ = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
         let now = chrono::Utc::now();
         let item = Item {
@@ -387,6 +389,7 @@ mod tests {
         let core = Core::<Intrada>::new();
         let _ = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
@@ -414,6 +417,7 @@ mod tests {
         let core = Core::<Intrada>::new();
         let _ = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
@@ -552,6 +556,7 @@ mod tests {
         let core = Core::<Intrada>::new();
         let _ = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });
@@ -579,6 +584,7 @@ mod tests {
         let core = Core::<Intrada>::new();
         let _ = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
         let _ = core.process_event(Event::DataLoaded { items: vec![] });
 
@@ -601,6 +607,7 @@ mod tests {
         let core = Core::<Intrada>::new();
         let effects = core.process_event(Event::StartApp {
             api_base_url: "http://localhost:3001".to_string(),
+            local_first: false,
         });
 
         let http = http_effects(&effects);

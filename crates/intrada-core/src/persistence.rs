@@ -117,90 +117,172 @@ mod tests {
         assert_eq!(model.items[0].id, "keep");
     }
 
-    // ── Write-through (B3a) ─────────────────────────────────────────────
+    // ── Builders ────────────────────────────────────────────────────────
 
-    fn emits_save(cmd: &mut Command<Effect, Event>, expected_id: &str) -> bool {
+    fn has_save(cmd: &mut Command<Effect, Event>, id: &str) -> bool {
         cmd.effects().any(|e| {
             matches!(e, Effect::Persistence(req)
-                if matches!(&req.operation, PersistenceOperation::SaveItem(item) if item.id == expected_id))
+                if matches!(&req.operation, PersistenceOperation::SaveItem(item) if item.id == id))
         })
+    }
+
+    fn has_delete(cmd: &mut Command<Effect, Event>, id: &str) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::DeleteItem { id: id.to_string() })
+        })
+    }
+
+    fn has_http(cmd: &mut Command<Effect, Event>) -> bool {
+        cmd.effects().any(|e| matches!(e, Effect::Http(_)))
     }
 
     #[test]
     fn save_item_requests_a_save_op() {
         let mut cmd = save_item(sample_item("p1"));
-        assert!(emits_save(&mut cmd, "p1"));
+        assert!(has_save(&mut cmd, "p1"));
     }
 
     #[test]
     fn delete_item_requests_a_delete_op() {
         let mut cmd = delete_item("gone".to_string());
-        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
-            if req.operation == PersistenceOperation::DeleteItem { id: "gone".to_string() })));
+        assert!(has_delete(&mut cmd, "gone"));
+    }
+
+    // ── Local-first mode (B3b): writes persist locally, no HTTP ─────────
+
+    fn create_item() -> crate::domain::types::CreateItem {
+        crate::domain::types::CreateItem {
+            title: "New".into(),
+            kind: ItemKind::Piece,
+            composer: Some("Chopin".into()), // pieces require a composer (validation)
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        }
     }
 
     #[test]
-    fn item_created_writes_through_to_store() {
-        let app = crate::app::Intrada;
-        let mut model = Model::test_default();
-        let mut cmd = app.update(
-            Event::ItemCreated {
-                temp_id: "tmp".into(),
-                item: sample_item("server-id"),
-            },
-            &mut model,
-        );
-        assert!(emits_save(&mut cmd, "server-id"));
-    }
-
-    #[test]
-    fn item_updated_writes_through_to_store() {
-        let app = crate::app::Intrada;
-        let mut model = Model::test_default();
-        model.items = vec![sample_item("p1")];
-        let mut cmd = app.update(
-            Event::ItemUpdated {
-                item: sample_item("p1"),
-            },
-            &mut model,
-        );
-        assert!(emits_save(&mut cmd, "p1"));
-    }
-
-    #[test]
-    fn delete_writes_through_a_tombstone() {
+    fn local_first_add_persists_and_skips_http() {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
         let mut model = Model::test_default();
+        model.local_first = true;
+        let mut cmd = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
+        let id = model.items[0].id.clone();
+        assert!(
+            has_save(&mut cmd, &id),
+            "local-first create persists with the client ulid"
+        );
+        assert!(
+            !has_http(&mut cmd),
+            "local-first create makes no HTTP request"
+        );
+    }
+
+    #[test]
+    fn local_first_update_persists_and_skips_http() {
+        use crate::domain::item::ItemEvent;
+        use crate::domain::types::UpdateItem;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+        model.items = vec![sample_item("p1")];
+        let input = UpdateItem {
+            title: Some("Renamed".into()),
+            composer: None,
+            key: None,
+            tempo: None,
+            notes: None,
+            tags: None,
+            priority: None,
+        };
+        let mut cmd = app.update(
+            Event::Item(ItemEvent::Update {
+                id: "p1".into(),
+                input,
+            }),
+            &mut model,
+        );
+        assert!(has_save(&mut cmd, "p1"));
+        assert!(!has_http(&mut cmd));
+    }
+
+    #[test]
+    fn local_first_delete_persists_tombstone_and_skips_http() {
+        use crate::domain::item::ItemEvent;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
         model.items = vec![sample_item("p1")];
         let mut cmd = app.update(
             Event::Item(ItemEvent::Delete { id: "p1".into() }),
             &mut model,
         );
-        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
-            if req.operation == PersistenceOperation::DeleteItem { id: "p1".to_string() })));
+        assert!(has_delete(&mut cmd, "p1"));
+        assert!(!has_http(&mut cmd));
     }
 
     #[test]
-    fn optimistic_create_does_not_persist_yet() {
-        // B3a persists creates only on confirmation (real id), so the optimistic
-        // Add must emit no Persistence effect (until B3b client-ulids — #818).
+    fn online_add_uses_http_not_persistence() {
         use crate::domain::item::ItemEvent;
-        use crate::domain::types::CreateItem;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default(); // local_first defaults false
+        let mut cmd = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
+        assert!(has_http(&mut cmd), "online create POSTs to the server");
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+    }
+
+    #[test]
+    fn local_first_write_clears_the_dismiss_mute() {
+        // Online clears the mute on the server callback; local-first has none,
+        // so a successful local write must record the success itself.
+        use crate::domain::item::ItemEvent;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+        model.dismiss_error(); // user dismissed a banner → error_muted = true
+        let _ = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
+        assert!(
+            !model.error_muted,
+            "a successful local write should un-mute"
+        );
+    }
+
+    #[test]
+    fn start_app_local_first_hydrates_from_store() {
         let app = crate::app::Intrada;
         let mut model = Model::test_default();
         let mut cmd = app.update(
-            Event::Item(ItemEvent::Add(CreateItem {
-                title: "New".into(),
-                kind: ItemKind::Piece,
-                composer: None,
-                key: None,
-                tempo: None,
-                notes: None,
-                tags: vec![],
-            })),
+            Event::StartApp {
+                api_base_url: "http://x".into(),
+                local_first: true,
+            },
             &mut model,
         );
+        assert!(model.local_first);
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadItems)));
+        assert!(
+            !has_http(&mut cmd),
+            "local-first launch hydrates from the store, no HTTP"
+        );
+    }
+
+    #[test]
+    fn start_app_online_fetches_over_http() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(
+            Event::StartApp {
+                api_base_url: "http://x".into(),
+                local_first: false,
+            },
+            &mut model,
+        );
+        assert!(!model.local_first);
+        assert!(has_http(&mut cmd));
         assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
     }
 }
