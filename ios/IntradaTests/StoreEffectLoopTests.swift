@@ -65,6 +65,20 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertTrue(items.isEmpty, "fresh in-memory store has no rows")
   }
 
+  func testPersistenceWriteFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 9, effect: .persistence(.saveItem(Self.sampleItem)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), store: FailingStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a failing local store must resolve .failed, not a phantom .ack")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -258,6 +272,11 @@ final class StoreEffectLoopTests: XCTestCase {
     await fulfillment(of: [resolved], timeout: 2)
   }
 
+  static let sampleItem = Item(
+    id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, tempo: nil,
+    notes: nil, tags: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
+    priority: false)
+
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
@@ -320,6 +339,13 @@ private final class FakeBridge: CoreBridge {
 }
 
 private struct TestError: Error {}
+
+/// An `ItemStore` that always throws — drives the failure path (#816).
+private struct FailingStore: ItemStore {
+  func loadItems() throws -> [Item] { throw TestError() }
+  func save(_ item: Item) throws { throw TestError() }
+  func delete(id: String) throws { throw TestError() }
+}
 
 /// Intercepts URLSession traffic so `Store.execute` runs against canned
 /// responses/errors. `handler` is set per test; `lastRequest` captures the

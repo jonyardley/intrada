@@ -175,9 +175,11 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     **client-ulid-canonical** (temp-id dance retired for items — #818). The
     shared core keeps the web app online (`local_first = false`). **The iPhone
     Library is genuinely offline here.**
-  - **B4 (folded into B3b).** Remaining hardening: a failed *local* write still
-    resolves `.ack` (reported via Sentry, but the model keeps a non-persisted
-    item that vanishes on relaunch) — graceful recovery tracked in #816.
+  - **B4 (folded into B3b).** Hardening done (#816): a failed *local* write now
+    resolves `.failed` (not a phantom `.ack`) and the core surfaces an error, so
+    a write that never reached disk is observable rather than silently trusted.
+    (A rejected optimistic item still lingers until relaunch — acceptable for
+    the rare disk-failure case.)
   - **B5** — decouple auth: the app runs with no account; sign-in is inert until
     sync exists.
   - **Gate:** full Library CRUD works in airplane mode, with no account.

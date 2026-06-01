@@ -11,10 +11,10 @@ final class Store {
 
   private let bridge: CoreBridge
   private let session: URLSession
-  private let store: LibraryStore?
+  private let store: (any ItemStore)?
 
   init(
-    bridge: CoreBridge = LiveBridge(), session: URLSession = .shared, store: LibraryStore? = nil
+    bridge: CoreBridge = LiveBridge(), session: URLSession = .shared, store: (any ItemStore)? = nil
   ) {
     self.bridge = bridge
     self.session = session
@@ -60,12 +60,9 @@ final class Store {
     process(guarded { try bridge.resolve(id, httpResult: result) } ?? [])
   }
 
-  /// Run a persistence op against the local store. A store failure is reported
-  /// and answered with the empty/ack shape so the core's command chain still
-  /// completes (offline-first assumes local writes succeed; failures are rare
-  /// disk/corruption cases worth surfacing, not silently dropping the effect).
+  /// Failure (or no store) → `.failed` so the core surfaces it, not a phantom ack (#816).
   private func persistenceOutput(for operation: PersistenceOperation) -> PersistenceOutput {
-    guard let store else { return Self.emptyOutput(for: operation) }
+    guard let store else { return .failed }
     do {
       switch operation {
       case .loadItems: return .items(try store.loadItems())
@@ -78,14 +75,7 @@ final class Store {
       }
     } catch {
       report(error)
-      return Self.emptyOutput(for: operation)
-    }
-  }
-
-  private static func emptyOutput(for operation: PersistenceOperation) -> PersistenceOutput {
-    switch operation {
-    case .loadItems: .items([])
-    case .saveItem, .deleteItem: .ack
+      return .failed
     }
   }
 
