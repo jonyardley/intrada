@@ -349,6 +349,19 @@ ios-gen: ios-typegen ios-package
     @just _ios-src-hash > ios/generated/.gen-stamp
     @echo "✓ bindings regenerated"
 
+# Losslessly shrink snapshot references — drops Xcode's redundant all-opaque
+# alpha channel (keeps pixels + sRGB), ~75% smaller. Run after (re)recording
+# snapshots, before committing. CI's Snapshot Hygiene job enforces this.
+[group('iOS')]
+ios-snapshots-optimize:
+    find ios/IntradaTests/__Snapshots__ -name '*.png' -exec oxipng -o max --quiet {} +
+    @echo "✓ snapshots optimized — review the git diff and commit"
+
+# Orphan + size-ceiling check on snapshot references (same as CI).
+[group('iOS')]
+ios-snapshots-check:
+    bash scripts/check-snapshots.sh
+
 # Facet typegen → ios/generated/SharedTypes (Event/Effect/ViewModel + bincode).
 [group('iOS')]
 ios-typegen:
