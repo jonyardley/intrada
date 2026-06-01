@@ -225,7 +225,7 @@ jobs:
     needs: changes
     # iOS-pivot focus mode: Tauri host is on hold — run on main only, not PRs.
     # Revert to `|| needs.changes.outputs.mobile == 'true'` at parity.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -489,7 +489,7 @@ jobs:
     needs: changes
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -552,7 +552,7 @@ jobs:
     needs: changes
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -575,7 +575,7 @@ jobs:
     timeout-minutes: 10
     needs: wasm-build
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -635,7 +635,7 @@ jobs:
     timeout-minutes: 10
     needs: wasm-build
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -776,7 +776,7 @@ jobs:
     # deploy on its ~14 min macOS build only added latency. It still runs on
     # main pushes for its own signal — it just no longer holds up the deploy.
     needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - name: Download web-dist artifact
@@ -847,9 +847,9 @@ jobs:
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    # See `deploy`: ios-build (Tauri) deliberately omitted — it gated nothing
-    # the API deploy depends on and only added ~14 min of latency.
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, api-docker-build]
+    # Web/Tauri jobs (wasm-build/wasm-test/e2e) are disabled (paused — see
+    # CLAUDE.md), so they no longer gate the API deploy.
+    needs: [test, clippy, fmt, api-docker-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
