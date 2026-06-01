@@ -100,6 +100,57 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(store.viewModel?.error, "batched")
   }
 
+  // ── Library sort persistence ───────────────────────────────────────────
+
+  func testSaveLibrarySortEffectWritesToDefaults() throws {
+    let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
+    let sort = LibrarySort(field: .title, direction: .ascending)
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Request(id: 5, effect: .app(.saveLibrarySort(sort)))] }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.send(.setQuery(nil))  // any event to drive the scripted effect
+
+    let data = try XCTUnwrap(defaults.data(forKey: Store.sortDefaultsKey))
+    let restored = try LibrarySort.bincodeDeserialize(input: [UInt8](data))
+    XCTAssertEqual(restored, sort, "save effect persists the chosen sort")
+    XCTAssertEqual(bridge.emptyResolved, [5], "save effect still acks via resolveEmpty")
+  }
+
+  func testRestorePersistedSortReplaysSetSort() throws {
+    let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
+    let sort = LibrarySort(field: .lastPracticed, direction: .ascending)
+    defaults.set(Data(try sort.bincodeSerialize()), forKey: Store.sortDefaultsKey)
+
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.restorePersistedSort()
+
+    XCTAssertEqual(
+      sentEvents, [.setSort(sort)], "restore re-dispatches SetSort with the stored order")
+  }
+
+  func testRestorePersistedSortNoopWhenAbsent() {
+    let defaults = UserDefaults(suiteName: "sort-test-\(UUID().uuidString)")!
+    let bridge = FakeBridge()
+    var sentEvents: [Event] = []
+    bridge.updateHandler = { event in
+      sentEvents.append(event)
+      return []
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.restorePersistedSort()
+
+    XCTAssertTrue(sentEvents.isEmpty, "no stored sort → no event")
+  }
+
   // ── Failure-soft (guarded) ─────────────────────────────────────────────
 
   func testUpdateThrowIsSwallowedWithoutCrashing() {
