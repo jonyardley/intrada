@@ -73,18 +73,18 @@ final class KeyHelperTests: XCTestCase {
   func testTapSelectsThenFlipsEnharmonic() {
     // Fresh tap on the F#/Gb spoke selects the default spelling.
     let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 6, mode: .major)
-    XCTAssertEqual(first.tonic, "F#")
+    XCTAssertEqual(first.tonic, "Gb")
     XCTAssertEqual(first.modality, .major)
     XCTAssertFalse(first.flipped)
     // Second tap flips to the alternate.
     let second = KeyHelper.nextOnTap(
       currentKey: first.tonic, currentModality: first.modality, ring: 6, mode: .major)
-    XCTAssertEqual(second.tonic, "Gb")
+    XCTAssertEqual(second.tonic, "F#")
     XCTAssertTrue(second.flipped)
     // Third tap flips back.
     let third = KeyHelper.nextOnTap(
       currentKey: second.tonic, currentModality: second.modality, ring: 6, mode: .major)
-    XCTAssertEqual(third.tonic, "F#")
+    XCTAssertEqual(third.tonic, "Gb")
     XCTAssertTrue(third.flipped)
   }
 
@@ -115,8 +115,8 @@ final class KeyHelperTests: XCTestCase {
 
   func testEnharmonicAltOnlyExistsForAmbiguousSpokes() {
     XCTAssertNil(KeyHelper.enharmonicAlt(ring: 0, mode: .major))
-    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .major), "Gb")
-    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .minor), "Eb")
+    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .major), "F#")
+    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .minor), "D#")
   }
 
   func testAccessibilityLabelSpeaksAccidentals() {
@@ -127,9 +127,9 @@ final class KeyHelperTests: XCTestCase {
 
   func testWedgeAccessibilityAnnouncesBothEnharmonicSpellings() {
     XCTAssertEqual(
-      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "F sharp or G flat Major")
+      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "G flat or F sharp Major")
     XCTAssertEqual(
-      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .minor), "D sharp or E flat minor")
+      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .minor), "E flat or D sharp minor")
     XCTAssertEqual(KeyHelper.wedgeAccessibilityLabel(ring: 0, mode: .major), "C Major")
   }
 }
