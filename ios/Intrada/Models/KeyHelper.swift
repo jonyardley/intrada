@@ -86,7 +86,7 @@ enum KeyHelper {
 
   static func modeWord(_ mode: Modality) -> String {
     switch mode {
-    case .major: return "major"
+    case .major: return "Major"
     case .minor: return "minor"
     }
   }

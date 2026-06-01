@@ -62,9 +62,9 @@ final class KeyHelperTests: XCTestCase {
   }
 
   func testDisplayComposesAndHandlesLegacy() {
-    XCTAssertEqual(KeyHelper.display(key: "F#", modality: .major), "F\u{266F} major")
+    XCTAssertEqual(KeyHelper.display(key: "F#", modality: .major), "F\u{266F} Major")
     XCTAssertEqual(KeyHelper.display(key: "Db", modality: .minor), "D\u{266D} minor")
-    // Legacy combined value with no modality still prettifies.
+    // Legacy combined value with no modality still prettifies (no modality word).
     XCTAssertEqual(KeyHelper.display(key: "F# major", modality: nil), "F\u{266F} major")
     XCTAssertNil(KeyHelper.display(key: "", modality: nil))
     XCTAssertNil(KeyHelper.display(key: nil, modality: .major))
@@ -120,16 +120,16 @@ final class KeyHelperTests: XCTestCase {
   }
 
   func testAccessibilityLabelSpeaksAccidentals() {
-    XCTAssertEqual(KeyHelper.accessibilityLabel("F#", mode: .major), "F sharp major")
+    XCTAssertEqual(KeyHelper.accessibilityLabel("F#", mode: .major), "F sharp Major")
     XCTAssertEqual(KeyHelper.accessibilityLabel("Db", mode: .minor), "D flat minor")
-    XCTAssertEqual(KeyHelper.accessibilityLabel("C", mode: .major), "C major")
+    XCTAssertEqual(KeyHelper.accessibilityLabel("C", mode: .major), "C Major")
   }
 
   func testWedgeAccessibilityAnnouncesBothEnharmonicSpellings() {
     XCTAssertEqual(
-      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "F sharp or G flat major")
+      KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .major), "F sharp or G flat Major")
     XCTAssertEqual(
       KeyHelper.wedgeAccessibilityLabel(ring: 6, mode: .minor), "D sharp or E flat minor")
-    XCTAssertEqual(KeyHelper.wedgeAccessibilityLabel(ring: 0, mode: .major), "C major")
+    XCTAssertEqual(KeyHelper.wedgeAccessibilityLabel(ring: 0, mode: .major), "C Major")
   }
 }

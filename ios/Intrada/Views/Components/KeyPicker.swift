@@ -39,15 +39,14 @@ struct KeyPicker: View {
           wheel
           Spacer(minLength: 0)
         }
-        .padding(.top, 4)
-        .padding(.bottom, 12)
+        .padding(.vertical, 8)
         // Fade the wheel's top into the card so it emerges from behind the row.
         .overlay(alignment: .top) {
           LinearGradient(
             colors: [IntradaColor.cardFill, IntradaColor.cardFill.opacity(0)],
             startPoint: .top, endPoint: .bottom
           )
-          .frame(height: 60)
+          .frame(height: 40)
           .allowsHitTesting(false)
         }
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -94,6 +93,9 @@ struct KeyPicker: View {
         .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkFaint)
         .rotationEffect(.degrees(expanded ? 180 : 0))
+        // Keep clear distance from the clear (×) button so a tap aimed at the
+        // chevron doesn't land on clear and wipe the key.
+        .padding(.leading, 12)
     }
     .padding(.vertical, 10)
     .padding(.horizontal, 16)
