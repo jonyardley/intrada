@@ -21,7 +21,7 @@ use crate::domain::session::{
 #[cfg(test)]
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::set::{handle_set_event, Set, SetEvent};
-use crate::domain::types::ListQuery;
+use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
@@ -376,8 +376,8 @@ impl App for Intrada {
             items = apply_query_filter(items, query);
         }
 
-        // Sort by created_at descending (newest first)
-        items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        // Sort by the active order (defaults to newest-added first).
+        sort_library_items(&mut items, &model.active_sort);
 
         // Build completed session views sorted newest-first
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
@@ -490,6 +490,7 @@ impl App for Intrada {
         ViewModel {
             items,
             active_query: model.active_query.clone(),
+            active_sort: model.active_sort,
             total_pieces,
             total_exercises,
             sessions,
@@ -602,6 +603,36 @@ pub(crate) fn build_practice_summaries(
             },
         )
         .collect()
+}
+
+fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
+    items.sort_by(|a, b| {
+        let primary = match sort.field {
+            SortField::DateAdded => a.created_at.cmp(&b.created_at),
+            SortField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+            SortField::LastPracticed => {
+                // None = "never practised" = earliest. Option ordering puts
+                // None < Some, which is exactly that.
+                let la = a
+                    .practice
+                    .as_ref()
+                    .and_then(|p| p.last_practiced_at.as_deref());
+                let lb = b
+                    .practice
+                    .as_ref()
+                    .and_then(|p| p.last_practiced_at.as_deref());
+                la.cmp(&lb)
+            }
+        };
+        let directed = match sort.direction {
+            SortDirection::Ascending => primary,
+            SortDirection::Descending => primary.reverse(),
+        };
+        // Stable tiebreaker so equal keys don't jitter between renders.
+        directed
+            .then_with(|| b.created_at.cmp(&a.created_at))
+            .then_with(|| a.id.cmp(&b.id))
+    });
 }
 
 fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
@@ -2553,6 +2584,105 @@ mod tests {
         assert_eq!(vm.items[0].title, "Newest");
         assert_eq!(vm.items[1].title, "Middle");
         assert_eq!(vm.items[2].title, "Old");
+    }
+
+    fn set_last_practiced(model: &mut Model, item_id: &str, at: chrono::DateTime<chrono::Utc>) {
+        model.practice_summaries.insert(
+            item_id.to_string(),
+            crate::model::ItemPracticeSummary {
+                session_count: 1,
+                total_minutes: 1,
+                latest_score: None,
+                score_history: vec![],
+                latest_tempo: None,
+                tempo_history: vec![],
+                last_practiced_at: Some(at.to_rfc3339()),
+            },
+        );
+    }
+
+    #[test]
+    fn view_sorts_by_title_ascending() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Sonata", ItemKind::Piece, now),
+            make_item("b", "etude", ItemKind::Piece, now), // lowercase: case-insensitive
+            make_item("c", "Ballade", ItemKind::Piece, now),
+        ];
+        model.active_sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let vm = app.view(&model);
+        let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(titles, vec!["Ballade", "etude", "Sonata"]);
+    }
+
+    #[test]
+    fn view_sorts_by_last_practiced_descending_most_recent_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Stale", ItemKind::Piece, now),
+            make_item("b", "Fresh", ItemKind::Piece, now),
+        ];
+        set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
+        set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Descending,
+        };
+        let vm = app.view(&model);
+        assert_eq!(vm.items[0].title, "Fresh");
+        assert_eq!(vm.items[1].title, "Stale");
+    }
+
+    #[test]
+    fn view_never_practiced_sorts_as_oldest() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Practiced", ItemKind::Piece, now),
+            make_item("b", "NeverPractised", ItemKind::Piece, now),
+        ];
+        set_last_practiced(&mut model, "a", now - chrono::Duration::days(2));
+        // "b" has no practice summary -> never practised.
+
+        // Ascending (longest since practised first): never-practised rises to the top.
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Ascending,
+        };
+        assert_eq!(app.view(&model).items[0].title, "NeverPractised");
+
+        // Descending (most recent first): never-practised sinks to the bottom.
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Descending,
+        };
+        assert_eq!(
+            app.view(&model).items.last().unwrap().title,
+            "NeverPractised"
+        );
+    }
+
+    #[test]
+    fn view_default_sort_is_date_added_newest_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let t1 = chrono::Utc::now() - chrono::Duration::hours(2);
+        let t2 = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Old", ItemKind::Piece, t1),
+            make_item("b", "New", ItemKind::Piece, t2),
+        ];
+        let vm = app.view(&model); // default active_sort
+        assert_eq!(vm.items[0].title, "New");
+        assert_eq!(vm.items[1].title, "Old");
     }
 
     #[test]
