@@ -109,6 +109,8 @@ pub enum Event {
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
+    /// User chose a library sort order; persist it and re-render.
+    SetSort(LibrarySort),
 
     // ── Local-first persistence ──────────────────────────────────────
     HydrateFromStore,
@@ -149,6 +151,9 @@ pub enum AppEffect {
     SaveSessionInProgress(ActiveSession),
     /// Clear the active session from localStorage.
     ClearSessionInProgress,
+    /// Persist the chosen library sort order (small singleton — UserDefaults
+    /// on iOS / localStorage on web). Fire-and-forget; output is `()`.
+    SaveLibrarySort(LibrarySort),
 }
 
 impl Operation for AppEffect {
@@ -302,6 +307,13 @@ impl App for Intrada {
             Event::SetQuery(query) => {
                 model.active_query = query;
                 crux_core::render::render()
+            }
+            Event::SetSort(sort) => {
+                model.active_sort = sort;
+                Command::all([
+                    Command::notify_shell(AppEffect::SaveLibrarySort(sort)).into(),
+                    crux_core::render::render(),
+                ])
             }
 
             // ── Local-first persistence ──────────────────────────────
@@ -1233,6 +1245,25 @@ mod tests {
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 2);
+    }
+
+    #[test]
+    fn set_sort_updates_model_and_emits_save_effect() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let mut cmd = app.update(Event::SetSort(sort), &mut model);
+
+        assert_eq!(model.active_sort, sort, "model sort is updated");
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::App(req)
+                if req.operation == AppEffect::SaveLibrarySort(sort))),
+            "SetSort emits SaveLibrarySort with the chosen order"
+        );
     }
 
     #[test]
