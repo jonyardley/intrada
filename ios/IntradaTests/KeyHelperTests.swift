@@ -65,6 +65,28 @@ final class KeyHelperTests: XCTestCase {
     XCTAssertTrue(third.flipped)
   }
 
+  func testTapFlipsEnharmonicOnMinorSpoke() {
+    let first = KeyHelper.nextValueOnTap(current: "", ring: 5, mode: .minor)
+    XCTAssertEqual(first.value, "G# minor")
+    XCTAssertFalse(first.flipped)
+    let second = KeyHelper.nextValueOnTap(current: first.value, ring: 5, mode: .minor)
+    XCTAssertEqual(second.value, "Ab minor")
+    XCTAssertTrue(second.flipped)
+  }
+
+  func testParsesRingFiveEnharmonicAlternates() {
+    XCTAssertEqual(
+      KeyHelper.parse("Cb major"), KeyHelper.Selection(ring: 5, mode: .major, spelling: "Cb"))
+    XCTAssertEqual(
+      KeyHelper.parse("Ab minor"), KeyHelper.Selection(ring: 5, mode: .minor, spelling: "Ab"))
+  }
+
+  func testEnharmonicAltOnlyExistsForAmbiguousSpokes() {
+    XCTAssertNil(KeyHelper.enharmonicAlt(ring: 0, mode: .major))
+    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .major), "Gb")
+    XCTAssertEqual(KeyHelper.enharmonicAlt(ring: 6, mode: .minor), "Eb")
+  }
+
   func testTapOnNonEnharmonicSpokeNeverFlips() {
     let result = KeyHelper.nextValueOnTap(current: "C major", ring: 0, mode: .major)
     XCTAssertEqual(result.value, "C major")

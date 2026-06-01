@@ -6,7 +6,7 @@ import Foundation
 /// The stored value is a freeform ASCII string ("F# major", "Gb minor"); the UI
 /// shows the prettified ♯/♭ form. Single source of truth for the wheel's
 /// behaviour, kept view-free so it can be unit-tested and (later) lifted into
-/// `intrada-core` for Android reuse — see the tracked follow-up.
+/// `intrada-core` for Android reuse (#819).
 enum KeyHelper {
   enum Mode: Equatable {
     case major

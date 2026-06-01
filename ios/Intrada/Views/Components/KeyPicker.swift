@@ -71,7 +71,7 @@ struct KeyPicker: View {
       }
 
       Image(systemName: "chevron.down")
-        .font(.system(size: 13, weight: .semibold))
+        .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkFaint)
         .rotationEffect(.degrees(expanded ? 180 : 0))
     }
@@ -177,11 +177,9 @@ struct KeyPicker: View {
           Text(KeyHelper.prettify(pair.top))
             .font(IntradaFont.cardTitle(15))
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.ink)
-          HStack(spacing: 2) {
-            Text("\u{21C5}").font(.system(size: 9))  // ⇅
-            Text(KeyHelper.prettify(pair.bottom)).font(IntradaFont.meta)
-          }
-          .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkFaint)
+          Text("\u{21C5} \(KeyHelper.prettify(pair.bottom))")  // ⇅
+            .font(IntradaFont.meta)
+            .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkFaint)
         }
       } else {
         Text(KeyHelper.prettify(primary))
