@@ -121,6 +121,42 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(tabs), as: config)
   }
 
+  func testKeyPickerCollapsed() {
+    let pickers = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        VStack(spacing: 0) { KeyPicker(label: "Key", text: .constant("")) }.cardSurface()
+        VStack(spacing: 0) { KeyPicker(label: "Key", text: .constant("Gb major")) }.cardSurface()
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(pickers), as: config)
+  }
+
+  func testKeyPickerExpandedEmpty() {
+    let picker = ZStack {
+      PaperBackground()
+      VStack(spacing: 0) {
+        KeyPicker(label: "Key", text: .constant(""), initiallyExpanded: true)
+      }
+      .cardSurface()
+      .padding(16)
+    }
+    assertSnapshot(of: host(picker), as: config)
+  }
+
+  func testKeyPickerExpandedEnharmonic() {
+    let picker = ZStack {
+      PaperBackground()
+      VStack(spacing: 0) {
+        KeyPicker(label: "Key", text: .constant("Gb major"), initiallyExpanded: true)
+      }
+      .cardSurface()
+      .padding(16)
+    }
+    assertSnapshot(of: host(picker), as: config)
+  }
+
   func testLibraryItemCards() {
     let cards = ZStack {
       PaperBackground()

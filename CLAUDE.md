@@ -1,6 +1,17 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-05-12.
+> Last reviewed: 2026-06-01.
+
+> ## ⚠️ CURRENT FOCUS: NATIVE iOS ONLY — web is paused
+>
+> As of 2026-06, the **only** platform under active development is the
+> **native SwiftUI iOS app** (on the Crux core — see
+> [`specs/native-ios.md`](specs/native-ios.md)). **Do NOT build new features
+> in the Leptos web shell (`crates/intrada-web`) or the Tauri shell
+> (`crates/intrada-mobile`) — both are PAUSED.** New UI work lands in the
+> native iOS app. Pencil designs are still the source of truth for look & feel,
+> but implementations target SwiftUI, not Leptos. If a request seems to imply
+> web/Leptos work, confirm the platform before writing code.
 
 ## Project Overview
 
@@ -10,10 +21,12 @@ build reusable routines, and view analytics. Organised around three pillars:
 **Plan** (library, routines), **Practice** (focus mode, timers, scoring),
 **Track** (analytics, insights).
 
-**Platform**: The Leptos shell (`crates/intrada-web`) is the single UI codebase
-— it ships as both the web app (Cloudflare Workers) and the iOS app (Tauri 2
-WKWebView host in `crates/intrada-mobile`). New features ship on both platforms
-simultaneously.
+**Platform**: Active development is the **native SwiftUI iOS app** (on the Crux
+core). The **Leptos shell (`crates/intrada-web`)** historically shipped as both
+the web app (Cloudflare Workers) and the Tauri 2 iOS WKWebView host
+(`crates/intrada-mobile`) — **both are now paused** (see the banner above). The
+web shell still builds and its tests still run in CI, but it is not receiving
+new features; treat it as maintenance-only until web is explicitly un-paused.
 
 ## Project Structure
 

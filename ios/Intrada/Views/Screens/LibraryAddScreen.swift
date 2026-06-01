@@ -33,7 +33,7 @@ struct LibraryAddScreen: View {
               divider
               FormField(label: "Composer", text: $composer)
               divider
-              FormField(label: "Key", text: $key)
+              KeyPicker(label: "Key", text: $key)
             }
             .cardSurface()
 
