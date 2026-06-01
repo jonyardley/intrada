@@ -112,7 +112,7 @@ private struct KindSegment: View {
           }
         } label: {
           Text(kind.label)
-            .font(.system(size: 14, weight: .medium))
+            .font(IntradaFont.segment)
             .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

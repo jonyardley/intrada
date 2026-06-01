@@ -14,7 +14,7 @@ struct LibraryItemCard: View {
         .foregroundStyle(IntradaColor.ink)
       if !item.subtitle.isEmpty {
         Text(item.subtitle)
-          .font(.system(size: 13))
+          .font(IntradaFont.subtitle)
           .foregroundStyle(IntradaColor.inkSecondary)
       }
       if let meta = metaLine {

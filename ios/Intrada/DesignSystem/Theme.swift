@@ -2,9 +2,7 @@ import SwiftUI
 
 /// The locked "paper / score" light theme (Pencil: *Mobile / Library — Light*).
 /// Every colour, gradient, and type style the native shell draws traces back to
-/// a token here — views never hard-code a hex value. Source of truth mirrors the
-/// Pencil variables; bundling the exact Source Serif 4 / Inter faces is a
-/// follow-up (we stand in with the system serif + system sans for now).
+/// a token here — views never hard-code a hex value or raw `.system` font.
 enum IntradaColor {
   static let paperTop = Color(hex: 0xF4F1E8)
   static let paperBottom = Color(hex: 0xEBE7D9)
@@ -48,17 +46,36 @@ extension LinearGradient {
     startPoint: .top, endPoint: .bottom)
 }
 
-/// Semantic type styles. Headings use the system serif (New York) as a native
-/// stand-in for Source Serif 4; body/meta use the system sans for Inter.
+/// Semantic type styles: Source Serif 4 headings, Inter body/UI (bundled via
+/// `IntradaFonts`). `relativeTo:` tracks Dynamic Type; weights use named-instance
+/// PostScript names, not `.weight()`, which is synthetic over a variable axis.
 enum IntradaFont {
   static func pageTitle(_ size: CGFloat = 32) -> Font {
-    .system(size: size, weight: .semibold, design: .serif)
+    .custom(Serif.semibold, size: size, relativeTo: .largeTitle)
   }
   static func cardTitle(_ size: CGFloat = 17) -> Font {
-    .system(size: size, weight: .semibold, design: .serif)
+    .custom(Serif.semibold, size: size, relativeTo: .title3)
   }
-  static let body = Font.system(size: 14)
-  static let meta = Font.system(size: 12)
+
+  static let body = Font.custom(Inter.regular, size: 14, relativeTo: .subheadline)
+  static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)
+  static let subtitle = Font.custom(Inter.regular, size: 13, relativeTo: .footnote)
+  static let meta = Font.custom(Inter.regular, size: 12, relativeTo: .caption)
+  static let metaMedium = Font.custom(Inter.medium, size: 12, relativeTo: .caption)
+  static let badge = Font.custom(Inter.semibold, size: 12, relativeTo: .caption)
+  static let tab = Font.custom(Inter.medium, size: 13, relativeTo: .footnote)
+  static let segment = Font.custom(Inter.medium, size: 14, relativeTo: .subheadline)
+  static let field = Font.custom(Inter.regular, size: 16, relativeTo: .callout)
+
+  private enum Inter {
+    static let regular = "InterVariable"
+    static let medium = "InterVariable-Medium"
+    static let semibold = "InterVariable-SemiBold"
+  }
+
+  private enum Serif {
+    static let semibold = "SourceSerif4Variable-Semibold"
+  }
 }
 
 extension Color {

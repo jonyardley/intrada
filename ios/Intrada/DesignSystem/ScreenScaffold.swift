@@ -41,6 +41,9 @@ struct ScreenScaffold<Content: View>: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
     }
+    // Header + content reflow cleanly through AX3; beyond it the segmented
+    // filter tabs wrap mid-word (tracked: raise once they reflow).
+    .dynamicTypeSize(.xSmall ... .accessibility3)
   }
 
   private var header: some View {
