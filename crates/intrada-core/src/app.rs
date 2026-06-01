@@ -28,6 +28,7 @@ use crate::model::{
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
     SetSourceStatus, ViewModel,
 };
+use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
 /// Root Crux application for the music practice library.
 #[derive(Default)]
@@ -106,6 +107,10 @@ pub enum Event {
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
+
+    // ── Local-first persistence (dormant — no caller in the live flow yet) ──
+    HydrateFromStore,
+    StoreLoaded(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -124,6 +129,8 @@ pub enum Effect {
     Http(HttpRequest),
     /// Shell-only side effects that are NOT HTTP (localStorage only).
     App(AppEffect),
+    /// Local-first persistence (the core's first effect with typed-data output).
+    Persistence(PersistenceOperation),
 }
 
 /// Non-HTTP side-effect operations handled by the shell.
@@ -278,6 +285,15 @@ impl App for Intrada {
             }
             Event::SetQuery(query) => {
                 model.active_query = query;
+                crux_core::render::render()
+            }
+
+            // ── Local-first persistence (B1) ─────────────────────────
+            Event::HydrateFromStore => persistence::load_items(),
+            Event::StoreLoaded(output) => {
+                if let PersistenceOutput::Items(items) = output {
+                    model.items = items;
+                }
                 crux_core::render::render()
             }
         }

@@ -93,6 +93,8 @@ pub fn init_core(
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
+            // Online-only web never emits persistence (a native-shell effect).
+            Effect::Persistence(_) => {}
             Effect::Http(mut request) => {
                 let core_handle = leptos::prelude::expect_context::<SharedCore>();
                 let vm = *view_model;
@@ -191,6 +193,8 @@ fn process_effects_inner(
     for effect in effects {
         match effect {
             Effect::Render(_) => {}
+            // Online-only web never emits persistence (a native-shell effect).
+            Effect::Persistence(_) => {}
             Effect::Http(mut request) => {
                 let core = core.clone();
                 let vm = *view_model;

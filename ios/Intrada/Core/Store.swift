@@ -35,6 +35,15 @@ final class Store {
         // Foundation: localStorage effects are no-ops for now — ack so
         // the core can continue its command chain.
         process(guarded { try bridge.resolveEmpty(request.id) } ?? [])
+      case .persistence(let operation):
+        // B1 stub — no GRDB yet (B2); answer with the empty/ack shape the core
+        // expects so the contract + typed-Output round-trip are exercised.
+        let output: PersistenceOutput =
+          switch operation {
+          case .loadItems: .items([])
+          case .saveItem, .deleteItem: .ack
+          }
+        process(guarded { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])
       }
     }
   }

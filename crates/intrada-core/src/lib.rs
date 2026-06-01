@@ -4,6 +4,7 @@ pub mod domain;
 pub mod error;
 pub mod http;
 pub mod model;
+pub mod persistence;
 pub mod validation;
 
 pub use app::{AppEffect, Effect, Event, Intrada};
@@ -19,6 +20,7 @@ pub use domain::session::{
 pub use domain::set::{Set, SetEntry, SetEvent};
 pub use domain::types::{CreateItem, LibraryData, ListQuery, SessionsData, Tempo, UpdateItem};
 pub use error::LibraryError;
+pub use persistence::{PersistenceOperation, PersistenceOutput};
 
 // Re-export crux_http protocol types so shells can handle HTTP effects
 // without a direct crux_http dependency.
