@@ -50,7 +50,7 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(bridge.emptyResolved, [7], "app effect should ack via resolveEmpty")
   }
 
-  func testPersistenceLoadResolvesWithStubItems() {
+  func testPersistenceLoadResolvesFromStore() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 8, effect: .persistence(.loadItems))] }
     let store = Store(bridge: bridge, session: mockSession())
@@ -62,7 +62,7 @@ final class StoreEffectLoopTests: XCTestCase {
       return XCTFail(
         "expected .items, got \(String(describing: bridge.persistenceResolved.first?.output))")
     }
-    XCTAssertTrue(items.isEmpty, "B1 stub returns no rows (GRDB lands in B2)")
+    XCTAssertTrue(items.isEmpty, "fresh in-memory store has no rows")
   }
 
   func testBatchProcessesEveryRequest() {

@@ -26,6 +26,9 @@ packages:
   SnapshotTesting:
     url: https://github.com/pointfreeco/swift-snapshot-testing
     from: "1.18.0"
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "7.0.0"
 
 targets:
   Intrada:
@@ -49,6 +52,8 @@ targets:
         product: SharedTypes
       - package: Sentry
         product: Sentry
+      - package: GRDB
+        product: GRDB
     scheme:
       testTargets:
         - IntradaTests
