@@ -39,13 +39,12 @@ struct LibrarySearchBar: View {
       .background(Capsule(style: .continuous).fill(IntradaColor.surfaceSunken))
       .overlay(Capsule(style: .continuous).strokeBorder(IntradaColor.hairline, lineWidth: 1))
 
-      if focused.wrappedValue || !text.isEmpty {
-        Button("Cancel", action: onCancel)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-          .buttonStyle(.plain)
-          .transition(.move(edge: .trailing).combined(with: .opacity))
-      }
+      // Always present while the bar is revealed: the dismiss affordance, since
+      // the field isn't auto-focused on reveal.
+      Button("Cancel", action: onCancel)
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .buttonStyle(.plain)
     }
   }
 }
