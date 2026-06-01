@@ -33,22 +33,25 @@ struct KeyPicker: View {
   var body: some View {
     VStack(spacing: 0) {
       row
+        // Card→clear row background masks the wheel as it slides behind on open.
+        .background(
+          LinearGradient(
+            stops: [
+              .init(color: IntradaColor.cardFill, location: 0),
+              .init(color: IntradaColor.cardFill, location: 0.85),
+              .init(color: IntradaColor.cardFill.opacity(0), location: 1),
+            ],
+            startPoint: .top, endPoint: .bottom)
+        )
+        .zIndex(1)
       if expanded {
         HStack {
           Spacer(minLength: 0)
           wheel
           Spacer(minLength: 0)
         }
-        .padding(.vertical, 8)
-        // Fade the wheel's top into the card so it emerges from behind the row.
-        .overlay(alignment: .top) {
-          LinearGradient(
-            colors: [IntradaColor.cardFill, IntradaColor.cardFill.opacity(0)],
-            startPoint: .top, endPoint: .bottom
-          )
-          .frame(height: 40)
-          .allowsHitTesting(false)
-        }
+        .padding(.top, 12)
+        .padding(.bottom, 20)
         .transition(.move(edge: .top).combined(with: .opacity))
       }
     }

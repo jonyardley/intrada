@@ -72,6 +72,16 @@ just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
 full regenerate. The Tauri `tauri-*` recipes are the on-hold WKWebView shell.
 
+**Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R, or
+any build with no launch args) runs **local-first**: the Library hydrates from
+the on-device GRDB store, so items you add survive restarts. The 6 sample
+pieces are **opt-in** via the `--seed-sample-data` launch arg — in Xcode:
+Edit Scheme → Run → Arguments → Arguments Passed On Launch. `just ios-run`
+passes it by default (`SEED=1`); use `SEED=0 just ios-run` to launch against
+your real data. Seed mode (`Event::LoadSampleData`) replaces the model with
+demo items and **skips store hydration**, so don't use it when testing
+persistence — your saved rows are still on disk but won't be read back.
+
 Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushing* —
 not just before committing. Pushing then watching CI fail wastes a full ~3-minute
 roundtrip per agent or contributor; better to catch the formatting tab here.

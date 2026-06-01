@@ -71,7 +71,8 @@ just e2e          # Build + run Playwright E2E tests
 
 # iOS (native SwiftUI — the active app)
 just ios              # Regenerate bindings (if core changed) + open in Xcode
-just ios-run          # Build + launch on a simulator + screenshot
+just ios-run          # Build + launch on a simulator + screenshot (seeds demo data)
+SEED=0 just ios-run   # …launch against your real on-device data instead of demo data
 
 # iOS (Tauri shell — on hold, being replaced)
 just tauri-dev        # Run on simulator (trunk serve + tauri ios dev)

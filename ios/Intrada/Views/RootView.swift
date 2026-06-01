@@ -30,27 +30,20 @@ struct RootView: View {
     }
     .tint(IntradaColor.accent)
     .task {
-      // Seed mode loads demo data offline via the core; it skips StartApp so a
-      // late fetch can't clobber the seed. Until there's a real backend/auth,
-      // DEBUG builds seed by default (pass --no-seed-sample-data to hit the API).
-      // Release seeds only via the explicit arg (CI screenshots / E2E).
+      // Default (incl. plain DEBUG runs): local-first — the Library hydrates
+      // from the on-device store so saved items survive restarts. Seeding is
+      // opt-in via --seed-sample-data (ios-run-sim.sh / CI screenshots / E2E);
+      // it loads demo data and skips StartApp so a late fetch can't clobber it.
       if seedSampleData {
         store.send(.loadSampleData)
       } else {
-        // local-first: the Library hydrates from the on-device store, no HTTP.
         store.send(.startApp(apiBaseUrl: apiBaseURL, localFirst: true))
       }
     }
   }
 
   private var seedSampleData: Bool {
-    let args = ProcessInfo.processInfo.arguments
-    if args.contains("--no-seed-sample-data") { return false }
-    #if DEBUG
-      return true
-    #else
-      return args.contains("--seed-sample-data")
-    #endif
+    ProcessInfo.processInfo.arguments.contains("--seed-sample-data")
   }
 
   /// Paint the UIKit tab bar with the paper theme: cream fill, faint inactive

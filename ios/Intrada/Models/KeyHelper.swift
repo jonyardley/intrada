@@ -15,10 +15,10 @@ enum KeyHelper {
     let spelling: String
   }
 
-  /// Major keys clockwise from 12 o'clock (C at top), by fifths.
-  static let circleMajor = ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"]
-  /// Relative minors, same spoke order.
-  static let circleMinor = ["A", "E", "B", "F#", "C#", "G#", "D#", "Bb", "F", "C", "G", "D"]
+  /// Major keys clockwise from 12 o'clock; 6 o'clock defaults to Gb over F#.
+  static let circleMajor = ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"]
+  /// Relative minors, same spoke order; 6 o'clock defaults to Eb over D#.
+  static let circleMinor = ["A", "E", "B", "F#", "C#", "G#", "Eb", "Bb", "F", "C", "G", "D"]
 
   static func primary(ring: Int, mode: Modality) -> String {
     switch mode {
@@ -31,10 +31,10 @@ enum KeyHelper {
   static func enharmonicAlt(ring: Int, mode: Modality) -> String? {
     switch (mode, ring) {
     case (.major, 5): return "Cb"
-    case (.major, 6): return "Gb"
+    case (.major, 6): return "F#"
     case (.major, 7): return "C#"
     case (.minor, 5): return "Ab"
-    case (.minor, 6): return "Eb"
+    case (.minor, 6): return "D#"
     case (.minor, 7): return "A#"
     default: return nil
     }
