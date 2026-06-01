@@ -84,6 +84,12 @@ final class LibraryStore: ItemStore {
     }
   }
 
+  /// Column names of a table (for the schema-invariant test). `[String]` not
+  /// `Set` — `SharedTypes`' domain `Set` shadows `Swift.Set` here.
+  func columnNames(ofTable table: String) throws -> [String] {
+    try dbQueue.read { db in try db.columns(in: table).map(\.name) }
+  }
+
   // ── Schema ───────────────────────────────────────────────────────────
 
   private static var migrator: DatabaseMigrator {
