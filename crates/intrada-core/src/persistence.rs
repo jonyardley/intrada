@@ -35,6 +35,18 @@ pub fn load_items() -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::LoadItems).then_send(Event::StoreLoaded)
 }
 
+/// Upsert an item into the local store (write-through). The `Ack` lands in
+/// `Event::StoreLoaded` and is a no-op — the model was already updated.
+pub fn save_item(item: Item) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreLoaded)
+}
+
+/// Soft-delete an item from the local store (write-through).
+pub fn delete_item(id: String) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::DeleteItem { id })
+        .then_send(Event::StoreLoaded)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -103,5 +115,92 @@ mod tests {
         let _ = app.update(Event::StoreLoaded(PersistenceOutput::Ack), &mut model);
         assert_eq!(model.items.len(), 1);
         assert_eq!(model.items[0].id, "keep");
+    }
+
+    // ── Write-through (B3a) ─────────────────────────────────────────────
+
+    fn emits_save(cmd: &mut Command<Effect, Event>, expected_id: &str) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, Effect::Persistence(req)
+                if matches!(&req.operation, PersistenceOperation::SaveItem(item) if item.id == expected_id))
+        })
+    }
+
+    #[test]
+    fn save_item_requests_a_save_op() {
+        let mut cmd = save_item(sample_item("p1"));
+        assert!(emits_save(&mut cmd, "p1"));
+    }
+
+    #[test]
+    fn delete_item_requests_a_delete_op() {
+        let mut cmd = delete_item("gone".to_string());
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::DeleteItem { id: "gone".to_string() })));
+    }
+
+    #[test]
+    fn item_created_writes_through_to_store() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(
+            Event::ItemCreated {
+                temp_id: "tmp".into(),
+                item: sample_item("server-id"),
+            },
+            &mut model,
+        );
+        assert!(emits_save(&mut cmd, "server-id"));
+    }
+
+    #[test]
+    fn item_updated_writes_through_to_store() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.items = vec![sample_item("p1")];
+        let mut cmd = app.update(
+            Event::ItemUpdated {
+                item: sample_item("p1"),
+            },
+            &mut model,
+        );
+        assert!(emits_save(&mut cmd, "p1"));
+    }
+
+    #[test]
+    fn delete_writes_through_a_tombstone() {
+        use crate::domain::item::ItemEvent;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.items = vec![sample_item("p1")];
+        let mut cmd = app.update(
+            Event::Item(ItemEvent::Delete { id: "p1".into() }),
+            &mut model,
+        );
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::DeleteItem { id: "p1".to_string() })));
+    }
+
+    #[test]
+    fn optimistic_create_does_not_persist_yet() {
+        // B3a persists creates only on confirmation (real id), so the optimistic
+        // Add must emit no Persistence effect (until B3b client-ulids — #818).
+        use crate::domain::item::ItemEvent;
+        use crate::domain::types::CreateItem;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(
+            Event::Item(ItemEvent::Add(CreateItem {
+                title: "New".into(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
+            &mut model,
+        );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
     }
 }
