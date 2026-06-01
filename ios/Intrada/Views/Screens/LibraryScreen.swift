@@ -3,6 +3,7 @@ import SwiftUI
 
 struct LibraryScreen: View {
   @Environment(Store.self) private var store
+  @State private var adding = false
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
 
@@ -14,7 +15,10 @@ struct LibraryScreen: View {
   }
 
   var body: some View {
-    ScreenScaffold(title: "Library", subtitle: subtitle) {
+    ScreenScaffold(
+      title: "Library", subtitle: subtitle,
+      trailing: .init(label: "Add item", action: { adding = true })
+    ) {
       VStack(spacing: 0) {
         LibraryFilterTabs(selection: filterBinding)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -23,6 +27,11 @@ struct LibraryScreen: View {
           .padding(.bottom, 14)
         content
       }
+    }
+    .sheet(isPresented: $adding) {
+      // Pre-select the kind the list is filtered to; "All" falls back to Piece.
+      LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
+        .environment(store)
     }
     // Key on the id (not the value) so an edit — which changes the item's
     // hash — doesn't break the pushed destination; the detail re-reads the

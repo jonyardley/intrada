@@ -79,6 +79,14 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  func testLibraryAddScreen() {
+    assertSnapshot(of: host(LibraryAddScreen()), as: config)
+  }
+
+  func testLibraryAddScreenExercise() {
+    assertSnapshot(of: host(LibraryAddScreen(defaultKind: .exercise)), as: config)
+  }
+
   func testLibraryEditScreen() {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: config)
   }
