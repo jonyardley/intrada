@@ -175,11 +175,11 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     **client-ulid-canonical** (temp-id dance retired for items — #818). The
     shared core keeps the web app online (`local_first = false`). **The iPhone
     Library is genuinely offline here.**
-  - **B4 (folded into B3b).** Hardening done (#816): a failed *local* write now
-    resolves `.failed` (not a phantom `.ack`) and the core surfaces an error, so
-    a write that never reached disk is observable rather than silently trusted.
-    (A rejected optimistic item still lingers until relaunch — acceptable for
-    the rare disk-failure case.)
+  - **B4 (folded into B3b).** Hardening done: a failed *local* write resolves
+    `.failed` (not a phantom `.ack`), the core surfaces an error (#816) **and
+    re-hydrates from the store to roll back the optimistic change** (#825) — a
+    failed write event (`StoreWritten`) is kept separate from a read result
+    (`StoreLoaded`) so a broken store can't loop reloading.
   - **B5** — decouple auth: the app runs with no account; sign-in is inert until
     sync exists.
   - **Gate:** full Library CRUD works in airplane mode, with no account.

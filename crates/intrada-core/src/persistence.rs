@@ -37,16 +37,13 @@ pub fn load_items() -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::LoadItems).then_send(Event::StoreLoaded)
 }
 
-/// Upsert an item into the local store (write-through). The `Ack` lands in
-/// `Event::StoreLoaded` and is a no-op — the model was already updated.
 pub fn save_item(item: Item) -> Command<Effect, Event> {
-    Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreLoaded)
+    Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
 }
 
-/// Soft-delete an item from the local store (write-through).
 pub fn delete_item(id: String) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::DeleteItem { id })
-        .then_send(Event::StoreLoaded)
+        .then_send(Event::StoreWritten)
 }
 
 #[cfg(test)]
@@ -113,11 +110,34 @@ mod tests {
     fn store_loaded_failed_surfaces_an_error() {
         let app = crate::app::Intrada;
         let mut model = Model::test_default();
-        let _ = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
+        let mut cmd = app.update(Event::StoreLoaded(PersistenceOutput::Failed), &mut model);
         assert!(
             model.last_error.is_some(),
-            "a failed local write must surface an error"
+            "a failed read must surface an error"
         );
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
+    }
+
+    #[test]
+    fn store_written_failed_surfaces_and_rehydrates() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
+        assert!(
+            model.last_error.is_some(),
+            "a failed write must surface an error"
+        );
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadItems)));
+    }
+
+    #[test]
+    fn store_written_ack_is_a_noop() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(Event::StoreWritten(PersistenceOutput::Ack), &mut model);
+        assert!(model.last_error.is_none());
+        assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
     }
 
     #[test]

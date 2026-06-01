@@ -110,9 +110,11 @@ pub enum Event {
     ClearError,
     SetQuery(Option<ListQuery>),
 
-    // ── Local-first persistence (dormant — no caller in the live flow yet) ──
+    // ── Local-first persistence ──────────────────────────────────────
     HydrateFromStore,
     StoreLoaded(PersistenceOutput),
+    /// Write result (split from `StoreLoaded` so a failed write reloads without looping — #825).
+    StoreWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -302,20 +304,27 @@ impl App for Intrada {
                 crux_core::render::render()
             }
 
-            // ── Local-first persistence (B1) ─────────────────────────
+            // ── Local-first persistence ──────────────────────────────
             Event::HydrateFromStore => persistence::load_items(),
             Event::StoreLoaded(output) => match output {
                 PersistenceOutput::Items(items) => {
                     model.items = items;
                     crux_core::render::render()
                 }
-                // Write-through ack — model already updated; nothing to render.
                 PersistenceOutput::Ack => Command::done(),
-                // Don't trust a write that never reached disk (#816). Message is
-                // op-agnostic since Failed covers load + save + delete.
+                // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     crux_core::render::render()
+                }
+            },
+            Event::StoreWritten(output) => match output {
+                PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Items(_) => Command::done(),
+                // Failed write → reload to roll back the un-persisted change (#825).
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't access local storage.");
+                    persistence::load_items()
                 }
             },
         }
