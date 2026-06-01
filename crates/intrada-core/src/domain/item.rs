@@ -147,6 +147,9 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             if let Some(title) = input.title {
                 item.title = title;
             }
+            if let Some(kind) = input.kind {
+                item.kind = kind;
+            }
             if let Some(composer) = input.composer {
                 item.composer = composer;
             }

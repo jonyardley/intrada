@@ -2996,4 +2996,53 @@ mod tests {
         );
         assert_eq!(model.items[0].modality, None);
     }
+
+    #[test]
+    fn test_update_changes_kind() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "p1".to_string(),
+                title: "Scales".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            }],
+            ..Model::test_default()
+        };
+
+        let _ = app.update(
+            Event::Item(ItemEvent::Update {
+                id: "p1".to_string(),
+                input: crate::domain::types::UpdateItem {
+                    kind: Some(ItemKind::Exercise),
+                    ..Default::default()
+                },
+            }),
+            &mut model,
+        );
+
+        assert!(model.last_error.is_none());
+        assert_eq!(model.items[0].kind, ItemKind::Exercise);
+        // kind absent → unchanged
+        let _ = app.update(
+            Event::Item(ItemEvent::Update {
+                id: "p1".to_string(),
+                input: crate::domain::types::UpdateItem {
+                    priority: Some(true),
+                    ..Default::default()
+                },
+            }),
+            &mut model,
+        );
+        assert_eq!(model.items[0].kind, ItemKind::Exercise);
+    }
 }

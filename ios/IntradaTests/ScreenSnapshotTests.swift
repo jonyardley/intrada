@@ -107,6 +107,10 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: config)
   }
 
+  func testLibraryEditScreenExercise() {
+    assertSnapshot(of: host(LibraryEditScreen(item: .previewExercise)), as: config)
+  }
+
   func testTypeBadges() {
     let badges = ZStack {
       PaperBackground()

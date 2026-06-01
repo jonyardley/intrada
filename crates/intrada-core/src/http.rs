@@ -125,6 +125,9 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
     }
     let update = UpdateItem {
         title: Some(item.title.clone()),
+        // Type-change is local-first only for now; the API doesn't persist `kind`
+        // on update, so the online PATCH omits it (tracked for sync parity).
+        kind: None,
         composer: Some(item.composer.clone()),
         key: Some(item.key.clone()),
         modality: Some(item.modality),

@@ -1,8 +1,15 @@
 [workspace]
+# Active build = the native iOS stack (core + ffi) and the API. The Leptos web
+# shell and the Tauri shell (+ its plugins) are paused (see CLAUDE.md "CURRENT
+# FOCUS: NATIVE iOS ONLY"); they're `exclude`d so workspace builds/tests/clippy
+# and CI never compile them and shared-core-type changes don't ripple into them.
+# Their code stays on disk — un-pause by moving an entry back into `members`.
 members = [
   "crates/intrada-core",
   "crates/intrada-ffi",
   "crates/intrada-api",
+]
+exclude = [
   "crates/intrada-web",
   "crates/intrada-mobile/src-tauri",
   "crates/intrada-mobile/plugins/background-audio",

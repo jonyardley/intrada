@@ -74,6 +74,8 @@ pub struct CreateItem {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<ItemKind>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
