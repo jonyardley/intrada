@@ -46,6 +46,15 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(got.tags, [])
   }
 
+  func testNilModalityRoundTrips() throws {
+    let store = try makeStore()
+    var it = item("p1")
+    it.modality = nil
+    try store.save(it)
+    // Also the legacy path: a pre-v2 row has a NULL modality column.
+    XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality)
+  }
+
   func testUpsertUpdatesInPlace() throws {
     let store = try makeStore()
     try store.save(item("p1", title: "Before"))

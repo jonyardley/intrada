@@ -21,8 +21,11 @@ struct LibraryEditScreen: View {
     self.item = item
     _title = State(initialValue: item.title)
     _composer = State(initialValue: item.subtitle)
-    _key = State(initialValue: item.key ?? "")
-    _modality = State(initialValue: item.modality)
+    // Normalise on load so editing self-heals legacy combined values
+    // ("F# major") into tonic + modality even if the user never re-taps a spoke.
+    let selection = KeyHelper.selection(key: item.key ?? "", modality: item.modality)
+    _key = State(initialValue: selection?.spelling ?? item.key ?? "")
+    _modality = State(initialValue: selection?.mode ?? item.modality)
     _marking = State(initialValue: item.tempoMarking ?? "")
     _bpm = State(initialValue: item.tempoBpm.map(String.init) ?? "")
     _notes = State(initialValue: item.notes ?? "")

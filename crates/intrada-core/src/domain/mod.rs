@@ -8,7 +8,7 @@ pub mod set;
 pub mod types;
 
 pub use account::{AccountEvent, AccountPreferences};
-pub use item::{Item, ItemEvent, ItemKind};
+pub use item::{Item, ItemEvent, ItemKind, Modality};
 pub use mcp_audit::{McpAuditEntry, McpAuditEvent};
 pub use mcp_tokens::{CreatedMcpToken, McpToken, McpTokenEvent};
 pub use oauth::{OAuthEvent, OAuthFinalizeParams};
