@@ -246,6 +246,10 @@ pub struct ItemPracticeSummary {
     pub score_history: Vec<ScoreHistoryEntry>,
     pub latest_tempo: Option<u16>,
     pub tempo_history: Vec<TempoHistoryEntry>,
+    /// Most recent session date for this item (max `started_at`), independent
+    /// of whether a score/tempo was recorded. `None` if never practised.
+    /// RFC3339 — sorts chronologically as a string.
+    pub last_practiced_at: Option<String>,
 }
 
 /// A single score data point for an item's progress history.

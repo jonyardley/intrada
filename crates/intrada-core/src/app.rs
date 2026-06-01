@@ -527,16 +527,29 @@ pub(crate) fn build_practice_summaries(
     use crate::model::{ScoreHistoryEntry, TempoHistoryEntry};
     use std::collections::HashMap;
 
-    let mut acc: HashMap<String, (usize, u64, Vec<ScoreHistoryEntry>, Vec<TempoHistoryEntry>)> =
-        HashMap::new();
+    // (count, secs, score_history, tempo_history, last_practiced_at)
+    type Acc = (
+        usize,
+        u64,
+        Vec<ScoreHistoryEntry>,
+        Vec<TempoHistoryEntry>,
+        Option<String>,
+    );
+
+    let mut acc: HashMap<String, Acc> = HashMap::new();
 
     for session in sessions {
+        let session_date = session.started_at.to_rfc3339();
         for entry in &session.entries {
             let record = acc
                 .entry(entry.item_id.clone())
-                .or_insert_with(|| (0, 0, Vec::new(), Vec::new()));
+                .or_insert_with(|| (0, 0, Vec::new(), Vec::new(), None));
             record.0 += 1;
             record.1 += entry.duration_secs;
+            // Keep the latest date (RFC3339 strings compare chronologically).
+            if record.4.as_ref().map_or(true, |cur| session_date > *cur) {
+                record.4 = Some(session_date.clone());
+            }
 
             if let Some(score) = entry.score {
                 record.2.push(ScoreHistoryEntry {
@@ -558,7 +571,16 @@ pub(crate) fn build_practice_summaries(
 
     acc.into_iter()
         .map(
-            |(item_id, (session_count, total_secs, mut score_history, mut tempo_history))| {
+            |(
+                item_id,
+                (
+                    session_count,
+                    total_secs,
+                    mut score_history,
+                    mut tempo_history,
+                    last_practiced_at,
+                ),
+            )| {
                 score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
                 let latest_score = score_history.first().map(|e| e.score);
 
@@ -574,6 +596,7 @@ pub(crate) fn build_practice_summaries(
                         score_history,
                         latest_tempo,
                         tempo_history,
+                        last_practiced_at,
                     },
                 )
             },
@@ -1532,9 +1555,10 @@ mod tests {
         use crate::domain::session::{
             CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
         };
+        let sess1_started = now - chrono::Duration::minutes(60);
         model.sessions.push(PracticeSession {
             id: "sess1".to_string(),
-            started_at: now - chrono::Duration::minutes(60),
+            started_at: sess1_started,
             completed_at: now,
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
@@ -1595,6 +1619,7 @@ mod tests {
                 score_history: vec![],
                 latest_tempo: None,
                 tempo_history: vec![],
+                last_practiced_at: Some(sess1_started.to_rfc3339()),
             })
         );
         // p2 has no entries
@@ -1989,6 +2014,44 @@ mod tests {
         assert_eq!(summary.total_minutes, 5);
         assert_eq!(summary.latest_score, Some(4));
         assert_eq!(summary.latest_tempo, Some(120));
+    }
+
+    #[test]
+    fn summary_last_practiced_is_max_session_date() {
+        let earlier = chrono::Utc::now() - chrono::Duration::days(3);
+        let later = chrono::Utc::now() - chrono::Duration::days(1);
+
+        let mk = |id: &str, started: chrono::DateTime<chrono::Utc>| PracticeSession {
+            id: id.to_string(),
+            started_at: started,
+            completed_at: started,
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            entries: vec![SetlistEntry {
+                id: format!("{id}-e"),
+                item_id: "item-1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: ItemKind::Piece,
+                position: 0,
+                duration_secs: 60,
+                status: EntryStatus::Completed,
+                notes: None,
+                score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: None,
+            }],
+        };
+
+        let summaries = build_practice_summaries(&[mk("s1", earlier), mk("s2", later)]);
+        let summary = summaries.get("item-1").expect("summary for item-1");
+        assert_eq!(summary.last_practiced_at, Some(later.to_rfc3339()));
     }
 
     #[test]
