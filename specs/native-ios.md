@@ -164,12 +164,19 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     schema + sequential migrations (mirroring the API's migration discipline).
     Schema is **sync-agnostic** — `updated_at` + soft-delete tombstone columns
     baked in now so a later sync engine can sit on it (see Sync engine above).
-  - **B3** — migrate Library *reads* to local SQLite. Settles the existing-data
-    question (seed empty vs. one-time import of the user's server data).
-  - **B4** — migrate Library *writes* to local-first — always succeed, no HTTP.
-    **The app becomes genuinely offline here.** Must first fix the ack-on-error
-    data-loss risk from B2 (a failed local write currently resolves `.ack`,
-    which the core trusts as success) — see #816.
+  - **B3a (done)** — write-through: item create/update/delete also persist to
+    the local store (creates/updates on their server-confirmed event, deletes
+    optimistically). Additive — web ignores the Persistence effect; iOS
+    populates the store. Reads still come from HTTP.
+  - **B3b** — flip Library *reads* to the local store (hydrate on launch). With
+    seed-empty settled, this also needs creates to become client-ulid-canonical
+    (retiring the temp-id dance for items — so offline creates reach the store,
+    see #818) and a per-shell "local-first" mode so iOS drops the Library's HTTP
+    while the shared core keeps web online.
+  - **B4** — migrate Library *writes* to fully local-first — always succeed, no
+    HTTP, no network dependency. **The app becomes genuinely offline here.**
+    Must first fix the ack-on-error data-loss risk from B2 (a failed local write
+    currently resolves `.ack`, which the core trusts as success) — see #816.
   - **B5** — decouple auth: the app runs with no account; sign-in is inert until
     sync exists.
   - **Gate:** full Library CRUD works in airplane mode, with no account.
@@ -195,8 +202,10 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
 
 ## Open questions
 
-- **Existing server data on first local-first launch** — seed empty vs. a
-  one-time import of the user's server data. Settled at B3.
+- ~~**Existing server data on first local-first launch**~~ — **settled
+  2026-06-01: seed empty.** No users to migrate, so no one-time import is
+  built; "getting your data onto a device" is just the Phase D sync pull (auth-
+  gated), so we write zero throwaway import code.
 - **Free-tier auth shape** — fully account-free vs. an anonymous local account
   (eases later linking to a sync subscription). Decided before B5.
 - **Android timing** — onto the same local core soon, or stays deferred? Affects

@@ -235,19 +235,21 @@ impl App for Intrada {
             // ── Write-confirmation callbacks ─────────────────────────
             Event::ItemCreated { temp_id, item } => {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == temp_id) {
-                    *existing = item;
+                    *existing = item.clone();
                 } else {
-                    model.items.push(item);
+                    model.items.push(item.clone());
                 }
                 model.record_success();
-                crux_core::render::render()
+                // Persist on confirmation (real id, not the temp id); web ignores
+                // the Persistence effect, so this is iOS-only write-through.
+                Command::all([persistence::save_item(item), crux_core::render::render()])
             }
             Event::ItemUpdated { item } => {
                 if let Some(existing) = model.items.iter_mut().find(|i| i.id == item.id) {
-                    *existing = item;
+                    *existing = item.clone();
                 }
                 model.record_success();
-                crux_core::render::render()
+                Command::all([persistence::save_item(item), crux_core::render::render()])
             }
             Event::SetUpdated { set } => {
                 if let Some(existing) = model.sets.iter_mut().find(|r| r.id == set.id) {
@@ -290,12 +292,14 @@ impl App for Intrada {
 
             // ── Local-first persistence (B1) ─────────────────────────
             Event::HydrateFromStore => persistence::load_items(),
-            Event::StoreLoaded(output) => {
-                if let PersistenceOutput::Items(items) = output {
+            Event::StoreLoaded(output) => match output {
+                PersistenceOutput::Items(items) => {
                     model.items = items;
+                    crux_core::render::render()
                 }
-                crux_core::render::render()
-            }
+                // Write-through ack — model already updated; nothing to render.
+                PersistenceOutput::Ack => Command::done(),
+            },
         }
     }
 

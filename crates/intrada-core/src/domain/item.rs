@@ -140,6 +140,8 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             Command::all([
                 crate::http::delete_item(&model.api_base_url, &id),
+                // Write-through: soft-delete locally too (web ignores it).
+                crate::persistence::delete_item(id),
                 crux_core::render::render(),
             ])
         }
