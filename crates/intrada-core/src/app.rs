@@ -313,6 +313,16 @@ impl App for Intrada {
             });
         }
 
+        // Counted before the filter so the totals stay unfiltered (#792).
+        let total_pieces = items
+            .iter()
+            .filter(|i| i.item_type == ItemKind::Piece)
+            .count();
+        let total_exercises = items
+            .iter()
+            .filter(|i| i.item_type == ItemKind::Exercise)
+            .count();
+
         // Apply active query filter
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
@@ -431,6 +441,9 @@ impl App for Intrada {
 
         ViewModel {
             items,
+            active_query: model.active_query.clone(),
+            total_pieces,
+            total_exercises,
             sessions,
             active_session,
             building_setlist,
@@ -2458,6 +2471,53 @@ mod tests {
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Tagged");
+    }
+
+    #[test]
+    fn view_exposes_active_query() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let query = ListQuery {
+            item_type: Some(ItemKind::Piece),
+            key: None,
+            tags: vec![],
+            text: None,
+        };
+        model.active_query = Some(query.clone());
+        let vm = app.view(&model);
+        assert_eq!(vm.active_query, Some(query));
+    }
+
+    #[test]
+    fn view_active_query_none_when_unset() {
+        let app = Intrada;
+        let model = Model::test_default();
+        let vm = app.view(&model);
+        assert_eq!(vm.active_query, None);
+    }
+
+    #[test]
+    fn view_total_counts_are_unfiltered() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("p1", "Piece One", ItemKind::Piece, now),
+            make_item("p2", "Piece Two", ItemKind::Piece, now),
+            make_item("e1", "Exercise One", ItemKind::Exercise, now),
+        ];
+        // Filter down to exercises only — totals must still describe the
+        // whole library, not the filtered view.
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            key: None,
+            tags: vec![],
+            text: None,
+        });
+        let vm = app.view(&model);
+        assert_eq!(vm.items.len(), 1);
+        assert_eq!(vm.total_pieces, 2);
+        assert_eq!(vm.total_exercises, 1);
     }
 
     #[test]

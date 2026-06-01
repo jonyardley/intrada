@@ -51,6 +51,11 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(NavigationStack { LibraryScreen() }, store: .previewLibrary), as: config)
   }
 
+  func testLibraryScreenFiltered() {
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryFiltered), as: config)
+  }
+
   func testPracticeScreen() {
     assertSnapshot(of: host(PracticeScreen()), as: config)
   }

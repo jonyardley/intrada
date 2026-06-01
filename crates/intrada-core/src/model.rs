@@ -158,6 +158,11 @@ pub enum SessionStatusView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ViewModel {
     pub items: Vec<LibraryItemView>,
+    /// Active filter, mirrored so the shell's pill reads one source of truth (#792).
+    pub active_query: Option<ListQuery>,
+    /// Unfiltered counts so the subtitle describes the whole library (#792).
+    pub total_pieces: usize,
+    pub total_exercises: usize,
     pub sessions: Vec<PracticeSessionView>,
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,

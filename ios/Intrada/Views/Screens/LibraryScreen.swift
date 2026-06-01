@@ -3,28 +3,26 @@ import SwiftUI
 
 struct LibraryScreen: View {
   @Environment(Store.self) private var store
-  @State private var filter: LibraryFilter = .all
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+
+  // Core owns the filter: read `activeQuery`, write back via `setQuery` (#792).
+  private var filterBinding: Binding<LibraryFilter> {
+    Binding(
+      get: { LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) },
+      set: { store.send(.setQuery(query(for: $0))) })
+  }
 
   var body: some View {
     ScreenScaffold(title: "Library", subtitle: subtitle) {
       VStack(spacing: 0) {
-        LibraryFilterTabs(selection: $filter)
+        LibraryFilterTabs(selection: filterBinding)
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.horizontal, 16)
           .padding(.top, 12)
           .padding(.bottom, 14)
         content
       }
-    }
-    .onChange(of: filter) { _, newValue in
-      store.send(.setQuery(query(for: newValue)))
-    }
-    // Re-assert the pill's filter onto the core so a recreated view (future
-    // detail-nav / iPad split) or a core reset can't leave them out of sync.
-    .onAppear {
-      store.send(.setQuery(query(for: filter)))
     }
     // Key on the id (not the value) so an edit — which changes the item's
     // hash — doesn't break the pushed destination; the detail re-reads the
@@ -63,7 +61,7 @@ struct LibraryScreen: View {
   }
 
   private var emptyMessage: String {
-    switch filter {
+    switch LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) {
     case .all: "Your pieces and exercises will live here."
     case .pieces: "No pieces yet."
     case .exercises: "No exercises yet."
@@ -75,10 +73,9 @@ struct LibraryScreen: View {
   }
 
   private var subtitle: String? {
-    guard store.viewModel != nil else { return nil }
-    let pieces = items.filter { $0.itemType == .piece }.count
-    let exercises = items.filter { $0.itemType == .exercise }.count
-    let parts = [count(pieces, "piece"), count(exercises, "exercise")].compactMap { $0 }
+    guard let vm = store.viewModel else { return nil }
+    let parts = [count(Int(vm.totalPieces), "piece"), count(Int(vm.totalExercises), "exercise")]
+      .compactMap { $0 }
     return parts.isEmpty ? "No items yet" : parts.joined(separator: " · ")
   }
 

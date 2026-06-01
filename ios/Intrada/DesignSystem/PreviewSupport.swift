@@ -8,15 +8,27 @@
   final class PreviewBridge: CoreBridge {
     private let core = CoreFfi()
     private let items: [LibraryItemView]
+    private let activeQuery: ListQuery?
 
-    init(items: [LibraryItemView] = []) { self.items = items }
+    init(items: [LibraryItemView] = [], activeQuery: ListQuery? = nil) {
+      self.items = items
+      self.activeQuery = activeQuery
+    }
 
     func update(_ event: Event) throws -> [Request] { [] }
     func resolve(_ id: UInt32, httpResult: HttpResult) throws -> [Request] { [] }
     func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
     func view() throws -> ViewModel {
       var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
-      viewModel.items = items
+      // Mirrors core `view()`: totals from the whole set, items type-filtered (#792).
+      viewModel.totalPieces = UInt64(items.filter { $0.itemType == .piece }.count)
+      viewModel.totalExercises = UInt64(items.filter { $0.itemType == .exercise }.count)
+      viewModel.activeQuery = activeQuery
+      if let kind = activeQuery?.itemType {
+        viewModel.items = items.filter { $0.itemType == kind }
+      } else {
+        viewModel.items = items
+      }
       return viewModel
     }
   }
@@ -29,6 +41,14 @@
     /// Used by snapshot tests where the exact data must be deterministic.
     static var previewLibrary: Store {
       Store(bridge: PreviewBridge(items: [.previewPiece, .previewExercise, .previewMinimal]))
+    }
+
+    /// Pieces-filtered library for the filtered-state snapshot (#792).
+    static var previewLibraryFiltered: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          activeQuery: ListQuery(text: nil, itemType: .piece, key: nil, tags: [])))
     }
 
     /// A store driven by the *real* core seeded with the canonical demo dataset
