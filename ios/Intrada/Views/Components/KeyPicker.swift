@@ -39,16 +39,8 @@ struct KeyPicker: View {
           wheel
           Spacer(minLength: 0)
         }
-        .padding(.vertical, 8)
-        // Fade the wheel's top into the card so it emerges from behind the row.
-        .overlay(alignment: .top) {
-          LinearGradient(
-            colors: [IntradaColor.cardFill, IntradaColor.cardFill.opacity(0)],
-            startPoint: .top, endPoint: .bottom
-          )
-          .frame(height: 40)
-          .allowsHitTesting(false)
-        }
+        .padding(.top, 12)
+        .padding(.bottom, 20)
         .transition(.move(edge: .top).combined(with: .opacity))
       }
     }
