@@ -510,6 +510,36 @@ Bear-traps that have caught us at least once. Skim before you start; the cost
 of a recheck is a few seconds, the cost of one of these landing in main is a
 follow-up PR.
 
+### JSON-only serde attrs break the Crux bincode FFI bridge
+
+The native iOS shell exchanges `Event` / `Effect` / `ViewModel` with the core as
+**positional bincode** (a non-self-describing format). serde attributes that
+only make sense for a self-describing format (JSON) silently corrupt that wire:
+the Swift side serializes every field/level by structure, but a JSON-oriented
+deserializer reads a different shape, **misaligns the byte stream, and the whole
+event fails to decode** — and `Store.send` swallows the bridge error via
+`guarded`, so the symptom is a silent no-op (e.g. "editing doesn't save", #846),
+not a crash.
+
+The specific offender we hit: `#[serde(deserialize_with = "double_option")]` on
+`UpdateItem`'s three-state `Option<Option<T>>` fields. `double_option` reads a
+single option level (right for JSON, where a present key is one `Option<T>` and
+`null` = clear); bincode needs both levels. Fix: make such helpers **format-aware**
+via `Deserializer::is_human_readable()` (JSON branch vs bincode branch) so the
+same type round-trips on both wires.
+
+Rules of thumb for any type that crosses the FFI bridge (`Event`, `Effect`,
+`ViewModel`, and everything they contain):
+
+- Be wary of `deserialize_with` / `serialize_with`, and of `skip_serializing_if`
+  combined with non-trailing fields — anything that assumes "absent" vs "present"
+  semantics. bincode has no "absent". If you need format-specific behaviour,
+  branch on `is_human_readable()`.
+- **Stub-bridge tests can't catch this.** Cover bridge-crossing types with a
+  *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`) that drives
+  the actual Swift↔Rust bincode (de)serialization — see
+  `testRealBridgeEditAppliesToViewModel`.
+
 ### Tauri WebView origin is `tauri://localhost`
 
 Inside the Tauri 2 iOS shell the WebView's runtime origin is `tauri://localhost`
