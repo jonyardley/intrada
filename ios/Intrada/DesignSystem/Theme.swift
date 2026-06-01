@@ -8,6 +8,7 @@ enum IntradaColor {
   static let paperBottom = Color(hex: 0xEBE7D9)
 
   static let cardFill = Color(hex: 0xFCFAF3)
+  static let surfaceSunken = Color(hex: 0xF0E7D6)
   static let hairline = Color(hex: 0xE5DECD)
   static let divider = Color(hex: 0xE0D9C8)
 
@@ -61,6 +62,7 @@ enum IntradaFont {
   static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)
   static let subtitle = Font.custom(Inter.regular, size: 13, relativeTo: .footnote)
   static let meta = Font.custom(Inter.regular, size: 12, relativeTo: .caption)
+  static let micro = Font.custom(Inter.regular, size: 10, relativeTo: .caption2)
   static let metaMedium = Font.custom(Inter.medium, size: 12, relativeTo: .caption)
   static let badge = Font.custom(Inter.semibold, size: 12, relativeTo: .caption)
   static let tab = Font.custom(Inter.medium, size: 13, relativeTo: .footnote)

@@ -33,9 +33,11 @@ struct KeyPicker: View {
         }
         .padding(.top, 4)
         .padding(.bottom, 12)
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        .transition(.move(edge: .top).combined(with: .opacity))
       }
     }
+    // Clip the reveal so the expanding wheel can't bleed over the rows above.
+    .clipped()
   }
 
   // ── Collapsed row ──
@@ -126,9 +128,10 @@ struct KeyPicker: View {
       startAngle: .degrees(center - 15),
       endAngle: .degrees(center + 15))
     let selected = isSelected(ring: ring, mode: mode)
+    let restFill = isMajor ? IntradaColor.cardFill : IntradaColor.surfaceSunken
     return
       shape
-      .fill(selected ? IntradaColor.accent : IntradaColor.cardFill)
+      .fill(selected ? IntradaColor.accent : restFill)
       .overlay(shape.stroke(IntradaColor.hairline, lineWidth: 1))
       .contentShape(shape)
       .onTapGesture { tap(ring: ring, mode: mode) }
@@ -142,6 +145,7 @@ struct KeyPicker: View {
       Circle()
         .fill(IntradaColor.cardFill)
         .overlay(Circle().stroke(IntradaColor.hairline, lineWidth: 1))
+        .shadow(color: IntradaColor.shadow, radius: 5, x: 0, y: 2)
       if let sel = selection {
         VStack(spacing: 0) {
           Text(KeyHelper.prettify(sel.spelling))
@@ -178,7 +182,7 @@ struct KeyPicker: View {
             .font(IntradaFont.cardTitle(15))
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.ink)
           Text("\u{21C5} \(KeyHelper.prettify(pair.bottom))")  // ⇅
-            .font(IntradaFont.meta)
+            .font(IntradaFont.micro)
             .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkFaint)
         }
       } else {
@@ -196,15 +200,22 @@ struct KeyPicker: View {
     let spelling =
       (selection.flatMap { $0.ring == ring && $0.mode == .minor ? $0.spelling : nil })
       ?? KeyHelper.primary(ring: ring, mode: .minor)
-    var text = "\(KeyHelper.prettify(spelling))m"
-    if KeyHelper.enharmonicAlt(ring: ring, mode: .minor) != nil {
-      text += " \u{21C5}"  // ⇅
+    let label = "\(KeyHelper.prettify(spelling))m"
+    let color = selected ? IntradaColor.onAccent : IntradaColor.inkSecondary
+    return Group {
+      // ⇅ stacked above the label so it fits the narrow inner wedge.
+      if KeyHelper.enharmonicAlt(ring: ring, mode: .minor) != nil {
+        VStack(spacing: 0) {
+          Text("\u{21C5}").font(IntradaFont.micro)  // ⇅
+          Text(label).font(IntradaFont.meta)
+        }
+      } else {
+        Text(label).font(IntradaFont.meta)
+      }
     }
-    return Text(text)
-      .font(IntradaFont.meta)
-      .foregroundStyle(selected ? IntradaColor.onAccent : IntradaColor.inkSecondary)
-      .position(point(radius: 82.5, ring: ring))
-      .allowsHitTesting(false)
+    .foregroundStyle(color)
+    .position(point(radius: 82.5, ring: ring))
+    .allowsHitTesting(false)
   }
 
   // ── Helpers ──
