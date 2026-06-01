@@ -358,9 +358,13 @@ jobs:
 
   native-ios:
     # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
-    # run the snapshot test, build, launch, and screenshot. Pinned to macos-26 +
-    # Xcode 26.5 so the toolchain matches local dev (and the spec's iOS 26 SDK):
-    # SwiftUI snapshots are renderer-specific, so dev and CI MUST share Xcode/iOS.
+    # build, and run the snapshot test. Pinned to macos-26 + Xcode 26.5 so the
+    # toolchain matches local dev (and the spec's iOS 26 SDK): SwiftUI snapshots
+    # are renderer-specific, so dev and CI MUST share Xcode/iOS.
+    #
+    # PR optimisations (vs main): the launch+screenshot smoke is skipped (the
+    # snapshot test is the regression gate) and DerivedData is restore-only.
+    # Main runs the full launch+screenshot and writes the cache.
     name: Native iOS (build + test)
     runs-on: macos-26
     timeout-minutes: 40
@@ -432,6 +436,11 @@ jobs:
           key: ios-dd-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
           restore-keys: |
             ios-dd-v1-${{ runner.os }}-
+          # Only main writes the cache (~66s). PRs restore main's DerivedData —
+          # which already holds the costly SwiftPM deps (Sentry, swift-syntax,
+          # swift-snapshot-testing) — and skip the write. The exact-key on main
+          # tracks `main`'s own source, so PR incremental builds stay warm.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       # Snapshot test = deterministic UI-regression "eyes" (renders RootView
       # against a committed reference). Create a deterministic iOS 26.5 sim —
       # the reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev), and
@@ -458,10 +467,14 @@ jobs:
           if-no-files-found: ignore
       # REUSE_BUILD: the snapshot-test step above already built the app into
       # build/dd — install + launch it for the screenshot without rebuilding.
+      # Main only (~105s): the snapshot test is the per-PR UI regression gate;
+      # the launch+screenshot is a "does the real app boot through its FFI
+      # entry point" smoke + visual artifact, which only main needs.
       - name: Launch on simulator + screenshot
+        if: github.event_name == 'push'
         run: REUSE_BUILD=1 bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
       - name: Upload screenshot
-        if: always()
+        if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: native-ios-screenshot
