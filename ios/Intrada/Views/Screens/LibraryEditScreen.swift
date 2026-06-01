@@ -9,6 +9,7 @@ struct LibraryEditScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
 
+  @State private var kind: ItemKind
   @State private var title: String
   @State private var composer: String
   @State private var key: String
@@ -19,6 +20,7 @@ struct LibraryEditScreen: View {
 
   init(item: LibraryItemView) {
     self.item = item
+    _kind = State(initialValue: item.itemType)
     _title = State(initialValue: item.title)
     _composer = State(initialValue: item.subtitle)
     // Normalise on load so editing self-heals legacy combined values
@@ -37,6 +39,8 @@ struct LibraryEditScreen: View {
         PaperBackground()
         ScrollView {
           VStack(spacing: 16) {
+            KindSegment(selection: $kind)
+
             VStack(spacing: 0) {
               FormField(label: "Title", text: $title, placeholder: "Required")
               divider
@@ -80,6 +84,7 @@ struct LibraryEditScreen: View {
   private func save() {
     let input = UpdateItem(
       title: title,
+      kind: kind,
       composer: .some(emptyToNil(composer)),
       key: .some(emptyToNil(key)),
       modality: .some(modality),
