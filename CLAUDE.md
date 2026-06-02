@@ -405,6 +405,23 @@ made, append to that log rather than deciding silently.
 4. **Spacing tokens only**: `p-card` (16), `p-card-compact` (12),
    `p-card-comfortable` (24).
 
+### Animated reveals need an opaque backing
+
+Anything that **slides or fades in/out over other content** — a search bar, an
+expanding row, a banner, a sheet-like panel — must paint an **opaque background
+token** (`paperTop` / `cardFill`, never `clear`) so it cleanly covers what's
+behind it during the transition. A transition over a transparent background
+**ghosts**: you see both components overlap mid-animation (e.g. the Library
+search bar drawing on top of the filter pills). Two parts:
+
+- The **moving** view gets an opaque background so it hides whatever it travels over.
+- When it should emerge from *behind* sibling chrome (pills, a toolbar), that
+  chrome must also be opaque **and** sit on top (`.zIndex(1)` in SwiftUI) —
+  otherwise the transparent chrome can't occlude it.
+
+It's the background that hides the motion, not the transition. Don't ship a
+reveal animation without checking what shows through behind it.
+
 ### Don't deviate from the system unless you're explicitly redesigning
 
 Hand-rolled markup that duplicates an existing primitive is the #1 source of
