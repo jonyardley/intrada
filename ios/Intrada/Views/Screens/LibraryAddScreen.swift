@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Create sheet for a new library item. Sends `Event.item(.add)` — the core
 /// validates and (in local-first mode) persists locally with a client-minted
-/// ulid; the shell only collects field values. Tags deferred to a later increment.
+/// ulid; the shell only collects field values.
 struct LibraryAddScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
@@ -16,6 +16,7 @@ struct LibraryAddScreen: View {
   @State private var marking = ""
   @State private var bpm = ""
   @State private var notes = ""
+  @State private var tags: [String] = []
 
   init(defaultKind: ItemKind = .piece) {
     _kind = State(initialValue: defaultKind)
@@ -48,6 +49,11 @@ struct LibraryAddScreen: View {
 
             FormField(label: "Notes", text: $notes, axis: .vertical)
               .cardSurface()
+
+            VStack(spacing: 0) {
+              TagChipInput(label: "Tags", tags: $tags, suggestions: availableTags)
+            }
+            .cardSurface()
           }
           .padding(16)
         }
@@ -74,6 +80,10 @@ struct LibraryAddScreen: View {
     ComposerSuggestions.from(store.viewModel?.items)
   }
 
+  private var availableTags: [String] {
+    store.viewModel?.availableTags ?? []
+  }
+
   private func add() {
     let input = CreateItem(
       title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -83,7 +93,7 @@ struct LibraryAddScreen: View {
       modality: modality,
       tempo: buildTempo(),
       notes: emptyToNil(notes),
-      tags: [])
+      tags: tags)
     store.send(.item(.add(input)))
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     dismiss()

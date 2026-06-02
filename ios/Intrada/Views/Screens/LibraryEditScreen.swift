@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Edit sheet for a library item. Sends `Event.item(.update)` — the core
 /// validates and reconciles; the shell only collects field values.
-/// Tags and priority editing are deferred to a later increment.
+/// Priority editing is deferred to a later increment.
 struct LibraryEditScreen: View {
   let item: LibraryItemView
   @Environment(Store.self) private var store
@@ -17,10 +17,12 @@ struct LibraryEditScreen: View {
   @State private var marking: String
   @State private var bpm: String
   @State private var notes: String
+  @State private var tags: [String]
 
   init(item: LibraryItemView) {
     self.item = item
     _kind = State(initialValue: item.itemType)
+    _tags = State(initialValue: item.tags)
     _title = State(initialValue: item.title)
     _composer = State(initialValue: item.subtitle)
     // Normalise on load so editing self-heals legacy combined values
@@ -60,6 +62,11 @@ struct LibraryEditScreen: View {
 
             FormField(label: "Notes", text: $notes, axis: .vertical)
               .cardSurface()
+
+            VStack(spacing: 0) {
+              TagChipInput(label: "Tags", tags: $tags, suggestions: availableTags)
+            }
+            .cardSurface()
           }
           .padding(16)
         }
@@ -86,6 +93,10 @@ struct LibraryEditScreen: View {
     ComposerSuggestions.from(store.viewModel?.items)
   }
 
+  private var availableTags: [String] {
+    store.viewModel?.availableTags ?? []
+  }
+
   private func save() {
     let input = UpdateItem(
       title: title,
@@ -95,7 +106,7 @@ struct LibraryEditScreen: View {
       modality: .some(modality),
       tempo: .some(buildTempo()),
       notes: .some(emptyToNil(notes)),
-      tags: nil,
+      tags: tags,
       priority: nil)
     store.send(.item(.update(id: item.id, input: input)))
     UINotificationFeedbackGenerator().notificationOccurred(.success)
