@@ -79,6 +79,24 @@ leaves no trace in dev/CI where Sentry has no DSN.
 they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
 full regenerate. The Tauri `tauri-*` recipes are the on-hold WKWebView shell.
 
+**Simulator build/snapshot/UI testing** — the `xcrun simctl` / `xcodebuild`
+CLI workflow (screenshots via `xcrun simctl io <udid> screenshot`), the optional
+XcodeBuildMCP server in `.mcp.json`, and host gotchas (e.g. quit Xcode before
+`xcodebuild test` to avoid `Pseudo Terminal Setup Error`) — is documented in
+[`docs/ios-testing.md`](docs/ios-testing.md).
+
+**Shared-simulator rule (esp. in a git worktree):** the iOS Simulator and
+`CoreSimulatorService` are machine-global — one per login, shared with the main
+checkout and any other worktree. Files are isolated; the sim is not. So:
+create a worktree-scoped sim (`xcrun simctl create "snap-$(basename "$PWD")" …`)
+and target it by UDID; only delete sims you created; and **never run a global
+sim reset blind** (`simctl shutdown all`, `simctl erase|delete`, `killall
+com.apple.CoreSimulator.CoreSimulatorService`). Before any such global op — or
+before kicking off a fresh test run — check for another live session
+(`xcrun simctl list devices | grep Booted`; `pgrep -fl 'xcodebuild|XCTestAgent'`;
+`pgrep -x Xcode`). If anything you didn't start is active, **pause and ask the
+user** rather than risk killing their running sim/tests.
+
 **Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R, or
 any build with no launch args) runs **local-first**: the Library hydrates from
 the on-device GRDB store, so items you add survive restarts. The 6 sample
