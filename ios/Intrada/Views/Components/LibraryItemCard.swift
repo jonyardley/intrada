@@ -22,6 +22,10 @@ struct LibraryItemCard: View {
           .font(IntradaFont.meta)
           .foregroundStyle(IntradaColor.inkFaint)
       }
+      if !item.tags.isEmpty {
+        TagPills(tags: item.tags)
+          .padding(.top, 5)
+      }
     }
     .padding(.vertical, 14)
     .padding(.leading, 20)
