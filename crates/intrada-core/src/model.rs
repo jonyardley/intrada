@@ -171,6 +171,9 @@ pub struct ViewModel {
     /// Unfiltered counts so the subtitle describes the whole library (#792).
     pub total_pieces: usize,
     pub total_exercises: usize,
+    /// Distinct tags across the whole library (case-folded dedupe, sorted) —
+    /// the vocabulary for the filter sheet and the add/edit autocomplete.
+    pub available_tags: Vec<String>,
     pub sessions: Vec<PracticeSessionView>,
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,
