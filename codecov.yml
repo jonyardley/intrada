@@ -24,6 +24,12 @@ comment:
   require_head: true
 
 ignore:
+  # Native iOS Swift shell — intentionally not coverage-tracked. The coverage
+  # job is Rust-only (cargo-llvm-cov); the shell is a dumb pipe whose logic
+  # lives in the Crux core (covered above). Swift unit tests exist but aren't
+  # measured. Wiring xccov→Codecov is tracked in #896 (horizon:later).
+  - "ios/**"
+
   # Leptos web shell — UI code compiled to WASM, not covered by
   # cargo-llvm-cov (excluded from the coverage job entirely).
   - "crates/intrada-web/**"
