@@ -657,6 +657,7 @@ mod tests {
             started_at: started_at.to_string(),
             finished_at: started_at.to_string(),
             total_duration_display: "25 min".to_string(),
+            total_duration_summary: "25m".to_string(),
             completion_status: intrada_core::CompletionStatus::Completed,
             notes: None,
             entries: vec![],

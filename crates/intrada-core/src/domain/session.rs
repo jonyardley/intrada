@@ -285,6 +285,20 @@ pub fn format_duration_display(secs: u64) -> String {
     }
 }
 
+/// Coarse "45m" / "2h 15m" total (Pencil's pattern) for session-summary lines —
+/// minutes floored, seconds dropped. Distinct from `format_duration_display`,
+/// which keeps seconds for the live timer and per-entry rows.
+pub fn format_duration_summary(secs: u64) -> String {
+    let total_minutes = secs / 60;
+    let hours = total_minutes / 60;
+    let minutes = total_minutes % 60;
+    if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else {
+        format!("{minutes}m")
+    }
+}
+
 fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, ItemKind)> {
     model
         .items
@@ -2739,6 +2753,18 @@ mod tests {
         assert_eq!(format_duration_display(3600), "1h 0m 0s");
         assert_eq!(format_duration_display(3661), "1h 1m 1s");
         assert_eq!(format_duration_display(7200), "2h 0m 0s");
+    }
+
+    // --- format_duration_summary Tests ---
+
+    #[test]
+    fn test_format_duration_summary() {
+        assert_eq!(format_duration_summary(0), "0m");
+        assert_eq!(format_duration_summary(45), "0m");
+        assert_eq!(format_duration_summary(1800), "30m");
+        assert_eq!(format_duration_summary(2700), "45m");
+        assert_eq!(format_duration_summary(3600), "1h 0m");
+        assert_eq!(format_duration_summary(8100), "2h 15m");
     }
 
     // --- SessionsData Serialization Test ---

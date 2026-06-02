@@ -277,6 +277,7 @@ pub struct PracticeSessionView {
     pub started_at: String,
     pub finished_at: String,
     pub total_duration_display: String,
+    pub total_duration_summary: String,
     pub completion_status: CompletionStatus,
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
@@ -440,6 +441,9 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         started_at: session.started_at.to_rfc3339(),
         finished_at: session.completed_at.to_rfc3339(),
         total_duration_display: crate::domain::session::format_duration_display(
+            session.total_duration_secs,
+        ),
+        total_duration_summary: crate::domain::session::format_duration_summary(
             session.total_duration_secs,
         ),
         completion_status: session.completion_status.clone(),
@@ -623,5 +627,25 @@ mod tests {
         let view = build_summary_view(&summary);
         assert_eq!(view.total_duration_display, "2m 30s");
         assert_eq!(view.session_intention.as_deref(), Some("focus"));
+    }
+
+    #[test]
+    fn session_view_exposes_coarse_duration_summary() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.duration_secs = 2700;
+        let session = crate::domain::session::PracticeSession {
+            id: "s1".to_string(),
+            entries: vec![entry],
+            session_notes: None,
+            session_intention: None,
+            started_at: Utc::now(),
+            completed_at: Utc::now(),
+            total_duration_secs: 2700,
+            completion_status: CompletionStatus::Completed,
+        };
+        let view = session_to_view(&session);
+        // Precise (live-timer) form keeps seconds; the summary line drops them.
+        assert_eq!(view.total_duration_display, "45m 0s");
+        assert_eq!(view.total_duration_summary, "45m");
     }
 }

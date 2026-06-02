@@ -178,6 +178,8 @@ impl App for Intrada {
             }
             Event::LoadSampleData => {
                 model.items = sample_items();
+                model.sessions = sample_sessions();
+                model.practice_summaries = build_practice_summaries(&model.sessions);
                 // Seed mode is offline (DEBUG/CI) — keep writes local so a demo
                 // edit doesn't surprise-POST to the API.
                 model.local_first = true;
@@ -795,6 +797,121 @@ fn sample_items() -> Vec<Item> {
     ]
 }
 
+/// Canonical demo practice history for `Event::LoadSampleData`. Entries
+/// reference the ids minted by `sample_items()` so the home screen's
+/// "duration · item count" line and any future detail view stay consistent.
+fn sample_sessions() -> Vec<PracticeSession> {
+    use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
+    let now = chrono::Utc::now();
+
+    let entry = |position: usize,
+                 item_id: &str,
+                 item_title: &str,
+                 item_type: ItemKind,
+                 duration_secs: u64|
+     -> SetlistEntry {
+        SetlistEntry {
+            id: format!("{item_id}-entry-{position}"),
+            item_id: item_id.to_string(),
+            item_title: item_title.to_string(),
+            item_type,
+            position,
+            duration_secs,
+            status: EntryStatus::Completed,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+        }
+    };
+
+    let session = |id: &str,
+                   days_ago: i64,
+                   completion_status: CompletionStatus,
+                   entries: Vec<SetlistEntry>|
+     -> PracticeSession {
+        let total_duration_secs = entries.iter().map(|e| e.duration_secs).sum();
+        let started_at = now - chrono::Duration::days(days_ago);
+        PracticeSession {
+            id: id.to_string(),
+            entries,
+            session_notes: None,
+            session_intention: None,
+            started_at,
+            completed_at: started_at + chrono::Duration::seconds(total_duration_secs as i64),
+            total_duration_secs,
+            completion_status,
+        }
+    };
+
+    vec![
+        session(
+            "sample-session-today",
+            0,
+            CompletionStatus::Completed,
+            vec![
+                entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 720),
+                entry(
+                    1,
+                    "sample-gymnopedie",
+                    "Gymnopédie No. 1",
+                    ItemKind::Piece,
+                    540,
+                ),
+                entry(
+                    2,
+                    "sample-nocturne",
+                    "Nocturne Op. 9 No. 2",
+                    ItemKind::Piece,
+                    540,
+                ),
+            ],
+        ),
+        session(
+            "sample-session-yesterday",
+            1,
+            CompletionStatus::Completed,
+            vec![
+                entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480),
+                entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600),
+            ],
+        ),
+        session(
+            "sample-session-3d",
+            3,
+            CompletionStatus::EndedEarly,
+            vec![
+                entry(0, "sample-clair", "Clair de Lune", ItemKind::Piece, 1500),
+                entry(1, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 600),
+                entry(
+                    2,
+                    "sample-nocturne",
+                    "Nocturne Op. 9 No. 2",
+                    ItemKind::Piece,
+                    600,
+                ),
+            ],
+        ),
+        session(
+            "sample-session-5d",
+            5,
+            CompletionStatus::Completed,
+            vec![entry(
+                0,
+                "sample-scales",
+                "Major Scales",
+                ItemKind::Exercise,
+                720,
+            )],
+        ),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1061,6 +1178,47 @@ mod tests {
             .items
             .iter()
             .any(|i| i.tempo.as_ref().and_then(|t| t.bpm).is_some()));
+    }
+
+    #[test]
+    fn test_load_sample_data_populates_practice_sessions() {
+        use crate::domain::session::CompletionStatus;
+
+        let app = Intrada;
+        let mut model = Model::default();
+
+        let _ = app.update(Event::LoadSampleData, &mut model);
+
+        assert!(
+            model.sessions.len() >= 3,
+            "expected a few sample practice sessions"
+        );
+        // Every session has at least one entry referencing a seeded item, so the
+        // home-screen "duration · item count" line is never zero.
+        assert!(model.sessions.iter().all(|s| !s.entries.is_empty()));
+        let item_ids: std::collections::HashSet<_> =
+            model.items.iter().map(|i| i.id.as_str()).collect();
+        assert!(model.sessions.iter().all(|s| s
+            .entries
+            .iter()
+            .all(|e| item_ids.contains(e.item_id.as_str()))));
+        // Both completion states are represented so the card can show each.
+        assert!(model
+            .sessions
+            .iter()
+            .any(|s| s.completion_status == CompletionStatus::Completed));
+        assert!(model
+            .sessions
+            .iter()
+            .any(|s| s.completion_status == CompletionStatus::EndedEarly));
+
+        // The view projects them with a human-readable duration + entries.
+        let vm = app.view(&model);
+        assert_eq!(vm.sessions.len(), model.sessions.len());
+        assert!(vm
+            .sessions
+            .iter()
+            .all(|s| !s.total_duration_display.is_empty() && !s.entries.is_empty()));
     }
 
     #[test]

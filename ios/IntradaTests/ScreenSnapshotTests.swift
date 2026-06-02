@@ -89,6 +89,10 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(PracticeScreen()), as: config)
   }
 
+  func testPracticeScreenPopulated() {
+    assertSnapshot(of: host(PracticeScreen(), store: .previewPractice), as: config)
+  }
+
   func testRoutinesScreen() {
     assertSnapshot(of: host(RoutinesScreen()), as: config)
   }

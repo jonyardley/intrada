@@ -9,10 +9,15 @@
     private let core = CoreFfi()
     private let items: [LibraryItemView]
     private let activeQuery: ListQuery?
+    private let sessions: [PracticeSessionView]
 
-    init(items: [LibraryItemView] = [], activeQuery: ListQuery? = nil) {
+    init(
+      items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
+      sessions: [PracticeSessionView] = []
+    ) {
       self.items = items
       self.activeQuery = activeQuery
+      self.sessions = sessions
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -32,6 +37,7 @@
       // Type-filters items; callers pre-filter the list for text/tag queries.
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
+      viewModel.sessions = sessions
       return viewModel
     }
   }
@@ -73,6 +79,15 @@
       store.send(.loadSampleData)
       return store
     }
+
+    /// Practice home with deterministic sessions (fixed past dates) for the
+    /// populated-state snapshot — covers both completed + ended-early cards.
+    static var previewPractice: Store {
+      Store(
+        bridge: PreviewBridge(sessions: [
+          .previewCompleted, .previewEndedEarly,
+        ]))
+    }
   }
 
   extension LibraryItemView {
@@ -110,6 +125,45 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false)
+    }
+  }
+
+  extension PracticeSessionView {
+    /// Fixed past dates (not "now") so the card renders a deterministic absolute
+    /// date — reusable from snapshot tests as well as the canvas.
+    static var previewCompleted: PracticeSessionView {
+      PracticeSessionView(
+        id: "session-1", startedAt: "2026-05-30T09:00:00Z", finishedAt: "2026-05-30T09:32:00Z",
+        totalDurationDisplay: "32m 0s", totalDurationSummary: "32m",
+        completionStatus: .completed, notes: nil,
+        entries: [
+          previewEntry(0, "Clair de Lune", .piece),
+          previewEntry(1, "Gymnopédie No. 1", .piece),
+          previewEntry(2, "Nocturne Op. 9 No. 2", .piece),
+        ],
+        sessionIntention: nil)
+    }
+
+    static var previewEndedEarly: PracticeSessionView {
+      PracticeSessionView(
+        id: "session-2", startedAt: "2026-05-28T18:00:00Z", finishedAt: "2026-05-28T18:14:00Z",
+        totalDurationDisplay: "14m 0s", totalDurationSummary: "14m",
+        completionStatus: .endedEarly, notes: nil,
+        entries: [
+          previewEntry(0, "Hanon No. 1", .exercise),
+          previewEntry(1, "Major Scales", .exercise),
+        ],
+        sessionIntention: nil)
+    }
+
+    private static func previewEntry(_ position: UInt64, _ title: String, _ type: ItemKind)
+      -> SetlistEntryView
+    {
+      SetlistEntryView(
+        id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
+        position: position, durationDisplay: "10 min", status: .completed, notes: nil,
+        score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
+        repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil)
     }
   }
 #endif
