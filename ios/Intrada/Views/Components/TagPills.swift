@@ -10,27 +10,13 @@ struct TagPills: View {
     let shown = Array(tags.prefix(limit))
     let overflow = tags.count - shown.count
     HStack(spacing: 6) {
-      ForEach(shown, id: \.self) { TagChip(text: $0) }
+      ForEach(shown, id: \.self) { TagChip($0) }
       if overflow > 0 {
-        TagChip(text: "+\(overflow)")
+        TagChip("+\(overflow)")
       }
     }
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Tags: \(tags.joined(separator: ", "))")
-  }
-}
-
-private struct TagChip: View {
-  let text: String
-
-  var body: some View {
-    Text(text)
-      .font(IntradaFont.metaMedium)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .lineLimit(1)
-      .padding(.vertical, 3)
-      .padding(.horizontal, 8)
-      .background(IntradaColor.surfaceSunken, in: Capsule())
   }
 }
 

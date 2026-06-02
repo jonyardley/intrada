@@ -102,13 +102,7 @@ struct LibraryDetailScreen: View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
         ForEach(item.tags, id: \.self) { tag in
-          Text(tag)
-            .font(IntradaFont.metaMedium)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .padding(.vertical, 5)
-            .padding(.horizontal, 10)
-            .background(IntradaColor.cardFill, in: Capsule())
-            .overlay(Capsule().stroke(IntradaColor.hairline, lineWidth: 1))
+          TagChip(tag, style: .outlined)
         }
       }
     }
