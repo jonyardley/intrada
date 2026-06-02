@@ -425,7 +425,7 @@ async fn pat_prefix_takes_precedence_over_jwt_path() {
 
     // Constructed from the prefix + repeating ascii so the literal in
     // source has no high-entropy hex blob for gitleaks to flag.
-    let suffix: String = std::iter::repeat('z').take(60).collect();
+    let suffix = "z".repeat(60);
     let pat_token = format!("{}{suffix}", intrada_api::db::tokens::TOKEN_PREFIX);
     seed_pat(&conn, &pat_token, "user_PAT").await;
 
