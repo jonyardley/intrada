@@ -290,4 +290,64 @@ mod tests {
             })
         );
     }
+
+    // ── FFI bincode round-trip (#846) ────────────────────────────────────
+    // The native iOS shell ships these write payloads as positional bincode
+    // (crux's BincodeFfiFormat). A serde attr that assumes a self-describing
+    // format (see `double_option` above) misaligns that wire and the event
+    // silently fails to decode. These guard against that whole class.
+
+    /// Round-trip through crux's actual FFI format (`BincodeFfiFormat`) — the
+    /// exact wire the iOS bridge uses, so the test can't drift from the real
+    /// serializer and we don't take a direct bincode dependency.
+    fn assert_round_trips<T>(value: T)
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug + PartialEq,
+    {
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, &value).expect("serialize");
+        let back: T =
+            BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
+        assert_eq!(value, back, "round-trip changed the value");
+    }
+
+    #[test]
+    fn update_item_round_trips_on_ffi_bincode_wire() {
+        // Every field outer-`Some` (mirrors the Swift serializer, which writes
+        // all fields regardless of `skip_serializing_if`). Covers both
+        // three-state branches: `Some(Some)` = set, `Some(None)` = clear — the
+        // exact shapes that failed to decode pre-fix.
+        assert_round_trips(UpdateItem {
+            title: Some("Renamed".to_string()),
+            kind: Some(ItemKind::Exercise),
+            composer: Some(Some("Bach".to_string())),
+            key: Some(None),
+            modality: Some(Some(Modality::Minor)),
+            tempo: Some(Some(Tempo {
+                marking: Some("Allegro".to_string()),
+                bpm: Some(120),
+            })),
+            notes: Some(None),
+            tags: Some(vec!["etude".to_string()]),
+            priority: Some(true),
+        });
+    }
+
+    #[test]
+    fn create_item_round_trips_on_ffi_bincode_wire() {
+        assert_round_trips(CreateItem {
+            title: "Clair de Lune".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: Some("Db".to_string()),
+            modality: Some(Modality::Major),
+            tempo: Some(Tempo {
+                marking: None,
+                bpm: Some(72),
+            }),
+            notes: None,
+            tags: vec!["impressionist".to_string()],
+        });
+    }
 }
