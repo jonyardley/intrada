@@ -4,6 +4,7 @@ import SwiftUI
 struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @State private var adding = false
+  @State private var filtering = false
   @State private var searchText = ""
   @State private var searchRevealed = false
   @FocusState private var searchFocused: Bool
@@ -41,6 +42,21 @@ struct LibraryScreen: View {
             current: store.viewModel?.activeSort
               ?? LibrarySort(field: .dateAdded, direction: .descending),
             onChange: { store.send(.setSort($0)) })
+          Button {
+            filtering = true
+          } label: {
+            Image(
+              systemName: activeTags.isEmpty
+                ? "line.3.horizontal.decrease.circle"
+                : "line.3.horizontal.decrease.circle.fill"
+            )
+            .font(IntradaFont.tab)
+            .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
+            .padding(8)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Filter by tag")
+          .accessibilityValue(activeTags.isEmpty ? "Off" : "\(activeTags.count) selected")
           Button(action: toggleSearch) {
             Image(systemName: "magnifyingglass")
               .font(IntradaFont.tab)
@@ -70,6 +86,12 @@ struct LibraryScreen: View {
       // Pre-select the kind the list is filtered to; "All" falls back to Piece.
       LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
         .environment(store)
+    }
+    .sheet(isPresented: $filtering) {
+      TagFilterSheet(
+        available: store.viewModel?.availableTags ?? [],
+        selected: activeTags,
+        onChange: sendTagFilter)
     }
     // Key on the id (not the value) so an edit — which changes the item's hash —
     // doesn't break the pushed destination; the detail re-reads the fresh item.
@@ -142,14 +164,29 @@ struct LibraryScreen: View {
     }
   }
 
-  /// Build the combined query from the current type filter and search text so
-  /// neither resets the other; an empty filter + empty text clears the query.
+  /// The currently active tag filter (OR-matched in the core).
+  private var activeTags: [String] {
+    store.viewModel?.activeQuery?.tags ?? []
+  }
+
+  /// Change the type filter / search text while preserving the active tag
+  /// filter, so the three dimensions don't reset each other.
   private func sendQuery(kind: ItemKind?, text: String) {
+    applyQuery(kind: kind, text: text, tags: activeTags)
+  }
+
+  /// Change the tag filter while preserving the active type filter + search.
+  private func sendTagFilter(_ tags: [String]) {
+    applyQuery(kind: store.viewModel?.activeQuery?.itemType, text: searchText, tags: tags)
+  }
+
+  /// Build the combined query from all three dimensions; all-empty clears it.
+  private func applyQuery(kind: ItemKind?, text: String, tags: [String]) {
     let trimmed = text.trimmingCharacters(in: .whitespaces)
     let query =
-      (kind == nil && trimmed.isEmpty)
+      (kind == nil && trimmed.isEmpty && tags.isEmpty)
       ? nil
-      : ListQuery(text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: [])
+      : ListQuery(text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags)
     store.send(.setQuery(query))
   }
 
