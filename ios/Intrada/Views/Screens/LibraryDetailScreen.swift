@@ -20,7 +20,7 @@ struct LibraryDetailScreen: View {
             VStack(spacing: 0) {
               ForEach(Array(detailRows.enumerated()), id: \.offset) { index, row in
                 if index > 0 {
-                  Rectangle().fill(IntradaColor.hairline).frame(height: 1)
+                  HairlineDivider()
                 }
                 DetailRow(label: row.label, value: row.value)
               }

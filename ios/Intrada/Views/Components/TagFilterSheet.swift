@@ -47,7 +47,7 @@ struct TagFilterSheet: View {
                 .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
                 if tag != available.last {
-                  Rectangle().fill(IntradaColor.hairline).frame(height: 1).padding(.leading, 16)
+                  HairlineDivider().padding(.leading, 16)
                 }
               }
             }

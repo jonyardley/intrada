@@ -87,36 +87,11 @@ struct TagChipInput: View {
   }
 
   private var suggestionList: some View {
-    VStack(spacing: 0) {
-      Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-      ForEach(matches, id: \.self) { suggestion in
-        Button {
-          add(suggestion)
-          UISelectionFeedbackGenerator().selectionChanged()
-        } label: {
-          HStack(spacing: 10) {
-            Image(systemName: "plus")
-              .font(IntradaFont.meta)
-              .foregroundStyle(IntradaColor.inkFaint)
-            Text(suggestion)
-              .font(IntradaFont.body)
-              .foregroundStyle(IntradaColor.ink)
-            Spacer(minLength: 0)
-          }
-          .padding(.vertical, 10)
-          .padding(.horizontal, 16)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Adds the tag \(suggestion)")
-
-        if suggestion != matches.last {
-          Rectangle().fill(IntradaColor.hairline).frame(height: 1).padding(.leading, 16)
-        }
-      }
-    }
-    .background(IntradaColor.surfaceSunken.opacity(0.6))
+    InlineSuggestionList(
+      matches: matches,
+      systemImage: "plus",
+      accessibilityHint: { "Adds the tag \($0)" },
+      onPick: { add($0) })
   }
 }
 
