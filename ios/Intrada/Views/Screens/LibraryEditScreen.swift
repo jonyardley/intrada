@@ -17,6 +17,7 @@ struct LibraryEditScreen: View {
   @State private var bpm: String
   @State private var notes: String
   @State private var tags: [String]
+  @State private var formError: String?
 
   init(item: LibraryItemView) {
     self.item = item
@@ -34,40 +35,55 @@ struct LibraryEditScreen: View {
     _notes = State(initialValue: item.notes ?? "")
   }
 
+  #if DEBUG
+    init(item: LibraryItemView, previewError: String) {
+      self.init(item: item)
+      _formError = State(initialValue: previewError)
+    }
+  #endif
+
   var body: some View {
     NavigationStack {
       ZStack {
         PaperBackground()
-        ScrollView {
-          VStack(spacing: 16) {
-            KindSegment(selection: $kind)
+        VStack(spacing: 0) {
+          if let formError {
+            FormErrorBanner(message: formError)
+              .padding(.horizontal, 16)
+              .padding(.top, 12)
+              .transition(.move(edge: .top).combined(with: .opacity))
+          }
+          ScrollView {
+            VStack(spacing: 16) {
+              KindSegment(selection: $kind)
 
-            VStack(spacing: 0) {
-              FormField(label: "Title", text: $title, placeholder: "Required")
-              divider
-              AutocompleteField(
-                label: "Composer", text: $composer, suggestions: composerSuggestions)
-              divider
-              KeyPicker(label: "Key", key: $key, modality: $modality)
-            }
-            .cardSurface()
-
-            VStack(spacing: 0) {
-              FormField(label: "Tempo marking", text: $marking, placeholder: "e.g. Allegro")
-              divider
-              FormField(label: "Beats per minute", text: $bpm, keyboard: .numberPad)
-            }
-            .cardSurface()
-
-            FormField(label: "Notes", text: $notes, axis: .vertical)
+              VStack(spacing: 0) {
+                FormField(label: "Title", text: $title, placeholder: "Required")
+                divider
+                AutocompleteField(
+                  label: "Composer", text: $composer, suggestions: composerSuggestions)
+                divider
+                KeyPicker(label: "Key", key: $key, modality: $modality)
+              }
               .cardSurface()
 
-            VStack(spacing: 0) {
-              TagChipInput(label: "Tags", tags: $tags, suggestions: availableTags)
+              VStack(spacing: 0) {
+                FormField(label: "Tempo marking", text: $marking, placeholder: "e.g. Allegro")
+                divider
+                FormField(label: "Beats per minute", text: $bpm, keyboard: .numberPad)
+              }
+              .cardSurface()
+
+              FormField(label: "Notes", text: $notes, axis: .vertical)
+                .cardSurface()
+
+              VStack(spacing: 0) {
+                TagChipInput(label: "Tags", tags: $tags, suggestions: availableTags)
+              }
+              .cardSurface()
             }
-            .cardSurface()
+            .padding(16)
           }
-          .padding(16)
         }
       }
       .navigationTitle("Edit")
@@ -107,9 +123,18 @@ struct LibraryEditScreen: View {
       notes: .some(emptyToNil(notes)),
       tags: tags,
       priority: nil)
+    // Don't celebrate or dismiss until the core confirms: a validation reject
+    // or failed local write surfaces in viewModel.error, which we keep on screen.
+    formError = nil
     store.send(.item(.update(id: item.id, input: input)))
-    UINotificationFeedbackGenerator().notificationOccurred(.success)
-    dismiss()
+    if let error = store.viewModel?.error {
+      withAnimation { formError = error }
+      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
+    } else {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      dismiss()
+    }
   }
 
   private func emptyToNil(_ value: String) -> String? {

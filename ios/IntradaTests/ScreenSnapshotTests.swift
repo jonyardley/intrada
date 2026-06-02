@@ -53,6 +53,17 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(RootView()), as: config)
   }
 
+  func testLibraryAddScreenWithError() {
+    assertSnapshot(
+      of: host(LibraryAddScreen(previewError: "A piece needs a composer.")), as: config)
+  }
+
+  func testLibraryEditScreenWithError() {
+    assertSnapshot(
+      of: host(LibraryEditScreen(item: .previewDetail, previewError: "A piece needs a composer.")),
+      as: config)
+  }
+
   func testLibraryScreen() {
     assertSnapshot(of: host(NavigationStack { LibraryScreen() }), as: config)
   }
