@@ -142,6 +142,9 @@ private struct RemovableChip: View {
     .onTapGesture(perform: onRemove)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(text)
+    // `.isButton` so VoiceOver advertises the tap as activatable (matches the
+    // KeyPicker convention); a bare onTapGesture isn't surfaced reliably.
+    .accessibilityAddTraits(.isButton)
     .accessibilityHint("Double tap to remove")
   }
 }
