@@ -232,6 +232,19 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(fields), as: config)
   }
 
+  func testTagFilterSheet() {
+    let sheet = TagFilterSheet(
+      available: ["classical", "jazz", "recital", "technique", "warm-up"],
+      selected: ["jazz", "recital"],
+      onChange: { _ in })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testTagFilterSheetEmpty() {
+    let sheet = TagFilterSheet(available: [], selected: [], onChange: { _ in })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
