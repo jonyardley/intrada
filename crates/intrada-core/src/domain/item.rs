@@ -90,6 +90,7 @@ fn save_or_put(model: &mut Model, item: Item) -> Command<Effect, Event> {
 pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         ItemEvent::Add(input) => {
+            let input = validation::normalize_create_item(input);
             if let Err(e) = validation::validate_create_item(&input) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
@@ -131,6 +132,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             }
         }
         ItemEvent::Update { id, input } => {
+            let input = validation::normalize_update_item(input);
             if let Err(e) = validation::validate_update_item(&input) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();

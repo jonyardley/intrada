@@ -1461,6 +1461,78 @@ mod tests {
         assert_eq!(vm.available_composers, vec!["Beethoven", "Chopin", "Ravel"]);
     }
 
+    // --- Free-text normalisation on add (#883) ---
+
+    #[test]
+    fn add_normalises_whitespace_composer() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        // Whitespace-only composer on an exercise stores as None, not "   ".
+        let _ = app.update(
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "  Scales  ".to_string(),
+                kind: ItemKind::Exercise,
+                composer: Some("   ".to_string()),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec!["  warm-up ".to_string()],
+            })),
+            &mut model,
+        );
+        assert_eq!(model.items.len(), 1);
+        assert_eq!(model.items[0].title, "Scales");
+        assert_eq!(model.items[0].composer, None);
+        assert_eq!(model.items[0].tags, vec!["warm-up".to_string()]);
+
+        // A padded composer is trimmed, not stored verbatim.
+        let _ = app.update(
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Hanon".to_string(),
+                kind: ItemKind::Exercise,
+                composer: Some("  Hanon ".to_string()),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
+            &mut model,
+        );
+        assert_eq!(model.items[1].composer, Some("Hanon".to_string()));
+    }
+
+    #[test]
+    fn add_piece_with_blank_composer_is_required_error() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let _ = app.update(
+            Event::Item(ItemEvent::Add(crate::domain::types::CreateItem {
+                title: "Sonata".to_string(),
+                kind: ItemKind::Piece,
+                composer: Some("   ".to_string()),
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+            })),
+            &mut model,
+        );
+
+        assert!(
+            model.items.is_empty(),
+            "blank composer must not create a piece"
+        );
+        assert!(model
+            .last_error
+            .as_deref()
+            .is_some_and(|e| e.contains("Composer is required")));
+    }
+
     // --- T042: Unicode handling in core ---
 
     #[test]

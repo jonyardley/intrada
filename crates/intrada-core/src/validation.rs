@@ -26,6 +26,49 @@ pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
 
+// ── Normalisation ──
+// Trim free-text on input and collapse a now-blank value to absent, so a
+// whitespace-only field behaves exactly like an empty one through validation
+// and storage (#883). Runs before validate_*, so "   " fails "required" just
+// like "" rather than persisting as stored whitespace.
+
+fn trimmed_nonempty(value: Option<String>) -> Option<String> {
+    value
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
+fn normalize_tags(tags: Vec<String>) -> Vec<String> {
+    tags.into_iter()
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .collect()
+}
+
+fn normalize_tempo(tempo: Option<Tempo>) -> Option<Tempo> {
+    tempo.and_then(|t| Tempo::from_parts(trimmed_nonempty(t.marking), t.bpm))
+}
+
+pub fn normalize_create_item(mut input: CreateItem) -> CreateItem {
+    input.title = input.title.trim().to_string();
+    input.composer = trimmed_nonempty(input.composer);
+    input.key = trimmed_nonempty(input.key);
+    input.notes = trimmed_nonempty(input.notes);
+    input.tempo = normalize_tempo(input.tempo);
+    input.tags = normalize_tags(input.tags);
+    input
+}
+
+pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
+    input.title = input.title.map(|t| t.trim().to_string());
+    input.composer = input.composer.map(trimmed_nonempty);
+    input.key = input.key.map(trimmed_nonempty);
+    input.notes = input.notes.map(trimmed_nonempty);
+    input.tempo = input.tempo.map(normalize_tempo);
+    input.tags = input.tags.map(normalize_tags);
+    input
+}
+
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
     if title.is_empty() || title.len() > MAX_TITLE {
         return Err(LibraryError::Validation {
@@ -316,6 +359,123 @@ pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // --- normalisation (#883) ---
+
+    #[test]
+    fn normalize_create_trims_and_drops_blank_optionals() {
+        let input = CreateItem {
+            title: "  Clair de Lune  ".to_string(),
+            kind: ItemKind::Exercise,
+            composer: Some("   ".to_string()),
+            key: Some("  D major ".to_string()),
+            modality: None,
+            tempo: Some(Tempo {
+                marking: Some("   ".to_string()),
+                bpm: None,
+            }),
+            notes: Some("  ".to_string()),
+            tags: vec![
+                "  warm-up ".to_string(),
+                "   ".to_string(),
+                "scales".to_string(),
+            ],
+        };
+
+        let out = normalize_create_item(input);
+
+        assert_eq!(out.title, "Clair de Lune");
+        assert_eq!(
+            out.composer, None,
+            "whitespace-only composer collapses to None"
+        );
+        assert_eq!(out.key, Some("D major".to_string()));
+        assert_eq!(out.notes, None, "whitespace-only notes collapses to None");
+        assert_eq!(out.tempo, None, "blank marking + no bpm drops the tempo");
+        assert_eq!(out.tags, vec!["warm-up".to_string(), "scales".to_string()]);
+    }
+
+    #[test]
+    fn normalize_tempo_keeps_bpm_when_marking_blank() {
+        // Blank marking must not discard a valid bpm — only a fully-empty
+        // tempo collapses to None.
+        let input = CreateItem {
+            title: "Etude".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: Some(Tempo {
+                marking: Some("  ".to_string()),
+                bpm: Some(120),
+            }),
+            notes: None,
+            tags: vec![],
+        };
+        assert_eq!(
+            normalize_create_item(input).tempo,
+            Some(Tempo {
+                marking: None,
+                bpm: Some(120)
+            })
+        );
+    }
+
+    #[test]
+    fn normalize_create_keeps_padded_composer_trimmed() {
+        let input = CreateItem {
+            title: "Hanon".to_string(),
+            kind: ItemKind::Exercise,
+            composer: Some("  Charles-Louis Hanon ".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        };
+        assert_eq!(
+            normalize_create_item(input).composer,
+            Some("Charles-Louis Hanon".to_string())
+        );
+    }
+
+    #[test]
+    fn normalize_update_trims_and_three_state_clears_blank() {
+        let input = UpdateItem {
+            title: Some("  Renamed ".to_string()),
+            composer: Some(Some("   ".to_string())),
+            key: Some(Some("  F# minor ".to_string())),
+            tempo: Some(Some(Tempo {
+                marking: Some("  ".to_string()),
+                bpm: None,
+            })),
+            tags: Some(vec![" a ".to_string(), "".to_string()]),
+            ..Default::default()
+        };
+
+        let out = normalize_update_item(input);
+
+        assert_eq!(out.title, Some("Renamed".to_string()));
+        assert_eq!(
+            out.composer,
+            Some(None),
+            "blank set-composer becomes a clear"
+        );
+        assert_eq!(out.key, Some(Some("F# minor".to_string())));
+        assert_eq!(out.tempo, Some(None), "blank tempo becomes a clear");
+        assert_eq!(out.tags, Some(vec!["a".to_string()]));
+    }
+
+    #[test]
+    fn normalize_update_leaves_untouched_fields_none() {
+        let out = normalize_update_item(UpdateItem::default());
+        assert_eq!(
+            out.composer, None,
+            "absent field stays absent (not a clear)"
+        );
+        assert_eq!(out.title, None);
+        assert_eq!(out.tags, None);
+    }
 
     // --- validate_create_item tests (piece kind) ---
 
