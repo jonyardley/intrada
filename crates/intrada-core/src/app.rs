@@ -3371,7 +3371,7 @@ mod tests {
         };
 
         let update = |m: &mut Model, input: crate::domain::types::UpdateItem| {
-            app.update(
+            let _ = app.update(
                 Event::Item(ItemEvent::Update {
                     id: "p1".to_string(),
                     input,

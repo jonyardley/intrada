@@ -181,11 +181,14 @@ jobs:
       # code scanning annotations, then check the exit code to fail the job.
       # iOS-pivot focus mode: web shell on hold — intrada-web excluded and the
       # WASM clippy pass dropped. Restore both at parity.
+      # --all-targets so test/bench code is linted too, not just lib/bin — a
+      # dropped `#[must_use]` Command shipped in a test once because the gate
+      # stopped at lib targets.
       - name: Clippy (native)
         shell: bash
         run: |
           set +o pipefail
-          cargo clippy --workspace \
+          cargo clippy --workspace --all-targets \
             --exclude intrada-mobile \
             --exclude intrada-web \
             --exclude tauri-plugin-background-audio \
@@ -384,6 +387,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-apple-ios,aarch64-apple-ios-sim
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "native-ios"
@@ -394,6 +398,11 @@ jobs:
         run: |
           echo "$CARGO_HOME/bin" >> $GITHUB_PATH
           cargo --version
+      # iOS-only `#[cfg(target_os = "ios")]` branches in the FFI crate can't be
+      # linted by the Linux `clippy` job (no Apple SDK); lint them here against
+      # the device target. Runs before the expensive build so it fails fast.
+      - name: Clippy (iOS device target)
+        run: cargo clippy -p intrada-ffi --target aarch64-apple-ios -- -D warnings
       - uses: taiki-e/install-action@v2
         with:
           tool: just
