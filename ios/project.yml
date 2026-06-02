@@ -43,8 +43,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.intrada.native
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        # Empty in dev/CI → Sentry stays disabled (no DSN). Set per-build/env.
-        INFOPLIST_KEY_SENTRY_DSN: ""
+        # DSN from the SENTRY_DSN_NATIVE env var (xcodegen expands ${...}; the
+        # justfile's `set dotenv-load` feeds it from .env). Unset in CI → empty →
+        # Sentry stays disabled there. Reports to the intrada-mobile project.
+        INFOPLIST_KEY_SENTRY_DSN: "${SENTRY_DSN_NATIVE}"
     dependencies:
       - package: IntradaCoreFFI
         product: IntradaCoreFFI
