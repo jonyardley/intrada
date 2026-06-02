@@ -742,13 +742,15 @@ guidance above.
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
 2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
 3. Never push to main. Always a feature branch + PR.
-4. **Self-review every non-trivial PR** before declaring it ready. Use the
-   `superpowers:code-reviewer` subagent (feature work) or the `/review` skill
-   (small fixes), then post the summary as a `gh pr comment` so it's visible
-   on the PR alongside CI — the reviewer doesn't see in-conversation subagent
-   output. Apply blockers / important findings inline; defer the rest as
-   tracked issues per (6). Skip self-review for Tier 1 trivia (typos, dep
-   bumps, single-line config tweaks).
+4. **Open/update any non-trivial PR through the `ship` skill — don't
+   `gh pr create`/`git push` feature work directly.** `ship` runs the pre-push
+   gates *and* the self-review in one funnel, so the review can't be skipped in
+   a fast build→push cadence (which is exactly how it gets skipped when left to
+   "remember to review"). `ship` uses the `superpowers:code-reviewer` subagent;
+   post its summary as a `gh pr comment` (the reviewer doesn't see in-conversation
+   subagent output), apply blockers / important findings inline, and defer the
+   rest as tracked issues per (6). Tier 1 trivia (typos, dep bumps, single-line
+   config tweaks) may skip `ship`'s review step but still run the gates.
 5. **Check Codecov after CI** (Tier 2+ only). Compare the patch-coverage
    comment against the **Coverage** line in the PR description. If there
    are unexpected gaps, push tests or explain in a PR comment. Don't
