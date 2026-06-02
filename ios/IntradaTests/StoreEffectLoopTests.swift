@@ -359,7 +359,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let resolved = expectation(description: "bridge resolved")
     bridge.onResolve = { resolved.fulfill() }
     action()
-    await fulfillment(of: [resolved], timeout: 2)
+    await fulfillment(of: [resolved], timeout: 5)  // generous ceiling; absorbs CI scheduling jitter (#861)
   }
 
   static let sampleItem = Item(
