@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// The shared shell every top-level screen is built from: paper background, a
-/// serif page title with optional subtitle and a trailing action, a hairline
-/// rule, then the screen's content. Matches the locked *Library — Light* header
-/// (the title lives in the content, not a UIKit nav bar).
+/// The shared shell every top-level screen is built from. The page title lives
+/// in the content, not a UIKit nav bar (the locked *Library — Light* header).
 struct ScreenScaffold<Content: View>: View {
   let title: String
   var subtitle: String?

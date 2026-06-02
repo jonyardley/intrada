@@ -1,9 +1,8 @@
 import Foundation
 import SharedTypes
 
-/// The app's single source of UI truth. Holds the `ViewModel`, sends `Event`s
-/// to the core, and runs the effect loop (Render → view; Http → URLSession;
-/// App → ack). Owns zero domain logic — it's a pump between SwiftUI and the core.
+/// Holds the `ViewModel`, sends `Event`s to the core, and runs the effect loop.
+/// Owns zero domain logic — a pump between SwiftUI and the core (CLAUDE.md).
 @MainActor
 @Observable
 final class Store {
@@ -63,8 +62,6 @@ final class Store {
     }
   }
 
-  /// Non-HTTP shell effects. Only the library-sort singleton does work here;
-  /// the localStorage crash-recovery variants are no-ops on native for now.
   private func handleAppEffect(_ effect: AppEffect) {
     switch effect {
     case .saveLibrarySort(let sort):
@@ -72,12 +69,11 @@ final class Store {
         sortDefaults.set(Data(bytes), forKey: Self.sortDefaultsKey)
       }
     case .saveSessionInProgress, .clearSessionInProgress:
+      // localStorage crash-recovery variants are no-ops on native for now.
       break
     }
   }
 
-  /// Re-apply the persisted library sort at launch by replaying `SetSort`.
-  /// No-op when nothing is stored (first launch) or the blob can't be decoded.
   func restorePersistedSort() {
     guard let data = sortDefaults.data(forKey: Self.sortDefaultsKey),
       let sort = guarded({ try LibrarySort.bincodeDeserialize(input: [UInt8](data)) })
@@ -119,8 +115,7 @@ final class Store {
     }
   }
 
-  /// Execute a core-built HTTP request via URLSession and map the raw response
-  /// back into the core's `HttpResult`. No auth yet (foundation scope).
+  /// No auth yet (foundation scope).
   private static func execute(_ request: HttpRequest, session: URLSession) async -> HttpResult {
     guard let url = URL(string: request.url) else {
       return .err(.url("Invalid URL: \(request.url)"))

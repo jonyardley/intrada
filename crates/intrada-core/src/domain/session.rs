@@ -285,7 +285,6 @@ pub fn format_duration_display(secs: u64) -> String {
     }
 }
 
-/// Look up a library item by ID and return (title, kind).
 fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, ItemKind)> {
     model
         .items
@@ -294,7 +293,6 @@ fn find_item_in_model(model: &Model, item_id: &str) -> Option<(String, ItemKind)
         .map(|i| (i.title.clone(), i.kind.clone()))
 }
 
-/// Create a new SetlistEntry from a library item lookup.
 fn create_entry(
     item_id: &str,
     item_title: &str,
@@ -321,14 +319,12 @@ fn create_entry(
     }
 }
 
-/// Re-index entry positions after a mutation.
 fn reindex_entries(entries: &mut [SetlistEntry]) {
     for (i, entry) in entries.iter_mut().enumerate() {
         entry.position = i;
     }
 }
 
-/// Create a minimal Item from title-only input.
 fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     let now = Utc::now();
     Item {
@@ -347,20 +343,14 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     }
 }
 
-/// Freeze rep state on an entry: set `rep_target_reached` based on whether count >= target.
 fn freeze_rep_state(entry: &mut SetlistEntry) {
     if let (Some(target), Some(count)) = (entry.rep_target, entry.rep_count) {
         entry.rep_target_reached = Some(count >= target);
     }
 }
 
-/// Find a setlist entry by id, mutably, regardless of which session phase
-/// the model is currently in. Returns `None` if not in an Active or Summary
-/// phase, or if the entry id is unknown.
-///
-/// Used by `UpdateEntryScore` / `UpdateEntryTempo` / `UpdateEntryNotes` so the
-/// mid-session reflection sheet can write per-entry data the moment the user
-/// completes an item, not just on the post-session summary screen.
+/// Find an entry by id in Active *or* Summary phase, so the mid-session
+/// reflection sheet can write per-entry data before the summary screen.
 fn entry_for_update_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a mut SetlistEntry> {
     match &mut model.session_status {
         SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
@@ -369,13 +359,11 @@ fn entry_for_update_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a 
     }
 }
 
-/// Transition from Active to Summary, computing final duration for the current item.
 fn transition_to_summary(
     active: &mut ActiveSession,
     now: DateTime<Utc>,
     completion_status: CompletionStatus,
 ) -> SummarySession {
-    // Record duration for current item
     let elapsed = (now - active.current_item_started_at).num_seconds().max(0) as u64;
     if let Some(entry) = active.entries.get_mut(active.current_index) {
         entry.duration_secs = elapsed;
@@ -383,7 +371,6 @@ fn transition_to_summary(
         freeze_rep_state(entry);
     }
 
-    // Mark remaining items as NotAttempted if ending early
     if completion_status == CompletionStatus::EndedEarly {
         for entry in active.entries.iter_mut().skip(active.current_index + 1) {
             entry.status = EntryStatus::NotAttempted;
@@ -522,7 +509,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Validate target if provided
             if let Some(t) = target {
                 if let Err(e) = validation::validate_rep_target(&Some(t)) {
                     model.last_error = Some(e.to_string());
@@ -536,7 +522,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             entry.rep_target = target;
-            // Clear all rep state when changing target in building phase
+            // Changing the target invalidates any prior progress.
             entry.rep_count = None;
             entry.rep_target_reached = None;
             entry.rep_history = None;
@@ -553,7 +539,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Validate duration if provided
             if let Err(e) = validation::validate_planned_duration(&duration_secs) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
@@ -677,7 +662,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             let mut entries = building.entries.clone();
-            // Initialize rep counter state for entries with a rep_target set
             for entry in &mut entries {
                 if entry.rep_target.is_some() {
                     entry.rep_count = Some(0);
@@ -722,8 +706,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // If this was the last item, transition to Summary
-            // (transition_to_summary handles duration, status, and freeze)
             if active.current_index >= active.entries.len() - 1 {
                 let summary = transition_to_summary(active, now, CompletionStatus::Completed);
                 model.session_status = SessionStatus::Summary(summary);
@@ -762,7 +744,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 freeze_rep_state(entry);
             }
 
-            // If this was the last item, transition to Summary
             if active.current_index >= active.entries.len() - 1 {
                 let summary = SummarySession {
                     id: active.id.clone(),
@@ -906,7 +887,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 entry.rep_target_reached = Some(true);
             }
 
-            // Append to rep history (capped at MAX_REP_HISTORY)
             if let Some(ref mut history) = entry.rep_history {
                 if history.len() < crate::validation::MAX_REP_HISTORY {
                     history.push(RepAction::Success);
@@ -940,7 +920,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             entry.rep_count = Some(count.saturating_sub(1));
 
-            // Append to rep history (capped at MAX_REP_HISTORY)
             if let Some(ref mut history) = entry.rep_history {
                 if history.len() < crate::validation::MAX_REP_HISTORY {
                     history.push(RepAction::Missed);
@@ -964,8 +943,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Only initialise defaults when no prior rep state exists.
-            // If rep state already exists (e.g. after hide/show), preserve it.
+            // Preserve existing rep state (e.g. after hide/show); only seed defaults when absent.
             if entry.rep_target.is_none() {
                 entry.rep_target = Some(validation::DEFAULT_REP_TARGET);
                 entry.rep_count = Some(0);
@@ -982,28 +960,19 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         // ── Entry Updates (Active or Summary) ──────────────────────
-        // These accept dispatches from both phases so the mid-session
-        // reflection sheet can record per-entry data the moment the user
-        // moves on to the next item, not just retroactively from the
-        // post-session summary screen. The core invariant is unchanged:
-        // only entries that have actually been Completed can be scored /
-        // tempo'd / noted.
+        // Accepted in both phases so the mid-session reflection sheet can record
+        // as the user moves on. Invariant: only Completed entries can be scored.
         SessionEvent::UpdateEntryScore { entry_id, score } => {
-            // Validate score range if present
             if let Some(s) = score {
                 if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
-                    // Silent no-op for out-of-range score
                     return crux_core::render::render();
                 }
             }
 
             let Some(entry) = entry_for_update_mut(model, &entry_id) else {
-                // Silent no-op if not in a session phase that has entries,
-                // or if the entry id is unknown.
                 return crux_core::render::render();
             };
 
-            // Only allow scoring on completed entries
             if entry.status != EntryStatus::Completed {
                 return crux_core::render::render();
             }
@@ -1014,9 +983,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         SessionEvent::UpdateEntryTempo { entry_id, tempo } => {
-            // Validate tempo range if present
             if let Err(_e) = validation::validate_achieved_tempo(&tempo) {
-                // Silent no-op for out-of-range tempo
                 return crux_core::render::render();
             }
 
@@ -1024,7 +991,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             };
 
-            // Only allow tempo on completed entries
             if entry.status != EntryStatus::Completed {
                 return crux_core::render::render();
             }
@@ -1276,7 +1242,6 @@ mod tests {
         assert!(model.last_error.is_some());
         assert!(matches!(model.session_status, SessionStatus::Idle));
 
-        // Also test above max
         update(
             &mut model,
             Event::Session(SessionEvent::StartBuildingWithTarget {
@@ -1518,7 +1483,6 @@ mod tests {
             assert_eq!(b.entries[0].item_title, "C Major Scale");
             assert_eq!(b.entries[1].item_title, "Moonlight Sonata");
             assert_eq!(b.entries[2].item_title, "Clair de Lune");
-            // Verify positions are re-indexed
             assert_eq!(b.entries[0].position, 0);
             assert_eq!(b.entries[1].position, 1);
             assert_eq!(b.entries[2].position, 2);
@@ -1660,12 +1624,10 @@ mod tests {
         let t1 = start + chrono::Duration::seconds(30);
         let t2 = t1 + chrono::Duration::seconds(20);
 
-        // Complete first item
         update(
             &mut model,
             Event::Session(SessionEvent::NextItem { now: t1 }),
         );
-        // End early on second item
         update(
             &mut model,
             Event::Session(SessionEvent::EndSessionEarly { now: t2 }),
@@ -2054,10 +2016,8 @@ mod tests {
             Event::Session(SessionEvent::SkipItem { now: t2 }),
         );
 
-        // Should be in summary state
         assert!(matches!(model.session_status, SessionStatus::Summary(_)));
 
-        // Save it
         let save_time = Utc::now();
         update(
             &mut model,
@@ -3208,12 +3168,10 @@ mod tests {
     fn test_rep_missed_decrements() {
         let (mut model, _now) = model_with_active_session_and_rep(5);
 
-        // Got-it 3 times
         update(&mut model, Event::Session(SessionEvent::RepGotIt));
         update(&mut model, Event::Session(SessionEvent::RepGotIt));
         update(&mut model, Event::Session(SessionEvent::RepGotIt));
 
-        // Miss once
         update(&mut model, Event::Session(SessionEvent::RepMissed));
 
         if let SessionStatus::Active(ref a) = model.session_status {

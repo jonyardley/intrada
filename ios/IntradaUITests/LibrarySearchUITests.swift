@@ -1,7 +1,7 @@
 import XCTest
 
-/// Exercises the real running app — the search interactions snapshot tests can't
-/// cover. Seeds demo data so the Library has rows to filter.
+/// Exercises the real running app — the search interactions snapshot tests
+/// can't cover.
 @MainActor
 final class LibrarySearchUITests: XCTestCase {
   override func setUp() {

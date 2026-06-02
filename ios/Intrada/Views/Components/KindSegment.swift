@@ -1,10 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// Binary Piece/Exercise selector — the same accent-pill language as
-/// `LibraryFilterTabs`, laid out full-width inside a segment track. Shared by
-/// the add and edit forms so an item's type can be set on create and changed
-/// on edit.
+/// Full-width Piece/Exercise selector — the accent-pill language of
+/// `LibraryFilterTabs`, shared by the add and edit forms.
 struct KindSegment: View {
   @Binding var selection: ItemKind
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

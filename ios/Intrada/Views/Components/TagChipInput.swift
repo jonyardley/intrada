@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Tag editor for the add/edit forms: shows the current tags as removable chips
-/// and a text field that suggests existing tags as you type (the same inline
-/// reveal as `AutocompleteField`). Tapping a suggestion or pressing return adds
-/// a chip; case-insensitive duplicates are ignored. The shell supplies the
-/// suggestion pool (`ViewModel.availableTags`); this view owns no domain logic.
+/// Tag editor for the add/edit forms: removable chips plus a field that suggests
+/// existing tags inline (the same reveal as `AutocompleteField`). Case-insensitive
+/// duplicates are ignored. The shell supplies the pool; no domain logic here.
 struct TagChipInput: View {
   let label: String
   @Binding var tags: [String]

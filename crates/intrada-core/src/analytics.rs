@@ -1,9 +1,5 @@
-//! Pure analytics computation functions for the Practice Analytics Dashboard.
-//!
-//! All functions in this module are pure (no I/O, no system clock access) and
-//! accept a `today: NaiveDate` parameter for deterministic testing.
-//! They operate on existing `PracticeSession` data without creating new
-//! persistence or requiring additional API endpoints.
+//! Analytics computations. All functions are pure and take `today: NaiveDate`
+//! (rather than reading the clock) so they're deterministic under test.
 
 use std::collections::{HashMap, HashSet};
 
@@ -15,7 +11,6 @@ use crate::domain::session::PracticeSession;
 
 // ── Analytics View Model Types ───────────────────────────────────────
 
-/// Directional comparison indicator for week-over-week metrics.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -27,7 +22,6 @@ pub enum Direction {
     Same,
 }
 
-/// A library item not practised within the 14-day lookback window.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct NeglectedItem {
@@ -37,7 +31,6 @@ pub struct NeglectedItem {
     pub days_since_practice: Option<u32>,
 }
 
-/// An item whose score changed during the current week.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScoreChange {
@@ -48,11 +41,9 @@ pub struct ScoreChange {
     pub current_score: u8,
     /// Signed change (current − previous); 0 for newly scored items.
     pub delta: i8,
-    /// True if the item was scored for the first time this week.
     pub is_new: bool,
 }
 
-/// Top-level analytics container, added to the existing `ViewModel`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AnalyticsView {
@@ -65,8 +56,7 @@ pub struct AnalyticsView {
     pub score_changes: Vec<ScoreChange>,
 }
 
-/// Aggregated stats for the current and previous ISO weeks (Monday–Sunday),
-/// with directional comparison indicators.
+/// Aggregated stats for the current and previous ISO weeks (Monday–Sunday).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct WeeklySummary {
@@ -82,14 +72,12 @@ pub struct WeeklySummary {
     pub has_prev_week_data: bool,
 }
 
-/// Consecutive-day practice count.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeStreak {
     pub current_days: u32,
 }
 
-/// One entry per day for the 28-day history chart.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct DailyPracticeTotal {
@@ -97,7 +85,6 @@ pub struct DailyPracticeTotal {
     pub minutes: u32,
 }
 
-/// Per-item aggregation for the "most practised" list.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemRanking {
@@ -108,7 +95,6 @@ pub struct ItemRanking {
     pub session_count: usize,
 }
 
-/// Score progression for a single item.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemScoreTrend {
@@ -118,7 +104,6 @@ pub struct ItemScoreTrend {
     pub latest_score: u8,
 }
 
-/// Single data point in a score trend.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScorePoint {
@@ -128,7 +113,6 @@ pub struct ScorePoint {
 
 // ── Computation Functions ────────────────────────────────────────────
 
-/// Compute all analytics from session and item data.
 pub fn compute_analytics(
     sessions: &[PracticeSession],
     items: &[Item],
@@ -145,10 +129,7 @@ pub fn compute_analytics(
     }
 }
 
-/// Compute weekly summary: total minutes and session count for the current ISO week.
-///
-/// Uses ISO week numbering (Monday = start of week). Sums `total_duration_secs`
-/// for all sessions whose `started_at` falls within the same ISO week as `today`.
+/// Uses ISO week numbering (Monday = start of week).
 pub fn compute_weekly_summary(sessions: &[PracticeSession], today: NaiveDate) -> WeeklySummary {
     let today_iso_week = today.iso_week();
     let prev_week_date = today - chrono::Duration::days(7);
@@ -211,20 +192,16 @@ pub fn compute_weekly_summary(sessions: &[PracticeSession], today: NaiveDate) ->
     }
 }
 
-/// Compute practice streak: consecutive days with at least one session.
-///
-/// Counts backwards from `today` (or yesterday if today has no session)
-/// as long as each day has at least one session.
+/// Counts backwards from `today` (or yesterday if today has no session) as long
+/// as each day has at least one session.
 pub fn compute_streak(sessions: &[PracticeSession], today: NaiveDate) -> PracticeStreak {
     if sessions.is_empty() {
         return PracticeStreak { current_days: 0 };
     }
 
-    // Collect unique dates that had a session
     let session_dates: HashSet<NaiveDate> =
         sessions.iter().map(|s| s.started_at.date_naive()).collect();
 
-    // Start counting from today; if today has no session, start from yesterday
     let mut current = today;
     if !session_dates.contains(&current) {
         current = today - chrono::Duration::days(1);
@@ -241,16 +218,11 @@ pub fn compute_streak(sessions: &[PracticeSession], today: NaiveDate) -> Practic
     }
 }
 
-/// Compute daily practice totals for the past 28 days.
-///
-/// Returns exactly 28 `DailyPracticeTotal` entries, oldest first (today - 27 days through today).
-/// For each day, sums `total_duration_secs` across all sessions started on that day,
-/// converted to minutes. Days with no sessions have `minutes: 0`.
+/// Returns exactly 28 entries, oldest first (today − 27 days through today).
 pub fn compute_daily_totals(
     sessions: &[PracticeSession],
     today: NaiveDate,
 ) -> Vec<DailyPracticeTotal> {
-    // Aggregate seconds per date
     let mut secs_by_date: HashMap<NaiveDate, u64> = HashMap::new();
     for session in sessions {
         let date = session.started_at.date_naive();
@@ -270,13 +242,8 @@ pub fn compute_daily_totals(
         .collect()
 }
 
-/// Compute top 10 most-practised items ranked by total time.
-///
-/// Aggregates all entries across all sessions by `item_id`, sums `duration_secs`
-/// (converted to minutes), counts distinct sessions per item, sorts by total_minutes
-/// descending, takes top 10.
+/// Top 10 items by total time practised.
 pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
-    // item_id -> (title, type, total_secs, set of session_ids)
     let mut items: HashMap<String, (String, ItemKind, u64, HashSet<String>)> = HashMap::new();
 
     for session in sessions {
@@ -312,13 +279,8 @@ pub fn compute_top_items(sessions: &[PracticeSession]) -> Vec<ItemRanking> {
     rankings
 }
 
-/// Compute score trends for the 5 most recently scored items.
-///
-/// Collects all entries with `score: Some(n)`, groups by `item_id`, builds
-/// chronological `ScorePoint` lists, sorts items by most recent score date,
-/// takes top 5.
+/// The 5 most recently scored items, each with a chronological score series.
 pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend> {
-    // item_id -> (title, Vec<(date, score)>)
     let mut scored: HashMap<String, (String, Vec<(NaiveDate, u8)>)> = HashMap::new();
 
     for session in sessions {
@@ -340,7 +302,6 @@ pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend>
     let mut trends: Vec<ItemScoreTrend> = scored
         .into_iter()
         .map(|(item_id, (title, mut score_points))| {
-            // Sort chronologically (oldest first)
             score_points.sort_by_key(|(date, _)| *date);
 
             let latest_score = score_points.last().map(|(_, s)| *s).unwrap_or(0);
@@ -362,7 +323,6 @@ pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend>
         })
         .collect();
 
-    // Sort by most recent score date descending
     trends.sort_by(|a, b| {
         let a_latest = a.scores.last().map(|s| s.date.as_str()).unwrap_or("");
         let b_latest = b.scores.last().map(|s| s.date.as_str()).unwrap_or("");
@@ -373,10 +333,8 @@ pub fn compute_score_trends(sessions: &[PracticeSession]) -> Vec<ItemScoreTrend>
     trends
 }
 
-/// Compute neglected library items — items not practised in the last 14 days.
-///
-/// Returns up to 5 items ordered: never-practised first, then by days since
-/// last practice descending (longest gap first).
+/// Items not practised in the last 14 days. Up to 5, ordered never-practised
+/// first, then by longest gap.
 pub fn compute_neglected_items(
     sessions: &[PracticeSession],
     items: &[Item],
@@ -386,17 +344,14 @@ pub fn compute_neglected_items(
         return Vec::new();
     }
 
-    // Step 1: Find all item_ids practised in the 14 days up to today
     let lookback_start = today - chrono::Duration::days(13); // 14 days inclusive
 
-    // Single pass: build both the recent-practice set and the latest-date map
     let mut recently_practised: HashSet<String> = HashSet::new();
     let mut latest_dates: HashMap<String, NaiveDate> = HashMap::new();
 
     for session in sessions {
         let session_date = session.started_at.date_naive();
         for entry in &session.entries {
-            // Track latest practice date for every item (all time)
             latest_dates
                 .entry(entry.item_id.clone())
                 .and_modify(|d| {
@@ -406,14 +361,12 @@ pub fn compute_neglected_items(
                 })
                 .or_insert(session_date);
 
-            // Track items practised in the 14-day window
             if session_date >= lookback_start && session_date <= today {
                 recently_practised.insert(entry.item_id.clone());
             }
         }
     }
 
-    // Step 2: For each item NOT recently practised, create a NeglectedItem
     let mut neglected: Vec<NeglectedItem> = Vec::new();
 
     for item in items {
@@ -432,7 +385,6 @@ pub fn compute_neglected_items(
         });
     }
 
-    // Step 4: Sort — None (never practised) first, then descending by days
     neglected.sort_by(
         |a, b| match (&a.days_since_practice, &b.days_since_practice) {
             (None, None) => std::cmp::Ordering::Equal,
@@ -442,21 +394,15 @@ pub fn compute_neglected_items(
         },
     );
 
-    // Step 5: Truncate to 5
     neglected.truncate(5);
     neglected
 }
 
-/// Compute score changes for items scored this week.
-///
-/// Compares this-week latest scores vs pre-this-week latest scores.
-/// Returns up to 5 items sorted by largest absolute delta first.
+/// This week's latest score vs the latest before it, per item. Up to 5, largest
+/// absolute delta first.
 pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> Vec<ScoreChange> {
     let today_iso_week = today.iso_week();
 
-    // Step 1: Collect all scored entries, partitioned by week
-    // Key: item_id → (latest_score_this_week, latest_score_before_this_week)
-    // We track (score, date) to pick the latest within each period
     let mut this_week: HashMap<String, (u8, NaiveDate, String)> = HashMap::new();
     let mut prev: HashMap<String, (u8, NaiveDate)> = HashMap::new();
 
@@ -465,7 +411,6 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
         for entry in &session.entries {
             if let Some(score) = entry.score {
                 if session_date.iso_week() == today_iso_week {
-                    // This week — keep latest
                     let existing = this_week.get(&entry.item_id);
                     if !matches!(existing, Some(e) if session_date < e.1) {
                         this_week.insert(
@@ -474,7 +419,6 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
                         );
                     }
                 } else {
-                    // Before this week — keep latest
                     let existing = prev.get(&entry.item_id);
                     if !matches!(existing, Some(e) if session_date < e.1) {
                         prev.insert(entry.item_id.clone(), (score, session_date));
@@ -484,7 +428,6 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
         }
     }
 
-    // Step 2: Build ScoreChange entries
     let mut changes: Vec<ScoreChange> = Vec::new();
 
     for (item_id, (current_score, _date, item_title)) in &this_week {
@@ -492,7 +435,6 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
 
         match previous {
             Some((prev_score, _)) if *prev_score == *current_score => {
-                // No change — skip
                 continue;
             }
             Some((prev_score, _)) => {
@@ -506,7 +448,6 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
                 });
             }
             None => {
-                // Newly scored this week
                 changes.push(ScoreChange {
                     item_id: item_id.clone(),
                     item_title: item_title.clone(),
@@ -519,10 +460,8 @@ pub fn compute_score_changes(sessions: &[PracticeSession], today: NaiveDate) -> 
         }
     }
 
-    // Step 3: Sort by absolute delta descending
     changes.sort_by(|a, b| b.delta.unsigned_abs().cmp(&a.delta.unsigned_abs()));
 
-    // Step 4: Truncate to 5
     changes.truncate(5);
     changes
 }
@@ -535,7 +474,6 @@ mod tests {
     use crate::domain::session::{CompletionStatus, EntryStatus, PracticeSession, SetlistEntry};
     use chrono::{NaiveDate, TimeZone, Utc};
 
-    /// Helper: create a PracticeSession on a given date with total_duration_secs.
     fn make_session(
         id: &str,
         date: NaiveDate,
@@ -556,7 +494,6 @@ mod tests {
         }
     }
 
-    /// Helper: create a basic SetlistEntry.
     fn make_entry(
         item_id: &str,
         title: &str,
@@ -584,11 +521,10 @@ mod tests {
         }
     }
 
-    // ── US1: Weekly Summary Tests ────────────────────────────────────
+    // ── Weekly Summary Tests ──────────────────────────────────────────
 
     #[test]
     fn test_weekly_summary_basic() {
-        // T013: 3 sessions within the current ISO week
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap(); // Wednesday
         let mon = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap(); // Monday (same week)
         let tue = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
@@ -606,7 +542,6 @@ mod tests {
 
     #[test]
     fn test_weekly_summary_excludes_previous_week() {
-        // T014: only current week sessions counted
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap(); // Wednesday
         let last_week = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap(); // previous Wed
 
@@ -622,18 +557,16 @@ mod tests {
 
     #[test]
     fn test_weekly_summary_empty() {
-        // T015: empty session list
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let summary = compute_weekly_summary(&[], today);
         assert_eq!(summary.total_minutes, 0);
         assert_eq!(summary.session_count, 0);
     }
 
-    // ── T009: Week-over-week comparison tests ──────────────────────────
+    // ── Week-over-week comparison tests ────────────────────────────────
 
     #[test]
     fn test_weekly_summary_comparison_both_weeks() {
-        // Sessions in both current and previous week
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap(); // Wed, week 8
         let this_mon = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap();
         let last_wed = NaiveDate::from_ymd_opt(2026, 2, 11).unwrap(); // Wed, week 7
@@ -689,7 +622,6 @@ mod tests {
 
     #[test]
     fn test_weekly_summary_this_week_only() {
-        // Sessions this week, none last week
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![make_session(
@@ -840,11 +772,11 @@ mod tests {
         assert_eq!(summary.prev_items_covered, 1); // p1 only
     }
 
-    // ── US1: Streak Tests ────────────────────────────────────────────
+    // ── Streak Tests ──────────────────────────────────────────────────
 
     #[test]
     fn test_streak_consecutive_days() {
-        // T016: 3 consecutive days ending today
+        // 3 consecutive days ending today
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
         let day_before = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap();
@@ -861,7 +793,7 @@ mod tests {
 
     #[test]
     fn test_streak_broken() {
-        // T017: gap in days resets streak
+        // gap in days resets streak
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
         // Skip Feb 16
@@ -879,7 +811,7 @@ mod tests {
 
     #[test]
     fn test_streak_no_sessions_today() {
-        // T018: sessions on yesterday and day before, no session today
+        // sessions on yesterday and day before, no session today
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let yesterday = NaiveDate::from_ymd_opt(2026, 2, 17).unwrap();
         let day_before = NaiveDate::from_ymd_opt(2026, 2, 16).unwrap();
@@ -895,17 +827,16 @@ mod tests {
 
     #[test]
     fn test_streak_empty() {
-        // T019: empty session list
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let streak = compute_streak(&[], today);
         assert_eq!(streak.current_days, 0);
     }
 
-    // ── US2: Daily Totals Tests ──────────────────────────────────────
+    // ── Daily Totals Tests ────────────────────────────────────────────
 
     #[test]
     fn test_daily_totals_28_days() {
-        // T026: sessions across 5 different days within past 28 days
+        // sessions across 5 different days within past 28 days
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![
@@ -919,26 +850,22 @@ mod tests {
         let totals = compute_daily_totals(&sessions, today);
         assert_eq!(totals.len(), 28);
 
-        // First entry is 27 days ago
-        assert_eq!(totals[0].date, "2026-01-22");
+        assert_eq!(totals[0].date, "2026-01-22"); // 27 days ago
         assert_eq!(totals[0].minutes, 15); // s5
 
-        // Last entry is today
-        assert_eq!(totals[27].date, "2026-02-18");
+        assert_eq!(totals[27].date, "2026-02-18"); // today
         assert_eq!(totals[27].minutes, 30); // s1
 
-        // Spot checks
         assert_eq!(totals[26].minutes, 45); // yesterday
         assert_eq!(totals[22].minutes, 10); // 5 days ago
         assert_eq!(totals[17].minutes, 60); // 10 days ago
 
-        // Empty days should be 0
-        assert_eq!(totals[25].minutes, 0); // 2 days ago
+        assert_eq!(totals[25].minutes, 0); // 2 days ago, no session
     }
 
     #[test]
     fn test_daily_totals_multiple_sessions_same_day() {
-        // T027: 3 sessions on the same day
+        // 3 sessions on the same day
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![
@@ -953,18 +880,18 @@ mod tests {
 
     #[test]
     fn test_daily_totals_empty() {
-        // T028: empty sessions → 28 entries all 0
+        // empty sessions → 28 entries all 0
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let totals = compute_daily_totals(&[], today);
         assert_eq!(totals.len(), 28);
         assert!(totals.iter().all(|t| t.minutes == 0));
     }
 
-    // ── US3: Top Items Tests ─────────────────────────────────────────
+    // ── Top Items Tests ───────────────────────────────────────────────
 
     #[test]
     fn test_top_items_ranking() {
-        // T034: 5 items with varying durations, verify sorted by total_minutes descending
+        // 5 items with varying durations, verify sorted by total_minutes descending
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![make_session(
@@ -992,7 +919,7 @@ mod tests {
 
     #[test]
     fn test_top_items_max_10() {
-        // T035: 15 items → only top 10 returned
+        // 15 items → only top 10 returned
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let entries: Vec<SetlistEntry> = (0..15)
@@ -1019,7 +946,7 @@ mod tests {
 
     #[test]
     fn test_top_items_session_count() {
-        // T036: same item in 3 sessions → session_count is 3
+        // same item in 3 sessions → session_count is 3
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let yesterday = today - chrono::Duration::days(1);
         let day_before = today - chrono::Duration::days(2);
@@ -1053,16 +980,15 @@ mod tests {
 
     #[test]
     fn test_top_items_empty() {
-        // T037: empty sessions
         let ranking = compute_top_items(&[]);
         assert!(ranking.is_empty());
     }
 
-    // ── US4: Score Trends Tests ──────────────────────────────────────
+    // ── Score Trends Tests ────────────────────────────────────────────
 
     #[test]
     fn test_score_trends_basic() {
-        // T041: 3 sessions scoring the same item with 2, 3, 4
+        // 3 sessions scoring the same item with 2, 3, 4
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let d1 = today - chrono::Duration::days(2);
         let d2 = today - chrono::Duration::days(1);
@@ -1102,7 +1028,7 @@ mod tests {
 
     #[test]
     fn test_score_trends_max_5_items() {
-        // T042: 8 items scored → only 5 most recently scored returned
+        // 8 items scored → only 5 most recently scored returned
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let entries: Vec<SetlistEntry> = (0..8)
@@ -1139,7 +1065,7 @@ mod tests {
 
     #[test]
     fn test_score_trends_excludes_unscored() {
-        // T043: mix of scored and unscored entries
+        // mix of scored and unscored entries
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
 
         let sessions = vec![make_session(
@@ -1159,7 +1085,7 @@ mod tests {
 
     #[test]
     fn test_score_trends_empty() {
-        // T044: sessions with no scored entries
+        // sessions with no scored entries
         let today = NaiveDate::from_ymd_opt(2026, 2, 18).unwrap();
         let sessions = vec![make_session(
             "s1",
@@ -1172,7 +1098,7 @@ mod tests {
         assert!(trends.is_empty());
     }
 
-    // ── T014: Neglected Items Tests ──────────────────────────────────
+    // ── Neglected Items Tests ─────────────────────────────────────────
 
     fn make_item(id: &str, title: &str) -> Item {
         Item {
@@ -1223,7 +1149,6 @@ mod tests {
 
         let neglected = compute_neglected_items(&sessions, &items, today);
         assert_eq!(neglected.len(), 5); // capped at 5 out of 6
-                                        // Verify none of the practised items appear
         for n in &neglected {
             assert!(!["p1", "p2", "p3", "p4"].contains(&n.item_id.as_str()));
         }
@@ -1373,7 +1298,7 @@ mod tests {
         assert_eq!(neglected[0].days_since_practice, Some(14));
     }
 
-    // ── T019: Score Changes Tests ──────────────────────────────────────
+    // ── Score Changes Tests ───────────────────────────────────────────
 
     #[test]
     fn test_score_changes_improvement() {
@@ -1584,7 +1509,7 @@ mod tests {
         assert_eq!(analytics.score_trends.len(), 1);
     }
 
-    // ── Edge case: ended-early sessions included (FR-009) ────────────
+    // ── Edge case: ended-early sessions included ──────────────────────
 
     #[test]
     fn test_ended_early_sessions_included() {

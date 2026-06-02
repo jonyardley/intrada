@@ -1,11 +1,9 @@
 import SharedTypes
 import SwiftUI
 
-/// Inline circle-of-fifths key selector. A collapsed row (matching `FormField`)
-/// shows the current value; tapping it expands a two-ring wheel in place — the
-/// iOS date/time-picker pattern. Enharmonic spokes flip spelling on a second
-/// tap. Binds the structured tonic (`key`) + `modality`; displays the
-/// prettified ♯/♭ form. All behaviour lives in `KeyHelper`.
+/// Inline circle-of-fifths key selector: a collapsed row expands a two-ring
+/// wheel in place (the iOS date-picker pattern). Binds the structured tonic
+/// (`key`) + `modality`. All selection logic lives in `KeyHelper`.
 struct KeyPicker: View {
   let label: String
   @Binding var key: String
@@ -277,7 +275,6 @@ struct KeyPicker: View {
   }
 }
 
-/// A donut-wedge between two radii and two angles — one circle-of-fifths segment.
 private struct RingWedge: Shape {
   let innerRadius: CGFloat
   let outerRadius: CGFloat

@@ -4,9 +4,6 @@ import XCTest
 
 @testable import Intrada
 
-/// Drives `Store`'s effect loop with a scripted bridge and a mocked URLSession,
-/// so the Render → view / Http → URLSession → resolve / App → ack wiring and the
-/// URLSession → `HttpResult` mapping are covered without the real core or network.
 @MainActor
 final class StoreEffectLoopTests: XCTestCase {
 
@@ -109,7 +106,7 @@ final class StoreEffectLoopTests: XCTestCase {
     bridge.updateHandler = { _ in [Request(id: 5, effect: .app(.saveLibrarySort(sort)))] }
     let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
 
-    store.send(.setQuery(nil))  // any event to drive the scripted effect
+    store.send(.setQuery(nil))
 
     let data = try XCTUnwrap(defaults.data(forKey: Store.sortDefaultsKey))
     let restored = try LibrarySort.bincodeDeserialize(input: [UInt8](data))
@@ -230,7 +227,6 @@ final class StoreEffectLoopTests: XCTestCase {
 
   func testHttpEffectMapsInvalidUrl() async {
     let bridge = FakeBridge()
-    // A bare space can't form a URL, so `URL(string:)` returns nil.
     bridge.updateHandler = { _ in
       [
         Request(
@@ -301,10 +297,9 @@ final class StoreEffectLoopTests: XCTestCase {
 
   // ── Real bridge (Swift↔Rust bincode round-trip) ────────────────────────
 
-  /// Drives the *real* core via LiveBridge to prove an edit round-trips through
-  /// bincode and reflects in the ViewModel — the path the edit screen uses.
-  /// Calls the bridge directly (not via Store) so a serialization throw surfaces
-  /// instead of being swallowed by Store.send's `guarded`.
+  /// Real-bridge bincode round-trip (#846): calls LiveBridge directly (not via
+  /// Store) so a serialization throw surfaces instead of being swallowed by
+  /// Store.send's `guarded`.
   func testRealBridgeEditAppliesToViewModel() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
@@ -321,8 +316,7 @@ final class StoreEffectLoopTests: XCTestCase {
       "add should land: count=\(afterAdd.items.count) err=\(afterAdd.error ?? "nil")")
     let id = try XCTUnwrap(afterAdd.items.first?.id)
 
-    // Full edit mirroring LibraryEditScreen.save(): every PATCH field set,
-    // composer carried as Some, type flipped Piece -> Exercise.
+    // Mirrors LibraryEditScreen.save(): every PATCH field set, type flipped.
     _ = try bridge.update(
       .item(
         .update(
@@ -379,12 +373,9 @@ private func emptyViewModel() throws -> ViewModel {
   try ViewModel.bincodeDeserialize(input: [UInt8](CoreFfi().view()))
 }
 
-/// A scriptable `CoreBridge`: returns canned `[Request]` for update/resolve and
-/// records what the `Store` fed back, so tests assert on the effect loop.
 private final class FakeBridge: CoreBridge {
   var updateHandler: (Event) -> [Request] = { _ in [] }
   var resolveHandler: (UInt32, HttpResult) -> [Request] = { _, _ in [] }
-  /// Overrides the next `view()` result, letting a test prove a render refreshed.
   var nextViewModel: (() throws -> ViewModel)?
   var onResolve: (() -> Void)?
   /// When set, the corresponding bridge call throws — drives the Store's
@@ -438,9 +429,6 @@ private struct FailingStore: ItemStore {
   func delete(id: String) throws { throw TestError() }
 }
 
-/// Intercepts URLSession traffic so `Store.execute` runs against canned
-/// responses/errors. `handler` is set per test; `lastRequest` captures the
-/// mapped `URLRequest` for request-shape assertions.
 final class MockURLProtocol: URLProtocol {
   nonisolated(unsafe) static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
   nonisolated(unsafe) static var lastRequest: URLRequest?

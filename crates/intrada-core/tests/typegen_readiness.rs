@@ -1,9 +1,7 @@
-//! Typegen-readiness: the native iOS bridge generates Swift types from the
-//! core via `crux_core`'s facet reflection. That only works if every type
-//! reachable from `Event` / `Effect` / `ViewModel` derives `Facet`. This test
-//! is the discovery + regression guard: if a new field introduces a type that
-//! isn't facet-representable, `register_app` fails here rather than in the iOS
-//! build. Gated on `facet_typegen` so it's a no-op for default builds.
+//! Typegen-readiness guard: the native iOS bridge generates Swift types via
+//! facet reflection, which requires every type reachable from
+//! `Event` / `Effect` / `ViewModel` to derive `Facet`. A non-representable
+//! type fails `register_app` here rather than in the iOS build.
 #![cfg(feature = "facet_typegen")]
 
 use crux_core::type_generation::facet::TypeRegistry;

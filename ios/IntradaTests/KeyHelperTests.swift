@@ -43,11 +43,10 @@ final class KeyHelperTests: XCTestCase {
   }
 
   func testSelectionPrefersStructuredAndFallsBackToLegacy() {
-    // Structured: key is the tonic, modality given.
     XCTAssertEqual(
       KeyHelper.selection(key: "F#", modality: .major),
       KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
-    // Legacy: combined string, no modality.
+    // Legacy combined-string path: no modality given.
     XCTAssertEqual(
       KeyHelper.selection(key: "F# major", modality: nil),
       KeyHelper.Selection(ring: 6, mode: .major, spelling: "F#"))
@@ -64,24 +63,21 @@ final class KeyHelperTests: XCTestCase {
   func testDisplayComposesAndHandlesLegacy() {
     XCTAssertEqual(KeyHelper.display(key: "F#", modality: .major), "F\u{266F} Major")
     XCTAssertEqual(KeyHelper.display(key: "Db", modality: .minor), "D\u{266D} minor")
-    // Legacy combined value with no modality still prettifies (no modality word).
+    // Legacy combined value with no modality still prettifies.
     XCTAssertEqual(KeyHelper.display(key: "F# major", modality: nil), "F\u{266F} major")
     XCTAssertNil(KeyHelper.display(key: "", modality: nil))
     XCTAssertNil(KeyHelper.display(key: nil, modality: .major))
   }
 
   func testTapSelectsThenFlipsEnharmonic() {
-    // Fresh tap on the F#/Gb spoke selects the default spelling.
     let first = KeyHelper.nextOnTap(currentKey: "", currentModality: nil, ring: 6, mode: .major)
     XCTAssertEqual(first.tonic, "Gb")
     XCTAssertEqual(first.modality, .major)
     XCTAssertFalse(first.flipped)
-    // Second tap flips to the alternate.
     let second = KeyHelper.nextOnTap(
       currentKey: first.tonic, currentModality: first.modality, ring: 6, mode: .major)
     XCTAssertEqual(second.tonic, "F#")
     XCTAssertTrue(second.flipped)
-    // Third tap flips back.
     let third = KeyHelper.nextOnTap(
       currentKey: second.tonic, currentModality: second.modality, ring: 6, mode: .major)
     XCTAssertEqual(third.tonic, "Gb")

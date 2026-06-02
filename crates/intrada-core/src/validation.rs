@@ -285,7 +285,7 @@ pub fn validate_rep_consistency(
             }
         }
     } else {
-        // If no target, count, reached, and history must also be absent
+        // No target ⇒ count, reached, and history must also be absent.
         if rep_count.is_some() || rep_target_reached.is_some() || rep_history_present {
             return Err(LibraryError::Validation {
                 field: "rep_target".to_string(),
@@ -297,7 +297,6 @@ pub fn validate_rep_consistency(
     Ok(())
 }
 
-/// Validate a set entry's required fields: item_id, item_title, and item_type.
 pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {

@@ -1,8 +1,4 @@
 //! MCP audit-log read-only surface for the shell.
-//!
-//! Mirrors the API's `AuditLogEntry`. The UI (Settings → MCP activity)
-//! lists these newest-first so the user can see what their AI clients
-//! have been doing on their behalf.
 
 use chrono::{DateTime, Utc};
 use crux_core::Command;

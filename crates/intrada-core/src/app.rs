@@ -1,5 +1,4 @@
-// The `#[effect]` macro generates an enum with large variant size differences
-// (Request<HttpRequest> vs Request<RenderOperation>); we can't Box through the macro.
+// The `#[effect]` macro generates large variant size differences and we can't Box through it.
 #![allow(clippy::large_enum_variant)]
 
 use crux_core::capability::Operation;
@@ -47,9 +46,7 @@ pub enum Event {
         /// iOS passes true (Library local-first); web passes false (online).
         local_first: bool,
     },
-    /// Replace the library with a canonical demo dataset. Sent by a shell only
-    /// under an explicit opt-in (e.g. iOS `--seed-sample-data` launch arg) for
-    /// CI screenshots / local demos / E2E — never in production.
+    /// Demo dataset, opt-in only (e.g. iOS `--seed-sample-data`) — never in production.
     LoadSampleData,
     /// Fetch all data from the API (items, sessions, sets).
     FetchAll,
@@ -57,10 +54,8 @@ pub enum Event {
     RefetchItems,
     RefetchSessions,
     RefetchSets,
-    /// User signed out — reset all user-scoped state so the next sign-in
-    /// (possibly a different user on the same browser) doesn't inherit the
-    /// previous user's items, sessions, MCP tokens/audit, errors, etc.
-    /// Shell dispatches this on the signed_in → signed_out transition (#645).
+    /// Reset all user-scoped state so the next sign-in doesn't inherit the
+    /// previous user's data (#645).
     SignedOut,
 
     // ── Domain ──────────────────────────────────────────────────────
@@ -121,14 +116,8 @@ pub enum Event {
 
 /// Side effects the core requests from shells.
 ///
-/// The `#[effect]` attribute macro from `crux_core` generates the
-/// `From<Request<Op>>` impls plus `impl crux_core::Effect`. Source variants
-/// hold **operation types** (e.g. `RenderOperation`, `HttpRequest`); the macro
-/// wraps each in `Request<Op>` in the compiled enum.
-///
-/// HTTP API calls go through `Http` (crux_http). The shell executes the raw
-/// HTTP request and feeds the response back; all request construction and
-/// response parsing happens in the core (see `http.rs`).
+/// Variants hold operation types; the `#[effect]` macro wraps each in
+/// `Request<Op>` in the compiled enum.
 #[effect(facet_typegen)]
 pub enum Effect {
     Render(RenderOperation),
@@ -139,10 +128,7 @@ pub enum Effect {
     Persistence(PersistenceOperation),
 }
 
-/// Non-HTTP side-effect operations handled by the shell.
-///
-/// After the crux_http migration, only localStorage crash-recovery operations
-/// remain here. All API calls now go through the `Http` effect variant.
+/// Non-HTTP side-effect operations handled by the shell (localStorage only).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -159,9 +145,6 @@ pub enum AppEffect {
 impl Operation for AppEffect {
     type Output = ();
 }
-
-// Note: `impl crux_core::Effect` and `From<Request<Op>>` impls are generated
-// by the `#[effect]` macro.
 
 impl App for Intrada {
     type Event = Event;
@@ -183,8 +166,7 @@ impl App for Intrada {
                 model.api_base_url = api_base_url;
                 model.local_first = local_first;
                 if local_first {
-                    // Library is local: hydrate from the on-device store, no HTTP.
-                    // (Sessions/sets aren't on the native shell yet — migrated later.)
+                    // Sessions/sets aren't on the native shell yet — migrated later.
                     persistence::load_items()
                 } else {
                     Command::all([
@@ -216,10 +198,8 @@ impl App for Intrada {
             Event::RefetchSets => http::fetch_sets(&model.api_base_url),
             Event::SignedOut => {
                 model.reset_for_sign_out();
-                // Also clear the crash-recovery blob in localStorage —
-                // it isn't user-scoped, so user A's in-progress session
-                // would otherwise hydrate into user B's model on next
-                // sign-in (#645).
+                // The crash-recovery blob isn't user-scoped, so clear it too —
+                // else user A's session hydrates into user B on next sign-in (#645).
                 Command::all([
                     Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
                     crux_core::render::render(),
@@ -278,9 +258,7 @@ impl App for Intrada {
                 crux_core::render::render()
             }
             Event::DeleteConfirmed | Event::SessionSaved => {
-                // Model was already updated optimistically; no action needed
-                // beyond recording the success (clears any pending error +
-                // dismiss-mute).
+                // Model already updated optimistically — just record the success.
                 model.record_success();
                 crux_core::render::render()
             }
@@ -292,11 +270,8 @@ impl App for Intrada {
 
             // ── Error handling ───────────────────────────────────────
             Event::LoadFailed(msg) => {
-                // surface_error encapsulates the dismiss-mute check (#346)
-                // and message dedupe to avoid render storms during burst
-                // failures. Always render — domain *Failed handlers may have
-                // other state changes (loading flags, optimistic rollback)
-                // that need to flush.
+                // surface_error does the dismiss-mute check + dedupe (#346); always
+                // render anyway so domain *Failed state changes (rollback) flush.
                 model.surface_error(msg);
                 crux_core::render::render()
             }
@@ -382,9 +357,8 @@ impl App for Intrada {
             .iter()
             .filter(|i| i.item_type == ItemKind::Exercise)
             .count();
-        // The whole tag vocabulary, computed before the filter so it stays
-        // stable as the filter narrows. Case-insensitive dedupe keeping the
-        // first-seen casing, sorted by lowercase (mirrors web's `unique_tags`).
+        // Computed before the filter so the vocabulary stays stable as the
+        // filter narrows. Case-insensitive dedupe, first-seen casing.
         let available_tags = {
             let mut seen = std::collections::HashSet::new();
             let mut tags: Vec<String> = Vec::new();
@@ -399,18 +373,15 @@ impl App for Intrada {
             tags
         };
 
-        // Apply active query filter
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
         }
 
         sort_library_items(&mut items, &model.active_sort);
 
-        // Build completed session views sorted newest-first
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
         sessions.sort_by(|a, b| b.finished_at.cmp(&a.finished_at));
 
-        // Build active session / building / summary views from session_status
         let (active_session, building_setlist, summary) = match &model.session_status {
             SessionStatus::Idle => (None, None, None),
             SessionStatus::Building(building) => {
@@ -477,11 +448,8 @@ impl App for Intrada {
             SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
 
-        // Compute analytics from session data.
-        // Note: Uses Utc::now() which makes view() impure. This is a pragmatic
-        // tradeoff — the date only changes once/day and caching analytics in the
-        // Model would require plumbing a clock through the event system. All
-        // computation functions accept `today` as a parameter for testability.
+        // Uses Utc::now(), making view() impure — pragmatic tradeoff since the
+        // date changes once/day; computation fns take `today` for testability.
         let analytics = if model.sessions.is_empty() {
             None
         } else {
@@ -489,7 +457,6 @@ impl App for Intrada {
             Some(compute_analytics(&model.sessions, &model.items, today))
         };
 
-        // Build set views
         let sets = model
             .sets
             .iter()
@@ -546,10 +513,8 @@ impl App for Intrada {
     }
 }
 
-/// Build practice summaries for all items in a single pass over sessions.
-///
-/// Returns a map keyed by item_id. Called once when sessions change,
-/// replacing the old per-item O(M×E) scan that ran on every render.
+/// Build practice summaries (keyed by item_id) in a single pass over sessions.
+/// Called once when sessions change, not per-render.
 pub(crate) fn build_practice_summaries(
     sessions: &[PracticeSession],
 ) -> std::collections::HashMap<String, ItemPracticeSummary> {
@@ -667,23 +632,19 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
     items
         .into_iter()
         .filter(|item| {
-            // Filter by item type
             if let Some(ref item_type) = query.item_type {
                 if item.item_type != *item_type {
                     return false;
                 }
             }
 
-            // Filter by key
             if let Some(ref key) = query.key {
                 if item.key.as_deref() != Some(key.as_str()) {
                     return false;
                 }
             }
 
-            // Filter by tags: match ANY selected tag (case-insensitive). A
-            // multi-tag filter is a union ("classical OR jazz" → both genres),
-            // not an intersection.
+            // Multi-tag filter is a union (match ANY, case-insensitive), not an intersection.
             if !query.tags.is_empty() {
                 let selected: Vec<String> = query.tags.iter().map(|t| t.to_lowercase()).collect();
                 let matches_any = item
@@ -695,7 +656,6 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
                 }
             }
 
-            // Filter by text search (case-insensitive substring match)
             if let Some(ref text) = query.text {
                 let text_lower = text.to_lowercase();
                 let matches = item.title.to_lowercase().contains(&text_lower)
@@ -1245,11 +1205,9 @@ mod tests {
             priority: false,
         });
 
-        // No filter — both items
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 2);
 
-        // Filter to pieces only
         let _cmd = app.update(
             Event::SetQuery(Some(ListQuery {
                 item_type: Some(ItemKind::Piece),
@@ -1261,7 +1219,6 @@ mod tests {
         assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].item_type, ItemKind::Piece);
 
-        // Clear filter
         let _cmd = app.update(Event::SetQuery(None), &mut model);
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 2);

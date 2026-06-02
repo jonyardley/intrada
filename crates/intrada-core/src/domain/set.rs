@@ -10,7 +10,7 @@ use crate::validation;
 
 // ── Domain Types ───────────────────────────────────────────────────────
 
-/// A named, reusable setlist template containing an ordered list of library item references.
+/// A named, reusable setlist template (ordered library-item references).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Set {
@@ -21,7 +21,6 @@ pub struct Set {
     pub updated_at: DateTime<Utc>,
 }
 
-/// A single item within a set, representing a library piece or exercise.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetEntry {
@@ -66,7 +65,6 @@ pub enum SetEvent {
 pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
         SetEvent::SaveBuildingAsSet { name, request_id } => {
-            // Precondition: must be in Building status
             let building = match &model.session_status {
                 SessionStatus::Building(b) => b,
                 _ => {
@@ -75,13 +73,11 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 }
             };
 
-            // Validate name
             if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            // Validate entries non-empty
             if building.entries.is_empty() {
                 model.last_error = Some("Set must have at least one entry".to_string());
                 return crux_core::render::render();
@@ -117,7 +113,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
         }
 
         SetEvent::SaveSummaryAsSet { name, request_id } => {
-            // Precondition: must be in Summary status
             let summary = match &model.session_status {
                 SessionStatus::Summary(s) => s,
                 _ => {
@@ -126,13 +121,11 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 }
             };
 
-            // Validate name
             if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            // Validate entries non-empty
             if summary.entries.is_empty() {
                 model.last_error = Some("Set must have at least one entry".to_string());
                 return crux_core::render::render();
@@ -168,7 +161,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
         }
 
         SetEvent::LoadSetIntoSetlist { set_id } => {
-            // Precondition: must be in Building status
             let building = match &mut model.session_status {
                 SessionStatus::Building(b) => b,
                 _ => {
@@ -177,7 +169,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 }
             };
 
-            // Find set by ID
             let set = match model.sets.iter().find(|r| r.id == set_id) {
                 Some(r) => r.clone(),
                 None => {
@@ -197,7 +188,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 building.source_set_entry_snapshot = vec![];
             }
 
-            // Create new SetlistEntry objects from set entries (fresh ULIDs)
             for entry in &set.entries {
                 building.entries.push(SetlistEntry {
                     id: ulid::Ulid::new().to_string(),
@@ -219,7 +209,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 });
             }
 
-            // Reindex all positions
             for (i, entry) in building.entries.iter_mut().enumerate() {
                 entry.position = i;
             }
@@ -239,19 +228,16 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
         }
 
         SetEvent::UpdateSet { id, name, entries } => {
-            // Validate name
             if let Err(e) = validation::validate_set_name(&name) {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            // Validate entries non-empty
             if let Err(e) = validation::validate_entries_not_empty(&entries, "Set") {
                 model.last_error = Some(e.to_string());
                 return crux_core::render::render();
             }
 
-            // Find and update set
             let set = match model.sets.iter_mut().find(|r| r.id == id) {
                 Some(r) => r,
                 None => {
@@ -264,7 +250,6 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
             set.entries = entries;
             set.updated_at = Utc::now();
 
-            // Reindex positions
             for (i, entry) in set.entries.iter_mut().enumerate() {
                 entry.position = i;
             }
@@ -829,7 +814,6 @@ mod tests {
 
         if let SessionStatus::Building(ref b) = model.session_status {
             assert_eq!(b.entries.len(), 4); // 2 + 2
-                                            // All entries should have unique IDs
             let ids: Vec<&str> = b.entries.iter().map(|e| e.id.as_str()).collect();
             let unique: std::collections::HashSet<&str> = ids.iter().copied().collect();
             assert_eq!(ids.len(), unique.len(), "All entry IDs should be unique");

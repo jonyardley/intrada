@@ -33,8 +33,6 @@ enum LibraryFilter: CaseIterable, Identifiable {
   }
 }
 
-/// Segmented pill control: the indigo selected pill slides between options via
-/// a shared `matchedGeometryEffect`. Spring approximates the iOS default.
 struct LibraryFilterTabs: View {
   @Binding var selection: LibraryFilter
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

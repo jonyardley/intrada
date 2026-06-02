@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// A centred "nothing here yet" body for screens whose real UI lands in the
-/// screen-by-screen rewrite (Phase C). Tinted glyph + one line of muted copy.
+/// A centred "nothing here yet" body: tinted glyph + one line of muted copy.
 struct PlaceholderContent: View {
   let systemImage: String
   let message: String

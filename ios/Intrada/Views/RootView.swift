@@ -1,10 +1,6 @@
 import SharedTypes
 import SwiftUI
 
-/// The app shell: a four-tab bar over the three pillars — Plan (Library,
-/// Routines), Practice, and Track (Analytics). Each tab is a placeholder
-/// screen; the real UI lands tab-by-tab in the screen rewrite (Phase C).
-/// Owns the one-time `StartApp` kick so the core bridge boots behind the tabs.
 struct RootView: View {
   @Environment(Store.self) private var store
 
@@ -47,9 +43,6 @@ struct RootView: View {
     ProcessInfo.processInfo.arguments.contains("--seed-sample-data")
   }
 
-  /// Paint the UIKit tab bar with the paper theme: cream fill, faint inactive
-  /// glyphs/labels, indigo for the selected tab. `tint` above colours selection
-  /// at the SwiftUI layer; this carries the rest UIKit owns.
   private static func applyTabBarAppearance() {
     let appearance = UITabBarAppearance()
     appearance.configureWithOpaqueBackground()
@@ -67,10 +60,6 @@ struct RootView: View {
     UITabBar.appearance().scrollEdgeAppearance = appearance
   }
 
-  /// Transparent nav bar so the paper background shows through; the back chevron
-  /// (indigo via `tint`) floats over it. Pushed screens (add, edit) render their
-  /// nav title in the serif + ink tokens to match the paper design — a touch
-  /// smaller than the UIKit default so it reads as a quiet header.
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
     appearance.configureWithTransparentBackground()

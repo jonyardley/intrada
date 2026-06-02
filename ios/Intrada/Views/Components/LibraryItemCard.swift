@@ -1,9 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-/// A single library row: type-coded left bar, serif title, composer subtitle,
-/// and a `key · tempo` meta line. The bar is the always-on type signal
-/// (`ItemKind.bar`); a filtered list needs no extra badge.
+/// A single library row. The type-coded left bar (`ItemKind.bar`) is the
+/// always-on type signal, so list rows carry no separate type badge.
 struct LibraryItemCard: View {
   let item: LibraryItemView
 

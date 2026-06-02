@@ -29,8 +29,7 @@ impl fmt::Display for ItemKind {
 }
 
 /// Major/minor tonality, paired with `Item.key` (the tonic, e.g. "F#").
-/// Selection/spelling logic lives in the shell's key picker; this is just the
-/// stored shape.
+/// Selection/spelling logic lives in the shell's key picker.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -70,8 +69,7 @@ pub enum ItemEvent {
     RemoveTags { id: String, tags: Vec<String> },
 }
 
-/// Persist a just-saved item locally (local-first) or PUT it to the server
-/// (online). Shared by Update / AddTags / RemoveTags.
+/// Shared by Update / AddTags / RemoveTags.
 fn save_or_put(model: &mut Model, item: Item) -> Command<Effect, Event> {
     if model.local_first {
         // No server callback to clear the dismiss-mute later (online does that
@@ -117,9 +115,8 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
 
             if model.local_first {
-                // The client ulid is canonical — persist locally, no server
-                // round-trip, no temp-id replacement. Record success here since
-                // there's no ItemCreated callback to clear the dismiss-mute.
+                // Client ulid is canonical, no temp-id replacement. No
+                // ItemCreated callback to clear the dismiss-mute, so do it here.
                 model.record_success();
                 Command::all([
                     crate::persistence::save_item(item),
