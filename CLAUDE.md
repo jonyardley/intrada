@@ -238,6 +238,32 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 
 [uniffi-rs#2818]: https://github.com/mozilla/uniffi-rs/issues/2818
 
+### Principles (from the 2026-06 review)
+
+Hard-won lessons from the first full review of the native app. Treat them like
+the non-negotiables above.
+
+- **Surface, don't swallow — at every layer.** A core error state with no UI
+  surface is the silent-no-op bug (#846) one level up. Every `ViewModel.error`
+  must have a UI surface, and optimistic UI must reconcile with the core's
+  confirmed outcome — never fire a success haptic or dismiss a sheet before the
+  core confirms (re-read `viewModel.error` after `store.send`; see
+  `LibraryAddScreen.add`).
+- **A stated invariant must be an enforced invariant.** Back each offline-first
+  invariant with a test *and* a CI gate. Prose plus an opt-in local hook is
+  effectively off — assume the hook isn't installed.
+- **Sync-boundary discipline now, not at Phase D.** Both writers (shell + core)
+  must agree on the timestamp format, and reconciliation/merge policy lives in
+  the core — even before the sync engine exists. Don't encode merge rules in
+  shell SQL.
+- **Consolidate before you template.** Extract a shared primitive/form the
+  moment a *second* screen would copy it. The Library screens are the template
+  the other pillars (Practice/Track) will clone — duplication here multiplies.
+- **Bridge-crossing types need a real round-trip test as a build precondition.**
+  Extend the Rust `assert_round_trips` helper to every write payload *before* it
+  is wired to a screen — a stub-bridge test can't catch a bincode-wire break
+  (#846).
+
 ### Snapshot test hygiene
 
 The `swift-snapshot-test` references (`ios/IntradaTests/__Snapshots__/**/*.png`)
