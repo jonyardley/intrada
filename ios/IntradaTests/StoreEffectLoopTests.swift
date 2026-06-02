@@ -317,7 +317,7 @@ final class StoreEffectLoopTests: XCTestCase {
       "add should land: count=\(afterAdd.items.count) err=\(afterAdd.error ?? "nil")")
     let id = try XCTUnwrap(afterAdd.items.first?.id)
 
-    // Mirrors LibraryEditScreen.save(): every PATCH field set, type flipped.
+    // Mirrors ItemFormModel.updateInput(): every PATCH field set, type flipped.
     _ = try bridge.update(
       .item(
         .update(

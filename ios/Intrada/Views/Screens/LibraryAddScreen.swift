@@ -6,134 +6,30 @@ import SwiftUI
 /// ulid; the shell only collects field values.
 struct LibraryAddScreen: View {
   @Environment(Store.self) private var store
-  @Environment(\.dismiss) private var dismiss
-
-  @State private var kind: ItemKind
-  @State private var title = ""
-  @State private var composer = ""
-  @State private var key = ""
-  @State private var modality: Modality?
-  @State private var marking = ""
-  @State private var bpm = ""
-  @State private var notes = ""
-  @State private var tags: [String] = []
-  @State private var formError: String?
+  @State private var form: ItemFormModel
 
   init(defaultKind: ItemKind = .piece) {
-    _kind = State(initialValue: defaultKind)
+    _form = State(initialValue: ItemFormModel(kind: defaultKind))
   }
 
   #if DEBUG
     init(previewError: String) {
-      _kind = State(initialValue: .piece)
-      _formError = State(initialValue: previewError)
+      let form = ItemFormModel(kind: .piece)
+      form.formError = previewError
+      _form = State(initialValue: form)
     }
   #endif
 
   var body: some View {
-    NavigationStack {
-      ZStack {
-        PaperBackground()
-        VStack(spacing: 0) {
-          if let formError {
-            FormErrorBanner(message: formError)
-              .padding(.horizontal, 16)
-              .padding(.top, 12)
-              .transition(.move(edge: .top).combined(with: .opacity))
-          }
-          ScrollView {
-            VStack(spacing: 16) {
-              KindSegment(selection: $kind)
-
-              VStack(spacing: 0) {
-                FormField(label: "Title", text: $title, placeholder: "Required")
-                divider
-                AutocompleteField(
-                  label: "Composer", text: $composer, suggestions: composerSuggestions)
-                divider
-                KeyPicker(label: "Key", key: $key, modality: $modality)
-              }
-              .cardSurface()
-
-              VStack(spacing: 0) {
-                FormField(label: "Tempo marking", text: $marking, placeholder: "e.g. Allegro")
-                divider
-                FormField(label: "Beats per minute", text: $bpm, keyboard: .numberPad)
-              }
-              .cardSurface()
-
-              FormField(label: "Notes", text: $notes, axis: .vertical)
-                .cardSurface()
-
-              VStack(spacing: 0) {
-                TagChipInput(label: "Tags", tags: $tags, suggestions: availableTags)
-              }
-              .cardSurface()
-            }
-            .padding(16)
-          }
-        }
-      }
-      .navigationTitle("New \(kind.label)")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Add", action: add)
-            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-      }
+    ItemFormScaffold(
+      form: form,
+      title: "New \(form.kind.label)",
+      confirmLabel: "Add",
+      composerSuggestions: store.viewModel?.availableComposers ?? [],
+      tagSuggestions: store.viewModel?.availableTags ?? []
+    ) {
+      store.send(.item(.add(form.createInput())))
     }
-  }
-
-  private var divider: some View {
-    Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-  }
-
-  private var composerSuggestions: [String] {
-    store.viewModel?.availableComposers ?? []
-  }
-
-  private var availableTags: [String] {
-    store.viewModel?.availableTags ?? []
-  }
-
-  private func add() {
-    let input = CreateItem(
-      title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-      kind: kind,
-      composer: emptyToNil(composer),
-      key: emptyToNil(key),
-      modality: modality,
-      tempo: buildTempo(),
-      notes: emptyToNil(notes),
-      tags: tags)
-    // Don't celebrate or dismiss until the core confirms: a validation reject
-    // or failed local write surfaces in viewModel.error, which we keep on screen.
-    formError = nil
-    store.send(.item(.add(input)))
-    if let error = store.viewModel?.error {
-      withAnimation { formError = error }
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
-      UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
-    } else {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
-      dismiss()
-    }
-  }
-
-  private func emptyToNil(_ value: String) -> String? {
-    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    return trimmed.isEmpty ? nil : trimmed
-  }
-
-  private func buildTempo() -> Tempo? {
-    let mark = emptyToNil(marking)
-    let beats = UInt16(bpm.trimmingCharacters(in: .whitespaces))
-    if mark == nil && beats == nil { return nil }
-    return Tempo(marking: mark, bpm: beats)
   }
 }
 
