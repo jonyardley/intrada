@@ -1,8 +1,6 @@
 //! HTTP request builders for the intrada API.
 //!
-//! All request construction and response parsing happens here in the core.
-//! The shell executes the raw HTTP requests and feeds responses back;
-//! auth headers are added by the shell when processing `Effect::Http`.
+//! Auth headers are added by the shell when processing `Effect::Http`.
 
 use crux_core::Command;
 
@@ -19,8 +17,7 @@ type Http = crux_http::command::Http<Effect, Event>;
 
 /// crux_http panics building a request from a relative URL, and a panic
 /// mid-`update` poisons the Model RwLock — bricking the core for the session.
-/// Guard every builder: a base without an `http(s)://` scheme and host yields a
-/// soft `LoadFailed` instead.
+/// So a base without an `http(s)://` scheme + host yields a soft `LoadFailed`.
 fn require_absolute_base(api_base_url: &str) -> Option<Command<Effect, Event>> {
     let host = api_base_url
         .strip_prefix("http://")
@@ -498,8 +495,6 @@ mod tests {
 
     #[test]
     fn relative_base_url_emits_soft_error_not_panic() {
-        // crux_http panics on a relative URL or a bare scheme; the guard must
-        // intercept both.
         for base in ["", "https://"] {
             let mut cmd = delete_item(base, "id");
             assert!(!cmd.effects().any(|e| matches!(e, Effect::Http(_))));
@@ -748,9 +743,8 @@ mod tests {
 
     #[test]
     fn trailing_slash_in_base_url_produces_double_slash() {
-        // Documents current behaviour: api_base_url is concatenated as-is,
-        // so callers must pass it without a trailing slash. If this ever
-        // changes, expect a fan-out of URL bugs across every callsite.
+        // api_base_url is concatenated as-is; callers must pass it without a
+        // trailing slash.
         let req = take_http(&mut fetch_items("https://api.example.com/"));
         assert_eq!(req.url, "https://api.example.com//api/items");
     }

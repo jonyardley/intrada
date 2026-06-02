@@ -1,13 +1,9 @@
 import Foundation
 import SharedTypes
 
-/// Pure circle-of-fifths logic for the `KeyPicker` — selection, spelling,
-/// enharmonics, and display/accessibility strings. No SwiftUI/UIKit.
-///
-/// Keys are stored structured: `key` is the tonic (`"F#"`) and `modality` is the
-/// core `Modality` (`.major`/`.minor`). Legacy freeform values (`"F# major"`)
-/// are still parsed so old items display and self-heal to structured on save.
-/// View-only by design (#819) — the mode type itself comes from the core.
+/// Keys are stored structured (`key` tonic + core `Modality`); legacy freeform
+/// values ("F# major") are still parsed so old items display and self-heal on
+/// save. View-only by design (#819) — the mode type comes from the core.
 enum KeyHelper {
   struct Selection: Equatable {
     let ring: Int
@@ -27,7 +23,6 @@ enum KeyHelper {
     }
   }
 
-  /// The enharmonic alternate spelling for the three ambiguous spokes.
   static func enharmonicAlt(ring: Int, mode: Modality) -> String? {
     switch (mode, ring) {
     case (.major, 5): return "Cb"
@@ -40,9 +35,6 @@ enum KeyHelper {
     }
   }
 
-  /// Resolve the wheel selection from stored fields: prefer structured
-  /// (`key` tonic + `modality`), falling back to parsing a legacy combined
-  /// string when `modality` is absent.
   static func selection(key: String, modality: Modality?) -> Selection? {
     if let modality, let s = ringFor(tonic: key, mode: modality) {
       return s
@@ -50,9 +42,8 @@ enum KeyHelper {
     return parse(key)
   }
 
-  /// Tap a spoke: returns the new `(tonic, modality)` and whether it was an
-  /// enharmonic flip (vs a fresh selection). Tapping the already-selected
-  /// enharmonic spoke flips the spelling; any other tap selects its default.
+  /// Tapping the already-selected enharmonic spoke flips its spelling; any
+  /// other tap selects that spoke's default.
   static func nextOnTap(
     currentKey: String, currentModality: Modality?, ring: Int, mode: Modality
   ) -> (tonic: String, modality: Modality, flipped: Bool) {
@@ -66,8 +57,8 @@ enum KeyHelper {
     return (prim, mode, false)
   }
 
-  /// ASCII → display form: `#`→`♯`, and an accidental `b` (one following a note
-  /// letter) → `♭`. Mode words are left untouched.
+  /// `#`→`♯`; a `b` only counts as `♭` when it follows a note letter (so mode
+  /// words like "minor" are left untouched).
   static func prettify(_ value: String) -> String {
     var out = ""
     var prev: Character?
@@ -91,8 +82,6 @@ enum KeyHelper {
     }
   }
 
-  /// Composed display for a stored key, e.g. "F♯ major". Falls back to the
-  /// prettified raw value for legacy/unparseable keys with no modality.
   static func display(key: String?, modality: Modality?) -> String? {
     guard let key, !key.isEmpty else { return nil }
     if let modality {
@@ -101,8 +90,8 @@ enum KeyHelper {
     return prettify(key)
   }
 
-  /// Spoken label, e.g. "F sharp major". Enharmonic spokes announce both
-  /// spellings since one tap selects and a second flips between them.
+  /// Enharmonic spokes announce both spellings, since one tap selects and a
+  /// second flips between them.
   static func wedgeAccessibilityLabel(ring: Int, mode: Modality) -> String {
     let prim = primary(ring: ring, mode: mode)
     if let alt = enharmonicAlt(ring: ring, mode: mode) {
@@ -117,8 +106,6 @@ enum KeyHelper {
 
   // ── Internal ──
 
-  /// Match a (tonic, mode) pair to a wheel spoke, or nil if the tonic isn't on
-  /// the circle for that mode.
   private static func ringFor(tonic: String, mode: Modality) -> Selection? {
     guard let norm = normaliseTonic(tonic) else { return nil }
     for ring in 0..<12 {
@@ -132,7 +119,6 @@ enum KeyHelper {
     return nil
   }
 
-  /// Parse a legacy combined string ("F# major") into a selection.
   static func parse(_ raw: String) -> Selection? {
     let normalised =
       raw

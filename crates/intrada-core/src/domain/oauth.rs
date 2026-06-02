@@ -1,12 +1,6 @@
-//! OAuth consent flow (shell-side).
-//!
-//! Mirrors the API's `/oauth/finalize` shape. The web app's
-//! `/oauth/consent` view collects the OAuth params from its URL query,
-//! shows a consent UI gated by Clerk auth, and on Allow dispatches
-//! `OAuthEvent::FinalizeConsent`. The handler POSTs to /oauth/finalize
-//! (Clerk JWT is attached automatically by `core_bridge`), and on
-//! success surfaces the redirect URL through the model so the view can
-//! navigate the browser to the OAuth client's redirect_uri.
+//! OAuth consent flow (shell-side). The handler POSTs to `/oauth/finalize`
+//! (Clerk JWT attached by `core_bridge`) and surfaces the redirect URL
+//! through the model for the view to navigate to.
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
@@ -32,16 +26,13 @@ pub struct OAuthFinalizeParams {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum OAuthEvent {
-    /// User clicked Allow on the consent screen.
     FinalizeConsent(OAuthFinalizeParams),
-    /// API returned the redirect URL — the view picks this up via
-    /// `view_model.oauth_redirect_url` and navigates the browser.
     ConsentFinalized {
         redirect_url: String,
     },
     ConsentFailed(String),
-    /// View resets state when leaving the consent page so a stale
-    /// redirect_url doesn't trigger a navigate next time.
+    /// Resets state on leaving the consent page so a stale redirect_url
+    /// doesn't trigger a navigate next time.
     ResetConsent,
 }
 

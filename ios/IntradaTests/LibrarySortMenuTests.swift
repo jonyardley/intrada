@@ -3,8 +3,6 @@ import XCTest
 
 @testable import Intrada
 
-/// The sort menu's only branching logic: tapping the active field flips
-/// direction; tapping a different field switches to it at its natural default.
 final class LibrarySortMenuTests: XCTestCase {
 
   func testTappingActiveFieldFlipsDirection() {

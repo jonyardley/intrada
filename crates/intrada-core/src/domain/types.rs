@@ -24,7 +24,6 @@ where
     }
 }
 
-/// Top-level serialisation unit for library data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryData {
@@ -32,7 +31,6 @@ pub struct LibraryData {
     pub items: Vec<Item>,
 }
 
-/// Tempo representation with optional marking (e.g. "Allegro") and BPM.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Tempo {
@@ -134,7 +132,6 @@ pub struct SessionsData {
 
 // ── API request DTOs ─────────────────────────────────────────────────
 
-/// Request body for creating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateSetRequest {
@@ -142,7 +139,6 @@ pub struct CreateSetRequest {
     pub entries: Vec<CreateSetEntryRequest>,
 }
 
-/// Entry within a create/update set API request.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateSetEntryRequest {
@@ -151,7 +147,6 @@ pub struct CreateSetEntryRequest {
     pub item_type: ItemKind,
 }
 
-/// Request body for updating a set via the REST API.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateSetRequest {
@@ -162,7 +157,6 @@ pub struct UpdateSetRequest {
 // ── Conversion helpers ──────────────────────────────────────────────
 
 impl CreateSetRequest {
-    /// Build from a domain `Set`.
     pub fn from_set(set: &super::set::Set) -> Self {
         Self {
             name: set.name.clone(),
@@ -180,7 +174,6 @@ impl CreateSetRequest {
 }
 
 impl UpdateSetRequest {
-    /// Build from a domain `Set`.
     pub fn from_set(set: &super::set::Set) -> Self {
         Self {
             name: set.name.clone(),
@@ -197,7 +190,6 @@ impl UpdateSetRequest {
     }
 }
 
-/// Filters for listing/searching library items.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ListQuery {
@@ -209,7 +201,6 @@ pub struct ListQuery {
     pub tags: Vec<String>,
 }
 
-/// Which library column the list is ordered by.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -220,7 +211,6 @@ pub enum SortField {
     Title,
 }
 
-/// Ascending vs descending. Defaults to descending (newest/most-recent first).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
@@ -230,8 +220,7 @@ pub enum SortDirection {
     Ascending,
 }
 
-/// The library list's sort order. Default = Date Added, newest first
-/// (the historical hardcoded order).
+/// Default = Date Added, newest first.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibrarySort {

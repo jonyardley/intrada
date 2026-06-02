@@ -1,8 +1,7 @@
 //! MCP Personal Access Token management.
 //!
-//! Mirrors the API's `mcp_tokens` table — the list view never carries the
-//! full token (only the prefix), and the just-created response is the only
-//! place the full bearer string appears.
+//! The list view only carries the prefix; the full bearer string appears
+//! only in the just-created response.
 
 use chrono::{DateTime, Utc};
 use crux_core::Command;
@@ -11,8 +10,6 @@ use serde::{Deserialize, Serialize};
 use crate::app::{Effect, Event};
 use crate::model::Model;
 
-/// A single PAT in the user's account, as surfaced by the list endpoint.
-/// Fields mirror `intrada-api`'s `TokenListItem`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct McpToken {
@@ -24,8 +21,8 @@ pub struct McpToken {
     pub revoked_at: Option<DateTime<Utc>>,
 }
 
-/// Response from the create endpoint. The `token` field is the only place the
-/// full bearer string is ever returned — UI shows it once and never again.
+/// The `token` field is the only place the full bearer string is ever
+/// returned — UI shows it once and never again.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreatedMcpToken {
@@ -40,27 +37,23 @@ pub struct CreatedMcpToken {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum McpTokenEvent {
-    /// Fetch the user's tokens.
     LoadTokens,
     TokensLoaded(Vec<McpToken>),
     LoadTokensFailed(String),
 
-    /// Create a new PAT with the given name.
     CreateToken {
         name: String,
     },
-    /// Server returned the full token. UI must show it once, then dismiss.
+    /// UI must show the full token once, then dismiss.
     TokenCreated(CreatedMcpToken),
     CreateTokenFailed(String),
 
-    /// User dismissed the show-once modal — clear the just-created token
-    /// from the model so it can't be re-displayed (and isn't kept in
-    /// memory longer than necessary).
+    /// Clears the just-created token from the model so it can't be
+    /// re-displayed or kept in memory longer than necessary.
     DismissCreatedToken,
 
-    /// Soft-revoke a PAT. The server stamps `revoked_at`; the model
-    /// updates the corresponding entry in `mcp_tokens` so the list
-    /// reflects the revocation without a full refetch.
+    /// Soft-revoke; the model stamps `revoked_at` on the entry without a
+    /// full refetch.
     RevokeToken {
         id: String,
     },
@@ -103,9 +96,6 @@ pub fn handle_mcp_token_event(event: McpTokenEvent, model: &mut Model) -> Comman
         }
 
         McpTokenEvent::TokenCreated(created) => {
-            // Push a list-shaped view of the new token into `mcp_tokens` so
-            // the list immediately reflects it, and surface the full token
-            // through `just_created_token` for the show-once modal.
             model.mcp_tokens.insert(
                 0,
                 McpToken {
@@ -202,7 +192,7 @@ mod tests {
         };
         let _cmd = handle_mcp_token_event(McpTokenEvent::TokenCreated(created.clone()), &mut model);
         assert_eq!(model.mcp_tokens.len(), 2);
-        assert_eq!(model.mcp_tokens[0].id, "new"); // newest first
+        assert_eq!(model.mcp_tokens[0].id, "new");
         assert_eq!(model.just_created_token, Some(created));
     }
 

@@ -3,9 +3,6 @@ import XCTest
 
 @testable import Intrada
 
-/// Exercises the GRDB-backed local store against an in-memory database: the
-/// row↔Item codec round-trips, upsert updates in place, and delete tombstones
-/// (hides the row from loads) without dropping it.
 final class LibraryStoreTests: XCTestCase {
   private func makeStore() throws -> LibraryStore { try LibraryStore.inMemory() }
 
@@ -51,7 +48,7 @@ final class LibraryStoreTests: XCTestCase {
     var it = item("p1")
     it.modality = nil
     try store.save(it)
-    // Also the legacy path: a pre-v2 row has a NULL modality column.
+    // Also covers the legacy path: a pre-v2 row has a NULL modality column.
     XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality)
   }
 

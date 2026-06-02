@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The library's paper-themed search field, revealed by the magnifier button in
-/// `LibraryScreen`'s header. The trailing Cancel clears the text and resigns
-/// focus, which the screen reads to tuck the bar away again.
+/// The library's search field, revealed by the magnifier button in
+/// `LibraryScreen`'s header. Cancel clears the text and resigns focus, which the
+/// screen reads to tuck the bar away again.
 struct LibrarySearchBar: View {
   @Binding var text: String
   var focused: FocusState<Bool>.Binding

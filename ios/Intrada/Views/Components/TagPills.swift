@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// A compact, truncating row of tag chips for list rows: shows up to `limit`
-/// tags and a `+N` overflow chip, so a card with many tags stays the same
-/// height as one with few. The detail screen shows the full set; this is the
-/// at-a-glance version.
+/// A truncating row of tag chips for list rows: up to `limit` tags plus a `+N`
+/// overflow chip, so a card with many tags stays the same height as one with few.
 struct TagPills: View {
   let tags: [String]
   var limit: Int = 3

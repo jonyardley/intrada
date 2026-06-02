@@ -487,27 +487,35 @@ Default to **no comments**. Self-explanatory code with well-named identifiers
 beats commented code. A reader who knows the language and framework should be
 able to answer "what does this do?" from the code alone.
 
-Add a comment only when one of these holds:
+A comment is justified ONLY if it falls into one of these **three buckets**.
+Everything else gets deleted.
 
-- **Non-obvious WHY** — a hidden constraint, subtle invariant, workaround for a
-  specific bug, or framework quirk that would surprise a reader. Cite the
-  reason concretely: an issue number, an incident, a doc link, a `BUG:` tag.
-  Vague WHY is no better than restating WHAT.
-- **Cross-file context** — pointing at a related file, a CLAUDE.md rule, or
-  an external doc the reader could miss. One line max.
-- **Section structure** — single-line dividers like `// ── Validation ──` in a
-  long file. Never more than one line.
+1. **Section headers in a large file** — single-line dividers that separate
+   concerns, like `// ── Validation ──`. Never more than one line. (A one-line
+   cross-file pointer the reader would otherwise miss counts here too.)
+2. **Unusual / unreasonable things that need explaining** — a non-obvious WHY:
+   a hidden constraint, subtle invariant, a workaround for a specific bug, or a
+   framework quirk that would surprise a reader. Cite the reason concretely: an
+   issue number, an incident, a doc link, a `BUG:` tag. Vague WHY is no better
+   than restating WHAT.
+3. **Hacky / tactical code that needs rework** — flag it so it's visible, but
+   tie it to a tracked issue: `// HACK(#N): …` or `// FIXME(#N): …`. A bare
+   `// TODO come back to this` with no issue is not acceptable — open the issue
+   and cite it.
+
+`///` doc comments get the **same** treatment as `//`: a `///` narrating a
+self-evident private item or single-purpose component is noise — delete it.
 
 Do **not** write a comment that:
 
 - Restates WHAT the code does (`// Filter by status` above `.filter(|g| g.status == tab)`)
+- Narrates self-evident styling/structure (e.g. a 4-line `///` explaining a
+  transparent nav bar + tint + serif title the code already shows)
 - References the current task / PR (`// Added for #719`) — rots, belongs in
   the PR description
-- Apologises or hedges (`// quick fix`, `// TODO come back to this`) — open a
-  tracked issue instead
+- Apologises or hedges without a tracked issue (`// quick fix`,
+  `// TODO come back to this`)
 - Notes that a function "Mirrors X" when the shapes already make it obvious
-- Is a `///` doc comment on a private item or a single-purpose component
-  whose signature is self-evident
 
 Two-line cap as a smell test: if a comment is more than two lines, ask "can
 this be a function name? a type? a CLAUDE.md entry?". Usually yes.

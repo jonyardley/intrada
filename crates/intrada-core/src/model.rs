@@ -17,7 +17,6 @@ use crate::domain::{LibrarySort, ListQuery};
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
 pub struct Model {
-    /// Base URL for the REST API (set via `Event::StartApp`).
     pub api_base_url: String,
     /// When true (set by the iOS shell at `StartApp`), the Library is local-
     /// first: reads hydrate from the on-device store and writes persist locally
@@ -27,7 +26,6 @@ pub struct Model {
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
-    /// Library list sort order. Defaults to Date Added / newest-first.
     pub active_sort: LibrarySort,
     pub last_error: Option<String>,
     /// Set when the user dismisses the error banner. While true, errors from
@@ -197,10 +195,6 @@ pub struct ViewModel {
     pub last_set_save_request_id: Option<String>,
 }
 
-// Sanity-check that ViewModel field names mirror Model where applicable.
-// (No code; just keeps model + viewmodel in sync mentally.)
-
-/// Represents a set for display in the UI.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetView {
@@ -210,7 +204,6 @@ pub struct SetView {
     pub entries: Vec<SetEntryView>,
 }
 
-/// Represents a single entry within a set for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetEntryView {
@@ -221,7 +214,6 @@ pub struct SetEntryView {
     pub position: usize,
 }
 
-/// Flattened representation of a piece or exercise for display.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryItemView {
@@ -243,7 +235,6 @@ pub struct LibraryItemView {
     pub priority: bool,
 }
 
-/// Practice summary for a library item.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ItemPracticeSummary {
@@ -259,7 +250,6 @@ pub struct ItemPracticeSummary {
     pub last_practiced_at: Option<String>,
 }
 
-/// A single score data point for an item's progress history.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScoreHistoryEntry {
@@ -268,7 +258,6 @@ pub struct ScoreHistoryEntry {
     pub session_id: String,
 }
 
-/// A single tempo data point for an item's tempo progress history.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct TempoHistoryEntry {
@@ -277,7 +266,6 @@ pub struct TempoHistoryEntry {
     pub session_id: String,
 }
 
-/// A completed practice session in history view.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PracticeSessionView {
@@ -291,7 +279,6 @@ pub struct PracticeSessionView {
     pub session_intention: Option<String>,
 }
 
-/// A single entry within a session view.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SetlistEntryView {
@@ -314,7 +301,6 @@ pub struct SetlistEntryView {
     pub achieved_tempo: Option<u16>,
 }
 
-/// View for the in-progress active session.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ActiveSessionView {
@@ -339,7 +325,6 @@ pub struct ActiveSessionView {
     pub next_item_title: Option<String>,
 }
 
-/// View for the building phase setlist.
 /// Whether the builder's entries originate from, and relate to, a saved Set.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -357,7 +342,6 @@ pub enum SetSourceStatus {
     },
 }
 
-/// View for the building phase setlist.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BuildingSetlistView {
@@ -368,7 +352,6 @@ pub struct BuildingSetlistView {
     pub source_status: SetSourceStatus,
 }
 
-/// View for the end-of-session summary.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct SummaryView {
@@ -381,7 +364,6 @@ pub struct SummaryView {
 
 // ── View helpers ──────────────────────────────────────────────────────
 
-/// Convert a `SetlistEntry` into a `SetlistEntryView`.
 pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
     SetlistEntryView {
         id: entry.id.clone(),
@@ -411,7 +393,6 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
     }
 }
 
-/// Build views from an `ActiveSession`.
 pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
     let safe_index = active
         .current_index
@@ -419,7 +400,7 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
     let current = &active.entries[safe_index];
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
-        current_item_type: current.item_type.clone(), // Now ItemKind
+        current_item_type: current.item_type.clone(),
         current_position: active.current_index,
         total_items: active.entries.len(),
         started_at: active.session_started_at.to_rfc3339(),
@@ -438,7 +419,6 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
     }
 }
 
-/// Build view from a `SummarySession`.
 pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
     let total_secs: u64 = summary.entries.iter().map(|e| e.duration_secs).sum();
     SummaryView {
@@ -450,7 +430,6 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
     }
 }
 
-/// Build view from completed `PracticeSession`.
 pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
     PracticeSessionView {
         id: session.id.clone(),

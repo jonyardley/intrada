@@ -1,7 +1,6 @@
 //! Local-first persistence — query/mutation operations the shell fulfils
-//! against on-device SQLite (GRDB lands in B2). Unlike `AppEffect`
-//! (`Output = ()`), persistence queries return data: the core's first effect
-//! with a real typed `Output`, which B1 exists to de-risk across the bridge.
+//! against on-device SQLite. Unlike `AppEffect` (`Output = ()`), these
+//! queries return data: the core's first effect with a real typed `Output`.
 
 use crux_core::capability::Operation;
 use crux_core::command::Command;
@@ -183,7 +182,7 @@ mod tests {
         assert!(has_delete(&mut cmd, "gone"));
     }
 
-    // ── Local-first mode (B3b): writes persist locally, no HTTP ─────────
+    // ── Local-first mode: writes persist locally, no HTTP ───────────────
 
     fn create_item() -> crate::domain::types::CreateItem {
         crate::domain::types::CreateItem {
@@ -265,7 +264,7 @@ mod tests {
     fn online_add_uses_http_not_persistence() {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
-        let mut model = Model::test_default(); // local_first defaults false
+        let mut model = Model::test_default();
         let mut cmd = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
         assert!(has_http(&mut cmd), "online create POSTs to the server");
         assert!(!cmd.effects().any(|e| matches!(e, Effect::Persistence(_))));
@@ -273,13 +272,13 @@ mod tests {
 
     #[test]
     fn local_first_write_clears_the_dismiss_mute() {
-        // Online clears the mute on the server callback; local-first has none,
-        // so a successful local write must record the success itself.
+        // Local-first has no server callback, so a successful local write
+        // must record the success itself.
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
         let mut model = Model::test_default();
         model.local_first = true;
-        model.dismiss_error(); // user dismissed a banner → error_muted = true
+        model.dismiss_error();
         let _ = app.update(Event::Item(ItemEvent::Add(create_item())), &mut model);
         assert!(
             !model.error_muted,

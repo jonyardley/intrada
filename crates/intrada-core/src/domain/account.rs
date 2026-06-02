@@ -1,7 +1,4 @@
 //! Account preferences and account-deletion events.
-//!
-//! All HTTP shape lives in `crate::http`; this module only knows about
-//! the in-memory `Model` and what events it consumes/produces.
 
 use crux_core::Command;
 use serde::{Deserialize, Serialize};
@@ -9,11 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::app::{Effect, Event};
 use crate::model::Model;
 
-/// Per-user practice defaults surfaced in the Settings sheet.
-///
-/// Values mirror the API shape (`AccountPreferences` in
-/// `intrada-api/src/db/account.rs`) so the same JSON deserialises on both
-/// sides.
+/// Per-user practice defaults. Mirrors the API's `AccountPreferences`
+/// (`intrada-api/src/db/account.rs`) so the same JSON deserialises both sides.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AccountPreferences {
@@ -34,27 +28,18 @@ impl Default for AccountPreferences {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum AccountEvent {
-    /// Fetch the current user's preferences from the API.
     LoadPreferences,
-    /// Server returned the preferences.
     PreferencesLoaded(AccountPreferences),
-    /// Persist new preference values.
     SavePreferences(AccountPreferences),
-    /// Server confirmed the save with the canonical row.
     PreferencesSaved(AccountPreferences),
-    /// Network/server failure on save — model rolls back to the
-    /// pre-edit value carried by the event.
+    /// On failure the model rolls back to the pre-edit value carried here.
     SavePreferencesFailed {
         previous: Option<AccountPreferences>,
         message: String,
     },
-    /// Begin a hard account-delete request.
     DeleteAccount,
-    /// Server returned 204 No Content. The handler flips
-    /// `account_deleted = true` and clears `delete_in_flight`; the shell
-    /// watches `account_deleted` to sign out + route home.
+    /// The shell watches `account_deleted` to sign out + route home.
     AccountDeleted,
-    /// Anything that prevented the delete (network, server). Shell may retry.
     DeleteAccountFailed(String),
 }
 
@@ -69,9 +54,7 @@ pub fn handle_account_event(event: AccountEvent, model: &mut Model) -> Command<E
         }
 
         AccountEvent::SavePreferences(prefs) => {
-            // Optimistic: reflect in model immediately so the UI doesn't
-            // bounce back to the prior value. Carry the prior value into
-            // the HTTP builder so a failure can roll us back.
+            // Optimistic update; carry the prior value so a failure can roll back.
             let previous = model.account_preferences.clone();
             model.account_preferences = Some(prefs.clone());
             Command::all([
@@ -149,7 +132,6 @@ mod tests {
             default_rep_count: 12,
         };
         let _cmd = handle_account_event(AccountEvent::SavePreferences(prefs.clone()), &mut model);
-        // Optimistic update happens immediately.
         assert_eq!(model.account_preferences, Some(prefs));
     }
 
@@ -160,7 +142,6 @@ mod tests {
             default_focus_minutes: 5,
             default_rep_count: 4,
         };
-        // Simulate optimistic update already applied.
         model.account_preferences = Some(AccountPreferences {
             default_focus_minutes: 99,
             default_rep_count: 99,

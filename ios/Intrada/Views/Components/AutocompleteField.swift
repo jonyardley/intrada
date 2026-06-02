@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// A `FormField` that suggests previously-used values as you type. Matching
-/// `suggestions` (case-insensitive substring) reveal inline below the input —
-/// the same in-place reveal as `KeyPicker`, so the card grows rather than
-/// overlaying its neighbours. Tapping a suggestion fills the field. The shell
-/// supplies the pool; this view owns no domain knowledge.
+/// A `FormField` whose matching `suggestions` reveal inline below the input (the
+/// same in-place reveal as `KeyPicker`, so the card grows rather than overlaying
+/// its neighbours). The shell supplies the pool; this view owns no domain logic.
 struct AutocompleteField: View {
   let label: String
   @Binding var text: String

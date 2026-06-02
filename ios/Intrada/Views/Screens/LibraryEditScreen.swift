@@ -3,7 +3,6 @@ import SwiftUI
 
 /// Edit sheet for a library item. Sends `Event.item(.update)` — the core
 /// validates and reconciles; the shell only collects field values.
-/// Priority editing is deferred to a later increment.
 struct LibraryEditScreen: View {
   let item: LibraryItemView
   @Environment(Store.self) private var store

@@ -21,7 +21,7 @@
     func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
     func view() throws -> ViewModel {
       var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
-      // Mirrors core `view()`: totals from the whole set, items type-filtered (#792).
+      // Replicate core `view()`: totals from the whole set, items type-filtered (#792).
       viewModel.totalPieces = UInt64(items.filter { $0.itemType == .piece }.count)
       viewModel.totalExercises = UInt64(items.filter { $0.itemType == .exercise }.count)
       viewModel.activeQuery = activeQuery

@@ -40,7 +40,6 @@ final class LibraryStore: ItemStore {
 
   // ── Operations ───────────────────────────────────────────────────────
 
-  /// All live (non-tombstoned) items, newest first.
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
       try Row.fetchAll(

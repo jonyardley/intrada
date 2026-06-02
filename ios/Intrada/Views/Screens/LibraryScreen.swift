@@ -88,7 +88,6 @@ struct LibraryScreen: View {
     .toolbar(.hidden, for: .navigationBar)
     .sensoryFeedback(.selection, trigger: searchRevealed)
     .sheet(isPresented: $adding) {
-      // Pre-select the kind the list is filtered to; "All" falls back to Piece.
       LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
         .environment(store)
     }
@@ -134,7 +133,6 @@ struct LibraryScreen: View {
     }
   }
 
-  /// Magnifier button: reveal + focus the field, or (when already open) dismiss.
   private func toggleSearch() {
     if searchRevealed {
       cancelSearch()
