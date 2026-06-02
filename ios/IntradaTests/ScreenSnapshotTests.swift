@@ -207,11 +207,14 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLibraryItemCards() {
+    var manyTags = LibraryItemView.previewDetail
+    manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
     let cards = ZStack {
       PaperBackground()
       VStack(spacing: 14) {
-        LibraryItemCard(item: .previewPiece)
-        LibraryItemCard(item: .previewExercise)
+        LibraryItemCard(item: .previewPiece)  // no tags
+        LibraryItemCard(item: .previewDetail)  // 3 tags
+        LibraryItemCard(item: manyTags)  // 5 tags → +2 overflow
       }
       .padding(16)
     }
