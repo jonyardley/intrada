@@ -347,6 +347,13 @@ ios-run: _ios-sync
     cd ios && xcodegen generate
     bash scripts/ios-run-sim.sh
 
+# Stream the app's logs from the booted simulator, filtered to our subsystem —
+# drops the UIKit/keyboard/gesture noise so first-party signal is visible.
+# `report(_:)` (Core/Logging.swift) logs swallowed FFI errors here (#846 class).
+[group('iOS')]
+ios-logs:
+    xcrun simctl spawn booted log stream --predicate 'subsystem == "com.intrada.native"'
+
 # Force a full regenerate of both Swift packages + refresh the change-stamp.
 [group('iOS')]
 ios-gen: ios-typegen ios-package
