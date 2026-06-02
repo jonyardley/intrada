@@ -226,6 +226,7 @@ mod tests {
         model.items = vec![sample_item("p1")];
         let input = UpdateItem {
             title: Some("Renamed".into()),
+            kind: None,
             composer: None,
             key: None,
             modality: None,
@@ -346,6 +347,7 @@ mod tests {
 
         let input = UpdateItem {
             title: Some("Renamed".into()),
+            kind: None,
             composer: None,
             key: None,
             modality: None,

@@ -2,15 +2,26 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use super::item::{Item, ItemKind, Modality};
 
-/// Deserialize an `Option<Option<T>>` field with three-state semantics:
-/// absent → `None` (skip), `null` → `Some(None)` (clear), `v` → `Some(Some(v))` (set).
-/// Pair with `#[serde(default, deserialize_with = "double_option")]`.
+/// Deserialize a three-state `Option<Option<T>>` PATCH field, format-aware so it
+/// round-trips on BOTH wire formats the same type crosses:
+/// - **Self-describing (JSON, the API):** a present field is a single `Option<T>`
+///   — absent → `None` (skip, via `#[serde(default)]`), `null` → `Some(None)`
+///   (clear), `v` → `Some(Some(v))` (set). Classic `double_option`.
+/// - **Non-self-describing (bincode, the iOS FFI bridge):** positional — the
+///   Swift serializer always writes *both* option levels, so read them directly.
+///   Applying the JSON path here reads one level too few, misaligning the byte
+///   stream so the whole Update event fails to decode (edits silently don't
+///   save — #846).
 fn double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     T: Deserialize<'de>,
     D: Deserializer<'de>,
 {
-    Deserialize::deserialize(deserializer).map(Some)
+    if deserializer.is_human_readable() {
+        Deserialize::deserialize(deserializer).map(Some)
+    } else {
+        Deserialize::deserialize(deserializer)
+    }
 }
 
 /// Top-level serialisation unit for library data.
@@ -66,14 +77,16 @@ pub struct CreateItem {
     pub tags: Vec<String>,
 }
 
-/// PATCH-style update. `Option<Option<T>>` fields use three-state semantics:
-/// - `None` = field not being updated (skip)
-/// - `Some(None)` = clear the field
-/// - `Some(Some(v))` = set to new value
+/// PATCH-style update. `Option<Option<T>>` fields are three-state:
+/// `None` = skip, `Some(None)` = clear, `Some(Some(v))` = set — deserialized via
+/// the format-aware `double_option` so the type round-trips on both JSON (API)
+/// and bincode (iOS bridge); see that fn's docs.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct UpdateItem {
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<ItemKind>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",

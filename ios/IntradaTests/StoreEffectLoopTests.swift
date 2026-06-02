@@ -299,6 +299,45 @@ final class StoreEffectLoopTests: XCTestCase {
       store.viewModel?.error, "post-resolve", "render from a resolve should refresh view")
   }
 
+  // ── Real bridge (Swift↔Rust bincode round-trip) ────────────────────────
+
+  /// Drives the *real* core via LiveBridge to prove an edit round-trips through
+  /// bincode and reflects in the ViewModel — the path the edit screen uses.
+  /// Calls the bridge directly (not via Store) so a serialization throw surfaces
+  /// instead of being swallowed by Store.send's `guarded`.
+  func testRealBridgeEditAppliesToViewModel() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Original", kind: .piece, composer: "Bach", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+
+    let afterAdd = try bridge.view()
+    XCTAssertEqual(
+      afterAdd.items.count, 1,
+      "add should land: count=\(afterAdd.items.count) err=\(afterAdd.error ?? "nil")")
+    let id = try XCTUnwrap(afterAdd.items.first?.id)
+
+    // Full edit mirroring LibraryEditScreen.save(): every PATCH field set,
+    // composer carried as Some, type flipped Piece -> Exercise.
+    _ = try bridge.update(
+      .item(
+        .update(
+          id: id,
+          input: UpdateItem(
+            title: "Renamed", kind: .exercise, composer: .some("Bach"), key: .some(nil),
+            modality: .some(nil), tempo: .some(nil), notes: .some(nil), tags: nil, priority: nil))))
+
+    let afterEdit = try bridge.view()
+    XCTAssertEqual(
+      afterEdit.items.first?.title, "Renamed",
+      "edited title should apply (err=\(afterEdit.error ?? "nil"))")
+    XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────
 
   private func httpBridge() -> FakeBridge {

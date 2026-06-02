@@ -72,6 +72,13 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryFiltered), as: config)
   }
 
+  func testLibraryScreenSearching() {
+    assertSnapshot(
+      of: host(
+        NavigationStack { LibraryScreen(previewSearch: "clair") },
+        store: .previewLibrarySearching), as: config)
+  }
+
   func testPracticeScreen() {
     assertSnapshot(of: host(PracticeScreen()), as: config)
   }
@@ -105,6 +112,10 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testLibraryEditScreen() {
     assertSnapshot(of: host(LibraryEditScreen(item: .previewDetail)), as: config)
+  }
+
+  func testLibraryEditScreenExercise() {
+    assertSnapshot(of: host(LibraryEditScreen(item: .previewExercise)), as: config)
   }
 
   func testTypeBadges() {

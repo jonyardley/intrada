@@ -223,9 +223,13 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 40
     needs: changes
-    # iOS-pivot focus mode: Tauri host is on hold — run on main only, not PRs.
-    # Revert to `|| needs.changes.outputs.mobile == 'true'` at parity.
-    if: github.event_name == 'push'
+    # DISABLED during the native-iOS focus (2026-06): the Tauri/Leptos shell is
+    # paused, so we don't spend ~14 min of 10×-billed macOS on every main push
+    # building a release we never deploy. Nothing gates on this job (deploy /
+    # deploy-api don't list it in `needs`). To re-enable when the Tauri shell
+    # comes off hold, restore the push guard:
+    #   if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
+    if: false
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -414,28 +418,64 @@ jobs:
           key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
       - name: Install xcodegen
         run: brew install xcodegen
+      # The generated bindings (ios/generated: cargo-swift's IntradaCoreFFI
+      # xcframework + facet's SharedTypes) are a pure function of the core/ffi
+      # source, the locked dep versions (uniffi/crux contract — Cargo.lock), and
+      # the cargo-swift version. So we cache them and only regenerate on a miss:
+      # a Swift-only PR (touches ios/**, not the core) gets an exact hit and
+      # skips the ~28s regen. The key MUST capture everything the output depends
+      # on — a stale hit here is a uniffi/crux contract mismatch that crashes the
+      # app at runtime (the failure mode CLAUDE.md warns about). Bump the
+      # `cargoswift-0.9.0` token in lockstep with the `Install cargo-swift`
+      # version pin above.
+      - name: Cache generated Swift bindings
+        id: bindings-cache
+        uses: actions/cache@v5
+        with:
+          path: ios/generated
+          key: ios-bindings-cargoswift-0.9.0-${{ runner.os }}-${{ hashFiles('crates/intrada-core/src/**', 'crates/intrada-ffi/src/**', 'crates/intrada-core/Cargo.toml', 'crates/intrada-ffi/Cargo.toml', 'Cargo.lock') }}
       - name: Regenerate Swift bindings (facet typegen + cargo-swift)
+        if: steps.bindings-cache.outputs.cache-hit != 'true'
         run: just ios-gen
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
-      # Cache DerivedData (resolved + compiled SwiftPM deps — Sentry,
-      # swift-snapshot-testing — plus build intermediates) so `xcodebuild test`
-      # rebuilds incrementally instead of recompiling the whole dependency tree
-      # every run. derivedDataPath is the stable relative `build/dd`, so cached
-      # absolute paths line up across runs. The exact key rarely hits (Swift
-      # source changes per PR); the restore-key pulls the most recent DerivedData
-      # and Xcode rebuilds only what changed. Safe for snapshot determinism: this
-      # caches compilation only — rendering happens at runtime in the simulator,
-      # so a cache hit can't alter a snapshot result (a stale incremental build
-      # fails loud, it can't silently pass). Bump the key prefix to force-evict.
+      # Resolved SwiftPM package sources (Sentry, swift-snapshot-testing + its
+      # heavy swift-syntax dep, GRDB) get their own cache keyed on project.yml —
+      # where the version constraints are declared, so it changes rarely and is a
+      # near-guaranteed hit. This removes the network re-resolve/re-clone that
+      # drove the snapshot-step run-to-run variance (#813). Relocated out of
+      # DerivedData via `-clonedSourcePackagesDirPath build/spm` (in the snapshot
+      # step below) so this cache and the DerivedData cache never overlap on the
+      # same path. Stable sources also make Xcode's incremental check on the
+      # restored DerivedData a no-op, so the compiled deps get reused instead of
+      # rebuilt. Saved on all events (key is content-addressed by project.yml;
+      # concurrent writers no-op once the key exists).
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v5
+        with:
+          path: ios/build/spm
+          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ios-spm-v1-${{ runner.os }}-
+      # Cache DerivedData (compiled SwiftPM dep products + build intermediates;
+      # the resolved package *sources* are cached separately above) so
+      # `xcodebuild test` rebuilds incrementally instead of recompiling the whole
+      # dependency tree every run. derivedDataPath is the stable relative
+      # `build/dd`, so cached absolute paths line up across runs. The exact key
+      # rarely hits (Swift source changes per PR); the restore-key pulls the most
+      # recent DerivedData and Xcode rebuilds only what changed. Safe for snapshot
+      # determinism: this caches compilation only — rendering happens at runtime
+      # in the simulator, so a cache hit can't alter a snapshot result (a stale
+      # incremental build fails loud, it can't silently pass). Bump the key prefix
+      # to force-evict.
       - name: Cache iOS DerivedData
         uses: actions/cache@v5
         with:
           path: ios/build/dd
-          key: ios-dd-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
+          key: ios-dd-v2-${{ runner.os }}-${{ hashFiles('ios/project.yml', 'ios/Intrada/**', 'ios/IntradaTests/**') }}
           restore-keys: |
-            ios-dd-v1-${{ runner.os }}-
+            ios-dd-v2-${{ runner.os }}-
           # Only main writes the cache (~66s). PRs restore main's DerivedData —
           # which already holds the costly SwiftPM deps (Sentry, swift-syntax,
           # swift-snapshot-testing) — and skip the write. The exact-key on main
@@ -455,7 +495,8 @@ jobs:
           # index store — pure dead weight in CI (nothing reads it). -quiet trims
           # the per-file build log noise.
           xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-            -destination "id=$UDID" -derivedDataPath build/dd -quiet \
+            -destination "id=$UDID" -derivedDataPath build/dd \
+            -clonedSourcePackagesDirPath build/spm -quiet \
             COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
       - name: Upload snapshot failures
         if: failure()
@@ -482,6 +523,21 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Cheap (<5s, no macOS) guard that keeps the snapshot-reference suite from
+  # bloating git history: every PNG must map to a current test (no orphans) and
+  # stay under the size ceiling (catches un-optimized references — Xcode writes a
+  # redundant alpha channel; `just ios-snapshots-optimize` strips it). See
+  # CLAUDE.md -> "Snapshot test hygiene".
+  snapshot-hygiene:
+    name: Snapshot Hygiene
+    runs-on: ubuntu-latest
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check snapshot references (orphans + size ceiling)
+        run: bash scripts/check-snapshots.sh
+
   wasm-build:
     name: WASM Build
     runs-on: ubuntu-latest
@@ -489,7 +545,7 @@ jobs:
     needs: changes
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -532,10 +588,22 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 20
+      # Pin playwright to the version e2e resolves (e2e/package-lock.json) so the
+      # downloaded Chromium revision matches — letting this job share the exact
+      # same browser cache key as the `e2e` / `deploy-smoke` jobs. ubuntu-latest
+      # already ships Chromium's system libs (the e2e job runs it without
+      # `--with-deps`), so we skip that here too.
       - name: Install prerender dependencies
-        run: |
-          npm install playwright serve
-          npx playwright install chromium --with-deps
+        run: npm install playwright@1.60.0 serve
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
       - name: Prerender marketing routes
         run: node scripts/prerender.mjs crates/intrada-web/dist
       - name: Upload dist artifact
@@ -552,7 +620,7 @@ jobs:
     needs: changes
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
@@ -575,7 +643,7 @@ jobs:
     timeout-minutes: 10
     needs: wasm-build
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -635,7 +703,7 @@ jobs:
     timeout-minutes: 10
     needs: wasm-build
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: github.event_name == 'push'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -744,9 +812,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: changes
-    # iOS-pivot focus mode: API on hold — run on main only, not PRs.
-    # Revert to `|| needs.changes.outputs.api == 'true'` at parity.
-    if: github.event_name == 'push'
+    # iOS-pivot focus mode: API on hold — never runs on PRs. On main, only runs
+    # when the API actually changed (Dockerfile / intrada-api / ci.yml). When it
+    # didn't, this job skips → `deploy-api` (which lists it in `needs`) skips too,
+    # so we don't rebuild + redeploy an unchanged image on every unrelated main
+    # push. The previously-deployed API keeps running.
+    if: github.event_name == 'push' && needs.changes.outputs.api == 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v4
@@ -776,7 +847,7 @@ jobs:
     # deploy on its ~14 min macOS build only added latency. It still runs on
     # main pushes for its own signal — it just no longer holds up the deploy.
     needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v6
       - name: Download web-dist artifact
@@ -847,9 +918,12 @@ jobs:
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    # See `deploy`: ios-build (Tauri) deliberately omitted — it gated nothing
-    # the API deploy depends on and only added ~14 min of latency.
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, api-docker-build]
+    # Web/Tauri jobs (wasm-build/wasm-test/e2e) are now disabled (paused — see
+    # CLAUDE.md), so they no longer gate the API deploy — a skipped `needs`
+    # would otherwise block this job. api-docker-build only runs on main when
+    # the API changed; when it skips, this job skips with it (so an unchanged
+    # API isn't needlessly redeployed).
+    needs: [test, clippy, fmt, api-docker-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6

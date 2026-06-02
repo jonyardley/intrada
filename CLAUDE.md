@@ -212,6 +212,36 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 
 [uniffi-rs#2818]: https://github.com/mozilla/uniffi-rs/issues/2818
 
+### Snapshot test hygiene
+
+The `swift-snapshot-test` references (`ios/IntradaTests/__Snapshots__/**/*.png`)
+are PNGs committed to git and **re-recorded on every intentional UI change** —
+binaries don't delta-compress, so each re-record adds a *full* copy to history
+forever. Left unmanaged this compounds (a single theme/token sweep re-records
+the whole suite at once). On the free offline tier this is the only quality
+gate for the UI, so we keep the suite but keep it lean:
+
+- **One device + scale, deterministic host.** Pin `.iPhone13` + `displayScale`,
+  force light mode at the controller, use the stub bridge (already done). Do
+  **not** multiply references by device/theme/size-class variants — snapshot a
+  variant only when it can independently regress.
+- **Snapshot load-bearing states, not the cross-product.** Prefer
+  component-level (`sizeThatFits`) or structural/text snapshots where the
+  assertion isn't pixel-perfect (e.g. "pills reflow, don't wrap").
+- **Optimize before committing.** After (re)recording, run
+  `just ios-snapshots-optimize` — losslessly drops Xcode's redundant all-opaque
+  alpha channel (~75% smaller; pixels + sRGB preserved, so the comparison still
+  passes). CI's **Snapshot Hygiene** job enforces a per-file size ceiling and
+  fails on un-optimized references.
+- **No orphans.** Delete a test → delete its PNG. The Snapshot Hygiene job
+  fails any reference with no matching `func test…` (renamed/removed tests
+  otherwise leave dead images in history). Run it locally with
+  `just ios-snapshots-check`.
+- **Escalation path.** In-repo is fine now. When history gets heavy or the suite
+  crosses ~50–100 references, move to Git LFS (note: adds a fetch to every CI
+  run) or external hashed storage (S3 by SHA-256 / Screenshotbot). Don't reach
+  for that machinery early.
+
 ### Offline-first invariants (non-negotiable)
 
 The native app is **offline-first**: on-device SQLite is the source of truth,
@@ -479,6 +509,36 @@ Ignored paths (no coverage expected): `intrada-web` (WASM shell),
 Bear-traps that have caught us at least once. Skim before you start; the cost
 of a recheck is a few seconds, the cost of one of these landing in main is a
 follow-up PR.
+
+### JSON-only serde attrs break the Crux bincode FFI bridge
+
+The native iOS shell exchanges `Event` / `Effect` / `ViewModel` with the core as
+**positional bincode** (a non-self-describing format). serde attributes that
+only make sense for a self-describing format (JSON) silently corrupt that wire:
+the Swift side serializes every field/level by structure, but a JSON-oriented
+deserializer reads a different shape, **misaligns the byte stream, and the whole
+event fails to decode** — and `Store.send` swallows the bridge error via
+`guarded`, so the symptom is a silent no-op (e.g. "editing doesn't save", #846),
+not a crash.
+
+The specific offender we hit: `#[serde(deserialize_with = "double_option")]` on
+`UpdateItem`'s three-state `Option<Option<T>>` fields. `double_option` reads a
+single option level (right for JSON, where a present key is one `Option<T>` and
+`null` = clear); bincode needs both levels. Fix: make such helpers **format-aware**
+via `Deserializer::is_human_readable()` (JSON branch vs bincode branch) so the
+same type round-trips on both wires.
+
+Rules of thumb for any type that crosses the FFI bridge (`Event`, `Effect`,
+`ViewModel`, and everything they contain):
+
+- Be wary of `deserialize_with` / `serialize_with`, and of `skip_serializing_if`
+  combined with non-trailing fields — anything that assumes "absent" vs "present"
+  semantics. bincode has no "absent". If you need format-specific behaviour,
+  branch on `is_human_readable()`.
+- **Stub-bridge tests can't catch this.** Cover bridge-crossing types with a
+  *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`) that drives
+  the actual Swift↔Rust bincode (de)serialization — see
+  `testRealBridgeEditAppliesToViewModel`.
 
 ### Tauri WebView origin is `tauri://localhost`
 
