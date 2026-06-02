@@ -364,6 +364,21 @@ impl App for Intrada {
             tags
         };
 
+        // Like available_tags: whole-library vocabulary computed before the
+        // filter, so a narrowed list can't collapse the pool. Case-folded dedupe.
+        let available_composers = {
+            let mut seen = std::collections::HashSet::new();
+            let mut composers: Vec<String> = Vec::new();
+            for item in &items {
+                let composer = item.subtitle.trim();
+                if !composer.is_empty() && seen.insert(composer.to_lowercase()) {
+                    composers.push(composer.to_string());
+                }
+            }
+            composers.sort_by_key(|c| c.to_lowercase());
+            composers
+        };
+
         if let Some(ref query) = model.active_query {
             items = apply_query_filter(items, query);
         }
@@ -489,6 +504,7 @@ impl App for Intrada {
             visible_pieces,
             visible_exercises,
             available_tags,
+            available_composers,
             sessions,
             active_session,
             building_setlist,
@@ -1404,6 +1420,45 @@ mod tests {
 
         let vm = app.view(&model);
         assert_eq!(vm.available_tags, vec!["classical", "Jazz", "piano"]);
+    }
+
+    #[test]
+    fn available_composers_span_whole_library_under_active_filter() {
+        // Regression (mirrors available_tags, #851): the composer pool must stay
+        // the full-library vocabulary when filtered to a composer-less type.
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mk = |id: &str, kind: ItemKind, composer: Option<&str>| Item {
+            id: id.to_string(),
+            title: id.to_string(),
+            kind,
+            composer: composer.map(str::to_string),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            priority: false,
+        };
+        model.items = vec![
+            mk("p1", ItemKind::Piece, Some("Chopin")),
+            mk("p2", ItemKind::Piece, Some("Beethoven")),
+            mk("p3", ItemKind::Piece, Some("chopin")),
+            mk("p4", ItemKind::Piece, Some("  Ravel  ")),
+            mk("e1", ItemKind::Exercise, None),
+        ];
+        model.active_query = Some(ListQuery {
+            item_type: Some(ItemKind::Exercise),
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        // Whole-library vocabulary: case-folded dedupe (first-seen "Chopin"), trimmed.
+        assert_eq!(vm.items.len(), 1);
+        assert_eq!(vm.available_composers, vec!["Beethoven", "Chopin", "Ravel"]);
     }
 
     // --- T042: Unicode handling in core ---

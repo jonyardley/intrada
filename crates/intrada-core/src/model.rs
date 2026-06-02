@@ -173,6 +173,9 @@ pub struct ViewModel {
     /// Distinct tags across the whole library (case-folded dedupe, sorted) —
     /// the vocabulary for the filter sheet and the add/edit autocomplete.
     pub available_tags: Vec<String>,
+    /// Distinct composers (sorted) for the add/edit autocomplete. Computed
+    /// pre-filter so it stays the full vocabulary when the list is narrowed.
+    pub available_composers: Vec<String>,
     pub sessions: Vec<PracticeSessionView>,
     pub active_session: Option<ActiveSessionView>,
     pub building_setlist: Option<BuildingSetlistView>,
