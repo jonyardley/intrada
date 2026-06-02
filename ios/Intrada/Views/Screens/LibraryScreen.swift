@@ -53,10 +53,15 @@ struct LibraryScreen: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 14)
+        // Opaque + on top so the bar emerges from behind the pills rather than
+        // ghosting over them (see Design System Rules → animated reveals).
+        .background(IntradaColor.paperTop)
+        .zIndex(1)
         if searchRevealed {
           LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
+            .background(IntradaColor.paperTop)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
         content

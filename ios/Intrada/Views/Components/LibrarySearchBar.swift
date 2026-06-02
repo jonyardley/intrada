@@ -36,7 +36,7 @@ struct LibrarySearchBar: View {
       }
       .padding(.vertical, 9)
       .padding(.horizontal, 12)
-      .background(Capsule(style: .continuous).fill(IntradaColor.surfaceSunken))
+      .background(Capsule(style: .continuous).fill(IntradaColor.cardFill))
       .overlay(Capsule(style: .continuous).strokeBorder(IntradaColor.hairline, lineWidth: 1))
 
       Button("Cancel", action: onCancel)
