@@ -8,6 +8,10 @@ import SharedTypes
 final class Store {
   private(set) var viewModel: ViewModel?
 
+  /// On-disk store couldn't open → fell back to in-memory, so writes won't
+  /// persist. The shell shows a standing warning. False for tests/previews.
+  let degraded: Bool
+
   /// UserDefaults key for the persisted library sort (small singleton — see
   /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
   /// AppEffect path rather than wiring crux_kv for one value).
@@ -20,10 +24,12 @@ final class Store {
 
   init(
     bridge: CoreBridge = LiveBridge(), session: URLSession = .shared,
-    store: (any ItemStore)? = nil, sortDefaults: UserDefaults = .standard
+    store: (any ItemStore)? = nil, sortDefaults: UserDefaults = .standard,
+    degraded: Bool = false
   ) {
     self.bridge = bridge
     self.session = session
+    self.degraded = degraded
     // Default to in-memory so tests/previews never touch disk; the real app
     // passes an on-disk store. `try?` (not `guarded`) because `self` isn't fully
     // initialized yet here; in-memory creation effectively never fails.

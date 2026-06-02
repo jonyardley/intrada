@@ -81,6 +81,9 @@ struct ItemFormScaffold: View {
     send()
     if let error = store.viewModel?.error {
       withAnimation { form.formError = error }
+      // Show it inline only; clear the core error so the global banner doesn't
+      // also surface it behind/after this sheet (validation re-sets it directly).
+      store.send(.clearError)
       UINotificationFeedbackGenerator().notificationOccurred(.error)
       UIAccessibility.post(notification: .announcement, argument: "Error: \(error)")
     } else {

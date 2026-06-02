@@ -53,6 +53,18 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(RootView()), as: config)
   }
 
+  func testGlobalBanner() {
+    let banners = ZStack {
+      PaperBackground()
+      VStack(spacing: 0) {
+        GlobalBanner(message: "Couldn't delete that item.", onDismiss: {})
+        GlobalBanner(message: "Storage unavailable — changes this session won't be saved.")
+        Spacer()
+      }
+    }
+    assertSnapshot(of: host(banners), as: config)
+  }
+
   func testLibraryAddScreenWithError() {
     assertSnapshot(
       of: host(LibraryAddScreen(previewError: "A piece needs a composer.")), as: config)
