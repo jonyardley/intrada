@@ -39,9 +39,14 @@ fn trimmed_nonempty(value: Option<String>) -> Option<String> {
 }
 
 fn normalize_tags(tags: Vec<String>) -> Vec<String> {
+    // Case-insensitive dedupe keeping first-seen casing, matching the AddTags
+    // handler's case-fold and the available_tags vocabulary — so create/update
+    // can't store "Jazz" + "jazz" as two tags.
+    let mut seen = std::collections::HashSet::new();
     tags.into_iter()
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty())
+        .filter(|t| seen.insert(t.to_lowercase()))
         .collect()
 }
 
@@ -393,6 +398,38 @@ mod tests {
         assert_eq!(out.notes, None, "whitespace-only notes collapses to None");
         assert_eq!(out.tempo, None, "blank marking + no bpm drops the tempo");
         assert_eq!(out.tags, vec!["warm-up".to_string(), "scales".to_string()]);
+    }
+
+    #[test]
+    fn normalize_dedupes_tags_case_insensitively_keeping_first_casing() {
+        let input = CreateItem {
+            title: "Etude".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![
+                "Jazz".to_string(),
+                "jazz".to_string(),
+                "  JAZZ  ".to_string(),
+                "blues".to_string(),
+            ],
+        };
+        assert_eq!(
+            normalize_create_item(input).tags,
+            vec!["Jazz".to_string(), "blues".to_string()]
+        );
+
+        let update = UpdateItem {
+            tags: Some(vec!["Recital".to_string(), "recital".to_string()]),
+            ..Default::default()
+        };
+        assert_eq!(
+            normalize_update_item(update).tags,
+            Some(vec!["Recital".to_string()])
+        );
     }
 
     #[test]
