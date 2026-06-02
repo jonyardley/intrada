@@ -20,10 +20,17 @@ struct IntradaApp: App {
   init() {
     IntradaFonts.register()
 
-    // No DSN in dev/CI → Sentry stays disabled. Set SENTRY_DSN for real builds.
-    if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String, !dsn.isEmpty {
+    // `hasPrefix` gates out empty (CI) and an unexpanded `${…}` literal alike.
+    if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
+      dsn.hasPrefix("https://")
+    {
       SentrySDK.start { options in
         options.dsn = dsn
+        #if DEBUG
+          options.environment = "development"
+        #else
+          options.environment = "production"
+        #endif
       }
     }
   }

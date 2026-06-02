@@ -72,7 +72,8 @@ just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 cutting the simulator's UIKit/keyboard/gesture noise so first-party signal is
 visible. `report(_:)` (`ios/Intrada/Core/Logging.swift`) logs swallowed FFI /
 bincode bridge errors there — the silent-no-op class (#846) that otherwise
-leaves no trace in dev/CI where Sentry has no DSN.
+leaves no trace where Sentry has no DSN (CI always; dev unless
+`SENTRY_DSN_NATIVE` is set — see Environment Variables).
 
 `just ios` / `just ios-run` auto-regenerate the Swift bindings only when
 `intrada-core`/`intrada-ffi` changed (a `ios/generated/.gen-stamp` hash), so
@@ -367,6 +368,14 @@ in prod), `ALLOWED_ORIGIN` (default `http://localhost:8080`), `PORT` (default 30
 
 ### Web (compile-time)
 `CLERK_PUBLISHABLE_KEY`, `INTRADA_API_URL` (default `https://intrada-api.fly.dev`)
+
+### Native iOS (optional)
+`SENTRY_DSN_NATIVE` — put in `.env` to capture crash/error events from local dev
+builds (reports to the `intrada-mobile` Sentry project, tagged
+`environment=development`). `xcodegen` bakes it into the app's `Info.plist`; the
+justfile's `set dotenv-load` feeds it in. **Unset in CI**, so test/smoke runs send
+nothing. The app only starts Sentry on a real `https://` DSN, so an empty or
+unexpanded value is a safe no-op.
 
 ## Design System Rules
 
