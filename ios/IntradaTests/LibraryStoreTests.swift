@@ -48,8 +48,30 @@ final class LibraryStoreTests: XCTestCase {
     var it = item("p1")
     it.modality = nil
     try store.save(it)
-    // Also covers the legacy path: a pre-v2 row has a NULL modality column.
     XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality)
+  }
+
+  /// Upgrade path: a v1 row survives the v2 `modality` migration intact.
+  func testV1RowSurvivesModalityMigration() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v1_item",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, tempo_marking, tempo_bpm, notes, tags,
+           created_at, updated_at, priority, deleted_at)
+        VALUES ('p1', 'Legacy Etude', 'piece', 'Bach', 'C', 'Allegro', 120, 'phrasing',
+                '["scale"]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)
+        """)
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1, "the pre-existing v1 row must survive the v2 migration")
+    let got = try XCTUnwrap(loaded.first)
+    XCTAssertEqual(got.id, "p1")
+    XCTAssertEqual(got.title, "Legacy Etude")
+    XCTAssertEqual(got.composer, "Bach")
+    XCTAssertNil(got.modality, "v2 adds modality as NULL for pre-existing rows")
+    XCTAssertEqual(got.tempo, Tempo(marking: "Allegro", bpm: 120))
+    XCTAssertEqual(got.tags, ["scale"])
+    XCTAssertFalse(got.priority)
   }
 
   func testUpsertUpdatesInPlace() throws {
