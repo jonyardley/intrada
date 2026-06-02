@@ -6,36 +6,39 @@ do it, and the host gotchas that waste the most time.
 
 ## The tooling
 
-### XcodeBuildMCP (checked into the repo)
+**The reliable, primary path is the Xcode CLI: `just` + `xcodebuild` + `xcrun
+simctl`.** That's what builds, runs the simulator, takes screenshots, and runs
+the tests below. Two MCP servers are *available* as conveniences, but neither is
+required and the CLI is what you should reach for first.
 
-`.mcp.json` registers the **XcodeBuildMCP** server so an MCP client
-(Claude Code, etc.) can drive Xcode builds, simulators, and tests:
+### Xcode CLI (what to use)
 
-```jsonc
-{
-  "mcpServers": {
-    "xcodebuild": { "type": "stdio", "command": "npx", "args": ["xcodebuildmcp@latest"] }
-  }
-}
+Bindings are a build precondition (`ios/generated`, gitignored) — `just`
+regenerates them only when the core changed.
+
+```bash
+# Simulator control + screenshots
+UDID=$(xcrun simctl create snap "iPhone 16" "iOS26.5")
+xcrun simctl boot "$UDID"
+xcrun simctl install "$UDID" /path/to/Intrada.app
+xcrun simctl launch "$UDID" com.intrada.native --seed-sample-data
+xcrun simctl io "$UDID" screenshot shot.png      # ← how to screenshot the sim
 ```
 
-It runs on demand via `npx` — no install step beyond Node. It exposes tools
-to build a scheme, boot/list simulators, install + launch the app, run
-tests, and capture screenshots. Upstream:
-<https://github.com/cameroncooke/XcodeBuildMCP>.
+### MCP servers (optional)
 
-> There is also an optional **Xcode-app driver** MCP (`mcp__xcode__*`:
-> `XcodeListWindows`, `GetTestList`, `RunSomeTests`, `XcodeRead`, …) that
-> automates an *open* Xcode window. It is configured per-developer (not in
-> this repo). It's a fallback only — GUI builds hit unresolved-SwiftPM-package
-> and code-signing errors that the CLI's `CODE_SIGNING_ALLOWED=NO` avoids, so
-> prefer the CLI/`just` path below.
+- **XcodeBuildMCP** — registered in `.mcp.json` (`npx xcodebuildmcp@latest`, runs
+  on demand, no install beyond Node). It exposes MCP tools that wrap the same
+  build/simulator/test/screenshot actions for an MCP client. Upstream:
+  <https://github.com/cameroncooke/XcodeBuildMCP>. Available, but the CLI above
+  is the path of record.
+- **Xcode-app driver** (`mcp__xcode__*`: `XcodeListWindows`, `GetTestList`,
+  `RunSomeTests`, `GetBuildLog`, …) automates an *open* Xcode window. Configured
+  per-developer (not in this repo). Fallback only — GUI builds hit
+  unresolved-SwiftPM-package and code-signing errors that the CLI's
+  `CODE_SIGNING_ALLOWED=NO` avoids.
 
-### Everything the MCP does, you can do with `just` + `xcodebuild` + `simctl`
-
-These are the reliable primitives the tooling wraps. Bindings are a build
-precondition (`ios/generated`, gitignored) — `just` regenerates them only when
-the core changed.
+### `just` recipes
 
 ```bash
 just ios            # regen bindings if core changed → xcodegen → open Xcode

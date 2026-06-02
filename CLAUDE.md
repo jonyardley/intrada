@@ -72,10 +72,10 @@ just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
 full regenerate. The Tauri `tauri-*` recipes are the on-hold WKWebView shell.
 
-**Simulator build/snapshot/UI testing** — including the XcodeBuildMCP tool
-(`.mcp.json`) an agent uses to drive the simulator, the `xcodebuild`/`simctl`
-commands behind it, and host gotchas (e.g. quit Xcode before `xcodebuild test`
-to avoid `Pseudo Terminal Setup Error`) — is documented in
+**Simulator build/snapshot/UI testing** — the `xcrun simctl` / `xcodebuild`
+CLI workflow (screenshots via `xcrun simctl io <udid> screenshot`), the optional
+XcodeBuildMCP server in `.mcp.json`, and host gotchas (e.g. quit Xcode before
+`xcodebuild test` to avoid `Pseudo Terminal Setup Error`) — is documented in
 [`docs/ios-testing.md`](docs/ios-testing.md).
 
 **Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R, or
