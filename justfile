@@ -67,6 +67,11 @@ check:
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check
 
+# Full gate: Rust (fmt/clippy/test) + the native iOS build & test suite.
+# Slower — builds the iOS app — so run it before pushing changes under `ios/`.
+# Plain `just check` stays Rust-only for fast Rust-only iterations.
+check-all: check ios-test
+
 # Seed development data (API must be running)
 seed:
     bash scripts/seed-dev-data.sh
@@ -361,6 +366,25 @@ ios-snapshots-optimize:
 [group('iOS')]
 ios-snapshots-check:
     bash scripts/check-snapshots.sh
+
+# Build + run the whole IntradaTests suite (snapshots + unit tests) on the
+# pinned iPhone 16 / iOS 26.5 sim — the same command CI's `native-ios` job runs.
+# Catches iOS-only breakage (e.g. a Swift type collision) locally instead of via
+# the ~5-min macOS CI roundtrip. Regenerates bindings first if the core changed.
+# The device pin must match the recorded snapshot references (renderer-specific).
+[group('iOS')]
+ios-test: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodegen generate
+    name="intrada-test-26-5"
+    udid=$(xcrun simctl list devices --json | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for v in d.values() for x in v if x['name']=='$name'), ''))")
+    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+        -destination "id=$udid" -derivedDataPath build/dd \
+        -clonedSourcePackagesDirPath build/spm -quiet \
+        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
 
 # Facet typegen → ios/generated/SharedTypes (Event/Effect/ViewModel + bincode).
 [group('iOS')]
