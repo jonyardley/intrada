@@ -242,6 +242,9 @@ fn handle_app_effect(effect: &AppEffect) {
     match effect {
         AppEffect::SaveSessionInProgress(session) => save_session_in_progress(session),
         AppEffect::ClearSessionInProgress => clear_session_in_progress(),
+        // Library sort is an iOS-only feature; the web shell is paused and has
+        // no sort control to persist for. No-op keeps the match exhaustive.
+        AppEffect::SaveLibrarySort(_) => {}
     }
 }
 

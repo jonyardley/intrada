@@ -18,6 +18,6 @@ pub use session::{
 };
 pub use set::{Set, SetEntry};
 pub use types::{
-    CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, ListQuery, Tempo, UpdateItem,
-    UpdateSetRequest,
+    CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, LibrarySort, ListQuery,
+    SortDirection, SortField, Tempo, UpdateItem, UpdateSetRequest,
 };

@@ -21,7 +21,7 @@ use crate::domain::session::{
 #[cfg(test)]
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::set::{handle_set_event, Set, SetEvent};
-use crate::domain::types::ListQuery;
+use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
@@ -109,6 +109,8 @@ pub enum Event {
     LoadFailed(String),
     ClearError,
     SetQuery(Option<ListQuery>),
+    /// User chose a library sort order; persist it and re-render.
+    SetSort(LibrarySort),
 
     // ── Local-first persistence ──────────────────────────────────────
     HydrateFromStore,
@@ -149,6 +151,9 @@ pub enum AppEffect {
     SaveSessionInProgress(ActiveSession),
     /// Clear the active session from localStorage.
     ClearSessionInProgress,
+    /// Persist the chosen library sort order (small singleton — UserDefaults
+    /// on iOS / localStorage on web). Fire-and-forget; output is `()`.
+    SaveLibrarySort(LibrarySort),
 }
 
 impl Operation for AppEffect {
@@ -303,6 +308,13 @@ impl App for Intrada {
                 model.active_query = query;
                 crux_core::render::render()
             }
+            Event::SetSort(sort) => {
+                model.active_sort = sort;
+                Command::all([
+                    Command::notify_shell(AppEffect::SaveLibrarySort(sort)).into(),
+                    crux_core::render::render(),
+                ])
+            }
 
             // ── Local-first persistence ──────────────────────────────
             Event::HydrateFromStore => persistence::load_items(),
@@ -376,8 +388,7 @@ impl App for Intrada {
             items = apply_query_filter(items, query);
         }
 
-        // Sort by created_at descending (newest first)
-        items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        sort_library_items(&mut items, &model.active_sort);
 
         // Build completed session views sorted newest-first
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
@@ -490,6 +501,7 @@ impl App for Intrada {
         ViewModel {
             items,
             active_query: model.active_query.clone(),
+            active_sort: model.active_sort,
             total_pieces,
             total_exercises,
             sessions,
@@ -527,16 +539,29 @@ pub(crate) fn build_practice_summaries(
     use crate::model::{ScoreHistoryEntry, TempoHistoryEntry};
     use std::collections::HashMap;
 
-    let mut acc: HashMap<String, (usize, u64, Vec<ScoreHistoryEntry>, Vec<TempoHistoryEntry>)> =
-        HashMap::new();
+    // (count, secs, score_history, tempo_history, last_practiced_at)
+    type Acc = (
+        usize,
+        u64,
+        Vec<ScoreHistoryEntry>,
+        Vec<TempoHistoryEntry>,
+        Option<String>,
+    );
+
+    let mut acc: HashMap<String, Acc> = HashMap::new();
 
     for session in sessions {
+        let session_date = session.started_at.to_rfc3339();
         for entry in &session.entries {
             let record = acc
                 .entry(entry.item_id.clone())
-                .or_insert_with(|| (0, 0, Vec::new(), Vec::new()));
+                .or_insert_with(|| (0, 0, Vec::new(), Vec::new(), None));
             record.0 += 1;
             record.1 += entry.duration_secs;
+            // Keep the latest date (RFC3339 strings compare chronologically).
+            if record.4.as_ref().map_or(true, |cur| session_date > *cur) {
+                record.4 = Some(session_date.clone());
+            }
 
             if let Some(score) = entry.score {
                 record.2.push(ScoreHistoryEntry {
@@ -558,7 +583,16 @@ pub(crate) fn build_practice_summaries(
 
     acc.into_iter()
         .map(
-            |(item_id, (session_count, total_secs, mut score_history, mut tempo_history))| {
+            |(
+                item_id,
+                (
+                    session_count,
+                    total_secs,
+                    mut score_history,
+                    mut tempo_history,
+                    last_practiced_at,
+                ),
+            )| {
                 score_history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
                 let latest_score = score_history.first().map(|e| e.score);
 
@@ -574,11 +608,42 @@ pub(crate) fn build_practice_summaries(
                         score_history,
                         latest_tempo,
                         tempo_history,
+                        last_practiced_at,
                     },
                 )
             },
         )
         .collect()
+}
+
+fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
+    items.sort_by(|a, b| {
+        let primary = match sort.field {
+            SortField::DateAdded => a.created_at.cmp(&b.created_at),
+            SortField::Title => a.title.to_lowercase().cmp(&b.title.to_lowercase()),
+            SortField::LastPracticed => {
+                // None = "never practised" = earliest. Option ordering puts
+                // None < Some, which is exactly that.
+                let la = a
+                    .practice
+                    .as_ref()
+                    .and_then(|p| p.last_practiced_at.as_deref());
+                let lb = b
+                    .practice
+                    .as_ref()
+                    .and_then(|p| p.last_practiced_at.as_deref());
+                la.cmp(&lb)
+            }
+        };
+        let directed = match sort.direction {
+            SortDirection::Ascending => primary,
+            SortDirection::Descending => primary.reverse(),
+        };
+        // Stable tiebreaker so equal keys don't jitter between renders.
+        directed
+            .then_with(|| b.created_at.cmp(&a.created_at))
+            .then_with(|| a.id.cmp(&b.id))
+    });
 }
 
 fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<LibraryItemView> {
@@ -1182,6 +1247,25 @@ mod tests {
     }
 
     #[test]
+    fn set_sort_updates_model_and_emits_save_effect() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+
+        let sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let mut cmd = app.update(Event::SetSort(sort), &mut model);
+
+        assert_eq!(model.active_sort, sort, "model sort is updated");
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::App(req)
+                if req.operation == AppEffect::SaveLibrarySort(sort))),
+            "SetSort emits SaveLibrarySort with the chosen order"
+        );
+    }
+
+    #[test]
     fn test_set_query_filters_by_text() {
         let app = Intrada;
         let mut model = Model::test_default();
@@ -1532,9 +1616,10 @@ mod tests {
         use crate::domain::session::{
             CompletionStatus, EntryStatus, PracticeSession, SetlistEntry,
         };
+        let sess1_started = now - chrono::Duration::minutes(60);
         model.sessions.push(PracticeSession {
             id: "sess1".to_string(),
-            started_at: now - chrono::Duration::minutes(60),
+            started_at: sess1_started,
             completed_at: now,
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
@@ -1595,6 +1680,7 @@ mod tests {
                 score_history: vec![],
                 latest_tempo: None,
                 tempo_history: vec![],
+                last_practiced_at: Some(sess1_started.to_rfc3339()),
             })
         );
         // p2 has no entries
@@ -1989,6 +2075,44 @@ mod tests {
         assert_eq!(summary.total_minutes, 5);
         assert_eq!(summary.latest_score, Some(4));
         assert_eq!(summary.latest_tempo, Some(120));
+    }
+
+    #[test]
+    fn summary_last_practiced_is_max_session_date() {
+        let earlier = chrono::Utc::now() - chrono::Duration::days(3);
+        let later = chrono::Utc::now() - chrono::Duration::days(1);
+
+        let mk = |id: &str, started: chrono::DateTime<chrono::Utc>| PracticeSession {
+            id: id.to_string(),
+            started_at: started,
+            completed_at: started,
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            entries: vec![SetlistEntry {
+                id: format!("{id}-e"),
+                item_id: "item-1".to_string(),
+                item_title: "Sonata".to_string(),
+                item_type: ItemKind::Piece,
+                position: 0,
+                duration_secs: 60,
+                status: EntryStatus::Completed,
+                notes: None,
+                score: None,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: None,
+            }],
+        };
+
+        let summaries = build_practice_summaries(&[mk("s1", earlier), mk("s2", later)]);
+        let summary = summaries.get("item-1").expect("summary for item-1");
+        assert_eq!(summary.last_practiced_at, Some(later.to_rfc3339()));
     }
 
     #[test]
@@ -2490,6 +2614,105 @@ mod tests {
         assert_eq!(vm.items[0].title, "Newest");
         assert_eq!(vm.items[1].title, "Middle");
         assert_eq!(vm.items[2].title, "Old");
+    }
+
+    fn set_last_practiced(model: &mut Model, item_id: &str, at: chrono::DateTime<chrono::Utc>) {
+        model.practice_summaries.insert(
+            item_id.to_string(),
+            crate::model::ItemPracticeSummary {
+                session_count: 1,
+                total_minutes: 1,
+                latest_score: None,
+                score_history: vec![],
+                latest_tempo: None,
+                tempo_history: vec![],
+                last_practiced_at: Some(at.to_rfc3339()),
+            },
+        );
+    }
+
+    #[test]
+    fn view_sorts_by_title_ascending() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Sonata", ItemKind::Piece, now),
+            make_item("b", "etude", ItemKind::Piece, now), // lowercase: case-insensitive
+            make_item("c", "Ballade", ItemKind::Piece, now),
+        ];
+        model.active_sort = LibrarySort {
+            field: SortField::Title,
+            direction: SortDirection::Ascending,
+        };
+        let vm = app.view(&model);
+        let titles: Vec<_> = vm.items.iter().map(|i| i.title.as_str()).collect();
+        assert_eq!(titles, vec!["Ballade", "etude", "Sonata"]);
+    }
+
+    #[test]
+    fn view_sorts_by_last_practiced_descending_most_recent_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Stale", ItemKind::Piece, now),
+            make_item("b", "Fresh", ItemKind::Piece, now),
+        ];
+        set_last_practiced(&mut model, "a", now - chrono::Duration::days(5));
+        set_last_practiced(&mut model, "b", now - chrono::Duration::days(1));
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Descending,
+        };
+        let vm = app.view(&model);
+        assert_eq!(vm.items[0].title, "Fresh");
+        assert_eq!(vm.items[1].title, "Stale");
+    }
+
+    #[test]
+    fn view_never_practiced_sorts_as_oldest() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Practiced", ItemKind::Piece, now),
+            make_item("b", "NeverPractised", ItemKind::Piece, now),
+        ];
+        set_last_practiced(&mut model, "a", now - chrono::Duration::days(2));
+        // "b" has no practice summary -> never practised.
+
+        // Ascending (longest since practised first): never-practised rises to the top.
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Ascending,
+        };
+        assert_eq!(app.view(&model).items[0].title, "NeverPractised");
+
+        // Descending (most recent first): never-practised sinks to the bottom.
+        model.active_sort = LibrarySort {
+            field: SortField::LastPracticed,
+            direction: SortDirection::Descending,
+        };
+        assert_eq!(
+            app.view(&model).items.last().unwrap().title,
+            "NeverPractised"
+        );
+    }
+
+    #[test]
+    fn view_default_sort_is_date_added_newest_first() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let t1 = chrono::Utc::now() - chrono::Duration::hours(2);
+        let t2 = chrono::Utc::now();
+        model.items = vec![
+            make_item("a", "Old", ItemKind::Piece, t1),
+            make_item("b", "New", ItemKind::Piece, t2),
+        ];
+        let vm = app.view(&model); // default active_sort
+        assert_eq!(vm.items[0].title, "New");
+        assert_eq!(vm.items[1].title, "Old");
     }
 
     #[test]

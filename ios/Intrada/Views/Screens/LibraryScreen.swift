@@ -37,11 +37,17 @@ struct LibraryScreen: View {
       trailing: .init(label: "Add item", action: { adding = true })
     ) {
       VStack(spacing: 0) {
-        LibraryFilterTabs(selection: filterBinding)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 16)
-          .padding(.top, 12)
-          .padding(.bottom, 14)
+        HStack(spacing: 8) {
+          LibraryFilterTabs(selection: filterBinding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          LibrarySortMenu(
+            current: store.viewModel?.activeSort
+              ?? LibrarySort(field: .dateAdded, direction: .descending),
+            onChange: { store.send(.setSort($0)) })
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
         if searchRevealed {
           LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
             .padding(.horizontal, 16)

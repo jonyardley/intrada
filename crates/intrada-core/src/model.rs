@@ -12,7 +12,7 @@ use crate::domain::session::{
     SetlistEntry, SummarySession,
 };
 use crate::domain::set::Set;
-use crate::domain::ListQuery;
+use crate::domain::{LibrarySort, ListQuery};
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -27,6 +27,8 @@ pub struct Model {
     pub sessions: Vec<PracticeSession>,
     pub session_status: SessionStatus,
     pub active_query: Option<ListQuery>,
+    /// Library list sort order. Defaults to Date Added / newest-first.
+    pub active_sort: LibrarySort,
     pub last_error: Option<String>,
     /// Set when the user dismisses the error banner. While true, errors from
     /// HTTP failures routed through [`Model::surface_error`] are silently
@@ -164,6 +166,8 @@ pub struct ViewModel {
     pub items: Vec<LibraryItemView>,
     /// Active filter, mirrored so the shell's pill reads one source of truth (#792).
     pub active_query: Option<ListQuery>,
+    /// Active sort, mirrored so the shell's menu reads one source of truth.
+    pub active_sort: LibrarySort,
     /// Unfiltered counts so the subtitle describes the whole library (#792).
     pub total_pieces: usize,
     pub total_exercises: usize,
@@ -246,6 +250,10 @@ pub struct ItemPracticeSummary {
     pub score_history: Vec<ScoreHistoryEntry>,
     pub latest_tempo: Option<u16>,
     pub tempo_history: Vec<TempoHistoryEntry>,
+    /// Most recent session date for this item (max `started_at`), independent
+    /// of whether a score/tempo was recorded. `None` if never practised.
+    /// RFC3339 — sorts chronologically as a string.
+    pub last_practiced_at: Option<String>,
 }
 
 /// A single score data point for an item's progress history.

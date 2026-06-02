@@ -9,12 +9,19 @@ import SharedTypes
 final class Store {
   private(set) var viewModel: ViewModel?
 
+  /// UserDefaults key for the persisted library sort (small singleton — see
+  /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
+  /// AppEffect path rather than wiring crux_kv for one value).
+  static let sortDefaultsKey = "intrada.library-sort"
+
   private let bridge: CoreBridge
   private let session: URLSession
   private let store: (any ItemStore)?
+  private let sortDefaults: UserDefaults
 
   init(
-    bridge: CoreBridge = LiveBridge(), session: URLSession = .shared, store: (any ItemStore)? = nil
+    bridge: CoreBridge = LiveBridge(), session: URLSession = .shared,
+    store: (any ItemStore)? = nil, sortDefaults: UserDefaults = .standard
   ) {
     self.bridge = bridge
     self.session = session
@@ -22,6 +29,7 @@ final class Store {
     // passes an on-disk store. `try?` (not `guarded`) because `self` isn't fully
     // initialized yet here; in-memory creation effectively never fails.
     self.store = store ?? (try? LibraryStore.inMemory())
+    self.sortDefaults = sortDefaults
     // Initial render comes straight from the core; nil only if the bridge
     // itself fails, in which case the view shows a loading state.
     self.viewModel = guarded { try bridge.view() }
@@ -38,9 +46,9 @@ final class Store {
         refreshView()
       case .http(let httpRequest):
         Task { await self.handleHttp(httpRequest, id: request.id) }
-      case .app:
-        // Foundation: localStorage effects are no-ops for now — ack so
-        // the core can continue its command chain.
+      case .app(let appEffect):
+        handleAppEffect(appEffect)
+        // Ack so the core can continue its command chain.
         process(guarded { try bridge.resolveEmpty(request.id) } ?? [])
       case .persistence(let operation):
         let output = persistenceOutput(for: operation)
@@ -53,6 +61,28 @@ final class Store {
     if let next = guarded({ try bridge.view() }) {
       viewModel = next
     }
+  }
+
+  /// Non-HTTP shell effects. Only the library-sort singleton does work here;
+  /// the localStorage crash-recovery variants are no-ops on native for now.
+  private func handleAppEffect(_ effect: AppEffect) {
+    switch effect {
+    case .saveLibrarySort(let sort):
+      if let bytes = guarded({ try sort.bincodeSerialize() }) {
+        sortDefaults.set(Data(bytes), forKey: Self.sortDefaultsKey)
+      }
+    case .saveSessionInProgress, .clearSessionInProgress:
+      break
+    }
+  }
+
+  /// Re-apply the persisted library sort at launch by replaying `SetSort`.
+  /// No-op when nothing is stored (first launch) or the blob can't be decoded.
+  func restorePersistedSort() {
+    guard let data = sortDefaults.data(forKey: Self.sortDefaultsKey),
+      let sort = guarded({ try LibrarySort.bincodeDeserialize(input: [UInt8](data)) })
+    else { return }
+    send(.setSort(sort))
   }
 
   private func handleHttp(_ request: HttpRequest, id: UInt32) async {

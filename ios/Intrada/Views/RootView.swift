@@ -38,6 +38,7 @@ struct RootView: View {
         store.send(.loadSampleData)
       } else {
         store.send(.startApp(apiBaseUrl: apiBaseURL, localFirst: true))
+        store.restorePersistedSort()
       }
     }
   }
