@@ -382,6 +382,22 @@ impl App for Intrada {
             .iter()
             .filter(|i| i.item_type == ItemKind::Exercise)
             .count();
+        // The whole tag vocabulary, computed before the filter so it stays
+        // stable as the filter narrows. Case-insensitive dedupe keeping the
+        // first-seen casing, sorted by lowercase (mirrors web's `unique_tags`).
+        let available_tags = {
+            let mut seen = std::collections::HashSet::new();
+            let mut tags: Vec<String> = Vec::new();
+            for item in &items {
+                for tag in &item.tags {
+                    if seen.insert(tag.to_lowercase()) {
+                        tags.push(tag.clone());
+                    }
+                }
+            }
+            tags.sort_by_key(|t| t.to_lowercase());
+            tags
+        };
 
         // Apply active query filter
         if let Some(ref query) = model.active_query {
@@ -504,6 +520,7 @@ impl App for Intrada {
             active_sort: model.active_sort,
             total_pieces,
             total_exercises,
+            available_tags,
             sessions,
             active_session,
             building_setlist,
@@ -664,13 +681,17 @@ fn apply_query_filter(items: Vec<LibraryItemView>, query: &ListQuery) -> Vec<Lib
                 }
             }
 
-            // Filter by tags (all must match, case-insensitive)
+            // Filter by tags: match ANY selected tag (case-insensitive). A
+            // multi-tag filter is a union ("classical OR jazz" → both genres),
+            // not an intersection.
             if !query.tags.is_empty() {
-                for tag in &query.tags {
-                    let tag_lower = tag.to_lowercase();
-                    if !item.tags.iter().any(|t| t.to_lowercase() == tag_lower) {
-                        return false;
-                    }
+                let selected: Vec<String> = query.tags.iter().map(|t| t.to_lowercase()).collect();
+                let matches_any = item
+                    .tags
+                    .iter()
+                    .any(|t| selected.contains(&t.to_lowercase()));
+                if !matches_any {
+                    return false;
                 }
             }
 
@@ -1353,6 +1374,78 @@ mod tests {
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
         assert_eq!(vm.items[0].title, "Sonata");
+    }
+
+    #[test]
+    fn test_query_tags_match_any_not_all() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mk = |id: &str, title: &str, tags: &[&str]| Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: tags.iter().map(|t| (*t).to_string()).collect(),
+            created_at: now,
+            updated_at: now,
+            priority: false,
+        };
+        model.items = vec![
+            mk("a", "Bebop", &["jazz"]),
+            mk("b", "Nocturne", &["classical"]),
+            mk("c", "Riff", &["rock"]),
+        ];
+        // "studying classical and jazz" → the union, not the (empty) intersection.
+        model.active_query = Some(ListQuery {
+            tags: vec!["classical".to_string(), "jazz".to_string()],
+            ..Default::default()
+        });
+
+        let titles: Vec<String> = app
+            .view(&model)
+            .items
+            .iter()
+            .map(|i| i.title.clone())
+            .collect();
+        assert_eq!(titles.len(), 2, "OR semantics: matches classical OR jazz");
+        assert!(titles.contains(&"Bebop".to_string()));
+        assert!(titles.contains(&"Nocturne".to_string()));
+    }
+
+    #[test]
+    fn view_exposes_sorted_unique_available_tags() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let now = chrono::Utc::now();
+        let mk = |id: &str, tags: &[&str]| Item {
+            id: id.to_string(),
+            title: id.to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: tags.iter().map(|t| (*t).to_string()).collect(),
+            created_at: now,
+            updated_at: now,
+            priority: false,
+        };
+        model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
+        // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
+        // whole vocabulary, independent of the active filter.
+        model.active_query = Some(ListQuery {
+            tags: vec!["classical".to_string()],
+            ..Default::default()
+        });
+
+        let vm = app.view(&model);
+        assert_eq!(vm.available_tags, vec!["classical", "Jazz", "piano"]);
     }
 
     // --- T042: Unicode handling in core ---
