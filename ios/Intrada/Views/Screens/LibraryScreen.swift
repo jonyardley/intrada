@@ -5,6 +5,19 @@ struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @State private var adding = false
   @State private var searchText = ""
+  @State private var searchRevealed = false
+  @FocusState private var searchFocused: Bool
+
+  init() {}
+
+  #if DEBUG
+    /// Preview/snapshot seed: render with the search bar already revealed and a
+    /// query in flight, so the searching state has its own visual regression test.
+    init(previewSearch: String) {
+      _searchText = State(initialValue: previewSearch)
+      _searchRevealed = State(initialValue: true)
+    }
+  #endif
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
 
@@ -16,50 +29,43 @@ struct LibraryScreen: View {
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      if let subtitle {
-        Text(subtitle)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkFaint)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 16)
-          .padding(.bottom, 10)
-      }
-      HStack(spacing: 8) {
-        LibraryFilterTabs(selection: filterBinding)
-          .frame(maxWidth: .infinity, alignment: .leading)
-        LibrarySortMenu(
-          current: store.viewModel?.activeSort
-            ?? LibrarySort(field: .dateAdded, direction: .descending),
-          onChange: { store.send(.setSort($0)) })
-      }
-      .padding(.horizontal, 16)
-      .padding(.bottom, 14)
-      content
-    }
-    .padding(.top, 4)
-    .background(PaperBackground().ignoresSafeArea())
-    .navigationTitle("Library")
-    .navigationBarTitleDisplayMode(.large)
-    // Native pull-to-reveal: the drawer tucks under the large title and is
-    // revealed by pulling the list. The core does the filtering via ListQuery.text.
-    .searchable(
-      text: $searchText,
-      placement: .navigationBarDrawer(displayMode: .automatic),
-      prompt: "Search library"
-    )
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          adding = true
-        } label: {
-          Image(systemName: "plus")
-            .font(.system(size: 16, weight: .semibold))
+    ScreenScaffold(
+      title: "Library", subtitle: subtitle,
+      trailing: .init(label: "Add item", action: { adding = true })
+    ) {
+      VStack(spacing: 0) {
+        HStack(spacing: 8) {
+          LibraryFilterTabs(selection: filterBinding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          LibrarySortMenu(
+            current: store.viewModel?.activeSort
+              ?? LibrarySort(field: .dateAdded, direction: .descending),
+            onChange: { store.send(.setSort($0)) })
+          Button(action: toggleSearch) {
+            Image(systemName: "magnifyingglass")
+              .font(IntradaFont.tab)
+              .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
+              .padding(8)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Search")
         }
-        .tint(IntradaColor.accent)
-        .accessibilityLabel("Add item")
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
+        if searchRevealed {
+          LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+        content
       }
     }
+    // The list draws its own serif header, so suppress the nav bar here; the
+    // detail keeps it for the back chevron.
+    .toolbar(.hidden, for: .navigationBar)
+    .sensoryFeedback(.selection, trigger: searchRevealed)
     .sheet(isPresented: $adding) {
       // Pre-select the kind the list is filtered to; "All" falls back to Piece.
       LibraryAddScreen(defaultKind: store.viewModel?.activeQuery?.itemType ?? .piece)
@@ -96,7 +102,28 @@ struct LibraryScreen: View {
         .padding(.top, 16)
         .padding(.bottom, 16)
       }
+      .scrollDismissesKeyboard(.interactively)
       .scrollEdgeShadow()
+    }
+  }
+
+  /// Magnifier button: reveal + focus the field, or (when already open) dismiss.
+  private func toggleSearch() {
+    if searchRevealed {
+      cancelSearch()
+    } else {
+      withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+        searchRevealed = true
+      }
+      searchFocused = true
+    }
+  }
+
+  private func cancelSearch() {
+    searchText = ""
+    searchFocused = false
+    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+      searchRevealed = false
     }
   }
 
@@ -142,6 +169,11 @@ struct LibraryScreen: View {
   #Preview("Populated") {
     NavigationStack { LibraryScreen() }
       .environment(Store.previewSeeded)
+  }
+
+  #Preview("Searching") {
+    NavigationStack { LibraryScreen(previewSearch: "clair") }
+      .environment(Store.previewLibrarySearching)
   }
 
   #Preview("Empty") {

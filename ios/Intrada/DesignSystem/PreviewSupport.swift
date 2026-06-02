@@ -52,6 +52,15 @@
           activeQuery: ListQuery(text: nil, itemType: .piece, key: nil, tags: [])))
     }
 
+    /// Text-searched library for the revealed-search-bar snapshot: "clair"
+    /// matches Clair de Lune. The bridge serves the already-matched subset.
+    static var previewLibrarySearching: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece],
+          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: [])))
+    }
+
     /// A store driven by the *real* core seeded with the canonical demo dataset
     /// (`Event.loadSampleData` → `sample_items()`). Render-only, so it completes
     /// synchronously and offline. Use in screen previews: same data as the CI

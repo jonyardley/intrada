@@ -16,27 +16,27 @@ final class LibrarySearchUITests: XCTestCase {
     return app
   }
 
-  func testSearchFiltersAndCancelRestores() {
+  func testSearchButtonRevealsFiltersAndCancels() {
     let app = launchSeeded()
-    XCTAssertTrue(
-      app.navigationBars["Library"].waitForExistence(timeout: 10),
-      "Library nav bar should appear")
+    XCTAssertTrue(app.staticTexts["Library"].waitForExistence(timeout: 10), "Library header")
+    XCTAssertTrue(app.staticTexts["Clair de Lune"].exists, "Full list before searching")
 
-    let searchField = app.searchFields["Search library"]
-    XCTAssertTrue(searchField.waitForExistence(timeout: 3), "Search field is present")
+    let searchField = app.textFields["Search library"]
+    XCTAssertFalse(searchField.exists, "Search field hidden until the button is tapped")
 
-    XCTAssertTrue(app.staticTexts["Clair de Lune"].exists, "Full list shows before searching")
+    app.buttons["Search"].tap()
+    XCTAssertTrue(searchField.waitForExistence(timeout: 3), "Tapping Search reveals the field")
 
-    searchField.tap()
     searchField.typeText("hanon")
     XCTAssertTrue(
       app.staticTexts["Hanon No. 1"].waitForExistence(timeout: 3),
       "Matching item stays after filtering")
     XCTAssertFalse(app.staticTexts["Clair de Lune"].exists, "Non-matching item filtered out")
 
-    searchField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5))
+    app.buttons["Cancel"].tap()
     XCTAssertTrue(
       app.staticTexts["Clair de Lune"].waitForExistence(timeout: 3),
-      "Clearing the query restores the full list")
+      "Cancel clears the query and restores the full list")
+    XCTAssertFalse(searchField.exists, "Cancel hides the search field")
   }
 }
