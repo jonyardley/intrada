@@ -33,17 +33,17 @@ struct ItemFormScaffold: View {
 
               VStack(spacing: 0) {
                 FormField(label: "Title", text: $form.title, placeholder: "Required")
-                divider
+                HairlineDivider()
                 AutocompleteField(
                   label: "Composer", text: $form.composer, suggestions: composerSuggestions)
-                divider
+                HairlineDivider()
                 KeyPicker(label: "Key", key: $form.key, modality: $form.modality)
               }
               .cardSurface()
 
               VStack(spacing: 0) {
                 FormField(label: "Tempo marking", text: $form.marking, placeholder: "e.g. Allegro")
-                divider
+                HairlineDivider()
                 FormField(label: "Beats per minute", text: $form.bpm, keyboard: .numberPad)
               }
               .cardSurface()
@@ -72,10 +72,6 @@ struct ItemFormScaffold: View {
         }
       }
     }
-  }
-
-  private var divider: some View {
-    Rectangle().fill(IntradaColor.hairline).frame(height: 1)
   }
 
   // Don't celebrate or dismiss until the core confirms: a validation reject or

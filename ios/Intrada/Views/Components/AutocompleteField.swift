@@ -65,37 +65,14 @@ struct AutocompleteField: View {
   }
 
   private var suggestionList: some View {
-    VStack(spacing: 0) {
-      Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-      ForEach(matches, id: \.self) { suggestion in
-        Button {
-          text = suggestion
-          focused = false
-          UISelectionFeedbackGenerator().selectionChanged()
-        } label: {
-          HStack(spacing: 10) {
-            Image(systemName: "arrow.up.left")
-              .font(IntradaFont.meta)
-              .foregroundStyle(IntradaColor.inkFaint)
-            Text(suggestion)
-              .font(IntradaFont.body)
-              .foregroundStyle(IntradaColor.ink)
-            Spacer(minLength: 0)
-          }
-          .padding(.vertical, 10)
-          .padding(.horizontal, 16)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Fills \(label) with \(suggestion)")
-
-        if suggestion != matches.last {
-          Rectangle().fill(IntradaColor.hairline).frame(height: 1).padding(.leading, 16)
-        }
-      }
-    }
-    .background(IntradaColor.surfaceSunken.opacity(0.6))
+    InlineSuggestionList(
+      matches: matches,
+      systemImage: "arrow.up.left",
+      accessibilityHint: { "Fills \(label) with \($0)" },
+      onPick: {
+        text = $0
+        focused = false
+      })
   }
 }
 
