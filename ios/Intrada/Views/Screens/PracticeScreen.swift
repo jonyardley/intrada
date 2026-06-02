@@ -40,7 +40,7 @@ struct PracticeScreen: View {
   @ViewBuilder private var content: some View {
     if sessions.isEmpty {
       PlaceholderContent(
-        systemImage: "music.note",
+        systemImage: "metronome.fill",
         message: "Your practice sessions will appear here.")
     } else {
       ScrollView {

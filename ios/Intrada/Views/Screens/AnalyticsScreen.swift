@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AnalyticsScreen: View {
   var body: some View {
-    ScreenScaffold(title: "Analytics") {
+    ScreenScaffold(title: "Progress") {
       PlaceholderContent(
         systemImage: "chart.line.uptrend.xyaxis",
         message: "Track your progress and insights here.")

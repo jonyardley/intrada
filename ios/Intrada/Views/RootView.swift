@@ -18,13 +18,25 @@ struct RootView: View {
       }
       .tabItem { Label("Library", systemImage: "books.vertical") }
       PracticeScreen()
-        .tabItem { Label("Practice", systemImage: "music.note") }
+        .tabItem { Label("Practice", systemImage: "metronome.fill") }
       RoutinesScreen()
-        .tabItem { Label("Routines", systemImage: "repeat") }
+        .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen()
-        .tabItem { Label("Analytics", systemImage: "chart.line.uptrend.xyaxis") }
+        .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
     }
     .tint(IntradaColor.accent)
+    // App-level surfaces below the status bar, above all tabs. Empty when there's
+    // nothing to show, so it adds no inset (keeps the plain shell unchanged).
+    .safeAreaInset(edge: .top, spacing: 0) {
+      VStack(spacing: 0) {
+        if store.degraded {
+          GlobalBanner(message: "Storage unavailable — changes this session won't be saved.")
+        }
+        if let error = store.viewModel?.error {
+          GlobalBanner(message: error) { store.send(.clearError) }
+        }
+      }
+    }
     .task {
       // Default (incl. plain DEBUG runs): local-first — the Library hydrates
       // from the on-device store so saved items survive restarts. Seeding is
