@@ -102,6 +102,42 @@ gesture (e.g. pull-to-reveal) never fired.
   (see CLAUDE.md → Native iOS Shell, and the memory note on rebase+regen).
 - **Clean up** the throwaway sims you create: `xcrun simctl delete <udid>`.
 
+## Running alongside another checkout (worktrees)
+
+Git worktrees and the main checkout are **isolated on disk** — separate working
+trees, DerivedData (keyed by project *path*), `ios/generated` bindings, cargo
+`target/`, and snapshot PNGs. Building or recording in one never overwrites the
+other's files.
+
+**The simulator is the exception.** The iOS Simulator and
+`CoreSimulatorService` are **one per macOS login, shared across every checkout**.
+That's the only real clash surface, and the recovery commands above are global
+sledgehammers — `killall com.apple.CoreSimulator.CoreSimulatorService`,
+`simctl shutdown all`, `simctl erase|delete` will **kill or wipe a sim another
+checkout is using**.
+
+Rules to keep two checkouts from colliding:
+
+- **Don't run two iOS test/sim sessions at once** — serialize them. It's the sim
+  contention (not disk/CPU) that produces the pty errors above.
+- **Use a worktree-scoped sim**, created once and targeted by UDID, instead of a
+  bare `"iPhone 16"` both checkouts might grab:
+  ```bash
+  UDID=$(xcrun simctl create "snap-$(basename "$PWD")" "iPhone 16" "iOS26.5")
+  ```
+- **Only touch sims you created.** Delete *your* UDID when done; never
+  `shutdown all` / `delete unavailable` / restart `CoreSimulatorService` blind.
+- **Check before any global op or a fresh test run** whether another session is
+  live:
+  ```bash
+  xcrun simctl list devices | grep Booted     # sims someone may be using
+  pgrep -fl 'xcodebuild|XCTestAgent'           # a build/test already running
+  pgrep -x Xcode                               # Xcode open (may hold a sim)
+  ```
+  If any of those show activity you didn't start, **stop and ask** before
+  resetting the sim service or shutting sims down — assume it's the other
+  checkout's. (For agents: this is a hard rule — see CLAUDE.md → Native iOS.)
+
 ## CI
 
 `.github/workflows/ci.yml` → **Native iOS (build + test)** runs the same
