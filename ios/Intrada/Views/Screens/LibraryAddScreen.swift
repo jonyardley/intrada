@@ -32,7 +32,8 @@ struct LibraryAddScreen: View {
             VStack(spacing: 0) {
               FormField(label: "Title", text: $title, placeholder: "Required")
               divider
-              FormField(label: "Composer", text: $composer)
+              AutocompleteField(
+                label: "Composer", text: $composer, suggestions: composerSuggestions)
               divider
               KeyPicker(label: "Key", key: $key, modality: $modality)
             }
@@ -67,6 +68,10 @@ struct LibraryAddScreen: View {
 
   private var divider: some View {
     Rectangle().fill(IntradaColor.hairline).frame(height: 1)
+  }
+
+  private var composerSuggestions: [String] {
+    ComposerSuggestions.from(store.viewModel?.items)
   }
 
   private func add() {

@@ -194,6 +194,25 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(picker), as: config)
   }
 
+  func testAutocompleteField() {
+    let pool = ["Bach", "Beethoven", "Brahms", "Chopin", "Debussy"]
+    let fields = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        VStack(spacing: 0) {
+          AutocompleteField(
+            label: "Composer", text: .constant("B"), suggestions: pool,
+            initiallyShowingSuggestions: true)
+        }.cardSurface()
+        VStack(spacing: 0) {
+          AutocompleteField(label: "Composer", text: .constant("Ravel"), suggestions: pool)
+        }.cardSurface()
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(fields), as: config)
+  }
+
   func testLibraryItemCards() {
     let cards = ZStack {
       PaperBackground()
