@@ -48,10 +48,10 @@ final class ScreenSnapshotTests: XCTestCase {
   private var axConfig: Snapshotting<UIViewController, UIImage> {
     .image(
       on: .iPhone13, perceptualPrecision: 0.98,
-      traits: UITraitCollection(traitsFrom: [
-        UITraitCollection(displayScale: 2),
-        UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge),
-      ]))
+      traits: UITraitCollection { traits in
+        traits.displayScale = 2
+        traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+      })
   }
 
   func testRootShell() {

@@ -12,7 +12,7 @@ struct IntradaApp: App {
     do {
       return try LibraryStore.onDisk()
     } catch {
-      report(error)
+      report(error, "store-open")
       return nil
     }
   }

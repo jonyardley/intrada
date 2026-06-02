@@ -104,7 +104,7 @@ final class Store {
         return .ack
       }
     } catch {
-      report(error)
+      report(error, "persistence")
       return .failed
     }
   }
@@ -114,7 +114,7 @@ final class Store {
   // swallow it silently, and fail soft.
   private func guarded<T>(_ work: () throws -> T) -> T? {
     do { return try work() } catch {
-      report(error)
+      report(error, "bridge")
       return nil
     }
   }
