@@ -42,7 +42,7 @@ struct TagChipInput: View {
         if !tags.isEmpty {
           FlowLayout(spacing: 6) {
             ForEach(tags, id: \.self) { tag in
-              RemovableChip(text: tag) { remove(tag) }
+              TagChip(tag, onRemove: { remove(tag) })
             }
           }
         }
@@ -92,33 +92,6 @@ struct TagChipInput: View {
       systemImage: "plus",
       accessibilityHint: { "Adds the tag \($0)" },
       onPick: { add($0) })
-  }
-}
-
-private struct RemovableChip: View {
-  let text: String
-  let onRemove: () -> Void
-
-  var body: some View {
-    HStack(spacing: 5) {
-      Text(text)
-        .font(IntradaFont.metaMedium)
-        .foregroundStyle(IntradaColor.inkSecondary)
-      Image(systemName: "xmark")
-        .font(.system(size: 9, weight: .semibold))
-        .foregroundStyle(IntradaColor.inkFaint)
-    }
-    .padding(.vertical, 4)
-    .padding(.horizontal, 9)
-    .background(IntradaColor.surfaceSunken, in: Capsule())
-    .contentShape(Capsule())
-    .onTapGesture(perform: onRemove)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(text)
-    // `.isButton` so VoiceOver advertises the tap as activatable (matches the
-    // KeyPicker convention); a bare onTapGesture isn't surfaced reliably.
-    .accessibilityAddTraits(.isButton)
-    .accessibilityHint("Double tap to remove")
   }
 }
 
