@@ -13,13 +13,26 @@ DD="build/dd"
 SHOT="${1:-/tmp/intrada-native.png}"
 mkdir -p "$(dirname "$SHOT")"
 
-# Newest available iPhone simulator.
+# Pick a simulator deterministically (the old `devs[-1]` depended on JSON
+# ordering, so device/arch drifted between machines — #854). Prefer the device
+# CI pins (overridable via SIM_DEVICE) on the highest installed iOS; fall back
+# to the newest available iPhone. Stable udid tie-break keeps repeated runs
+# identical.
+SIM_DEVICE="${SIM_DEVICE:-iPhone 16}"
 UDID=$(xcrun simctl list devices available --json | python3 -c "
-import json, sys
-d = json.load(sys.stdin)['devices']
-devs = [x for k in sorted(d) if 'iOS' in k for x in d[k] if 'iPhone' in x['name']]
-print(devs[-1]['udid'] if devs else '')
-")
+import json, re, sys
+want = sys.argv[1]
+runtimes = json.load(sys.stdin)['devices']
+def ver(key):
+    m = re.search(r'iOS-(\d+)-(\d+)', key)
+    return (int(m.group(1)), int(m.group(2))) if m else (-1, -1)
+cands = [
+    (dev['name'] == want, ver(key), dev['udid'])
+    for key, devices in runtimes.items() if 'iOS' in key
+    for dev in devices if 'iPhone' in dev['name']
+]
+print(max(cands)[2] if cands else '')
+" "$SIM_DEVICE")
 if [ -z "$UDID" ]; then
     echo "✗ No iPhone simulator available (Xcode → Settings → Platforms → iOS)" >&2
     exit 1

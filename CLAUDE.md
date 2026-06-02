@@ -64,8 +64,15 @@ cargo clippy               # lint check — must pass before push
 cargo test -p intrada-api  # API tests only
 just ios                   # native app: regen bindings (if core changed) + open Xcode
 just ios-run               # native app: build + launch on simulator + screenshot
+just ios-logs              # native app: stream booted-sim logs, filtered to our subsystem
 just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 ```
+
+`just ios-logs` filters the unified log to `subsystem == "com.intrada.native"`,
+cutting the simulator's UIKit/keyboard/gesture noise so first-party signal is
+visible. `report(_:)` (`ios/Intrada/Core/Logging.swift`) logs swallowed FFI /
+bincode bridge errors there — the silent-no-op class (#846) that otherwise
+leaves no trace in dev/CI where Sentry has no DSN.
 
 `just ios` / `just ios-run` auto-regenerate the Swift bindings only when
 `intrada-core`/`intrada-ffi` changed (a `ios/generated/.gen-stamp` hash), so
