@@ -77,7 +77,7 @@ struct LibraryAddScreen: View {
   }
 
   private var composerSuggestions: [String] {
-    ComposerSuggestions.from(store.viewModel?.items)
+    store.viewModel?.availableComposers ?? []
   }
 
   private var availableTags: [String] {
