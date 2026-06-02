@@ -79,12 +79,6 @@ struct LibraryScreen: View {
     .onChange(of: searchText) { _, newValue in
       sendQuery(kind: store.viewModel?.activeQuery?.itemType, text: newValue)
     }
-    .onChange(of: searchFocused) { _, focused in
-      // Dismissing the keyboard with nothing typed tucks the bar away again.
-      if !focused && searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-        hideSearch()
-      }
-    }
   }
 
   @ViewBuilder private var content: some View {
@@ -121,11 +115,12 @@ struct LibraryScreen: View {
       .scrollBounceBehavior(.always)
       .scrollDismissesKeyboard(.interactively)
       .onPreferenceChange(ScrollOffsetKey.self) { offset in
+        // Reveal without auto-focusing: a keyboard raised mid-drag gets dismissed
+        // by the same gesture (which tripped auto-hide). Tap the field to focus.
         guard !searchRevealed, offset > Self.pullThreshold else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
           searchRevealed = true
         }
-        searchFocused = true
       }
       .scrollEdgeShadow()
     }
@@ -149,9 +144,7 @@ struct LibraryScreen: View {
   private func cancelSearch() {
     searchText = ""
     searchFocused = false
-  }
-
-  private func hideSearch() {
+    // VoiceOver keeps the bar exposed (pull-to-reveal isn't operable there).
     guard !UIAccessibility.isVoiceOverRunning else { return }
     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
       searchRevealed = false
