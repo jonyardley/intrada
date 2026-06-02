@@ -68,16 +68,17 @@ struct RootView: View {
   }
 
   /// Transparent nav bar so the paper background shows through; the back chevron
-  /// (indigo via `tint`) floats over it. Title/large-title use the serif + ink
-  /// tokens so the nav-bar "Library" header matches the locked paper design.
+  /// (indigo via `tint`) floats over it. Pushed screens (add, edit) render their
+  /// nav title in the serif + ink tokens to match the paper design — a touch
+  /// smaller than the UIKit default so it reads as a quiet header.
   private static func applyNavBarAppearance() {
     let appearance = UINavigationBarAppearance()
     appearance.configureWithTransparentBackground()
     let ink = UIColor(IntradaColor.ink)
-    if let large = UIFont(name: "SourceSerif4Variable-Semibold", size: 32) {
+    if let large = UIFont(name: "SourceSerif4Variable-Semibold", size: 28) {
       appearance.largeTitleTextAttributes = [.font: large, .foregroundColor: ink]
     }
-    if let inline = UIFont(name: "SourceSerif4Variable-Semibold", size: 17) {
+    if let inline = UIFont(name: "SourceSerif4Variable-Semibold", size: 16) {
       appearance.titleTextAttributes = [.font: inline, .foregroundColor: ink]
     }
     UINavigationBar.appearance().standardAppearance = appearance
