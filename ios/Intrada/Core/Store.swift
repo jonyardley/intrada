@@ -46,9 +46,8 @@ final class Store {
       case .http(let httpRequest):
         Task { await self.handleHttp(httpRequest, id: request.id) }
       case .app(let appEffect):
+        // notify_shell effect: fire-and-forget, must not be resolved (#882).
         handleAppEffect(appEffect)
-        // Ack so the core can continue its command chain.
-        process(guarded { try bridge.resolveEmpty(request.id) } ?? [])
       case .persistence(let operation):
         let output = persistenceOutput(for: operation)
         process(guarded { try bridge.resolve(request.id, persistenceOutput: output) } ?? [])

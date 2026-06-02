@@ -37,14 +37,15 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(store.viewModel?.error, "refreshed", "render effect should re-read view()")
   }
 
-  func testAppEffectResolvesEmpty() {
+  func testAppEffectIsNotResolved() {
+    // Why never resolve: testRealBridgeAppEffectIsNeverResolved (#882).
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in [Request(id: 7, effect: .app(.clearSessionInProgress))] }
     let store = Store(bridge: bridge, session: mockSession())
 
     store.send(.setQuery(nil))
 
-    XCTAssertEqual(bridge.emptyResolved, [7], "app effect should ack via resolveEmpty")
+    XCTAssertTrue(bridge.emptyResolved.isEmpty, "app effect must not be resolved")
   }
 
   func testPersistenceLoadResolvesFromStore() {
@@ -93,8 +94,8 @@ final class StoreEffectLoopTests: XCTestCase {
     }
     store.send(.setQuery(nil))
 
-    XCTAssertEqual(bridge.emptyResolved, [1], "every request in the batch should run")
-    XCTAssertEqual(store.viewModel?.error, "batched")
+    XCTAssertTrue(bridge.emptyResolved.isEmpty, "app effect must not be resolved")
+    XCTAssertEqual(store.viewModel?.error, "batched", "render after the app effect still runs")
   }
 
   // ── Library sort persistence ───────────────────────────────────────────
@@ -111,7 +112,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let data = try XCTUnwrap(defaults.data(forKey: Store.sortDefaultsKey))
     let restored = try LibrarySort.bincodeDeserialize(input: [UInt8](data))
     XCTAssertEqual(restored, sort, "save effect persists the chosen sort")
-    XCTAssertEqual(bridge.emptyResolved, [5], "save effect still acks via resolveEmpty")
+    XCTAssertTrue(bridge.emptyResolved.isEmpty, "the app effect must not be resolved (#882)")
   }
 
   func testRestorePersistedSortReplaysSetSort() throws {
@@ -330,6 +331,20 @@ final class StoreEffectLoopTests: XCTestCase {
       afterEdit.items.first?.title, "Renamed",
       "edited title should apply (err=\(afterEdit.error ?? "nil"))")
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
+  }
+
+  /// App effects come from `notify_shell` — fire-and-forget notifications the
+  /// live bridge rejects resolving, so the Store must not resolve `.app`. The
+  /// stub bridge can't enforce this; pinned here against the real bridge (#882).
+  func testRealBridgeAppEffectIsNeverResolved() throws {
+    let bridge = LiveBridge()
+    let requests = try bridge.update(
+      .setSort(LibrarySort(field: .title, direction: .ascending)))
+    let appRequest = try XCTUnwrap(
+      requests.first { if case .app = $0.effect { return true } else { return false } },
+      "setSort should emit an App (SaveLibrarySort) effect")
+
+    XCTAssertThrowsError(try bridge.resolveEmpty(appRequest.id))
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────
