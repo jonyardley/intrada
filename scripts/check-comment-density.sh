@@ -9,19 +9,26 @@ if [ "${SKIP_COMMENT_CHECK:-}" = "1" ]; then
   exit 0
 fi
 
-branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
-if [ -z "$branch" ]; then
+# CI passes the PR base ref via COMMENT_CHECK_BASE — HEAD is detached there, so
+# the branch-name guard below would otherwise skip the check entirely. Locally
+# the pre-push hook leaves it unset and we derive the base from origin/main.
+base="${COMMENT_CHECK_BASE:-}"
+if [ -z "$base" ]; then
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+  if [ -z "$branch" ]; then
+    exit 0
+  fi
+  case "$branch" in
+    main|master) exit 0 ;;
+  esac
+  base="origin/main"
+fi
+
+if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
   exit 0
 fi
-case "$branch" in
-  main|master) exit 0 ;;
-esac
 
-if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
-  exit 0
-fi
-
-range="origin/main...HEAD"
+range="$base...HEAD"
 
 files=$(git diff --name-only "$range" -- \
   '*.rs' '*.swift' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)

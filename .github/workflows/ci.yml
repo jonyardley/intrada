@@ -787,6 +787,25 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
+  # The same comment-density gate as the local pre-push hook, enforced for
+  # everyone — an opt-in hook is effectively off (CLAUDE.md "stated invariant =
+  # enforced invariant"). HEAD is detached on a PR checkout, so the base branch
+  # is passed explicitly via COMMENT_CHECK_BASE.
+  comment-density:
+    name: Comment density
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check comment density
+        env:
+          COMMENT_CHECK_BASE: origin/${{ github.base_ref }}
+        run: |
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          bash scripts/check-comment-density.sh
+
   security:
     name: Security (cargo-deny + Gitleaks)
     runs-on: ubuntu-latest
