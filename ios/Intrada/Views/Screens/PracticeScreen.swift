@@ -4,7 +4,7 @@ struct PracticeScreen: View {
   var body: some View {
     ScreenScaffold(title: "Practice") {
       PlaceholderContent(
-        systemImage: "music.note",
+        systemImage: "metronome.fill",
         message: "Start a focused practice session here.")
     }
   }
