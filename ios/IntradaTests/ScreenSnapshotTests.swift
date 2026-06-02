@@ -206,6 +206,25 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(fields), as: config)
   }
 
+  func testTagChipInput() {
+    let pool = ["classical", "recital", "jazz", "warm-up", "technique", "etude"]
+    let fields = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        VStack(spacing: 0) {
+          TagChipInput(
+            label: "Tags", tags: .constant(["classical", "recital"]), suggestions: pool,
+            initiallyShowingSuggestions: true)
+        }.cardSurface()
+        VStack(spacing: 0) {
+          TagChipInput(label: "Tags", tags: .constant([]), suggestions: pool)
+        }.cardSurface()
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(fields), as: config)
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
