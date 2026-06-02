@@ -20,15 +20,19 @@ packages:
     path: generated/IntradaCoreFFI
   SharedTypes:
     path: generated/SharedTypes
+  # Exact-pinned (not `from:`) so SPM can't drift to a newer release on a
+  # cache-miss resolve — snapshot references are renderer-specific, and
+  # swift-snapshot-testing's version is part of that renderer. Bump deliberately
+  # (edit the version here + re-record snapshots if the renderer changed).
   Sentry:
     url: https://github.com/getsentry/sentry-cocoa
-    from: "8.0.0"
+    exactVersion: "8.58.3"
   SnapshotTesting:
     url: https://github.com/pointfreeco/swift-snapshot-testing
-    from: "1.18.0"
+    exactVersion: "1.19.2"
   GRDB:
     url: https://github.com/groue/GRDB.swift
-    from: "7.0.0"
+    exactVersion: "7.11.0"
 
 targets:
   Intrada:
