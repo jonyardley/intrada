@@ -5,6 +5,7 @@ import SwiftUI
 /// there's no type-coded left bar (unlike the single-type library rows).
 struct SessionCard: View {
   let session: PracticeSessionView
+  @Environment(\.locale) private var locale
 
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
@@ -56,7 +57,13 @@ struct SessionCard: View {
     let calendar = Calendar.current
     if calendar.isDateInToday(date) { return "Today" }
     if calendar.isDateInYesterday(date) { return "Yesterday" }
-    return Self.dayFormatter.string(from: date)
+    let formatter = DateFormatter()
+    // Drive the format off the SwiftUI environment locale (not `Locale.current`)
+    // so production localizes per device while snapshot hosts can pin it — the
+    // raw template reorders by region ("Sat 30 May" en-GB vs "Sat, May 30" en-US).
+    formatter.locale = locale
+    formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
+    return formatter.string(from: date)
   }
 
   private var accessibilityLabel: String {
@@ -64,12 +71,6 @@ struct SessionCard: View {
     if session.completionStatus == .endedEarly { parts.append("ended early") }
     return parts.joined(separator: ", ")
   }
-
-  private static let dayFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
-    return formatter
-  }()
 
   /// chrono's `to_rfc3339` emits fractional seconds; fall back to the plain
   /// form so either shape parses.
