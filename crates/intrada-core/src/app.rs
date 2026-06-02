@@ -348,15 +348,6 @@ impl App for Intrada {
             });
         }
 
-        // Counted before the filter so the totals stay unfiltered (#792).
-        let total_pieces = items
-            .iter()
-            .filter(|i| i.item_type == ItemKind::Piece)
-            .count();
-        let total_exercises = items
-            .iter()
-            .filter(|i| i.item_type == ItemKind::Exercise)
-            .count();
         // Computed before the filter so the vocabulary stays stable as the
         // filter narrows. Case-insensitive dedupe, first-seen casing.
         let available_tags = {
@@ -378,6 +369,16 @@ impl App for Intrada {
         }
 
         sort_library_items(&mut items, &model.active_sort);
+
+        // Counted after the filter so the subtitle describes the visible set.
+        let visible_pieces = items
+            .iter()
+            .filter(|i| i.item_type == ItemKind::Piece)
+            .count();
+        let visible_exercises = items
+            .iter()
+            .filter(|i| i.item_type == ItemKind::Exercise)
+            .count();
 
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
         sessions.sort_by(|a, b| b.finished_at.cmp(&a.finished_at));
@@ -485,8 +486,8 @@ impl App for Intrada {
             items,
             active_query: model.active_query.clone(),
             active_sort: model.active_sort,
-            total_pieces,
-            total_exercises,
+            visible_pieces,
+            visible_exercises,
             available_tags,
             sessions,
             active_session,
@@ -2849,7 +2850,7 @@ mod tests {
     }
 
     #[test]
-    fn view_total_counts_are_unfiltered() {
+    fn view_counts_describe_the_visible_set() {
         let app = Intrada;
         let mut model = Model::test_default();
         let now = chrono::Utc::now();
@@ -2858,8 +2859,11 @@ mod tests {
             make_item("p2", "Piece Two", ItemKind::Piece, now),
             make_item("e1", "Exercise One", ItemKind::Exercise, now),
         ];
-        // Filter down to exercises only — totals must still describe the
-        // whole library, not the filtered view.
+
+        let vm = app.view(&model);
+        assert_eq!(vm.visible_pieces, 2);
+        assert_eq!(vm.visible_exercises, 1);
+
         model.active_query = Some(ListQuery {
             item_type: Some(ItemKind::Exercise),
             key: None,
@@ -2868,8 +2872,18 @@ mod tests {
         });
         let vm = app.view(&model);
         assert_eq!(vm.items.len(), 1);
-        assert_eq!(vm.total_pieces, 2);
-        assert_eq!(vm.total_exercises, 1);
+        assert_eq!(vm.visible_pieces, 0);
+        assert_eq!(vm.visible_exercises, 1);
+
+        model.active_query = Some(ListQuery {
+            item_type: None,
+            key: None,
+            tags: vec![],
+            text: Some("Piece One".to_string()),
+        });
+        let vm = app.view(&model);
+        assert_eq!(vm.visible_pieces, 1);
+        assert_eq!(vm.visible_exercises, 0);
     }
 
     #[test]

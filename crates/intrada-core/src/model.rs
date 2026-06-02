@@ -166,9 +166,10 @@ pub struct ViewModel {
     pub active_query: Option<ListQuery>,
     /// Active sort, mirrored so the shell's menu reads one source of truth.
     pub active_sort: LibrarySort,
-    /// Unfiltered counts so the subtitle describes the whole library (#792).
-    pub total_pieces: usize,
-    pub total_exercises: usize,
+    /// Counts of the visible (filtered) set so the subtitle describes what's
+    /// actually on screen and reacts to the filter + search.
+    pub visible_pieces: usize,
+    pub visible_exercises: usize,
     /// Distinct tags across the whole library (case-folded dedupe, sorted) —
     /// the vocabulary for the filter sheet and the add/edit autocomplete.
     pub available_tags: Vec<String>,

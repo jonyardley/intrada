@@ -21,15 +21,17 @@
     func resolveEmpty(_ id: UInt32) throws -> [Request] { [] }
     func view() throws -> ViewModel {
       var viewModel = try ViewModel.bincodeDeserialize(input: [UInt8](core.view()))
-      // Replicate core `view()`: totals from the whole set, items type-filtered (#792).
-      viewModel.totalPieces = UInt64(items.filter { $0.itemType == .piece }.count)
-      viewModel.totalExercises = UInt64(items.filter { $0.itemType == .exercise }.count)
       viewModel.activeQuery = activeQuery
+      let visible: [LibraryItemView]
       if let kind = activeQuery?.itemType {
-        viewModel.items = items.filter { $0.itemType == kind }
+        visible = items.filter { $0.itemType == kind }
       } else {
-        viewModel.items = items
+        visible = items
       }
+      viewModel.items = visible
+      // Type-filters items; callers pre-filter the list for text/tag queries.
+      viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
+      viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       return viewModel
     }
   }

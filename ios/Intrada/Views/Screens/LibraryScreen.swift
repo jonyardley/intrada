@@ -195,9 +195,14 @@ struct LibraryScreen: View {
 
   private var subtitle: String? {
     guard let vm = store.viewModel else { return nil }
-    let parts = [count(Int(vm.totalPieces), "piece"), count(Int(vm.totalExercises), "exercise")]
-      .compactMap { $0 }
-    return parts.isEmpty ? "No items yet" : parts.joined(separator: " · ")
+    let parts = [
+      count(Int(vm.visiblePieces), "piece"), count(Int(vm.visibleExercises), "exercise"),
+    ]
+    .compactMap { $0 }
+    if parts.isEmpty {
+      return (vm.activeQuery == nil) ? "No items yet" : "No matches"
+    }
+    return parts.joined(separator: " · ")
   }
 
   private func count(_ n: Int, _ noun: String) -> String? {
