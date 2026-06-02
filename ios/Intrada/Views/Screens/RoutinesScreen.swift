@@ -4,7 +4,7 @@ struct RoutinesScreen: View {
   var body: some View {
     ScreenScaffold(title: "Routines") {
       PlaceholderContent(
-        systemImage: "repeat",
+        systemImage: "music.note.list",
         message: "Build reusable routines from your library.")
     }
   }

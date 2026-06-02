@@ -18,11 +18,11 @@ struct RootView: View {
       }
       .tabItem { Label("Library", systemImage: "books.vertical") }
       PracticeScreen()
-        .tabItem { Label("Practice", systemImage: "music.note") }
+        .tabItem { Label("Practice", systemImage: "metronome.fill") }
       RoutinesScreen()
-        .tabItem { Label("Routines", systemImage: "repeat") }
+        .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen()
-        .tabItem { Label("Analytics", systemImage: "chart.line.uptrend.xyaxis") }
+        .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
     }
     .tint(IntradaColor.accent)
     // App-level surfaces below the status bar, above all tabs. Empty when there's
