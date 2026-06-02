@@ -6,7 +6,7 @@ import SharedTypes
 protocol ItemStore {
   func loadItems() throws -> [Item]
   func save(_ item: Item) throws
-  func delete(id: String) throws
+  func delete(id: String, deletedAt: String) throws
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -75,13 +75,14 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  /// Soft-delete: stamp `deleted_at` (tombstone) rather than removing the row,
-  /// so the deletion can win a later last-write-wins sync.
-  func delete(id: String) throws {
+  /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same
+  /// format as `updated_at`) rather than removing the row, so the deletion can
+  /// win a later last-write-wins sync.
+  func delete(id: String, deletedAt: String) throws {
     try dbQueue.write { db in
       try db.execute(
         sql: "UPDATE item SET deleted_at = ? WHERE id = ?",
-        arguments: [Self.timestamp(), id])
+        arguments: [deletedAt, id])
     }
   }
 
@@ -172,9 +173,6 @@ final class LibraryStore: ItemStore {
     (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
   }
 
-  private static func timestamp() -> String {
-    ISO8601DateFormatter().string(from: Date())
-  }
 }
 
 #if DEBUG

@@ -2,6 +2,7 @@
 //! against on-device SQLite. Unlike `AppEffect` (`Output = ()`), these
 //! queries return data: the core's first effect with a real typed `Output`.
 
+use chrono::{DateTime, Utc};
 use crux_core::capability::Operation;
 use crux_core::command::Command;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,12 @@ use crate::domain::item::Item;
 pub enum PersistenceOperation {
     LoadItems,
     SaveItem(Item),
-    DeleteItem { id: String },
+    /// Same `DateTime<Utc>` type as `Item::updated_at` so the tombstone bridges
+    /// through the identical codec — byte-identical format under LWW, no drift.
+    DeleteItem {
+        id: String,
+        deleted_at: DateTime<Utc>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -40,8 +46,8 @@ pub fn save_item(item: Item) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
 }
 
-pub fn delete_item(id: String) -> Command<Effect, Event> {
-    Command::request_from_shell(PersistenceOperation::DeleteItem { id })
+pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::DeleteItem { id, deleted_at })
         .then_send(Event::StoreWritten)
 }
 
@@ -162,7 +168,7 @@ mod tests {
     fn has_delete(cmd: &mut Command<Effect, Event>, id: &str) -> bool {
         cmd.effects().any(|e| {
             matches!(e, Effect::Persistence(req)
-            if req.operation == PersistenceOperation::DeleteItem { id: id.to_string() })
+            if matches!(&req.operation, PersistenceOperation::DeleteItem { id: op_id, .. } if op_id == id))
         })
     }
 
@@ -178,8 +184,38 @@ mod tests {
 
     #[test]
     fn delete_item_requests_a_delete_op() {
-        let mut cmd = delete_item("gone".to_string());
+        let mut cmd = delete_item("gone".to_string(), chrono::Utc::now());
         assert!(has_delete(&mut cmd, "gone"));
+    }
+
+    #[test]
+    fn local_first_delete_stamps_the_delete_instant() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+        model.items = vec![sample_item("p1")];
+
+        let before = chrono::Utc::now();
+        let mut cmd = app.update(
+            Event::Item(crate::domain::item::ItemEvent::Delete {
+                id: "p1".to_string(),
+            }),
+            &mut model,
+        );
+        let after = chrono::Utc::now();
+
+        let deleted_at = cmd
+            .effects()
+            .find_map(|e| match e {
+                Effect::Persistence(req) => match req.operation {
+                    PersistenceOperation::DeleteItem { deleted_at, .. } => Some(deleted_at),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("a DeleteItem persistence op");
+        // Core stamps the delete instant (DateTime<Utc>, same type as updated_at).
+        assert!(deleted_at >= before && deleted_at <= after);
     }
 
     // ── Local-first mode: writes persist locally, no HTTP ───────────────

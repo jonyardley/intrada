@@ -86,14 +86,14 @@ final class LibraryStoreTests: XCTestCase {
   func testDeleteTombstonesAndHidesFromLoad() throws {
     let store = try makeStore()
     try store.save(item("p1"))
-    try store.delete(id: "p1")
+    try store.delete(id: "p1", deletedAt: "2026-01-02T00:00:00+00:00")
     XCTAssertTrue(try store.loadItems().isEmpty)
   }
 
   func testSaveRevivesADeletedRow() throws {
     let store = try makeStore()
     try store.save(item("p1"))
-    try store.delete(id: "p1")
+    try store.delete(id: "p1", deletedAt: "2026-01-02T00:00:00+00:00")
     try store.save(item("p1", title: "Revived"))
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)

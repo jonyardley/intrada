@@ -339,4 +339,36 @@ mod tests {
             tags: vec!["impressionist".to_string()],
         });
     }
+
+    // Remaining bridge-crossing write payloads — guard against a #846-class break.
+
+    #[test]
+    fn item_tag_events_round_trip_on_ffi_bincode_wire() {
+        use crate::domain::item::ItemEvent;
+        assert_round_trips(ItemEvent::AddTags {
+            id: "p1".to_string(),
+            tags: vec!["etude".to_string(), "warmup".to_string()],
+        });
+        assert_round_trips(ItemEvent::RemoveTags {
+            id: "p1".to_string(),
+            tags: vec!["etude".to_string()],
+        });
+    }
+
+    #[test]
+    fn set_requests_round_trip_on_ffi_bincode_wire() {
+        let entries = vec![CreateSetEntryRequest {
+            item_id: "p1".to_string(),
+            item_title: "Clair de Lune".to_string(),
+            item_type: ItemKind::Piece,
+        }];
+        assert_round_trips(CreateSetRequest {
+            name: "Warm-ups".to_string(),
+            entries: entries.clone(),
+        });
+        assert_round_trips(UpdateSetRequest {
+            name: "Warm-ups (revised)".to_string(),
+            entries,
+        });
+    }
 }

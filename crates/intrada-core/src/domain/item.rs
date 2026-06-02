@@ -188,7 +188,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             if model.local_first {
                 model.record_success();
                 Command::all([
-                    crate::persistence::delete_item(id),
+                    crate::persistence::delete_item(id, chrono::Utc::now()),
                     crux_core::render::render(),
                 ])
             } else {
