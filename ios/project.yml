@@ -57,6 +57,15 @@ targets:
     scheme:
       testTargets:
         - IntradaTests
+        - IntradaUITests
+
+  IntradaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: IntradaUITests
+    dependencies:
+      - target: Intrada
 
   IntradaTests:
     type: bundle.unit-test
