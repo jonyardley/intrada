@@ -6,7 +6,13 @@ struct IntradaApp: App {
   // On-disk store for the real app; on failure we report it and Store falls
   // back to in-memory (this session won't persist). Tests/previews pass nil and
   // get the in-memory default.
-  @State private var store = Store(store: IntradaApp.openOnDiskStore())
+  @State private var store = IntradaApp.makeStore()
+
+  private static func makeStore() -> Store {
+    let opened = openOnDiskStore()
+    // opened == nil → on-disk failed, Store falls back to in-memory: degraded.
+    return Store(store: opened, degraded: opened == nil)
+  }
 
   private static func openOnDiskStore() -> LibraryStore? {
     do {
