@@ -7,23 +7,35 @@ struct LibraryItemCard: View {
   let item: LibraryItemView
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 3) {
-      Text(item.title)
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-      if !item.subtitle.isEmpty {
-        Text(item.subtitle)
-          .font(IntradaFont.subtitle)
-          .foregroundStyle(IntradaColor.inkSecondary)
+    HStack(alignment: .bottom, spacing: 12) {
+      VStack(alignment: .leading, spacing: 3) {
+        Text(item.title)
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        if !item.subtitle.isEmpty {
+          Text(item.subtitle)
+            .font(IntradaFont.subtitle)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
       }
-      if let meta = metaLine {
-        Text(meta)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkFaint)
-      }
-      if !item.tags.isEmpty {
-        TagPills(tags: item.tags)
-          .padding(.top, 5)
+      Spacer(minLength: 12)
+      if hasAttributes {
+        VStack(alignment: .trailing, spacing: 4) {
+          if let key = item.keyDisplay, !key.isEmpty {
+            Text(key)
+              .font(IntradaFont.meta)
+              .foregroundStyle(IntradaColor.inkFaint)
+          }
+          if let tempo = item.tempoDisplay, !tempo.isEmpty {
+            Text(tempo)
+              .font(IntradaFont.meta)
+              .foregroundStyle(IntradaColor.inkFaint)
+          }
+          if !item.tags.isEmpty {
+            TagPills(tags: item.tags)
+              .padding(.top, 1)
+          }
+        }
       }
     }
     .padding(.vertical, 14)
@@ -45,9 +57,8 @@ struct LibraryItemCard: View {
     .accessibilityLabel(accessibilityLabel)
   }
 
-  private var metaLine: String? {
-    let parts = [item.keyDisplay, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  private var hasAttributes: Bool {
+    item.keyDisplay?.isEmpty == false || item.tempoDisplay?.isEmpty == false || !item.tags.isEmpty
   }
 
   private var accessibilityLabel: String {
