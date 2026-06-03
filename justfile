@@ -356,10 +356,23 @@ ios-logs:
 
 # Force a full regenerate of both Swift packages + refresh the change-stamp.
 [group('iOS')]
-ios-gen: ios-typegen ios-package
+ios-gen: ios-typegen (ios-package "debug")
     @mkdir -p ios/generated
     @just _ios-src-hash > ios/generated/.gen-stamp
     @echo "✓ bindings regenerated"
+
+# Prep an on-device PERFORMANCE build: regenerate the Crux core optimized for
+# release, then in Xcode select your device and Profile (⌘I). `ios`/`ios-gen`
+# build the core in debug (cargo-swift's default) — 10–100× slower in hot paths,
+# so misleading for perf work; this rebuilds it with `--release`. ⌘I builds the
+# Swift app Release, signs with project.yml's team, and opens Instruments.
+# Clears the gen-stamp so the next plain `just ios` rebuilds the debug core
+# (never link a release core into a routine debug run).
+[group('iOS')]
+ios-release: ios-typegen (ios-package "release")
+    cd ios && xcodegen generate
+    rm -f ios/generated/.gen-stamp
+    @echo "✓ release core ready — in Xcode: select your device, then Product → Profile (⌘I). Next 'just ios' rebuilds the debug core."
 
 # Losslessly shrink snapshot references — drops Xcode's redundant all-opaque
 # alpha channel (keeps pixels + sRGB), ~75% smaller. Run after (re)recording
@@ -434,11 +447,12 @@ ios-typegen:
 
 # cargo-swift → ios/generated/IntradaCoreFFI (CoreFFI + RustFramework.xcframework).
 [group('iOS')]
-ios-package:
+ios-package profile="debug":
     #!/usr/bin/env bash
     set -euo pipefail
     cd crates/intrada-ffi
-    cargo swift package --name IntradaCoreFFI --platforms ios --lib-type static --features uniffi --accept-all
+    if [ "{{profile}}" = "release" ]; then rel="--release"; else rel=""; fi
+    cargo swift package --name IntradaCoreFFI --platforms ios --lib-type static --features uniffi $rel --accept-all
     rm -rf ../../ios/generated/IntradaCoreFFI
     mkdir -p ../../ios/generated
     mv IntradaCoreFFI ../../ios/generated/IntradaCoreFFI
