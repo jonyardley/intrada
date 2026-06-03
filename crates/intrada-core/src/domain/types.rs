@@ -324,6 +324,27 @@ mod tests {
     }
 
     #[test]
+    fn update_event_round_trips_on_ffi_bincode_wire() {
+        // Wraps the DTO in the event that actually crosses the bridge, so
+        // enum/struct framing is covered too (#777). See the bare-DTO test above.
+        use crate::domain::item::ItemEvent;
+        assert_round_trips(ItemEvent::Update {
+            id: "01HX0000000000000000000000".to_string(),
+            input: UpdateItem {
+                title: Some("Renamed".to_string()),
+                kind: Some(ItemKind::Exercise),
+                composer: Some(Some("Bach".to_string())),
+                key: Some(None),
+                modality: Some(Some(Modality::Minor)),
+                tempo: Some(None),
+                notes: Some(Some("phrasing".to_string())),
+                tags: Some(vec!["etude".to_string()]),
+                priority: Some(true),
+            },
+        });
+    }
+
+    #[test]
     fn create_item_round_trips_on_ffi_bincode_wire() {
         assert_round_trips(CreateItem {
             title: "Clair de Lune".to_string(),
