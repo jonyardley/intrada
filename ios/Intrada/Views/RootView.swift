@@ -1,3 +1,4 @@
+import Sentry
 import SentrySwiftUI
 import SharedTypes
 import SwiftUI
@@ -15,7 +16,7 @@ struct RootView: View {
   var body: some View {
     TabView {
       NavigationStack {
-        SentryTracedView("Library") { LibraryScreen() }
+        SentryTracedView("Library", waitForFullDisplay: true) { LibraryScreen() }
       }
       .tabItem { Label("Library", systemImage: "books.vertical") }
       SentryTracedView("Practice") { PracticeScreen() }
@@ -49,6 +50,8 @@ struct RootView: View {
         store.send(.startApp(apiBaseUrl: apiBaseURL, localFirst: true))
         store.restorePersistedSort()
       }
+      // Closes Library's TTFD span — hydration is synchronous (else the span would hang to DeadlineExceeded).
+      SentrySDK.reportFullyDisplayed()
     }
   }
 
