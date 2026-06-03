@@ -30,11 +30,14 @@ final class ScreenSnapshotTests: XCTestCase {
   private func host(_ view: some View, store: Store = Store(bridge: StubBridge()))
     -> UIViewController
   {
-    // Pin the locale so locale-driven formatting (e.g. SessionCard's date) is
-    // deterministic regardless of the host region — CI runs en-US, dev sims
-    // often en-GB, and the two reorder dates ("Sat, May 30" vs "Sat 30 May").
+    // Pin locale + calendar so date-driven UI (SessionCard's date, the week
+    // strip) is deterministic regardless of host region/timezone — CI runs
+    // en-US/UTC, dev sims often en-GB/local, which reorder dates and shift
+    // day boundaries.
     let vc = UIHostingController(
-      rootView: view.environment(store).environment(\.locale, Locale(identifier: "en_US")))
+      rootView: view.environment(store)
+        .environment(\.locale, Locale(identifier: "en_US"))
+        .environment(\.calendar, PreviewCalendar.utc))
     vc.overrideUserInterfaceStyle = .light
     return vc
   }
@@ -106,7 +109,21 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreenPopulated() {
-    assertSnapshot(of: host(PracticeScreen(), store: .previewPractice), as: config)
+    assertSnapshot(
+      of: host(
+        PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate),
+        store: .previewPractice), as: config)
+  }
+
+  func testPracticeScreenQuietDay() {
+    // Open on Monday — a day with no practice — to lock the per-day empty state.
+    let monday = PracticeWeek.days(
+      containing: PracticeSessionView.previewReferenceDate, calendar: PreviewCalendar.utc)[0]
+    assertSnapshot(
+      of: host(
+        PracticeScreen(
+          referenceDate: PracticeSessionView.previewReferenceDate, selectedDay: monday),
+        store: .previewPractice), as: config)
   }
 
   func testRoutinesScreen() {
