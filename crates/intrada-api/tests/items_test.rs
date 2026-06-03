@@ -632,3 +632,87 @@ async fn update_item_skip_preserves_existing_when_field_omitted() {
     assert_eq!(updated.title, "Etude (rev.)");
     assert_eq!(updated.composer.as_deref(), Some("Chopin"));
 }
+
+// ── Server-side free-text normalisation (parity with core, #888) ─────
+//
+// The core-driven shells trim + collapse-blank-to-None before write; the
+// REST/MCP paths must do the same so a padded or whitespace-only field
+// isn't stored verbatim.
+
+#[tokio::test]
+async fn create_item_trims_padded_free_text() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({
+            "title": "  Clair de Lune  ",
+            "kind": "piece",
+            "composer": "  Debussy  ",
+            "key": "  Db  ",
+            "notes": "  bars 12-24  ",
+            "tags": []
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert_eq!(item.title, "Clair de Lune");
+    assert_eq!(item.composer.as_deref(), Some("Debussy"));
+    assert_eq!(item.key.as_deref(), Some("Db"));
+    assert_eq!(item.notes.as_deref(), Some("bars 12-24"));
+}
+
+#[tokio::test]
+async fn create_item_rejects_whitespace_only_title() {
+    let app = common::setup_test_app().await;
+    let (status, _body) = common::post_json(
+        app,
+        "/api/items",
+        json!({ "title": "   ", "kind": "exercise", "tags": [] }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn create_item_collapses_blank_optional_to_absent() {
+    let app = common::setup_test_app().await;
+    let (status, body) = common::post_json(
+        app,
+        "/api/items",
+        json!({
+            "title": "Scale",
+            "kind": "exercise",
+            "notes": "   ",
+            "tags": []
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let item: Item = common::json(&body);
+    assert!(item.notes.is_none(), "a blank optional collapses to absent");
+}
+
+#[tokio::test]
+async fn update_item_trims_padded_free_text() {
+    let app = common::setup_test_app().await;
+    let (_, body) = common::post_json(
+        app.clone(),
+        "/api/items",
+        json!({ "title": "Etude", "kind": "piece", "composer": "Chopin", "tags": [] }),
+    )
+    .await;
+    let created: Item = common::json(&body);
+
+    let (status, body) = common::put_json(
+        app,
+        &format!("/api/items/{}", created.id),
+        json!({ "composer": "  Liszt  ", "notes": "  rubato  " }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let updated: Item = common::json(&body);
+    assert_eq!(updated.composer.as_deref(), Some("Liszt"));
+    assert_eq!(updated.notes.as_deref(), Some("rubato"));
+}
