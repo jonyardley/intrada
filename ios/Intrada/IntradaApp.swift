@@ -44,11 +44,6 @@ struct IntradaApp: App {
         #endif
         options.enablePerformanceV2 = true
         options.enableAppHangTrackingV2 = true
-        // `sessionSampleRate` is relative to `tracesSampleRate` — prod profiling rides the 0.2 trace rate.
-        options.configureProfiling = {
-          $0.lifecycle = .trace
-          $0.sessionSampleRate = 1.0
-        }
       }
     }
   }
