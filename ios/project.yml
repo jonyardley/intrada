@@ -58,6 +58,8 @@ targets:
         product: SharedTypes
       - package: Sentry
         product: Sentry
+      - package: Sentry
+        product: SentrySwiftUI
       - package: GRDB
         product: GRDB
     scheme:
