@@ -188,6 +188,12 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
   (Pencil + HIG, reconsidering vs. web) *starts* each pillar, then local-first
   data, then per-screen quality (snapshot + accessibility) and iPad `SplitView`
   built *with* the screen. A redesign on a stable core, not a port.
+  - **C-Practice (in progress):** the *session-history* surface shipped first —
+    Practice home with seeded demo sessions (#902), the duration summary, the
+    week calendar strip with day filtering (#905), and swipe paging between
+    weeks (#911); plus an `IntradaSpacing`/`IntradaRadius` token system (#922).
+    Next: the **setlist builder** (the `SessionStatus::Building` flow that makes
+    "Start practising" real), then the active player and post-session summary.
 - **Phase D (sync = the paid tier):** LWW sync to the Axum API (server-
   authoritative `updated_at`, tombstones, deterministic tiebreak — designed
   above); account/sign-in gates sync; StoreKit subscription + entitlement
