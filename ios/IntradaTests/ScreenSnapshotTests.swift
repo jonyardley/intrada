@@ -30,7 +30,11 @@ final class ScreenSnapshotTests: XCTestCase {
   private func host(_ view: some View, store: Store = Store(bridge: StubBridge()))
     -> UIViewController
   {
-    let vc = UIHostingController(rootView: view.environment(store))
+    // Pin the locale so locale-driven formatting (e.g. SessionCard's date) is
+    // deterministic regardless of the host region — CI runs en-US, dev sims
+    // often en-GB, and the two reorder dates ("Sat, May 30" vs "Sat 30 May").
+    let vc = UIHostingController(
+      rootView: view.environment(store).environment(\.locale, Locale(identifier: "en_US")))
     vc.overrideUserInterfaceStyle = .light
     return vc
   }
@@ -99,6 +103,10 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testPracticeScreen() {
     assertSnapshot(of: host(PracticeScreen()), as: config)
+  }
+
+  func testPracticeScreenPopulated() {
+    assertSnapshot(of: host(PracticeScreen(), store: .previewPractice), as: config)
   }
 
   func testRoutinesScreen() {
