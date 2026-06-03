@@ -1,5 +1,6 @@
 import Sentry
 import SwiftUI
+import UIKit
 
 @main
 struct IntradaApp: App {
@@ -25,6 +26,12 @@ struct IntradaApp: App {
 
   init() {
     IntradaFonts.register()
+
+    // The Practice week-strip's paging TabView defeats XCUITest's idle wait;
+    // UI tests pass --disable-animations to run deterministically (#935).
+    if ProcessInfo.processInfo.arguments.contains("--disable-animations") {
+      UIView.setAnimationsEnabled(false)
+    }
 
     // `hasPrefix` gates out empty (CI) and an unexpanded `${…}` literal alike.
     let runningUnderXCTest =
