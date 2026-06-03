@@ -6,10 +6,11 @@ struct PracticeScreen: View {
   @Environment(\.calendar) private var calendar
   @Environment(\.locale) private var locale
 
-  // Injected so the week + auto-selection are deterministic in snapshots;
+  // Injected so the weeks + auto-selection are deterministic in snapshots;
   // production uses "now".
   private let referenceDate: Date
   @State private var selectedDay: Date?
+  @State private var weekIndexOverride: Int?
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -24,14 +25,21 @@ struct PracticeScreen: View {
   #endif
 
   private var sessions: [PracticeSessionView] { store.viewModel?.sessions ?? [] }
-  private var week: [Date] { PracticeWeek.days(containing: referenceDate, calendar: calendar) }
+  private var weeks: [[Date]] {
+    PracticeWeek.weeks(forSessions: sessions, referenceDate: referenceDate, calendar: calendar)
+  }
   private var practiceDays: Swift.Set<Date> {
     PracticeWeek.practiceDays(from: sessions, calendar: calendar)
   }
+  // Defaults to the last (current) week; a swipe overrides it.
+  private var effectiveWeekIndex: Int {
+    min(weekIndexOverride ?? (weeks.count - 1), weeks.count - 1)
+  }
+  private var selectedWeek: [Date] { weeks[effectiveWeekIndex] }
   private var effectiveSelection: Date {
     selectedDay
-      ?? PracticeWeek.autoSelectedDay(
-        in: week, today: referenceDate, practiceDays: practiceDays, calendar: calendar)
+      ?? PracticeWeek.selectedDay(
+        forWeek: selectedWeek, today: referenceDate, practiceDays: practiceDays, calendar: calendar)
   }
   private var daySessions: [PracticeSessionView] {
     PracticeWeek.sessions(on: effectiveSelection, from: sessions, calendar: calendar)
@@ -45,6 +53,11 @@ struct PracticeScreen: View {
           .padding(.top, 16)
         content
       }
+    }
+    // Drop a now-out-of-range pinned week so a later data change can't jump the
+    // view to a stale page; reads are already clamped, this resets the store.
+    .onChange(of: weeks.count) { _, newCount in
+      if let pinned = weekIndexOverride, pinned >= newCount { weekIndexOverride = nil }
     }
   }
 
@@ -74,13 +87,20 @@ struct PracticeScreen: View {
         systemImage: "metronome.fill",
         message: "Your practice sessions will appear here.")
     } else {
-      WeekStrip(
-        days: week, today: referenceDate, practiceDays: practiceDays,
-        selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
-        calendar: calendar
-      )
-      .padding(.horizontal, 12)
-      .padding(.top, 16)
+      TabView(selection: weekBinding) {
+        ForEach(Array(weeks.enumerated()), id: \.offset) { index, days in
+          WeekStrip(
+            days: days, today: referenceDate, practiceDays: practiceDays,
+            selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
+            calendar: calendar
+          )
+          .padding(.horizontal, 12)
+          .tag(index)
+        }
+      }
+      .tabViewStyle(.page(indexDisplayMode: .never))
+      .frame(height: 64)
+      .padding(.top, 14)
       Text(dayLabel)
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
@@ -119,6 +139,17 @@ struct PracticeScreen: View {
     formatter.locale = locale  // env locale, not Locale.current (see SessionCard)
     formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
     return formatter.string(from: effectiveSelection)
+  }
+
+  // Swiping to another week clears the day selection so that week auto-selects
+  // its own day (most recent practice, or its last day).
+  private var weekBinding: Binding<Int> {
+    Binding(
+      get: { effectiveWeekIndex },
+      set: { newIndex in
+        weekIndexOverride = newIndex
+        selectedDay = nil
+      })
   }
 
   private var subtitle: String {

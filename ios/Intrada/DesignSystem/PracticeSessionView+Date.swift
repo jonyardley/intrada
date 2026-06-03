@@ -43,13 +43,46 @@ enum PracticeWeek {
       .sorted { ($0.startedDate ?? .distantPast) > ($1.startedDate ?? .distantPast) }
   }
 
-  /// Which day to open on: today if it has practice, else the most recent
-  /// earlier day this week with practice, else today.
-  static func autoSelectedDay(
-    in week: [Date], today: Date, practiceDays: Swift.Set<Date>, calendar: Calendar
+  /// The weeks to page through: from the earliest session's week up to the
+  /// week containing `referenceDate`, inclusive and ascending. Just the current
+  /// week when there are no (earlier) sessions.
+  static func weeks(
+    forSessions sessions: [PracticeSessionView], referenceDate: Date, calendar: Calendar
+  ) -> [[Date]] {
+    let currentWeek = days(containing: referenceDate, calendar: calendar)
+    let currentStart = currentWeek.first ?? calendar.startOfDay(for: referenceDate)
+    guard
+      let earliest = sessions.compactMap(\.startedDate).min(),
+      let earliestStart = days(containing: earliest, calendar: calendar).first,
+      earliestStart < currentStart
+    else { return [currentWeek] }
+
+    var result: [[Date]] = []
+    var cursor = earliestStart
+    while cursor <= currentStart {
+      let week = days(containing: cursor, calendar: calendar)
+      result.append(week)
+      guard
+        let next = calendar.date(byAdding: .weekOfYear, value: 1, to: week.first ?? cursor),
+        let nextStart = days(containing: next, calendar: calendar).first,
+        nextStart > cursor
+      else { break }
+      cursor = nextStart
+    }
+    return result
+  }
+
+  /// Which day to select for a given week. The current week selects today when
+  /// it has practice, otherwise the most recent earlier practice day, otherwise
+  /// today; a past week picks its most recent practice day, otherwise its last.
+  static func selectedDay(
+    forWeek week: [Date], today: Date, practiceDays: Swift.Set<Date>, calendar: Calendar
   ) -> Date {
     let todayStart = calendar.startOfDay(for: today)
-    if practiceDays.contains(todayStart) { return todayStart }
-    return week.filter { $0 <= todayStart && practiceDays.contains($0) }.max() ?? todayStart
+    if week.contains(where: { calendar.isDate($0, inSameDayAs: todayStart) }) {
+      if practiceDays.contains(todayStart) { return todayStart }
+      return week.filter { $0 <= todayStart && practiceDays.contains($0) }.max() ?? todayStart
+    }
+    return week.filter { practiceDays.contains($0) }.max() ?? (week.last ?? todayStart)
   }
 }
