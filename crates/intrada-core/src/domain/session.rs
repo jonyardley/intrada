@@ -98,7 +98,7 @@ pub struct PracticeSession {
 // ── Transient State Types ──────────────────────────────────────────────
 
 /// State during setlist assembly (Building phase).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct BuildingSession {
     pub entries: Vec<SetlistEntry>,
     pub session_intention: Option<String>,
@@ -413,13 +413,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 model.last_error = Some("A practice is already in progress".to_string());
                 return crux_core::render::render();
             }
-            model.session_status = SessionStatus::Building(BuildingSession {
-                entries: vec![],
-                session_intention: None,
-                target_duration_mins: None,
-                source_set_id: None,
-                source_set_entry_snapshot: vec![],
-            });
+            model.session_status = SessionStatus::Building(BuildingSession::default());
             model.last_error = None;
             crux_core::render::render()
         }
@@ -442,11 +436,8 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
             model.session_status = SessionStatus::Building(BuildingSession {
-                entries: vec![],
-                session_intention: None,
                 target_duration_mins: Some(target_duration_mins),
-                source_set_id: None,
-                source_set_entry_snapshot: vec![],
+                ..Default::default()
             });
             model.last_error = None;
             crux_core::render::render()

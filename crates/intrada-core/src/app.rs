@@ -2776,11 +2776,8 @@ mod tests {
         let app = Intrada;
         let model = Model {
             session_status: SessionStatus::Building(BuildingSession {
-                entries: vec![],
                 session_intention: Some("Focus on dynamics".to_string()),
-                target_duration_mins: None,
-                source_set_id: None,
-                source_set_entry_snapshot: vec![],
+                ..Default::default()
             }),
             ..Model::test_default()
         };
@@ -3225,13 +3222,8 @@ mod tests {
     fn view_set_source_status_no_source() {
         let app = Intrada;
         let mut model = Model::test_default();
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![],
-            source_set_id: None,
-            source_set_entry_snapshot: vec![],
-            session_intention: None,
-            target_duration_mins: None,
-        });
+        model.session_status =
+            SessionStatus::Building(crate::domain::session::BuildingSession::default());
         let vm = app.view(&model);
         let building = vm.building_setlist.unwrap();
         assert_eq!(building.source_status, SetSourceStatus::NoSource);
@@ -3270,8 +3262,7 @@ mod tests {
             entries: vec![entry],
             source_set_id: Some("set-1".to_string()),
             source_set_entry_snapshot: vec!["item-a".to_string()],
-            session_intention: None,
-            target_duration_mins: None,
+            ..Default::default()
         });
         let vm = app.view(&model);
         let building = vm.building_setlist.unwrap();
@@ -3314,8 +3305,7 @@ mod tests {
             entries: vec![entry],
             source_set_id: Some("set-1".to_string()),
             source_set_entry_snapshot: vec!["item-a".to_string()],
-            session_intention: None,
-            target_duration_mins: None,
+            ..Default::default()
         });
         let vm = app.view(&model);
         let building = vm.building_setlist.unwrap();

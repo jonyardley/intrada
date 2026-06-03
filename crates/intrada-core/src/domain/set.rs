@@ -346,10 +346,7 @@ mod tests {
             api_base_url: "http://localhost:3001".to_string(),
             session_status: SessionStatus::Building(BuildingSession {
                 entries,
-                session_intention: None,
-                target_duration_mins: None,
-                source_set_id: None,
-                source_set_entry_snapshot: vec![],
+                ..Default::default()
             }),
             ..Default::default()
         }
