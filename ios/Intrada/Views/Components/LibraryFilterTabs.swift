@@ -35,6 +35,7 @@ enum LibraryFilter: CaseIterable, Identifiable {
 
 struct LibraryFilterTabs: View {
   @Binding var selection: LibraryFilter
+  var edgeInset: CGFloat = 0
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Namespace private var pill
 
@@ -70,6 +71,8 @@ struct LibraryFilterTabs: View {
         }
       }
     }
+    .contentMargins(.leading, edgeInset, for: .scrollContent)
+    .padding(.leading, -edgeInset)
   }
 }
 
