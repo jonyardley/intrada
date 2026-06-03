@@ -27,7 +27,7 @@ struct InlineSuggestionList: View {
             Spacer(minLength: 0)
           }
           .padding(.vertical, 10)
-          .padding(.horizontal, 16)
+          .padding(.horizontal, IntradaSpacing.card)
           .frame(maxWidth: .infinity, alignment: .leading)
           .contentShape(Rectangle())
         }
@@ -35,7 +35,7 @@ struct InlineSuggestionList: View {
         .accessibilityHint(accessibilityHint(suggestion))
 
         if suggestion != matches.last {
-          HairlineDivider().padding(.leading, 16)
+          HairlineDivider().padding(.leading, IntradaSpacing.card)
         }
       }
     }

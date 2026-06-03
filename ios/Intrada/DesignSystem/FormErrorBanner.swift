@@ -4,7 +4,7 @@ struct FormErrorBanner: View {
   let message: String
 
   var body: some View {
-    HStack(alignment: .top, spacing: 8) {
+    HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
       Image(systemName: "exclamationmark.triangle.fill")
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.danger)
@@ -13,10 +13,10 @@ struct FormErrorBanner: View {
         .foregroundStyle(IntradaColor.danger)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .padding(12)
-    .background(IntradaColor.danger.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+    .padding(IntradaSpacing.cardCompact)
+    .background(IntradaColor.danger.opacity(0.10), in: RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: 12).strokeBorder(IntradaColor.danger.opacity(0.25))
+      RoundedRectangle(cornerRadius: IntradaRadius.card).strokeBorder(IntradaColor.danger.opacity(0.25))
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Error: \(message)")

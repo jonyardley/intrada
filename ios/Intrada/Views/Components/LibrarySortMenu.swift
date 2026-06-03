@@ -77,7 +77,7 @@ struct LibrarySortMenu: View {
       Image(systemName: "arrow.up.arrow.down")
         .font(IntradaFont.tab)
         .foregroundStyle(IntradaColor.inkFaint)
-        .padding(8)
+        .padding(IntradaSpacing.controlGap)
     }
     .accessibilityLabel("Sort")
     .accessibilityValue("\(LibrarySortField(current.field).label), \(directionAccessibility)")

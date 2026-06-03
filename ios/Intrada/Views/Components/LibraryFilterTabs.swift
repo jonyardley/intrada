@@ -42,7 +42,7 @@ struct LibraryFilterTabs: View {
     // Horizontal scroll so the pills slide rather than wrap mid-word once the
     // labels grow past the width at large Dynamic Type (#810).
     ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 8) {
+      HStack(spacing: IntradaSpacing.controlGap) {
         ForEach(LibraryFilter.allCases) { filter in
           let isSelected = filter == selection
           Button {
@@ -55,7 +55,7 @@ struct LibraryFilterTabs: View {
               .lineLimit(1)
               .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
               .padding(.vertical, 6)
-              .padding(.horizontal, 14)
+              .padding(.horizontal, IntradaSpacing.row)
               .background {
                 if isSelected {
                   Capsule()

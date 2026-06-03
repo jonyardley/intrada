@@ -48,7 +48,7 @@ struct KeyPicker: View {
           wheel
           Spacer(minLength: 0)
         }
-        .padding(.top, 12)
+        .padding(.top, IntradaSpacing.cardCompact)
         .padding(.bottom, 20)
         .transition(.move(edge: .top).combined(with: .opacity))
       }
@@ -60,7 +60,7 @@ struct KeyPicker: View {
   // ── Collapsed row ──
 
   private var row: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: IntradaSpacing.controlGap) {
       VStack(alignment: .leading, spacing: 4) {
         Text(label)
           .font(IntradaFont.metaMedium)
@@ -96,10 +96,10 @@ struct KeyPicker: View {
         .rotationEffect(.degrees(expanded ? 180 : 0))
         // Keep clear distance from the clear (×) button so a tap aimed at the
         // chevron doesn't land on clear and wipe the key.
-        .padding(.leading, 12)
+        .padding(.leading, IntradaSpacing.cardCompact)
     }
     .padding(.vertical, 10)
-    .padding(.horizontal, 16)
+    .padding(.horizontal, IntradaSpacing.card)
     .contentShape(Rectangle())
     .onTapGesture {
       withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
@@ -308,7 +308,7 @@ private struct RingWedge: Shape {
         ZStack {
           PaperBackground()
           ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: IntradaSpacing.card) {
               VStack(spacing: 0) {
                 KeyPicker(label: "Key", key: $emptyKey, modality: $emptyModality)
               }.cardSurface()
@@ -319,7 +319,7 @@ private struct RingWedge: Shape {
                 KeyPicker(label: "Key", key: $enhKey, modality: $enhModality)
               }.cardSurface()
             }
-            .padding(16)
+            .padding(IntradaSpacing.card)
           }
         }
       }

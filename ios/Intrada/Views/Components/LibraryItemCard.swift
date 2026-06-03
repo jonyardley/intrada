@@ -26,9 +26,9 @@ struct LibraryItemCard: View {
           .padding(.top, 5)
       }
     }
-    .padding(.vertical, 14)
+    .padding(.vertical, IntradaSpacing.row)
     .padding(.leading, 20)
-    .padding(.trailing, 14)
+    .padding(.trailing, IntradaSpacing.row)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(IntradaColor.cardFill)
     // Bar as a leading overlay so it fills the content height without the
@@ -36,9 +36,9 @@ struct LibraryItemCard: View {
     .overlay(alignment: .leading) {
       item.itemType.bar.frame(width: 4)
     }
-    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: 12)
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
         .stroke(IntradaColor.hairline, lineWidth: 1)
     )
     .accessibilityElement(children: .combine)
@@ -63,11 +63,11 @@ struct LibraryItemCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      VStack(spacing: 14) {
+      VStack(spacing: IntradaSpacing.row) {
         LibraryItemCard(item: .previewPiece)
         LibraryItemCard(item: .previewExercise)
       }
-      .padding(16)
+      .padding(IntradaSpacing.card)
     }
   }
 #endif

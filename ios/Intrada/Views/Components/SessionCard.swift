@@ -23,13 +23,13 @@ struct SessionCard: View {
           .padding(.top, 2)
       }
     }
-    .padding(.vertical, 14)
-    .padding(.horizontal, 16)
+    .padding(.vertical, IntradaSpacing.row)
+    .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(IntradaColor.cardFill)
-    .clipShape(RoundedRectangle(cornerRadius: 12))
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
-      RoundedRectangle(cornerRadius: 12)
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
         .stroke(IntradaColor.hairline, lineWidth: 1)
     )
     .accessibilityElement(children: .combine)
@@ -80,11 +80,11 @@ struct SessionCard: View {
   #Preview {
     ZStack {
       PaperBackground()
-      VStack(spacing: 14) {
+      VStack(spacing: IntradaSpacing.row) {
         SessionCard(session: .previewCompleted)
         SessionCard(session: .previewEndedEarly)
       }
-      .padding(16)
+      .padding(IntradaSpacing.card)
     }
   }
 #endif

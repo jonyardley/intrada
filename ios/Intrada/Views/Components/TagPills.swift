@@ -24,11 +24,11 @@ struct TagPills: View {
   #Preview {
     ZStack {
       PaperBackground()
-      VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
         TagPills(tags: ["classical", "piano"])
         TagPills(tags: ["jazz", "improv", "bebop", "ii-V-I", "comping"])
       }
-      .padding(16)
+      .padding(IntradaSpacing.card)
     }
   }
 #endif

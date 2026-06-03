@@ -99,7 +99,7 @@ private struct WeekDayCell: View {
             practiceDays: Swift.Set([week[1], week[3]]),
             selected: $selected, calendar: cal
           )
-          .padding(16)
+          .padding(IntradaSpacing.card)
         }
       }
     }

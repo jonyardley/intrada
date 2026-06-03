@@ -23,12 +23,12 @@ struct ItemFormScaffold: View {
         VStack(spacing: 0) {
           if let formError = form.formError {
             FormErrorBanner(message: formError)
-              .padding(.horizontal, 16)
-              .padding(.top, 12)
+              .padding(.horizontal, IntradaSpacing.card)
+              .padding(.top, IntradaSpacing.cardCompact)
               .transition(.move(edge: .top).combined(with: .opacity))
           }
           ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: IntradaSpacing.card) {
               KindSegment(selection: $form.kind)
 
               VStack(spacing: 0) {
@@ -56,7 +56,7 @@ struct ItemFormScaffold: View {
               }
               .cardSurface()
             }
-            .padding(16)
+            .padding(IntradaSpacing.card)
           }
         }
       }

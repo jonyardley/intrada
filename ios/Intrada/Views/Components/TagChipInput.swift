@@ -35,7 +35,7 @@ struct TagChipInput: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      VStack(alignment: .leading, spacing: 8) {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Text(label)
           .font(IntradaFont.metaMedium)
           .foregroundStyle(IntradaColor.inkFaint)
@@ -56,7 +56,7 @@ struct TagChipInput: View {
           .onSubmit { add(draft) }
       }
       .padding(.vertical, 10)
-      .padding(.horizontal, 16)
+      .padding(.horizontal, IntradaSpacing.card)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(IntradaColor.cardFill)
       .zIndex(1)
@@ -104,14 +104,14 @@ struct TagChipInput: View {
         ZStack {
           PaperBackground()
           ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: IntradaSpacing.card) {
               VStack(spacing: 0) {
                 TagChipInput(
                   label: "Tags", tags: $tags, suggestions: pool,
                   initiallyShowingSuggestions: true)
               }.cardSurface()
             }
-            .padding(16)
+            .padding(IntradaSpacing.card)
           }
         }
       }

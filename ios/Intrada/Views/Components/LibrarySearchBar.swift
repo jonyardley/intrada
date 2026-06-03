@@ -10,7 +10,7 @@ struct LibrarySearchBar: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      HStack(spacing: 8) {
+      HStack(spacing: IntradaSpacing.controlGap) {
         Image(systemName: "magnifyingglass")
           .font(.system(size: 15, weight: .medium))
           .foregroundStyle(IntradaColor.inkFaint)
@@ -35,7 +35,7 @@ struct LibrarySearchBar: View {
         }
       }
       .padding(.vertical, 9)
-      .padding(.horizontal, 12)
+      .padding(.horizontal, IntradaSpacing.cardCompact)
       .background(Capsule(style: .continuous).fill(IntradaColor.cardFill))
       .overlay(Capsule(style: .continuous).strokeBorder(IntradaColor.hairline, lineWidth: 1))
 
@@ -55,7 +55,7 @@ struct LibrarySearchBar: View {
       ZStack {
         PaperBackground()
         LibrarySearchBar(text: $text, focused: $focused, onCancel: { text = "" })
-          .padding(16)
+          .padding(IntradaSpacing.card)
       }
     }
   }

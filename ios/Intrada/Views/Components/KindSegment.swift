@@ -21,7 +21,7 @@ struct KindSegment: View {
             .font(IntradaFont.segment)
             .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkSecondary)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, IntradaSpacing.controlGap)
             .background {
               if isSelected {
                 Capsule()

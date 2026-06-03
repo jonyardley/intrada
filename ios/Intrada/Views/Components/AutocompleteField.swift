@@ -46,7 +46,7 @@ struct AutocompleteField: View {
           .focused($focused)
       }
       .padding(.vertical, 10)
-      .padding(.horizontal, 16)
+      .padding(.horizontal, IntradaSpacing.card)
       .frame(maxWidth: .infinity, alignment: .leading)
       // Opaque fill + zIndex so the list slides *behind* the input on
       // open/close rather than over it (the `KeyPicker` reveal trick).
@@ -86,7 +86,7 @@ struct AutocompleteField: View {
         ZStack {
           PaperBackground()
           ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: IntradaSpacing.card) {
               VStack(spacing: 0) {
                 AutocompleteField(
                   label: "Composer", text: $typing, suggestions: pool,
@@ -96,7 +96,7 @@ struct AutocompleteField: View {
                 AutocompleteField(label: "Composer", text: $empty, suggestions: pool)
               }.cardSurface()
             }
-            .padding(16)
+            .padding(IntradaSpacing.card)
           }
         }
       }

@@ -40,7 +40,7 @@ struct TypeBadge: View {
   #Preview {
     ZStack {
       PaperBackground()
-      HStack(spacing: 12) {
+      HStack(spacing: IntradaSpacing.cardCompact) {
         TypeBadge(kind: .piece)
         TypeBadge(kind: .exercise)
       }

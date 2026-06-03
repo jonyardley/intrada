@@ -34,7 +34,7 @@ struct ScreenScaffold<Content: View>: View {
         Rectangle()
           .fill(IntradaColor.divider)
           .frame(height: 1)
-          .padding(.top, 12)
+          .padding(.top, IntradaSpacing.cardCompact)
         content
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
@@ -78,8 +78,8 @@ struct ScreenScaffold<Content: View>: View {
         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
       }
     }
-    .padding(.horizontal, 16)
-    .padding(.top, 8)
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.top, IntradaSpacing.controlGap)
   }
 }
 
