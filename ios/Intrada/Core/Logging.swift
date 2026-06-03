@@ -13,5 +13,9 @@ func report(_ error: Error, _ context: String? = nil) {
   } else {
     logger.error("\(String(describing: error), privacy: .public)")
   }
-  SentrySDK.capture(error: error)
+  SentrySDK.capture(error: error) { scope in
+    guard let context else { return }
+    scope.setTag(value: context, key: "report_context")
+    scope.setFingerprint(["{{ default }}", context])
+  }
 }
