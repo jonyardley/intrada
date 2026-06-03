@@ -297,6 +297,51 @@ mod tests {
     }
 
     #[test]
+    fn local_first_failed_delete_rolls_back_via_store_reload() {
+        // End-to-end rollback (#834): an optimistic delete whose store write
+        // fails must never be a silent success (invariant #5) — it surfaces an
+        // error and reloads from the store, which still holds the row the
+        // failed write never removed.
+        use crate::domain::item::ItemEvent;
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+        model.items = vec![sample_item("p1")];
+
+        let mut cmd = app.update(
+            Event::Item(ItemEvent::Delete { id: "p1".into() }),
+            &mut model,
+        );
+        assert!(
+            model.items.is_empty(),
+            "delete optimistically removes the row"
+        );
+        assert!(has_delete(&mut cmd, "p1"));
+
+        let mut cmd = app.update(Event::StoreWritten(PersistenceOutput::Failed), &mut model);
+        assert!(
+            model.last_error.is_some(),
+            "a failed delete must surface an error, not vanish silently"
+        );
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+                if req.operation == PersistenceOperation::LoadItems)),
+            "a failed write reloads from the store to roll back"
+        );
+
+        let _ = app.update(
+            Event::StoreLoaded(PersistenceOutput::Items(vec![sample_item("p1")])),
+            &mut model,
+        );
+        assert_eq!(
+            model.items.len(),
+            1,
+            "the rolled-back delete restores the row"
+        );
+        assert_eq!(model.items[0].id, "p1");
+    }
+
+    #[test]
     fn online_add_uses_http_not_persistence() {
         use crate::domain::item::ItemEvent;
         let app = crate::app::Intrada;
