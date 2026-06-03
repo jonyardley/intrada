@@ -875,6 +875,60 @@ async fn bulk_import_non_dry_run_writes_all_or_nothing_and_audits() {
 }
 
 #[tokio::test]
+async fn bulk_import_normalises_free_text_before_writing() {
+    // Parity with the core (#888): padded free-text is trimmed, and a
+    // whitespace-only title is rejected (it normalises to empty), not stored
+    // verbatim.
+    let app = common::setup_test_app().await;
+    let token = mint_pat(app.clone(), "bulk-normalise-test").await;
+
+    // Whitespace-only title aborts the whole write (all-or-nothing).
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "bulk_import_items",
+        json!({
+            "dry_run": false,
+            "items": [
+                {"title": "  Padded  ", "kind": "exercise", "composer": "  Hanon  ", "tags": []},
+                {"title": "   ", "kind": "exercise", "tags": []}
+            ]
+        }),
+        7,
+    )
+    .await;
+    assert_eq!(response["result"]["isError"], true);
+    let (_, items_body) = common::get(app.clone(), "/api/items").await;
+    let items: Vec<Value> = common::json(&items_body);
+    assert!(
+        items.is_empty(),
+        "whitespace-only title must abort the write"
+    );
+
+    // Valid padded item is stored trimmed.
+    let response = mcp_call_with_pat(
+        app.clone(),
+        &token,
+        "bulk_import_items",
+        json!({
+            "dry_run": false,
+            "items": [
+                {"title": "  Scales  ", "kind": "exercise", "composer": "  Hanon  ", "tags": []}
+            ]
+        }),
+        8,
+    )
+    .await;
+    assert_eq!(response["result"]["isError"], Value::Null);
+
+    let (_, items_body) = common::get(app, "/api/items").await;
+    let items: Vec<Value> = common::json(&items_body);
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["title"], "Scales");
+    assert_eq!(items[0]["composer"], "Hanon");
+}
+
+#[tokio::test]
 async fn audit_log_endpoint_returns_newest_first() {
     let app = common::setup_test_app().await;
     let token = mint_pat(app.clone(), "audit-order").await;

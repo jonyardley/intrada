@@ -22,8 +22,9 @@ pub async fn create_item(
     user_id: &str,
     input: &CreateItem,
 ) -> Result<Item, ApiError> {
-    validation::validate_create_item(input)?;
-    db::items::insert_item(conn, user_id, input).await
+    let input = validation::normalize_create_item(input.clone());
+    validation::validate_create_item(&input)?;
+    db::items::insert_item(conn, user_id, &input).await
 }
 
 pub async fn update_item(
@@ -32,8 +33,9 @@ pub async fn update_item(
     user_id: &str,
     input: &UpdateItem,
 ) -> Result<Item, ApiError> {
-    validation::validate_update_item(input)?;
-    db::items::update_item(conn, id, user_id, input)
+    let input = validation::normalize_update_item(input.clone());
+    validation::validate_update_item(&input)?;
+    db::items::update_item(conn, id, user_id, &input)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("Item not found: {id}")))
 }

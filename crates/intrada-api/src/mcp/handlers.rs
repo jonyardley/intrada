@@ -401,7 +401,14 @@ pub async fn bulk_import_items(
     raw_args: &Value,
     args: BulkImportItemsArgs,
 ) -> Result<Value, ApiError> {
-    let (previews, valid_count, invalid_count) = validate_all(&args.items);
+    // Normalise up front so the dry-run preview's validation + shown titles
+    // match what the real write stores (parity with the core, #888).
+    let items: Vec<CreateItem> = args
+        .items
+        .into_iter()
+        .map(validation::normalize_create_item)
+        .collect();
+    let (previews, valid_count, invalid_count) = validate_all(&items);
 
     if args.dry_run {
         return Ok(json!({
@@ -418,7 +425,7 @@ pub async fn bulk_import_items(
     if invalid_count > 0 {
         return Err(ApiError::Validation(format!(
             "{invalid_count} of {} items failed validation; fix or omit them and retry",
-            args.items.len()
+            items.len()
         )));
     }
 
@@ -430,16 +437,16 @@ pub async fn bulk_import_items(
     // inserts persist. We surface the partial state in the error so the
     // agent can re-issue only the remaining items rather than
     // silently leaving the user wondering what happened.
-    let mut created = Vec::with_capacity(args.items.len());
-    for (index, item) in args.items.iter().enumerate() {
+    let mut created = Vec::with_capacity(items.len());
+    for (index, item) in items.iter().enumerate() {
         match services::items::create_item(conn, user_id, item).await {
             Ok(created_item) => created.push(created_item),
             Err(e) => {
-                tracing::error!(?e, index, total = args.items.len(), "bulk_import partial");
+                tracing::error!(?e, index, total = items.len(), "bulk_import partial");
                 return Err(ApiError::Internal(format!(
                     "Failed to insert item at index {index} ({} of {} succeeded): {e:?}",
                     created.len(),
-                    args.items.len()
+                    items.len()
                 )));
             }
         }
