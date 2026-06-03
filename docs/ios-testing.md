@@ -47,6 +47,8 @@ SEED=0 just ios-run # …against your real on-device data, not the demo seed
 just ios-gen        # force-regenerate the Swift bindings (after a core change)
 just ios-snapshots-optimize   # oxipng -o max every reference (run before commit)
 just ios-snapshots-check      # orphan + 200 KB-ceiling guard (same as CI)
+just ios-test                 # full IntradaTests suite on a per-worktree sim (CI parity)
+just ios-test-sim-clean       # delete this worktree's ios-test sim
 ```
 
 ## Snapshot tests (the per-PR UI regression gate)
@@ -100,7 +102,8 @@ gesture (e.g. pull-to-reveal) never fired.
 - **Stale bindings after pulling/rebasing** onto a main with core changes →
   `extra argument` / `cannot find type` Swift errors. Run `just ios-gen`
   (see CLAUDE.md → Native iOS Shell, and the memory note on rebase+regen).
-- **Clean up** the throwaway sims you create: `xcrun simctl delete <udid>`.
+- **Clean up** the throwaway sims you create: `xcrun simctl delete <udid>`
+  (or `just ios-test-sim-clean` for the sim `just ios-test` made in this worktree).
 
 ## Running alongside another checkout (worktrees)
 
@@ -118,15 +121,28 @@ checkout is using**.
 
 Rules to keep two checkouts from colliding:
 
-- **Don't run two iOS test/sim sessions at once** — serialize them. It's the sim
-  contention (not disk/CPU) that produces the pty errors above.
-- **Use a worktree-scoped sim**, created once and targeted by UDID, instead of a
-  bare `"iPhone 16"` both checkouts might grab:
+- **`just ios-test` is safe to run in parallel across worktrees.** It names its
+  sim per worktree (`intrada-test-26-5-<worktree-basename>`), so each checkout
+  with a distinct basename gets its own device — no serialization. (Two
+  worktree dirs that sanitise to the same name — e.g. `foo.1` and `foo-1` —
+  would share a sim; slug-like worktree names avoid this.) The device model is irrelevant to
+  snapshot output (swift-snapshot-testing pins `.iPhone13`; only the iOS 26.5
+  runtime affects the pixels), so per-worktree devices change nothing about
+  pass/fail. `just ios-test-sim-clean` deletes only the current worktree's sim.
+  This removes *blocking*, not resource load — N booted sims + N Swift builds is
+  heavy, so the practical ceiling is how many parallel agents the host can take.
+- **Ad-hoc `xcodebuild` / `simctl` sessions that share one device still
+  serialize.** If you run the raw `xcodebuild test` snippets above (not via
+  `just ios-test`), give each session a **worktree-scoped sim** targeted by
+  UDID, instead of a bare `"iPhone 16"` both checkouts might grab:
   ```bash
   UDID=$(xcrun simctl create "snap-$(basename "$PWD")" "iPhone 16" "iOS26.5")
   ```
-- **Only touch sims you created.** Delete *your* UDID when done; never
-  `shutdown all` / `delete unavailable` / restart `CoreSimulatorService` blind.
+  Two sessions pointed at the *same* device produce the pty contention errors
+  above; distinct devices run concurrently.
+- **Only touch sims you created.** Delete *your* UDID (or `just
+  ios-test-sim-clean` for the recipe's sim) when done; never `shutdown all` /
+  `delete unavailable` / restart `CoreSimulatorService` blind.
 - **Check before any global op or a fresh test run** whether another session is
   live:
   ```bash
