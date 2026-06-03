@@ -6,6 +6,7 @@ import SwiftUI
 struct SessionCard: View {
   let session: PracticeSessionView
   @Environment(\.locale) private var locale
+  @Environment(\.calendar) private var calendar
 
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
@@ -53,15 +54,17 @@ struct SessionCard: View {
   }
 
   private var dateDisplay: String {
-    guard let date = Self.parse(session.startedAt) else { return "" }
-    let calendar = Calendar.current
+    guard let date = session.startedDate else { return "" }
     if calendar.isDateInToday(date) { return "Today" }
     if calendar.isDateInYesterday(date) { return "Yesterday" }
     let formatter = DateFormatter()
-    // Drive the format off the SwiftUI environment locale (not `Locale.current`)
-    // so production localizes per device while snapshot hosts can pin it — the
-    // raw template reorders by region ("Sat 30 May" en-GB vs "Sat, May 30" en-US).
+    // Drive locale + calendar off the SwiftUI environment (not `Locale.current`/
+    // `Calendar.current`) so production follows the device while snapshot hosts
+    // pin both — the template reorders by region ("Sat 30 May" vs "Sat, May 30")
+    // and the day bucket shifts by timezone.
     formatter.locale = locale
+    formatter.calendar = calendar
+    formatter.timeZone = calendar.timeZone
     formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
     return formatter.string(from: date)
   }
@@ -70,16 +73,6 @@ struct SessionCard: View {
     var parts = [dateDisplay, session.totalDurationSummary, itemCount]
     if session.completionStatus == .endedEarly { parts.append("ended early") }
     return parts.joined(separator: ", ")
-  }
-
-  /// chrono's `to_rfc3339` emits fractional seconds; fall back to the plain
-  /// form so either shape parses.
-  private static func parse(_ value: String) -> Date? {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let date = formatter.date(from: value) { return date }
-    formatter.formatOptions = [.withInternetDateTime]
-    return formatter.date(from: value)
   }
 }
 

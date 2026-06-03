@@ -1,6 +1,18 @@
 #if DEBUG
+  import Foundation
   import IntradaCoreFFI
   import SharedTypes
+
+  /// A fixed Gregorian/UTC calendar so date-derived UI (the week strip) renders
+  /// identically on any host — pair it with `previewReferenceDate` in previews
+  /// and pin it via `.environment(\.calendar, PreviewCalendar.utc)` in snapshot hosts.
+  enum PreviewCalendar {
+    static var utc: Calendar {
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+      return calendar
+    }
+  }
 
   /// Offline bridge for Xcode previews: serves the core's initial (empty)
   /// ViewModel — optionally seeded with library items — and emits no effects,
@@ -129,6 +141,19 @@
   }
 
   extension PracticeSessionView {
+    /// Sunday 31 May 2026 (noon UTC) — same Mon–Sun week as the fixtures below
+    /// (Thu 28th, Sat 30th). "Today" has no practice, so the screen auto-selects
+    /// the most recent earlier practice day (Sat 30th), exercising both the
+    /// today-ring and selected-fill states deterministically.
+    static var previewReferenceDate: Date {
+      var components = DateComponents()
+      components.year = 2026
+      components.month = 5
+      components.day = 31
+      components.hour = 12
+      return PreviewCalendar.utc.date(from: components) ?? .distantPast
+    }
+
     /// Fixed past dates (not "now") so the card renders a deterministic absolute
     /// date — reusable from snapshot tests as well as the canvas.
     static var previewCompleted: PracticeSessionView {

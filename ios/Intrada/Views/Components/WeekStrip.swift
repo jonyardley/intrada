@@ -1,0 +1,108 @@
+import SharedTypes
+import SwiftUI
+
+/// A Mon–Sun row for one week. A day is always selected — the screen
+/// auto-selects on open, so there's no "nothing selected" state to render.
+struct WeekStrip: View {
+  let days: [Date]
+  let today: Date
+  let practiceDays: Swift.Set<Date>
+  @Binding var selected: Date
+  let calendar: Calendar
+
+  var body: some View {
+    HStack(spacing: 4) {
+      ForEach(days, id: \.self) { day in
+        WeekDayCell(
+          day: day,
+          isToday: calendar.isDate(day, inSameDayAs: today),
+          isSelected: calendar.isDate(day, inSameDayAs: selected),
+          hasPractice: practiceDays.contains(calendar.startOfDay(for: day)),
+          calendar: calendar
+        ) { selected = day }
+      }
+    }
+  }
+}
+
+private struct WeekDayCell: View {
+  let day: Date
+  let isToday: Bool
+  let isSelected: Bool
+  let hasPractice: Bool
+  let calendar: Calendar
+  let onTap: () -> Void
+  @Environment(\.locale) private var locale
+
+  var body: some View {
+    Button(action: onTap) {
+      VStack(spacing: 5) {
+        Text(weekdayInitial)
+          .font(IntradaFont.micro)
+          .foregroundStyle(IntradaColor.inkFaint)
+        Text(dayNumber)
+          .font(IntradaFont.metaMedium)
+          .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.ink)
+          .frame(width: 32, height: 32)
+          .background(isSelected ? IntradaColor.accent : .clear, in: Circle())
+          .overlay(
+            Circle().strokeBorder(
+              IntradaColor.accent, lineWidth: isToday && !isSelected ? 1.5 : 0)
+          )
+        Circle()
+          .fill(hasPractice ? IntradaColor.accent : .clear)
+          .frame(width: 5, height: 5)
+      }
+      .frame(maxWidth: .infinity)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(accessibilityLabel)
+    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+  }
+
+  private var dayNumber: String {
+    String(calendar.component(.day, from: day))
+  }
+
+  private var weekdayInitial: String {
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.calendar = calendar
+    formatter.setLocalizedDateFormatFromTemplate("EEEEE")
+    return formatter.string(from: day)
+  }
+
+  private var accessibilityLabel: String {
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.calendar = calendar
+    formatter.setLocalizedDateFormatFromTemplate("EEEEdMMMM")
+    var label = formatter.string(from: day)
+    if isToday { label = "Today, \(label)" }
+    label += hasPractice ? ", practised" : ", no practice"
+    return label
+  }
+}
+
+#if DEBUG
+  #Preview {
+    struct Harness: View {
+      @State private var selected = Calendar.current.startOfDay(for: .now)
+      var body: some View {
+        let cal = Calendar.current
+        let week = PracticeWeek.days(containing: .now, calendar: cal)
+        return ZStack {
+          PaperBackground()
+          WeekStrip(
+            days: week, today: .now,
+            practiceDays: Swift.Set([week[1], week[3]]),
+            selected: $selected, calendar: cal
+          )
+          .padding(16)
+        }
+      }
+    }
+    return Harness()
+  }
+#endif
