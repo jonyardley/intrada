@@ -372,7 +372,7 @@ ios-gen: ios-typegen (ios-package "debug")
 ios-release: ios-typegen (ios-package "release")
     cd ios && xcodegen generate
     rm -f ios/generated/.gen-stamp
-    @echo "✓ release core ready — in Xcode: select your device, then Product → Profile (⌘I)"
+    @echo "✓ release core ready — in Xcode: select your device, then Product → Profile (⌘I). Next 'just ios' rebuilds the debug core."
 
 # Losslessly shrink snapshot references — drops Xcode's redundant all-opaque
 # alpha channel (keeps pixels + sRGB), ~75% smaller. Run after (re)recording
