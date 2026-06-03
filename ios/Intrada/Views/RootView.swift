@@ -1,3 +1,4 @@
+import SentrySwiftUI
 import SharedTypes
 import SwiftUI
 
@@ -14,14 +15,14 @@ struct RootView: View {
   var body: some View {
     TabView {
       NavigationStack {
-        LibraryScreen()
+        SentryTracedView("Library") { LibraryScreen() }
       }
       .tabItem { Label("Library", systemImage: "books.vertical") }
-      PracticeScreen()
+      SentryTracedView("Practice") { PracticeScreen() }
         .tabItem { Label("Practice", systemImage: "metronome.fill") }
-      RoutinesScreen()
+      SentryTracedView("Routines") { RoutinesScreen() }
         .tabItem { Label("Routines", systemImage: "music.note.list") }
-      AnalyticsScreen()
+      SentryTracedView("Progress") { AnalyticsScreen() }
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
     }
     .tint(IntradaColor.accent)

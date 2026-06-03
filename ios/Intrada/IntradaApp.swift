@@ -34,9 +34,18 @@ struct IntradaApp: App {
         options.dsn = dsn
         #if DEBUG
           options.environment = "development"
+          options.tracesSampleRate = 1.0
         #else
           options.environment = "production"
+          options.tracesSampleRate = 0.2
         #endif
+        options.enablePerformanceV2 = true
+        options.enableAppHangTrackingV2 = true
+        // `sessionSampleRate` is relative to `tracesSampleRate` — prod profiling rides the 0.2 trace rate.
+        options.configureProfiling = {
+          $0.lifecycle = .trace
+          $0.sessionSampleRate = 1.0
+        }
       }
     }
   }
