@@ -22,14 +22,16 @@
     private let items: [LibraryItemView]
     private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
+    private let buildingSetlist: BuildingSetlistView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
-      sessions: [PracticeSessionView] = []
+      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
       self.sessions = sessions
+      self.buildingSetlist = buildingSetlist
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -50,6 +52,7 @@
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       viewModel.sessions = sessions
+      viewModel.buildingSetlist = buildingSetlist
       return viewModel
     }
   }
@@ -100,6 +103,19 @@
           .previewCompleted, .previewEndedEarly,
         ]))
     }
+
+    /// Session builder mid-assembly: a non-empty setlist for the populated-state
+    /// preview + snapshot. Injected directly (deterministic, offline) rather than
+    /// driven through the core, whose ulids/timestamps aren't snapshot-stable.
+    static var previewBuilding: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: [.previewPiece, .previewExercise],
+            itemCount: 2, sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource)))
+    }
   }
 
   extension LibraryItemView {
@@ -137,6 +153,27 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false)
+    }
+  }
+
+  extension SetlistEntryView {
+    static var previewPiece: SetlistEntryView {
+      building(id: "setlist-1", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
+    }
+
+    static var previewExercise: SetlistEntryView {
+      building(
+        id: "setlist-2", item: "exercise-1", title: "Hanon No. 1", type: .exercise, position: 1)
+    }
+
+    private static func building(
+      id: String, item: String, title: String, type: ItemKind, position: UInt64
+    ) -> SetlistEntryView {
+      SetlistEntryView(
+        id: id, itemId: item, itemTitle: title, itemType: type, position: position,
+        durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
+        repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil)
     }
   }
 

@@ -59,12 +59,25 @@ struct PracticeScreen: View {
     .onChange(of: weeks.count) { _, newCount in
       if let pinned = weekIndexOverride, pinned >= newCount { weekIndexOverride = nil }
     }
+    // State-driven: `startBuilding` makes `buildingSetlist` non-nil → push; a
+    // pop sends `cancelBuilding` → core returns to Idle. No local nav flag.
+    .navigationDestination(isPresented: buildingBinding) {
+      SessionBuilderScreen()
+    }
   }
 
-  // The front door. The builder/player don't exist yet, so it's present-but-
-  // disabled to establish the one-primary-action hierarchy without a dead-end.
+  private var buildingBinding: Binding<Bool> {
+    Binding(
+      get: { store.viewModel?.buildingSetlist != nil },
+      set: { presented in
+        if !presented { store.send(.session(.cancelBuilding)) }
+      })
+  }
+
   private var startButton: some View {
-    VStack(spacing: 6) {
+    Button {
+      store.send(.session(.startBuilding))
+    } label: {
       Label("Start practising", systemImage: "play.fill")
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.onAccent)
@@ -72,13 +85,9 @@ struct PracticeScreen: View {
         .padding(.vertical, IntradaSpacing.row)
         .background(LinearGradient.brandBar)
         .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-        .opacity(0.5)
-      Text("Coming soon")
-        .font(IntradaFont.micro)
-        .foregroundStyle(IntradaColor.inkFaint)
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Start practising, coming soon")
+    .buttonStyle(.plain)
+    .accessibilityLabel("Start practising")
   }
 
   @ViewBuilder private var content: some View {

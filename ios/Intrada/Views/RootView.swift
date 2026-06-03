@@ -17,8 +17,10 @@ struct RootView: View {
         LibraryScreen().screenTransaction("Library")
       }
       .tabItem { Label("Library", systemImage: "books.vertical") }
-      PracticeScreen().screenTransaction("Practice")
-        .tabItem { Label("Practice", systemImage: "metronome.fill") }
+      NavigationStack {
+        PracticeScreen().screenTransaction("Practice")
+      }
+      .tabItem { Label("Practice", systemImage: "metronome.fill") }
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen().screenTransaction("Progress")
