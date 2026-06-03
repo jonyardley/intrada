@@ -385,13 +385,44 @@ ios-test: _ios-sync
     set -euo pipefail
     cd ios
     xcodegen generate
-    name="intrada-test-26-5"
-    udid=$(xcrun simctl list devices --json | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for v in d.values() for x in v if x['name']=='$name'), ''))")
+    name="$(just _ios-test-sim-name)"
+    udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
     xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+
+# Per-worktree sim name (basename of the checkout, sanitised to simctl-safe
+# chars) so parallel worktrees don't share one device. The device model is
+# irrelevant to snapshot output — swift-snapshot-testing pins `.iPhone13`; only
+# the iOS 26.5 runtime affects the pixels — so any distinct device is safe.
+[private]
+_ios-test-sim-name:
+    @printf 'intrada-test-26-5-%s\n' "$(basename "$(git rev-parse --show-toplevel)" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
+
+# UDID of THIS worktree's snapshot sim, or empty if it doesn't exist yet.
+[private]
+_ios-test-sim-udid:
+    @xcrun simctl list devices --json | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for v in d.values() for x in v if x['name']=='$(just _ios-test-sim-name)'), ''))"
+
+# Delete THIS worktree's snapshot sim (created by `ios-test`). Only ever removes
+# the device named for the current worktree — never another worktree's or the
+# main checkout's, and never a global reset (see the shared-simulator rule).
+[group('iOS')]
+ios-test-sim-clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="$(just _ios-test-sim-name)"
+    udid="$(just _ios-test-sim-udid)"
+    if [ -n "$udid" ]; then
+        # `simctl delete` refuses a booted device, and `ios-test` leaves its sim
+        # booted — shut it down first (ignore "already shutdown").
+        xcrun simctl shutdown "$udid" 2>/dev/null || true
+        xcrun simctl delete "$udid" && echo "✓ deleted $name ($udid)"
+    else
+        echo "✓ no sim named $name — nothing to clean"
+    fi
 
 # Facet typegen → ios/generated/SharedTypes (Event/Effect/ViewModel + bincode).
 [group('iOS')]

@@ -98,6 +98,15 @@ before kicking off a fresh test run — check for another live session
 `pgrep -x Xcode`). If anything you didn't start is active, **pause and ask the
 user** rather than risk killing their running sim/tests.
 
+`just ios-test` already follows this rule: it names its sim per worktree
+(`intrada-test-26-5-<worktree-basename>`), so parallel worktrees run snapshot
+tests on **distinct** devices instead of serializing on one shared device. The
+device model is irrelevant to snapshot output (swift-snapshot-testing pins
+`.iPhone13`; only the iOS 26.5 runtime affects the pixels). `just
+ios-test-sim-clean` deletes only the current worktree's sim. Removing blocking
+isn't free of resource limits — N booted sims + N Swift builds is heavy, so the
+practical ceiling is how many parallel agents the host can take, not the sim.
+
 **Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R on the
 default **Intrada** scheme, or any build with no launch args) runs
 **local-first**: the Library hydrates from the on-device GRDB store, so items
