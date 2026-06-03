@@ -8,6 +8,14 @@ struct SessionItemPickerSheet: View {
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
 
+  // Binary membership: the core doesn't dedupe by item id (#939); keep first.
+  private var entryByItem: [String: String] {
+    let entries = store.viewModel?.buildingSetlist?.entries ?? []
+    return Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
+  }
+
+  private var addedCount: Int { store.viewModel?.buildingSetlist?.entries.count ?? 0 }
+
   var body: some View {
     NavigationStack {
       ZStack {
@@ -25,7 +33,8 @@ struct SessionItemPickerSheet: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          Button("Done") { dismiss() }
+          Button(addedCount > 0 ? "Done · \(addedCount)" : "Done") { dismiss() }
+            .accessibilityIdentifier("sessionPickerDone")
         }
       }
     }
@@ -40,12 +49,7 @@ struct SessionItemPickerSheet: View {
       ScrollView {
         LazyVStack(spacing: IntradaSpacing.row) {
           ForEach(items, id: \.id) { item in
-            Button {
-              add(item)
-            } label: {
-              LibraryItemCard(item: item)
-            }
-            .buttonStyle(.plain)
+            row(item)
           }
         }
         .padding(IntradaSpacing.card)
@@ -54,14 +58,40 @@ struct SessionItemPickerSheet: View {
     }
   }
 
-  // The global error banner lives in RootView, behind this sheet — surface the
-  // add failure here, and only ack the tap once the core confirms the add.
-  private func add(_ item: LibraryItemView) {
+  private func row(_ item: LibraryItemView) -> some View {
+    let added = entryByItem[item.id] != nil
+    return Button {
+      toggle(item)
+    } label: {
+      LibraryItemCard(item: item)
+        .overlay(alignment: .trailing) {
+          Image(systemName: added ? "checkmark.circle.fill" : "plus.circle")
+            .font(.title2)
+            .foregroundStyle(added ? IntradaColor.accent : IntradaColor.inkFaint)
+            .padding(.trailing, IntradaSpacing.card)
+            .accessibilityHidden(true)
+        }
+        .overlay(
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
+            .stroke(IntradaColor.accent, lineWidth: 2)
+            .opacity(added ? 1 : 0)
+        )
+    }
+    .buttonStyle(.plain)
+    .accessibilityValue(added ? "Added" : "Not added")
+    .accessibilityHint(added ? "Removes it from the session" : "Adds it to the session")
+  }
+
+  // RootView's error banner sits behind this sheet — surface failures here.
+  private func toggle(_ item: LibraryItemView) {
     let before = store.viewModel?.error
-    store.send(.session(.addToSetlist(itemId: item.id)))
-    let after = store.viewModel?.error
-    if let after, after != before {
-      addError = after
+    if let entryId = entryByItem[item.id] {
+      store.send(.session(.removeFromSetlist(entryId: entryId)))
+    } else {
+      store.send(.session(.addToSetlist(itemId: item.id)))
+    }
+    if let error = store.viewModel?.error, error != before {
+      addError = error
     } else {
       addError = nil
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
