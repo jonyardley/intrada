@@ -90,3 +90,18 @@ targets:
         product: SharedTypes
       - package: IntradaCoreFFI
         product: IntradaCoreFFI
+
+# Extra scheme for Cmd+R against the demo dataset (the 6 sample pieces +
+# practice history). Pick "Intrada (Seeded)" from Xcode's scheme dropdown to
+# develop against populated content before add/edit exists; the default
+# "Intrada" scheme runs local-first against real on-device data. The arg is the
+# same one `just ios-run`'s SEED passes on the headless path. Selection persists
+# across `just ios` regenerations (it lives in xcuserdata, untouched by xcodegen).
+schemes:
+  Intrada (Seeded):
+    build:
+      targets:
+        Intrada: all
+    run:
+      commandLineArguments:
+        "--seed-sample-data": true
