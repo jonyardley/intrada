@@ -36,7 +36,7 @@ struct LibraryScreen: View {
     ) {
       VStack(spacing: 0) {
         HStack(spacing: IntradaSpacing.controlGap) {
-          LibraryFilterTabs(selection: filterBinding)
+          LibraryFilterTabs(selection: filterBinding, edgeInset: IntradaSpacing.card)
             .frame(maxWidth: .infinity, alignment: .leading)
           LibrarySortMenu(
             current: store.viewModel?.activeSort
