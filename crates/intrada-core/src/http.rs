@@ -37,6 +37,25 @@ fn url(api_base_url: &str, path: &str) -> String {
     format!("{}{path}", api_base_url.trim_end_matches('/'))
 }
 
+/// Resolve a JSON response into an `Event`: a present body goes through
+/// `on_body`; an empty body or transport error becomes a contextual
+/// `LoadFailed`. Collapses the identical `match result { … body().cloned() … }`
+/// arm shared by every fetch/create/update builder (#745).
+fn json_response<T: Clone>(
+    result: crux_http::Result<crux_http::Response<T>>,
+    on_body: impl FnOnce(T) -> Event,
+    empty_msg: &str,
+    error_context: &str,
+) -> Event {
+    match result {
+        Ok(response) => match response.body().cloned() {
+            Some(body) => on_body(body),
+            None => Event::LoadFailed(empty_msg.to_string()),
+        },
+        Err(e) => Event::LoadFailed(format!("{error_context}: {e}")),
+    }
+}
+
 // ── Fetch operations ────────────────────────────────────────────────────
 
 pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
@@ -46,12 +65,13 @@ pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
     Http::get(url(api_base_url, "/api/items"))
         .expect_json::<Vec<Item>>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(items) => Event::DataLoaded { items },
-                None => Event::LoadFailed("Failed to parse items response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load items: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |items| Event::DataLoaded { items },
+                "Failed to parse items response",
+                "Failed to load items",
+            )
         })
 }
 
@@ -62,12 +82,13 @@ pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
     Http::get(url(api_base_url, "/api/sessions"))
         .expect_json::<Vec<PracticeSession>>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(sessions) => Event::SessionsLoaded { sessions },
-                None => Event::LoadFailed("Failed to parse sessions response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load sessions: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |sessions| Event::SessionsLoaded { sessions },
+                "Failed to parse sessions response",
+                "Failed to load sessions",
+            )
         })
 }
 
@@ -80,12 +101,13 @@ pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
     Http::get(url(api_base_url, "/api/sets"))
         .expect_json::<Vec<Set>>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(sets) => Event::SetsLoaded { sets },
-                None => Event::LoadFailed("Failed to parse sets response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load sets: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |sets| Event::SetsLoaded { sets },
+                "Failed to parse sets response",
+                "Failed to load sets",
+            )
         })
 }
 
@@ -111,15 +133,13 @@ pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Ef
         .expect("serialize CreateItem")
         .expect_json::<Item>()
         .build()
-        .then_send(move |result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(item) => Event::ItemCreated {
-                    temp_id: temp_id.clone(),
-                    item,
-                },
-                None => Event::LoadFailed("create_item: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to save item: {e}")),
+        .then_send(move |result| {
+            json_response(
+                result,
+                |item| Event::ItemCreated { temp_id, item },
+                "create_item: server returned no body",
+                "Failed to save item",
+            )
         })
 }
 
@@ -145,12 +165,13 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         .expect("serialize UpdateItem")
         .expect_json::<Item>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(item) => Event::ItemUpdated { item },
-                None => Event::LoadFailed("update_item: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to update item: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |item| Event::ItemUpdated { item },
+                "update_item: server returned no body",
+                "Failed to update item",
+            )
         })
 }
 
@@ -232,12 +253,13 @@ pub fn update_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<
         .expect("serialize UpdateSetRequest")
         .expect_json::<Set>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(set) => Event::SetUpdated { set },
-                None => Event::LoadFailed("update_set: server returned no body".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to update set: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |set| Event::SetUpdated { set },
+                "update_set: server returned no body",
+                "Failed to update set",
+            )
         })
 }
 
@@ -262,12 +284,13 @@ pub fn get_account_preferences(api_base_url: &str) -> Command<Effect, Event> {
     Http::get(url(api_base_url, "/api/account/preferences"))
         .expect_json::<AccountPreferences>()
         .build()
-        .then_send(|result| match result {
-            Ok(response) => match response.body().cloned() {
-                Some(prefs) => Event::Account(AccountEvent::PreferencesLoaded(prefs)),
-                None => Event::LoadFailed("Failed to parse preferences response".into()),
-            },
-            Err(e) => Event::LoadFailed(format!("Failed to load preferences: {e}")),
+        .then_send(|result| {
+            json_response(
+                result,
+                |prefs| Event::Account(AccountEvent::PreferencesLoaded(prefs)),
+                "Failed to parse preferences response",
+                "Failed to load preferences",
+            )
         })
 }
 
@@ -759,5 +782,32 @@ mod tests {
     fn multiple_trailing_slashes_in_base_url_are_trimmed() {
         let req = take_http(&mut fetch_items("https://api.example.com///"));
         assert_eq!(req.url, "https://api.example.com/api/items");
+    }
+
+    // ── json_response helper ─────────────────────────────────────────
+
+    #[test]
+    fn json_response_maps_present_body_through_on_body() {
+        let resp = crux_http::testing::ResponseBuilder::ok()
+            .body(vec![1u8, 2, 3])
+            .build();
+        let event = json_response(
+            Ok(resp),
+            |b: Vec<u8>| Event::LoadFailed(format!("body len {}", b.len())),
+            "empty body",
+            "ctx",
+        );
+        assert!(matches!(event, Event::LoadFailed(m) if m == "body len 3"));
+    }
+
+    #[test]
+    fn json_response_maps_transport_error_to_contextual_load_failed() {
+        let event = json_response::<Vec<u8>>(
+            Err(crux_http::HttpError::Timeout),
+            |_| panic!("on_body must not run on a transport error"),
+            "empty body",
+            "Failed to load items",
+        );
+        assert!(matches!(event, Event::LoadFailed(m) if m == "Failed to load items: Timeout"));
     }
 }
