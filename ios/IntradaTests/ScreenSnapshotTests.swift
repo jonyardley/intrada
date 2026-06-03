@@ -136,7 +136,7 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testSessionItemPickerSheet() {
-    assertSnapshot(of: host(SessionItemPickerSheet(), store: .previewLibrary), as: config)
+    assertSnapshot(of: host(SessionItemPickerSheet(), store: .previewBuilding), as: config)
   }
 
   func testRoutinesScreen() {

@@ -35,7 +35,8 @@ final class SessionBuilderUITests: XCTestCase {
       app.staticTexts["Add to session"].waitForExistence(timeout: 5), "Picker sheet title")
     tapButton(in: app, containing: "Clair de Lune")
     tapButton(in: app, containing: "Hanon No. 1")
-    let done = app.buttons["Done"]
+    // Match by id — Done's label carries a running count ("Done · N").
+    let done = app.buttons["sessionPickerDone"]
     XCTAssertTrue(done.waitForExistence(timeout: 5), "Picker Done button")
     done.tap()
 
