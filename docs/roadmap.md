@@ -108,9 +108,6 @@ See [`specs/native-ios.md`](../specs/native-ios.md) for the phased plan
 sync + retire Tauri). Active work tracks under the
 [`ios`](https://github.com/jonyardley/intrada/labels/ios) label and the
 native-iOS [`epic`](https://github.com/jonyardley/intrada/labels/epic).
-The prior Tauri/Leptos plan in
-[`specs/tauri-leptos-ios-shell.md`](../specs/tauri-leptos-ios-shell.md)
-remains the reference for the shell being retired.
 
 ---
 

@@ -1,6 +1,6 @@
 # Live Activity plugin (iOS)
 
-> Spec for [intrada#TBD](https://github.com/jonyardley/intrada/issues) —
+> Spec for [intrada#474](https://github.com/jonyardley/intrada/issues/474) —
 > Tier 3 per CLAUDE.md (new Tauri plugin + Widget Extension target →
 > IPC contract sensitivity override + Xcode project structure change).
 
