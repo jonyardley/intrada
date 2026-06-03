@@ -27,7 +27,10 @@ struct IntradaApp: App {
     IntradaFonts.register()
 
     // `hasPrefix` gates out empty (CI) and an unexpanded `${…}` literal alike.
-    if let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
+    let runningUnderXCTest =
+      ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    if !runningUnderXCTest,
+      let dsn = Bundle.main.object(forInfoDictionaryKey: "SENTRY_DSN") as? String,
       dsn.hasPrefix("https://")
     {
       SentrySDK.start { options in
