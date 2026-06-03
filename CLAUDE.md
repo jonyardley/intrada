@@ -409,9 +409,13 @@ in prod), `ALLOWED_ORIGIN` (default `http://localhost:8080`), `PORT` (default 30
 ### Native iOS (optional)
 `SENTRY_DSN_NATIVE` — put in `.env` to capture crash/error events from local dev
 builds (reports to the `intrada-mobile` Sentry project, tagged
-`environment=development`). `xcodegen` bakes it into the app's `Info.plist`; the
-justfile's `set dotenv-load` feeds it in. **Unset in CI**, so test/smoke runs send
-nothing. The app only starts Sentry on a real `https://` DSN, so an empty or
+`environment=development`). `xcodegen` writes it to the `SENTRY_DSN` build
+setting; the target's partial `Info.plist` (`ios/Intrada/Info.plist`) carries
+`SENTRY_DSN = $(SENTRY_DSN)` so the value lands in the built plist — a custom key
+**can't** ride `INFOPLIST_KEY_*`, which `GENERATE_INFOPLIST_FILE` only honours for
+Apple-recognised keys (that gap meant Sentry silently never started). The
+justfile's `set dotenv-load` feeds the var in. **Unset in CI**, so test/smoke runs
+send nothing. The app only starts Sentry on a real `https://` DSN, so an empty or
 unexpanded value is a safe no-op.
 
 ## Design System Rules

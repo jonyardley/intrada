@@ -47,10 +47,14 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.intrada.native
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        # DSN from the SENTRY_DSN_NATIVE env var (xcodegen expands ${...}; the
-        # justfile's `set dotenv-load` feeds it from .env). Unset in CI → empty →
-        # Sentry stays disabled there. Reports to the intrada-mobile project.
-        INFOPLIST_KEY_SENTRY_DSN: "${SENTRY_DSN_NATIVE}"
+        # Custom Info.plist keys (SENTRY_DSN) are dropped by GENERATE_INFOPLIST_FILE —
+        # it only injects Apple-recognised INFOPLIST_KEY_* — so they go through this
+        # partial plist, which the build system merges with the generated keys.
+        INFOPLIST_FILE: Intrada/Info.plist
+        # xcodegen expands ${...} from the env (justfile `set dotenv-load` feeds .env);
+        # the plist's $(SENTRY_DSN) resolves this at build. Unset → empty → the
+        # hasPrefix("https://") start gate keeps Sentry off (CI). intrada-mobile project.
+        SENTRY_DSN: "${SENTRY_DSN_NATIVE}"
     dependencies:
       - package: IntradaCoreFFI
         product: IntradaCoreFFI
