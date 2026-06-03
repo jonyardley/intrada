@@ -30,13 +30,20 @@ fn require_absolute_base(api_base_url: &str) -> Option<Command<Effect, Event>> {
     }
 }
 
+/// Join `api_base_url` and an absolute `path` (leading `/`), tolerating a
+/// trailing slash on the base so a misconfigured `https://host/` doesn't yield
+/// `https://host//api/...` (#730).
+fn url(api_base_url: &str, path: &str) -> String {
+    format!("{}{path}", api_base_url.trim_end_matches('/'))
+}
+
 // ── Fetch operations ────────────────────────────────────────────────────
 
 pub fn fetch_items(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::get(format!("{api_base_url}/api/items"))
+    Http::get(url(api_base_url, "/api/items"))
         .expect_json::<Vec<Item>>()
         .build()
         .then_send(|result| match result {
@@ -52,7 +59,7 @@ pub fn fetch_sessions(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::get(format!("{api_base_url}/api/sessions"))
+    Http::get(url(api_base_url, "/api/sessions"))
         .expect_json::<Vec<PracticeSession>>()
         .build()
         .then_send(|result| match result {
@@ -70,7 +77,7 @@ pub fn fetch_sets(api_base_url: &str) -> Command<Effect, Event> {
     }
     use crate::domain::set::Set;
 
-    Http::get(format!("{api_base_url}/api/sets"))
+    Http::get(url(api_base_url, "/api/sets"))
         .expect_json::<Vec<Set>>()
         .build()
         .then_send(|result| match result {
@@ -99,7 +106,7 @@ pub fn create_item(api_base_url: &str, item: &Item, temp_id: &str) -> Command<Ef
         tags: item.tags.clone(),
     };
     let temp_id = temp_id.to_string();
-    Http::post(format!("{api_base_url}/api/items"))
+    Http::post(url(api_base_url, "/api/items"))
         .body_json(&create)
         .expect("serialize CreateItem")
         .expect_json::<Item>()
@@ -133,7 +140,7 @@ pub fn update_item(api_base_url: &str, item: &Item) -> Command<Effect, Event> {
         tags: Some(item.tags.clone()),
         priority: Some(item.priority),
     };
-    Http::put(format!("{api_base_url}/api/items/{}", item.id))
+    Http::put(url(api_base_url, &format!("/api/items/{}", item.id)))
         .body_json(&update)
         .expect("serialize UpdateItem")
         .expect_json::<Item>()
@@ -151,7 +158,7 @@ pub fn delete_item(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::delete(format!("{api_base_url}/api/items/{id}"))
+    Http::delete(url(api_base_url, &format!("/api/items/{id}")))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
@@ -165,7 +172,7 @@ pub fn create_session(api_base_url: &str, session: &PracticeSession) -> Command<
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::post(format!("{api_base_url}/api/sessions"))
+    Http::post(url(api_base_url, "/api/sessions"))
         .body_json(session)
         .expect("serialize PracticeSession")
         .build()
@@ -184,7 +191,7 @@ pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::delete(format!("{api_base_url}/api/sessions/{id}"))
+    Http::delete(url(api_base_url, &format!("/api/sessions/{id}")))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
@@ -203,7 +210,7 @@ pub fn create_set(
         return cmd;
     }
     let create = CreateSetRequest::from_set(set);
-    Http::post(format!("{api_base_url}/api/sets"))
+    Http::post(url(api_base_url, "/api/sets"))
         .body_json(&create)
         .expect("serialize CreateSetRequest")
         .build()
@@ -220,7 +227,7 @@ pub fn update_set(api_base_url: &str, set: &crate::domain::set::Set) -> Command<
     use crate::domain::set::Set;
 
     let update = UpdateSetRequest::from_set(set);
-    Http::put(format!("{api_base_url}/api/sets/{}", set.id))
+    Http::put(url(api_base_url, &format!("/api/sets/{}", set.id)))
         .body_json(&update)
         .expect("serialize UpdateSetRequest")
         .expect_json::<Set>()
@@ -238,7 +245,7 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::delete(format!("{api_base_url}/api/sets/{id}"))
+    Http::delete(url(api_base_url, &format!("/api/sets/{id}")))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
@@ -252,7 +259,7 @@ pub fn get_account_preferences(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::get(format!("{api_base_url}/api/account/preferences"))
+    Http::get(url(api_base_url, "/api/account/preferences"))
         .expect_json::<AccountPreferences>()
         .build()
         .then_send(|result| match result {
@@ -272,7 +279,7 @@ pub fn save_account_preferences(
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::put(format!("{api_base_url}/api/account/preferences"))
+    Http::put(url(api_base_url, "/api/account/preferences"))
         .body_json(prefs)
         .expect("serialize AccountPreferences")
         .expect_json::<AccountPreferences>()
@@ -296,7 +303,7 @@ pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::delete(format!("{api_base_url}/api/account"))
+    Http::delete(url(api_base_url, "/api/account"))
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::Account(AccountEvent::AccountDeleted),
@@ -312,7 +319,7 @@ pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::get(format!("{api_base_url}/api/account/tokens"))
+    Http::get(url(api_base_url, "/api/account/tokens"))
         .expect_json::<Vec<McpToken>>()
         .build()
         .then_send(|result| match result {
@@ -337,7 +344,7 @@ pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event
         name: &'a str,
     }
 
-    Http::post(format!("{api_base_url}/api/account/tokens"))
+    Http::post(url(api_base_url, "/api/account/tokens"))
         .body_json(&Body { name })
         .expect("serialize CreateTokenRequest")
         .expect_json::<CreatedMcpToken>()
@@ -360,7 +367,7 @@ pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> 
         return cmd;
     }
     let id_for_callback = id.to_string();
-    Http::delete(format!("{api_base_url}/api/account/tokens/{id}"))
+    Http::delete(url(api_base_url, &format!("/api/account/tokens/{id}")))
         .build()
         .then_send(move |result| match result {
             Ok(_) => Event::McpToken(McpTokenEvent::TokenRevoked {
@@ -380,7 +387,7 @@ pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::get(format!("{api_base_url}/api/account/audit"))
+    Http::get(url(api_base_url, "/api/account/audit"))
         .expect_json::<Vec<McpAuditEntry>>()
         .build()
         .then_send(|result| match result {
@@ -407,7 +414,7 @@ pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Comma
     if let Some(cmd) = require_absolute_base(api_base_url) {
         return cmd;
     }
-    Http::post(format!("{api_base_url}/oauth/finalize"))
+    Http::post(url(api_base_url, "/oauth/finalize"))
         .body_json(params)
         .expect("serialize OAuthFinalizeParams")
         .expect_json::<OAuthFinalizeResponse>()
@@ -742,10 +749,15 @@ mod tests {
     // ── Base URL trimming ────────────────────────────────────────────
 
     #[test]
-    fn trailing_slash_in_base_url_produces_double_slash() {
-        // api_base_url is concatenated as-is; callers must pass it without a
-        // trailing slash.
+    fn trailing_slash_in_base_url_is_trimmed() {
+        // A base passed with a trailing slash must not produce `//api/items`.
         let req = take_http(&mut fetch_items("https://api.example.com/"));
-        assert_eq!(req.url, "https://api.example.com//api/items");
+        assert_eq!(req.url, "https://api.example.com/api/items");
+    }
+
+    #[test]
+    fn multiple_trailing_slashes_in_base_url_are_trimmed() {
+        let req = take_http(&mut fetch_items("https://api.example.com///"));
+        assert_eq!(req.url, "https://api.example.com/api/items");
     }
 }
