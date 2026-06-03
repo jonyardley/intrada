@@ -13,7 +13,7 @@ struct LibraryDetailScreen: View {
   var body: some View {
     ScreenScaffold(title: item.title, subtitle: subtitle) {
       ScrollView {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: IntradaSpacing.card) {
           TypeBadge(kind: item.itemType)
 
           if !detailRows.isEmpty {
@@ -33,7 +33,7 @@ struct LibraryDetailScreen: View {
               .font(IntradaFont.body)
               .foregroundStyle(IntradaColor.inkSecondary)
               .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(16)
+              .padding(IntradaSpacing.card)
               .cardSurface()
           }
 
@@ -42,9 +42,9 @@ struct LibraryDetailScreen: View {
           }
 
           deleteButton
-            .padding(.top, 8)
+            .padding(.top, IntradaSpacing.controlGap)
         }
-        .padding(16)
+        .padding(IntradaSpacing.card)
       }
       .scrollEdgeShadow()
     }
@@ -76,7 +76,7 @@ struct LibraryDetailScreen: View {
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.danger)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, IntradaSpacing.cardCompact)
     }
     .buttonStyle(.plain)
   }
@@ -100,7 +100,7 @@ struct LibraryDetailScreen: View {
 
   private var tags: some View {
     ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 8) {
+      HStack(spacing: IntradaSpacing.controlGap) {
         ForEach(item.tags, id: \.self) { tag in
           TagChip(tag, style: .outlined)
         }
@@ -124,8 +124,8 @@ private struct DetailRow: View {
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.trailing)
     }
-    .padding(.vertical, 12)
-    .padding(.horizontal, 16)
+    .padding(.vertical, IntradaSpacing.cardCompact)
+    .padding(.horizontal, IntradaSpacing.card)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(label), \(value)")
   }

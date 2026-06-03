@@ -22,7 +22,7 @@ struct FormField: View {
         .textInputAutocapitalization(autocapitalization)
     }
     .padding(.vertical, 10)
-    .padding(.horizontal, 16)
+    .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 }

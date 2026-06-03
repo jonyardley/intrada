@@ -35,7 +35,7 @@ struct LibraryScreen: View {
       trailing: .init(label: "Add item", action: { adding = true })
     ) {
       VStack(spacing: 0) {
-        HStack(spacing: 8) {
+        HStack(spacing: IntradaSpacing.controlGap) {
           LibraryFilterTabs(selection: filterBinding)
             .frame(maxWidth: .infinity, alignment: .leading)
           LibrarySortMenu(
@@ -52,7 +52,7 @@ struct LibraryScreen: View {
             )
             .font(IntradaFont.tab)
             .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
-            .padding(8)
+            .padding(IntradaSpacing.controlGap)
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Filter by tag")
@@ -61,22 +61,22 @@ struct LibraryScreen: View {
             Image(systemName: "magnifyingglass")
               .font(IntradaFont.tab)
               .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
-              .padding(8)
+              .padding(IntradaSpacing.controlGap)
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Search")
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.cardCompact)
+        .padding(.bottom, IntradaSpacing.row)
         // Opaque + on top so the bar emerges from behind the pills rather than
         // ghosting over them (see Design System Rules → animated reveals).
         .background(IntradaColor.paperTop)
         .zIndex(1)
         if searchRevealed {
           LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.horizontal, IntradaSpacing.card)
+            .padding(.bottom, IntradaSpacing.cardCompact)
             .background(IntradaColor.paperTop)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
@@ -116,7 +116,7 @@ struct LibraryScreen: View {
         message: emptyMessage)
     } else {
       ScrollView {
-        LazyVStack(spacing: 14) {
+        LazyVStack(spacing: IntradaSpacing.row) {
           ForEach(items, id: \.id) { item in
             NavigationLink(value: item.id) {
               LibraryItemCard(item: item)
@@ -124,9 +124,9 @@ struct LibraryScreen: View {
             .buttonStyle(.plain)
           }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 16)
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.card)
+        .padding(.bottom, IntradaSpacing.card)
       }
       .scrollDismissesKeyboard(.interactively)
       .scrollEdgeShadow()

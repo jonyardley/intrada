@@ -242,6 +242,15 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 - **Quality is per-screen, not deferred.** Every screen ships with a
   swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
   built *with* the screen. Sentry is wired from the first build.
+- **Spacing & radius are tokens, not literals** — same discipline as colour
+  (`IntradaColor`) and type (`IntradaFont`). Padding / inset / list-gap values
+  come from `IntradaSpacing` (`controlGap` 8, `cardCompact` 12, `row` 14,
+  `card` 16 — names mirror the web `p-card` scale; one step serves several
+  roles) and
+  corner radii from `IntradaRadius` (`card` 12); all in `Theme.swift`. Don't
+  hard-code `.padding(16)` / `cornerRadius: 12` etc. — a raw value is how two
+  screens silently drift. Genuine one-offs (a fixed component height, a 2pt
+  baseline nudge) stay literal; don't force those into the scale.
 - **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
   `MainActor`-default isolation ([uniffi-rs#2818]). Keep the generated package
   non-MainActor-defaulted (build recipe handles it); don't "fix" it by editing

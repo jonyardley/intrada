@@ -20,7 +20,7 @@ struct GlobalBanner: View {
   }
 
   private var bar: some View {
-    HStack(alignment: .top, spacing: 8) {
+    HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
       Image(systemName: "exclamationmark.triangle.fill")
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.danger)
@@ -37,7 +37,7 @@ struct GlobalBanner: View {
         .buttonStyle(.plain)
       }
     }
-    .padding(.horizontal, 16)
+    .padding(.horizontal, IntradaSpacing.card)
     .padding(.vertical, 10)
     .frame(maxWidth: .infinity)
     .background(IntradaColor.danger.opacity(0.12))

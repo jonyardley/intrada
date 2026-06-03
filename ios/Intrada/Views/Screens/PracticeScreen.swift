@@ -49,8 +49,8 @@ struct PracticeScreen: View {
     ScreenScaffold(title: "Practice", subtitle: subtitle) {
       VStack(spacing: 0) {
         startButton
-          .padding(.horizontal, 16)
-          .padding(.top, 16)
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.top, IntradaSpacing.card)
         content
       }
     }
@@ -69,9 +69,9 @@ struct PracticeScreen: View {
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.onAccent)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .padding(.vertical, IntradaSpacing.row)
         .background(LinearGradient.brandBar)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
         .opacity(0.5)
       Text("Coming soon")
         .font(IntradaFont.micro)
@@ -94,19 +94,19 @@ struct PracticeScreen: View {
             selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
             calendar: calendar
           )
-          .padding(.horizontal, 12)
+          .padding(.horizontal, IntradaSpacing.cardCompact)
           .tag(index)
         }
       }
       .tabViewStyle(.page(indexDisplayMode: .never))
       .frame(height: 64)
-      .padding(.top, 14)
+      .padding(.top, IntradaSpacing.row)
       Text(dayLabel)
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.card)
         .padding(.bottom, 6)
       dayContent
     }
@@ -119,13 +119,14 @@ struct PracticeScreen: View {
         message: "No practice on this day.")
     } else {
       ScrollView {
-        LazyVStack(spacing: 14) {
+        LazyVStack(spacing: IntradaSpacing.row) {
           ForEach(daySessions, id: \.id) { session in
             SessionCard(session: session)
           }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 16)
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.card)
+        .padding(.bottom, IntradaSpacing.card)
       }
       .scrollEdgeShadow()
     }

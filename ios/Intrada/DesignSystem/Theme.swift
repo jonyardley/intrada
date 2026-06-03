@@ -80,6 +80,29 @@ enum IntradaFont {
   }
 }
 
+/// The spacing scale. Every padding / inset / list gap traces to one of these,
+/// the same way colours trace to `IntradaColor` — so screens can't drift on the
+/// standard rhythm. Names mirror the web `p-card` tokens to keep one spacing
+/// language across shells. Genuine one-offs (a fixed component height, a 2pt
+/// baseline nudge) stay literal; don't tokenise those.
+enum IntradaSpacing {
+  /// 8pt — gaps between small adjacent controls (toolbar, segments).
+  static let controlGap: CGFloat = 8
+  /// 12pt — compact padding / inset (web `p-card-compact`).
+  static let cardCompact: CGFloat = 12
+  /// 14pt — list/card row rhythm (inter-card gap, card vertical padding) and
+  /// other matching insets. Like a Tailwind step, one value serves several roles.
+  static let row: CGFloat = 14
+  /// 16pt — the standard inset: screen edges, card padding, list padding
+  /// (web `p-card`).
+  static let card: CGFloat = 16
+}
+
+/// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
+enum IntradaRadius {
+  static let card: CGFloat = 12
+}
+
 extension Color {
   /// Build a `Color` from a packed `0xRRGGBB` literal so tokens read like the
   /// Pencil hex values they mirror.

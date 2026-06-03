@@ -27,7 +27,7 @@ struct TagFilterSheet: View {
                 Button {
                   toggle(tag, isOn: isOn)
                 } label: {
-                  HStack(spacing: 12) {
+                  HStack(spacing: IntradaSpacing.cardCompact) {
                     Text(tag)
                       .font(IntradaFont.body)
                       .foregroundStyle(IntradaColor.ink)
@@ -38,8 +38,8 @@ struct TagFilterSheet: View {
                         .foregroundStyle(IntradaColor.accent)
                     }
                   }
-                  .padding(.vertical, 14)
-                  .padding(.horizontal, 16)
+                  .padding(.vertical, IntradaSpacing.row)
+                  .padding(.horizontal, IntradaSpacing.card)
                   .frame(maxWidth: .infinity, alignment: .leading)
                   .contentShape(Rectangle())
                 }
@@ -47,12 +47,12 @@ struct TagFilterSheet: View {
                 .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
                 if tag != available.last {
-                  HairlineDivider().padding(.leading, 16)
+                  HairlineDivider().padding(.leading, IntradaSpacing.card)
                 }
               }
             }
             .cardSurface()
-            .padding(16)
+            .padding(IntradaSpacing.card)
           }
         }
       }
