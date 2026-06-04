@@ -178,6 +178,16 @@ final class LibraryStore: ItemStore {
 
   // ── Row ↔ Item codec ─────────────────────────────────────────────────
 
+  // Surface (don't silently default) a stored enum string we don't recognise —
+  // e.g. an older binary reading a row a newer version wrote (#949).
+  private static let decodeContext = "LibraryStore decode"
+
+  private struct UnknownStoredEnum: Error, CustomStringConvertible {
+    let kind: String
+    let raw: String
+    var description: String { "unknown \(kind) on decode: \"\(raw)\"" }
+  }
+
   private static func item(from row: Row) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
@@ -207,14 +217,23 @@ final class LibraryStore: ItemStore {
 
   private static func modality(from raw: String?) -> Modality? {
     switch raw {
-    case "major": .major
-    case "minor": .minor
-    default: nil
+    case "major": return .major
+    case "minor": return .minor
+    case nil: return nil
+    case .some(let other):
+      report(UnknownStoredEnum(kind: "Modality", raw: other), decodeContext)
+      return nil
     }
   }
 
   private static func kind(from raw: String) -> ItemKind {
-    raw == "exercise" ? .exercise : .piece
+    switch raw {
+    case "piece": return .piece
+    case "exercise": return .exercise
+    default:
+      report(UnknownStoredEnum(kind: "ItemKind", raw: raw), decodeContext)
+      return .piece
+    }
   }
 
   private static func encodeTags(_ tags: [String]) -> String {
@@ -298,7 +317,13 @@ final class LibraryStore: ItemStore {
   }
 
   private static func completionStatus(from raw: String) -> CompletionStatus {
-    raw == "ended_early" ? .endedEarly : .completed
+    switch raw {
+    case "completed": return .completed
+    case "ended_early": return .endedEarly
+    default:
+      report(UnknownStoredEnum(kind: "CompletionStatus", raw: raw), decodeContext)
+      return .completed
+    }
   }
 
   private static func entryStatusString(_ status: EntryStatus) -> String {
@@ -311,9 +336,12 @@ final class LibraryStore: ItemStore {
 
   private static func entryStatus(from raw: String) -> EntryStatus {
     switch raw {
-    case "skipped": .skipped
-    case "not_attempted": .notAttempted
-    default: .completed
+    case "completed": return .completed
+    case "skipped": return .skipped
+    case "not_attempted": return .notAttempted
+    default:
+      report(UnknownStoredEnum(kind: "EntryStatus", raw: raw), decodeContext)
+      return .notAttempted  // conservative: an unknown status must not inflate stats (#949)
     }
   }
 
@@ -325,7 +353,13 @@ final class LibraryStore: ItemStore {
   }
 
   private static func repAction(from raw: String) -> RepAction {
-    raw == "missed" ? .missed : .success
+    switch raw {
+    case "missed": return .missed
+    case "success": return .success
+    default:
+      report(UnknownStoredEnum(kind: "RepAction", raw: raw), decodeContext)
+      return .missed  // conservative: an unknown rep must not inflate achievement (#949)
+    }
   }
 
 }
