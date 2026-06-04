@@ -53,9 +53,7 @@ struct RootView: View {
     }
   }
 
-  private var seedSampleData: Bool {
-    ProcessInfo.processInfo.arguments.contains("--seed-sample-data")
-  }
+  private var seedSampleData: Bool { UITestFlags.seedSampleData }
 
   private static func applyTabBarAppearance() {
     let appearance = UITabBarAppearance()

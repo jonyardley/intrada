@@ -96,20 +96,7 @@ struct PracticeScreen: View {
         systemImage: "metronome.fill",
         message: "Your practice sessions will appear here.")
     } else {
-      TabView(selection: weekBinding) {
-        ForEach(Array(weeks.enumerated()), id: \.offset) { index, days in
-          WeekStrip(
-            days: days, today: referenceDate, practiceDays: practiceDays,
-            selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
-            calendar: calendar
-          )
-          .padding(.horizontal, IntradaSpacing.cardCompact)
-          .tag(index)
-        }
-      }
-      .tabViewStyle(.page(indexDisplayMode: .never))
-      .frame(height: 64)
-      .padding(.top, IntradaSpacing.row)
+      weekStrips
       Text(dayLabel)
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
@@ -119,6 +106,34 @@ struct PracticeScreen: View {
         .padding(.bottom, 6)
       dayContent
     }
+  }
+
+  // Under UI tests the paging TabView's animation never lets the app idle, so
+  // XCUITest stalls (#941) — show the current week statically instead.
+  @ViewBuilder private var weekStrips: some View {
+    Group {
+      if UITestFlags.animationsDisabled {
+        weekStripView(selectedWeek)
+      } else {
+        TabView(selection: weekBinding) {
+          ForEach(Array(weeks.enumerated()), id: \.offset) { index, days in
+            weekStripView(days).tag(index)
+          }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+      }
+    }
+    .frame(height: 64)
+    .padding(.top, IntradaSpacing.row)
+  }
+
+  private func weekStripView(_ days: [Date]) -> some View {
+    WeekStrip(
+      days: days, today: referenceDate, practiceDays: practiceDays,
+      selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
+      calendar: calendar
+    )
+    .padding(.horizontal, IntradaSpacing.cardCompact)
   }
 
   @ViewBuilder private var dayContent: some View {

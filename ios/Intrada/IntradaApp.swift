@@ -27,9 +27,7 @@ struct IntradaApp: App {
   init() {
     IntradaFonts.register()
 
-    // The Practice week-strip's paging TabView defeats XCUITest's idle wait;
-    // UI tests pass --disable-animations to run deterministically (#935).
-    if ProcessInfo.processInfo.arguments.contains("--disable-animations") {
+    if UITestFlags.animationsDisabled {
       UIView.setAnimationsEnabled(false)
     }
 
