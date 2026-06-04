@@ -44,9 +44,6 @@ struct SessionBuilderScreen: View {
       ToolbarItem(placement: .topBarLeading) {
         Button("Cancel") { cancel() }
       }
-      ToolbarItem(placement: .topBarTrailing) {
-        startButton
-      }
     }
     .sensoryFeedback(.selection, trigger: searchRevealed)
     .sheet(isPresented: $filtering) {
@@ -166,7 +163,7 @@ struct SessionBuilderScreen: View {
       HStack {
         Text("In this session").font(IntradaFont.cardTitle(16)).foregroundStyle(IntradaColor.ink)
         Spacer()
-        Text("\(entries.count)").font(IntradaFont.metaMedium).foregroundStyle(IntradaColor.inkFaint)
+        startButton
       }
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.top, IntradaSpacing.cardCompact)
