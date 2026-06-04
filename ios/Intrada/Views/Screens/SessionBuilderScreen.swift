@@ -199,7 +199,7 @@ struct SessionBuilderScreen: View {
     .frame(maxWidth: .infinity)
     .background(IntradaColor.paperTop)
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
-    .cardShadow()
+    .cardShadow(above: true)
   }
 
   // Floating frontier — disabled until the player exists.
