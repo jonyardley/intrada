@@ -116,6 +116,19 @@
             itemCount: 2, sessionIntention: nil, targetDurationMins: nil,
             sourceStatus: .noSource)))
     }
+
+    /// Builder picker with an inherited active search ("clair") — the list is
+    /// pre-filtered to the match, so the revealed-search state has its own test.
+    static var previewBuildingSearching: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece],
+          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: []),
+          buildingSetlist: BuildingSetlistView(
+            entries: [.previewPiece],
+            itemCount: 1, sessionIntention: nil, targetDurationMins: nil,
+            sourceStatus: .noSource)))
+    }
   }
 
   extension LibraryItemView {
