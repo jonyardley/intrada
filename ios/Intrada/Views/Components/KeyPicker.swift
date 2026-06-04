@@ -166,7 +166,7 @@ struct KeyPicker: View {
       Circle()
         .fill(IntradaColor.cardFill)
         .overlay(Circle().stroke(IntradaColor.hairline, lineWidth: 1))
-        .shadow(color: IntradaColor.shadow, radius: 5, x: 0, y: 2)
+        .cardShadow()
       if let sel = selection {
         VStack(spacing: 0) {
           Text(KeyHelper.prettify(sel.spelling))
