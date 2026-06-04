@@ -36,7 +36,6 @@ struct SessionBuilderScreen: View {
         library
         queueTray
       }
-      .overlay(alignment: .bottomTrailing) { startButton }
     }
     .navigationTitle("New session")
     .navigationBarTitleDisplayMode(.inline)
@@ -44,6 +43,9 @@ struct SessionBuilderScreen: View {
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
         Button("Cancel") { cancel() }
+      }
+      ToolbarItem(placement: .topBarTrailing) {
+        startButton
       }
     }
     .sensoryFeedback(.selection, trigger: searchRevealed)
@@ -202,23 +204,23 @@ struct SessionBuilderScreen: View {
     .cardShadow(above: true)
   }
 
-  // Floating frontier — disabled until the player exists.
+  // The frontier — disabled until the player exists.
   private var startButton: some View {
-    HStack(spacing: IntradaSpacing.controlGap) {
-      Image(systemName: "play.fill")
-      Text("Start")
+    HStack(spacing: 5) {
+      Image(systemName: "play.fill").font(IntradaFont.micro)
+      Text(entries.isEmpty ? "Start" : "Start · \(entries.count)")
+        .font(IntradaFont.metaMedium)
     }
-    .font(IntradaFont.bodyMedium)
     .foregroundStyle(IntradaColor.onAccent)
-    .padding(.vertical, IntradaSpacing.cardCompact)
-    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.vertical, 6)
+    .padding(.horizontal, IntradaSpacing.cardCompact)
     .background(LinearGradient.brandBar, in: Capsule())
     .opacity(0.5)
     .cardShadow()
-    .padding(.trailing, IntradaSpacing.card)
-    .padding(.bottom, IntradaSpacing.card)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Start session, coming soon")
+    .accessibilityLabel(
+      entries.isEmpty
+        ? "Start session, coming soon" : "Start session, \(entries.count) items, coming soon")
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
