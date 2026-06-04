@@ -35,8 +35,8 @@ struct SessionBuilderScreen: View {
         browseControls
         library
         queueTray
-        startBar
       }
+      .overlay(alignment: .bottomTrailing) { startButton }
     }
     .navigationTitle("New session")
     .navigationBarTitleDisplayMode(.inline)
@@ -100,6 +100,7 @@ struct SessionBuilderScreen: View {
       .padding(.top, IntradaSpacing.cardCompact)
       .padding(.bottom, IntradaSpacing.row)
       .background(IntradaColor.paperTop)
+      .cardShadow()
       .zIndex(1)
       if searchRevealed {
         LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
@@ -147,7 +148,9 @@ struct SessionBuilderScreen: View {
         }
         .overlay(
           RoundedRectangle(cornerRadius: IntradaRadius.card)
-            .stroke(IntradaColor.accent, lineWidth: 2).opacity(added ? 1 : 0))
+            .stroke(IntradaColor.accent, lineWidth: 2).opacity(added ? 1 : 0)
+        )
+        .cardShadow()
     }
     .buttonStyle(.plain)
     .accessibilityValue(added ? "Added" : "Not added")
@@ -196,25 +199,26 @@ struct SessionBuilderScreen: View {
     .frame(maxWidth: .infinity)
     .background(IntradaColor.paperTop)
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
+    .cardShadow()
   }
 
-  private var startBar: some View {
-    VStack(spacing: 6) {
-      Label("Start session", systemImage: "play.fill")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.row)
-        .background(LinearGradient.brandBar)
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-        .opacity(0.5)
-      Text("Coming soon")
-        .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkFaint)
+  // Floating frontier — disabled until the player exists.
+  private var startButton: some View {
+    HStack(spacing: IntradaSpacing.controlGap) {
+      Image(systemName: "play.fill")
+      Text("Start")
     }
+    .font(IntradaFont.bodyMedium)
+    .foregroundStyle(IntradaColor.onAccent)
+    .padding(.vertical, IntradaSpacing.cardCompact)
+    .padding(.horizontal, IntradaSpacing.card)
+    .background(LinearGradient.brandBar, in: Capsule())
+    .opacity(0.5)
+    .cardShadow()
+    .padding(.trailing, IntradaSpacing.card)
+    .padding(.bottom, IntradaSpacing.card)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Start session, coming soon")
-    .padding(IntradaSpacing.card)
-    .background(IntradaColor.paperTop)
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
