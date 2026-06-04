@@ -16,7 +16,7 @@ final class SessionBuilderUITests: XCTestCase {
     return app
   }
 
-  func testBuildSetlistAddThenRemove() {
+  func testBuildSetlistAddRemoveThenCancel() {
     let app = launchSeeded()
 
     let practiceTab = app.tabBars.buttons["Practice"]
@@ -56,6 +56,23 @@ final class SessionBuilderUITests: XCTestCase {
       row(in: app, containing: "Clair de Lune").waitForNonExistence(timeout: 5),
       "Removed entry leaves the setlist")
     XCTAssertTrue(row(in: app, containing: "Hanon No. 1").exists, "Untouched entry remains")
+
+    let addItems2 = app.buttons["Add items"]
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
+      .press(
+        forDuration: 0.05,
+        thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)))
+    XCTAssertTrue(addItems2.exists, "Edge-swipe does not bypass the cancel guard")
+
+    app.buttons["Cancel"].tap()
+    XCTAssertTrue(
+      app.buttons["Discard"].waitForExistence(timeout: 5), "Cancel asks before discarding")
+    app.buttons["Keep editing"].tap()
+    XCTAssertTrue(addItems2.waitForExistence(timeout: 5), "Keep editing stays in the builder")
+
+    app.buttons["Cancel"].tap()
+    app.buttons["Discard"].tap()
+    XCTAssertTrue(startButton.waitForExistence(timeout: 5), "Discard returns to Practice")
   }
 
   // Cards/rows combine into one a11y element ("<type>, <title>"); match by CONTAINS.

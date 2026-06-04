@@ -1,11 +1,12 @@
 import SharedTypes
 import SwiftUI
 
-// Cancel/back isn't handled here: PracticeScreen's navigation binding sends
-// `cancelBuilding` when this screen pops.
+// `cancelBuilding` fires from PracticeScreen's navigation binding on dismiss.
 struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
+  @Environment(\.dismiss) private var dismiss
   @State private var picking = false
+  @State private var confirmingCancel = false
 
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
 
@@ -27,8 +28,30 @@ struct SessionBuilderScreen: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
+    // Hiding the back chevron also disables the swipe-back that bypasses cancel().
+    .navigationBarBackButtonHidden(true)
+    .toolbar {
+      ToolbarItem(placement: .topBarLeading) {
+        Button("Cancel") { cancel() }
+      }
+    }
     .sheet(isPresented: $picking) {
       SessionItemPickerSheet().environment(store)
+    }
+    // Alert (not confirmationDialog) so the buttons show on iPad/regular width.
+    .alert("Discard session plan?", isPresented: $confirmingCancel) {
+      Button("Discard", role: .destructive) { dismiss() }
+      Button("Keep editing", role: .cancel) {}
+    } message: {
+      Text("The items you've added will be cleared.")
+    }
+  }
+
+  private func cancel() {
+    if entries.isEmpty {
+      dismiss()
+    } else {
+      confirmingCancel = true
     }
   }
 
