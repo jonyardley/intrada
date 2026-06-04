@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
 use crate::domain::item::Item;
+use crate::domain::session::PracticeSession;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -22,6 +23,8 @@ pub enum PersistenceOperation {
         id: String,
         deleted_at: DateTime<Utc>,
     },
+    LoadSessions,
+    SaveSession(PracticeSession),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -29,6 +32,7 @@ pub enum PersistenceOperation {
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum PersistenceOutput {
     Items(Vec<Item>),
+    Sessions(Vec<PracticeSession>),
     Ack,
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
@@ -49,6 +53,16 @@ pub fn save_item(item: Item) -> Command<Effect, Event> {
 pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::DeleteItem { id, deleted_at })
         .then_send(Event::StoreWritten)
+}
+
+pub fn load_sessions() -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::LoadSessions)
+        .then_send(Event::SessionsStoreLoaded)
+}
+
+pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::SaveSession(session))
+        .then_send(Event::SessionStoreWritten)
 }
 
 #[cfg(test)]
@@ -447,5 +461,77 @@ mod tests {
 
         let mut delete = app.update(Event::Item(ItemEvent::Delete { id }), &mut model);
         assert!(!has_http(&mut delete), "delete");
+    }
+
+    // ── Sessions ────────────────────────────────────────────────────────
+
+    fn sample_session(id: &str) -> PracticeSession {
+        let now = chrono::Utc::now();
+        PracticeSession {
+            id: id.to_string(),
+            entries: vec![],
+            session_notes: None,
+            session_intention: None,
+            started_at: now,
+            completed_at: now,
+            total_duration_secs: 0,
+            completion_status: crate::domain::session::CompletionStatus::Completed,
+        }
+    }
+
+    #[test]
+    fn save_session_requests_a_save_op() {
+        let mut cmd = save_session(sample_session("s1"));
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if matches!(&req.operation, PersistenceOperation::SaveSession(s) if s.id == "s1"))));
+    }
+
+    #[test]
+    fn load_sessions_requests_the_load_operation() {
+        let mut cmd = load_sessions();
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadSessions)));
+    }
+
+    #[test]
+    fn sessions_store_loaded_replaces_model_sessions() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        model.sessions = vec![sample_session("stale")];
+        let _ = app.update(
+            Event::SessionsStoreLoaded(PersistenceOutput::Sessions(vec![sample_session("fresh")])),
+            &mut model,
+        );
+        assert_eq!(model.sessions.len(), 1);
+        assert_eq!(model.sessions[0].id, "fresh");
+    }
+
+    #[test]
+    fn start_app_local_first_also_loads_sessions() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(
+            Event::StartApp {
+                api_base_url: "http://x".into(),
+                local_first: true,
+            },
+            &mut model,
+        );
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadSessions)));
+        assert!(!has_http(&mut cmd), "local-first launch makes no HTTP");
+    }
+
+    #[test]
+    fn session_store_written_failed_reloads_sessions() {
+        let app = crate::app::Intrada;
+        let mut model = Model::test_default();
+        let mut cmd = app.update(
+            Event::SessionStoreWritten(PersistenceOutput::Failed),
+            &mut model,
+        );
+        assert!(model.last_error.is_some());
+        assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+            if req.operation == PersistenceOperation::LoadSessions)));
     }
 }

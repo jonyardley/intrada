@@ -115,4 +115,93 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertTrue(
       columns.contains("deleted_at"), "item table must carry deleted_at; has \(columns)")
   }
+
+  // ── Sessions ──────────────────────────────────────────────────────────
+
+  private func entry(_ id: String) -> SetlistEntry {
+    SetlistEntry(
+      id: id, itemId: "item-\(id)", itemTitle: "Etude", itemType: .exercise, position: 0,
+      durationSecs: 300, status: .completed, notes: "good", score: 4, intention: "evenness",
+      repTarget: 5, repCount: 5, repTargetReached: true,
+      repHistory: [.success, .missed, .success], plannedDurationSecs: 300, achievedTempo: 120)
+  }
+
+  private func session(_ id: String, completedAt: String = "2026-01-01T00:00:00Z")
+    -> PracticeSession
+  {
+    PracticeSession(
+      id: id, entries: [entry("a"), entry("b")], sessionNotes: "solid",
+      sessionIntention: "warm up", startedAt: "2026-01-01T00:00:00Z", completedAt: completedAt,
+      totalDurationSecs: 600, completionStatus: .completed)
+  }
+
+  func testSaveThenLoadSessionRoundTrips() throws {
+    let store = try makeStore()
+    try store.saveSession(session("s1"))
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(got.id, "s1")
+    XCTAssertEqual(got.totalDurationSecs, 600)
+    XCTAssertEqual(got.completionStatus, .completed)
+    XCTAssertEqual(got.sessionNotes, "solid")
+    XCTAssertEqual(got.sessionIntention, "warm up")
+    XCTAssertEqual(got.entries.count, 2)
+    let e = try XCTUnwrap(got.entries.first)
+    XCTAssertEqual(e.itemType, .exercise)
+    XCTAssertEqual(e.status, .completed)
+    XCTAssertEqual(e.score, 4)
+    XCTAssertEqual(e.repTarget, 5)
+    XCTAssertEqual(e.repHistory, [.success, .missed, .success])
+    XCTAssertEqual(e.achievedTempo, 120)
+  }
+
+  func testEndedEarlyAndEmptyEntriesRoundTrip() throws {
+    let store = try makeStore()
+    var s = session("s2")
+    s.entries = []
+    s.completionStatus = .endedEarly
+    s.sessionNotes = nil
+    try store.saveSession(s)
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(got.completionStatus, .endedEarly)
+    XCTAssertTrue(got.entries.isEmpty)
+    XCTAssertNil(got.sessionNotes)
+  }
+
+  func testSkippedAndNotAttemptedEntryStatusRoundTrip() throws {
+    let store = try makeStore()
+    var s = session("s3")
+    s.entries[0].status = .skipped
+    s.entries[1].status = .notAttempted
+    try store.saveSession(s)
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(got.entries.map(\.status), [.skipped, .notAttempted])
+  }
+
+  func testSessionsLoadNewestFirst() throws {
+    let store = try makeStore()
+    try store.saveSession(session("old", completedAt: "2026-01-01T00:00:00Z"))
+    try store.saveSession(session("new", completedAt: "2026-02-01T00:00:00Z"))
+    XCTAssertEqual(try store.loadSessions().map(\.id), ["new", "old"])
+  }
+
+  func testSessionSchemaHasSyncColumns() throws {
+    let columns = try makeStore().columnNames(ofTable: "session")
+    XCTAssertTrue(columns.contains("updated_at"), "session needs updated_at; has \(columns)")
+    XCTAssertTrue(columns.contains("deleted_at"), "session needs deleted_at; has \(columns)")
+  }
+
+  /// Upgrade path: a pre-existing v2 item row survives the v3 session migration.
+  func testV2ItemSurvivesSessionMigration() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v2_add_modality",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           created_at, updated_at, priority, deleted_at)
+        VALUES ('p1', 'Legacy', 'piece', 'Bach', 'C', 'major', 'Allegro', 120, 'x',
+                '["scale"]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)
+        """)
+    XCTAssertEqual(try store.loadItems().count, 1, "the v2 item survives the v3 migration")
+    XCTAssertTrue(try store.loadSessions().isEmpty, "the new session table starts empty")
+  }
 }

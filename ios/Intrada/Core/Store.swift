@@ -103,6 +103,10 @@ final class Store {
       case .deleteItem(let id, let deletedAt):
         try store.delete(id: id, deletedAt: deletedAt)
         return .ack
+      case .loadSessions: return .sessions(try store.loadSessions())
+      case .saveSession(let session):
+        try store.saveSession(session)
+        return .ack
       }
     } catch {
       report(error, "persistence")

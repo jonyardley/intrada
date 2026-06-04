@@ -1061,11 +1061,22 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             model.session_status = SessionStatus::Idle;
             model.last_error = None;
 
-            Command::all([
-                crate::http::create_session(&model.api_base_url, &practice_session),
-                Command::notify_shell(AppEffect::ClearSessionInProgress).into(),
-                crux_core::render::render(),
-            ])
+            let clear = Command::notify_shell(AppEffect::ClearSessionInProgress).into();
+            if model.local_first {
+                // No server callback to clear the dismiss-mute, so record success here.
+                model.record_success();
+                Command::all([
+                    crate::persistence::save_session(practice_session),
+                    clear,
+                    crux_core::render::render(),
+                ])
+            } else {
+                Command::all([
+                    crate::http::create_session(&model.api_base_url, &practice_session),
+                    clear,
+                    crux_core::render::render(),
+                ])
+            }
         }
 
         SessionEvent::DiscardSession => {
@@ -1830,6 +1841,45 @@ mod tests {
         assert_eq!(
             model.sessions[0].completion_status,
             CompletionStatus::Completed
+        );
+    }
+
+    #[test]
+    fn local_first_save_session_persists_and_skips_http() {
+        let mut model = model_with_summary();
+        model.local_first = true;
+        let app = Intrada;
+        let mut cmd = app.update(
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+            &mut model,
+        );
+        let id = model.sessions[0].id.clone();
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+                if matches!(&req.operation, crate::persistence::PersistenceOperation::SaveSession(s) if s.id == id))),
+            "local-first save persists the session locally"
+        );
+        assert!(
+            !cmd.effects().any(|e| matches!(e, Effect::Http(_))),
+            "local-first save makes no HTTP request"
+        );
+    }
+
+    #[test]
+    fn online_save_session_uses_http_not_persistence() {
+        let mut model = model_with_summary();
+        let app = Intrada;
+        let mut cmd = app.update(
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+            &mut model,
+        );
+        assert!(
+            cmd.effects().any(|e| matches!(e, Effect::Http(_))),
+            "online save POSTs to the server"
+        );
+        assert!(
+            !cmd.effects().any(|e| matches!(e, Effect::Persistence(_))),
+            "online save makes no local persistence write"
         );
     }
 
