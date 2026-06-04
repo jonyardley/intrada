@@ -442,6 +442,8 @@ private struct FailingStore: ItemStore {
   func loadItems() throws -> [Item] { throw TestError() }
   func save(_ item: Item) throws { throw TestError() }
   func delete(id: String, deletedAt: String) throws { throw TestError() }
+  func loadSessions() throws -> [PracticeSession] { throw TestError() }
+  func saveSession(_ session: PracticeSession) throws { throw TestError() }
 }
 
 final class MockURLProtocol: URLProtocol {

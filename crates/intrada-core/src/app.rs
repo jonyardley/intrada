@@ -112,6 +112,9 @@ pub enum Event {
     StoreLoaded(PersistenceOutput),
     /// Write result (split from `StoreLoaded` so a failed write reloads without looping — #825).
     StoreWritten(PersistenceOutput),
+    SessionsStoreLoaded(PersistenceOutput),
+    /// Session write result, kept separate so a failed save reloads sessions (not items).
+    SessionStoreWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -166,8 +169,7 @@ impl App for Intrada {
                 model.api_base_url = api_base_url;
                 model.local_first = local_first;
                 if local_first {
-                    // Sessions/sets aren't on the native shell yet — migrated later.
-                    persistence::load_items()
+                    Command::all([persistence::load_items(), persistence::load_sessions()])
                 } else {
                     Command::all([
                         http::fetch_items(&model.api_base_url),
@@ -300,7 +302,7 @@ impl App for Intrada {
                     model.items = items;
                     crux_core::render::render()
                 }
-                PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -309,11 +311,32 @@ impl App for Intrada {
             },
             Event::StoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_) => Command::done(),
+                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     persistence::load_items()
+                }
+            },
+            Event::SessionsStoreLoaded(output) => match output {
+                PersistenceOutput::Sessions(sessions) => {
+                    model.sessions = sessions;
+                    model.practice_summaries = build_practice_summaries(&model.sessions);
+                    crux_core::render::render()
+                }
+                PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't access local storage.");
+                    crux_core::render::render()
+                }
+            },
+            Event::SessionStoreWritten(output) => match output {
+                PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                // Failed save → reload sessions to roll back the optimistic push (#825).
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't access local storage.");
+                    persistence::load_sessions()
                 }
             },
         }

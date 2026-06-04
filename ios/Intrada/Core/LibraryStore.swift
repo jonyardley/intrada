@@ -7,6 +7,8 @@ protocol ItemStore {
   func loadItems() throws -> [Item]
   func save(_ item: Item) throws
   func delete(id: String, deletedAt: String) throws
+  func loadSessions() throws -> [PracticeSession]
+  func saveSession(_ session: PracticeSession) throws
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -86,6 +88,41 @@ final class LibraryStore: ItemStore {
     }
   }
 
+  func loadSessions() throws -> [PracticeSession] {
+    try dbQueue.read { db in
+      try Row.fetchAll(
+        db, sql: "SELECT * FROM session WHERE deleted_at IS NULL ORDER BY completed_at DESC"
+      )
+      .map(Self.session(from:))
+    }
+  }
+
+  /// Insert or update by id. A session is immutable once completed, so
+  /// `updated_at` simply tracks `completed_at` — the column exists for sync LWW.
+  func saveSession(_ session: PracticeSession) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO session
+            (id, started_at, completed_at, total_duration_secs, completion_status,
+             session_notes, session_intention, entries, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+          ON CONFLICT(id) DO UPDATE SET
+            started_at = excluded.started_at, completed_at = excluded.completed_at,
+            total_duration_secs = excluded.total_duration_secs,
+            completion_status = excluded.completion_status,
+            session_notes = excluded.session_notes, session_intention = excluded.session_intention,
+            entries = excluded.entries, updated_at = excluded.updated_at, deleted_at = NULL
+          """,
+        arguments: [
+          session.id, session.startedAt, session.completedAt,
+          Int(session.totalDurationSecs), Self.completionString(session.completionStatus),
+          session.sessionNotes, session.sessionIntention,
+          Self.encodeEntries(session.entries), session.completedAt,
+        ])
+    }
+  }
+
   /// Column names of a table (for the schema-invariant test). `[String]` not
   /// `Set` — `SharedTypes`' domain `Set` shadows `Swift.Set` here.
   func columnNames(ofTable table: String) throws -> [String] {
@@ -118,6 +155,23 @@ final class LibraryStore: ItemStore {
     }
     migrator.registerMigration("v2_add_modality") { db in
       try db.execute(sql: "ALTER TABLE item ADD COLUMN modality TEXT")
+    }
+    migrator.registerMigration("v3_session") { db in
+      try db.execute(
+        sql: """
+          CREATE TABLE session (
+            id TEXT PRIMARY KEY NOT NULL,
+            started_at TEXT NOT NULL,
+            completed_at TEXT NOT NULL,
+            total_duration_secs INTEGER NOT NULL,
+            completion_status TEXT NOT NULL,
+            session_notes TEXT,
+            session_intention TEXT,
+            entries TEXT NOT NULL DEFAULT '[]',
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
     }
     return migrator
   }
@@ -171,6 +225,107 @@ final class LibraryStore: ItemStore {
 
   private static func decodeTags(_ json: String) -> [String] {
     (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
+  }
+
+  // ── Row ↔ PracticeSession codec ──────────────────────────────────────
+
+  private static func session(from row: Row) -> PracticeSession {
+    PracticeSession(
+      id: row["id"], entries: decodeEntries(row["entries"]),
+      sessionNotes: row["session_notes"], sessionIntention: row["session_intention"],
+      startedAt: row["started_at"], completedAt: row["completed_at"],
+      totalDurationSecs: UInt64(row["total_duration_secs"] as Int64),
+      completionStatus: completionStatus(from: row["completion_status"]))
+  }
+
+  // Entries (a nested, optional-heavy aggregate) go to JSON via a Codable DTO,
+  // not bincode: bincode is positional, so a future field change would fail to
+  // decode old rows — unacceptable when the device is the only copy.
+  private struct StoredEntry: Codable {
+    var id: String
+    var itemId: String
+    var itemTitle: String
+    var itemType: String
+    var position: UInt64
+    var durationSecs: UInt64
+    var status: String
+    var notes: String?
+    var score: UInt8?
+    var intention: String?
+    var repTarget: UInt8?
+    var repCount: UInt8?
+    var repTargetReached: Bool?
+    var repHistory: [String]?
+    var plannedDurationSecs: UInt32?
+    var achievedTempo: UInt16?
+  }
+
+  private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
+    let dtos = entries.map { e in
+      StoredEntry(
+        id: e.id, itemId: e.itemId, itemTitle: e.itemTitle, itemType: kindString(e.itemType),
+        position: e.position, durationSecs: e.durationSecs, status: entryStatusString(e.status),
+        notes: e.notes, score: e.score, intention: e.intention, repTarget: e.repTarget,
+        repCount: e.repCount, repTargetReached: e.repTargetReached,
+        repHistory: e.repHistory.map { $0.map(repActionString) },
+        plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo)
+    }
+    guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
+    else { return "[]" }
+    return json
+  }
+
+  private static func decodeEntries(_ json: String) -> [SetlistEntry] {
+    guard let dtos = try? JSONDecoder().decode([StoredEntry].self, from: Data(json.utf8)) else {
+      return []
+    }
+    return dtos.map { d in
+      SetlistEntry(
+        id: d.id, itemId: d.itemId, itemTitle: d.itemTitle, itemType: kind(from: d.itemType),
+        position: d.position, durationSecs: d.durationSecs, status: entryStatus(from: d.status),
+        notes: d.notes, score: d.score, intention: d.intention, repTarget: d.repTarget,
+        repCount: d.repCount, repTargetReached: d.repTargetReached,
+        repHistory: d.repHistory.map { $0.map(repAction(from:)) },
+        plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo)
+    }
+  }
+
+  private static func completionString(_ status: CompletionStatus) -> String {
+    switch status {
+    case .completed: "completed"
+    case .endedEarly: "ended_early"
+    }
+  }
+
+  private static func completionStatus(from raw: String) -> CompletionStatus {
+    raw == "ended_early" ? .endedEarly : .completed
+  }
+
+  private static func entryStatusString(_ status: EntryStatus) -> String {
+    switch status {
+    case .completed: "completed"
+    case .skipped: "skipped"
+    case .notAttempted: "not_attempted"
+    }
+  }
+
+  private static func entryStatus(from raw: String) -> EntryStatus {
+    switch raw {
+    case "skipped": .skipped
+    case "not_attempted": .notAttempted
+    default: .completed
+    }
+  }
+
+  private static func repActionString(_ action: RepAction) -> String {
+    switch action {
+    case .missed: "missed"
+    case .success: "success"
+    }
+  }
+
+  private static func repAction(from raw: String) -> RepAction {
+    raw == "missed" ? .missed : .success
   }
 
 }

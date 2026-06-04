@@ -392,4 +392,43 @@ mod tests {
             entries,
         });
     }
+
+    #[test]
+    fn save_session_persistence_op_round_trips_on_ffi_bincode_wire() {
+        // PracticeSession crosses the bridge as a SaveSession persistence Effect;
+        // its optional-heavy SetlistEntry + rep_history is exactly the #846 risk.
+        use crate::domain::session::{
+            CompletionStatus, EntryStatus, PracticeSession, RepAction, SetlistEntry,
+        };
+        use crate::persistence::PersistenceOperation;
+        let now = chrono::Utc::now();
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "p1".to_string(),
+            item_title: "Clair de Lune".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 300,
+            status: EntryStatus::Completed,
+            notes: Some("phrasing".to_string()),
+            score: Some(4),
+            intention: Some("evenness".to_string()),
+            rep_target: Some(5),
+            rep_count: Some(5),
+            rep_target_reached: Some(true),
+            rep_history: Some(vec![RepAction::Success, RepAction::Missed]),
+            planned_duration_secs: Some(300),
+            achieved_tempo: Some(120),
+        };
+        assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
+            id: "s1".to_string(),
+            entries: vec![entry],
+            session_notes: Some("solid".to_string()),
+            session_intention: Some("warm up".to_string()),
+            started_at: now,
+            completed_at: now,
+            total_duration_secs: 300,
+            completion_status: CompletionStatus::Completed,
+        }));
+    }
 }
