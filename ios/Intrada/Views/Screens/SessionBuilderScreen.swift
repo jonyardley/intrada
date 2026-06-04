@@ -34,6 +34,9 @@ struct SessionBuilderScreen: View {
       ToolbarItem(placement: .topBarLeading) {
         Button("Cancel") { cancel() }
       }
+      ToolbarItem(placement: .topBarTrailing) {
+        if entries.count > 1 { EditButton() }
+      }
     }
     .sheet(isPresented: $picking) {
       SessionItemPickerSheet().environment(store)
@@ -63,8 +66,7 @@ struct SessionBuilderScreen: View {
           .listRowSeparator(.hidden)
           .listRowInsets(
             EdgeInsets(
-              top: IntradaSpacing.controlGap, leading: IntradaSpacing.card,
-              bottom: IntradaSpacing.controlGap, trailing: IntradaSpacing.card)
+              top: 0, leading: IntradaSpacing.card, bottom: 0, trailing: IntradaSpacing.card)
           )
           .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
@@ -74,9 +76,18 @@ struct SessionBuilderScreen: View {
             }
           }
       }
+      .onMove(perform: move)
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
+  }
+
+  // SwiftUI's `to` is an insert-before index; reorderSetlist wants a final index.
+  private func move(_ source: IndexSet, to destination: Int) {
+    guard let from = source.first else { return }
+    let target = from < destination ? destination - 1 : destination
+    store.send(
+      .session(.reorderSetlist(entryId: entries[from].id, newPosition: UInt64(target))))
   }
 
   // Present-but-disabled until the player exists — the one-primary-action
