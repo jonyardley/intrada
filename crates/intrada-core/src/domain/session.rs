@@ -695,12 +695,16 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         SessionEvent::CancelBuilding => {
-            if !matches!(model.session_status, SessionStatus::Building(_)) {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
+            // Idempotent: already-Idle cancel is a no-op success, not a silent error (#944).
+            match model.session_status {
+                SessionStatus::Building(_) | SessionStatus::Idle => {
+                    model.session_status = SessionStatus::Idle;
+                    model.last_error = None;
+                }
+                _ => {
+                    model.last_error = Some("Not in building state".to_string());
+                }
             }
-            model.session_status = SessionStatus::Idle;
-            model.last_error = None;
             crux_core::render::render()
         }
 
@@ -1555,6 +1559,37 @@ mod tests {
 
         assert!(model.last_error.is_none());
         assert!(matches!(model.session_status, SessionStatus::Idle));
+    }
+
+    #[test]
+    fn test_cancel_building_when_idle_is_noop_success() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
+
+        assert!(model.last_error.is_none());
+        assert!(matches!(model.session_status, SessionStatus::Idle));
+    }
+
+    #[test]
+    fn test_cancel_building_is_idempotent_when_called_twice() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
+        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
+
+        assert!(model.last_error.is_none());
+        assert!(matches!(model.session_status, SessionStatus::Idle));
+    }
+
+    #[test]
+    fn test_cancel_building_from_active_is_a_wrong_state_error() {
+        // Cancelling the builder must not silently nuke an Active session (#944).
+        let (mut model, _) = model_with_active_session(2);
+
+        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
+
+        assert_eq!(model.last_error.as_deref(), Some("Not in building state"));
+        assert!(matches!(model.session_status, SessionStatus::Active(_)));
     }
 
     // --- Active Phase Tests ---

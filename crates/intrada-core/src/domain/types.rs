@@ -324,6 +324,41 @@ mod tests {
     }
 
     #[test]
+    fn update_item_absent_field_does_not_round_trip_on_rust_bincode_serialize() {
+        // LANDMINE GUARD (#908): `skip_serializing_if` omits an outer-`None`
+        // field on the bincode serialize path while deserialize reads it
+        // positionally — asymmetric on the FFI wire (#846 silent-decode class),
+        // safe today only because Swift serializes and Rust only deserializes.
+        // Pins the asymmetry: making bincode serialize field-complete flips this.
+        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
+
+        let with_absent_field = UpdateItem {
+            title: Some("Renamed".to_string()),
+            kind: None,
+            composer: Some(Some("Bach".to_string())),
+            key: Some(None),
+            modality: Some(Some(Modality::Minor)),
+            tempo: Some(None),
+            notes: Some(Some("phrasing".to_string())),
+            tags: Some(vec!["etude".to_string()]),
+            priority: Some(true),
+        };
+
+        let mut bytes = Vec::new();
+        BincodeFfiFormat::serialize(&mut bytes, &with_absent_field).expect("serialize");
+        let decoded: Result<UpdateItem, _> = BincodeFfiFormat::deserialize(&bytes);
+
+        if let Ok(back) = decoded {
+            assert_ne!(
+                back, with_absent_field,
+                "bincode serialize became field-complete — if you fixed the \
+                 skip_serializing_if asymmetry (#908), update this guard to \
+                 assert a clean round-trip"
+            );
+        }
+    }
+
+    #[test]
     fn update_event_round_trips_on_ffi_bincode_wire() {
         // Wraps the DTO in the event that actually crosses the bridge, so
         // enum/struct framing is covered too (#777). See the bare-DTO test above.
