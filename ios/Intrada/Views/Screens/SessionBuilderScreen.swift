@@ -8,31 +8,20 @@ struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @State private var confirmingCancel = false
-  @State private var filtering = false
-  @State private var searchText = ""
-  @State private var searchRevealed = false
-  @FocusState private var searchFocused: Bool
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
-  private var activeTags: [String] { store.viewModel?.activeQuery?.tags ?? [] }
 
   private var entryByItem: [String: String] {
     let entries = store.viewModel?.buildingSetlist?.entries ?? []
     return Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
   }
 
-  private var filterBinding: Binding<LibraryFilter> {
-    Binding(
-      get: { LibraryFilter(kind: store.viewModel?.activeQuery?.itemType) },
-      set: { sendQuery(kind: $0.kind, text: searchText) })
-  }
-
   var body: some View {
     ZStack {
       PaperBackground()
       VStack(spacing: 0) {
-        browseControls
+        BrowseControlsBar(elevated: true)
         library
         queueTray
       }
@@ -45,15 +34,6 @@ struct SessionBuilderScreen: View {
         Button("Cancel") { cancel() }
       }
     }
-    .sensoryFeedback(.selection, trigger: searchRevealed)
-    .sheet(isPresented: $filtering) {
-      TagFilterSheet(
-        available: store.viewModel?.availableTags ?? [],
-        selected: activeTags, onChange: sendTagFilter)
-    }
-    .onChange(of: searchText) { _, newValue in
-      sendQuery(kind: store.viewModel?.activeQuery?.itemType, text: newValue)
-    }
     .alert("Discard session plan?", isPresented: $confirmingCancel) {
       Button("Discard", role: .destructive) { dismiss() }
       Button("Keep editing", role: .cancel) {}
@@ -63,53 +43,6 @@ struct SessionBuilderScreen: View {
   }
 
   // ── Library (browse + add) ───────────────────────────────────────────
-
-  private var browseControls: some View {
-    VStack(spacing: 0) {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        LibraryFilterTabs(selection: filterBinding, edgeInset: IntradaSpacing.card)
-          .frame(maxWidth: .infinity, alignment: .leading)
-        LibrarySortMenu(
-          current: store.viewModel?.activeSort
-            ?? LibrarySort(field: .dateAdded, direction: .descending),
-          onChange: { store.send(.setSort($0)) })
-        Button {
-          filtering = true
-        } label: {
-          Image(
-            systemName: activeTags.isEmpty
-              ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill"
-          )
-          .font(IntradaFont.tab)
-          .foregroundStyle(activeTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
-          .padding(IntradaSpacing.controlGap)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Filter by tag")
-        Button(action: toggleSearch) {
-          Image(systemName: "magnifyingglass")
-            .font(IntradaFont.tab)
-            .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
-            .padding(IntradaSpacing.controlGap)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Search")
-      }
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.top, IntradaSpacing.cardCompact)
-      .padding(.bottom, IntradaSpacing.row)
-      .background(IntradaColor.paperTop)
-      .cardShadow()
-      .zIndex(1)
-      if searchRevealed {
-        LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.bottom, IntradaSpacing.cardCompact)
-          .background(IntradaColor.paperTop)
-          .transition(.move(edge: .top).combined(with: .opacity))
-      }
-    }
-  }
 
   @ViewBuilder private var library: some View {
     if items.isEmpty {
@@ -246,21 +179,6 @@ struct SessionBuilderScreen: View {
     if entries.isEmpty { dismiss() } else { confirmingCancel = true }
   }
 
-  private func toggleSearch() {
-    if searchRevealed {
-      cancelSearch()
-    } else {
-      withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { searchRevealed = true }
-      searchFocused = true
-    }
-  }
-
-  private func cancelSearch() {
-    searchText = ""
-    searchFocused = false
-    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { searchRevealed = false }
-  }
-
   private var isSearching: Bool { !(store.viewModel?.activeQuery?.text ?? "").isEmpty }
 
   private var emptyMessage: String {
@@ -268,23 +186,6 @@ struct SessionBuilderScreen: View {
       return "No items match “\(text)”."
     }
     return "Your library is empty — add pieces and exercises first."
-  }
-
-  private func sendQuery(kind: ItemKind?, text: String) {
-    applyQuery(kind: kind, text: text, tags: activeTags)
-  }
-
-  private func sendTagFilter(_ tags: [String]) {
-    applyQuery(kind: store.viewModel?.activeQuery?.itemType, text: searchText, tags: tags)
-  }
-
-  private func applyQuery(kind: ItemKind?, text: String, tags: [String]) {
-    let trimmed = text.trimmingCharacters(in: .whitespaces)
-    let query =
-      (kind == nil && trimmed.isEmpty && tags.isEmpty)
-      ? nil
-      : ListQuery(text: trimmed.isEmpty ? nil : trimmed, itemType: kind, key: nil, tags: tags)
-    store.send(.setQuery(query))
   }
 }
 
