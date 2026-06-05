@@ -90,10 +90,13 @@ struct SessionBuilderScreen: View {
       .session(.reorderSetlist(entryId: entries[from].id, newPosition: UInt64(target))))
   }
 
-  // Present-but-disabled until the player exists — the one-primary-action
-  // frontier, moved down a level from the Practice tab.
+  // The one-primary-action frontier. `startSession` flips the core Building →
+  // Active; `buildingSetlist` goes nil (this screen auto-pops) and `activeSession`
+  // goes non-nil (RootView presents the player). State-driven — no local nav flag.
   private var startBar: some View {
-    VStack(spacing: 6) {
+    Button {
+      store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
+    } label: {
       Label("Start session", systemImage: "play.fill")
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.onAccent)
@@ -101,13 +104,11 @@ struct SessionBuilderScreen: View {
         .padding(.vertical, IntradaSpacing.row)
         .background(LinearGradient.brandBar)
         .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-        .opacity(0.5)
-      Text("Coming soon")
-        .font(IntradaFont.micro)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .opacity(entries.isEmpty ? 0.5 : 1)
     }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Start session, coming soon")
+    .buttonStyle(.plain)
+    .disabled(entries.isEmpty)
+    .accessibilityLabel("Start session")
     .padding(IntradaSpacing.card)
   }
 
