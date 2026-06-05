@@ -54,7 +54,9 @@ struct FocusPlayerScreen: View {
         Spacer()
         optionsMenu
       }
-      SegmentedProgress(total: Int(active.totalItems), filled: Int(active.currentPosition) + 1)
+      SegmentedProgress(
+        total: Int(active.totalItems),
+        filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)))
     }
   }
 

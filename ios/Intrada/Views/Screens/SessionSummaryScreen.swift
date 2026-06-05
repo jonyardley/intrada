@@ -159,7 +159,13 @@ struct SessionSummaryScreen: View {
         .stroke(IntradaColor.hairline, lineWidth: 1)
     )
     .onChange(of: note) { _, value in
-      store.send(.session(.updateSessionNotes(notes: value.isEmpty ? nil : value)))
+      // Push real edits only, and only while still in Summary — avoids an
+      // identical round-trip on the seeded value and a "not in summary" core
+      // error if the field settles during teardown.
+      guard summary != nil else { return }
+      let trimmed = value.isEmpty ? nil : value
+      guard trimmed != summary?.notes else { return }
+      store.send(.session(.updateSessionNotes(notes: trimmed)))
     }
   }
 
