@@ -36,43 +36,11 @@ enum LibraryFilter: CaseIterable, Identifiable {
 struct LibraryFilterTabs: View {
   @Binding var selection: LibraryFilter
   var edgeInset: CGFloat = 0
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Namespace private var pill
 
   var body: some View {
-    // Horizontal scroll so the pills slide rather than wrap mid-word once the
-    // labels grow past the width at large Dynamic Type (#810).
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        ForEach(LibraryFilter.allCases) { filter in
-          let isSelected = filter == selection
-          Button {
-            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
-              selection = filter
-            }
-          } label: {
-            Text(filter.label)
-              .font(IntradaFont.tab)
-              .lineLimit(1)
-              .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.inkFaint)
-              .padding(.vertical, 6)
-              .padding(.horizontal, IntradaSpacing.row)
-              .background {
-                if isSelected {
-                  Capsule()
-                    .fill(IntradaColor.accent)
-                    .matchedGeometryEffect(id: "selectedPill", in: pill)
-                }
-              }
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(filter.label)
-          .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        }
-      }
-    }
-    .contentMargins(.leading, edgeInset, for: .scrollContent)
-    .padding(.leading, -edgeInset)
+    SegmentedPills(
+      options: LibraryFilter.allCases, selection: $selection, label: \.label,
+      layout: .inlineScrolling(edgeInset: edgeInset))
   }
 }
 
