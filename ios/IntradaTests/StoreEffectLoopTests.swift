@@ -362,13 +362,30 @@ final class StoreEffectLoopTests: XCTestCase {
     return bridge
   }
 
-  /// Run `action`, then await the bridge's first `resolve` — the HTTP leg hops
-  /// through a detached `Task`, so the assertion must wait for it.
-  private func whenResolved(_ bridge: FakeBridge, _ action: () -> Void) async {
-    let resolved = expectation(description: "bridge resolved")
-    bridge.onResolve = { resolved.fulfill() }
-    action()
-    await fulfillment(of: [resolved], timeout: 5)  // generous ceiling; absorbs CI scheduling jitter (#861)
+  /// Resume on the bridge's `resolve` callback, not a wall-clock `fulfillment`
+  /// — a loaded CI runner starves the detached HTTP Task; a tight ceiling flakes
+  /// (#956, #861). The 30s net is a fail-bounded backstop, not the happy path.
+  private func whenResolved(
+    _ bridge: FakeBridge, _ action: () -> Void,
+    file: StaticString = #filePath, line: UInt = #line
+  ) async {
+    let gate = ResolveGate()
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+      let timeout = Task {
+        try? await Task.sleep(for: .seconds(30))
+        if gate.claim() {
+          XCTFail("bridge never resolved within the 30s safety ceiling", file: file, line: line)
+          continuation.resume()
+        }
+      }
+      bridge.onResolve = {
+        if gate.claim() {
+          timeout.cancel()
+          continuation.resume()
+        }
+      }
+      action()
+    }
   }
 
   static let sampleItem = Item(
@@ -432,6 +449,19 @@ private final class FakeBridge: CoreBridge {
     if let throwOnView { throw throwOnView }
     if let nextViewModel { return try nextViewModel() }
     return try emptyViewModel()
+  }
+}
+
+/// One-shot: only the first of {resolve, timeout} resumes (double-resume traps).
+private final class ResolveGate {
+  private let lock = NSLock()
+  private var claimed = false
+  func claim() -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    if claimed { return false }
+    claimed = true
+    return true
   }
 }
 
