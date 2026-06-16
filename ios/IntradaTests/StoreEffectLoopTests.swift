@@ -333,6 +333,47 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
+  /// bridge through Building → Active → Summary → Idle, mirroring the
+  /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
+  /// as a failed transition instead of the silent no-op the stub bridge would
+  /// hide (#846).
+  func testRealBridgeSessionFlowBuildPlaySave() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let building = try bridge.view()
+    XCTAssertNotNil(building.buildingSetlist, "startBuilding + add should open a setlist")
+    XCTAssertEqual(building.buildingSetlist?.entries.count, 1)
+    XCTAssertNil(building.activeSession)
+
+    _ = try bridge.update(.session(.startSession(now: "2026-06-16T10:00:00Z")))
+    let active = try bridge.view()
+    XCTAssertNotNil(active.activeSession, "startSession should enter the player")
+    XCTAssertNil(active.buildingSetlist, "the builder should close on start")
+    XCTAssertNil(active.summary)
+
+    _ = try bridge.update(.session(.finishSession(now: "2026-06-16T10:20:00Z")))
+    let summary = try bridge.view()
+    XCTAssertNotNil(summary.summary, "finishSession should reach the summary")
+    XCTAssertNil(summary.activeSession)
+
+    _ = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
+    let saved = try bridge.view()
+    XCTAssertNil(saved.summary, "saveSession clears the summary (session persisted)")
+    XCTAssertNil(saved.activeSession)
+    XCTAssertNil(saved.error, "a clean save surfaces no error")
+  }
+
   /// App effects come from `notify_shell` — fire-and-forget notifications the
   /// live bridge rejects resolving, so the Store must not resolve `.app`. The
   /// stub bridge can't enforce this; pinned here against the real bridge (#882).
