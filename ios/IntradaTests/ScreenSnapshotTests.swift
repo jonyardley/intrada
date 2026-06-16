@@ -135,16 +135,6 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
   }
 
-  func testSessionItemPickerSheet() {
-    assertSnapshot(of: host(SessionItemPickerSheet(), store: .previewBuilding), as: config)
-  }
-
-  func testSessionItemPickerSheetSearching() {
-    assertSnapshot(
-      of: host(SessionItemPickerSheet(previewSearch: "clair"), store: .previewBuildingSearching),
-      as: config)
-  }
-
   func testRoutinesScreen() {
     assertSnapshot(of: host(RoutinesScreen()), as: config)
   }

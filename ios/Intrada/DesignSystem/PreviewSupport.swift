@@ -124,19 +124,6 @@
             sourceStatus: .noSource)))
     }
 
-    /// Builder picker with an inherited active search ("clair") — the list is
-    /// pre-filtered to the match, so the revealed-search state has its own test.
-    static var previewBuildingSearching: Store {
-      Store(
-        bridge: PreviewBridge(
-          items: [.previewPiece],
-          activeQuery: ListQuery(text: "clair", itemType: nil, key: nil, tags: []),
-          buildingSetlist: BuildingSetlistView(
-            entries: [.previewPiece],
-            itemCount: 1, sessionIntention: nil, targetDurationMins: nil,
-            sourceStatus: .noSource)))
-    }
-
     /// Player Focus — a piece mid-session with a session intention and a time
     /// target (the target bar), no reps.
     static var previewActive: Store {

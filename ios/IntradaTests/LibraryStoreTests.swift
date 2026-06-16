@@ -190,6 +190,36 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertTrue(columns.contains("deleted_at"), "session needs deleted_at; has \(columns)")
   }
 
+  /// Unknown stored enum strings (an older binary reading a newer row) fall back
+  /// to conservative defaults rather than silently mis-categorising (#949).
+  func testUnknownStoredEnumStringsFallBackToConservativeDefaults() throws {
+    let entries =
+      #"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"klingon","position":0,"durationSecs":0,"status":"quantum","repHistory":["warp"]}]"#
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v3_session",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           created_at, updated_at, priority, deleted_at)
+        VALUES ('i1', 'X', 'piece', NULL, NULL, 'lydian', NULL, NULL, NULL, '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL);
+        INSERT INTO session
+          (id, started_at, completed_at, total_duration_secs, completion_status,
+           session_notes, session_intention, entries, updated_at, deleted_at)
+        VALUES ('s1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, 'enlightenment',
+                NULL, NULL, '\(entries)', '2026-01-01T00:00:00Z', NULL)
+        """)
+    XCTAssertNil(try XCTUnwrap(try store.loadItems().first).modality, "unknown modality → nil")
+
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(got.completionStatus, .completed, "unknown completion status → completed")
+    let e = try XCTUnwrap(got.entries.first)
+    XCTAssertEqual(
+      e.status, .notAttempted, "unknown entry status → conservative notAttempted, not completed")
+    XCTAssertEqual(e.itemType, .piece, "unknown kind → piece")
+    XCTAssertEqual(e.repHistory, [.missed], "unknown rep action → conservative missed")
+  }
+
   /// Upgrade path: a pre-existing v2 item row survives the v3 session migration.
   func testV2ItemSurvivesSessionMigration() throws {
     let store = try LibraryStore.upgradeTestStore(

@@ -20,9 +20,9 @@ resolver = "2"
 package.rust-version = "1.75"
 
 [workspace.dependencies]
-crux_core = "0.18.0"
-crux_http = "0.17.0"
-# Must track the facet version crux_core 0.18 pulls in (0.44.x) so the
+crux_core = "0.19.0"
+crux_http = "0.18.0" # tracks crux_core: crux_http 0.18 requires crux_core ^0.19
+# Must track the facet version crux_core 0.19 pulls in (0.44.x) so the
 # gated `derive(facet::Facet)` impls match crux's typegen reflection.
 facet = "0.44"
 serde = { version = "1", features = ["derive"] }
