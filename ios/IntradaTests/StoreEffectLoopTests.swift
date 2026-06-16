@@ -362,10 +362,25 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(active.buildingSetlist, "the builder should close on start")
     XCTAssertNil(active.summary)
 
-    _ = try bridge.update(.session(.finishSession(now: "2026-06-16T10:20:00Z")))
+    // The FocusPlayer reaches the summary by advancing past the last item (its
+    // Done/Finish path), not finishSession — round-trip the event the screen
+    // actually sends.
+    _ = try bridge.update(.session(.nextItem(now: "2026-06-16T10:20:00Z")))
     let summary = try bridge.view()
-    XCTAssertNotNil(summary.summary, "finishSession should reach the summary")
+    XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
     XCTAssertNil(summary.activeSession)
+
+    // Optional-payload events crossing bincode (the absent-vs-present wire
+    // hazard, #846): set then clear a score and the session notes.
+    let entryId = try XCTUnwrap(summary.summary?.entries.first?.id)
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: 4)))
+    XCTAssertEqual(try bridge.view().summary?.entries.first?.score, 4, "score should round-trip")
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: nil)))
+    XCTAssertNil(try bridge.view().summary?.entries.first?.score, "clearing a score round-trips")
+    _ = try bridge.update(.session(.updateSessionNotes(notes: "Felt good")))
+    XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
+    _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
+    XCTAssertNil(try bridge.view().summary?.notes, "clearing notes round-trips")
 
     _ = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
     let saved = try bridge.view()
