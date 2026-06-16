@@ -28,7 +28,7 @@ thiserror = { workspace = true }
 
 # UniFFI pinned to match the version cargo-swift's bundled bindgen expects;
 # lib.rs asserts compatibility at compile time. (See crux `counter` example.)
-uniffi = { version = "=0.31.1", optional = true }
+uniffi = { version = "=0.29.4", optional = true }
 
 # codegen-only
 anyhow = { version = "1", optional = true }
