@@ -57,6 +57,11 @@ enum IntradaFont {
   static func cardTitle(_ size: CGFloat = 17) -> Font {
     .custom(Serif.semibold, size: size, relativeTo: .title3)
   }
+  /// The live session timer — the boldest *named* Inter instance (not a synthetic
+  /// `.bold()` over the variable axis) at display size. Pair with `.monospacedDigit()`.
+  static func timer(_ size: CGFloat = 56) -> Font {
+    .custom(Inter.semibold, size: size, relativeTo: .largeTitle)
+  }
 
   static let body = Font.custom(Inter.regular, size: 14, relativeTo: .subheadline)
   static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)

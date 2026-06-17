@@ -333,6 +333,62 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
+  /// bridge through Building → Active → Summary → Idle, mirroring the
+  /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
+  /// as a failed transition instead of the silent no-op the stub bridge would
+  /// hide (#846).
+  func testRealBridgeSessionFlowBuildPlaySave() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let building = try bridge.view()
+    XCTAssertNotNil(building.buildingSetlist, "startBuilding + add should open a setlist")
+    XCTAssertEqual(building.buildingSetlist?.entries.count, 1)
+    XCTAssertNil(building.activeSession)
+
+    _ = try bridge.update(.session(.startSession(now: "2026-06-16T10:00:00Z")))
+    let active = try bridge.view()
+    XCTAssertNotNil(active.activeSession, "startSession should enter the player")
+    XCTAssertNil(active.buildingSetlist, "the builder should close on start")
+    XCTAssertNil(active.summary)
+
+    // The FocusPlayer reaches the summary by advancing past the last item (its
+    // Done/Finish path), not finishSession — round-trip the event the screen
+    // actually sends.
+    _ = try bridge.update(.session(.nextItem(now: "2026-06-16T10:20:00Z")))
+    let summary = try bridge.view()
+    XCTAssertNotNil(summary.summary, "advancing past the last item should reach the summary")
+    XCTAssertNil(summary.activeSession)
+
+    // Optional-payload events crossing bincode (the absent-vs-present wire
+    // hazard, #846): set then clear a score and the session notes.
+    let entryId = try XCTUnwrap(summary.summary?.entries.first?.id)
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: 4)))
+    XCTAssertEqual(try bridge.view().summary?.entries.first?.score, 4, "score should round-trip")
+    _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: nil)))
+    XCTAssertNil(try bridge.view().summary?.entries.first?.score, "clearing a score round-trips")
+    _ = try bridge.update(.session(.updateSessionNotes(notes: "Felt good")))
+    XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
+    _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
+    XCTAssertNil(try bridge.view().summary?.notes, "clearing notes round-trips")
+
+    _ = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
+    let saved = try bridge.view()
+    XCTAssertNil(saved.summary, "saveSession clears the summary (session persisted)")
+    XCTAssertNil(saved.activeSession)
+    XCTAssertNil(saved.error, "a clean save surfaces no error")
+  }
+
   /// App effects come from `notify_shell` — fire-and-forget notifications the
   /// live bridge rejects resolving, so the Store must not resolve `.app`. The
   /// stub bridge can't enforce this; pinned here against the real bridge (#882).

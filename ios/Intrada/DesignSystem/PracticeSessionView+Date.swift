@@ -2,15 +2,10 @@ import Foundation
 import SharedTypes
 
 extension PracticeSessionView {
-  /// Parsed start instant. chrono's `to_rfc3339` emits fractional seconds, so
-  /// fall back to the plain internet-date form.
-  var startedDate: Date? {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let date = formatter.date(from: startedAt) { return date }
-    formatter.formatOptions = [.withInternetDateTime]
-    return formatter.date(from: startedAt)
-  }
+  /// Parsed start instant. Routed through `SessionClock` so chrono's
+  /// micro/nanosecond fractions parse (the bare `.withFractionalSeconds`
+  /// formatter only handles milliseconds).
+  var startedDate: Date? { SessionClock.parseRFC3339(startedAt) }
 }
 
 /// Pure date math for the Practice week strip. Shell-side per the dumb-pipe
