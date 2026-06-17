@@ -23,15 +23,20 @@
     private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
     private let buildingSetlist: BuildingSetlistView?
+    private let activeSession: ActiveSessionView?
+    private let summary: SummaryView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
-      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil
+      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
+      activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
       self.sessions = sessions
       self.buildingSetlist = buildingSetlist
+      self.activeSession = activeSession
+      self.summary = summary
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -53,6 +58,8 @@
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       viewModel.sessions = sessions
       viewModel.buildingSetlist = buildingSetlist
+      viewModel.activeSession = activeSession
+      viewModel.summary = summary
       return viewModel
     }
   }
@@ -115,6 +122,27 @@
             entries: [.previewPiece, .previewExercise],
             itemCount: 2, sessionIntention: nil, targetDurationMins: nil,
             sourceStatus: .noSource)))
+    }
+
+    /// Player Focus — a piece mid-session with a session intention and a time
+    /// target (the target bar), no reps.
+    static var previewActive: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActive))
+    }
+
+    /// Player Focus — an exercise with an active rep counter.
+    static var previewActiveReps: Store {
+      Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
+    }
+
+    /// Player Summary — a completed session with scored entries.
+    static var previewSummary: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummary))
+    }
+
+    /// Player Summary — ended early, so the unreached item shows not-attempted.
+    static var previewSummaryEndedEarly: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummaryEndedEarly))
     }
   }
 
@@ -226,6 +254,69 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil)
+    }
+  }
+
+  extension ActiveSessionView {
+    /// Item start instant + the snapshot reference (start + 4:12) so the timer
+    /// renders a fixed `04:12` deterministically.
+    static let previewStartedAt = "2026-05-30T09:00:00Z"
+    static var previewReferenceDate: Date {
+      (SessionClock.parseRFC3339(previewStartedAt) ?? .distantPast).addingTimeInterval(252)
+    }
+
+    static var previewActive: ActiveSessionView {
+      ActiveSessionView(
+        currentItemTitle: "Clair de Lune", currentItemType: .piece,
+        currentPosition: 1, totalItems: 5,
+        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        entries: [], sessionIntention: "Even tempo — don't rush the runs",
+        currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
+        currentRepHistory: nil, currentPlannedDurationSecs: 480, nextItemTitle: "Hanon No. 1")
+    }
+
+    static var previewActiveReps: ActiveSessionView {
+      ActiveSessionView(
+        currentItemTitle: "Hanon No. 1", currentItemType: .exercise,
+        currentPosition: 2, totalItems: 5,
+        startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
+        entries: [], sessionIntention: "Keep the wrist relaxed",
+        currentRepTarget: 8, currentRepCount: 3, currentRepTargetReached: false,
+        currentRepHistory: nil, currentPlannedDurationSecs: nil, nextItemTitle: "Czerny Op. 299")
+    }
+  }
+
+  extension SummaryView {
+    static var previewSummary: SummaryView {
+      SummaryView(
+        totalDurationDisplay: "37m 50s", completionStatus: .completed, notes: nil,
+        entries: [
+          summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", .completed, score: 3),
+          summaryEntry("e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4, tempo: 96),
+          summaryEntry("e3", "Gymnopédie No. 1", .piece, "11m 30s", .completed, score: 5),
+          summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", .completed, score: 3),
+        ], sessionIntention: nil)
+    }
+
+    static var previewSummaryEndedEarly: SummaryView {
+      SummaryView(
+        totalDurationDisplay: "20m 50s", completionStatus: .endedEarly, notes: nil,
+        entries: [
+          summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", .completed, score: 3),
+          summaryEntry("e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4),
+          summaryEntry("e3", "Étude Op. 10", .piece, "0s", .notAttempted, score: nil),
+        ], sessionIntention: nil)
+    }
+
+    private static func summaryEntry(
+      _ id: String, _ title: String, _ type: ItemKind, _ duration: String,
+      _ status: EntryStatus, score: UInt8?, tempo: UInt16? = nil
+    ) -> SetlistEntryView {
+      SetlistEntryView(
+        id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
+        durationDisplay: duration, status: status, notes: nil, score: score, intention: nil,
+        repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo)
     }
   }
 #endif

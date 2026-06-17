@@ -134,23 +134,30 @@ struct SessionBuilderScreen: View {
     .cardShadow(above: true)
   }
 
-  // The frontier — disabled until the player exists.
+  // The one-primary-action frontier. `startSession` flips the core Building →
+  // Active; `buildingSetlist` goes nil (this screen auto-pops) and `activeSession`
+  // goes non-nil (RootView presents the player). State-driven — no local nav flag.
   private var startButton: some View {
-    HStack(spacing: 5) {
-      Image(systemName: "play.fill").font(IntradaFont.micro)
-      Text(entries.isEmpty ? "Start" : "Start · \(entries.count)")
-        .font(IntradaFont.metaMedium)
+    Button {
+      store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
+    } label: {
+      HStack(spacing: 5) {
+        Image(systemName: "play.fill").font(IntradaFont.micro)
+        Text(entries.isEmpty ? "Start" : "Start · \(entries.count)")
+          .font(IntradaFont.metaMedium)
+      }
+      .foregroundStyle(IntradaColor.onAccent)
+      .padding(.vertical, 6)
+      .padding(.horizontal, IntradaSpacing.cardCompact)
+      .background(LinearGradient.brandBar, in: Capsule())
+      .opacity(entries.isEmpty ? 0.5 : 1)
+      .cardShadow()
     }
-    .foregroundStyle(IntradaColor.onAccent)
-    .padding(.vertical, 6)
-    .padding(.horizontal, IntradaSpacing.cardCompact)
-    .background(LinearGradient.brandBar, in: Capsule())
-    .opacity(0.5)
-    .cardShadow()
+    .buttonStyle(.plain)
+    .disabled(entries.isEmpty)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(
-      entries.isEmpty
-        ? "Start session, coming soon" : "Start session, \(entries.count) items, coming soon")
+    .accessibilityLabel("Start session")
+    .accessibilityValue(entries.isEmpty ? "No items yet" : "\(entries.count) items")
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
