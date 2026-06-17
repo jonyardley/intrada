@@ -333,6 +333,41 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  /// Real-bridge priority toggle (#763): the star sends an UpdateItem with every
+  /// optional field "no change" (outer nil) and only `priority` set — a different
+  /// bincode shape than the full edit, so round-trip it through the live bridge to
+  /// catch an absent-vs-present wire break (#846).
+  func testRealBridgePriorityToggleAppliesToViewModel() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let item = try XCTUnwrap(try bridge.view().items.first)
+    XCTAssertFalse(item.priority, "new items start non-priority")
+
+    func toggle(_ on: Bool) -> Event {
+      .item(
+        .update(
+          id: item.id,
+          input: UpdateItem(
+            title: item.title, kind: item.itemType,
+            composer: nil, key: nil, modality: nil, tempo: nil, notes: nil,
+            tags: nil, priority: on)))
+    }
+
+    _ = try bridge.update(toggle(true))
+    let on = try bridge.view().items.first
+    XCTAssertEqual(on?.priority, true, "star should flip priority on")
+    XCTAssertEqual(on?.subtitle, "Chopin", "a priority-only update must not clobber other fields")
+
+    _ = try bridge.update(toggle(false))
+    XCTAssertEqual(try bridge.view().items.first?.priority, false, "star should flip priority off")
+  }
+
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
   /// bridge through Building → Active → Summary → Idle, mirroring the
   /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here

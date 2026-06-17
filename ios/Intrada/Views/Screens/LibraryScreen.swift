@@ -4,6 +4,7 @@ import SwiftUI
 struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @State private var adding = false
+  @State private var prioritiesExpanded = true
   private let previewSearch: String?
 
   init() { previewSearch = nil }
@@ -49,12 +50,17 @@ struct LibraryScreen: View {
     } else {
       ScrollView {
         LazyVStack(spacing: IntradaSpacing.row) {
-          ForEach(items, id: \.id) { item in
-            NavigationLink(value: item.id) {
-              LibraryItemCard(item: item)
+          if !priorityItems.isEmpty {
+            prioritiesHeader
+            if prioritiesExpanded {
+              ForEach(priorityItems, id: \.id) { libraryRow($0) }
             }
-            .buttonStyle(.plain)
+            if !regularItems.isEmpty {
+              Divider().overlay(IntradaColor.divider)
+                .padding(.vertical, IntradaSpacing.controlGap)
+            }
           }
+          ForEach(regularItems, id: \.id) { libraryRow($0) }
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -63,6 +69,71 @@ struct LibraryScreen: View {
       .scrollDismissesKeyboard(.interactively)
       .scrollEdgeShadow()
     }
+  }
+
+  // ── Priority view ─────────────────────────────────────────────────────
+  // Partition the *visible* items (the core already applied search/filter) so
+  // the pinned section naturally respects the active query.
+
+  private var priorityItems: [LibraryItemView] { items.filter(\.priority) }
+  private var regularItems: [LibraryItemView] { items.filter { !$0.priority } }
+
+  private var prioritiesHeader: some View {
+    Button {
+      withAnimation(.easeInOut(duration: 0.2)) { prioritiesExpanded.toggle() }
+    } label: {
+      HStack(spacing: 6) {
+        Image(systemName: "star.fill").font(.system(size: 11))
+          .foregroundStyle(IntradaColor.accent)
+        Text("PRIORITIES · \(priorityItems.count)")
+          .font(IntradaFont.badge).tracking(1.5)
+          .foregroundStyle(IntradaColor.inkFaint)
+        Spacer()
+        Image(systemName: prioritiesExpanded ? "chevron.down" : "chevron.right")
+          .font(.system(size: 12, weight: .semibold))
+          .foregroundStyle(IntradaColor.inkFaint)
+      }
+      .padding(.horizontal, 4)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Priorities, \(priorityItems.count) items")
+    .accessibilityHint(prioritiesExpanded ? "Collapses the section" : "Expands the section")
+  }
+
+  private func libraryRow(_ item: LibraryItemView) -> some View {
+    NavigationLink(value: item.id) { LibraryItemCard(item: item) }
+      .buttonStyle(.plain)
+      .overlay(alignment: .topTrailing) { priorityStar(item) }
+  }
+
+  // A separate tap target on top of the row's NavigationLink: tapping the star
+  // toggles priority; tapping the rest of the row still navigates to detail.
+  private func priorityStar(_ item: LibraryItemView) -> some View {
+    Button {
+      store.send(.item(.update(id: item.id, input: togglePriority(item))))
+    } label: {
+      Image(systemName: item.priority ? "star.fill" : "star")
+        .font(.system(size: 16))
+        .foregroundStyle(item.priority ? IntradaColor.accent : IntradaColor.inkFaint)
+        .padding(IntradaSpacing.row)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(
+      item.priority ? "Remove \(item.title) from priorities"
+        : "Add \(item.title) to priorities")
+  }
+
+  // Priority-only update: title + kind are required, every optional field is
+  // "no change" (outer nil), priority flips. The optimistic write reconciles via
+  // the ViewModel (the star reflects item.priority); a failure surfaces on the
+  // global error banner — never a silent no-op (#846).
+  private func togglePriority(_ item: LibraryItemView) -> UpdateItem {
+    UpdateItem(
+      title: item.title, kind: item.itemType,
+      composer: nil, key: nil, modality: nil, tempo: nil, notes: nil,
+      tags: nil, priority: !item.priority)
   }
 
   private var isSearching: Bool {
