@@ -135,6 +135,29 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
   }
 
+  func testFocusPlayerWithTarget() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: .previewActive), as: config)
+  }
+
+  func testFocusPlayerWithReps() {
+    assertSnapshot(
+      of: host(
+        FocusPlayerScreen(referenceDate: ActiveSessionView.previewReferenceDate),
+        store: .previewActiveReps), as: config)
+  }
+
+  func testSessionSummaryCompleted() {
+    assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: config)
+  }
+
+  func testSessionSummaryEndedEarly() {
+    assertSnapshot(
+      of: host(SessionSummaryScreen(), store: .previewSummaryEndedEarly), as: config)
+  }
+
   func testRoutinesScreen() {
     assertSnapshot(of: host(RoutinesScreen()), as: config)
   }

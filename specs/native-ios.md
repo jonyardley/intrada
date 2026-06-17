@@ -192,8 +192,11 @@ sync-agnostic now; defer the engine; lean roll-our-own LWW when we build sync.**
     Practice home with seeded demo sessions (#902), the duration summary, the
     week calendar strip with day filtering (#905), and swipe paging between
     weeks (#911); plus an `IntradaSpacing`/`IntradaRadius` token system (#922).
-    Next: the **setlist builder** (the `SessionStatus::Building` flow that makes
-    "Start practising" real), then the active player and post-session summary.
+    The **setlist builder** (the `SessionStatus::Building` flow — library-first
+    builder with a reorderable queue tray) and the **active player + post-session
+    summary** (player Slice 1, #964/#932) have since shipped, closing the
+    build→practise→reflect→save loop. Next: per-item transition beats (Slice 2,
+    #961) and the SaveSession optimistic-clear retry path (#974).
 - **Phase D (sync = the paid tier):** LWW sync to the Axum API (server-
   authoritative `updated_at`, tombstones, deterministic tiebreak — designed
   above); account/sign-in gates sync; StoreKit subscription + entitlement
