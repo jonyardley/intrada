@@ -41,7 +41,7 @@ jobs:
       mobile: ${{ steps.filter.outputs.mobile }}
       native: ${{ steps.filter.outputs.native }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
         id: filter
         with:
@@ -88,7 +88,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -127,7 +127,7 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.rust == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -164,7 +164,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -234,7 +234,7 @@ jobs:
     #   if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
     if: false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -378,7 +378,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Pin Xcode 26.5 to match local dev + the recorded snapshot reference.
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -543,7 +543,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check snapshot references (orphans + size ceiling)
         run: bash scripts/check-snapshots.sh
 
@@ -556,7 +556,7 @@ jobs:
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -631,7 +631,7 @@ jobs:
     # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -654,7 +654,7 @@ jobs:
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -714,7 +714,7 @@ jobs:
     # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -780,7 +780,7 @@ jobs:
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.rust == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
@@ -796,7 +796,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Check comment density
@@ -810,7 +810,7 @@ jobs:
     name: Security (cargo-deny + Gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # ── cargo-deny ─────────────────────────────────────────────────────
@@ -847,7 +847,7 @@ jobs:
     # push. The previously-deployed API keeps running.
     if: github.event_name == 'push' && needs.changes.outputs.api == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - name: Log in to Fly registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -877,7 +877,7 @@ jobs:
     needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke]
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Download web-dist artifact
         uses: actions/download-artifact@v8
         with:
@@ -954,7 +954,7 @@ jobs:
     needs: [test, clippy, fmt, api-docker-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@master
       # Deploy the image already built, tested (via api-docker-build's gate)
       # and pushed to Fly's registry — no rebuild on Fly's remote builder.
