@@ -71,10 +71,7 @@ struct LibraryScreen: View {
     }
   }
 
-  // ── Priority view ─────────────────────────────────────────────────────
-  // Partition the *visible* items (the core already applied search/filter) so
-  // the pinned section naturally respects the active query.
-
+  // Partition the already query-filtered items, so the section respects search/filter.
   private var priorityItems: [LibraryItemView] { items.filter(\.priority) }
   private var regularItems: [LibraryItemView] { items.filter { !$0.priority } }
 
@@ -107,8 +104,7 @@ struct LibraryScreen: View {
       .overlay(alignment: .topTrailing) { priorityStar(item) }
   }
 
-  // A separate tap target on top of the row's NavigationLink: tapping the star
-  // toggles priority; tapping the rest of the row still navigates to detail.
+  // A separate tap target over the row's NavigationLink — the star toggles; row taps still navigate.
   private func priorityStar(_ item: LibraryItemView) -> some View {
     Button {
       store.send(.item(.update(id: item.id, input: togglePriority(item))))
@@ -125,10 +121,8 @@ struct LibraryScreen: View {
         : "Add \(item.title) to priorities")
   }
 
-  // Priority-only update: title + kind are required, every optional field is
-  // "no change" (outer nil), priority flips. The optimistic write reconciles via
-  // the ViewModel (the star reflects item.priority); a failure surfaces on the
-  // global error banner — never a silent no-op (#846).
+  // Priority-only update: every optional field is "no change" (nil), priority flips.
+  // A failed write surfaces on the global banner, not a silent no-op (#846).
   private func togglePriority(_ item: LibraryItemView) -> UpdateItem {
     UpdateItem(
       title: item.title, kind: item.itemType,
