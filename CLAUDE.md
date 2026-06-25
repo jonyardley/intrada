@@ -65,8 +65,16 @@ cargo test -p intrada-api  # API tests only
 just ios                   # native app: regen bindings (if core changed) + open Xcode
 just ios-run               # native app: build + launch on simulator + screenshot
 just ios-logs              # native app: stream booted-sim logs, filtered to our subsystem
+just testflight            # native app: signed Release .ipa → TestFlight (needs setup; see below)
 just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 ```
+
+`just testflight` builds a signed Release `.ipa` and uploads it to TestFlight
+(internal testing), mirroring the `.github/workflows/release-testflight.yml` CI
+lane (which runs on `workflow_dispatch` / `v*` tag, never per-PR). Signing is
+fastlane **match**; needs Ruby ≥ 3 (system Ruby 2.6 is too old — use `rbenv`)
+plus a one-time App Store Connect + match bootstrap. Full setup + decisions:
+[`specs/ios-testflight-cicd.md`](specs/ios-testflight-cicd.md) and SETUP.md §6a.
 
 `just ios-logs` filters the unified log to `subsystem == "com.intrada.native"`,
 cutting the simulator's UIKit/keyboard/gesture noise so first-party signal is
