@@ -5,6 +5,10 @@ import SwiftUI
 /// always-on type signal, so list rows carry no separate type badge.
 struct LibraryItemCard: View {
   let item: LibraryItemView
+  // Trailing space reserved for an external accessory the card doesn't own
+  // (the Library's priority star, overlaid by the row) so a long title wraps
+  // clear of it instead of rendering underneath.
+  var trailingGutter: CGFloat = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 3) {
@@ -28,7 +32,7 @@ struct LibraryItemCard: View {
     }
     .padding(.vertical, IntradaSpacing.row)
     .padding(.leading, 20)
-    .padding(.trailing, IntradaSpacing.row)
+    .padding(.trailing, IntradaSpacing.row + trailingGutter)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(IntradaColor.cardFill)
     // Bar as a leading overlay so it fills the content height without the

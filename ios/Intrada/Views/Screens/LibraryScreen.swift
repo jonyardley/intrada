@@ -102,7 +102,7 @@ struct LibraryScreen: View {
   }
 
   private func libraryRow(_ item: LibraryItemView) -> some View {
-    NavigationLink(value: item.id) { LibraryItemCard(item: item) }
+    NavigationLink(value: item.id) { LibraryItemCard(item: item, trailingGutter: 30) }
       .buttonStyle(.plain)
       .overlay(alignment: .topTrailing) { priorityStar(item) }
   }
