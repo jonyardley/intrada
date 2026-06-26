@@ -13,7 +13,11 @@ enum IntradaColor {
   static let divider = Color(hex: 0xE0D9C8)
 
   static let ink = Color(hex: 0x2B2A26)
+  /// Body, descriptions, and all metadata (keys, tempos, counts, durations).
+  /// Clears WCAG AA (5.3:1) — the lightest ink that may carry information.
   static let inkSecondary = Color(hex: 0x6E6557)
+  /// Eyebrow labels only — uppercase, tracked, non-essential. Fails AA (2.9:1),
+  /// so never use it for metadata or body; that's `inkSecondary`.
   static let inkFaint = Color(hex: 0x9A927F)
 
   static let accent = Color(hex: 0x4C3FA6)
@@ -93,14 +97,18 @@ enum IntradaFont {
 enum IntradaSpacing {
   /// 8pt — gaps between small adjacent controls (toolbar, segments).
   static let controlGap: CGFloat = 8
-  /// 12pt — compact padding / inset (web `p-card-compact`).
+  /// 12pt — compact padding / inset, and the inter-card gap in lists
+  /// (web `p-card-compact`).
   static let cardCompact: CGFloat = 12
-  /// 14pt — list/card row rhythm (inter-card gap, card vertical padding) and
-  /// other matching insets. Like a Tailwind step, one value serves several roles.
-  static let row: CGFloat = 14
+  /// 16pt — list/card row rhythm: card vertical padding and in-card content
+  /// gaps. Same value as `card` (the design merges them) but kept as a distinct
+  /// name for the row-rhythm role.
+  static let row: CGFloat = 16
   /// 16pt — the standard inset: screen edges, card padding, list padding
   /// (web `p-card`).
   static let card: CGFloat = 16
+  /// 24pt — the gap between major blocks / sections.
+  static let section: CGFloat = 24
 }
 
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
