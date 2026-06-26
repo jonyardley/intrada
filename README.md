@@ -92,7 +92,7 @@ crates/
   intrada-api/        # REST API (Axum + Turso)
   intrada-mobile/     # Tauri 2 iOS host — wraps intrada-web in WKWebView
     src-tauri/        #   Rust host, tauri.conf.json, Swift plugins
-design/               # Pencil design system (intrada.pen)
+design/               # Claude Design system (intrada-design-system.dc.html)
 docs/                 # Product roadmap and documentation
 e2e/                  # Playwright E2E tests
 scripts/              # Development utilities (seed data)
