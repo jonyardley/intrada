@@ -9,6 +9,11 @@
 > Visual/token detail lives in code (`crates/intrada-web/style/input.css`,
 > `views/design_catalogue.rs`) and the design rules in `CLAUDE.md`. This doc is
 > the *why* and the *interaction* layer those don't cover.
+>
+> Design is now produced in **Claude Design** — see
+> [`design-workflow.md`](design-workflow.md). The native iOS design system lives
+> at [`design/intrada-design-system.dc.html`](../design/intrada-design-system.dc.html),
+> derived from `ios/Intrada/DesignSystem/Theme.swift`. (Pencil is retired.)
 
 ## How to use this doc
 
