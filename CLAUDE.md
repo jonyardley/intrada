@@ -9,9 +9,11 @@
 > [`specs/native-ios.md`](specs/native-ios.md)). **Do NOT build new features
 > in the Leptos web shell (`crates/intrada-web`) or the Tauri shell
 > (`crates/intrada-mobile`) — both are PAUSED.** New UI work lands in the
-> native iOS app. Pencil designs are still the source of truth for look & feel,
-> but implementations target SwiftUI, not Leptos. If a request seems to imply
-> web/Leptos work, confirm the platform before writing code.
+> native iOS app. Design happens in **Claude Design** (see
+> [`docs/design-workflow.md`](docs/design-workflow.md)); the living reference is
+> [`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html),
+> derived from `Theme.swift`. Implementations target SwiftUI, not Leptos. If a
+> request seems to imply web/Leptos work, confirm the platform before writing code.
 
 ## Project Overview
 
@@ -37,7 +39,7 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
   intrada-mobile/        # Tauri 2 iOS host — wraps intrada-web in WKWebView
     src-tauri/           #   Rust host, tauri.conf.json, Swift plugins
-design/                  # Pencil design system (intrada.pen)
+design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Product roadmap (single source of truth)
 e2e/                     # Playwright E2E tests
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
@@ -65,8 +67,16 @@ cargo test -p intrada-api  # API tests only
 just ios                   # native app: regen bindings (if core changed) + open Xcode
 just ios-run               # native app: build + launch on simulator + screenshot
 just ios-logs              # native app: stream booted-sim logs, filtered to our subsystem
+just testflight            # native app: signed Release .ipa → TestFlight (needs setup; see below)
 just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 ```
+
+`just testflight` builds a signed Release `.ipa` and uploads it to TestFlight
+(internal testing), mirroring the `.github/workflows/release-testflight.yml` CI
+lane (which runs on `workflow_dispatch` / `v*` tag, never per-PR). Signing is
+fastlane **match**; needs Ruby ≥ 3 (system Ruby 2.6 is too old — use `rbenv`)
+plus a one-time App Store Connect + match bootstrap. Full setup + decisions:
+[`specs/ios-testflight-cicd.md`](specs/ios-testflight-cicd.md) and SETUP.md §6a.
 
 `just ios-logs` filters the unified log to `subsystem == "com.intrada.native"`,
 cutting the simulator's UIKit/keyboard/gesture noise so first-party signal is
@@ -493,7 +503,7 @@ visual drift in this codebase. Before writing UI code:
   Spacing: `p-card`, `p-card-compact`, `p-card-comfortable`.
 
 Deviation is only acceptable when **explicitly redesigning** a surface — and
-that should be a deliberate, flagged conversation (Pencil first, then Plan
+that should be a deliberate, flagged conversation (Claude Design first, then Plan
 mode), not an accident inside an unrelated feature PR. A redesign produces
 *updated tokens / primitives*, not a hand-rolled clone in a single view.
 
@@ -725,7 +735,7 @@ New component/view following existing patterns, new API endpoint following
 established conventions, adding a field to an existing model, new screen
 in existing navigation.
 
-For UI work: Pencil design first (see Pencil Design Workflow below), then
+For UI work: Claude Design first (see Design Workflow below), then
 Plan mode, then implement. For non-UI work: Plan mode, then implement.
 No spec doc.
 
@@ -734,7 +744,7 @@ Net-new top-level features, Crux core / FFI bridge changes, auth or DB
 schema changes, multi-week work spanning core + web + iOS.
 
 Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
-approach, key decisions, open questions). Then Pencil for UI work, then
+approach, key decisions, open questions). Then Claude Design for UI work, then
 Plan mode, then implement.
 
 **Spec doc rides with the first implementation phase, not its own PR.**
@@ -843,14 +853,23 @@ guidance above.
 ### After completing work
 1. Update `docs/roadmap.md`, close the GitHub issue.
 2. Update this file if architecture/patterns changed.
-3. Update Pencil if UI diverged from design.
+3. Update the Claude Design system (`design/intrada-design-system.dc.html`) if UI
+   diverged from design; re-export the shareable `.html`.
 
-## Pencil Design Workflow
+## Design Workflow
 
-All design in `design/intrada.pen` (single file). Required for new views and
-significant UI changes. Mobile (375px) frames are primary; Desktop (1440px) frames
-are optional until web gets active investment. Reuse design system components.
-Colours must reference Pencil variables, not raw hex.
+Design happens in **Claude Design**; full process in
+[`docs/design-workflow.md`](docs/design-workflow.md). The living reference is
+[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html)
+(+ `support.js`) — the "Paper & Score" system, **derived from `Theme.swift`**
+(`ios/Intrada/DesignSystem/Theme.swift`), which stays the canonical token source.
+Required for new views and significant UI changes: mock the screen against the
+existing kit first, reuse tokens/components, and if something new is needed update
+`Theme.swift` and the design reference together. Colours/spacing/radius reference
+the `Intrada*` tokens, never raw hex.
+
+(Pencil — `design/intrada.pen` — is retired. `design/light-mode-exploration.md`
+remains as provenance.)
 
 ## Known Tech Debt
 

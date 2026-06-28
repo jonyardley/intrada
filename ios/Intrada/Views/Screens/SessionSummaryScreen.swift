@@ -89,7 +89,7 @@ struct SessionSummaryScreen: View {
           .foregroundStyle(IntradaColor.ink)
         Text(metaLine(entry))
           .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer()
       VStack(alignment: .trailing, spacing: 5) {

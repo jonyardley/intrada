@@ -150,7 +150,7 @@ struct FocusPlayerScreen: View {
       .frame(width: 180, height: 5)
       Text("of \(SessionClock.clockDisplay(planned))")
         .font(IntradaFont.meta)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Target \(SessionClock.clockDisplay(planned))")
@@ -223,7 +223,7 @@ struct FocusPlayerScreen: View {
       if let next = active.nextItemTitle {
         Text("Next · \(next)")
           .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
       }
     }
     .padding(.bottom, IntradaSpacing.card)

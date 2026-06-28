@@ -14,6 +14,7 @@ enum IntradaColor {
 
   static let ink = Color(hex: 0x2B2A26)
   static let inkSecondary = Color(hex: 0x6E6557)
+  /// Eyebrow labels only — fails WCAG AA (2.9:1); metadata/body use inkSecondary.
   static let inkFaint = Color(hex: 0x9A927F)
 
   static let accent = Color(hex: 0x4C3FA6)
@@ -91,16 +92,11 @@ enum IntradaFont {
 /// language across shells. Genuine one-offs (a fixed component height, a 2pt
 /// baseline nudge) stay literal; don't tokenise those.
 enum IntradaSpacing {
-  /// 8pt — gaps between small adjacent controls (toolbar, segments).
   static let controlGap: CGFloat = 8
-  /// 12pt — compact padding / inset (web `p-card-compact`).
   static let cardCompact: CGFloat = 12
-  /// 14pt — list/card row rhythm (inter-card gap, card vertical padding) and
-  /// other matching insets. Like a Tailwind step, one value serves several roles.
-  static let row: CGFloat = 14
-  /// 16pt — the standard inset: screen edges, card padding, list padding
-  /// (web `p-card`).
+  static let row: CGFloat = 16
   static let card: CGFloat = 16
+  static let section: CGFloat = 24
 }
 
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.

@@ -56,7 +56,7 @@ struct LibraryScreen: View {
       ScrollView {
         VStack(spacing: 0) {
           prioritySection
-          LazyVStack(spacing: IntradaSpacing.row) {
+          LazyVStack(spacing: IntradaSpacing.cardCompact) {
             ForEach(regularItems, id: \.id) { libraryRow($0) }
           }
           .padding(.horizontal, IntradaSpacing.card)
@@ -79,11 +79,11 @@ struct LibraryScreen: View {
       VStack(spacing: 0) {
         prioritiesHeader.zIndex(1)
         if prioritiesExpanded {
-          VStack(spacing: IntradaSpacing.row) {
+          VStack(spacing: IntradaSpacing.cardCompact) {
             ForEach(priorityItems, id: \.id) { libraryRow($0) }
           }
           .padding(.horizontal, IntradaSpacing.card)
-          .padding(.top, IntradaSpacing.row)
+          .padding(.top, IntradaSpacing.cardCompact)
           .transition(.move(edge: .top).combined(with: .opacity))
         }
       }
