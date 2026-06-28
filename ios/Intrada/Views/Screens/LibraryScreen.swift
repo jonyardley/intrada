@@ -8,8 +8,7 @@ struct LibraryScreen: View {
   @State private var prioritiesExpanded = true
   private let previewSearch: String?
 
-  // Same spring as the BrowseControlsBar search reveal — one motion vocabulary
-  // across the Library (honours Reduce Motion).
+  // Shared BrowseControlsBar spring — one motion vocabulary (honours Reduce Motion).
   private static let motion = Animation.spring(response: 0.35, dampingFraction: 0.85)
 
   init() { previewSearch = nil }
@@ -60,8 +59,7 @@ struct LibraryScreen: View {
             ForEach(regularItems, id: \.id) { libraryRow($0) }
           }
           .padding(.horizontal, IntradaSpacing.card)
-          // No top gap above the priorities header — it sits flush under the
-          // toolbar so there's no mismatched page-colour strip between them.
+          // Flush under the toolbar — no mismatched page-colour strip above it.
           .padding(.top, priorityItems.isEmpty ? IntradaSpacing.card : 0)
         }
         .padding(.bottom, IntradaSpacing.card)
@@ -71,9 +69,8 @@ struct LibraryScreen: View {
     }
   }
 
-  // Own VStack (not the LazyVStack, which ignores zIndex) so the header layers
-  // above the cards and they tuck under it on collapse. The header is full-bleed;
-  // its content and the cards inset to match the list.
+  // Own VStack (LazyVStack ignores zIndex) so the header layers above the cards
+  // on collapse; full-bleed header, inset cards.
   @ViewBuilder private var prioritySection: some View {
     if !priorityItems.isEmpty {
       VStack(spacing: 0) {
@@ -118,8 +115,7 @@ struct LibraryScreen: View {
       .padding(.vertical, IntradaSpacing.cardCompact)
       .padding(.horizontal, IntradaSpacing.card)
       .frame(maxWidth: .infinity, alignment: .leading)
-      // Flat, opaque, full-bleed like the browse toolbar, so collapsing cards
-      // tuck fully under it (a rounded/inset fill let them peek past its edges).
+      // Flat, opaque, full-bleed like the toolbar so collapsing cards tuck under it.
       .background(IntradaColor.paperTop)
       .overlay(alignment: .bottom) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
       .contentShape(Rectangle())
@@ -129,9 +125,7 @@ struct LibraryScreen: View {
     .accessibilityHint(prioritiesExpanded ? "Collapses the section" : "Expands the section")
   }
 
-  // The star is a sibling of the NavigationLink (not nested inside it), so the
-  // link can't intermittently steal its taps — the failure mode of a Button or
-  // gesture placed within the link's label.
+  // Star is a sibling of the NavigationLink (not nested) so the link can't steal its taps.
   private func libraryRow(_ item: LibraryItemView) -> some View {
     ZStack(alignment: .topTrailing) {
       NavigationLink(value: item.id) { LibraryItemCard(item: item, trailingGutter: 40) }
@@ -156,8 +150,7 @@ struct LibraryScreen: View {
         : "Add \(item.title) to priorities")
   }
 
-  // Read the current item at tap time — a value captured at render can go stale
-  // after the row re-renders, sending the wrong (unchanged) priority.
+  // Read the item fresh at tap time — a render-captured value can go stale.
   private func toggleStar(_ id: String) {
     guard let item = store.viewModel?.items.first(where: { $0.id == id }) else { return }
     withAnimation(reduceMotion ? nil : Self.motion) {
