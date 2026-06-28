@@ -38,7 +38,7 @@ struct TagChipInput: View {
       VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
         Text(label)
           .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
         if !tags.isEmpty {
           FlowLayout(spacing: 6) {
             ForEach(tags, id: \.self) { tag in

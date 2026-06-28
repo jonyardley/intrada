@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// A themed labelled text field for forms: faint label over an ink input.
 /// 16pt input minimum avoids iOS zoom-on-focus (CLAUDE.md iOS rules).
 struct FormField: View {
   let label: String
@@ -14,7 +13,7 @@ struct FormField: View {
     VStack(alignment: .leading, spacing: 4) {
       Text(label)
         .font(IntradaFont.metaMedium)
-        .foregroundStyle(IntradaColor.inkFaint)
+        .foregroundStyle(IntradaColor.inkSecondary)
       TextField(placeholder, text: $text, axis: axis)
         .font(IntradaFont.field)
         .foregroundStyle(IntradaColor.ink)

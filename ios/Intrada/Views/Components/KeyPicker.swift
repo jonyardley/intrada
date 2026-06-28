@@ -64,7 +64,7 @@ struct KeyPicker: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(label)
           .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
         if let display = KeyHelper.display(key: key, modality: modality) {
           Text(display)
             .font(IntradaFont.field)
