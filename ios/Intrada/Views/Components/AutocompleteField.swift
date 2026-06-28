@@ -37,7 +37,7 @@ struct AutocompleteField: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(label)
           .font(IntradaFont.metaMedium)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
         TextField(placeholder, text: $text)
           .font(IntradaFont.field)
           .foregroundStyle(IntradaColor.ink)
