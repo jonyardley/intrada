@@ -56,3 +56,10 @@ crates/intrada-ffi/IntradaCoreFFI/
 # xcodegen-generated project + xcodebuild output (regenerated from project.yml)
 ios/*.xcodeproj/
 ios/build/
+# fastlane TestFlight lane output (build dir holds the .ipa/.xcarchive) + scratch.
+# Gemfile.lock is intentionally NOT ignored — commit it for reproducible CI.
+/build/
+*.xcarchive
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output/
