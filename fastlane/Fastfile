@@ -10,6 +10,11 @@ PROFILE_NAME = "match AppStore #{APP_IDENTIFIER}".freeze
 platform :ios do
   desc "Build a signed Release .ipa and upload it to TestFlight (internal testing)."
   lane :beta do
+    # On CI, create an unlocked temporary keychain for match to import the cert
+    # into — otherwise codesign blocks on a keychain UI prompt that never comes
+    # and the job hangs to the timeout. No-op locally.
+    setup_ci
+
     api_key = app_store_connect_api_key(
       key_id: ENV.fetch("ASC_KEY_ID"),
       issuer_id: ENV.fetch("ASC_ISSUER_ID"),
