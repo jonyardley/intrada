@@ -375,6 +375,16 @@ ios-release: ios-typegen (ios-package "release")
     @echo "✓ release core ready — opening Xcode. Select your device, then Product → Profile (⌘I). Next 'just ios' rebuilds the debug core."
     xed ios/Intrada.xcodeproj
 
+# Build a signed Release .ipa and upload it to TestFlight (internal testing).
+# Mirrors the release-testflight.yml CI lane for local debugging. Needs Ruby >=3
+# (system Ruby 2.6 is too old — use rbenv) + the ASC_*/MATCH_* env set, and a
+# one-time `fastlane match appstore` bootstrap. See specs/ios-testflight-cicd.md.
+[group('iOS')]
+testflight: ios-typegen (ios-package "release")
+    cd ios && xcodegen generate
+    rm -f ios/generated/.gen-stamp
+    bundle exec fastlane ios beta
+
 # Losslessly shrink snapshot references — drops Xcode's redundant all-opaque
 # alpha channel (keeps pixels + sRGB), ~75% smaller. Run after (re)recording
 # snapshots, before committing. CI's Snapshot Hygiene job enforces this.
