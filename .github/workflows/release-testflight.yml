@@ -1,0 +1,92 @@
+name: Release — TestFlight
+
+# Signed device build → TestFlight. Manual or on a v* tag ONLY — never per-PR
+# (macOS runners are 10×-billed). See specs/ios-testflight-cicd.md.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+# Don't cancel an in-flight upload if another tag/dispatch lands.
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  RUST_VERSION: "1.90.0"
+
+jobs:
+  testflight:
+    name: Build + upload to TestFlight
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      # Pin Xcode 26.5 to match local dev + the native-ios CI job.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "release-testflight"
+          cache-on-failure: true
+      # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH on the macOS
+      # image; without this `cargo` resolves to Apple's stub. (See ci.yml.)
+      - name: Ensure cargo is on PATH
+        run: |
+          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
+          cargo --version
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - name: Cache cargo-swift
+        id: cargo-swift-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin/cargo-swift
+          key: cargo-swift-0.9.0-${{ runner.os }}-${{ runner.arch }}
+      # Pinned 0.9.0 — its bundled uniffi-bindgen matches our uniffi crate's
+      # runtime contract. Bump in lockstep with uniffi. (See ci.yml / CLAUDE.md.)
+      - name: Install cargo-swift
+        if: steps.cargo-swift-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-swift --version "=0.9.0" --locked
+      - name: Install xcodegen
+        run: brew install xcodegen
+      # RELEASE core (debug cores are 10-100× slower in hot paths). cargo-swift
+      # --platforms ios emits the aarch64-apple-ios device slice the archive needs.
+      - name: Regenerate Swift bindings (release core)
+        run: |
+          just ios-typegen
+          just ios-package release
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Build + upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: bundle exec fastlane ios beta
+      - name: Upload IPA artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intrada-ipa
+          path: build/*.ipa
+          retention-days: 14
+          if-no-files-found: ignore
