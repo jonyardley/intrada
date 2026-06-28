@@ -102,6 +102,21 @@
       return store
     }
 
+    /// Library with a populated Priorities section (2 starred, 1 not) for the
+    /// pinned-section snapshot. Injected directly so priority + ids are stable.
+    static var previewLibraryPriorities: Store {
+      Store(
+        bridge: PreviewBridge(items: [
+          starred(.previewPiece), starred(.previewExercise), .previewMinimal,
+        ]))
+    }
+
+    private static func starred(_ item: LibraryItemView) -> LibraryItemView {
+      var copy = item
+      copy.priority = true
+      return copy
+    }
+
     /// Practice home with deterministic sessions (fixed past dates) for the
     /// populated-state snapshot — covers both completed + ended-early cards.
     static var previewPractice: Store {
