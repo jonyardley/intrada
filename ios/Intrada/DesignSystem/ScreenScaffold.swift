@@ -53,7 +53,7 @@ struct ScreenScaffold<Content: View>: View {
         if let subtitle {
           Text(subtitle)
             .font(IntradaFont.meta)
-            .foregroundStyle(IntradaColor.inkFaint)
+            .foregroundStyle(IntradaColor.inkSecondary)
         }
       }
       // Combine only the title block so the trailing action stays its own

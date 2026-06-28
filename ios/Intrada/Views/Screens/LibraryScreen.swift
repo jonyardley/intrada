@@ -48,7 +48,7 @@ struct LibraryScreen: View {
         message: emptyMessage)
     } else {
       ScrollView {
-        LazyVStack(spacing: IntradaSpacing.row) {
+        LazyVStack(spacing: IntradaSpacing.cardCompact) {
           ForEach(items, id: \.id) { item in
             NavigationLink(value: item.id) {
               LibraryItemCard(item: item)

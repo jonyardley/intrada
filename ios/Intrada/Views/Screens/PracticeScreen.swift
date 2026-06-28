@@ -143,7 +143,7 @@ struct PracticeScreen: View {
         message: "No practice on this day.")
     } else {
       ScrollView {
-        LazyVStack(spacing: IntradaSpacing.row) {
+        LazyVStack(spacing: IntradaSpacing.cardCompact) {
           ForEach(daySessions, id: \.id) { session in
             SessionCard(session: session)
           }

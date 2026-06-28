@@ -52,7 +52,7 @@ struct SessionBuilderScreen: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else {
       ScrollView {
-        LazyVStack(spacing: IntradaSpacing.row) {
+        LazyVStack(spacing: IntradaSpacing.cardCompact) {
           ForEach(items, id: \.id) { item in
             libraryRow(item)
           }

@@ -19,7 +19,7 @@ struct LibraryItemCard: View {
       if let meta = metaLine {
         Text(meta)
           .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .foregroundStyle(IntradaColor.inkSecondary)
       }
       if !item.tags.isEmpty {
         TagPills(tags: item.tags)
