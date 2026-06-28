@@ -1,0 +1,8 @@
+# Code-signing identity storage (see specs/ios-testflight-cicd.md, decision #2).
+# The git_url points at a PRIVATE certs repo you create once. CI authenticates
+# via MATCH_GIT_BASIC_AUTHORIZATION; decryption via MATCH_PASSWORD.
+git_url(ENV.fetch("MATCH_GIT_URL", "https://github.com/jonyardley/intrada-certificates.git"))
+storage_mode("git")
+
+type("appstore")
+app_identifier(["com.intrada.native"])

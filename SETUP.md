@@ -276,6 +276,12 @@ The WASM app is built once (release mode) and reused for E2E tests and deploymen
 | `CLOUDFLARE_API_TOKEN` | Cloudflare | Frontend deployment |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | Frontend deployment |
 | `FLY_API_TOKEN` | Fly.io | API deployment |
+| `ASC_KEY_ID` | App Store Connect | TestFlight (native iOS) |
+| `ASC_ISSUER_ID` | App Store Connect | TestFlight (native iOS) |
+| `ASC_KEY_CONTENT_BASE64` | App Store Connect | TestFlight (native iOS) |
+| `MATCH_GIT_URL` | fastlane match | TestFlight (native iOS) |
+| `MATCH_GIT_BASIC_AUTHORIZATION` | fastlane match | TestFlight (native iOS) |
+| `MATCH_PASSWORD` | fastlane match | TestFlight (native iOS) |
 
 Set at: **GitHub repo → Settings → Secrets and variables → Actions**
 
@@ -286,6 +292,46 @@ fly tokens create deploy -a intrada-api
 ```
 
 Add the output as the `FLY_API_TOKEN` secret in GitHub Actions.
+
+## 6a. Native iOS → TestFlight
+
+The native SwiftUI app ships to TestFlight via
+`.github/workflows/release-testflight.yml` (runs on `workflow_dispatch` or a
+`v*` tag — never per-PR). Full rationale + decisions:
+[`specs/ios-testflight-cicd.md`](specs/ios-testflight-cicd.md). Signing uses
+fastlane **match** (App Store Connect API key for auth/upload).
+
+**One-time setup, in order** (each step depends on the previous):
+
+1. **App Store Connect** — accept the Developer Program License Agreement
+   (Business → Agreements shows *Active*).
+2. **Register the bundle id** `com.intrada.native` — Certificates, Identifiers
+   & Profiles → Identifiers. No special capabilities needed.
+3. **Create the app record** — Apps → + → New App (iOS, the bundle id, any SKU).
+   *Cannot be automated with the API key — one manual click.*
+4. **Create the API key** — Users and Access → Integrations → **Team Keys** →
+   role **App Manager**. Save the Key ID, Issuer ID, and the `.p8` (one-time
+   download).
+5. **Create a private certs repo**, e.g. `jonyardley/intrada-certificates`, and
+   choose a strong `MATCH_PASSWORD`.
+6. **Bootstrap match** (local, Ruby ≥ 3 — system Ruby 2.6 is too old, use
+   `rbenv`):
+   ```bash
+   bundle install              # then commit the generated Gemfile.lock
+   MATCH_GIT_URL=<certs-repo> MATCH_PASSWORD=<pw> bundle exec fastlane match appstore
+   ```
+   Authenticate with your Apple ID when prompted. This generates + encrypts +
+   pushes the Apple Distribution cert + App Store profile to the certs repo.
+7. **Add the GitHub Actions secrets** (table above):
+   ```bash
+   base64 -i AuthKey_<KEYID>.p8 | pbcopy        # → ASC_KEY_CONTENT_BASE64
+   printf 'USER:GITHUB_PAT' | base64 | pbcopy   # → MATCH_GIT_BASIC_AUTHORIZATION (repo read access)
+   ```
+8. **Run it** — Actions → *Release — TestFlight* → *Run workflow* (or push a
+   `v*` tag). After processing, add yourself to an Internal Testing group in the
+   app's TestFlight tab and install via the TestFlight app.
+
+Local parity (after the one-time setup): `just testflight`.
 
 ## 7. Local Development
 
