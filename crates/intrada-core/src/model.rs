@@ -282,6 +282,7 @@ pub struct PracticeSessionView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
+    pub session_score: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -365,6 +366,7 @@ pub struct SummaryView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
+    pub session_score: Option<u8>,
 }
 
 // ── View helpers ──────────────────────────────────────────────────────
@@ -432,6 +434,7 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
         notes: summary.session_notes.clone(),
         entries: summary.entries.iter().map(entry_to_view).collect(),
         session_intention: summary.session_intention.clone(),
+        session_score: summary.session_score,
     }
 }
 
@@ -450,6 +453,7 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         notes: session.session_notes.clone(),
         entries: session.entries.iter().map(entry_to_view).collect(),
         session_intention: session.session_intention.clone(),
+        session_score: session.session_score,
     }
 }
 
@@ -649,5 +653,39 @@ mod tests {
         // Precise (live-timer) form keeps seconds; the summary line drops them.
         assert_eq!(view.total_duration_display, "45m 0s");
         assert_eq!(view.total_duration_summary, "45m");
+    }
+
+    #[test]
+    fn summary_view_exposes_session_score() {
+        let summary = crate::domain::session::SummarySession {
+            id: "sum2".to_string(),
+            entries: vec![],
+            session_started_at: Utc::now(),
+            session_ended_at: Utc::now(),
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            session_score: Some(7),
+        };
+        let view = build_summary_view(&summary);
+        assert_eq!(view.session_score, Some(7));
+    }
+
+    #[test]
+    fn session_to_view_exposes_session_score() {
+        let entry = make_entry("e1", "i1", "Scale", 0);
+        let session = crate::domain::session::PracticeSession {
+            id: "s2".to_string(),
+            entries: vec![entry],
+            session_notes: None,
+            session_intention: None,
+            started_at: Utc::now(),
+            completed_at: Utc::now(),
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_score: Some(5),
+        };
+        let view = session_to_view(&session);
+        assert_eq!(view.session_score, Some(5));
     }
 }
