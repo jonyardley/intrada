@@ -464,7 +464,7 @@ mod tests {
             completed_at: now,
             total_duration_secs: 300,
             completion_status: CompletionStatus::Completed,
-            session_score: None,
+            session_score: Some(8),
         }));
     }
 }
