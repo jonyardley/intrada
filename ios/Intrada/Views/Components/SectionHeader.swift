@@ -17,7 +17,7 @@ struct Eyebrow: View {
   var body: some View {
     Text(text.uppercased())
       .font(IntradaFont.eyebrow)
-      .tracking(1.2)
+      .tracking(1.5)
       .foregroundStyle(tint)
       .accessibilityLabel(text)
   }

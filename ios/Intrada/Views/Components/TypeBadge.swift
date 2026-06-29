@@ -16,7 +16,7 @@ struct TypeBadge: View {
     .foregroundStyle(foreground)
     .padding(.vertical, 5)
     .padding(.horizontal, 10)
-    .background(background, in: Capsule())
+    .background(background, in: RoundedRectangle(cornerRadius: IntradaRadius.badge, style: .continuous))
     .accessibilityElement(children: .combine)
     .accessibilityLabel(kind.label)
   }

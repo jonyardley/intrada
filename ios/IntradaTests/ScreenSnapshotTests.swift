@@ -410,12 +410,16 @@ final class ScreenSnapshotTests: XCTestCase {
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
+    // Starred: pins the accent star to the left of the tags + the trailing meter.
+    var starred = LibraryItemView.previewDetail
+    starred.priority = true
     let cards = ZStack {
       PaperBackground()
       VStack(spacing: 14) {
         LibraryItemCard(item: .previewPiece)
         LibraryItemCard(item: .previewDetail)
         LibraryItemCard(item: manyTags)  // 5 tags → +2 overflow pill
+        LibraryItemCard(item: starred, showsMastery: true)
       }
       .padding(16)
     }

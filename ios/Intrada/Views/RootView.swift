@@ -20,7 +20,7 @@ struct RootView: View {
       NavigationStack {
         PracticeScreen().screenTransaction("Practice")
       }
-      .tabItem { Label("Practice", systemImage: "metronome.fill") }
+      .tabItem { Label("Practice", systemImage: "timer") }
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen().screenTransaction("Progress")
@@ -73,9 +73,11 @@ struct RootView: View {
     appearance.configureWithOpaqueBackground()
     appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
 
+    // iOS 26's glass tab bar styles itself and ignores these item colours; they
+    // apply on iOS 25 and earlier (active tint also comes from `.tint`).
     let normal = appearance.stackedLayoutAppearance.normal
-    normal.iconColor = UIColor(IntradaColor.tabBarInactiveIcon)
-    normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkFaint)]
+    normal.iconColor = UIColor(IntradaColor.inkSecondary)
+    normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkSecondary)]
 
     let selected = appearance.stackedLayoutAppearance.selected
     selected.iconColor = UIColor(IntradaColor.accent)

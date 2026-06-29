@@ -25,7 +25,6 @@ enum IntradaColor {
   static let brandGradientEnd = Color(hex: 0x4C3FA6)
 
   static let tabBarFill = Color(hex: 0xEFEBDF)
-  static let tabBarInactiveIcon = Color(hex: 0xB6AEC4)
 
   static let pieceBadgeBg = Color(hex: 0xE7E3F4)
   static let pieceBadgeFg = Color(hex: 0x4C3FA6)
@@ -41,6 +40,8 @@ enum IntradaColor {
   static let masteryFill = Color(hex: 0x4C3FA6)
   static let masteryTrack = Color(hex: 0xE2DBC9)
   static let dialTrack = Color(hex: 0xEBE4D4)
+  /// The Focus-player timer ring track — warmer than the mastery `dialTrack`.
+  static let timerTrack = Color(hex: 0xE5DDCB)
   static let consistencyTrack = Color(hex: 0xDED5C1)
   /// A "missed" rep is taupe, never red — calm, not shaming.
   static let repMissedFg = Color(hex: 0x8A8170)
@@ -172,6 +173,8 @@ enum IntradaRadius {
   static let card: CGFloat = 12
   /// Interactive control buttons (rep Clean/Missed, etc.).
   static let control: CGFloat = 13
+  /// Type badges / small tinted chips.
+  static let badge: CGFloat = 8
   /// Medium section/hero cards (e.g. the Progress mastery card).
   static let panel: CGFloat = 16
   /// The Practice one-tap hero — the single largest card in the app.

@@ -50,7 +50,7 @@ struct SegmentedPills<Option: Hashable>: View {
   private func pillButton(_ option: Option) -> some View {
     let isSelected = option == selection
     return Button {
-      withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
+      withAnimation(reduceMotion ? nil : IntradaMotion.snappy) {
         selection = option
       }
     } label: {

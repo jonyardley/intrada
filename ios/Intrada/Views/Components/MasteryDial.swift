@@ -33,9 +33,9 @@ struct MasteryDial: View {
         CountingNumber(value: settled ? value : 0) { String(format: "%.1f", $0) }
           .font(IntradaFont.pageTitle(size * 0.297))
           .foregroundStyle(IntradaColor.ink)
-        Text("of \(String(format: "%.1f", maxValue))")
+        Text("of \(String(format: "%.1f", maxValue))".uppercased())
           .font(IntradaFont.eyebrow)
-          .tracking(1)
+          .tracking(1.5)
           .foregroundStyle(IntradaColor.inkFaint)
       }
     }

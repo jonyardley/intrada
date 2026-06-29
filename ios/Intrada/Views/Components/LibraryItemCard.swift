@@ -28,9 +28,19 @@ struct LibraryItemCard: View {
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
-        if !item.tags.isEmpty {
-          TagPills(tags: item.tags)
-            .padding(.top, 5)
+        if item.priority || !item.tags.isEmpty {
+          HStack(spacing: 6) {
+            if item.priority {
+              Image(systemName: "star.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(IntradaColor.accent)
+                .accessibilityHidden(true)
+            }
+            if !item.tags.isEmpty {
+              TagPills(tags: item.tags)
+            }
+          }
+          .padding(.top, 5)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -64,6 +74,7 @@ struct LibraryItemCard: View {
 
   private var accessibilityLabel: String {
     var parts = [item.itemType.label, item.title]
+    if item.priority { parts.append("starred") }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }

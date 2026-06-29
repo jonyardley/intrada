@@ -189,15 +189,20 @@ private struct TimerRing: View {
 
   var body: some View {
     ZStack {
-      Circle().stroke(IntradaColor.dialTrack, lineWidth: 10)
-      if planned != nil {
-        Circle()
-          .trim(from: 0, to: fraction)
-          .stroke(
-            LinearGradient.ringSweep,
-            style: StrokeStyle(lineWidth: 10, lineCap: .round))
-          .rotationEffect(.degrees(-90))
+      // Inset the ring to r≈100 within the 236 box (design geometry); the time
+      // stays centred at full size.
+      ZStack {
+        Circle().stroke(IntradaColor.timerTrack, lineWidth: 10)
+        if planned != nil {
+          Circle()
+            .trim(from: 0, to: fraction)
+            .stroke(
+              LinearGradient.ringSweep,
+              style: StrokeStyle(lineWidth: 10, lineCap: .round))
+            .rotationEffect(.degrees(-90))
+        }
       }
+      .padding(18)
       VStack(spacing: 4) {
         Text(SessionClock.clockDisplay(elapsed))
           .font(IntradaFont.timer(48))
