@@ -8,13 +8,17 @@ import SwiftUI
 struct BrowseControlsBar: View {
   @Environment(Store.self) private var store
   private let elevated: Bool
+  // Opt-in leading "priorities only" star — only the Library passes it; the
+  // session builder reuses this bar without it.
+  private let starFilter: Binding<Bool>?
   @State private var filtering = false
   @State private var searchText: String
   @State private var searchRevealed: Bool
   @FocusState private var searchFocused: Bool
 
-  init(elevated: Bool = false, previewSearch: String? = nil) {
+  init(elevated: Bool = false, previewSearch: String? = nil, starFilter: Binding<Bool>? = nil) {
     self.elevated = elevated
+    self.starFilter = starFilter
     _searchText = State(initialValue: previewSearch ?? "")
     _searchRevealed = State(initialValue: previewSearch != nil)
   }
@@ -62,7 +66,23 @@ struct BrowseControlsBar: View {
 
   private var header: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
-      LibraryFilterTabs(selection: filterBinding, edgeInset: IntradaSpacing.card)
+      if let starFilter {
+        Button {
+          starFilter.wrappedValue.toggle()
+        } label: {
+          Image(systemName: starFilter.wrappedValue ? "star.fill" : "star")
+            .font(IntradaFont.tab)
+            .foregroundStyle(starFilter.wrappedValue ? IntradaColor.accent : IntradaColor.inkFaint)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show priorities only")
+        .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
+        .padding(.leading, IntradaSpacing.card)
+      }
+      LibraryFilterTabs(selection: filterBinding, edgeInset: starFilter == nil ? IntradaSpacing.card : IntradaSpacing.controlGap)
         .frame(maxWidth: .infinity, alignment: .leading)
       LibrarySortMenu(
         current: store.viewModel?.activeSort

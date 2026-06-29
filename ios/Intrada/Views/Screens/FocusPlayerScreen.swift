@@ -18,7 +18,7 @@ struct FocusPlayerScreen: View {
 
   var body: some View {
     ZStack {
-      PaperBackground()
+      RadialGradient.playerPaper.ignoresSafeArea()
       if let active {
         content(active)
       }
@@ -27,14 +27,15 @@ struct FocusPlayerScreen: View {
 
   private func content(_ active: ActiveSessionView) -> some View {
     VStack(spacing: 0) {
-      topChrome(active)
+      topChrome(active).fadeUp(0)
       Spacer(minLength: IntradaSpacing.card)
-      centerInfo(active)
+      centerInfo(active).fadeUp(1)
+      timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
       if active.currentRepTarget != nil {
-        repCard(active).padding(.top, 28)
+        repCounter(active).fadeUp(3).padding(.top, 28)
       }
       Spacer(minLength: IntradaSpacing.card)
-      controls(active)
+      controls(active).fadeUp(4)
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
@@ -95,17 +96,13 @@ struct FocusPlayerScreen: View {
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
       }
-      VStack(spacing: 6) {
+      VStack(spacing: 8) {
+        TypeBadge(kind: active.currentItemType)
         Text(active.currentItemTitle)
           .font(IntradaFont.pageTitle(34))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
-        Text(active.currentItemType.label.uppercased())
-          .font(IntradaFont.badge)
-          .tracking(1.5)
-          .foregroundStyle(IntradaColor.inkFaint)
       }
-      timer(active)
     }
     .padding(.horizontal, IntradaSpacing.card)
   }
@@ -126,100 +123,49 @@ struct FocusPlayerScreen: View {
   }
 
   @ViewBuilder private func timerBody(elapsed: Int, planned: UInt32?) -> some View {
-    VStack(spacing: 12) {
-      Text(SessionClock.clockDisplay(elapsed))
-        .font(IntradaFont.timer())
-        .monospacedDigit()
-        .foregroundStyle(IntradaColor.ink)
-        .accessibilityLabel("Elapsed \(SessionClock.clockDisplay(elapsed))")
-      if let planned {
-        targetBar(elapsed: elapsed, planned: Int(planned))
-      }
-    }
-  }
-
-  private func targetBar(elapsed: Int, planned: Int) -> some View {
-    let fraction = planned > 0 ? min(Double(elapsed) / Double(planned), 1) : 0
-    return VStack(spacing: 8) {
-      GeometryReader { geo in
-        ZStack(alignment: .leading) {
-          Capsule().fill(IntradaColor.divider)
-          Capsule().fill(LinearGradient.brandBar).frame(width: geo.size.width * fraction)
-        }
-      }
-      .frame(width: 180, height: 5)
-      Text("of \(SessionClock.clockDisplay(planned))")
-        .font(IntradaFont.meta)
-        .foregroundStyle(IntradaColor.inkSecondary)
-    }
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Target \(SessionClock.clockDisplay(planned))")
+    TimerRing(elapsed: elapsed, planned: planned.map(Int.init))
   }
 
   // ── Reps (only when the current item has a target) ──
 
-  private func repCard(_ active: ActiveSessionView) -> some View {
-    let count = active.currentRepCount.map(Int.init) ?? 0
-    let target = active.currentRepTarget.map(Int.init) ?? 0
-    let reached = active.currentRepTargetReached ?? false
-    return VStack(spacing: 12) {
-      Text("CONSECUTIVE REPS")
-        .font(IntradaFont.micro).fontWeight(.semibold).tracking(1.5)
-        .foregroundStyle(IntradaColor.inkFaint)
-      Text("\(count) / \(target)")
-        .font(IntradaFont.cardTitle(20))
-        .monospacedDigit()
-        .foregroundStyle(IntradaColor.ink)
-      HStack(spacing: IntradaSpacing.controlGap) {
-        repButton("Got it", filled: true) { store.send(.session(.repGotIt)) }
-        repButton("Missed", filled: false) { store.send(.session(.repMissed)) }
-      }
-      .disabled(reached)
-      .opacity(reached ? 0.5 : 1)
-    }
-    .padding(IntradaSpacing.card)
-    .frame(maxWidth: .infinity)
-    .background(IntradaColor.cardFill)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-    .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.card)
-        .stroke(IntradaColor.hairline, lineWidth: 1))
+  private func repCounter(_ active: ActiveSessionView) -> some View {
+    RepCounter(
+      count: Int(active.currentRepCount ?? 0),
+      target: Int(active.currentRepTarget ?? 0),
+      onClean: { store.send(.session(.repGotIt)) },
+      onMissed: { store.send(.session(.repMissed)) })
   }
 
-  private func repButton(_ title: String, filled: Bool, action: @escaping () -> Void)
-    -> some View
-  {
-    Button(action: action) {
-      Text(title)
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(filled ? IntradaColor.onAccent : IntradaColor.inkSecondary)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
-        .background(filled ? AnyShapeStyle(LinearGradient.brandBar) : AnyShapeStyle(.clear))
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
-        .overlay(
-          RoundedRectangle(cornerRadius: IntradaRadius.card)
-            .stroke(filled ? .clear : IntradaColor.hairline, lineWidth: 1))
-    }
-    .buttonStyle(.plain)
-  }
-
-  // ── Bottom: the one primary action + next-item hint ──
+  // ── Bottom: transport (advance + skip-forward) + next-item hint ──
 
   private func controls(_ active: ActiveSessionView) -> some View {
-    VStack(spacing: 10) {
-      Button {
-        store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
-      } label: {
-        Text(active.nextItemTitle == nil ? "Finish session" : "Done")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.onAccent)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, IntradaSpacing.row)
-          .background(LinearGradient.brandBar)
-          .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+    VStack(spacing: 14) {
+      HStack(spacing: 32) {
+        Button {
+          store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+        } label: {
+          Image(systemName: "play.fill")
+            .font(.system(size: 32))
+            .foregroundStyle(IntradaColor.onAccent)
+            .frame(width: 78, height: 78)
+            .background(LinearGradient.brandBar)
+            .clipShape(Circle())
+            .shadow(color: IntradaColor.ink.opacity(0.18), radius: 14, y: 6)
+        }
+        .buttonStyle(PressRebound())
+        .accessibilityLabel(active.nextItemTitle == nil ? "Finish session" : "Next item")
+
+        Button {
+          store.send(.session(.skipItem(now: SessionClock.nowRFC3339())))
+        } label: {
+          Image(systemName: "forward.end")
+            .font(.system(size: 22))
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .frame(width: 48, height: 48)
+        }
+        .buttonStyle(PressRebound())
+        .accessibilityLabel("Skip this item")
       }
-      .buttonStyle(.plain)
       if let next = active.nextItemTitle {
         Text("Next · \(next)")
           .font(IntradaFont.meta)
@@ -227,6 +173,50 @@ struct FocusPlayerScreen: View {
       }
     }
     .padding(.bottom, IntradaSpacing.card)
+  }
+}
+
+/// Calm circular timer ring — elapsed time centred, planned arc swept clockwise.
+/// Static (no pulse/glow): the player surface should sit still while practice runs.
+private struct TimerRing: View {
+  let elapsed: Int
+  let planned: Int?
+
+  private var fraction: Double {
+    guard let planned, planned > 0 else { return 0 }
+    return min(Double(elapsed) / Double(planned), 1)
+  }
+
+  var body: some View {
+    ZStack {
+      Circle().stroke(IntradaColor.dialTrack, lineWidth: 10)
+      if planned != nil {
+        Circle()
+          .trim(from: 0, to: fraction)
+          .stroke(
+            LinearGradient.ringSweep,
+            style: StrokeStyle(lineWidth: 10, lineCap: .round))
+          .rotationEffect(.degrees(-90))
+      }
+      VStack(spacing: 4) {
+        Text(SessionClock.clockDisplay(elapsed))
+          .font(IntradaFont.timer(48))
+          .monospacedDigit()
+          .foregroundStyle(IntradaColor.ink)
+        if let planned {
+          Text("of \(SessionClock.clockDisplay(planned))")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+      }
+    }
+    .frame(width: 236, height: 236)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(
+      planned == nil
+        ? "Elapsed \(SessionClock.clockDisplay(elapsed))"
+        : "Elapsed \(SessionClock.clockDisplay(elapsed)) of \(SessionClock.clockDisplay(planned ?? 0))"
+    )
   }
 }
 

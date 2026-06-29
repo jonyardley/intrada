@@ -6,28 +6,36 @@ import SwiftUI
 struct LibraryItemCard: View {
   let item: LibraryItemView
   // Trailing space reserved for an external accessory the card doesn't own
-  // (the Library's priority star, overlaid by the row) so a long title wraps
-  // clear of it instead of rendering underneath.
+  // (e.g. an overlaid control) so a long title wraps clear of it.
   var trailingGutter: CGFloat = 0
+  // When true, the row shows a trailing MasteryMeter for the item's latest
+  // 1–5 score (empty when never practised) — the glanceable mastery signal.
+  var showsMastery: Bool = false
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 3) {
-      Text(item.title)
-        .font(IntradaFont.cardTitle())
-        .foregroundStyle(IntradaColor.ink)
-      if !item.subtitle.isEmpty {
-        Text(item.subtitle)
-          .font(IntradaFont.subtitle)
-          .foregroundStyle(IntradaColor.inkSecondary)
+    HStack(spacing: IntradaSpacing.row) {
+      VStack(alignment: .leading, spacing: 3) {
+        Text(item.title)
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        if !item.subtitle.isEmpty {
+          Text(item.subtitle)
+            .font(IntradaFont.subtitle)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+        if let meta = metaLine {
+          Text(meta)
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+        if !item.tags.isEmpty {
+          TagPills(tags: item.tags)
+            .padding(.top, 5)
+        }
       }
-      if let meta = metaLine {
-        Text(meta)
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      if !item.tags.isEmpty {
-        TagPills(tags: item.tags)
-          .padding(.top, 5)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      if showsMastery {
+        MasteryMeter(level: item.practice?.latestScore.map(Int.init))
       }
     }
     .padding(.vertical, IntradaSpacing.row)

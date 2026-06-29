@@ -34,10 +34,15 @@ final class ScreenSnapshotTests: XCTestCase {
     // strip) is deterministic regardless of host region/timezone — CI runs
     // en-US/UTC, dev sims often en-GB/local, which reorder dates and shift
     // day boundaries.
+    // Suppress intro motion: the refreshed screens' entrance/one-shot animations
+    // (fadeUp, count-up, ring-draw, barGrow, confetti) collapse to their final
+    // state, so the captured frame is the settled layout, never a mid-reveal.
+    // (`accessibilityReduceMotion` is read-only, so we use our settable flag.)
     let vc = UIHostingController(
       rootView: view.environment(store)
         .environment(\.locale, Locale(identifier: "en_US"))
-        .environment(\.calendar, PreviewCalendar.utc))
+        .environment(\.calendar, PreviewCalendar.utc)
+        .environment(\.intradaMotionDisabled, true))
     vc.overrideUserInterfaceStyle = .light
     return vc
   }
@@ -110,7 +115,10 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testPracticeScreen() {
-    assertSnapshot(of: host(PracticeScreen()), as: config)
+    // Pin the date: the refreshed empty state shows the (live) week strip, so an
+    // unfixed `Date()` would shift the week day-to-day and flake.
+    assertSnapshot(
+      of: host(PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)), as: config)
   }
 
   func testPracticeScreenPopulated() {
@@ -169,6 +177,81 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testAnalyticsScreen() {
     assertSnapshot(of: host(AnalyticsScreen()), as: config)
+  }
+
+  func testProgressScreenPopulated() {
+    assertSnapshot(of: host(AnalyticsScreen(), store: .previewProgress), as: config)
+  }
+
+  func testLibraryScreenMastery() {
+    assertSnapshot(
+      of: host(NavigationStack { LibraryScreen() }, store: .previewLibraryMastery), as: config)
+  }
+
+  // ── Engaging-refresh components ──
+
+  func testMasteryMeter() {
+    let meters = ZStack {
+      PaperBackground()
+      HStack(spacing: 18) {
+        ForEach(1...5, id: \.self) { MasteryMeter(level: $0) }
+        MasteryMeter(level: nil)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(meters), as: config)
+  }
+
+  func testMasteryDial() {
+    let dial = ZStack {
+      PaperBackground()
+      MasteryDial(value: 3.4)
+    }
+    assertSnapshot(of: host(dial), as: config)
+  }
+
+  func testMasteryDeltaRows() {
+    let rows = ZStack {
+      PaperBackground()
+      VStack(spacing: 12) {
+        MasteryDelta(
+          title: "Clair de Lune", subtitle: "D♭ major · now", was: 3, now: 4, kind: .piece)
+        MasteryDelta(
+          title: "Hanon No. 1", subtitle: "first time scored", was: nil, now: 3, kind: .exercise)
+        MasteryDeltaToast(
+          title: "Clair de Lune moved up", subtitle: "D♭ major mastery", was: 3, now: 4)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(rows), as: config)
+  }
+
+  func testConsistencyBars() {
+    let bars = ZStack {
+      PaperBackground()
+      ConsistencyBars(weeks: [
+        ConsistencyWeek(label: "W1", minutes: 40),
+        ConsistencyWeek(label: "W2", minutes: 75),
+        ConsistencyWeek(label: "W3", minutes: 55),
+        ConsistencyWeek(label: "W4", minutes: 95),
+        ConsistencyWeek(label: "Now", minutes: 82, isCurrent: true),
+      ])
+      .padding(16)
+    }
+    assertSnapshot(of: host(bars), as: config)
+  }
+
+  func testRepCounter() {
+    let counters = ZStack {
+      PaperBackground()
+      VStack(spacing: 24) {
+        RepCounter(count: 7, target: 12, onClean: {}, onMissed: {})
+        RepCounter(count: 0, target: 8, onClean: {}, onMissed: {})  // Missed disabled
+        RepCounter(count: 6, target: 6, onClean: {}, onMissed: {})  // Clean disabled
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(counters), as: config)
   }
 
   func testLibraryDetailScreen() {

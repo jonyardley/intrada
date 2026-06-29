@@ -14,6 +14,18 @@ set -euo pipefail
 ROOT="ios/IntradaTests"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
+# Full-screen, gradient-filled references (Practice one-tap hero, Focus radial
+# player) don't compress under the flat-paper ceiling even after `oxipng -o max
+# -Z` — the smooth gradients are genuinely large as lossless PNG. They get a
+# higher bound. Keep this list TIGHT: only screens dominated by a gradient.
+LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
+is_large() {
+  case "$1" in
+    testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
+      testFocusPlayerWithReps | testFocusPlayerWithTarget) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 [ -d "$SNAP_DIR" ] || { echo "no snapshots dir; nothing to check"; exit 0; }
 
@@ -26,9 +38,11 @@ while IFS= read -r png; do
     echo "::error file=$png::orphan snapshot — no 'func $method' in $swift (delete the PNG or restore the test)"
     fail=1
   fi
+  ceiling="$MAX_BYTES"
+  is_large "$method" && ceiling="$LARGE_MAX_BYTES"
   size=$(wc -c < "$png" | tr -d ' ')
-  if [ "$size" -gt "$MAX_BYTES" ]; then
-    echo "::error file=$png::$size bytes > $MAX_BYTES ceiling — run 'just ios-snapshots-optimize' (or raise SNAPSHOT_MAX_BYTES if genuinely large)"
+  if [ "$size" -gt "$ceiling" ]; then
+    echo "::error file=$png::$size bytes > $ceiling ceiling — run 'just ios-snapshots-optimize' (or raise SNAPSHOT_MAX_BYTES if genuinely large)"
     fail=1
   fi
 done < <(find "$SNAP_DIR" -name '*.png')

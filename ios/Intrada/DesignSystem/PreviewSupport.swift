@@ -26,10 +26,13 @@
     private let activeSession: ActiveSessionView?
     private let summary: SummaryView?
 
+    private let analytics: AnalyticsView?
+
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
-      activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil
+      activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
+      analytics: AnalyticsView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -37,6 +40,7 @@
       self.buildingSetlist = buildingSetlist
       self.activeSession = activeSession
       self.summary = summary
+      self.analytics = analytics
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -60,6 +64,7 @@
       viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
+      if let analytics { viewModel.analytics = analytics }
       return viewModel
     }
   }
@@ -150,14 +155,91 @@
       Store(bridge: PreviewBridge(activeSession: .previewActiveReps))
     }
 
-    /// Player Summary — a completed session with scored entries.
+    /// Player Summary — a completed session with scored entries. Analytics are
+    /// injected so the gold mastery toast (Clair de Lune 3 → 4) has data.
     static var previewSummary: Store {
-      Store(bridge: PreviewBridge(summary: .previewSummary))
+      Store(bridge: PreviewBridge(summary: .previewSummary, analytics: .previewAnalytics))
     }
 
     /// Player Summary — ended early, so the unreached item shows not-attempted.
     static var previewSummaryEndedEarly: Store {
       Store(bridge: PreviewBridge(summary: .previewSummaryEndedEarly))
+    }
+
+    /// Progress — a populated analytics view (dial, consistency, recent mastery).
+    static var previewProgress: Store {
+      Store(bridge: PreviewBridge(analytics: .previewAnalytics))
+    }
+
+    /// Library where rows carry a mastery score, so the trailing meters fill.
+    static var previewLibraryMastery: Store {
+      Store(
+        bridge: PreviewBridge(items: [
+          scored(.previewPiece, 4), scored(.previewExercise, 3), .previewMinimal,
+        ]))
+    }
+
+    private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
+      var copy = item
+      copy.practice = ItemPracticeSummary(
+        sessionCount: 8, totalMinutes: 120, latestScore: score, scoreHistory: [],
+        latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-05-30T09:00:00Z")
+      return copy
+    }
+  }
+
+  extension AnalyticsView {
+    /// A deterministic analytics fixture for the Progress screen + snapshots.
+    /// `scoreTrends` (all items' latest score) drives the dial mean (≈3.4);
+    /// `scoreChanges` (this week's movers) drive the Recent-mastery rows; weekly
+    /// `dailyTotals` roll up to the consistency bars (40/75/55/95/82).
+    static var previewAnalytics: AnalyticsView {
+      AnalyticsView(
+        weeklySummary: WeeklySummary(
+          totalMinutes: 380, sessionCount: 14, itemsCovered: 11,
+          prevTotalMinutes: 300, prevSessionCount: 11, prevItemsCovered: 9,
+          timeDirection: .up, sessionsDirection: .up, itemsDirection: .up,
+          hasPrevWeekData: true),
+        streak: PracticeStreak(currentDays: 4),
+        dailyTotals: [
+          DailyPracticeTotal(date: "2026-04-29", minutes: 40),
+          DailyPracticeTotal(date: "2026-05-06", minutes: 75),
+          DailyPracticeTotal(date: "2026-05-13", minutes: 55),
+          DailyPracticeTotal(date: "2026-05-20", minutes: 95),
+          DailyPracticeTotal(date: "2026-05-28", minutes: 82),
+        ],
+        topItems: [
+          ItemRanking(
+            itemId: "piece-1", itemTitle: "Clair de Lune", itemType: .piece,
+            totalMinutes: 180, sessionCount: 9)
+        ],
+        scoreTrends: [
+          scoreTrend("piece-1", "Clair de Lune", 4),
+          scoreTrend("exercise-1", "Hanon No. 1", 4),
+          scoreTrend("piece-2", "Gymnopédie No. 1", 3),
+          scoreTrend("piece-3", "Nocturne Op. 9", 3),
+          scoreTrend("exercise-2", "Major Scales", 3),
+        ],
+        neglectedItems: [],
+        scoreChanges: [
+          ScoreChange(
+            itemId: "piece-1", itemTitle: "Clair de Lune", previousScore: 3,
+            currentScore: 4, delta: 1, isNew: false),
+          ScoreChange(
+            itemId: "exercise-1", itemTitle: "Hanon No. 1", previousScore: 2,
+            currentScore: 3, delta: 1, isNew: false),
+          ScoreChange(
+            itemId: "piece-2", itemTitle: "Gymnopédie No. 1", previousScore: nil,
+            currentScore: 3, delta: 0, isNew: true),
+        ])
+    }
+
+    private static func scoreTrend(_ id: String, _ title: String, _ latest: UInt8)
+      -> ItemScoreTrend
+    {
+      ItemScoreTrend(
+        itemId: id, itemTitle: title,
+        scores: [ScorePoint(date: "2026-05-30", score: latest)], latestScore: latest)
     }
   }
 

@@ -5,7 +5,10 @@ struct LibraryScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var adding = false
-  @State private var prioritiesExpanded = true
+  // Leading "priorities only" filter — prioritise is now a filter, not a
+  // section. Shell-side over the core-filtered list; #904-style debt, tracked
+  // until ListQuery carries a priority dimension.
+  @State private var starFilter = false
   private let previewSearch: String?
 
   // Shared BrowseControlsBar spring — one motion vocabulary (honours Reduce Motion).
@@ -19,6 +22,9 @@ struct LibraryScreen: View {
   #endif
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var displayedItems: [LibraryItemView] {
+    starFilter ? items.filter(\.priority) : items
+  }
 
   var body: some View {
     ScreenScaffold(
@@ -26,7 +32,7 @@ struct LibraryScreen: View {
       trailing: .init(label: "Add item", action: { adding = true })
     ) {
       VStack(spacing: 0) {
-        BrowseControlsBar(previewSearch: previewSearch)
+        BrowseControlsBar(previewSearch: previewSearch, starFilter: $starFilter)
         content
       }
     }
@@ -47,107 +53,42 @@ struct LibraryScreen: View {
   }
 
   @ViewBuilder private var content: some View {
-    if items.isEmpty {
+    if displayedItems.isEmpty {
       PlaceholderContent(
-        systemImage: isSearching ? "magnifyingglass" : "books.vertical",
+        systemImage: emptyIcon,
         message: emptyMessage)
     } else {
       ScrollView {
-        VStack(spacing: 0) {
-          prioritySection
-          LazyVStack(spacing: IntradaSpacing.cardCompact) {
-            ForEach(regularItems, id: \.id) { libraryRow($0) }
+        LazyVStack(spacing: IntradaSpacing.cardCompact) {
+          ForEach(Array(displayedItems.enumerated()), id: \.element.id) { index, item in
+            libraryRow(item)
+              .fadeUp(min(index, 5))
           }
-          .padding(.horizontal, IntradaSpacing.card)
-          // Flush under the toolbar — no mismatched page-colour strip above it.
-          .padding(.top, priorityItems.isEmpty ? IntradaSpacing.card : 0)
         }
-        .padding(.bottom, IntradaSpacing.card)
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.vertical, IntradaSpacing.card)
       }
       .scrollDismissesKeyboard(.interactively)
       .scrollEdgeShadow()
     }
   }
 
-  // Own VStack (LazyVStack ignores zIndex) so the header layers above the cards
-  // on collapse; full-bleed header, inset cards.
-  @ViewBuilder private var prioritySection: some View {
-    if !priorityItems.isEmpty {
-      VStack(spacing: 0) {
-        prioritiesHeader.zIndex(1)
-        if prioritiesExpanded {
-          VStack(spacing: IntradaSpacing.cardCompact) {
-            ForEach(priorityItems, id: \.id) { libraryRow($0) }
-          }
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.top, IntradaSpacing.cardCompact)
-          .transition(.move(edge: .top).combined(with: .opacity))
-        }
-      }
-      .clipped()
-      if !regularItems.isEmpty {
-        Divider().overlay(IntradaColor.divider)
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.vertical, IntradaSpacing.controlGap)
-      }
-    }
-  }
-
-  // Partition the already query-filtered items, so the section respects search/filter.
-  private var priorityItems: [LibraryItemView] { items.filter(\.priority) }
-  private var regularItems: [LibraryItemView] { items.filter { !$0.priority } }
-
-  private var prioritiesHeader: some View {
-    Button {
-      withAnimation(reduceMotion ? nil : Self.motion) { prioritiesExpanded.toggle() }
-    } label: {
-      HStack(spacing: 6) {
-        Image(systemName: "star.fill").font(.system(size: 11))
-          .foregroundStyle(IntradaColor.accent)
-        Text("PRIORITIES · \(priorityItems.count)")
-          .font(IntradaFont.badge).tracking(1.5)
-          .foregroundStyle(IntradaColor.inkFaint)
-        Spacer()
-        Image(systemName: prioritiesExpanded ? "chevron.down" : "chevron.right")
-          .font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(IntradaColor.inkFaint)
-      }
-      .padding(.vertical, IntradaSpacing.cardCompact)
-      .padding(.horizontal, IntradaSpacing.card)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      // Flat, opaque, full-bleed like the toolbar so collapsing cards tuck under it.
-      .background(IntradaColor.paperTop)
-      .overlay(alignment: .bottom) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Priorities, \(priorityItems.count) items")
-    .accessibilityHint(prioritiesExpanded ? "Collapses the section" : "Expands the section")
-  }
-
-  // Star is a sibling of the NavigationLink (not nested) so the link can't steal its taps.
   private func libraryRow(_ item: LibraryItemView) -> some View {
-    ZStack(alignment: .topTrailing) {
-      NavigationLink(value: item.id) { LibraryItemCard(item: item, trailingGutter: 40) }
-        .buttonStyle(.plain)
-      priorityStar(item)
-    }
-  }
-
-  private func priorityStar(_ item: LibraryItemView) -> some View {
-    Button {
-      toggleStar(item.id)
-    } label: {
-      Image(systemName: item.priority ? "star.fill" : "star")
-        .font(.system(size: 18, weight: .medium))
-        .foregroundStyle(item.priority ? IntradaColor.accent : IntradaColor.inkFaint)
-        .padding(IntradaSpacing.row)
-        .contentShape(Rectangle())
+    NavigationLink(value: item.id) {
+      LibraryItemCard(item: item, showsMastery: true)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(
-      item.priority ? "Remove \(item.title) from priorities"
-        : "Add \(item.title) to priorities")
+    // Prioritise is a filter now, so the per-row star moved to a swipe action.
+    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+      Button {
+        toggleStar(item.id)
+      } label: {
+        Label(
+          item.priority ? "Unstar" : "Star",
+          systemImage: item.priority ? "star.slash" : "star")
+      }
+      .tint(IntradaColor.accent)
+    }
   }
 
   // Read the item fresh at tap time — a render-captured value can go stale.
@@ -171,7 +112,15 @@ struct LibraryScreen: View {
     !(store.viewModel?.activeQuery?.text ?? "").isEmpty
   }
 
+  private var emptyIcon: String {
+    if starFilter { return "star" }
+    return isSearching ? "magnifyingglass" : "books.vertical"
+  }
+
   private var emptyMessage: String {
+    if starFilter && !items.isEmpty {
+      return "No priorities yet. Swipe a row to star it."
+    }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
     }
@@ -202,7 +151,7 @@ struct LibraryScreen: View {
 #if DEBUG
   #Preview("Populated") {
     NavigationStack { LibraryScreen() }
-      .environment(Store.previewSeeded)
+      .environment(Store.previewLibraryMastery)
   }
 
   #Preview("Searching") {

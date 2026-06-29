@@ -1,8 +1,10 @@
 import SharedTypes
 import SwiftUI
 
-/// A Mon–Sun row for one week. A day is always selected — the screen
-/// auto-selects on open, so there's no "nothing selected" state to render.
+/// The week picker — a Mon–Sun row that *selects a day*; the screen renders that
+/// day's sessions below. A day is always selected (the screen auto-selects on
+/// open). Today is marked with a ring, the selected day with a fill, practised
+/// days carry a dot, and not-yet days dim.
 struct WeekStrip: View {
   let days: [Date]
   let today: Date
@@ -17,6 +19,7 @@ struct WeekStrip: View {
           day: day,
           isToday: calendar.isDate(day, inSameDayAs: today),
           isSelected: calendar.isDate(day, inSameDayAs: selected),
+          isFuture: calendar.startOfDay(for: day) > calendar.startOfDay(for: today),
           hasPractice: practiceDays.contains(calendar.startOfDay(for: day)),
           calendar: calendar
         ) { selected = day }
@@ -29,6 +32,7 @@ private struct WeekDayCell: View {
   let day: Date
   let isToday: Bool
   let isSelected: Bool
+  let isFuture: Bool
   let hasPractice: Bool
   let calendar: Calendar
   let onTap: () -> Void
@@ -39,10 +43,11 @@ private struct WeekDayCell: View {
       VStack(spacing: 5) {
         Text(weekdayInitial)
           .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.inkFaint)
+          .fontWeight(isSelected || isToday ? .semibold : .regular)
+          .foregroundStyle(isSelected || isToday ? IntradaColor.accent : IntradaColor.inkFaint)
         Text(dayNumber)
           .font(IntradaFont.metaMedium)
-          .foregroundStyle(isSelected ? IntradaColor.onAccent : IntradaColor.ink)
+          .foregroundStyle(dayNumberColor)
           .frame(width: 32, height: 32)
           .background(isSelected ? IntradaColor.accent : .clear, in: Circle())
           .overlay(
@@ -59,6 +64,11 @@ private struct WeekDayCell: View {
     .buttonStyle(.plain)
     .accessibilityLabel(accessibilityLabel)
     .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+  }
+
+  private var dayNumberColor: Color {
+    if isSelected { return IntradaColor.onAccent }
+    return isFuture ? IntradaColor.futureDay : IntradaColor.ink
   }
 
   private var dayNumber: String {
