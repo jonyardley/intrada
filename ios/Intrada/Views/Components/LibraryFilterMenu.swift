@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Pull-down type filter (All / Pieces / Exercises) — the dropdown sibling of
-/// `LibrarySortMenu`. The label shows the active filter so the current scope is
-/// always visible.
+/// Pull-down type filter — the dropdown sibling of `LibrarySortMenu`.
 struct LibraryFilterMenu: View {
   let current: LibraryFilter
   let onChange: (LibraryFilter) -> Void
@@ -30,6 +28,9 @@ struct LibraryFilterMenu: View {
         }
         labelContent(current.label)
       }
+      // The reservation copies are visual-only; the Menu's explicit label/value
+      // below own VoiceOver (`.hidden()` alone leaves them in the a11y tree).
+      .accessibilityHidden(true)
       .padding(.vertical, IntradaSpacing.controlGap)
       .fixedSize()
     }
