@@ -128,7 +128,7 @@ pub struct ActiveSession {
 }
 
 /// State during post-session review (Summary phase).
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct SummarySession {
     pub id: String,
     pub entries: Vec<SetlistEntry>,
@@ -137,7 +137,6 @@ pub struct SummarySession {
     pub session_notes: Option<String>,
     pub session_intention: Option<String>,
     pub completion_status: CompletionStatus,
-    #[serde(default)]
     pub session_score: Option<u8>,
 }
 
