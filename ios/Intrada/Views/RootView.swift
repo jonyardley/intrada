@@ -20,7 +20,7 @@ struct RootView: View {
       NavigationStack {
         PracticeScreen().screenTransaction("Practice")
       }
-      .tabItem { Label("Practice", systemImage: "metronome.fill") }
+      .tabItem { Label("Practice", systemImage: "metronome") }
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen().screenTransaction("Progress")
@@ -74,10 +74,10 @@ struct RootView: View {
     appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
 
     let normal = appearance.stackedLayoutAppearance.normal
-    // Inactive icon + label share `inkFaint` — the system's inactive-control
-    // colour (filter pills, search/tag icons). The design has no separate tab tint.
-    normal.iconColor = UIColor(IntradaColor.inkFaint)
-    normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkFaint)]
+    // Inactive icon + label are `inkSecondary` (#6E6557) — the design system's
+    // tab-bar value (Screens gallery), not a separate tab tint.
+    normal.iconColor = UIColor(IntradaColor.inkSecondary)
+    normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkSecondary)]
 
     let selected = appearance.stackedLayoutAppearance.selected
     selected.iconColor = UIColor(IntradaColor.accent)
