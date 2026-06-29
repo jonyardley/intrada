@@ -20,7 +20,7 @@ struct RootView: View {
       NavigationStack {
         PracticeScreen().screenTransaction("Practice")
       }
-      .tabItem { Label("Practice", systemImage: "metronome") }
+      .tabItem { Label("Practice", systemImage: "timer") }
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
       AnalyticsScreen().screenTransaction("Progress")
