@@ -869,6 +869,7 @@ fn sample_sessions() -> Vec<PracticeSession> {
             completed_at: started_at + chrono::Duration::seconds(total_duration_secs as i64),
             total_duration_secs,
             completion_status,
+            session_score: None,
         }
     };
 
@@ -1107,6 +1108,7 @@ mod tests {
                 completed_at: now,
                 total_duration_secs: 60,
                 completion_status: CompletionStatus::Completed,
+                session_score: None,
             }],
             session_status: SessionStatus::Active(ActiveSession {
                 id: "active1".to_string(),
@@ -1872,6 +1874,7 @@ mod tests {
                 session_notes: None,
                 session_intention: None,
                 entries,
+                session_score: None,
             });
         }
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -1984,6 +1987,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
@@ -2082,6 +2086,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -2111,6 +2116,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: "e2".to_string(),
                 item_id: "p1".to_string(),
@@ -2181,6 +2187,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -2244,6 +2251,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![
                 SetlistEntry {
                     id: "e1".to_string(),
@@ -2332,6 +2340,7 @@ mod tests {
             completion_status: CompletionStatus::EndedEarly,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: "e1".to_string(),
                 item_id: "p1".to_string(),
@@ -2397,6 +2406,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: format!("{id}-e1"),
                 item_id: item_id.to_string(),
@@ -2449,6 +2459,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: None,
+            session_score: None,
             entries: vec![SetlistEntry {
                 id: format!("{id}-e"),
                 item_id: "item-1".to_string(),
@@ -3207,6 +3218,7 @@ mod tests {
                 entries: vec![],
                 session_notes: None,
                 session_intention: None,
+                session_score: None,
             },
             PracticeSession {
                 id: "s2".to_string(),
@@ -3217,6 +3229,7 @@ mod tests {
                 entries: vec![],
                 session_notes: None,
                 session_intention: None,
+                session_score: None,
             },
         ];
         let vm = app.view(&model);

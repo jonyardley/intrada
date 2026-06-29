@@ -623,6 +623,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: Some("focus".to_string()),
+            session_score: None,
         };
         let view = build_summary_view(&summary);
         assert_eq!(view.total_duration_display, "2m 30s");
@@ -642,6 +643,7 @@ mod tests {
             completed_at: Utc::now(),
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
+            session_score: None,
         };
         let view = session_to_view(&session);
         // Precise (live-timer) form keeps seconds; the summary line drops them.

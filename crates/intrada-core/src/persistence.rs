@@ -476,6 +476,7 @@ mod tests {
             completed_at: now,
             total_duration_secs: 0,
             completion_status: crate::domain::session::CompletionStatus::Completed,
+            session_score: None,
         }
     }
 

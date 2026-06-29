@@ -561,6 +561,7 @@ mod tests {
                 session_notes: None,
                 session_intention: None,
                 completion_status: CompletionStatus::Completed,
+                session_score: None,
             }),
             ..Default::default()
         };

@@ -491,6 +491,7 @@ mod tests {
             session_notes: None,
             session_intention: None,
             entries,
+            session_score: None,
         }
     }
 
@@ -754,6 +755,7 @@ mod tests {
                 session_notes: None,
                 session_intention: None,
                 entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
+                session_score: None,
             }
         };
 
@@ -1525,6 +1527,7 @@ mod tests {
             session_notes: None,
             session_intention: None,
             entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
+            session_score: None,
         }];
 
         let analytics = compute_analytics(&sessions, &[], today);

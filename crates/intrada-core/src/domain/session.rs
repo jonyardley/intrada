@@ -93,6 +93,8 @@ pub struct PracticeSession {
     pub completed_at: DateTime<Utc>,
     pub total_duration_secs: u64,
     pub completion_status: CompletionStatus,
+    #[serde(default)]
+    pub session_score: Option<u8>,
 }
 
 // ── Transient State Types ──────────────────────────────────────────────
@@ -135,6 +137,7 @@ pub struct SummarySession {
     pub session_notes: Option<String>,
     pub session_intention: Option<String>,
     pub completion_status: CompletionStatus,
+    pub session_score: Option<u8>,
 }
 
 /// The lifecycle state of a session in the core Model.
@@ -251,6 +254,9 @@ pub enum SessionEvent {
     },
     UpdateSessionNotes {
         notes: Option<String>,
+    },
+    UpdateSessionScore {
+        score: Option<u8>,
     },
     SaveSession {
         now: DateTime<Utc>,
@@ -400,6 +406,7 @@ fn transition_to_summary(
         session_notes: None,
         session_intention: active.session_intention.clone(),
         completion_status,
+        session_score: None,
     }
 }
 
@@ -762,6 +769,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                     session_notes: None,
                     session_intention: active.session_intention.clone(),
                     completion_status: CompletionStatus::Completed,
+                    session_score: None,
                 };
                 model.session_status = SessionStatus::Summary(summary);
                 model.last_error = None;
@@ -1041,6 +1049,21 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
+        SessionEvent::UpdateSessionScore { score } => {
+            if let Some(s) = score {
+                if !(validation::MIN_SCORE..=validation::MAX_SCORE).contains(&s) {
+                    return crux_core::render::render();
+                }
+            }
+            let SessionStatus::Summary(ref mut summary) = model.session_status else {
+                model.last_error = Some("Not in summary state".to_string());
+                return crux_core::render::render();
+            };
+            summary.session_score = score;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
         SessionEvent::SaveSession { now } => {
             let SessionStatus::Summary(ref summary) = model.session_status else {
                 model.last_error = Some("Not in summary state".to_string());
@@ -1058,6 +1081,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 completed_at: now,
                 total_duration_secs,
                 completion_status: summary.completion_status.clone(),
+                session_score: summary.session_score,
             };
 
             model.sessions.push(practice_session.clone());
@@ -3824,6 +3848,31 @@ mod tests {
             assert!(a.entries[0].rep_target.is_some());
         } else {
             panic!("Expected Active state");
+        }
+    }
+
+    #[test]
+    fn test_update_session_score_sets_and_validates() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionScore { score: Some(8) }),
+        );
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.session_score, Some(8));
+        } else {
+            panic!("Expected Summary state");
+        }
+
+        // Out of range is rejected, leaving the prior value intact.
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionScore { score: Some(11) }),
+        );
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            assert_eq!(s.session_score, Some(8));
         }
     }
 
