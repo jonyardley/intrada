@@ -12,7 +12,7 @@ pub const MAX_TEMPO_MARKING: usize = 100;
 pub const MIN_BPM: u16 = 1;
 pub const MAX_BPM: u16 = 400;
 pub const MIN_SCORE: u8 = 1;
-pub const MAX_SCORE: u8 = 5;
+pub const MAX_SCORE: u8 = 10;
 pub const DEFAULT_REP_TARGET: u8 = 5;
 pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
@@ -1388,6 +1388,18 @@ mod tests {
             }
             _ => panic!("Expected Validation error"),
         }
+    }
+
+    // --- validate_score tests ---
+
+    #[test]
+    fn validate_score_accepts_full_0_to_10_band() {
+        assert!(validate_score(&Some(1)).is_ok());
+        assert!(validate_score(&Some(10)).is_ok());
+        assert!(validate_score(&None).is_ok());
+        // 0 is "unrated" (None), never a settable score; 11 is out of range.
+        assert!(validate_score(&Some(0)).is_err());
+        assert!(validate_score(&Some(11)).is_err());
     }
 
     // --- validate_set_entry_fields tests ---

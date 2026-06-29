@@ -2367,12 +2367,12 @@ mod tests {
             assert_eq!(s.entries[0].score, None); // Score not set
         }
 
-        // Score 6 — out of range
+        // Score 11 — out of range
         update(
             &mut model,
             Event::Session(SessionEvent::UpdateEntryScore {
                 entry_id: entry_id.clone(),
-                score: Some(6),
+                score: Some(11),
             }),
         );
 
@@ -2650,17 +2650,17 @@ mod tests {
             assert_eq!(s.entries[0].score, Some(1));
         }
 
-        // Score 5 — maximum valid
+        // Score 10 — maximum valid
         update(
             &mut model,
             Event::Session(SessionEvent::UpdateEntryScore {
                 entry_id: entry_id.clone(),
-                score: Some(5),
+                score: Some(10),
             }),
         );
 
         if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.entries[0].score, Some(5));
+            assert_eq!(s.entries[0].score, Some(10));
         }
     }
 
