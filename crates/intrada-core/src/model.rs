@@ -673,10 +673,9 @@ mod tests {
 
     #[test]
     fn session_to_view_exposes_session_score() {
-        let entry = make_entry("e1", "i1", "Scale", 0);
         let session = crate::domain::session::PracticeSession {
             id: "s2".to_string(),
-            entries: vec![entry],
+            entries: vec![],
             session_notes: None,
             session_intention: None,
             started_at: Utc::now(),
@@ -687,5 +686,75 @@ mod tests {
         };
         let view = session_to_view(&session);
         assert_eq!(view.session_score, Some(5));
+    }
+
+    // ── Integration: Event → model → ViewModel ────────────────────────
+
+    fn update_model(model: &mut Model, event: crate::app::Event) {
+        use crux_core::App;
+        let app = crate::app::Intrada;
+        let _cmd = app.update(event, model);
+    }
+
+    fn model_with_summary_state() -> Model {
+        use crate::app::Event;
+        use crate::domain::session::SessionEvent;
+
+        let now = Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "piece-1".to_string(),
+                title: "Test Piece".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            }],
+            api_base_url: "http://localhost:3001".to_string(),
+            ..Default::default()
+        };
+
+        update_model(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        let t1 = now + chrono::Duration::seconds(60);
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t1 }),
+        );
+        model
+    }
+
+    #[test]
+    fn update_session_score_flows_to_summary_view() {
+        use crate::app::Event;
+        use crate::domain::session::SessionEvent;
+        use crux_core::App;
+
+        let mut model = model_with_summary_state();
+
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionScore { score: Some(7) }),
+        );
+
+        let app = crate::app::Intrada;
+        let vm = app.view(&model);
+        let summary = vm.summary.expect("model should be in Summary state");
+        assert_eq!(summary.session_score, Some(7));
     }
 }
