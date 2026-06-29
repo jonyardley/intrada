@@ -116,7 +116,7 @@ struct PracticeScreen: View {
         .multilineTextAlignment(.center)
     }
     .frame(maxWidth: .infinity)
-    .padding(24)
+    .padding(IntradaSpacing.section)
     .background(LinearGradient.practiceHero)
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
     .shadow(color: .black.opacity(0.18), radius: 20, y: 10)

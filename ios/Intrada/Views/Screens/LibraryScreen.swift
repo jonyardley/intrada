@@ -11,9 +11,6 @@ struct LibraryScreen: View {
   @State private var starFilter = false
   private let previewSearch: String?
 
-  // Shared BrowseControlsBar spring — one motion vocabulary (honours Reduce Motion).
-  private static let motion = Animation.spring(response: 0.35, dampingFraction: 0.85)
-
   init() { previewSearch = nil }
 
   #if DEBUG
@@ -78,23 +75,24 @@ struct LibraryScreen: View {
       LibraryItemCard(item: item, showsMastery: true)
     }
     .buttonStyle(.plain)
-    // Prioritise is a filter now, so the per-row star moved to a swipe action.
-    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+    // Prioritise is a filter now, so the row stays clean (meter only); starring
+    // moves off the row to a long-press menu here + an explicit toggle on the
+    // detail screen. (`.swipeActions` only works inside a `List`.)
+    .contextMenu {
       Button {
         toggleStar(item.id)
       } label: {
         Label(
-          item.priority ? "Unstar" : "Star",
+          item.priority ? "Remove from priorities" : "Add to priorities",
           systemImage: item.priority ? "star.slash" : "star")
       }
-      .tint(IntradaColor.accent)
     }
   }
 
   // Read the item fresh at tap time — a render-captured value can go stale.
   private func toggleStar(_ id: String) {
     guard let item = store.viewModel?.items.first(where: { $0.id == id }) else { return }
-    withAnimation(reduceMotion ? nil : Self.motion) {
+    withAnimation(reduceMotion ? nil : IntradaMotion.standard) {
       store.send(.item(.update(id: id, input: togglePriority(item))))
     }
   }

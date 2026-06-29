@@ -51,6 +51,16 @@ struct LibraryDetailScreen: View {
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
+        Button {
+          toggleStar()
+        } label: {
+          Image(systemName: item.priority ? "star.fill" : "star")
+            .foregroundStyle(item.priority ? IntradaColor.accent : IntradaColor.inkSecondary)
+        }
+        .accessibilityLabel(
+          item.priority ? "Remove from priorities" : "Add to priorities")
+      }
+      ToolbarItem(placement: .topBarTrailing) {
         Button("Edit") { editing = true }
       }
     }
@@ -85,6 +95,18 @@ struct LibraryDetailScreen: View {
     UINotificationFeedbackGenerator().notificationOccurred(.warning)
     store.send(.item(.delete(id: item.id)))
     dismiss()
+  }
+
+  // Priority-only update: every other field is "no change" (nil). A failed write
+  // surfaces on the global banner, not a silent no-op (#846).
+  private func toggleStar() {
+    store.send(
+      .item(
+        .update(
+          id: item.id,
+          input: UpdateItem(
+            title: item.title, kind: item.itemType, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: nil, priority: !item.priority))))
   }
 
   private var subtitle: String? {

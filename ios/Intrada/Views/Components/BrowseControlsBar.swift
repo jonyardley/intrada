@@ -124,7 +124,7 @@ struct BrowseControlsBar: View {
     if searchRevealed {
       cancelSearch()
     } else {
-      withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { searchRevealed = true }
+      withAnimation(IntradaMotion.standard) { searchRevealed = true }
       searchFocused = true
     }
   }
@@ -132,7 +132,7 @@ struct BrowseControlsBar: View {
   private func cancelSearch() {
     searchText = ""
     searchFocused = false
-    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { searchRevealed = false }
+    withAnimation(IntradaMotion.standard) { searchRevealed = false }
   }
 
   // Change one dimension while preserving the others, so the three filters

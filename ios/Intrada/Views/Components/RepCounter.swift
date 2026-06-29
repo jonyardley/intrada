@@ -78,9 +78,9 @@ struct RepCounter: View {
       .frame(maxWidth: .infinity)
       .padding(.vertical, 13)
       .background(bg)
-      .clipShape(RoundedRectangle(cornerRadius: 13))
+      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.control))
       .overlay(
-        RoundedRectangle(cornerRadius: 13).stroke(border, lineWidth: 1))
+        RoundedRectangle(cornerRadius: IntradaRadius.control).stroke(border, lineWidth: 1))
     }
     .buttonStyle(PressRebound())
     .disabled(disabled)

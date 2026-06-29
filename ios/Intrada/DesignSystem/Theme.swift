@@ -170,6 +170,8 @@ enum IntradaSpacing {
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
 enum IntradaRadius {
   static let card: CGFloat = 12
+  /// Interactive control buttons (rep Clean/Missed, etc.).
+  static let control: CGFloat = 13
   /// Medium section/hero cards (e.g. the Progress mastery card).
   static let panel: CGFloat = 16
   /// The Practice one-tap hero — the single largest card in the app.
