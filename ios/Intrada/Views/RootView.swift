@@ -74,7 +74,9 @@ struct RootView: View {
     appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
 
     let normal = appearance.stackedLayoutAppearance.normal
-    normal.iconColor = UIColor(IntradaColor.tabBarInactiveIcon)
+    // Inactive icon + label share `inkFaint` — the system's inactive-control
+    // colour (filter pills, search/tag icons). The design has no separate tab tint.
+    normal.iconColor = UIColor(IntradaColor.inkFaint)
     normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkFaint)]
 
     let selected = appearance.stackedLayoutAppearance.selected
