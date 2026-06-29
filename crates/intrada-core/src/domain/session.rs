@@ -128,7 +128,7 @@ pub struct ActiveSession {
 }
 
 /// State during post-session review (Summary phase).
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SummarySession {
     pub id: String,
     pub entries: Vec<SetlistEntry>,
@@ -137,6 +137,7 @@ pub struct SummarySession {
     pub session_notes: Option<String>,
     pub session_intention: Option<String>,
     pub completion_status: CompletionStatus,
+    #[serde(default)]
     pub session_score: Option<u8>,
 }
 
@@ -3871,6 +3872,7 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::UpdateSessionScore { score: Some(11) }),
         );
+        assert!(model.last_error.is_none());
         if let SessionStatus::Summary(ref s) = model.session_status {
             assert_eq!(s.session_score, Some(8));
         }
