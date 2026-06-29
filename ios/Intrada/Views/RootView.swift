@@ -73,9 +73,9 @@ struct RootView: View {
     appearance.configureWithOpaqueBackground()
     appearance.backgroundColor = UIColor(IntradaColor.tabBarFill)
 
+    // iOS 26's glass tab bar styles itself and ignores these item colours; they
+    // apply on iOS 25 and earlier (active tint also comes from `.tint`).
     let normal = appearance.stackedLayoutAppearance.normal
-    // Inactive icon + label are `inkSecondary` (#6E6557) — the design system's
-    // tab-bar value (Screens gallery), not a separate tab tint.
     normal.iconColor = UIColor(IntradaColor.inkSecondary)
     normal.titleTextAttributes = [.foregroundColor: UIColor(IntradaColor.inkSecondary)]
 
