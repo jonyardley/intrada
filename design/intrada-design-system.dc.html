@@ -18,6 +18,12 @@
   body { margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   ::selection { background: #4C3FA633; }
   [data-lucide] { stroke-width: 2; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.55); } 62% { transform: scale(1.09); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes toastIn { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 100% { opacity: 1; transform: none; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-14px); max-height: 0; } to { opacity: 1; transform: none; max-height: 80px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } }
 </style>
 </helmet>
 <div style="min-height:100vh;background:linear-gradient(180deg,#F4F1E8 0%,#EBE7D9 100%);font-family:'Inter',system-ui,sans-serif;color:#2B2A26;display:flex;align-items:flex-start;">
@@ -446,6 +452,70 @@
         </div>
       </div>
 
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Mastery indicators</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1.1fr 1fr;gap:34px;align-items:center;">
+        <div>
+          <div style="display:flex;gap:20px;align-items:flex-end;">
+            <div style="text-align:center;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:14px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><div style="font-size:10px;color:#9A927F;margin-top:7px;">1</div></div>
+            <div style="text-align:center;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><div style="font-size:10px;color:#9A927F;margin-top:7px;">2</div></div>
+            <div style="text-align:center;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><div style="font-size:10px;color:#9A927F;margin-top:7px;">3</div></div>
+            <div style="text-align:center;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><div style="font-size:10px;color:#9A927F;margin-top:7px;">4</div></div>
+            <div style="text-align:center;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:20px;border-radius:2px;background:#4C3FA6;"></span></div><div style="font-size:10px;color:#9A927F;margin-top:7px;">5</div></div>
+          </div>
+          <div style="font-size:11.5px;color:#6E6557;margin-top:16px;line-height:1.5;">MasteryMeter — a 5-step ascending bar, filled to the item's level. Sits trailing on a Library row or anywhere mastery needs to read at a glance. Inert colour (indigo) — the bar count carries the meaning, so it stays colour-blind safe.</div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:9px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Clair de Lune</div><div style="font-size:10.5px;color:#9A927F;margin-top:1px;">D♭ major</div></div><div style="display:flex;align-items:center;gap:4px;font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#1F8A5B;"><span style="color:#B6AEC4;">3</span><i data-lucide="arrow-right" width="13" height="13" style="color:#9A927F;"></i><span>4</span></div></div>
+          <div style="display:flex;align-items:center;gap:9px;background:linear-gradient(120deg,#F1E9D6,#ECE0C6);border:1px solid #E6D6B0;border-radius:12px;padding:11px 14px;margin-top:9px;"><div style="width:28px;height:28px;border-radius:50%;background:#9E7B33;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="sparkles" width="14" height="14" style="color:#F6EFD8;"></i></div><div style="flex:1;font-size:12.5px;font-weight:600;color:#2B2A26;">Mastery up — celebrate the move</div></div>
+          <div style="font-size:11.5px;color:#6E6557;margin-top:12px;line-height:1.5;">MasteryDelta — the <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">was → now</span> row that turns weeks of invisible gain into one visible signal. Pairs with the gold celebration beat at session end.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Mastery dial &amp; consistency</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:0.9fr 1.1fr;gap:34px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:18px;">
+          <div style="position:relative;width:120px;height:120px;flex:none;">
+            <svg width="120" height="120" viewBox="0 0 120 120" style="display:block;"><circle cx="60" cy="60" r="50" fill="none" stroke="#EBE4D4" stroke-width="9"></circle><circle cx="60" cy="60" r="50" fill="none" stroke="#4C3FA6" stroke-width="9" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="100.5" transform="rotate(-90 60 60)"></circle></svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;color:#2B2A26;line-height:1;">3.4</div><div style="font-size:9px;font-weight:600;letter-spacing:1px;color:#9A927F;margin-top:2px;">OF 5.0</div></div>
+          </div>
+          <div style="font-size:11.5px;color:#6E6557;line-height:1.5;">MasteryDial — draws + counts up on appear (ring-draw + number count-up). The headline "where you are" figure.</div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:flex-end;gap:10px;height:66px;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:28px;border-radius:6px 6px 3px 3px;background:#DED5C1;"></div><span style="font-size:9px;color:#9A927F;">W1</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:44px;border-radius:6px 6px 3px 3px;background:#DED5C1;"></div><span style="font-size:9px;color:#9A927F;">W2</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:32px;border-radius:6px 6px 3px 3px;background:#DED5C1;"></div><span style="font-size:9px;color:#9A927F;">W3</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:54px;border-radius:6px 6px 3px 3px;background:#DED5C1;"></div><span style="font-size:9px;color:#9A927F;">W4</span></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:50px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><span style="font-size:9px;font-weight:600;color:#4C3FA6;">Now</span></div>
+          </div>
+          <div style="font-size:11.5px;color:#6E6557;margin-top:12px;line-height:1.5;">ConsistencyBars — weekly practice minutes, current week accented. Bars grow on appear (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">barGrow</span>, staggered). "Showing up" without a streak counter.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Repetition counter</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center;">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><span style="font-size:12px;font-weight:500;color:#6E6557;">Repetitions</span><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;"><strong style="color:#2B2A26;font-weight:600;">7</strong> of 12 · 5 to go</span></div>
+          <div style="display:flex;gap:5px;margin-bottom:12px;"><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span><span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span><span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span><span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span><span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span><span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span></div>
+          <div style="display:flex;gap:10px;"><div style="flex:1;border:1px solid #C9E2D3;background:#E7F1EB;color:#1F8A5B;border-radius:13px;padding:11px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;"><i data-lucide="check" width="16" height="16"></i>Clean</div><div style="flex:1;border:1px solid #DCD4C1;background:#EFEADC;color:#8A8170;border-radius:13px;padding:11px;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;"><i data-lucide="x" width="16" height="16"></i>Missed</div></div>
+        </div>
+        <div style="font-size:12.5px;color:#6E6557;line-height:1.6;">RepCounter — net progress toward a target. <strong style="font-weight:600;color:#2B2A26;">Clean +1, Missed −1</strong>, clamped 0…target; buttons disable at each end. Clean is success teal; a miss is a calm taupe, never a shaming red. This is the in-the-moment "good friction" the player exists for.</div>
+      </div>
+
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Week picker</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1.1fr 1fr;gap:34px;align-items:center;">
+        <div style="display:flex;gap:5px;">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">M</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;">12</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">T</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;">13</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">W</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;">14</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;font-weight:600;color:#4C3FA6;">T</span><div style="width:30px;height:30px;border-radius:50%;background:#4C3FA6;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;color:#F2EFE8;">15</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">F</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;">16</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">S</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;">17</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;"><span style="font-size:10px;color:#9A927F;">S</span><div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;">18</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+        </div>
+        <div style="font-size:12.5px;color:#6E6557;line-height:1.6;">WeekPicker — the strip selects a day; the list below shows <em>that day's</em> sessions. Today is the default selection, a dot marks practised days, future days dim. Empty past days read "rest day — no pressure" (comeback, not streak).</div>
+      </div>
+
       <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Empty state</div>
       <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:44px 30px;margin-top:14px;text-align:center;">
         <i data-lucide="library" width="34" height="34" style="color:#B6AEC4;"></i>
@@ -522,9 +592,51 @@
         </div>
         <div style="font-size:12px;color:#6E6557;margin-top:16px;line-height:1.6;">Springs over fixed durations — they interrupt and reverse cleanly when a user changes their mind mid-gesture. Reserve opacity-only cross-fades for content that has no spatial origin. Honour <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">Reduce Motion</span>: springs collapse to a 150ms fade.</div>
       </div>
-    </section>
 
-    <section id="screens" style="scroll-margin-top:24px;margin-top:104px;">
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Page-load reveal</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1.15fr 1fr;gap:28px;align-items:center;">
+        <div id="ds-reveal" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="ds-rev" style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:10px;padding:12px 14px 12px 18px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Clair de Lune</div></div>
+          <div class="ds-rev" style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:10px;padding:12px 14px 12px 18px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Scales · C major</div></div>
+          <div class="ds-rev" style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:10px;padding:12px 14px 12px 18px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Nocturne Op.9 No.2</div></div>
+        </div>
+        <div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;">The signature entrance: each element rises 12px and fades in, staggered ~60ms top-to-bottom, on a screen's first paint. One token — <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">fadeUp</span> — applied with an increasing <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">animation-delay</span>.</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#4C3FA6;background:#FBF7EC;border:1px solid #E5DECD;border-radius:8px;padding:10px 12px;margin-top:12px;line-height:1.7;">&#64;keyframes fadeUp · opacity 0&rarr;1, translateY 12px&rarr;0<br>500ms ease · stagger +60ms per item (animation-delay)<br>once on first paint · Reduce Motion &rarr; 150ms fade</div>
+          <button id="ds-replay" style="margin-top:14px;border:1px solid #D9D0BC;background:#FCFAF3;color:#4C3FA6;border-radius:11px;padding:10px 16px;font-family:Inter;font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:7px;cursor:pointer;"><i data-lucide="rotate-ccw" width="14" height="14"></i>Replay reveal</button>
+        </div>
+      </div>
+
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Springs, live</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+        <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:14px;padding:22px;display:flex;flex-direction:column;">
+          <div style="font-weight:600;font-size:13px;color:#2B2A26;">Press · snappy</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#4C3FA6;margin-top:5px;">response .28 · damping .9</div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:22px 0 6px;"><button style="border:none;background:linear-gradient(180deg,#6346E5,#4C3FA6);color:#F2EFE8;font-family:Inter;font-weight:600;font-size:14px;padding:13px 24px;border-radius:12px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(76,63,166,.6);transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.92)">Start</button></div>
+          <div style="font-size:11.5px;color:#6E6557;line-height:1.45;">Dip and rebound past rest — confident, not a dead click.</div>
+        </div>
+        <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:14px;padding:22px;display:flex;flex-direction:column;">
+          <div style="font-weight:600;font-size:13px;color:#2B2A26;">Segmented · snappy</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#4C3FA6;margin-top:5px;">response .28 · damping .9</div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px 0 10px;"><div style="position:relative;display:flex;background:#EFE7D6;border-radius:999px;padding:4px;width:222px;"><div id="ds-pill" style="position:absolute;top:4px;left:4px;width:71px;height:32px;border-radius:999px;background:#4C3FA6;box-shadow:0 4px 10px -4px rgba(76,63,166,.5);transition:transform .32s cubic-bezier(.34,1.4,.6,1);"></div><button class="ds-segbtn" data-i="0" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#F2EFE8;padding:8px 0;cursor:pointer;z-index:1;">All</button><button class="ds-segbtn" data-i="1" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#6E6557;padding:8px 0;cursor:pointer;z-index:1;">Pieces</button><button class="ds-segbtn" data-i="2" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#6E6557;padding:8px 0;cursor:pointer;z-index:1;">Drills</button></div></div>
+          <div style="font-size:11.5px;color:#6E6557;line-height:1.45;">Pill leads; labels settle a beat behind.</div>
+        </div>
+        <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:14px;padding:22px;display:flex;flex-direction:column;">
+          <div style="font-weight:600;font-size:13px;color:#2B2A26;">Count-up · gentle</div>
+          <div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#4C3FA6;margin-top:5px;">response .45 · damping .82</div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:14px 0 10px;"><span id="ds-num" style="font-family:'Source Serif 4',serif;font-weight:600;font-size:42px;color:#2B2A26;line-height:1;">3.4</span></div>
+          <button id="ds-replaynum" style="border:1px solid #D9D0BC;background:#FCFAF3;color:#4C3FA6;border-radius:10px;padding:9px;font-family:Inter;font-weight:600;font-size:12.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i data-lucide="rotate-ccw" width="13" height="13"></i>Replay</button>
+        </div>
+      </div>
+
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Retired</div>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:10px 30px;margin-top:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #E5DECD;"><div><span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#2B2A26;text-decoration:line-through;text-decoration-color:#B0A892;">breathe</span><span style="font-size:12.5px;color:#6E6557;margin-left:10px;">ambient glow pulsing behind the timer rings</span></div><span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#9E7B33;background:#F0E5CC;border:1px solid #E6D6B0;border-radius:999px;padding:3px 10px;flex:none;">RETIRED · distraction</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid #E5DECD;"><div><span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#2B2A26;text-decoration:line-through;text-decoration-color:#B0A892;">metro</span><span style="font-size:12.5px;color:#6E6557;margin-left:10px;">tempo pulse dot riding the ring at ♩ bpm</span></div><span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#9E7B33;background:#F0E5CC;border:1px solid #E6D6B0;border-radius:999px;padding:3px 10px;flex:none;">RETIRED · distraction</span></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;"><div><span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:#2B2A26;">glowPulse</span><span style="font-size:12.5px;color:#6E6557;margin-left:10px;">soft halo behind the primary "start" action</span></div><span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">IN REVIEW</span></div>
+      </div>
+      <div style="font-size:12px;color:#6E6557;margin-top:14px;line-height:1.6;max-width:640px;">Ambient, looping motion read as distraction in the practice surfaces and was pulled. Keep the rings calm and static; motion earns its place only when it carries meaning (progress, state change, celebration). <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">glowPulse</span> stays pending the call on whether a pulsing CTA halo is worth its weight.</div>
+    </section>
       <div style="font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#9A927F;">System</div>
       <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:36px;letter-spacing:-0.01em;margin:8px 0 0;color:#2B2A26;">Screens</h2>
       <p style="font-size:15px;line-height:1.6;color:#6E6557;max-width:640px;margin:14px 0 0;">Every shipped screen, assembled from the kit above. Four tabs — Library, Practice, Routines, Progress — plus the item detail, the add/edit form, and the three session surfaces: builder, the live player, and the post-session summary.</p>
@@ -533,42 +645,38 @@
 
         <!-- LIBRARY -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Library</div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
-                <div style="padding:6px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;">
-                  <div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Library</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">8 pieces · 3 exercises</div></div>
-                  <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;"><div style="width:30px;height:30px;border-radius:50%;background:#4C3FA6;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="16" height="16" style="color:#F2EFE8;"></i></div></div>
-                </div>
-                <div style="height:1px;background:#E0D9C8;margin:12px 16px 0;"></div>
-                <div style="display:flex;align-items:center;gap:8px;padding:12px 16px 14px;">
-                  <div style="display:flex;gap:8px;flex:1;"><span style="padding:6px 13px;border-radius:999px;background:#4C3FA6;color:#F2EFE8;font-weight:500;font-size:13px;">All</span><span style="padding:6px 13px;border-radius:999px;color:#9A927F;font-weight:500;font-size:13px;">Pieces</span><span style="padding:6px 13px;border-radius:999px;color:#9A927F;font-weight:500;font-size:13px;">Exercises</span></div>
-                  <i data-lucide="arrow-up-down" width="17" height="17" style="color:#9A927F;"></i>
-                  <i data-lucide="list-filter" width="17" height="17" style="color:#9A927F;"></i>
-                  <i data-lucide="search" width="17" height="17" style="color:#9A927F;"></i>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:#F4F1E8;border-top:1px solid #E5DECD;border-bottom:1px solid #E5DECD;"><i data-lucide="star" width="11" height="11" style="color:#4C3FA6;fill:#4C3FA6;"></i><span style="font-size:12px;font-weight:600;letter-spacing:1.5px;color:#9A927F;">PRIORITIES · 2</span><span style="flex:1;"></span><i data-lucide="chevron-down" width="14" height="14" style="color:#9A927F;"></i></div>
-                <div style="flex:1;overflow:hidden;padding:14px 16px 104px;display:flex;flex-direction:column;gap:14px;">
-                  <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 40px 14px 20px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Clair de Lune</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Debussy</div><div style="font-size:12px;color:#6E6557;margin-top:3px;">D♭ major · ♩ = 66</div><i data-lucide="star" width="18" height="18" style="color:#4C3FA6;fill:#4C3FA6;position:absolute;top:13px;right:13px;"></i></div>
-                  <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 40px 14px 20px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Scales · C major</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Two octaves, hands together</div><div style="font-size:12px;color:#6E6557;margin-top:3px;">♩ = 120</div><i data-lucide="star" width="18" height="18" style="color:#4C3FA6;fill:#4C3FA6;position:absolute;top:13px;right:13px;"></i></div>
-                  <div style="height:1px;background:#E0D9C8;margin:0 0 0;"></div>
-                  <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 40px 14px 20px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Chopin</div><div style="font-size:12px;color:#6E6557;margin-top:3px;">E♭ major · ♩ = 132</div><i data-lucide="star" width="18" height="18" style="color:#9A927F;position:absolute;top:13px;right:13px;"></i></div>
-                  <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 40px 14px 20px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Gymnopédie No.1</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Satie</div></div>
-                </div>
-              </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Library</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Practice</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+      <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Library · glanceable mastery</div>
+      <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
+        <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+            <div style="padding:6px 16px 0;display:flex;align-items:flex-start;justify-content:space-between;animation:fadeUp .5s ease both;">
+              <div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Library</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">8 pieces · 3 exercises</div></div>
+              <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;"><div style="width:30px;height:30px;border-radius:50%;background:#4C3FA6;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="16" height="16" style="color:#F2EFE8;"></i></div></div>
+            </div>
+            <div style="height:1px;background:#E0D9C8;margin:12px 16px 0;"></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:12px 16px 6px;animation:fadeUp .5s .08s ease both;">
+              <div style="display:flex;gap:8px;flex:1;align-items:center;"><span style="display:flex;align-items:center;justify-content:center;width:32px;height:28px;border-radius:999px;border:1px solid #E0D9C8;color:#9A927F;flex:none;cursor:pointer;"><i data-lucide="star" width="14" height="14"></i></span><span style="padding:6px 13px;border-radius:999px;background:#4C3FA6;color:#F2EFE8;font-weight:500;font-size:13px;">All</span><span style="padding:6px 13px;border-radius:999px;color:#9A927F;font-weight:500;font-size:13px;">Pieces</span><span style="padding:6px 13px;border-radius:999px;color:#9A927F;font-weight:500;font-size:13px;">Exercises</span></div>
+              <i data-lucide="search" width="17" height="17" style="color:#9A927F;"></i>
+            </div>
+            <div style="flex:1;overflow:hidden;padding:10px 16px 104px;display:flex;flex-direction:column;gap:12px;">
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;animation:fadeUp .5s .14s ease both;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Clair de Lune</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Debussy · D♭ · ♩=66</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#9A927F;">4 / 5</span></div></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;animation:fadeUp .5s .19s ease both;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Scales · C major</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Two octaves · ♩=120</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#9A927F;">3 / 5</span></div></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;animation:fadeUp .5s .24s ease both;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Chopin · E♭ · ♩=132</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#9A927F;">2 / 5</span></div></div>
+              <div style="position:relative;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px 14px 20px;overflow:hidden;display:flex;align-items:center;gap:14px;animation:fadeUp .5s .29s ease both;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Gymnopédie No.1</div><div style="font-size:13px;color:#6E6557;margin-top:1px;">Satie · D · ♩=80</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#4C3FA6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:14px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:17px;border-radius:2px;background:#E2DBC9;"></span><span style="width:5px;height:20px;border-radius:2px;background:#E2DBC9;"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#9A927F;">1 / 5</span></div></div>
             </div>
           </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Library</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Practice</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
         </div>
+      </div>
+    </div>
 
         <!-- DETAIL -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
@@ -627,40 +735,54 @@
 
         <!-- PRACTICE -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Practice</div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
-                <div style="padding:6px 16px 0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Practice</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">12 sessions</div></div>
-                <div style="height:1px;background:#E0D9C8;margin:12px 16px 0;"></div>
-                <div style="padding:16px 16px 0;"><button style="width:100%;border:none;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(180deg,#6346E5,#4C3FA6);color:#F2EFE8;font-family:'Inter';font-weight:500;font-size:15px;padding:14px;border-radius:12px;"><i data-lucide="play" width="16" height="16" style="fill:#F2EFE8;"></i>Start practising</button></div>
-                <div style="display:flex;gap:5px;padding:18px 18px 0;">
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">M</div><div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">12</div><div style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">T</div><div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">13</div><div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">W</div><div style="width:32px;height:32px;border-radius:50%;background:#4C3FA6;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#F2EFE8;margin:4px auto 0;">14</div><div style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">T</div><div style="width:32px;height:32px;border-radius:50%;border:1.5px solid #4C3FA6;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">15</div><div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">F</div><div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">16</div><div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">S</div><div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">17</div><div style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;margin:3px auto 0;"></div></div>
-                  <div style="flex:1;text-align:center;"><div style="font-size:10px;color:#9A927F;">S</div><div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;margin:4px auto 0;">18</div><div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;"></div></div>
+      <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Practice · one tap + your week</div>
+      <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
+        <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 96px;">
+            <div style="padding:6px 0 0;animation:fadeUp .5s ease both;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Practice</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">Thursday · ready when you are</div></div>
+
+            <div style="position:relative;margin-top:18px;border-radius:22px;padding:26px 22px 24px;background:linear-gradient(165deg,#5648B2 0%,#43388F 60%,#392F7C 100%);overflow:hidden;box-shadow:0 20px 40px -16px rgba(76,63,166,0.7);animation:fadeUp .55s .1s ease both;">
+              <div style="position:relative;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1.4px;color:rgba(242,239,232,0.65);">TODAY'S PLAN · 28 MIN</div>
+                <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:25px;color:#F4F1E8;margin-top:6px;line-height:1.1;">A balanced session</div>
+                <div style="font-size:12.5px;color:rgba(242,239,232,0.7);margin-top:4px;">4 items · spaced for what's due</div>
+                <div style="display:flex;justify-content:center;margin:22px 0 4px;position:relative;">
+                  <div style="position:absolute;width:108px;height:108px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.5),transparent 68%);animation:glowPulse 3.2s ease-in-out infinite;"></div>
+                  <button style="position:relative;width:96px;height:96px;border-radius:50%;border:none;background:#F7F4EC;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -8px rgba(0,0,0,0.45);cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="play" width="38" height="38" style="color:#4C3FA6;fill:#4C3FA6;margin-left:4px;"></i></button>
                 </div>
-                <div style="padding:18px 16px 6px;font-size:15px;font-weight:500;color:#6E6557;">Today</div>
-                <div style="flex:1;overflow:hidden;padding:0 16px 104px;display:flex;flex-direction:column;gap:14px;">
-                  <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Today</div><div style="font-size:12px;color:#6E6557;margin-top:3px;">42 min · 4 pieces</div></div>
-                  <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:14px 16px;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;color:#2B2A26;">Today</div><div style="font-size:12px;color:#6E6557;margin-top:3px;">18 min · 2 exercises</div><div style="font-size:10px;color:#9A927F;margin-top:3px;">Ended early</div></div>
-                </div>
+                <div style="text-align:center;font-size:13px;font-weight:500;color:rgba(242,239,232,0.85);margin-top:8px;">Tap to begin — one decision</div>
               </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Practice</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
-              </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
             </div>
+
+            <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;animation:fadeUp .5s .2s ease both;"><span style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">This week</span><span style="font-size:11px;color:#6E6557;">4 days practised</span></div>
+            <div style="margin-top:10px;display:flex;gap:4px;animation:fadeUp .5s .24s ease both;">
+              <div class="pday" data-i="0" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">M</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;transition:background .2s,color .2s;">12</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+              <div class="pday" data-i="1" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">T</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;transition:background .2s,color .2s;">13</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+              <div class="pday" data-i="2" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">W</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;transition:background .2s,color .2s;">14</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+              <div class="pday" data-i="3" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;font-weight:600;color:#4C3FA6;">T</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#2B2A26;transition:background .2s,color .2s;background:#4C3FA6;color:#F2EFE8;font-weight:600;">15</div><span style="width:5px;height:5px;border-radius:50%;background:#4C3FA6;"></span></div>
+              <div class="pday" data-i="4" data-future="1" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">F</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;transition:background .2s,color .2s;">16</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+              <div class="pday" data-i="5" data-future="1" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">S</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;transition:background .2s,color .2s;">17</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+              <div class="pday" data-i="6" data-future="1" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"><span style="font-size:10px;color:#9A927F;">S</span><div class="pday-c" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:12px;color:#C9C0AC;transition:background .2s,color .2s;">18</div><span style="width:5px;height:5px;border-radius:50%;background:transparent;"></span></div>
+            </div>
+
+            <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;animation:fadeUp .5s .28s ease both;"><span id="pp-daylabel" style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Today</span><span id="pp-daycount" style="font-size:11px;color:#6E6557;">2 sessions</span></div>
+            <div id="pp-sessions" style="margin-top:10px;display:flex;flex-direction:column;gap:9px;"><div style="display:flex;align-items:center;gap:11px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:12px 14px 12px 16px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:15px;color:#2B2A26;">Morning session</div><div style="font-size:12px;color:#6E6557;margin-top:2px;">42 min &middot; 4 pieces</div></div><i data-lucide="chevron-right" width="17" height="17" style="color:#B6AEC4;"></i></div><div style="display:flex;align-items:center;gap:11px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:12px 14px 12px 16px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9E7B33,#8A6A2E);"></div><div style="flex:1;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:15px;color:#2B2A26;">Quick drills</div><div style="font-size:12px;color:#6E6557;margin-top:2px;">12 min &middot; ended early</div></div><i data-lucide="chevron-right" width="17" height="17" style="color:#B6AEC4;"></i></div></div>
+
+            <div style="flex:1;"></div>
+            <button style="background:none;border:none;display:flex;align-items:center;justify-content:center;gap:7px;color:#6E6557;font-family:Inter;font-weight:500;font-size:13.5px;padding:10px;cursor:pointer;animation:fadeUp .5s .4s ease both;"><i data-lucide="sliders-horizontal" width="15" height="15"></i>Build a custom session instead</button>
           </div>
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Practice</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Progress</span></div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
         </div>
+      </div>
+    </div>
 
         <!-- SESSION BUILDER -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
@@ -688,60 +810,106 @@
 
         <!-- FOCUS PLAYER -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Focus player</div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;padding:6px 20px 22px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;"><i data-lucide="chevron-down" width="24" height="24" style="color:#6E6557;"></i><span style="font-size:12px;font-weight:600;letter-spacing:1.5px;color:#6E6557;">2 OF 4</span><i data-lucide="ellipsis" width="22" height="22" style="color:#6E6557;"></i></div>
-                <div style="display:flex;gap:5px;margin-top:12px;"><span style="flex:1;height:4px;border-radius:999px;background:#4C3FA6;"></span><span style="flex:1;height:4px;border-radius:999px;background:#4C3FA6;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span></div>
-                <div style="text-align:center;margin-top:22px;"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;background:#E7E3F4;color:#4C3FA6;font-weight:600;font-size:11px;"><i data-lucide="music" width="12" height="12"></i>Piece</span><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:27px;color:#2B2A26;line-height:1.1;margin-top:12px;">Clair de Lune</div><div style="font-size:13px;color:#6E6557;margin-top:3px;">Debussy · ♩ = 66</div></div>
-                <div style="flex:1;display:flex;align-items:center;justify-content:center;">
-                  <div style="position:relative;width:212px;height:212px;">
-                    <svg width="212" height="212" viewBox="0 0 212 212" style="display:block;"><circle cx="106" cy="106" r="92" fill="none" stroke="#E5DDCB" stroke-width="11"></circle><circle cx="106" cy="106" r="92" fill="none" stroke="#4C3FA6" stroke-width="11" stroke-linecap="round" stroke-dasharray="578.05" stroke-dashoffset="219.66" transform="rotate(-90 106 106)"></circle></svg>
-                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div style="font-family:'Inter';font-weight:600;font-size:46px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">4:32</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">of 7:00</div></div>
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:30px;">
-                  <button style="background:none;border:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:#6E6557;"><i data-lucide="skip-back" width="26" height="26"></i></button>
-                  <button style="border:none;width:74px;height:74px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -6px rgba(76,63,166,0.55);"><i data-lucide="pause" width="30" height="30" style="color:#F2EFE8;fill:#F2EFE8;"></i></button>
-                  <button style="background:none;border:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:#6E6557;"><i data-lucide="skip-forward" width="26" height="26"></i></button>
-                </div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:9px;margin-top:22px;">
-                  <span style="font-size:12px;font-weight:500;color:#6E6557;">How's it going?</span>
-                  <div style="display:flex;gap:11px;"><span style="width:22px;height:22px;border-radius:50%;background:#4C3FA6;"></span><span style="width:22px;height:22px;border-radius:50%;background:#4C3FA6;"></span><span style="width:22px;height:22px;border-radius:50%;background:#4C3FA6;"></span><span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #C9C0AC;box-sizing:border-box;"></span><span style="width:22px;height:22px;border-radius:50%;border:1.5px solid #C9C0AC;box-sizing:border-box;"></span></div>
-                </div>
-                <button style="width:100%;border:none;background:#F0E7D6;color:#4C3FA6;font-family:'Inter';font-weight:600;font-size:15px;padding:14px;border-radius:12px;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:7px;">Next · Nocturne Op.9<i data-lucide="arrow-right" width="16" height="16"></i></button>
+      <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Focus player · sanctuary</div>
+      <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
+        <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:radial-gradient(120% 80% at 50% 22%,#F7F4EC 0%,#EFEAdc 55%,#E7E2D2 100%);display:flex;flex-direction:column;">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+
+          <div style="flex:1;display:flex;flex-direction:column;padding:6px 22px 24px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;animation:fadeUp .5s ease both;"><i data-lucide="chevron-down" width="24" height="24" style="color:#6E6557;"></i><span style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#6E6557;">FOCUS · 2 OF 4</span><i data-lucide="ellipsis" width="22" height="22" style="color:#6E6557;"></i></div>
+            <div style="display:flex;gap:5px;margin-top:14px;animation:fadeUp .5s .06s ease both;"><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(90deg,#6346E5,#4C3FA6);"></span><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(90deg,#6346E5,#4C3FA6);"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span><span style="flex:1;height:4px;border-radius:999px;background:#E0D9C8;"></span></div>
+
+            <div style="text-align:center;margin-top:26px;animation:fadeUp .5s .12s ease both;"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;background:#E7E3F4;color:#4C3FA6;font-weight:600;font-size:11px;"><i data-lucide="music" width="12" height="12"></i>Piece</span><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:28px;color:#2B2A26;line-height:1.1;margin-top:12px;">Clair de Lune</div><div style="font-size:13px;color:#6E6557;margin-top:3px;">Debussy · Andante</div></div>
+
+            <!-- live timer ring -->
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;animation:fadeUp .6s .18s ease both;">
+              <div style="position:relative;width:236px;height:236px;">
+                <svg width="236" height="236" viewBox="0 0 236 236" style="position:relative;display:block;"><circle cx="118" cy="118" r="100" fill="none" stroke="#E5DDCB" stroke-width="10"></circle><circle id="p-ring" cx="118" cy="118" r="100" fill="none" stroke="url(#pgrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="628.319" stroke-dashoffset="221.402" transform="rotate(-90 118 118)"></circle><defs><linearGradient id="pgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6346E5"></stop><stop offset="1" stop-color="#4C3FA6"></stop></linearGradient></defs></svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div id="p-time" style="font-family:'Inter';font-weight:600;font-size:48px;color:#2B2A26;font-variant-numeric:tabular-nums;line-height:1;">4:32</div><div style="font-size:12px;color:#6E6557;margin-top:6px;">of 7:00</div><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#9A927F;margin-top:9px;"><i data-lucide="activity" width="12" height="12"></i>♩ = 66</div></div>
               </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
             </div>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:32px;animation:fadeUp .5s .24s ease both;">
+              <button style="background:none;border:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;transition:transform .15s;" style-active="transform:scale(0.9)"><i data-lucide="skip-back" width="26" height="26"></i></button>
+              <button style="border:none;width:78px;height:78px;border-radius:50%;background:linear-gradient(180deg,#6346E5,#4C3FA6);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -6px rgba(76,63,166,0.6);cursor:pointer;transition:transform .18s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="pause" width="32" height="32" style="color:#F2EFE8;fill:#F2EFE8;"></i></button>
+              <button style="background:none;border:none;width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:#6E6557;cursor:pointer;transition:transform .15s;" style-active="transform:scale(0.9)"><i data-lucide="skip-forward" width="26" height="26"></i></button>
+            </div>
+
+            <!-- repetition log: clean / miss against a target -->
+            <div style="margin-top:18px;animation:fadeUp .5s .3s ease both;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="font-size:12px;font-weight:500;color:#6E6557;">Repetitions</span>
+                <span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;"><strong id="rep-done" style="color:#2B2A26;font-weight:600;">7</strong> of 12 · <span id="rep-togo">5</span> to go</span>
+              </div>
+              <div id="rep-seq" style="display:flex;gap:5px;min-height:11px;margin-bottom:12px;">
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#1F8A5B;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:transparent;box-shadow:inset 0 0 0 1.6px #DCD4C1;"></span>
+              </div>
+              <div style="display:flex;gap:10px;">
+                <button id="rep-clean-btn" style="flex:1;border:1px solid #C9E2D3;background:#E7F1EB;color:#1F8A5B;border-radius:13px;padding:13px;font-family:Inter;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:transform .16s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.95)"><i data-lucide="check" width="17" height="17"></i>Clean</button>
+                <button id="rep-miss-btn" style="flex:1;border:1px solid #DCD4C1;background:#EFEADC;color:#8A8170;border-radius:13px;padding:13px;font-family:Inter;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:transform .16s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.95)"><i data-lucide="x" width="17" height="17"></i>Missed</button>
+              </div>
+            </div>
+
+            <button style="width:100%;border:none;background:#F0E7D6;color:#4C3FA6;font-family:'Inter';font-weight:600;font-size:15px;padding:15px;border-radius:13px;margin-top:20px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;animation:fadeUp .5s .36s ease both;transition:transform .15s;" style-active="transform:scale(0.98)">Next · Nocturne Op.9<i data-lucide="arrow-right" width="16" height="16"></i></button>
           </div>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
         </div>
+      </div>
+    </div>
 
         <!-- SESSION SUMMARY -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Session summary</div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;padding:24px 16px 30px;min-height:0;">
-                <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:28px;color:#2B2A26;">Nice work</div>
-                <div style="font-size:13px;color:#6E6557;margin-top:4px;">42 min · 3 of 4 done</div>
-                <div style="font-size:12px;font-weight:600;letter-spacing:1.5px;color:#9A927F;margin-top:24px;">TODAY'S SESSION</div>
-                <div style="flex:1;overflow:hidden;margin-top:10px;">
-                  <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #E5DECD;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Clair de Lune</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Piece · 66 bpm</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;">12:30</span><div style="display:flex;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid #E0D9C8;box-sizing:border-box;"></span><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid #E0D9C8;box-sizing:border-box;"></span></div></div></div>
-                  <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid #E5DECD;"><span style="width:8px;height:8px;border-radius:50%;background:#9E7B33;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Scales · C major</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Exercise · 120 bpm</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;">08:00</span><div style="display:flex;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;background:#4C3FA6;"></span><span style="width:14px;height:14px;border-radius:50%;border:1.5px solid #E0D9C8;box-sizing:border-box;"></span></div></div></div>
-                  <div style="display:flex;align-items:center;gap:11px;padding:12px 0;opacity:0.5;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Not attempted</div></div></div>
-                </div>
-                <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:12px;margin-top:8px;"><div style="font-size:16px;color:#9A927F;">A note on the whole session…</div></div>
-                <div style="margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:12px;"><button style="width:100%;border:none;background:linear-gradient(180deg,#6346E5,#4C3FA6);color:#F2EFE8;font-family:'Inter';font-weight:500;font-size:15px;padding:14px;border-radius:12px;">Save session</button><button style="background:none;border:none;color:#6E6557;font-family:'Inter';font-weight:500;font-size:15px;">Discard</button></div>
+      <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Session summary · celebration</div>
+      <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
+        <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+
+          <div style="flex:1;display:flex;flex-direction:column;padding:18px 18px 26px;min-height:0;">
+            <div style="position:relative;">
+              <div style="position:absolute;left:0;right:0;top:-6px;height:40px;pointer-events:none;">
+                <span style="position:absolute;left:12%;width:7px;height:7px;border-radius:2px;background:#9E7B33;animation:fall 1.3s .15s ease-in both;"></span>
+                <span style="position:absolute;left:30%;width:6px;height:6px;border-radius:50%;background:#4C3FA6;animation:fall 1.4s .28s ease-in both;"></span>
+                <span style="position:absolute;left:50%;width:8px;height:8px;border-radius:2px;background:#6346E5;animation:fall 1.5s .05s ease-in both;"></span>
+                <span style="position:absolute;left:67%;width:6px;height:6px;border-radius:50%;background:#9E7B33;animation:fall 1.35s .34s ease-in both;"></span>
+                <span style="position:absolute;left:84%;width:7px;height:7px;border-radius:2px;background:#4C3FA6;animation:fall 1.45s .2s ease-in both;"></span>
               </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
+              <div style="position:relative;animation:fadeUp .5s ease both;"><div style="font-size:11px;font-weight:600;letter-spacing:1.8px;color:#9E7B33;">SESSION COMPLETE</div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;color:#2B2A26;line-height:1.05;margin-top:7px;">Nice work.</div><div style="font-size:13px;color:#6E6557;margin-top:6px;">42 min · 3 of 4 · <strong style="font-weight:600;color:#2B2A26;">your longest sitting this week</strong></div></div>
             </div>
+
+            <div style="display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:14px;background:linear-gradient(120deg,#F1E9D6,#ECE0C6);border:1px solid #E6D6B0;margin-top:22px;animation:toastIn .55s .5s ease both;">
+              <div style="width:34px;height:34px;border-radius:50%;background:#9E7B33;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="sparkles" width="17" height="17" style="color:#F6EFD8;"></i></div>
+              <div style="flex:1;"><div style="font-size:13.5px;font-weight:600;color:#2B2A26;">Clair de Lune moved up</div><div style="font-size:11.5px;color:#7A6A3F;margin-top:2px;">D♭ major mastery</div></div>
+              <div style="display:flex;align-items:center;gap:5px;font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;color:#8A6A2E;"><span style="opacity:.45;">3</span><i data-lucide="arrow-right" width="15" height="15" style="color:#9E7B33;"></i><span>4</span></div>
+            </div>
+
+            <div style="margin-top:20px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">What you played</div>
+            <div style="flex:1;overflow:hidden;margin-top:8px;">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #E5DECD;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Clair de Lune</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Piece · 66 bpm</div></div><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;">12:30</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #E5DECD;"><span style="width:8px;height:8px;border-radius:50%;background:#9E7B33;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Scales · D♭ major</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Exercise · 96 bpm</div></div><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;">08:00</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #E5DECD;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Nocturne Op.9 No.2</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Piece · 132 bpm</div></div><span style="font-size:12px;color:#6E6557;font-variant-numeric:tabular-nums;">21:00</span></div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 0;opacity:.5;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px solid #B6AEC4;box-sizing:border-box;flex:none;"></span><div style="flex:1;"><div style="font-size:15px;font-weight:500;color:#2B2A26;">Gymnopédie No.1</div><div style="font-size:10px;color:#9A927F;margin-top:2px;">Saved for next time — no pressure</div></div></div>
+            </div>
+
+            <button style="width:100%;border:none;background:linear-gradient(180deg,#6346E5,#4C3FA6);color:#F2EFE8;font-family:Inter;font-weight:600;font-size:15px;padding:15px;border-radius:13px;margin-top:14px;cursor:pointer;transition:transform .15s;" style-active="transform:scale(0.98)">Save session</button>
+            <button style="background:none;border:none;color:#6E6557;font-family:Inter;font-weight:500;font-size:14px;padding:12px 0 0;cursor:pointer;">Discard</button>
           </div>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
         </div>
+      </div>
+    </div>
 
         <!-- ROUTINES (placeholder) -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
@@ -768,26 +936,56 @@
 
         <!-- PROGRESS (placeholder) -->
         <div style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Progress · placeholder</div>
-          <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
-            <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
-              <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
-              <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
-              <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
-                <div style="padding:6px 16px 0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Progress</div></div>
-                <div style="height:1px;background:#E0D9C8;margin:12px 16px 0;"></div>
-                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 40px;text-align:center;"><i data-lucide="trending-up" width="38" height="38" style="color:#B6AEC4;"></i><div style="font-size:14px;color:#9A927F;line-height:1.5;">Track your progress and insights here.</div></div>
+      <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Progress · mastery</div>
+      <div style="width:392px;border-radius:54px;padding:11px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(43,42,38,0.45),0 0 0 2px #0a0a0a;">
+        <div style="position:relative;width:370px;height:782px;border-radius:43px;overflow:hidden;background:linear-gradient(180deg,#F4F1E8,#EBE7D9);display:flex;flex-direction:column;">
+          <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:104px;height:30px;background:#000;border-radius:18px;z-index:60;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:46px;padding:0 24px 0 28px;flex:none;"><span style="font-weight:600;font-size:14px;color:#2B2A26;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="16" height="16" style="color:#2B2A26;"></i><i data-lucide="wifi" width="16" height="16" style="color:#2B2A26;"></i><div style="width:23px;height:12px;border:1.3px solid #2B2A26;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#2B2A26;border-radius:1px;"></div></div></div></div>
+
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 16px 96px;overflow:hidden;">
+
+            <div style="padding:6px 0 0;animation:fadeUp .5s ease both;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:30px;color:#2B2A26;line-height:1;">Progress</div><div style="font-size:12px;color:#6E6557;margin-top:5px;">March · 14 sessions · 6h 20m</div></div>
+
+            <!-- hero dial -->
+            <div style="margin-top:16px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:16px;padding:18px 18px 16px;display:flex;align-items:center;gap:18px;animation:fadeUp .5s .12s ease both;">
+              <div style="position:relative;width:128px;height:128px;flex:none;">
+                <svg width="128" height="128" viewBox="0 0 128 128" style="position:relative;display:block;"><circle cx="64" cy="64" r="54" fill="none" stroke="#EBE4D4" stroke-width="9"></circle><circle id="i-dial" cx="64" cy="64" r="54" fill="none" stroke="url(#dialgrad)" stroke-width="9" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="108.573" transform="rotate(-90 64 64)"></circle><defs><linearGradient id="dialgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6346E5"></stop><stop offset="1" stop-color="#4C3FA6"></stop></linearGradient></defs></svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div id="i-mastery" style="font-family:'Source Serif 4',serif;font-weight:600;font-size:38px;color:#2B2A26;line-height:1;">3.4</div><div style="font-size:10px;font-weight:600;letter-spacing:1px;color:#9A927F;margin-top:2px;">OF 5.0</div></div>
               </div>
-              <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Practice</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Progress</span></div>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Overall mastery</div>
+                <div style="display:flex;align-items:baseline;gap:7px;margin-top:7px;"><span style="display:inline-flex;align-items:center;gap:3px;font-size:14px;font-weight:600;color:#1F8A5B;"><i data-lucide="trending-up" width="15" height="15"></i>+0.6</span><span style="font-size:12px;color:#6E6557;">this month</span></div>
+                <div style="font-size:12.5px;color:#6E6557;line-height:1.5;margin-top:10px;">Climbing steadily across <strong style="font-weight:600;color:#2B2A26;">11 pieces</strong>. The work is paying off.</div>
               </div>
-              <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
             </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:20px;animation:fadeUp .5s .22s ease both;"><span style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">This month</span><span style="font-size:11px;color:#6E6557;">best week · 95 min</span></div>
+            <div style="margin-top:12px;display:flex;align-items:flex-end;gap:9px;height:72px;animation:fadeUp .5s .26s ease both;">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:30px;border-radius:6px 6px 3px 3px;background:#DED5C1;transform-origin:bottom;animation:barGrow .6s .30s cubic-bezier(.2,.8,.3,1) both;"></div><span style="font-size:9px;color:#9A927F;">W1</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:46px;border-radius:6px 6px 3px 3px;background:#DED5C1;transform-origin:bottom;animation:barGrow .6s .36s cubic-bezier(.2,.8,.3,1) both;"></div><span style="font-size:9px;color:#9A927F;">W2</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:34px;border-radius:6px 6px 3px 3px;background:#DED5C1;transform-origin:bottom;animation:barGrow .6s .42s cubic-bezier(.2,.8,.3,1) both;"></div><span style="font-size:9px;color:#9A927F;">W3</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:58px;border-radius:6px 6px 3px 3px;background:#DED5C1;transform-origin:bottom;animation:barGrow .6s .48s cubic-bezier(.2,.8,.3,1) both;"></div><span style="font-size:9px;color:#9A927F;">W4</span></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:100%;height:52px;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#6346E5,#4C3FA6);transform-origin:bottom;animation:barGrow .6s .54s cubic-bezier(.2,.8,.3,1) both;box-shadow:0 4px 12px -4px rgba(76,63,166,0.5);"></div><span style="font-size:9px;font-weight:600;color:#4C3FA6;">Now</span></div>
+            </div>
+
+            <div style="margin-top:20px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;animation:fadeUp .5s .3s ease both;">Recent mastery</div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:9px;">
+              <div style="display:flex;align-items:center;gap:11px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px;animation:fadeUp .5s .36s ease both;"><span style="width:8px;height:8px;border-radius:50%;background:#4C3FA6;flex:none;"></span><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Clair de Lune</div><div style="font-size:11px;color:#9A927F;margin-top:1px;">D♭ major · 3 weeks ago → now</div></div><div style="display:flex;align-items:center;gap:4px;font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#1F8A5B;"><span style="color:#B6AEC4;">3</span><i data-lucide="arrow-right" width="13" height="13" style="color:#9A927F;"></i><span>4</span></div></div>
+              <div style="display:flex;align-items:center;gap:11px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:11px 14px;animation:fadeUp .5s .42s ease both;"><span style="width:8px;height:8px;border-radius:50%;background:#9E7B33;flex:none;"></span><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Scales · C major</div><div style="font-size:11px;color:#9A927F;margin-top:1px;">Hands together · this week</div></div><div style="display:flex;align-items:center;gap:4px;font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#1F8A5B;"><span style="color:#B6AEC4;">2</span><i data-lucide="arrow-right" width="13" height="13" style="color:#9A927F;"></i><span>3</span></div></div>
+            </div>
+
           </div>
+
+          <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:10px 4px 22px;background:rgba(247,243,233,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-top:1px solid rgba(176,168,146,0.3);">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Library</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Practice</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="25" height="25" style="color:#6E6557;"></i><span style="font-size:10px;font-weight:500;color:#6E6557;">Routines</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="25" height="25" style="color:#4C3FA6;"></i><span style="font-size:10px;font-weight:600;color:#4C3FA6;">Progress</span></div>
+          </div>
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
         </div>
+      </div>
+    </div>
 
       </div>
     </section>
@@ -855,6 +1053,28 @@ class Component extends DCLogic {
     poll();
     this._obs = new MutationObserver(() => { clearTimeout(this._d); this._d = setTimeout(this._run, 60); });
     this._obs.observe(document.body, { childList: true, subtree: true });
+    this.bindMotion();
+  }
+  bindMotion() {
+    const reveal = document.querySelector('#ds-reveal');
+    const replay = document.querySelector('#ds-replay');
+    if (reveal && replay) {
+      const rows = [...reveal.children];
+      const run = () => rows.forEach((r, i) => { r.style.animation = 'none'; void r.offsetWidth; r.style.animation = 'fadeUp .5s ' + (i * 0.08) + 's ease both'; });
+      replay.addEventListener('click', run);
+      run();
+    }
+    const num = document.querySelector('#ds-num');
+    const rn = document.querySelector('#ds-replaynum');
+    const animNum = (el, to, dur) => { const t0 = performance.now(); const step = (t) => { let p = Math.min(1, (t - t0) / dur); p = 1 - Math.pow(1 - p, 3); el.textContent = (to * p).toFixed(1); if (p < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); };
+    if (rn && num) rn.addEventListener('click', () => animNum(num, 3.4, 1300));
+    const pill = document.querySelector('#ds-pill');
+    const segs = document.querySelectorAll('.ds-segbtn');
+    segs.forEach(s => s.addEventListener('click', () => {
+      const i = +s.dataset.i;
+      if (pill) pill.style.transform = 'translateX(' + (i * 71) + 'px)';
+      segs.forEach(x => { x.style.color = (+x.dataset.i === i) ? '#F2EFE8' : '#6E6557'; });
+    }));
   }
   componentWillUnmount() { if (this._obs) this._obs.disconnect(); clearTimeout(this._d); }
   renderVals() { return {}; }

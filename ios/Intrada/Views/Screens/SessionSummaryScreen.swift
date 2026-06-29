@@ -1,10 +1,10 @@
 import SharedTypes
 import SwiftUI
 
-/// Post-session review (the player's Summary). Renders the core's `SummaryView`:
-/// review the items as they happened, adjust a rushed score, add a whole-session
-/// note, then Save (persists + returns to Idle) or Discard. Reached after the
-/// last item — per-item scores are already on the entries.
+/// Post-session review (the player's Summary) — the celebration beat. Renders the
+/// core's `SummaryView`: confetti + headline, an optional mastery toast, the recap
+/// of what was played (per-item 1–5 scores intact), a whole-session note, then Save
+/// (persists + returns to Idle) or Discard. Reached after the last item.
 struct SessionSummaryScreen: View {
   @Environment(Store.self) private var store
   @State private var note = ""
@@ -16,15 +16,26 @@ struct SessionSummaryScreen: View {
     ZStack {
       PaperBackground()
       if let summary {
-        VStack(spacing: IntradaSpacing.card) {
-          header(summary)
-          ledger(summary)
-          noteField
-          controls
+        ScrollView {
+          VStack(alignment: .leading, spacing: IntradaSpacing.section) {
+            headline(summary).fadeUp(0)
+            if let toast = topMover(summary) {
+              MasteryDeltaToast(
+                title: "\(toast.itemTitle) moved up",
+                subtitle: nil,
+                was: Int(toast.previousScore ?? 0),
+                now: Int(toast.currentScore)
+              )
+              .fadeUp(1)
+            }
+            recap(summary).fadeUp(2)
+            noteSection.fadeUp(3)
+            controls.fadeUp(4)
+          }
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.top, 40)
+          .padding(.bottom, IntradaSpacing.card)
         }
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.top, 40)
-        .padding(.bottom, IntradaSpacing.card)
       }
     }
     .onAppear { note = summary?.notes ?? "" }
@@ -36,85 +47,100 @@ struct SessionSummaryScreen: View {
     }
   }
 
-  // ── Header ──
+  // ── Headline ──
 
-  private func header(_ summary: SummaryView) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(summary.completionStatus == .endedEarly ? "Ended early" : "Nice work")
-        .font(IntradaFont.pageTitle(28))
-        .foregroundStyle(IntradaColor.ink)
-      Text(subtitle(summary))
-        .font(IntradaFont.subtitle)
-        .foregroundStyle(IntradaColor.inkSecondary)
+  private func headline(_ summary: SummaryView) -> some View {
+    ZStack(alignment: .topLeading) {
+      Confetti()
+        .frame(maxWidth: .infinity, alignment: .center)
+        .allowsHitTesting(false)
+      VStack(alignment: .leading, spacing: 4) {
+        Eyebrow("Session complete", tint: IntradaColor.exerciseBadgeFg)
+        Text(summary.completionStatus == .endedEarly ? "Ended early." : "Nice work.")
+          .font(IntradaFont.pageTitle(34))
+          .foregroundStyle(IntradaColor.ink)
+        Text(headlineSubtitle(summary))
+          .font(IntradaFont.subtitle)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  private func subtitle(_ summary: SummaryView) -> String {
+  private func headlineSubtitle(_ summary: SummaryView) -> String {
     let done = summary.entries.filter { $0.status == .completed }.count
-    let total = summary.entries.count
-    return "\(summary.totalDurationDisplay) · \(done) of \(total) done"
+    return "\(summary.totalDurationDisplay) · \(done) of \(summary.entries.count)"
   }
 
-  // ── Ledger ──
+  private func topMover(_ summary: SummaryView) -> ScoreChange? {
+    guard let changes = store.viewModel?.analytics?.scoreChanges else { return nil }
+    let titles = Swift.Set(summary.entries.map(\.itemTitle))
+    return changes
+      .filter { titles.contains($0.itemTitle) && $0.delta > 0 }
+      .max { $0.delta < $1.delta }
+  }
 
-  private func ledger(_ summary: SummaryView) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text("TODAY'S SESSION")
-        .font(IntradaFont.badge)
-        .tracking(1.5)
-        .foregroundStyle(IntradaColor.inkFaint)
-        .padding(.bottom, IntradaSpacing.controlGap)
-      ScrollView {
-        VStack(spacing: 0) {
-          ForEach(Array(summary.entries.enumerated()), id: \.element.id) { index, entry in
-            row(entry)
-            if index < summary.entries.count - 1 {
-              Rectangle().fill(IntradaColor.hairline).frame(height: 1)
-            }
+  // ── Recap ──
+
+  private func recap(_ summary: SummaryView) -> some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      Eyebrow("What you played")
+      VStack(spacing: 0) {
+        ForEach(Array(summary.entries.enumerated()), id: \.element.id) { index, entry in
+          row(entry)
+          if index < summary.entries.count - 1 {
+            Rectangle().fill(IntradaColor.hairline).frame(height: 1)
           }
         }
       }
-      .scrollEdgeShadow()
     }
-    .frame(maxHeight: .infinity)
   }
 
   private func row(_ entry: SetlistEntryView) -> some View {
-    HStack(spacing: 11) {
-      Circle().fill(entry.itemType.accent).frame(width: 8, height: 8)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(entry.itemTitle)
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.ink)
-        Text(metaLine(entry))
-          .font(IntradaFont.micro)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      Spacer()
-      VStack(alignment: .trailing, spacing: 5) {
-        Text(entry.durationDisplay)
-          .font(IntradaFont.meta)
-          .monospacedDigit()
-          .foregroundStyle(IntradaColor.inkSecondary)
-        if entry.status == .completed {
-          scoreRow(entry)
+    let unfinished = entry.status == .notAttempted
+    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+      HStack(spacing: 11) {
+        dot(entry, unfinished: unfinished)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(entry.itemTitle)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.ink)
+          Text(metaLine(entry, unfinished: unfinished))
+            .font(IntradaFont.micro)
+            .foregroundStyle(IntradaColor.inkFaint)
         }
+        Spacer()
+        if !unfinished {
+          Text(entry.durationDisplay)
+            .font(IntradaFont.meta)
+            .monospacedDigit()
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+      }
+      if entry.status == .completed {
+        scoreRow(entry)
       }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
-    .opacity(entry.status == .notAttempted ? 0.5 : 1)
+    .opacity(unfinished ? 0.5 : 1)
   }
 
-  private func metaLine(_ entry: SetlistEntryView) -> String {
-    switch entry.status {
-    case .skipped: return "Skipped"
-    case .notAttempted: return "Not attempted"
-    case .completed:
-      var parts = [entry.itemType.label]
-      if let tempo = entry.achievedTempo { parts.append("\(tempo) bpm") }
-      return parts.joined(separator: " · ")
+  @ViewBuilder
+  private func dot(_ entry: SetlistEntryView, unfinished: Bool) -> some View {
+    if unfinished {
+      Circle()
+        .strokeBorder(IntradaColor.figureMuted, lineWidth: 1.5)
+        .frame(width: 8, height: 8)
+    } else {
+      Circle().fill(entry.itemType.accent).frame(width: 8, height: 8)
     }
+  }
+
+  private func metaLine(_ entry: SetlistEntryView, unfinished: Bool) -> String {
+    if unfinished { return "Saved for next time — no pressure" }
+    var parts = [entry.itemType.label]
+    if let tempo = entry.achievedTempo { parts.append("\(tempo) bpm") }
+    return parts.joined(separator: " · ")
   }
 
   /// Tappable 1–5 score. Tapping the current value clears it.
@@ -137,6 +163,7 @@ struct SessionSummaryScreen: View {
         .buttonStyle(.plain)
       }
     }
+    .padding(.leading, 19)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Score for \(entry.itemTitle)")
     .accessibilityValue(score == 0 ? "not scored" : "\(score) of 5")
@@ -144,7 +171,7 @@ struct SessionSummaryScreen: View {
 
   // ── Note + controls ──
 
-  private var noteField: some View {
+  private var noteSection: some View {
     TextField(
       "A note on the whole session…", text: $note, axis: .vertical
     )
@@ -182,10 +209,73 @@ struct SessionSummaryScreen: View {
           .background(LinearGradient.brandBar)
           .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
       }
-      .buttonStyle(.plain)
+      .buttonStyle(PressRebound())
       Button("Discard") { confirmingDiscard = true }
         .font(IntradaFont.bodyMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
+    }
+  }
+
+  // ── Confetti ──
+
+  /// A one-shot burst behind the headline. Renders nothing under Reduce Motion or
+  /// in UI tests, so the celebration is deterministic and motion-safe.
+  private struct Confetti: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.intradaMotionDisabled) private var motionDisabled
+    @State private var fallen = false
+
+    private struct Piece: Identifiable {
+      let id = UUID()
+      let x: CGFloat
+      let size: CGFloat
+      let color: Color
+      let isCircle: Bool
+      let delay: Double
+    }
+
+    private static let pieces: [Piece] = {
+      let colors = [
+        IntradaColor.exerciseAccent, IntradaColor.accent, IntradaColor.brandGradientStart,
+      ]
+      let xs: [CGFloat] = [-110, -64, -22, 24, 70, 112]
+      return xs.enumerated().map { index, x in
+        Piece(
+          x: x,
+          size: index.isMultiple(of: 2) ? 7 : 8,
+          color: colors[index % colors.count],
+          isCircle: index.isMultiple(of: 3),
+          delay: Double(index) * 0.05)
+      }
+    }()
+
+    var body: some View {
+      if reduceMotion || motionDisabled || UITestFlags.animationsDisabled {
+        EmptyView()
+      } else {
+        ZStack {
+          ForEach(Self.pieces) { piece in
+            shape(piece)
+              .foregroundStyle(piece.color)
+              .frame(width: piece.size, height: piece.size)
+              .offset(x: piece.x, y: fallen ? 96 : -24)
+              .opacity(fallen ? 0 : 1)
+          }
+        }
+        .frame(height: 96)
+        .onAppear {
+          withAnimation(.easeOut(duration: 1.3)) { fallen = true }
+        }
+      }
+    }
+
+    @ViewBuilder
+    private func shape(_ piece: Piece) -> some View {
+      if piece.isCircle {
+        Circle()
+      } else {
+        RoundedRectangle(cornerRadius: 1.5)
+      }
     }
   }
 }

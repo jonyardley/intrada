@@ -32,6 +32,43 @@ enum IntradaColor {
   static let exerciseAccent = Color(hex: 0x9E7B33)
   static let exerciseBadgeBg = Color(hex: 0xF0E5CC)
   static let exerciseBadgeFg = Color(hex: 0x8A6A2E)
+
+  // ── Engaging-refresh tokens ──
+  /// Mastery gains, clean reps, trending-up. Reserved from `danger` (destructive).
+  static let successTeal = Color(hex: 0x1F8A5B)
+  /// Mastery is monochrome indigo — the *count* carries meaning (colour-blind
+  /// safe); never recolour a meter/dial by level.
+  static let masteryFill = Color(hex: 0x4C3FA6)
+  static let masteryTrack = Color(hex: 0xE2DBC9)
+  static let dialTrack = Color(hex: 0xEBE4D4)
+  static let consistencyTrack = Color(hex: 0xDED5C1)
+  /// A "missed" rep is taupe, never red — calm, not shaming.
+  static let repMissedFg = Color(hex: 0x8A8170)
+  static let repMissedBg = Color(hex: 0xEFEADC)
+  static let repCleanFg = Color(hex: 0x1F8A5B)
+  static let repCleanBg = Color(hex: 0xE7F1EB)
+  static let repCleanBorder = Color(hex: 0xC9E2D3)
+  /// Empty rep-slot ring + missed-button border.
+  static let slotOutline = Color(hex: 0xDCD4C1)
+  /// The faded "was" number in a was→now delta.
+  static let figureMuted = Color(hex: 0xB6AEC4)
+  /// Not-yet days in the week picker.
+  static let futureDay = Color(hex: 0xC9C0AC)
+  static let inkFainter = Color(hex: 0xB0A892)
+  // Focus-player warm radial backdrop.
+  static let playerBgTop = Color(hex: 0xF7F4EC)
+  static let playerBgMid = Color(hex: 0xEFEADC)
+  static let playerBgBottom = Color(hex: 0xE7E2D2)
+  // Practice one-tap hero (deep indigo).
+  static let heroGradientTop = Color(hex: 0x5648B2)
+  static let heroGradientMid = Color(hex: 0x43388F)
+  static let heroGradientBottom = Color(hex: 0x392F7C)
+  // Session-summary gold celebration toast.
+  static let celebrationBgTop = Color(hex: 0xF1E9D6)
+  static let celebrationBgBottom = Color(hex: 0xECE0C6)
+  static let celebrationBorder = Color(hex: 0xE6D6B0)
+  static let celebrationInk = Color(hex: 0x7A6A3F)
+  static let onExercise = Color(hex: 0xF6EFD8)
 }
 
 extension LinearGradient {
@@ -43,9 +80,37 @@ extension LinearGradient {
     colors: [IntradaColor.brandGradientStart, IntradaColor.brandGradientEnd],
     startPoint: .top, endPoint: .bottom)
 
+  /// The session-summary celebration toast (CSS `120deg`).
+  static let celebration = LinearGradient(
+    colors: [IntradaColor.celebrationBgTop, IntradaColor.celebrationBgBottom],
+    startPoint: .topLeading, endPoint: .bottomTrailing)
+
   static let exerciseBar = LinearGradient(
     colors: [IntradaColor.exerciseAccent, IntradaColor.exerciseBadgeFg],
     startPoint: .top, endPoint: .bottom)
+
+  /// The Practice one-tap hero card (CSS `165deg` ≈ top-trailing → bottom-leading).
+  static let practiceHero = LinearGradient(
+    colors: [
+      IntradaColor.heroGradientTop, IntradaColor.heroGradientMid,
+      IntradaColor.heroGradientBottom,
+    ],
+    startPoint: .topTrailing, endPoint: .bottomLeading)
+
+  /// Ring/dial strokes use the diagonal sweep `(0,0)→(1,1)` of the brand stops
+  /// (buttons/bars use the vertical `brandBar` — match per element).
+  static let ringSweep = LinearGradient(
+    colors: [IntradaColor.brandGradientStart, IntradaColor.brandGradientEnd],
+    startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+extension RadialGradient {
+  /// The Focus-player warm cream wash — CSS `radial-gradient(120% 80% at 50% 22%)`.
+  static let playerPaper = RadialGradient(
+    colors: [
+      IntradaColor.playerBgTop, IntradaColor.playerBgMid, IntradaColor.playerBgBottom,
+    ],
+    center: UnitPoint(x: 0.5, y: 0.22), startRadius: 0, endRadius: 440)
 }
 
 /// Semantic type styles: Source Serif 4 headings, Inter body/UI (bundled via
@@ -71,6 +136,9 @@ enum IntradaFont {
   static let micro = Font.custom(Inter.regular, size: 10, relativeTo: .caption2)
   static let metaMedium = Font.custom(Inter.medium, size: 12, relativeTo: .caption)
   static let badge = Font.custom(Inter.semibold, size: 12, relativeTo: .caption)
+  /// Uppercase section label (letter-spaced, `inkFaint`) — the eyebrow above
+  /// every section on the refreshed screens.
+  static let eyebrow = Font.custom(Inter.semibold, size: 11, relativeTo: .caption2)
   static let tab = Font.custom(Inter.medium, size: 13, relativeTo: .footnote)
   static let segment = Font.custom(Inter.medium, size: 14, relativeTo: .subheadline)
   static let field = Font.custom(Inter.regular, size: 16, relativeTo: .callout)
@@ -102,6 +170,49 @@ enum IntradaSpacing {
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.
 enum IntradaRadius {
   static let card: CGFloat = 12
+  /// Interactive control buttons (rep Clean/Missed, etc.).
+  static let control: CGFloat = 13
+  /// Medium section/hero cards (e.g. the Progress mastery card).
+  static let panel: CGFloat = 16
+  /// The Practice one-tap hero — the single largest card in the app.
+  static let hero: CGFloat = 22
+  /// Fully-rounded pills (filter tabs, the rep/consistency chrome).
+  static let pill: CGFloat = 999
+}
+
+/// Named motion tokens — the "engaging refresh" springs, the signature `fadeUp`
+/// screen-entrance, and the one-shot reveal timings. The *modifiers* that consume
+/// these (`.fadeUp`, `.pop`, the count-up/ring-draw) live in `Motion.swift`; this
+/// is the token layer, the way `IntradaColor` is for colour. Every animation here
+/// must collapse to a 150ms fade (or its final state) under Reduce Motion — the
+/// modifiers enforce that.
+enum IntradaMotion {
+  // Named springs (response · dampingFraction), from the design system.
+  static let standard = Animation.spring(response: 0.35, dampingFraction: 0.85)
+  static let snappy = Animation.spring(response: 0.28, dampingFraction: 0.9)
+  static let gentle = Animation.spring(response: 0.45, dampingFraction: 0.82)
+
+  // `fadeUp` — the signature page-load reveal: opacity 0→1, translateY 12→0,
+  // 500ms ease-out, staggered +60ms per item, once on first paint.
+  static let fadeUpDuration: Double = 0.5
+  static let fadeUpStagger: Double = 0.06
+  static let fadeUpOffset: CGFloat = 12
+
+  // One-shots.
+  /// `barGrow` — scaleY 0→1 from the baseline; CSS `cubic-bezier(.2,.8,.3,1)`.
+  static let barGrow = Animation.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.6)
+  static let barGrowStagger: Double = 0.06
+  /// MasteryDial count-up + ring-draw (ease-out cubic over 1.5s).
+  static let countUpDuration: Double = 1.5
+  /// `pop` — spring scale-in (0.55→1.09→1) for rep ticks/dots; low damping overshoots.
+  static let pop = Animation.spring(response: 0.35, dampingFraction: 0.62)
+  /// Reduce-Motion collapse target.
+  static let reduceFade: Double = 0.15
+
+  /// The per-item `fadeUp` animation for a given stagger index.
+  static func fadeUp(index: Int) -> Animation {
+    .easeOut(duration: fadeUpDuration).delay(Double(index) * fadeUpStagger)
+  }
 }
 
 extension Color {

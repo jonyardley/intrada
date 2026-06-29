@@ -47,12 +47,22 @@ struct PracticeScreen: View {
 
   var body: some View {
     ScreenScaffold(title: "Practice", subtitle: subtitle) {
-      VStack(spacing: 0) {
-        startButton
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.top, IntradaSpacing.card)
-        content
+      ScrollView {
+        VStack(spacing: IntradaSpacing.section) {
+          hero
+            .fadeUp(0)
+          thisWeek
+            .fadeUp(1)
+          selectedDaySection
+            .fadeUp(2)
+          footerLink
+            .fadeUp(3)
+        }
+        .padding(.horizontal, IntradaSpacing.card)
+        .padding(.top, IntradaSpacing.card)
+        .padding(.bottom, IntradaSpacing.section)
       }
+      .scrollEdgeShadow()
     }
     // Drop a now-out-of-range pinned week so a later data change can't jump the
     // view to a stale page; reads are already clamped, this resets the store.
@@ -74,37 +84,52 @@ struct PracticeScreen: View {
       })
   }
 
-  private var startButton: some View {
-    Button {
-      store.send(.session(.startBuilding))
-    } label: {
-      Label("Start practising", systemImage: "play.fill")
+  // MARK: - (0) One-tap hero
+
+  private var hero: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
+
+      Text("A focused session")
+        .font(IntradaFont.pageTitle(25))
+        .foregroundStyle(IntradaColor.paperTop)
+        .multilineTextAlignment(.center)
+
+      Button {
+        store.send(.session(.startBuilding))
+      } label: {
+        Image(systemName: "play.fill")
+          .font(.system(size: 38))
+          .foregroundStyle(IntradaColor.accent)
+          .frame(width: 96, height: 96)
+          .background(IntradaColor.playerBgTop)
+          .clipShape(Circle())
+          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+      }
+      .buttonStyle(PressRebound())
+      .accessibilityLabel("Start practising")
+      .padding(.vertical, IntradaSpacing.controlGap)
+
+      Text("Tap to begin — one decision")
         .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.row)
-        .background(LinearGradient.brandBar)
-        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+        .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
+        .multilineTextAlignment(.center)
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Start practising")
+    .frame(maxWidth: .infinity)
+    .padding(IntradaSpacing.section)
+    .background(LinearGradient.practiceHero)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
+    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
   }
 
-  @ViewBuilder private var content: some View {
-    if sessions.isEmpty {
-      PlaceholderContent(
-        systemImage: "metronome.fill",
-        message: "Your practice sessions will appear here.")
-    } else {
+  // MARK: - (1) This week
+
+  private var thisWeek: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionHeader(
+        title: "This week",
+        trailing: "\(practiceDays.count) days practised")
       weekStrips
-      Text(dayLabel)
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.inkSecondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.top, IntradaSpacing.card)
-        .padding(.bottom, 6)
-      dayContent
     }
   }
 
@@ -124,7 +149,6 @@ struct PracticeScreen: View {
       }
     }
     .frame(height: 64)
-    .padding(.top, IntradaSpacing.row)
   }
 
   private func weekStripView(_ days: [Date]) -> some View {
@@ -133,27 +157,85 @@ struct PracticeScreen: View {
       selected: Binding(get: { effectiveSelection }, set: { selectedDay = $0 }),
       calendar: calendar
     )
-    .padding(.horizontal, IntradaSpacing.cardCompact)
+  }
+
+  // MARK: - (2) Selected day
+
+  private var selectedDaySection: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      HStack(alignment: .firstTextBaseline) {
+        Eyebrow(dayLabel)
+        Spacer(minLength: IntradaSpacing.controlGap)
+        Text(dayCountLabel)
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      dayContent
+    }
+  }
+
+  private var dayCountLabel: String {
+    if !daySessions.isEmpty {
+      let count = daySessions.count
+      return "\(count) session\(count == 1 ? "" : "s")"
+    }
+    return isFutureSelection ? "Yet to come" : "Rest day"
+  }
+
+  private var isFutureSelection: Bool {
+    calendar.startOfDay(for: effectiveSelection) > calendar.startOfDay(for: referenceDate)
   }
 
   @ViewBuilder private var dayContent: some View {
     if daySessions.isEmpty {
-      PlaceholderContent(
-        systemImage: "metronome.fill",
-        message: "No practice on this day.")
+      emptyDayCard
     } else {
-      ScrollView {
-        LazyVStack(spacing: IntradaSpacing.cardCompact) {
-          ForEach(daySessions, id: \.id) { session in
-            SessionCard(session: session)
-          }
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        ForEach(daySessions, id: \.id) { session in
+          SessionCard(session: session)
         }
-        .padding(.horizontal, IntradaSpacing.card)
-        .padding(.top, IntradaSpacing.card)
-        .padding(.bottom, IntradaSpacing.card)
       }
-      .scrollEdgeShadow()
     }
+  }
+
+  private var emptyDayCard: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      Image(systemName: isFutureSelection ? "sunrise" : "moon")
+        .font(.system(size: 28))
+        .foregroundStyle(IntradaColor.inkSecondary)
+      Text(
+        isFutureSelection
+          ? "Nothing logged yet — the week's still young."
+          : "A rest day. No pressure — your schedule has adapted."
+      )
+      .font(IntradaFont.bodyMedium)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .multilineTextAlignment(.center)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+    .overlay(
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
+        .strokeBorder(
+          IntradaColor.slotOutline,
+          style: StrokeStyle(lineWidth: 1, dash: [5]))
+    )
+  }
+
+  // MARK: - (3) Footer link
+
+  private var footerLink: some View {
+    Button {
+      store.send(.session(.startBuilding))
+    } label: {
+      Label("Build a custom session", systemImage: "slider.horizontal.3")
+        .font(IntradaFont.bodyMedium.weight(.medium))
+        .foregroundStyle(IntradaColor.inkSecondary)
+    }
+    .buttonStyle(.plain)
+    .frame(maxWidth: .infinity)
   }
 
   private var dayLabel: String {
