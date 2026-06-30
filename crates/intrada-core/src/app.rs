@@ -1906,9 +1906,12 @@ mod tests {
             });
         }
         let populate_time = start.elapsed();
+        // Heavier than a bare-item fixture: each of the 5k pieces builds 5 linked
+        // exercise-id strings to load-test the reverse index. This is fixture setup,
+        // not the gate — the bound is generous to absorb slow-CI debug-build variance.
         assert!(
-            populate_time.as_millis() < 100,
-            "Populating 10k items took {}ms (target: <100ms)",
+            populate_time.as_millis() < 500,
+            "Populating 10k items took {}ms (target: <500ms)",
             populate_time.as_millis()
         );
 
@@ -1980,9 +1983,13 @@ mod tests {
         let vm = app.view(&model);
         let view_time = start.elapsed();
         assert_eq!(vm.items.len(), 10_000);
+        // O(n): forward resolution + the O(n) reverse index over 10k items + 25k
+        // links. A naive O(n²) reverse scan (5k exercises × 5k pieces = 25M) would
+        // run in seconds, so this still catches that regression with wide margin;
+        // the bound is loose only to absorb slow-CI debug-build wall-clock variance.
         assert!(
-            view_time.as_millis() < 200,
-            "view() with 10k items took {}ms (target: <200ms)",
+            view_time.as_millis() < 1000,
+            "view() with 10k items took {}ms (target: <1000ms)",
             view_time.as_millis()
         );
 
