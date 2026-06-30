@@ -145,59 +145,27 @@ struct SessionSummaryScreen: View {
     return parts.joined(separator: " · ")
   }
 
-  /// Tappable 1–10 score. Tapping the current value clears it.
   private func scoreRow(_ entry: SetlistEntryView) -> some View {
-    let score = entry.score.map(Int.init) ?? 0
-    return HStack(spacing: 5) {
-      ForEach(1...10, id: \.self) { value in
-        Button {
-          let next: UInt8? = entry.score == UInt8(value) ? nil : UInt8(value)
-          store.send(.session(.updateEntryScore(entryId: entry.id, score: next)))
-        } label: {
-          Circle()
-            .fill(score >= value ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(.clear))
-            .frame(width: 18, height: 18)
-            .overlay(
-              Circle()
-                .stroke(IntradaColor.divider, lineWidth: 1.5)
-                .opacity(score >= value ? 0 : 1))
-        }
-        .buttonStyle(.plain)
-      }
+    ScoreSelector(
+      score: entry.score.map(Int.init) ?? 0,
+      accessibilityLabel: "Score for \(entry.itemTitle)"
+    ) { next in
+      store.send(.session(.updateEntryScore(entryId: entry.id, score: next)))
     }
     .padding(.leading, 19)
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Score for \(entry.itemTitle)")
-    .accessibilityValue(score == 0 ? "not scored" : "\(score) of 10")
   }
 
-  /// Tappable 1–10 overall session score. Tapping the current value clears it.
   private func sessionScoreRow(_ summary: SummaryView) -> some View {
-    let score = summary.sessionScore.map(Int.init) ?? 0
-    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Text("Overall")
         .font(IntradaFont.metaMedium)
         .foregroundStyle(IntradaColor.inkSecondary)
-      HStack(spacing: 5) {
-        ForEach(1...10, id: \.self) { value in
-          Button {
-            let next: UInt8? = summary.sessionScore == UInt8(value) ? nil : UInt8(value)
-            store.send(.session(.updateSessionScore(score: next)))
-          } label: {
-            Circle()
-              .fill(score >= value ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(.clear))
-              .frame(width: 18, height: 18)
-              .overlay(
-                Circle()
-                  .stroke(IntradaColor.divider, lineWidth: 1.5)
-                  .opacity(score >= value ? 0 : 1))
-          }
-          .buttonStyle(.plain)
-        }
+      ScoreSelector(
+        score: summary.sessionScore.map(Int.init) ?? 0,
+        accessibilityLabel: "Overall session score"
+      ) { next in
+        store.send(.session(.updateSessionScore(score: next)))
       }
-      .accessibilityElement(children: .ignore)
-      .accessibilityLabel("Overall session score")
-      .accessibilityValue(score == 0 ? "not scored" : "\(score) of 10")
     }
   }
 

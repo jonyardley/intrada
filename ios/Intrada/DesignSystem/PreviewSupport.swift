@@ -189,7 +189,7 @@
       Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
     }
 
-    /// Detail view: exercise linked from 2 pieces — shows the "Linked from" card.
+    /// Detail view: exercise related to 2 pieces — shows the "Related pieces" card.
     static var previewExerciseLinkedFrom: Store {
       Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
     }
@@ -324,7 +324,7 @@
         linkedFromPieces: [])
     }
 
-    /// An exercise linked from 2 pieces — for the "Linked from" card snapshot.
+    /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
     static var previewExerciseWithLinkedFrom: LibraryItemView {
       LibraryItemView(
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",

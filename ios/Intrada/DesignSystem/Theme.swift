@@ -51,6 +51,8 @@ enum IntradaColor {
   static let repCleanBorder = Color(hex: 0xC9E2D3)
   /// Empty rep-slot ring + missed-button border.
   static let slotOutline = Color(hex: 0xDCD4C1)
+  /// Dashed outline on full-width "+ Add …" rows.
+  static let addDashOutline = Color(hex: 0xC9C0AC)
   /// The faded "was" number in a was→now delta.
   static let figureMuted = Color(hex: 0xB6AEC4)
   /// Not-yet days in the week picker.
