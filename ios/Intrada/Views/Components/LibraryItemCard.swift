@@ -8,8 +8,8 @@ struct LibraryItemCard: View {
   // Trailing space reserved for an external accessory the card doesn't own
   // (e.g. an overlaid control) so a long title wraps clear of it.
   var trailingGutter: CGFloat = 0
-  // When true, the row shows a trailing MasteryMeter for the item's latest
-  // 1–5 score (empty when never practised) — the glanceable mastery signal.
+  // When true, the row shows a trailing ScoreRing for the item's latest
+  // 0–10 score (en-dash when never practised) — the glanceable mastery signal.
   var showsMastery: Bool = false
 
   var body: some View {
@@ -45,7 +45,7 @@ struct LibraryItemCard: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       if showsMastery {
-        MasteryMeter(level: item.practice?.latestScore.map(Int.init))
+        ScoreRing(score: item.practice?.latestScore.map(Int.init), size: 32)
       }
     }
     .padding(.vertical, IntradaSpacing.row)
