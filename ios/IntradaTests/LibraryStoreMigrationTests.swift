@@ -39,7 +39,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
       position: 0, durationSecs: 60, status: .completed,
       notes: nil, score: 8, intention: nil, repTarget: nil, repCount: nil,
-      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil)
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: nil)
     let session = PracticeSession(
       id: "sess-rt", entries: [entry],
       sessionNotes: nil, sessionIntention: nil,
@@ -49,6 +50,24 @@ final class LibraryStoreMigrationTests: XCTestCase {
     let loaded = try store.loadSessions()
     XCTAssertEqual(loaded.count, 1)
     XCTAssertEqual(loaded[0].sessionScore, 7, "sessionScore UInt8→Int64→UInt8(clamping:) round-trip must preserve 7")
+  }
+
+  func testGroupIdRoundTripsThroughTheJsonCodec() throws {
+    let store = try LibraryStore.inMemory()
+    let entry = SetlistEntry(
+      id: "e1", itemId: "i1", itemTitle: "Scales", itemType: .exercise,
+      position: 0, durationSecs: 60, status: .completed,
+      notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: "block-1")
+    let session = PracticeSession(
+      id: "sess-g", entries: [entry],
+      sessionNotes: nil, sessionIntention: nil,
+      startedAt: "2026-01-01T10:00:00Z", completedAt: "2026-01-01T10:30:00Z",
+      totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil)
+    try store.saveSession(session)
+    let loaded = try store.loadSessions()
+    XCTAssertEqual(loaded.first?.entries.first?.groupId, "block-1", "group_id round-trips through the JSON-blob codec")
   }
 
   func testV5RescaleClampNilAndBlobPreservation() throws {

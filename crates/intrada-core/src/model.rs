@@ -324,6 +324,8 @@ pub struct SetlistEntryView {
     pub planned_duration_secs: Option<u32>,
     pub planned_duration_display: Option<String>,
     pub achieved_tempo: Option<u16>,
+    /// The block this entry belongs to in the builder; `None` = standalone.
+    pub group_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -367,11 +369,27 @@ pub enum SetSourceStatus {
     },
 }
 
+/// A unit in the builder queue: a block (a piece with its related exercises) or
+/// a single standalone item. `group_id == None` means standalone.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct SetlistBlockView {
+    pub group_id: Option<String>,
+    /// The block's anchor-piece title; `None` for a standalone item.
+    pub piece_title: Option<String>,
+    pub related_count: usize,
+    pub duration_display: String,
+    pub entries: Vec<SetlistEntryView>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BuildingSetlistView {
     pub entries: Vec<SetlistEntryView>,
     pub item_count: usize,
+    /// The same entries grouped into ordered units (blocks + standalone items).
+    pub blocks: Vec<SetlistBlockView>,
+    pub block_count: usize,
     pub session_intention: Option<String>,
     pub target_duration_mins: Option<u32>,
     pub source_status: SetSourceStatus,
@@ -416,7 +434,57 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
             }
         }),
         achieved_tempo: entry.achieved_tempo,
+        group_id: entry.group_id.clone(),
     }
+}
+
+/// Project flat entry views into ordered units: a contiguous run sharing a
+/// `group_id` becomes one block (related exercises first, piece last); every
+/// ungrouped entry is its own standalone unit.
+pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
+    let mut blocks: Vec<SetlistBlockView> = Vec::new();
+    for entry in entries {
+        let extends = match (&entry.group_id, blocks.last()) {
+            (Some(g), Some(last)) => last.group_id.as_deref() == Some(g.as_str()),
+            _ => false,
+        };
+        let is_piece = entry.item_type == ItemKind::Piece;
+        if extends {
+            let block = blocks.last_mut().expect("extends implies a last block");
+            if is_piece {
+                block.piece_title = Some(entry.item_title.clone());
+            } else {
+                block.related_count += 1;
+            }
+            block.entries.push(entry.clone());
+        } else {
+            let grouped = entry.group_id.is_some();
+            blocks.push(SetlistBlockView {
+                group_id: entry.group_id.clone(),
+                piece_title: (grouped && is_piece).then(|| entry.item_title.clone()),
+                related_count: usize::from(grouped && !is_piece),
+                duration_display: String::new(),
+                entries: vec![entry.clone()],
+            });
+        }
+    }
+    for block in &mut blocks {
+        let total: u32 = block
+            .entries
+            .iter()
+            .filter_map(|e| e.planned_duration_secs)
+            .sum();
+        block.duration_display = if total > 0 {
+            if total % 60 == 0 {
+                format!("{} min", total / 60)
+            } else {
+                crate::domain::session::format_duration_display(u64::from(total))
+            }
+        } else {
+            "—".to_string()
+        };
+    }
+    blocks
 }
 
 pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
@@ -499,6 +567,7 @@ mod tests {
             rep_history: None,
             planned_duration_secs: None,
             achieved_tempo: None,
+            group_id: None,
         }
     }
 

@@ -519,6 +519,7 @@ mod tests {
             rep_history: None,
             planned_duration_secs: None,
             achieved_tempo: None,
+            group_id: None,
         }
     }
 

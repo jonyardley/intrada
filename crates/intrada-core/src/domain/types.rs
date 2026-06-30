@@ -471,6 +471,7 @@ mod tests {
             rep_history: Some(vec![RepAction::Success, RepAction::Missed]),
             planned_duration_secs: Some(300),
             achieved_tempo: Some(120),
+            group_id: None,
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -483,5 +484,48 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_score: Some(8),
         }));
+    }
+
+    #[test]
+    fn block_grouping_session_events_round_trip_on_ffi_bincode_wire() {
+        use crate::domain::session::SessionEvent;
+        assert_round_trips(SessionEvent::ReorderBlock {
+            group_id: "g1".to_string(),
+            new_position: 2,
+        });
+        assert_round_trips(SessionEvent::KeepOnlyPiece {
+            group_id: "g1".to_string(),
+        });
+        assert_round_trips(SessionEvent::UngroupBlock {
+            group_id: "g1".to_string(),
+        });
+        assert_round_trips(SessionEvent::UngroupAllBlocks);
+        assert_round_trips(SessionEvent::RemoveBlock {
+            group_id: "g1".to_string(),
+        });
+    }
+
+    #[test]
+    fn setlist_entry_group_id_round_trips_on_ffi_bincode_wire() {
+        use crate::domain::session::{EntryStatus, SetlistEntry};
+        assert_round_trips(SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "ex1".to_string(),
+            item_title: "Scales".to_string(),
+            item_type: ItemKind::Exercise,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: Some("block-1".to_string()),
+        });
     }
 }

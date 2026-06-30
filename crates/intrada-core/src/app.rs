@@ -23,7 +23,7 @@ use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_summary_view, entry_to_view, session_to_view,
+    build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
     PieceRefView, SessionStatusView, SetSourceStatus, ViewModel,
 };
@@ -494,6 +494,8 @@ impl App for Intrada {
             SessionStatus::Building(building) => {
                 let entries: Vec<_> = building.entries.iter().map(entry_to_view).collect();
                 let item_count = entries.len();
+                let blocks = build_blocks(&entries);
+                let block_count = blocks.len();
                 let source_status = match &building.source_set_id {
                     None => SetSourceStatus::NoSource,
                     Some(sid) => {
@@ -535,6 +537,8 @@ impl App for Intrada {
                     Some(BuildingSetlistView {
                         entries,
                         item_count,
+                        blocks,
+                        block_count,
                         session_intention: building.session_intention.clone(),
                         target_duration_mins: building.target_duration_mins,
                         source_status,
@@ -917,6 +921,7 @@ fn sample_sessions() -> Vec<PracticeSession> {
             rep_history: None,
             planned_duration_secs: None,
             achieved_tempo: None,
+            group_id: None,
         }
     };
 
@@ -1955,6 +1960,7 @@ mod tests {
                         rep_history: None,
                         planned_duration_secs: None,
                         achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
+                        group_id: None,
                     }
                 })
                 .collect();
@@ -2105,6 +2111,7 @@ mod tests {
                     rep_history: None,
                     planned_duration_secs: None,
                     achieved_tempo: None,
+                    group_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2123,6 +2130,7 @@ mod tests {
                     rep_history: None,
                     planned_duration_secs: None,
                     achieved_tempo: None,
+                    group_id: None,
                 },
             ],
         });
@@ -2204,6 +2212,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: None,
+                group_id: None,
             }],
         });
 
@@ -2234,6 +2243,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: None,
+                group_id: None,
             }],
         });
 
@@ -2306,6 +2316,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: None,
+                group_id: None,
             }],
         });
 
@@ -2372,6 +2383,7 @@ mod tests {
                     rep_history: None,
                     planned_duration_secs: None,
                     achieved_tempo: None,
+                    group_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2390,6 +2402,7 @@ mod tests {
                     rep_history: None,
                     planned_duration_secs: None,
                     achieved_tempo: None,
+                    group_id: None,
                 },
             ],
         });
@@ -2461,6 +2474,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: None,
+                group_id: None,
             }],
         });
 
@@ -2527,6 +2541,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: tempo,
+                group_id: None,
             }],
         }
     }
@@ -2580,6 +2595,7 @@ mod tests {
                 rep_history: None,
                 planned_duration_secs: None,
                 achieved_tempo: None,
+                group_id: None,
             }],
         };
 
@@ -3402,6 +3418,7 @@ mod tests {
             rep_history: None,
             planned_duration_secs: None,
             achieved_tempo: None,
+            group_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -3445,6 +3462,7 @@ mod tests {
             rep_history: None,
             planned_duration_secs: None,
             achieved_tempo: None,
+            group_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
