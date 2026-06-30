@@ -9,6 +9,13 @@ struct LibraryDetailScreen: View {
   @Environment(\.dismiss) private var dismiss
   @State private var confirmingDelete = false
   @State private var editing = false
+  @State private var editingLinks: Bool
+  @State private var showingPicker = false
+
+  init(item: LibraryItemView, startEditingLinks: Bool = false) {
+    self.item = item
+    _editingLinks = State(initialValue: startEditingLinks)
+  }
 
   var body: some View {
     ScreenScaffold(title: item.title, subtitle: subtitle) {
@@ -41,6 +48,10 @@ struct LibraryDetailScreen: View {
             tags
           }
 
+          if item.itemType == .piece {
+            linkedExercisesSection
+          }
+
           deleteButton
             .padding(.top, IntradaSpacing.controlGap)
         }
@@ -68,6 +79,23 @@ struct LibraryDetailScreen: View {
       LibraryEditScreen(item: item)
         .environment(store)
     }
+    // Picker sheet wired in the follow-up task
+    .sheet(isPresented: $showingPicker) {
+      NavigationStack {
+        Text("Link an exercise")
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .background(IntradaColor.paperTop)
+          .navigationTitle("Link an exercise")
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+              Button("Done") { showingPicker = false }
+            }
+          }
+      }
+    }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
     .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
@@ -76,6 +104,134 @@ struct LibraryDetailScreen: View {
     } message: {
       Text("This can't be undone.")
     }
+  }
+
+  // ── Linked exercises ──
+
+  private var linkedExercisesSection: some View {
+    VStack(spacing: 0) {
+      linkedExercisesHeader
+      if item.linkedExercises.isEmpty {
+        linkedExercisesEmptyState
+      } else {
+        linkedExercisesRows
+        HairlineDivider()
+        linkExerciseButton
+      }
+    }
+    .cardSurface()
+  }
+
+  private var linkedExercisesHeader: some View {
+    HStack {
+      Text("Linked exercises")
+        .font(IntradaFont.cardTitle())
+        .foregroundStyle(IntradaColor.ink)
+      if !item.linkedExercises.isEmpty {
+        Text("\(item.linkedExercises.count)")
+          .font(IntradaFont.badge)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .padding(.horizontal, 7)
+          .padding(.vertical, 3)
+          .background(IntradaColor.surfaceSunken, in: Capsule())
+          .accessibilityHidden(true)
+      }
+      Spacer()
+      Button(editingLinks ? "Done" : "Edit") {
+        editingLinks.toggle()
+      }
+      .font(IntradaFont.bodyMedium)
+      .foregroundStyle(IntradaColor.accent)
+      .disabled(item.linkedExercises.isEmpty)
+      .opacity(item.linkedExercises.isEmpty ? 0 : 1)
+      .accessibilityLabel(editingLinks ? "Done editing linked exercises" : "Edit linked exercises")
+    }
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.top, IntradaSpacing.card)
+    .padding(.bottom, item.linkedExercises.isEmpty ? 0 : IntradaSpacing.cardCompact)
+  }
+
+  @ViewBuilder private var linkedExercisesRows: some View {
+    ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
+      if index > 0 {
+        HairlineDivider()
+      }
+      if editingLinks {
+        LinkedExerciseEditRow(
+          exercise: exercise,
+          onRemove: { unlink(exercise) })
+      } else {
+        NavigationLink(value: exercise.id) {
+          LinkedExerciseRow(exercise: exercise)
+        }
+        .buttonStyle(.plain)
+      }
+    }
+  }
+
+  private var linkedExercisesEmptyState: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      Image(systemName: "link")
+        .font(.system(size: 28))
+        .foregroundStyle(IntradaColor.inkFaint)
+        .accessibilityHidden(true)
+      Text("No exercises linked yet")
+        .font(IntradaFont.cardTitle())
+        .foregroundStyle(IntradaColor.ink)
+      Text("Link scales, arpeggios, or any exercise to track progress alongside this piece.")
+        .font(IntradaFont.body)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .multilineTextAlignment(.center)
+      Button {
+        showingPicker = true
+      } label: {
+        Text("Link an exercise")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.vertical, IntradaSpacing.cardCompact)
+          .overlay(
+            RoundedRectangle(cornerRadius: IntradaRadius.card)
+              .stroke(IntradaColor.accent, lineWidth: 1)
+          )
+      }
+      .buttonStyle(.plain)
+      .padding(.top, IntradaSpacing.controlGap)
+      .accessibilityLabel("Link an exercise to this piece")
+    }
+    .frame(maxWidth: .infinity)
+    .padding(IntradaSpacing.card)
+    .padding(.bottom, IntradaSpacing.cardCompact)
+  }
+
+  private var linkExerciseButton: some View {
+    Button {
+      showingPicker = true
+    } label: {
+      Label("Link an exercise", systemImage: "plus")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, IntradaSpacing.cardCompact)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Link an exercise to this piece")
+  }
+
+  // ── Actions ──
+
+  private func unlink(_ exercise: LinkedExerciseView) {
+    let before = store.viewModel?.error
+    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: exercise.id)))
+    if store.viewModel?.error == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
+  private func reorderLinkedExercises(from source: IndexSet, to destination: Int) {
+    var ids = item.linkedExercises.map(\.id)
+    ids.move(fromOffsets: source, toOffset: destination)
+    store.send(.item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)))
   }
 
   private var deleteButton: some View {
@@ -153,6 +309,93 @@ private struct DetailRow: View {
   }
 }
 
+/// Normal-mode row: exercise type bar + title + key/tempo meta + trailing score ring.
+private struct LinkedExerciseRow: View {
+  let exercise: LinkedExerciseView
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.row) {
+      VStack(alignment: .leading, spacing: 3) {
+        Text(exercise.title)
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        if let meta = metaLine {
+          Text(meta)
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      ScoreRing(score: exercise.practice?.latestScore.map(Int.init), size: 44)
+    }
+    .padding(.vertical, IntradaSpacing.row)
+    .padding(.leading, 20)
+    .padding(.trailing, IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+    .overlay(alignment: .leading) {
+      ItemKind.exercise.bar.frame(width: 4)
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var metaLine: String? {
+    let parts = [exercise.key, exercise.tempo].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
+  private var accessibilityLabel: String {
+    var parts = ["Exercise", exercise.title]
+    if let meta = metaLine { parts.append(meta) }
+    if let score = exercise.practice?.latestScore {
+      parts.append("Score \(score) of 10")
+    } else {
+      parts.append("Not yet rated")
+    }
+    return parts.joined(separator: ", ")
+  }
+}
+
+/// Edit-mode row: remove button + exercise title + meta (no score ring).
+private struct LinkedExerciseEditRow: View {
+  let exercise: LinkedExerciseView
+  let onRemove: () -> Void
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      Button(action: onRemove) {
+        Image(systemName: "minus.circle.fill")
+          .font(.system(size: 22))
+          .foregroundStyle(IntradaColor.danger)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Remove \(exercise.title)")
+      VStack(alignment: .leading, spacing: 3) {
+        Text(exercise.title)
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        if let meta = metaLine {
+          Text(meta)
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      Image(systemName: "line.3.horizontal")
+        .foregroundStyle(IntradaColor.inkFaint)
+        .accessibilityHidden(true)
+    }
+    .padding(.vertical, IntradaSpacing.cardCompact)
+    .padding(.horizontal, IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+  }
+
+  private var metaLine: String? {
+    let parts = [exercise.key, exercise.tempo].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+}
+
 #if DEBUG
   #Preview("Piece") {
     NavigationStack {
@@ -166,5 +409,30 @@ private struct DetailRow: View {
       LibraryDetailScreen(item: .previewMinimal)
     }
     .environment(Store.preview)
+  }
+
+  #Preview("Linked — populated") {
+    NavigationStack {
+      LibraryDetailScreen(item: .previewDetailWithLinkedExercises)
+    }
+    .environment(Store.previewDetailLinkedPopulated)
+  }
+
+  #Preview("Linked — empty") {
+    NavigationStack {
+      LibraryDetailScreen(item: .previewDetailLinkedEmpty)
+    }
+    .environment(Store.previewDetailLinkedEmpty)
+  }
+
+  /// Snapshot seed: renders the detail screen with editingLinks already on,
+  /// so the test can capture the edit-mode row layout without UI interaction.
+  struct EditingLinkedExercisesWrapper: View {
+    let item: LibraryItemView
+    var body: some View {
+      NavigationStack {
+        LibraryDetailScreen(item: item, startEditingLinks: true)
+      }
+    }
   }
 #endif

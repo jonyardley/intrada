@@ -264,6 +264,29 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  func testPieceDetailLinkedPopulated() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewDetailWithLinkedExercises.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  func testPieceDetailLinkedEmpty() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewDetailLinkedEmpty.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  func testPieceDetailLinkedEditing() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    // editingLinks is @State — seed via EditingLinkedExercisesWrapper with startEditingLinks=true.
+    let editing = EditingLinkedExercisesWrapper(item: .previewDetailWithLinkedExercises)
+    assertSnapshot(of: host(editing, store: store), as: config)
+  }
+
   func testLibraryAddScreen() {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }

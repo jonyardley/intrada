@@ -179,6 +179,16 @@
         ]))
     }
 
+    /// Detail view: piece with 3 linked exercises (varied scores, one unrated).
+    static var previewDetailLinkedPopulated: Store {
+      Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    }
+
+    /// Detail view: piece with no linked exercises — shows the empty state.
+    static var previewDetailLinkedEmpty: Store {
+      Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
+    }
+
     private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
       var copy = item
       copy.practice = ItemPracticeSummary(
@@ -279,6 +289,45 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
+    }
+
+    /// A piece with a populated linked-exercises list (3 items, varied scores including
+    /// one unrated) — for the linked-exercises section snapshots.
+    static var previewDetailWithLinkedExercises: LibraryItemView {
+      LibraryItemView(
+        id: "piece-3", itemType: .piece, title: "Clair de Lune", subtitle: "Claude Debussy",
+        key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
+        tempoBpm: 72,
+        notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
+        tags: ["recital", "impressionist"], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false,
+        linkedExercises: [
+          LinkedExerciseView(
+            id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
+            practice: ItemPracticeSummary(
+              sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
+              latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-28T09:00:00Z")),
+          LinkedExerciseView(
+            id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil,
+            practice: ItemPracticeSummary(
+              sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
+              latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-06-25T09:00:00Z")),
+          LinkedExerciseView(
+            id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
+            practice: nil),
+        ],
+        linkedFromPieces: [])
+    }
+
+    /// A piece with no linked exercises — for the empty-state snapshot.
+    static var previewDetailLinkedEmpty: LibraryItemView {
+      LibraryItemView(
+        id: "piece-4", itemType: .piece, title: "Gymnopédie No. 1", subtitle: "Erik Satie",
+        key: "D", modality: .major, tempo: "Lent et douloureux (60 BPM)",
+        tempoMarking: "Lent et douloureux",
+        tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false,
+        linkedExercises: [], linkedFromPieces: [])
     }
   }
 
