@@ -58,13 +58,14 @@ final class LibraryStore: ItemStore {
         sql: """
           INSERT INTO item
             (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-             created_at, updated_at, priority, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+             linked_exercise_ids, created_at, updated_at, priority, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
           ON CONFLICT(id) DO UPDATE SET
             title = excluded.title, kind = excluded.kind, composer = excluded.composer,
             key = excluded.key, modality = excluded.modality,
             tempo_marking = excluded.tempo_marking,
             tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
+            linked_exercise_ids = excluded.linked_exercise_ids,
             updated_at = excluded.updated_at, priority = excluded.priority, deleted_at = NULL
           """,
         arguments: [
@@ -72,6 +73,7 @@ final class LibraryStore: ItemStore {
           Self.modalityString(item.modality),
           item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
           Self.encodeTags(item.tags),
+          Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
           item.createdAt, item.updatedAt, item.priority,
         ])
     }
@@ -195,6 +197,10 @@ final class LibraryStore: ItemStore {
           sql: "UPDATE session SET entries = ? WHERE id = ?", arguments: [rescaled, id])
       }
     }
+    migrator.registerMigration("v6_item_linked_exercises") { db in
+      try db.execute(
+        sql: "ALTER TABLE item ADD COLUMN linked_exercise_ids TEXT NOT NULL DEFAULT '[]'")
+    }
     return migrator
   }()
 
@@ -218,7 +224,9 @@ final class LibraryStore: ItemStore {
       id: row["id"], title: row["title"], kind: kind(from: row["kind"]),
       composer: row["composer"], key: row["key"], modality: modality(from: row["modality"]),
       tempo: tempo, notes: row["notes"],
-      tags: decodeTags(row["tags"]), createdAt: row["created_at"], updatedAt: row["updated_at"],
+      tags: decodeTags(row["tags"]),
+      linkedExerciseIds: decodeLinkedExerciseIds(row["linked_exercise_ids"]),
+      createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"])
   }
 
@@ -265,6 +273,16 @@ final class LibraryStore: ItemStore {
   }
 
   private static func decodeTags(_ json: String) -> [String] {
+    (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
+  }
+
+  private static func encodeLinkedExerciseIds(_ ids: [String]) -> String {
+    guard let data = try? JSONEncoder().encode(ids), let json = String(data: data, encoding: .utf8)
+    else { return "[]" }
+    return json
+  }
+
+  private static func decodeLinkedExerciseIds(_ json: String) -> [String] {
     (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
   }
 

@@ -250,7 +250,7 @@
         key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
         tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
     }
 
     static var previewExercise: LibraryItemView {
@@ -259,7 +259,7 @@
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
     }
 
     static var previewDetail: LibraryItemView {
@@ -269,7 +269,8 @@
         tempoBpm: 72,
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false)
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [])
     }
 
     static var previewMinimal: LibraryItemView {
@@ -277,7 +278,7 @@
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false)
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
     }
   }
 
