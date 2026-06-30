@@ -154,6 +154,30 @@
             sourceStatus: .noSource)))
     }
 
+    /// Session builder with a block (a piece + 2 related) above a standalone
+    /// item — the grouped-state preview + snapshot.
+    static var previewBuildingGrouped: Store {
+      let block: [SetlistEntryView] = [
+        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
+      ]
+      return Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece, .previewExercise, .previewMinimal],
+          buildingSetlist: BuildingSetlistView(
+            entries: block + [.previewStandaloneExercise],
+            itemCount: 4,
+            blocks: [
+              SetlistBlockView(
+                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
+                durationDisplay: "12 min", entries: block),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewStandaloneExercise]),
+            ],
+            blockCount: 2,
+            sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
+    }
+
     /// Player Focus — a piece mid-session with a session intention and a time
     /// target (the target bar), no reps.
     static var previewActive: Store {
@@ -370,14 +394,31 @@
         id: "setlist-2", item: "exercise-1", title: "Hanon No. 1", type: .exercise, position: 1)
     }
 
+    static var previewGroupedScales: SetlistEntryView {
+      building(id: "g-a", item: "ex-a", title: "Scales", type: .exercise, position: 0, group: "g1")
+    }
+    static var previewGroupedArpeggios: SetlistEntryView {
+      building(
+        id: "g-b", item: "ex-b", title: "Broken arpeggios", type: .exercise, position: 1,
+        group: "g1")
+    }
+    static var previewGroupedPiece: SetlistEntryView {
+      building(
+        id: "g-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 2, group: "g1")
+    }
+    static var previewStandaloneExercise: SetlistEntryView {
+      building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
+    }
+
     private static func building(
-      id: String, item: String, title: String, type: ItemKind, position: UInt64
+      id: String, item: String, title: String, type: ItemKind, position: UInt64,
+      group: String? = nil
     ) -> SetlistEntryView {
       SetlistEntryView(
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: nil)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group)
     }
   }
 

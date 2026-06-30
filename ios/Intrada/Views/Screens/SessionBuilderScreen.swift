@@ -2,19 +2,38 @@ import SharedTypes
 import SwiftUI
 
 // Library-first builder: browse/search the library up top, tap to add, and the
-// setlist forms in the reorderable queue tray at the bottom. `cancelBuilding`
-// fires from PracticeScreen's navigation binding on dismiss.
+// setlist forms in the queue tray below. A piece's related exercises arrive as
+// one block (related-first, piece-last); standalone items render as plain rows.
+// `cancelBuilding` fires from PracticeScreen's navigation binding on dismiss.
 struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
   @State private var confirmingCancel = false
+  // `SharedTypes`' domain `Set` (setlists) shadows `Swift.Set` here.
+  @State private var collapsedGroups: Swift.Set<String> = []
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
+  private var blocks: [SetlistBlockView] { store.viewModel?.buildingSetlist?.blocks ?? [] }
+  private var hasBlocks: Bool { blocks.contains { $0.groupId != nil } }
 
   private var entryByItem: [String: String] {
-    let entries = store.viewModel?.buildingSetlist?.entries ?? []
-    return Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
+    Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
+  }
+
+  /// Stable-identity units for the queue `ForEach` — keying on the first entry's
+  /// ulid (not the array index) avoids the SwiftUI out-of-range crash when an
+  /// item is removed and `blocks` shrinks mid-render.
+  private struct BuilderUnit: Identifiable {
+    let id: String
+    let index: Int
+    let block: SetlistBlockView
+  }
+
+  private var units: [BuilderUnit] {
+    blocks.enumerated().map { offset, block in
+      BuilderUnit(id: block.entries.first?.id ?? "unit-\(offset)", index: offset, block: block)
+    }
   }
 
   var body: some View {
@@ -32,6 +51,11 @@ struct SessionBuilderScreen: View {
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
         Button("Cancel") { cancel() }
+      }
+      if hasBlocks {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
+        }
       }
     }
     .alert("Discard session plan?", isPresented: $confirmingCancel) {
@@ -89,7 +113,7 @@ struct SessionBuilderScreen: View {
     .accessibilityHint(added ? "Removes it from the session" : "Adds it to the session")
   }
 
-  // ── Queue tray (the setlist, reorderable) ────────────────────────────
+  // ── Queue tray (units: blocks + standalone items) ────────────────────
 
   private var queueTray: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -101,37 +125,132 @@ struct SessionBuilderScreen: View {
       .padding(.horizontal, IntradaSpacing.card)
       .padding(.top, IntradaSpacing.cardCompact)
 
-      if entries.isEmpty {
+      if blocks.isEmpty {
         Text("Tap items above to build your session.")
           .font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaint)
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(IntradaSpacing.card)
       } else {
-        List {
-          ForEach(entries, id: \.id) { entry in
-            SetlistQueueRow(entry: entry) {
-              store.send(.session(.removeFromSetlist(entryId: entry.id)))
+        ScrollView {
+          VStack(spacing: IntradaSpacing.controlGap) {
+            ForEach(units) { unit in
+              unitView(unit.block, at: unit.index)
             }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-            .listRowInsets(
-              EdgeInsets(
-                top: 0, leading: IntradaSpacing.card, bottom: 0, trailing: IntradaSpacing.card))
           }
-          .onMove(perform: move)
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.vertical, IntradaSpacing.cardCompact)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        // Always-on reorder grips. No `.onDelete` — remove is the inline button,
-        // so edit mode adds no second delete control.
-        .environment(\.editMode, .constant(.active))
-        .frame(height: min(CGFloat(entries.count) * 44 + 8, 176))
+        .frame(maxHeight: 240)
       }
     }
     .frame(maxWidth: .infinity)
     .background(IntradaColor.paperTop)
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
     .cardShadow(above: true)
+  }
+
+  @ViewBuilder private func unitView(_ block: SetlistBlockView, at index: Int) -> some View {
+    if block.groupId == nil, let entry = block.entries.first {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        SetlistQueueRow(entry: entry) {
+          store.send(.session(.removeFromSetlist(entryId: entry.id)))
+        }
+        reorderControls(at: index)
+          .padding(.trailing, IntradaSpacing.cardCompact)
+      }
+      .background(IntradaColor.cardFill)
+      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+    } else {
+      blockCard(block, at: index)
+    }
+  }
+
+  private func blockCard(_ block: SetlistBlockView, at index: Int) -> some View {
+    let groupId = block.groupId ?? ""
+    let collapsed = collapsedGroups.contains(groupId)
+    return VStack(spacing: 0) {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        Button {
+          if collapsed { collapsedGroups.remove(groupId) } else { collapsedGroups.insert(groupId) }
+        } label: {
+          Image(systemName: collapsed ? "chevron.right" : "chevron.down")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkFaint)
+            .frame(width: 16)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(collapsed ? "Expand block" : "Collapse block")
+
+        VStack(alignment: .leading, spacing: 1) {
+          Text(block.pieceTitle ?? "Related exercises")
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.ink)
+            .lineLimit(1)
+          Text(blockSubtitle(block))
+            .font(IntradaFont.micro)
+            .foregroundStyle(IntradaColor.inkFaint)
+        }
+        Spacer(minLength: IntradaSpacing.controlGap)
+        reorderControls(at: index)
+        blockMenu(groupId: groupId)
+      }
+      .padding(.horizontal, IntradaSpacing.cardCompact)
+      .padding(.vertical, IntradaSpacing.controlGap)
+
+      if !collapsed {
+        ForEach(block.entries, id: \.id) { entry in
+          HairlineDivider().padding(.leading, IntradaSpacing.card)
+          SetlistQueueRow(entry: entry) {
+            store.send(.session(.removeFromSetlist(entryId: entry.id)))
+          }
+          .padding(.horizontal, IntradaSpacing.cardCompact)
+        }
+      }
+    }
+    .background(IntradaColor.cardFill)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+    .overlay(alignment: .leading) {
+      Rectangle().fill(IntradaColor.accent).frame(width: 3)
+        .clipShape(RoundedRectangle(cornerRadius: 1.5))
+    }
+  }
+
+  private func reorderControls(at index: Int) -> some View {
+    HStack(spacing: 2) {
+      Button { moveUnit(at: index, by: -1) } label: {
+        Image(systemName: "chevron.up").font(IntradaFont.micro)
+      }
+      .disabled(index == 0)
+      .accessibilityLabel("Move up")
+      Button { moveUnit(at: index, by: 1) } label: {
+        Image(systemName: "chevron.down").font(IntradaFont.micro)
+      }
+      .disabled(index == blocks.count - 1)
+      .accessibilityLabel("Move down")
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(IntradaColor.inkFaint)
+  }
+
+  private func blockMenu(groupId: String) -> some View {
+    Menu {
+      Button("Just the piece") { store.send(.session(.keepOnlyPiece(groupId: groupId))) }
+      Button("Ungroup") { store.send(.session(.ungroupBlock(groupId: groupId))) }
+      Button("Remove block", role: .destructive) {
+        store.send(.session(.removeBlock(groupId: groupId)))
+      }
+    } label: {
+      Image(systemName: "ellipsis")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .frame(width: 24, height: 24)
+    }
+    .accessibilityLabel("Block actions")
+  }
+
+  private func blockSubtitle(_ block: SetlistBlockView) -> String {
+    let related = block.relatedCount == 1 ? "1 related" : "\(block.relatedCount) related"
+    return "\(related), then piece · \(block.durationDisplay)"
   }
 
   // The one-primary-action frontier. `startSession` flips the core Building →
@@ -175,11 +294,26 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  // SwiftUI's `to` is an insert-before index; reorderSetlist wants a final index.
-  private func move(_ source: IndexSet, to destination: Int) {
-    guard let from = source.first else { return }
-    let target = from < destination ? destination - 1 : destination
-    store.send(.session(.reorderSetlist(entryId: entries[from].id, newPosition: UInt64(target))))
+  /// Reorder a whole unit (a block or a standalone item) by one place. Blocks
+  /// move as a unit via `reorderBlock`; a standalone item is a single entry, so
+  /// it slides to the neighbour unit's edge position via `reorderSetlist`.
+  private func moveUnit(at index: Int, by delta: Int) {
+    guard index < blocks.count else { return }
+    let dest = index + delta
+    guard dest >= 0, dest < blocks.count else { return }
+    let unit = blocks[index]
+    let before = store.viewModel?.error
+    if let groupId = unit.groupId {
+      store.send(.session(.reorderBlock(groupId: groupId, newPosition: UInt64(dest))))
+    } else if let entryId = unit.entries.first?.id {
+      let neighbour = blocks[dest]
+      let target = delta < 0 ? neighbour.entries.first : neighbour.entries.last
+      guard let position = target?.position else { return }
+      store.send(.session(.reorderSetlist(entryId: entryId, newPosition: position)))
+    }
+    if store.viewModel?.error == before {
+      UISelectionFeedbackGenerator().selectionChanged()
+    }
   }
 
   private func cancel() {
