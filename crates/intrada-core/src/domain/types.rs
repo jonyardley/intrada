@@ -412,6 +412,23 @@ mod tests {
     }
 
     #[test]
+    fn item_link_events_round_trip_on_ffi_bincode_wire() {
+        use crate::domain::item::ItemEvent;
+        assert_round_trips(ItemEvent::LinkExercise {
+            piece_id: "p1".to_string(),
+            exercise_id: "e1".to_string(),
+        });
+        assert_round_trips(ItemEvent::UnlinkExercise {
+            piece_id: "p1".to_string(),
+            exercise_id: "e1".to_string(),
+        });
+        assert_round_trips(ItemEvent::ReorderLinkedExercises {
+            piece_id: "p1".to_string(),
+            ordered_ids: vec!["e1".to_string(), "e2".to_string()],
+        });
+    }
+
+    #[test]
     fn set_requests_round_trip_on_ffi_bincode_wire() {
         let entries = vec![CreateSetEntryRequest {
             item_id: "p1".to_string(),

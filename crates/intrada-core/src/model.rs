@@ -220,6 +220,23 @@ pub struct SetEntryView {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LinkedExerciseView {
+    pub id: String,
+    pub title: String,
+    pub key: Option<String>,
+    pub tempo: Option<String>,
+    pub practice: Option<ItemPracticeSummary>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PieceRefView {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryItemView {
     pub id: String,
     pub item_type: ItemKind,
@@ -237,6 +254,8 @@ pub struct LibraryItemView {
     pub practice: Option<ItemPracticeSummary>,
     pub latest_achieved_tempo: Option<u16>,
     pub priority: bool,
+    pub linked_exercises: Vec<LinkedExerciseView>,
+    pub linked_from_pieces: Vec<PieceRefView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -540,6 +559,7 @@ mod tests {
             tags: vec![],
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
@@ -714,6 +734,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             api_base_url: "http://localhost:3001".to_string(),

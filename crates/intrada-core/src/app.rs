@@ -24,8 +24,8 @@ use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
-    SetSourceStatus, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
+    PieceRefView, SessionStatusView, SetSourceStatus, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -343,12 +343,76 @@ impl App for Intrada {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        use std::collections::HashMap;
+
+        // Build an id→item index for O(1) linked-exercise lookup.
+        let item_index: HashMap<&str, &crate::domain::item::Item> =
+            model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+
+        // Build a reverse index: exercise_id → [PieceRefView] in one pass.
+        // Mirror the forward filter: only push a PieceRefView when the target
+        // id resolves to a present item whose kind == Exercise.
+        let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
+        for item in &model.items {
+            if item.kind == ItemKind::Piece {
+                for ex_id in &item.linked_exercise_ids {
+                    if item_index
+                        .get(ex_id.as_str())
+                        .is_some_and(|t| t.kind == ItemKind::Exercise)
+                    {
+                        piece_refs_by_exercise
+                            .entry(ex_id.as_str())
+                            .or_default()
+                            .push(PieceRefView {
+                                id: item.id.clone(),
+                                title: item.title.clone(),
+                            });
+                    }
+                }
+            }
+        }
+
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for item in &model.items {
             let practice = model.practice_summaries.get(&item.id).cloned();
             let subtitle = item.composer.clone().unwrap_or_default();
             let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
+
+            let linked_exercises = if item.kind == ItemKind::Piece {
+                item.linked_exercise_ids
+                    .iter()
+                    .filter_map(|ex_id| {
+                        let ex = item_index.get(ex_id.as_str())?;
+                        if ex.kind != ItemKind::Exercise {
+                            return None;
+                        }
+                        Some(LinkedExerciseView {
+                            id: ex.id.clone(),
+                            title: ex.title.clone(),
+                            key: ex.key.clone(),
+                            tempo: ex
+                                .tempo
+                                .as_ref()
+                                .map(|t| t.format_display())
+                                .filter(|s| !s.is_empty()),
+                            practice: model.practice_summaries.get(&ex.id).cloned(),
+                        })
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let linked_from_pieces = if item.kind == ItemKind::Exercise {
+                piece_refs_by_exercise
+                    .get(item.id.as_str())
+                    .cloned()
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.clone(),
@@ -370,6 +434,8 @@ impl App for Intrada {
                 practice,
                 latest_achieved_tempo,
                 priority: item.priority,
+                linked_exercises,
+                linked_from_pieces,
             });
         }
 
@@ -752,6 +818,7 @@ fn sample_items() -> Vec<Item> {
             tags: tags.iter().map(|s| s.to_string()).collect(),
             created_at: ts,
             updated_at: ts,
+            linked_exercise_ids: vec![],
             priority: false,
         }
     };
@@ -959,6 +1026,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             },
             Item {
@@ -973,6 +1041,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             },
         ];
@@ -1097,6 +1166,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             sessions: vec![PracticeSession {
@@ -1267,6 +1337,7 @@ mod tests {
                     tags: vec!["classical".to_string()],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1284,6 +1355,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1301,6 +1373,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1315,6 +1388,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
             ],
@@ -1388,6 +1462,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1402,6 +1477,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1461,6 +1537,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1475,6 +1552,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1506,6 +1584,7 @@ mod tests {
             tags: vec!["classical".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1520,6 +1599,7 @@ mod tests {
             tags: vec!["romantic".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1550,6 +1630,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![
@@ -1591,6 +1672,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
@@ -1624,6 +1706,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![
@@ -1762,9 +1845,14 @@ mod tests {
         let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
-        // Populate 10,000 items (5k pieces + 5k exercises)
+        // Populate 10,000 items (5k pieces + 5k exercises).
+        // Each piece links 5 exercise ids that exist in the fixture (e00000–e04999),
+        // so the reverse-index path is load-tested — an O(n²) scan would be caught.
         let start = std::time::Instant::now();
         for i in 0..5000 {
+            let linked_exercise_ids: Vec<String> = (0..5)
+                .map(|k| format!("e{:05}", (i * 7 + k * 997) % 5000))
+                .collect();
             model.items.push(Item {
                 id: format!("p{i:05}"),
                 title: format!("Piece {i}"),
@@ -1792,6 +1880,7 @@ mod tests {
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids,
                 priority: false,
             });
         }
@@ -1812,13 +1901,17 @@ mod tests {
                 tags: vec![format!("etag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             });
         }
         let populate_time = start.elapsed();
+        // Heavier than a bare-item fixture: each of the 5k pieces builds 5 linked
+        // exercise-id strings to load-test the reverse index. This is fixture setup,
+        // not the gate — the bound is generous to absorb slow-CI debug-build variance.
         assert!(
-            populate_time.as_millis() < 100,
-            "Populating 10k items took {}ms (target: <100ms)",
+            populate_time.as_millis() < 500,
+            "Populating 10k items took {}ms (target: <500ms)",
             populate_time.as_millis()
         );
 
@@ -1890,9 +1983,13 @@ mod tests {
         let vm = app.view(&model);
         let view_time = start.elapsed();
         assert_eq!(vm.items.len(), 10_000);
+        // O(n): forward resolution + the O(n) reverse index over 10k items + 25k
+        // links. A naive O(n²) reverse scan (5k exercises × 5k pieces = 25M) would
+        // run in seconds, so this still catches that regression with wide margin;
+        // the bound is loose only to absorb slow-CI debug-build wall-clock variance.
         assert!(
-            view_time.as_millis() < 200,
-            "view() with 10k items took {}ms (target: <200ms)",
+            view_time.as_millis() < 1000,
+            "view() with 10k items took {}ms (target: <1000ms)",
             view_time.as_millis()
         );
 
@@ -1956,6 +2053,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         let p2 = Item {
@@ -1970,6 +2068,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![p1, p2];
@@ -2070,6 +2169,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2171,6 +2271,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2235,6 +2336,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2324,6 +2426,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2532,6 +2635,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -2549,6 +2653,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -2575,6 +2680,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -2592,6 +2698,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -2647,6 +2754,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2961,6 +3069,7 @@ mod tests {
             tags: vec![],
             created_at,
             updated_at: created_at,
+            linked_exercise_ids: vec![],
             priority: false,
         }
     }
@@ -3379,6 +3488,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -3394,6 +3504,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         let _cmd = app.update(
@@ -3426,6 +3537,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -3485,6 +3597,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -3549,6 +3662,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -3612,6 +3726,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -3642,5 +3757,191 @@ mod tests {
             &mut model,
         );
         assert_eq!(model.items[0].kind, ItemKind::Exercise);
+    }
+
+    #[test]
+    fn test_view_resolves_linked_exercises_and_linked_from_pieces() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+
+        // Piece P links ["ex-1", "ex-missing", "ex-2"]: ex-1 and ex-2 are present,
+        // ex-missing is absent. Proves order is preserved AND the missing id is
+        // dropped from the middle (not just from the end).
+        // Unrelated exercise ex-3 is present but not linked by P.
+        let model = Model {
+            items: vec![
+                Item {
+                    id: "piece-1".to_string(),
+                    title: "Sonata".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: Some("C".to_string()),
+                    modality: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: Some("Allegro".to_string()),
+                        bpm: Some(120),
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![
+                        "ex-1".to_string(),
+                        "ex-missing".to_string(),
+                        "ex-2".to_string(),
+                    ],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-1".to_string(),
+                    title: "Scales".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: Some("G".to_string()),
+                    modality: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: None,
+                        bpm: Some(80),
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-2".to_string(),
+                    title: "Arpeggios".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-3".to_string(),
+                    title: "Trills".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+
+        // Piece: resolves [ex-1, ex-2] — ex-missing dropped from middle, order preserved.
+        let piece_view = vm.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(
+            piece_view.linked_exercises.len(),
+            2,
+            "both present exercises resolved; missing id dropped"
+        );
+        assert_eq!(piece_view.linked_exercises[0].id, "ex-1", "ex-1 is first");
+        assert_eq!(piece_view.linked_exercises[1].id, "ex-2", "ex-2 is second");
+        assert_eq!(piece_view.linked_exercises[0].title, "Scales");
+        assert_eq!(piece_view.linked_exercises[0].key, Some("G".to_string()));
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo,
+            Some("80 BPM".to_string())
+        );
+        assert!(piece_view.linked_from_pieces.is_empty());
+
+        // Linked exercise ex-1: linked_from_pieces lists the piece.
+        let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1_view.linked_from_pieces.len(), 1);
+        assert_eq!(ex1_view.linked_from_pieces[0].id, "piece-1");
+        assert_eq!(ex1_view.linked_from_pieces[0].title, "Sonata");
+        assert!(ex1_view.linked_exercises.is_empty());
+
+        // Linked exercise ex-2: also appears in linked_from_pieces.
+        let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
+        assert_eq!(ex2_view.linked_from_pieces.len(), 1);
+        assert_eq!(ex2_view.linked_from_pieces[0].id, "piece-1");
+        assert!(ex2_view.linked_exercises.is_empty());
+
+        // Unrelated exercise: both lists empty.
+        let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
+        assert!(ex3_view.linked_exercises.is_empty());
+        assert!(ex3_view.linked_from_pieces.is_empty());
+    }
+
+    #[test]
+    fn test_reverse_index_drops_non_exercise_kind() {
+        // Symmetric to the forward-path kind filter: if a linked id resolves to a
+        // Piece (not an Exercise), both views must drop it — the forward
+        // linked_exercises already does this; the reverse linked_from_pieces must too.
+        let app = Intrada;
+        let now = chrono::Utc::now();
+
+        // Piece P links "item-b", which is itself a Piece (not an Exercise).
+        let model = Model {
+            items: vec![
+                Item {
+                    id: "piece-a".to_string(),
+                    title: "Sonata".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec!["item-b".to_string()],
+                    priority: false,
+                },
+                Item {
+                    id: "item-b".to_string(),
+                    title: "Not An Exercise".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+
+        // Forward: piece-a drops item-b (wrong kind).
+        let piece_a = vm.items.iter().find(|i| i.id == "piece-a").unwrap();
+        assert!(
+            piece_a.linked_exercises.is_empty(),
+            "forward path must drop non-Exercise from linked_exercises"
+        );
+
+        // Reverse: item-b's linked_from_pieces must also be empty — it is not an
+        // Exercise, so it should never appear as a link target's back-reference.
+        let item_b = vm.items.iter().find(|i| i.id == "item-b").unwrap();
+        assert!(
+            item_b.linked_from_pieces.is_empty(),
+            "reverse path must drop non-Exercise from linked_from_pieces (symmetric drop)"
+        );
     }
 }

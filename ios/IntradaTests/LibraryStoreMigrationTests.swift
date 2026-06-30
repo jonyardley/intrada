@@ -81,4 +81,43 @@ final class LibraryStoreMigrationTests: XCTestCase {
       XCTAssertFalse(entries.contains("\"score\":0"), "null-score entry must not gain a zero score")
     }
   }
+
+  // ── v6: linked_exercise_ids ───────────────────────────────────────────
+
+  func testV6AddsLinkedExerciseIdsColumnDefaultingToEmptyArray() throws {
+    // Populate at v5 (no linked_exercise_ids column), insert an item row, then finish.
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v5_rescale_entry_scores",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           created_at, updated_at, priority, deleted_at)
+        VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)
+        """)
+    let columns = try store.columnNames(ofTable: "item")
+    XCTAssertTrue(
+      columns.contains("linked_exercise_ids"),
+      "v6 must add linked_exercise_ids column; got \(columns)")
+
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1, "pre-existing row must survive v6 migration")
+    XCTAssertEqual(
+      loaded[0].linkedExerciseIds, [],
+      "pre-existing row gets empty-array default for linked_exercise_ids")
+  }
+
+  func testV6LinkedExerciseIdsRoundTrip() throws {
+    let store = try LibraryStore.inMemory()
+    let item = Item(
+      id: "p2", title: "Étude", kind: .piece, composer: nil, key: nil, modality: nil,
+      tempo: nil, notes: nil, tags: [], linkedExerciseIds: ["e1", "e2"],
+      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false)
+    try store.save(item)
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1)
+    XCTAssertEqual(
+      loaded[0].linkedExerciseIds, ["e1", "e2"],
+      "linked_exercise_ids must round-trip through JSON storage intact")
+  }
 }

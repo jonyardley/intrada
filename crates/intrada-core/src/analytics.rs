@@ -1115,6 +1115,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            linked_exercise_ids: vec![],
             priority: false,
         }
     }

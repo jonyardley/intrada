@@ -357,6 +357,7 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         tempo: None,
         notes: None,
         tags: vec![],
+        linked_exercise_ids: vec![],
         created_at: now,
         updated_at: now,
         priority: false,
@@ -1180,6 +1181,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1194,6 +1196,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1208,6 +1211,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
             ],

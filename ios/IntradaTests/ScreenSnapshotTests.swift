@@ -264,6 +264,37 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  func testPieceDetailLinkedPopulated() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewDetailWithLinkedExercises.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  func testPieceDetailLinkedEmpty() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewDetailLinkedEmpty.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  func testPieceDetailLinkedEditing() {
+    let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
+    // editingLinks is @State — seed via EditingLinkedExercisesWrapper with startEditingLinks=true.
+    let editing = EditingLinkedExercisesWrapper(item: .previewDetailWithLinkedExercises)
+    assertSnapshot(of: host(editing, store: store), as: config)
+  }
+
+  func testExerciseDetailLinkedFrom() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithLinkedFrom.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   func testLibraryAddScreen() {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }
@@ -404,6 +435,27 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testTagFilterSheetEmpty() {
     let sheet = TagFilterSheet(available: [], selected: [], onChange: { _ in })
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testLinkedExercisePicker() {
+    // Three selectable exercises; the first is pre-selected so "Add 1" is enabled.
+    let sheet = LinkedExercisePickerSheetWrapper(
+      available: [
+        .previewExercise,
+        LibraryItemView(
+          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
+          key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+        LibraryItemView(
+          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
+          key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+      ],
+      pieceId: "piece-3",
+      preselected: ["exercise-1"])
     assertSnapshot(of: host(sheet), as: config)
   }
 

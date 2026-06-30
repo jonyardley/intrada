@@ -13,7 +13,8 @@ final class LibraryStoreTests: XCTestCase {
     Item(
       id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
-      tags: ["scale", "warmup"], createdAt: createdAt, updatedAt: createdAt, priority: true)
+      tags: ["scale", "warmup"], linkedExerciseIds: [], createdAt: createdAt,
+      updatedAt: createdAt, priority: true)
   }
 
   func testSaveThenLoadRoundTrips() throws {
