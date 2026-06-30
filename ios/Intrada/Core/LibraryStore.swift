@@ -319,6 +319,7 @@ final class LibraryStore: ItemStore {
     var repHistory: [String]?
     var plannedDurationSecs: UInt32?
     var achievedTempo: UInt16?
+    var groupId: String?
   }
 
   private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
@@ -329,7 +330,8 @@ final class LibraryStore: ItemStore {
         notes: e.notes, score: e.score, intention: e.intention, repTarget: e.repTarget,
         repCount: e.repCount, repTargetReached: e.repTargetReached,
         repHistory: e.repHistory.map { $0.map(repActionString) },
-        plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo)
+        plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo,
+        groupId: e.groupId)
     }
     guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
     else { return "[]" }
@@ -347,7 +349,8 @@ final class LibraryStore: ItemStore {
         notes: d.notes, score: d.score, intention: d.intention, repTarget: d.repTarget,
         repCount: d.repCount, repTargetReached: d.repTargetReached,
         repHistory: d.repHistory.map { $0.map(repAction(from:)) },
-        plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo)
+        plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo,
+        groupId: d.groupId)
     }
   }
 

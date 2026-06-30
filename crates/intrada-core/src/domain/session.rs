@@ -78,6 +78,11 @@ pub struct SetlistEntry {
     pub planned_duration_secs: Option<u32>,
     #[serde(default)]
     pub achieved_tempo: Option<u16>,
+    /// Block grouping (building phase): entries pulled in alongside a piece via
+    /// its related exercises share one `group_id`. A block is the contiguous run
+    /// of entries with the same id; `None` = standalone.
+    #[serde(default)]
+    pub group_id: Option<String>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -195,6 +200,26 @@ pub enum SessionEvent {
     ReorderSetlist {
         entry_id: String,
         new_position: usize,
+    },
+    /// Move a whole block to a new unit-position (blocks + standalone items,
+    /// in order). Keeps the block contiguous.
+    ReorderBlock {
+        group_id: String,
+        new_position: usize,
+    },
+    /// Drop a block's related exercises, keeping the piece (becomes standalone).
+    KeepOnlyPiece {
+        group_id: String,
+    },
+    /// Dissolve a block — its entries stay in place but become standalone.
+    UngroupBlock {
+        group_id: String,
+    },
+    /// Dissolve every block.
+    UngroupAllBlocks,
+    /// Remove a whole block (piece + its related exercises).
+    RemoveBlock {
+        group_id: String,
     },
     StartSession {
         now: DateTime<Utc>,
@@ -336,6 +361,7 @@ fn create_entry(
         rep_history: None,
         planned_duration_secs: None,
         achieved_tempo: None,
+        group_id: None,
     }
 }
 
@@ -343,6 +369,52 @@ fn reindex_entries(entries: &mut [SetlistEntry]) {
     for (i, entry) in entries.iter_mut().enumerate() {
         entry.position = i;
     }
+}
+
+/// Partition entries into ordered units: a contiguous run sharing a `Some`
+/// `group_id` is one unit (a block); every `None` entry is its own unit.
+fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
+    let mut units: Vec<Vec<SetlistEntry>> = Vec::new();
+    for entry in entries {
+        match &entry.group_id {
+            Some(g) => {
+                let extends = units
+                    .last()
+                    .and_then(|u| u.first())
+                    .and_then(|e| e.group_id.as_deref())
+                    == Some(g.as_str());
+                if extends {
+                    units.last_mut().expect("checked above").push(entry);
+                } else {
+                    units.push(vec![entry]);
+                }
+            }
+            None => units.push(vec![entry]),
+        }
+    }
+    units
+}
+
+/// True when every `group_id` occupies a single contiguous run — the block
+/// invariant a reorder must never break.
+fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
+    let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut current: Option<&str> = None;
+    for entry in entries {
+        let g = entry.group_id.as_deref();
+        if g != current {
+            if let Some(prev) = current {
+                closed.insert(prev);
+            }
+            if let Some(g) = g {
+                if closed.contains(g) {
+                    return false;
+                }
+            }
+            current = g;
+        }
+    }
+    true
 }
 
 fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
@@ -573,18 +645,60 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let Some((title, item_type)) = find_item_in_model(model, &item_id) else {
+            // Resolve the item and — for a piece — its related exercises as owned
+            // tuples before taking the mutable Building borrow.
+            let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
                 model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
                 return crux_core::render::render();
+            };
+            let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
+            let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
+                item.linked_exercise_ids
+                    .iter()
+                    .filter_map(|ex_id| {
+                        model
+                            .items
+                            .iter()
+                            .find(|i| &i.id == ex_id && i.kind == ItemKind::Exercise)
+                            .map(|i| (i.id.clone(), i.title.clone(), i.kind.clone()))
+                    })
+                    .collect()
+            } else {
+                Vec::new()
             };
 
             let SessionStatus::Building(ref mut building) = model.session_status else {
                 model.last_error = Some("Internal error: expected Building state".to_string());
                 return crux_core::render::render();
             };
+
+            // Skip related exercises already in the setlist — don't duplicate.
+            let existing: std::collections::HashSet<String> =
+                building.entries.iter().map(|e| e.item_id.clone()).collect();
+            let related_to_add: Vec<(String, String, ItemKind)> = related
+                .into_iter()
+                .filter(|(id, _, _)| !existing.contains(id))
+                .collect();
+
+            // A block forms only when ≥1 related exercise actually comes along.
+            let group_id = if related_to_add.is_empty() {
+                None
+            } else {
+                Some(ulid::Ulid::new().to_string())
+            };
+
+            // Related first (warm-up order), then the piece.
+            for (id, title, kind) in &related_to_add {
+                let position = building.entries.len();
+                let mut entry = create_entry(id, title, kind.clone(), position);
+                entry.group_id.clone_from(&group_id);
+                building.entries.push(entry);
+            }
             let position = building.entries.len();
-            let entry = create_entry(&item_id, &title, item_type, position);
-            building.entries.push(entry);
+            let mut piece_entry = create_entry(&piece.0, &piece.1, piece.2, position);
+            piece_entry.group_id = group_id;
+            building.entries.push(piece_entry);
+
             model.last_error = None;
             crux_core::render::render()
         }
@@ -658,6 +772,118 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
 
             let entry = building.entries.remove(current_index);
             building.entries.insert(new_position, entry);
+            if !groups_contiguous(&building.entries) {
+                // Revert — the move would split a block.
+                let entry = building.entries.remove(new_position);
+                building.entries.insert(current_index, entry);
+                model.last_error = Some("Can't move an item out of its block".to_string());
+                return crux_core::render::render();
+            }
+            reindex_entries(&mut building.entries);
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::ReorderBlock {
+            group_id,
+            new_position,
+        } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+
+            let mut units = into_units(std::mem::take(&mut building.entries));
+            let Some(current) = units.iter().position(|u| {
+                u.first().and_then(|e| e.group_id.as_deref()) == Some(group_id.as_str())
+            }) else {
+                building.entries = units.into_iter().flatten().collect();
+                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            let target = new_position.min(units.len().saturating_sub(1));
+            let unit = units.remove(current);
+            units.insert(target, unit);
+            building.entries = units.into_iter().flatten().collect();
+            reindex_entries(&mut building.entries);
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::KeepOnlyPiece { group_id } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+
+            let in_block = |e: &SetlistEntry| e.group_id.as_deref() == Some(group_id.as_str());
+            if !building.entries.iter().any(in_block) {
+                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                return crux_core::render::render();
+            }
+
+            building
+                .entries
+                .retain(|e| !(in_block(e) && e.item_type == ItemKind::Exercise));
+            // The lone piece left behind is no longer a block.
+            for entry in building.entries.iter_mut().filter(|e| in_block(e)) {
+                entry.group_id = None;
+            }
+            reindex_entries(&mut building.entries);
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::UngroupBlock { group_id } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+
+            let mut found = false;
+            for entry in building
+                .entries
+                .iter_mut()
+                .filter(|e| e.group_id.as_deref() == Some(group_id.as_str()))
+            {
+                entry.group_id = None;
+                found = true;
+            }
+            if !found {
+                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                return crux_core::render::render();
+            }
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::UngroupAllBlocks => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+            for entry in &mut building.entries {
+                entry.group_id = None;
+            }
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::RemoveBlock { group_id } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+
+            let len_before = building.entries.len();
+            building
+                .entries
+                .retain(|e| e.group_id.as_deref() != Some(group_id.as_str()));
+            if building.entries.len() == len_before {
+                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                return crux_core::render::render();
+            }
             reindex_entries(&mut building.entries);
             model.last_error = None;
             crux_core::render::render()
@@ -1223,6 +1449,259 @@ mod tests {
     fn update(model: &mut Model, event: Event) {
         let app = Intrada;
         let _cmd = app.update(event, model);
+    }
+
+    // --- Block grouping (related exercises travel with a piece) ---
+
+    fn linked_model() -> Model {
+        let now = Utc::now();
+        let mk = |id: &str, title: &str, kind: ItemKind, linked: &[&str]| Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            linked_exercise_ids: linked.iter().map(|s| s.to_string()).collect(),
+            created_at: now,
+            updated_at: now,
+            priority: false,
+        };
+        Model {
+            items: vec![
+                mk("piece-P", "Sonata", ItemKind::Piece, &["ex-A", "ex-B"]),
+                mk("piece-Q", "Nocturne", ItemKind::Piece, &[]),
+                mk("ex-A", "Scales", ItemKind::Exercise, &[]),
+                mk("ex-B", "Arpeggios", ItemKind::Exercise, &[]),
+                mk("ex-C", "Sight-reading", ItemKind::Exercise, &[]),
+            ],
+            api_base_url: "http://localhost:3001".to_string(),
+            ..Default::default()
+        }
+    }
+
+    fn building_entries(model: &Model) -> &[SetlistEntry] {
+        match &model.session_status {
+            SessionStatus::Building(b) => &b.entries,
+            _ => panic!("expected Building state"),
+        }
+    }
+
+    fn ids(model: &Model) -> Vec<String> {
+        building_entries(model)
+            .iter()
+            .map(|e| e.item_id.clone())
+            .collect()
+    }
+
+    fn add(model: &mut Model, item_id: &str) {
+        update(
+            model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: item_id.to_string(),
+            }),
+        );
+    }
+
+    fn group_of(model: &Model, item_id: &str) -> Option<String> {
+        building_entries(model)
+            .iter()
+            .find(|e| e.item_id == item_id)
+            .and_then(|e| e.group_id.clone())
+    }
+
+    #[test]
+    fn add_piece_pulls_related_into_a_block_related_first() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let e = building_entries(&m);
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        let g = e[0].group_id.clone();
+        assert!(g.is_some(), "block has a group_id");
+        assert!(
+            e.iter().all(|x| x.group_id == g),
+            "all three share the group"
+        );
+        assert_eq!((e[0].position, e[1].position, e[2].position), (0, 1, 2));
+    }
+
+    #[test]
+    fn add_piece_without_related_is_standalone() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-Q");
+        let e = building_entries(&m);
+        assert_eq!(e.len(), 1);
+        assert_eq!(e[0].group_id, None);
+    }
+
+    #[test]
+    fn add_exercise_directly_is_standalone() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        let e = building_entries(&m);
+        assert_eq!(e.len(), 1);
+        assert_eq!(e[0].group_id, None);
+    }
+
+    #[test]
+    fn add_piece_skips_already_present_related() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-A");
+        add(&mut m, "piece-P");
+        let e = building_entries(&m);
+        assert_eq!(
+            e.iter().filter(|x| x.item_id == "ex-A").count(),
+            1,
+            "ex-A not duplicated"
+        );
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        assert_eq!(
+            e[0].group_id, None,
+            "the pre-existing ex-A stays standalone"
+        );
+        assert!(e[1].group_id.is_some());
+        assert_eq!(e[1].group_id, e[2].group_id, "ex-B + piece form the block");
+    }
+
+    #[test]
+    fn remove_block_removes_piece_and_related() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::RemoveBlock { group_id: g }),
+        );
+        assert!(m.last_error.is_none());
+        assert_eq!(ids(&m), ["ex-C"]);
+    }
+
+    #[test]
+    fn keep_only_piece_drops_related_and_destandalones() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::KeepOnlyPiece { group_id: g }),
+        );
+        let e = building_entries(&m);
+        assert_eq!(ids(&m), ["piece-P"]);
+        assert_eq!(e[0].group_id, None, "lone piece is no longer a block");
+    }
+
+    #[test]
+    fn ungroup_block_keeps_items_in_place() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::UngroupBlock { group_id: g }),
+        );
+        let e = building_entries(&m);
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        assert!(e.iter().all(|x| x.group_id.is_none()));
+    }
+
+    #[test]
+    fn ungroup_all_clears_every_group() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        add(&mut m, "ex-C");
+        update(&mut m, Event::Session(SessionEvent::UngroupAllBlocks));
+        assert!(building_entries(&m).iter().all(|x| x.group_id.is_none()));
+    }
+
+    #[test]
+    fn reorder_block_moves_the_whole_unit() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        add(&mut m, "ex-C");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::ReorderBlock {
+                group_id: g,
+                new_position: 1,
+            }),
+        );
+        assert_eq!(ids(&m), ["ex-C", "ex-A", "ex-B", "piece-P"]);
+    }
+
+    #[test]
+    fn reorder_within_block_is_allowed() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let ex_b = building_entries(&m)[1].id.clone();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::ReorderSetlist {
+                entry_id: ex_b,
+                new_position: 0,
+            }),
+        );
+        assert!(m.last_error.is_none());
+        let e = building_entries(&m);
+        assert_eq!(ids(&m), ["ex-B", "ex-A", "piece-P"]);
+        assert!(e.iter().all(|x| x.group_id == e[0].group_id));
+    }
+
+    #[test]
+    fn reorder_that_splits_a_block_is_rejected() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        add(&mut m, "piece-P");
+        let ex_c = building_entries(&m)[0].id.clone();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::ReorderSetlist {
+                entry_id: ex_c,
+                new_position: 2,
+            }),
+        );
+        assert!(m.last_error.is_some(), "splitting move rejected");
+        assert_eq!(
+            ids(&m),
+            ["ex-C", "ex-A", "ex-B", "piece-P"],
+            "order unchanged"
+        );
+    }
+
+    #[test]
+    fn building_view_projects_blocks_and_standalones() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        add(&mut m, "ex-C");
+        let vm = Intrada.view(&m);
+        let b = vm.building_setlist.expect("building view");
+        assert_eq!(b.item_count, 4);
+        assert_eq!(b.block_count, 2);
+        let block = &b.blocks[0];
+        assert!(block.group_id.is_some());
+        assert_eq!(block.piece_title.as_deref(), Some("Sonata"));
+        assert_eq!(block.related_count, 2);
+        assert_eq!(block.entries.len(), 3);
+        let solo = &b.blocks[1];
+        assert_eq!(solo.group_id, None);
+        assert_eq!(solo.piece_title, None);
+        assert_eq!(solo.related_count, 0);
     }
 
     // --- Building Phase Tests ---

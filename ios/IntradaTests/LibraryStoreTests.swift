@@ -124,7 +124,8 @@ final class LibraryStoreTests: XCTestCase {
       id: id, itemId: "item-\(id)", itemTitle: "Etude", itemType: .exercise, position: 0,
       durationSecs: 300, status: .completed, notes: "good", score: 4, intention: "evenness",
       repTarget: 5, repCount: 5, repTargetReached: true,
-      repHistory: [.success, .missed, .success], plannedDurationSecs: 300, achievedTempo: 120)
+      repHistory: [.success, .missed, .success], plannedDurationSecs: 300, achievedTempo: 120,
+      groupId: nil)
   }
 
   private func session(_ id: String, completedAt: String = "2026-01-01T00:00:00Z")

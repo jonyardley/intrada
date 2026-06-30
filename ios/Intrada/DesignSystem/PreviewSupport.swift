@@ -140,7 +140,17 @@
           items: [.previewPiece, .previewExercise, .previewMinimal],
           buildingSetlist: BuildingSetlistView(
             entries: [.previewPiece, .previewExercise],
-            itemCount: 2, sessionIntention: nil, targetDurationMins: nil,
+            itemCount: 2,
+            blocks: [
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewPiece]),
+              SetlistBlockView(
+                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
+                entries: [.previewExercise]),
+            ],
+            blockCount: 2,
+            sessionIntention: nil, targetDurationMins: nil,
             sourceStatus: .noSource)))
     }
 
@@ -367,7 +377,7 @@
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: nil)
     }
   }
 
@@ -419,7 +429,8 @@
         id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
-        repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil)
+        repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
+        groupId: nil)
     }
   }
 
@@ -482,7 +493,7 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: nil, score: score, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil)
     }
   }
 #endif
