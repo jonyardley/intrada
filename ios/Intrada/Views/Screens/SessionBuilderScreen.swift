@@ -294,9 +294,9 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  /// Reorder a whole unit (a block or a standalone item) by one place. Blocks
-  /// move as a unit via `reorderBlock`; a standalone item is a single entry, so
-  /// it slides to the neighbour unit's edge position via `reorderSetlist`.
+  /// A block moves as a unit via `reorderBlock`; a standalone item is a single
+  /// entry, so it slides to the neighbour unit's edge position via
+  /// `reorderSetlist`.
   private func moveUnit(at index: Int, by delta: Int) {
     guard index < blocks.count else { return }
     let dest = index + delta
