@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The type-language pairing — colour + glyph + label per `ItemKind` — defined
 /// once here so every type-coded surface (card bars, badges, chips) stays in
-/// sync. Piece = indigo + note; Exercise = gold + repeat.
+/// sync. Piece = indigo + note; Exercise = gold + dumbbell.
 extension ItemKind {
   var accent: Color {
     switch self {
@@ -22,7 +22,7 @@ extension ItemKind {
   var iconName: String {
     switch self {
     case .piece: "music.note"
-    case .exercise: "repeat"
+    case .exercise: "dumbbell.fill"
     }
   }
 

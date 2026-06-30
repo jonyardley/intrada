@@ -37,7 +37,7 @@ struct LinkedExercisePickerSheet: View {
         if available.isEmpty {
           PlaceholderContent(
             systemImage: "music.note.list",
-            message: "No exercises to link. Add an exercise to your library first.")
+            message: "No exercises to add. Create an exercise in your library first.")
         } else {
           ScrollView {
             VStack(spacing: 0) {
@@ -64,7 +64,7 @@ struct LinkedExercisePickerSheet: View {
           }
         }
       }
-      .navigationTitle("Link an exercise")
+      .navigationTitle("Related exercises")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {

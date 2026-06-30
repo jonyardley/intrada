@@ -101,7 +101,7 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  // ── Linked exercises ──
+  // ── Related exercises ──
 
   private var linkedExercisesSection: some View {
     VStack(spacing: 0) {
@@ -110,7 +110,6 @@ struct LibraryDetailScreen: View {
         linkedExercisesEmptyState
       } else {
         linkedExercisesRows
-        HairlineDivider()
         linkExerciseButton
       }
     }
@@ -122,7 +121,7 @@ struct LibraryDetailScreen: View {
 
   private var linkedExercisesHeader: some View {
     HStack {
-      Text("Linked exercises")
+      Text("Related exercises")
         .font(IntradaFont.cardTitle())
         .foregroundStyle(IntradaColor.ink)
       if !item.linkedExercises.isEmpty {
@@ -143,7 +142,7 @@ struct LibraryDetailScreen: View {
       .foregroundStyle(IntradaColor.accent)
       .disabled(item.linkedExercises.isEmpty)
       .opacity(item.linkedExercises.isEmpty ? 0 : 1)
-      .accessibilityLabel(editingLinks ? "Done editing linked exercises" : "Edit linked exercises")
+      .accessibilityLabel(editingLinks ? "Done editing related exercises" : "Edit related exercises")
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)
@@ -184,29 +183,18 @@ struct LibraryDetailScreen: View {
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkFaint)
         .accessibilityHidden(true)
-      Text("No exercises linked yet")
+      Text("No related exercises yet")
         .font(IntradaFont.cardTitle())
         .foregroundStyle(IntradaColor.ink)
-      Text("Link scales, arpeggios, or any exercise to track progress alongside this piece.")
+      Text("Add scales, arpeggios, or any exercise you practise alongside this piece.")
         .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkSecondary)
         .multilineTextAlignment(.center)
-      Button {
+      AddRowButton(title: "Add a related exercise") {
         showingPicker = true
-      } label: {
-        Text("Link an exercise")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.vertical, IntradaSpacing.cardCompact)
-          .overlay(
-            RoundedRectangle(cornerRadius: IntradaRadius.card)
-              .stroke(IntradaColor.accent, lineWidth: 1)
-          )
       }
-      .buttonStyle(.plain)
       .padding(.top, IntradaSpacing.controlGap)
-      .accessibilityLabel("Link an exercise to this piece")
+      .accessibilityLabel("Add a related exercise to this piece")
     }
     .frame(maxWidth: .infinity)
     .padding(IntradaSpacing.card)
@@ -214,25 +202,20 @@ struct LibraryDetailScreen: View {
   }
 
   private var linkExerciseButton: some View {
-    Button {
+    AddRowButton(title: "Add a related exercise") {
       showingPicker = true
-    } label: {
-      Label("Link an exercise", systemImage: "plus")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.accent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Link an exercise to this piece")
+    .accessibilityLabel("Add a related exercise to this piece")
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.vertical, IntradaSpacing.cardCompact)
   }
 
-  // ── Linked from ──
+  // ── Related pieces ──
 
   private var linkedFromSection: some View {
     VStack(spacing: 0) {
       HStack {
-        Text("Linked from")
+        Text("Related pieces")
           .font(IntradaFont.cardTitle())
           .foregroundStyle(IntradaColor.ink)
         Spacer()
@@ -259,7 +242,7 @@ struct LibraryDetailScreen: View {
           .padding(.horizontal, IntradaSpacing.card)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(piece.title), linked from")
+        .accessibilityLabel("\(piece.title), related piece")
       }
     }
     .cardSurface()
@@ -309,16 +292,9 @@ struct LibraryDetailScreen: View {
   }
 
   private var deleteButton: some View {
-    Button(role: .destructive) {
+    DeleteButton(title: "Delete \(item.itemType.label.lowercased())") {
       confirmingDelete = true
-    } label: {
-      Label("Delete \(item.itemType.label.lowercased())", systemImage: "trash")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.danger)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.cardCompact)
     }
-    .buttonStyle(.plain)
   }
 
   private func delete() {
@@ -509,21 +485,21 @@ private struct LinkedExerciseEditRow: View {
     .environment(Store.preview)
   }
 
-  #Preview("Linked — populated") {
+  #Preview("Related — populated") {
     NavigationStack {
       LibraryDetailScreen(item: .previewDetailWithLinkedExercises)
     }
     .environment(Store.previewDetailLinkedPopulated)
   }
 
-  #Preview("Linked — empty") {
+  #Preview("Related — empty") {
     NavigationStack {
       LibraryDetailScreen(item: .previewDetailLinkedEmpty)
     }
     .environment(Store.previewDetailLinkedEmpty)
   }
 
-  #Preview("Exercise — Linked from") {
+  #Preview("Exercise — Related pieces") {
     NavigationStack {
       LibraryDetailScreen(item: .previewExerciseWithLinkedFrom)
     }
