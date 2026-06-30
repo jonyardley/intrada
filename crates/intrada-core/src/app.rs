@@ -343,13 +343,14 @@ impl App for Intrada {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        use std::collections::HashMap;
+
         // Build an id→item index for O(1) linked-exercise lookup.
-        let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+        let item_index: HashMap<&str, &crate::domain::item::Item> =
             model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
         // Build a reverse index: exercise_id → [PieceRefView] in one pass.
-        let mut piece_refs_by_exercise: std::collections::HashMap<&str, Vec<PieceRefView>> =
-            std::collections::HashMap::new();
+        let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
         for item in &model.items {
             if item.kind == ItemKind::Piece {
                 for ex_id in &item.linked_exercise_ids {
@@ -1837,9 +1838,14 @@ mod tests {
         let mut model = Model::test_default();
         let now = chrono::Utc::now();
 
-        // Populate 10,000 items (5k pieces + 5k exercises)
+        // Populate 10,000 items (5k pieces + 5k exercises).
+        // Each piece links 5 exercise ids that exist in the fixture (e00000–e04999),
+        // so the reverse-index path is load-tested — an O(n²) scan would be caught.
         let start = std::time::Instant::now();
         for i in 0..5000 {
+            let linked_exercise_ids: Vec<String> = (0..5)
+                .map(|k| format!("e{:05}", (i * 7 + k * 997) % 5000))
+                .collect();
             model.items.push(Item {
                 id: format!("p{i:05}"),
                 title: format!("Piece {i}"),
@@ -1867,7 +1873,7 @@ mod tests {
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
-                linked_exercise_ids: vec![],
+                linked_exercise_ids,
                 priority: false,
             });
         }
@@ -3744,8 +3750,10 @@ mod tests {
         let app = Intrada;
         let now = chrono::Utc::now();
 
-        // Piece P links E1 (exists) and E2 (missing — id not in model.items).
-        // Unrelated exercise E3 is present but not linked by P.
+        // Piece P links ["ex-1", "ex-missing", "ex-2"]: ex-1 and ex-2 are present,
+        // ex-missing is absent. Proves order is preserved AND the missing id is
+        // dropped from the middle (not just from the end).
+        // Unrelated exercise ex-3 is present but not linked by P.
         let model = Model {
             items: vec![
                 Item {
@@ -3763,7 +3771,11 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
-                    linked_exercise_ids: vec!["ex-1".to_string(), "ex-missing".to_string()],
+                    linked_exercise_ids: vec![
+                        "ex-1".to_string(),
+                        "ex-missing".to_string(),
+                        "ex-2".to_string(),
+                    ],
                     priority: false,
                 },
                 Item {
@@ -3785,8 +3797,23 @@ mod tests {
                     priority: false,
                 },
                 Item {
-                    id: "ex-3".to_string(),
+                    id: "ex-2".to_string(),
                     title: "Arpeggios".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-3".to_string(),
+                    title: "Trills".to_string(),
                     kind: ItemKind::Exercise,
                     composer: None,
                     key: None,
@@ -3805,14 +3832,15 @@ mod tests {
 
         let vm = app.view(&model);
 
-        // Piece: linked_exercises resolves [E1] only (E2 dropped, order preserved).
+        // Piece: resolves [ex-1, ex-2] — ex-missing dropped from middle, order preserved.
         let piece_view = vm.items.iter().find(|i| i.id == "piece-1").unwrap();
         assert_eq!(
             piece_view.linked_exercises.len(),
-            1,
-            "missing exercise id is dropped"
+            2,
+            "both present exercises resolved; missing id dropped"
         );
-        assert_eq!(piece_view.linked_exercises[0].id, "ex-1");
+        assert_eq!(piece_view.linked_exercises[0].id, "ex-1", "ex-1 is first");
+        assert_eq!(piece_view.linked_exercises[1].id, "ex-2", "ex-2 is second");
         assert_eq!(piece_view.linked_exercises[0].title, "Scales");
         assert_eq!(piece_view.linked_exercises[0].key, Some("G".to_string()));
         assert_eq!(
@@ -3821,12 +3849,18 @@ mod tests {
         );
         assert!(piece_view.linked_from_pieces.is_empty());
 
-        // Linked exercise: linked_from_pieces lists the piece.
+        // Linked exercise ex-1: linked_from_pieces lists the piece.
         let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert_eq!(ex1_view.linked_from_pieces.len(), 1);
         assert_eq!(ex1_view.linked_from_pieces[0].id, "piece-1");
         assert_eq!(ex1_view.linked_from_pieces[0].title, "Sonata");
         assert!(ex1_view.linked_exercises.is_empty());
+
+        // Linked exercise ex-2: also appears in linked_from_pieces.
+        let ex2_view = vm.items.iter().find(|i| i.id == "ex-2").unwrap();
+        assert_eq!(ex2_view.linked_from_pieces.len(), 1);
+        assert_eq!(ex2_view.linked_from_pieces[0].id, "piece-1");
+        assert!(ex2_view.linked_exercises.is_empty());
 
         // Unrelated exercise: both lists empty.
         let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
