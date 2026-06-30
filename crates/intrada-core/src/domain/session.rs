@@ -255,9 +255,6 @@ pub enum SessionEvent {
     UpdateSessionNotes {
         notes: Option<String>,
     },
-    UpdateSessionScore {
-        score: Option<u8>,
-    },
     SaveSession {
         now: DateTime<Utc>,
     },
@@ -271,6 +268,9 @@ pub enum SessionEvent {
     // === History ===
     DeleteSession {
         id: String,
+    },
+    UpdateSessionScore {
+        score: Option<u8>,
     },
 }
 
