@@ -189,6 +189,11 @@
       Store(bridge: PreviewBridge(items: [.previewDetailLinkedEmpty]))
     }
 
+    /// Detail view: exercise linked from 2 pieces — shows the "Linked from" card.
+    static var previewExerciseLinkedFrom: Store {
+      Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    }
+
     private static func scored(_ item: LibraryItemView, _ score: UInt8) -> LibraryItemView {
       var copy = item
       copy.practice = ItemPracticeSummary(
@@ -317,6 +322,20 @@
             practice: nil),
         ],
         linkedFromPieces: [])
+    }
+
+    /// An exercise linked from 2 pieces — for the "Linked from" card snapshot.
+    static var previewExerciseWithLinkedFrom: LibraryItemView {
+      LibraryItemView(
+        id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
+        subtitle: "Charles-Louis Hanon",
+        key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
+        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [
+          PieceRefView(id: "piece-1", title: "Clair de Lune"),
+          PieceRefView(id: "piece-2", title: "Gymnopédie No. 1"),
+        ])
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.

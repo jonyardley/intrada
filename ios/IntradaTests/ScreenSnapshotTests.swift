@@ -287,6 +287,14 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(editing, store: store), as: config)
   }
 
+  func testExerciseDetailLinkedFrom() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithLinkedFrom]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithLinkedFrom.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   func testLibraryAddScreen() {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }

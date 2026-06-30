@@ -52,6 +52,10 @@ struct LibraryDetailScreen: View {
             linkedExercisesSection
           }
 
+          if item.itemType == .exercise && !item.linkedFromPieces.isEmpty {
+            linkedFromSection
+          }
+
           deleteButton
             .padding(.top, IntradaSpacing.controlGap)
         }
@@ -221,6 +225,44 @@ struct LibraryDetailScreen: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Link an exercise to this piece")
+  }
+
+  // ── Linked from ──
+
+  private var linkedFromSection: some View {
+    VStack(spacing: 0) {
+      HStack {
+        Text("Linked from")
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        Spacer()
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.top, IntradaSpacing.card)
+      .padding(.bottom, IntradaSpacing.cardCompact)
+      ForEach(Array(item.linkedFromPieces.enumerated()), id: \.element.id) { index, piece in
+        if index > 0 {
+          HairlineDivider()
+        }
+        NavigationLink(value: piece.id) {
+          HStack {
+            Text(piece.title)
+              .font(IntradaFont.body)
+              .foregroundStyle(IntradaColor.ink)
+              .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+              .imageScale(.small)
+              .font(IntradaFont.meta)
+              .foregroundStyle(IntradaColor.inkFaint)
+          }
+          .padding(.vertical, IntradaSpacing.cardCompact)
+          .padding(.horizontal, IntradaSpacing.card)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(piece.title), linked from")
+      }
+    }
+    .cardSurface()
   }
 
   // ── Actions ──
@@ -475,6 +517,13 @@ private struct LinkedExerciseEditRow: View {
       LibraryDetailScreen(item: .previewDetailLinkedEmpty)
     }
     .environment(Store.previewDetailLinkedEmpty)
+  }
+
+  #Preview("Exercise — Linked from") {
+    NavigationStack {
+      LibraryDetailScreen(item: .previewExerciseWithLinkedFrom)
+    }
+    .environment(Store.previewExerciseLinkedFrom)
   }
 
   /// Snapshot seed: renders the detail screen with editingLinks already on,
