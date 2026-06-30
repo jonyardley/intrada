@@ -130,19 +130,19 @@ The core computes block summaries; the shell renders. **Collapse state is UI-onl
 - **Phase B**: SwiftUI block rendering, reorder-as-unit, block actions, snapshots.
 - **Phase C**: polish — collapse animation, "Ungroup all", a11y, iPad.
 
-## 7. Open questions (need answers before Phase A)
+## 7. Decisions (resolved for Phase A)
 
-1. **Dedupe:** if a related exercise is *already* in the setlist (standalone or in
-   another block) when its piece is added, do we (a) skip it, (b) move it into the
-   new block, or (c) allow a duplicate? *(Lean: skip — don't duplicate.)*
-2. **"Ungroup" vs "Remove block":** the design shows both "ungroup" (keep items)
-   and a header-X "drop the group" (remove items). Confirm both are wanted, or
-   collapse to one.
-3. **Reorder model:** is whole-block drag (header) + within-block drag (rows)
-   enough, or do we also need to drag a row *out* of a block to make it standalone?
-   *(Lean: out-of-block drag is Phase C, not MVP.)*
-4. **Empty group:** removing the *piece* from a block but keeping related — does the
-   block dissolve to standalone exercises, or is that disallowed? *(Lean: dissolve.)*
+1. **Dedupe:** a related exercise already in the setlist is **skipped** — never
+   duplicated (it stays where it is; the new block just omits it).
+2. **"Ungroup" vs "Remove block":** **both** kept — `UngroupBlock` keeps the items
+   (clears `group_id`), `RemoveBlock` drops the whole block.
+3. **Reorder model:** whole-block drag (`ReorderBlock`) + within-block drag
+   (`ReorderSetlist`, contiguity-guarded). Dragging a row *out* of a block is
+   deferred to Phase C.
+4. **Piece removal dissolves the block:** removing the *piece* via
+   `RemoveFromSetlist` clears `group_id` on the remaining related (they become
+   standalone) — a block only means "this piece's warm-up". Implemented via
+   `dissolve_pieceless_groups`; tested.
 
 ## 8. Risks
 

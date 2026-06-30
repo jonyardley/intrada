@@ -417,6 +417,31 @@ fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
     true
 }
 
+/// Clear the `group_id` of any block left without its anchor piece — a block
+/// only means "this piece's warm-up", so when the piece goes the related
+/// exercises become standalone (§7.4 dissolve).
+fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
+    let anchored: std::collections::HashSet<&str> = entries
+        .iter()
+        .filter(|e| e.item_type == ItemKind::Piece)
+        .filter_map(|e| e.group_id.as_deref())
+        .collect();
+    let orphans: std::collections::HashSet<String> = entries
+        .iter()
+        .filter_map(|e| e.group_id.clone())
+        .filter(|g| !anchored.contains(g.as_str()))
+        .collect();
+    for entry in entries.iter_mut() {
+        if entry
+            .group_id
+            .as_deref()
+            .is_some_and(|g| orphans.contains(g))
+        {
+            entry.group_id = None;
+        }
+    }
+}
+
 fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     let now = Utc::now();
     Item {
@@ -743,6 +768,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
+            dissolve_pieceless_groups(&mut building.entries);
             reindex_entries(&mut building.entries);
             model.last_error = None;
             crux_core::render::render()
@@ -1474,9 +1500,11 @@ mod tests {
             items: vec![
                 mk("piece-P", "Sonata", ItemKind::Piece, &["ex-A", "ex-B"]),
                 mk("piece-Q", "Nocturne", ItemKind::Piece, &[]),
+                mk("piece-R", "Etude", ItemKind::Piece, &["ex-C"]),
                 mk("ex-A", "Scales", ItemKind::Exercise, &[]),
                 mk("ex-B", "Arpeggios", ItemKind::Exercise, &[]),
                 mk("ex-C", "Sight-reading", ItemKind::Exercise, &[]),
+                mk("ex-D", "Trills", ItemKind::Exercise, &[]),
             ],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()
@@ -1702,6 +1730,103 @@ mod tests {
         assert_eq!(solo.group_id, None);
         assert_eq!(solo.piece_title, None);
         assert_eq!(solo.related_count, 0);
+    }
+
+    #[test]
+    fn two_adjacent_blocks_project_separately() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P"); // block G1: ex-A, ex-B, piece-P
+        add(&mut m, "piece-R"); // block G2: ex-C, piece-R
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
+        let g1 = group_of(&m, "piece-P");
+        let g2 = group_of(&m, "piece-R");
+        assert!(g1.is_some() && g2.is_some() && g1 != g2, "distinct blocks");
+        let b = Intrada.view(&m).building_setlist.unwrap();
+        assert_eq!(b.block_count, 2);
+        assert_eq!(b.item_count, 5);
+        assert_eq!(b.blocks[0].piece_title.as_deref(), Some("Sonata"));
+        assert_eq!(b.blocks[0].related_count, 2);
+        assert_eq!(b.blocks[1].piece_title.as_deref(), Some("Etude"));
+        assert_eq!(b.blocks[1].related_count, 1);
+    }
+
+    #[test]
+    fn standalone_can_move_between_two_blocks() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P"); // G1: 0,1,2
+        add(&mut m, "piece-R"); // G2: 3,4
+        add(&mut m, "ex-D"); // standalone: 5
+        let ex_d = building_entries(&m)
+            .iter()
+            .find(|e| e.item_id == "ex-D")
+            .unwrap()
+            .id
+            .clone();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::ReorderSetlist {
+                entry_id: ex_d,
+                new_position: 3,
+            }),
+        );
+        assert!(
+            m.last_error.is_none(),
+            "a standalone between blocks splits neither"
+        );
+        assert_eq!(
+            ids(&m),
+            ["ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R"]
+        );
+        assert!(groups_contiguous(building_entries(&m)));
+    }
+
+    #[test]
+    fn removing_the_piece_dissolves_the_block_to_standalone() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P"); // ex-A, ex-B, piece-P (group)
+        let piece = building_entries(&m)
+            .iter()
+            .find(|e| e.item_id == "piece-P")
+            .unwrap()
+            .id
+            .clone();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::RemoveFromSetlist { entry_id: piece }),
+        );
+        assert!(m.last_error.is_none());
+        assert_eq!(ids(&m), ["ex-A", "ex-B"]);
+        assert!(
+            building_entries(&m).iter().all(|x| x.group_id.is_none()),
+            "related become standalone when their piece is removed"
+        );
+        let b = Intrada.view(&m).building_setlist.unwrap();
+        assert_eq!(
+            b.block_count, 2,
+            "two standalone units, not one pieceless block"
+        );
+    }
+
+    #[test]
+    fn removing_a_related_keeps_the_block() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P"); // ex-A, ex-B, piece-P
+        let ex_a = building_entries(&m)[0].id.clone();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::RemoveFromSetlist { entry_id: ex_a }),
+        );
+        assert!(m.last_error.is_none());
+        assert_eq!(ids(&m), ["ex-B", "piece-P"]);
+        let e = building_entries(&m);
+        assert!(
+            e[0].group_id.is_some() && e[0].group_id == e[1].group_id,
+            "the piece + remaining related stay one block"
+        );
     }
 
     // --- Building Phase Tests ---
