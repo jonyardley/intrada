@@ -275,11 +275,15 @@ struct LibraryDetailScreen: View {
   }
 
   private func linkExercises(_ ids: [String]) {
-    let before = store.viewModel?.error
+    var allSucceeded = true
     for id in ids {
+      let before = store.viewModel?.error
       store.send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
+      if store.viewModel?.error != before {
+        allSucceeded = false
+      }
     }
-    if store.viewModel?.error == before {
+    if allSucceeded {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }

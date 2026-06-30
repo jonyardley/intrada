@@ -350,17 +350,24 @@ impl App for Intrada {
             model.items.iter().map(|i| (i.id.as_str(), i)).collect();
 
         // Build a reverse index: exercise_id → [PieceRefView] in one pass.
+        // Mirror the forward filter: only push a PieceRefView when the target
+        // id resolves to a present item whose kind == Exercise.
         let mut piece_refs_by_exercise: HashMap<&str, Vec<PieceRefView>> = HashMap::new();
         for item in &model.items {
             if item.kind == ItemKind::Piece {
                 for ex_id in &item.linked_exercise_ids {
-                    piece_refs_by_exercise
-                        .entry(ex_id.as_str())
-                        .or_default()
-                        .push(PieceRefView {
-                            id: item.id.clone(),
-                            title: item.title.clone(),
-                        });
+                    if item_index
+                        .get(ex_id.as_str())
+                        .is_some_and(|t| t.kind == ItemKind::Exercise)
+                    {
+                        piece_refs_by_exercise
+                            .entry(ex_id.as_str())
+                            .or_default()
+                            .push(PieceRefView {
+                                id: item.id.clone(),
+                                title: item.title.clone(),
+                            });
+                    }
                 }
             }
         }
@@ -3866,5 +3873,68 @@ mod tests {
         let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
         assert!(ex3_view.linked_exercises.is_empty());
         assert!(ex3_view.linked_from_pieces.is_empty());
+    }
+
+    #[test]
+    fn test_reverse_index_drops_non_exercise_kind() {
+        // Symmetric to the forward-path kind filter: if a linked id resolves to a
+        // Piece (not an Exercise), both views must drop it — the forward
+        // linked_exercises already does this; the reverse linked_from_pieces must too.
+        let app = Intrada;
+        let now = chrono::Utc::now();
+
+        // Piece P links "item-b", which is itself a Piece (not an Exercise).
+        let model = Model {
+            items: vec![
+                Item {
+                    id: "piece-a".to_string(),
+                    title: "Sonata".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec!["item-b".to_string()],
+                    priority: false,
+                },
+                Item {
+                    id: "item-b".to_string(),
+                    title: "Not An Exercise".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+
+        // Forward: piece-a drops item-b (wrong kind).
+        let piece_a = vm.items.iter().find(|i| i.id == "piece-a").unwrap();
+        assert!(
+            piece_a.linked_exercises.is_empty(),
+            "forward path must drop non-Exercise from linked_exercises"
+        );
+
+        // Reverse: item-b's linked_from_pieces must also be empty — it is not an
+        // Exercise, so it should never appear as a link target's back-reference.
+        let item_b = vm.items.iter().find(|i| i.id == "item-b").unwrap();
+        assert!(
+            item_b.linked_from_pieces.is_empty(),
+            "reverse path must drop non-Exercise from linked_from_pieces (symmetric drop)"
+        );
     }
 }
