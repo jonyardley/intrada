@@ -190,16 +190,16 @@ final class ScreenSnapshotTests: XCTestCase {
 
   // ── Engaging-refresh components ──
 
-  func testMasteryMeter() {
-    let meters = ZStack {
+  func testScoreRing() {
+    let rings = ZStack {
       PaperBackground()
       HStack(spacing: 18) {
-        ForEach(1...5, id: \.self) { MasteryMeter(level: $0) }
-        MasteryMeter(level: nil)
+        ScoreRing(score: nil)
+        ForEach([1, 4, 7, 10], id: \.self) { ScoreRing(score: $0) }
       }
       .padding(16)
     }
-    assertSnapshot(of: host(meters), as: config)
+    assertSnapshot(of: host(rings), as: config)
   }
 
   func testMasteryDial() {
