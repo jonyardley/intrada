@@ -32,7 +32,7 @@ struct ScoreRing: View {
       }
       if isUnrated {
         Text("–")
-          .font(.system(size: size * 0.36))
+          .font(IntradaFont.pageTitle(size * 0.36))
           .foregroundStyle(IntradaColor.inkFaint)
       } else {
         Text("\(clampedScore)")
@@ -40,6 +40,7 @@ struct ScoreRing: View {
           .foregroundStyle(IntradaColor.ink)
       }
     }
+    .padding(lineWidth / 2)
     .frame(width: size, height: size)
     .onAppear {
       guard animates, !shown else { return }
