@@ -1,10 +1,8 @@
 import SharedTypes
 import SwiftUI
 
-// Library-first builder: browse/search the library up top, tap to add, and the
-// setlist forms in the queue tray below. A piece's related exercises arrive as
-// one block (related-first, piece-last); standalone items render as plain rows.
-// `cancelBuilding` fires from PracticeScreen's navigation binding on dismiss.
+// Library-first builder: browse + tap to add; the setlist forms below, where a
+// piece's related exercises arrive as one draggable block.
 struct SessionBuilderScreen: View {
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
@@ -26,13 +24,12 @@ struct SessionBuilderScreen: View {
   /// item is removed and `blocks` shrinks mid-render.
   private struct BuilderUnit: Identifiable {
     let id: String
-    let index: Int
     let block: SetlistBlockView
   }
 
   private var units: [BuilderUnit] {
     blocks.enumerated().map { offset, block in
-      BuilderUnit(id: block.entries.first?.id ?? "unit-\(offset)", index: offset, block: block)
+      BuilderUnit(id: block.entries.first?.id ?? "unit-\(offset)", block: block)
     }
   }
 
@@ -113,7 +110,7 @@ struct SessionBuilderScreen: View {
     .accessibilityHint(added ? "Removes it from the session" : "Adds it to the session")
   }
 
-  // ── Queue tray (units: blocks + standalone items) ────────────────────
+  // ── Queue tray (units: blocks + standalone items, drag-reorderable) ──
 
   private var queueTray: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -131,16 +128,23 @@ struct SessionBuilderScreen: View {
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(IntradaSpacing.card)
       } else {
-        ScrollView {
-          VStack(spacing: IntradaSpacing.controlGap) {
-            ForEach(units) { unit in
-              unitView(unit.block, at: unit.index)
-            }
+        List {
+          ForEach(units) { unit in
+            unitView(unit.block)
+              .listRowBackground(Color.clear)
+              .listRowSeparator(.hidden)
+              .listRowInsets(
+                EdgeInsets(
+                  top: IntradaSpacing.controlGap / 2, leading: IntradaSpacing.card,
+                  bottom: IntradaSpacing.controlGap / 2, trailing: IntradaSpacing.card))
           }
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.vertical, IntradaSpacing.cardCompact)
+          .onMove(perform: moveUnits)
         }
-        .frame(maxHeight: 240)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        // Edit-mode grips drag whole units (a block card as one); no `.onDelete`.
+        .environment(\.editMode, .constant(.active))
+        .frame(maxHeight: 280)
       }
     }
     .frame(maxWidth: .infinity)
@@ -149,23 +153,20 @@ struct SessionBuilderScreen: View {
     .cardShadow(above: true)
   }
 
-  @ViewBuilder private func unitView(_ block: SetlistBlockView, at index: Int) -> some View {
+  @ViewBuilder private func unitView(_ block: SetlistBlockView) -> some View {
     if block.groupId == nil, let entry = block.entries.first {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        SetlistQueueRow(entry: entry) {
-          store.send(.session(.removeFromSetlist(entryId: entry.id)))
-        }
-        reorderControls(at: index)
-          .padding(.trailing, IntradaSpacing.cardCompact)
+      SetlistQueueRow(entry: entry) {
+        store.send(.session(.removeFromSetlist(entryId: entry.id)))
       }
+      .padding(.horizontal, IntradaSpacing.cardCompact)
       .background(IntradaColor.cardFill)
       .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     } else {
-      blockCard(block, at: index)
+      blockCard(block)
     }
   }
 
-  private func blockCard(_ block: SetlistBlockView, at index: Int) -> some View {
+  private func blockCard(_ block: SetlistBlockView) -> some View {
     let groupId = block.groupId ?? ""
     let collapsed = collapsedGroups.contains(groupId)
     return VStack(spacing: 0) {
@@ -191,7 +192,6 @@ struct SessionBuilderScreen: View {
             .foregroundStyle(IntradaColor.inkFaint)
         }
         Spacer(minLength: IntradaSpacing.controlGap)
-        reorderControls(at: index)
         blockMenu(groupId: groupId)
       }
       .padding(.horizontal, IntradaSpacing.cardCompact)
@@ -213,23 +213,6 @@ struct SessionBuilderScreen: View {
       Rectangle().fill(IntradaColor.accent).frame(width: 3)
         .clipShape(RoundedRectangle(cornerRadius: 1.5))
     }
-  }
-
-  private func reorderControls(at index: Int) -> some View {
-    HStack(spacing: 2) {
-      Button { moveUnit(at: index, by: -1) } label: {
-        Image(systemName: "chevron.up").font(IntradaFont.micro)
-      }
-      .disabled(index == 0)
-      .accessibilityLabel("Move up")
-      Button { moveUnit(at: index, by: 1) } label: {
-        Image(systemName: "chevron.down").font(IntradaFont.micro)
-      }
-      .disabled(index == blocks.count - 1)
-      .accessibilityLabel("Move down")
-    }
-    .buttonStyle(.plain)
-    .foregroundStyle(IntradaColor.inkFaint)
   }
 
   private func blockMenu(groupId: String) -> some View {
@@ -294,22 +277,23 @@ struct SessionBuilderScreen: View {
     }
   }
 
-  /// A block moves as a unit via `reorderBlock`; a standalone item is a single
-  /// entry, so it slides to the neighbour unit's edge position via
-  /// `reorderSetlist`.
-  private func moveUnit(at index: Int, by delta: Int) {
-    guard index < blocks.count else { return }
-    let dest = index + delta
-    guard dest >= 0, dest < blocks.count else { return }
-    let unit = blocks[index]
+  /// A block drags as a whole via `reorderBlock`; a standalone via `reorderSetlist`.
+  private func moveUnits(from source: IndexSet, to destination: Int) {
+    guard let from = source.first, units.indices.contains(from) else { return }
+    let target = from < destination ? destination - 1 : destination
+    guard target != from else { return }
+    let unit = units[from]
     let before = store.viewModel?.error
-    if let groupId = unit.groupId {
-      store.send(.session(.reorderBlock(groupId: groupId, newPosition: UInt64(dest))))
-    } else if let entryId = unit.entries.first?.id {
-      let neighbour = blocks[dest]
-      let target = delta < 0 ? neighbour.entries.first : neighbour.entries.last
-      guard let position = target?.position else { return }
-      store.send(.session(.reorderSetlist(entryId: entryId, newPosition: position)))
+    if let groupId = unit.block.groupId {
+      store.send(.session(.reorderBlock(groupId: groupId, newPosition: UInt64(target))))
+    } else if let entryId = unit.block.entries.first?.id {
+      var reordered = units
+      let moved = reordered.remove(at: from)
+      reordered.insert(moved, at: min(target, reordered.count))
+      let flatIds = reordered.flatMap { $0.block.entries.map(\.id) }
+      if let newIndex = flatIds.firstIndex(of: entryId) {
+        store.send(.session(.reorderSetlist(entryId: entryId, newPosition: UInt64(newIndex))))
+      }
     }
     if store.viewModel?.error == before {
       UISelectionFeedbackGenerator().selectionChanged()
