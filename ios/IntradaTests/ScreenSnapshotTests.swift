@@ -148,6 +148,12 @@ final class ScreenSnapshotTests: XCTestCase {
       of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuilding), as: config)
   }
 
+  func testSessionBuilderGrouped() {
+    assertSnapshot(
+      of: host(NavigationStack { SessionBuilderScreen() }, store: .previewBuildingGrouped),
+      as: config)
+  }
+
   func testFocusPlayerWithTarget() {
     assertSnapshot(
       of: host(

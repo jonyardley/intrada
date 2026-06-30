@@ -2,7 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// A compact queue row for the builder's bottom tray — tighter than the Library
-/// browse cards. The reorder grip is supplied by the enclosing List's edit mode.
+/// browse cards. Reorder + block chrome are supplied by the enclosing builder.
 struct SetlistQueueRow: View {
   let entry: SetlistEntryView
   let onRemove: () -> Void
