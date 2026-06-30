@@ -24,8 +24,8 @@ use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::http;
 use crate::model::{
     build_active_session_view, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, Model, SessionStatusView,
-    SetSourceStatus, ViewModel,
+    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
+    PieceRefView, SessionStatusView, SetSourceStatus, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -343,12 +343,68 @@ impl App for Intrada {
     }
 
     fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        // Build an id→item index for O(1) linked-exercise lookup.
+        let item_index: std::collections::HashMap<&str, &crate::domain::item::Item> =
+            model.items.iter().map(|i| (i.id.as_str(), i)).collect();
+
+        // Build a reverse index: exercise_id → [PieceRefView] in one pass.
+        let mut piece_refs_by_exercise: std::collections::HashMap<&str, Vec<PieceRefView>> =
+            std::collections::HashMap::new();
+        for item in &model.items {
+            if item.kind == ItemKind::Piece {
+                for ex_id in &item.linked_exercise_ids {
+                    piece_refs_by_exercise
+                        .entry(ex_id.as_str())
+                        .or_default()
+                        .push(PieceRefView {
+                            id: item.id.clone(),
+                            title: item.title.clone(),
+                        });
+                }
+            }
+        }
+
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for item in &model.items {
             let practice = model.practice_summaries.get(&item.id).cloned();
             let subtitle = item.composer.clone().unwrap_or_default();
             let latest_achieved_tempo = practice.as_ref().and_then(|p| p.latest_tempo);
+
+            let linked_exercises = if item.kind == ItemKind::Piece {
+                item.linked_exercise_ids
+                    .iter()
+                    .filter_map(|ex_id| {
+                        let ex = item_index.get(ex_id.as_str())?;
+                        if ex.kind != ItemKind::Exercise {
+                            return None;
+                        }
+                        Some(LinkedExerciseView {
+                            id: ex.id.clone(),
+                            title: ex.title.clone(),
+                            key: ex.key.clone(),
+                            tempo: ex
+                                .tempo
+                                .as_ref()
+                                .map(|t| t.format_display())
+                                .filter(|s| !s.is_empty()),
+                            practice: model.practice_summaries.get(&ex.id).cloned(),
+                        })
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+            let linked_from_pieces = if item.kind == ItemKind::Exercise {
+                piece_refs_by_exercise
+                    .get(item.id.as_str())
+                    .cloned()
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.clone(),
@@ -370,6 +426,8 @@ impl App for Intrada {
                 practice,
                 latest_achieved_tempo,
                 priority: item.priority,
+                linked_exercises,
+                linked_from_pieces,
             });
         }
 
@@ -3679,5 +3737,100 @@ mod tests {
             &mut model,
         );
         assert_eq!(model.items[0].kind, ItemKind::Exercise);
+    }
+
+    #[test]
+    fn test_view_resolves_linked_exercises_and_linked_from_pieces() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+
+        // Piece P links E1 (exists) and E2 (missing — id not in model.items).
+        // Unrelated exercise E3 is present but not linked by P.
+        let model = Model {
+            items: vec![
+                Item {
+                    id: "piece-1".to_string(),
+                    title: "Sonata".to_string(),
+                    kind: ItemKind::Piece,
+                    composer: None,
+                    key: Some("C".to_string()),
+                    modality: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: Some("Allegro".to_string()),
+                        bpm: Some(120),
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec!["ex-1".to_string(), "ex-missing".to_string()],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-1".to_string(),
+                    title: "Scales".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: Some("G".to_string()),
+                    modality: None,
+                    tempo: Some(crate::domain::types::Tempo {
+                        marking: None,
+                        bpm: Some(80),
+                    }),
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+                Item {
+                    id: "ex-3".to_string(),
+                    title: "Arpeggios".to_string(),
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: None,
+                    modality: None,
+                    tempo: None,
+                    notes: None,
+                    tags: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    linked_exercise_ids: vec![],
+                    priority: false,
+                },
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+
+        // Piece: linked_exercises resolves [E1] only (E2 dropped, order preserved).
+        let piece_view = vm.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(
+            piece_view.linked_exercises.len(),
+            1,
+            "missing exercise id is dropped"
+        );
+        assert_eq!(piece_view.linked_exercises[0].id, "ex-1");
+        assert_eq!(piece_view.linked_exercises[0].title, "Scales");
+        assert_eq!(piece_view.linked_exercises[0].key, Some("G".to_string()));
+        assert_eq!(
+            piece_view.linked_exercises[0].tempo,
+            Some("80 BPM".to_string())
+        );
+        assert!(piece_view.linked_from_pieces.is_empty());
+
+        // Linked exercise: linked_from_pieces lists the piece.
+        let ex1_view = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1_view.linked_from_pieces.len(), 1);
+        assert_eq!(ex1_view.linked_from_pieces[0].id, "piece-1");
+        assert_eq!(ex1_view.linked_from_pieces[0].title, "Sonata");
+        assert!(ex1_view.linked_exercises.is_empty());
+
+        // Unrelated exercise: both lists empty.
+        let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
+        assert!(ex3_view.linked_exercises.is_empty());
+        assert!(ex3_view.linked_from_pieces.is_empty());
     }
 }

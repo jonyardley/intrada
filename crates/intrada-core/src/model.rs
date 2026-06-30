@@ -220,6 +220,23 @@ pub struct SetEntryView {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct LinkedExerciseView {
+    pub id: String,
+    pub title: String,
+    pub key: Option<String>,
+    pub tempo: Option<String>,
+    pub practice: Option<ItemPracticeSummary>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PieceRefView {
+    pub id: String,
+    pub title: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct LibraryItemView {
     pub id: String,
     pub item_type: ItemKind,
@@ -237,6 +254,8 @@ pub struct LibraryItemView {
     pub practice: Option<ItemPracticeSummary>,
     pub latest_achieved_tempo: Option<u16>,
     pub priority: bool,
+    pub linked_exercises: Vec<LinkedExerciseView>,
+    pub linked_from_pieces: Vec<PieceRefView>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
