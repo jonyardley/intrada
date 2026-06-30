@@ -120,6 +120,9 @@ struct LibraryDetailScreen: View {
       }
     }
     .cardSurface()
+    .onChange(of: item.linkedExercises.isEmpty) { _, isEmpty in
+      if isEmpty { editingLinks = false }
+    }
   }
 
   private var linkedExercisesHeader: some View {
@@ -131,6 +134,7 @@ struct LibraryDetailScreen: View {
         Text("\(item.linkedExercises.count)")
           .font(IntradaFont.badge)
           .foregroundStyle(IntradaColor.inkSecondary)
+          // Badge insets: 7/3 are capsule-specific — smaller than controlGap(8).
           .padding(.horizontal, 7)
           .padding(.vertical, 3)
           .background(IntradaColor.surfaceSunken, in: Capsule())
@@ -152,15 +156,24 @@ struct LibraryDetailScreen: View {
   }
 
   @ViewBuilder private var linkedExercisesRows: some View {
-    ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
-      if index > 0 {
-        HairlineDivider()
-      }
-      if editingLinks {
+    if editingLinks {
+      ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
+        if index > 0 {
+          HairlineDivider()
+        }
         LinkedExerciseEditRow(
           exercise: exercise,
-          onRemove: { unlink(exercise) })
-      } else {
+          isFirst: index == 0,
+          isLast: index == item.linkedExercises.count - 1,
+          onRemove: { unlink(exercise) },
+          onMoveUp: { moveExercise(at: index, by: -1) },
+          onMoveDown: { moveExercise(at: index, by: 1) })
+      }
+    } else {
+      ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
+        if index > 0 {
+          HairlineDivider()
+        }
         NavigationLink(value: exercise.id) {
           LinkedExerciseRow(exercise: exercise)
         }
@@ -172,7 +185,8 @@ struct LibraryDetailScreen: View {
   private var linkedExercisesEmptyState: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Image(systemName: "link")
-        .font(.system(size: 28))
+        .imageScale(.large)
+        .font(IntradaFont.body)
         .foregroundStyle(IntradaColor.inkFaint)
         .accessibilityHidden(true)
       Text("No exercises linked yet")
@@ -228,10 +242,16 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  private func reorderLinkedExercises(from source: IndexSet, to destination: Int) {
+  private func moveExercise(at index: Int, by delta: Int) {
     var ids = item.linkedExercises.map(\.id)
-    ids.move(fromOffsets: source, toOffset: destination)
+    let dest = index + delta
+    guard dest >= 0, dest < ids.count else { return }
+    ids.swapAt(index, dest)
+    let before = store.viewModel?.error
     store.send(.item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)))
+    if store.viewModel?.error == before {
+      UISelectionFeedbackGenerator().selectionChanged()
+    }
   }
 
   private var deleteButton: some View {
@@ -315,6 +335,7 @@ private struct LinkedExerciseRow: View {
 
   var body: some View {
     HStack(spacing: IntradaSpacing.row) {
+      // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
       VStack(alignment: .leading, spacing: 3) {
         Text(exercise.title)
           .font(IntradaFont.cardTitle())
@@ -356,20 +377,26 @@ private struct LinkedExerciseRow: View {
   }
 }
 
-/// Edit-mode row: remove button + exercise title + meta (no score ring).
+/// Edit-mode row: remove button + title + meta + up/down move buttons (VoiceOver-accessible reorder).
 private struct LinkedExerciseEditRow: View {
   let exercise: LinkedExerciseView
+  let isFirst: Bool
+  let isLast: Bool
   let onRemove: () -> Void
+  let onMoveUp: () -> Void
+  let onMoveDown: () -> Void
 
   var body: some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       Button(action: onRemove) {
         Image(systemName: "minus.circle.fill")
-          .font(.system(size: 22))
+          .imageScale(.medium)
+          .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.danger)
       }
       .buttonStyle(.plain)
       .accessibilityLabel("Remove \(exercise.title)")
+      // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
       VStack(alignment: .leading, spacing: 3) {
         Text(exercise.title)
           .font(IntradaFont.cardTitle())
@@ -381,9 +408,26 @@ private struct LinkedExerciseEditRow: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      Image(systemName: "line.3.horizontal")
-        .foregroundStyle(IntradaColor.inkFaint)
-        .accessibilityHidden(true)
+      VStack(spacing: 0) {
+        Button(action: onMoveUp) {
+          Image(systemName: "chevron.up")
+            .imageScale(.small)
+            .font(IntradaFont.meta)
+            .foregroundStyle(isFirst ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(isFirst)
+        .accessibilityLabel("Move \(exercise.title) up")
+        Button(action: onMoveDown) {
+          Image(systemName: "chevron.down")
+            .imageScale(.small)
+            .font(IntradaFont.meta)
+            .foregroundStyle(isLast ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLast)
+        .accessibilityLabel("Move \(exercise.title) down")
+      }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)
     .padding(.horizontal, IntradaSpacing.card)
