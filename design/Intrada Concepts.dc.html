@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  [data-lucide] { stroke-width: 2; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.55); } 62% { transform: scale(1.09); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); opacity: .35; } 50% { transform: scale(1.05); opacity: .7; } }
+  @keyframes metro { 0% { transform: scale(1); opacity: .9; } 14% { transform: scale(2.1); opacity: .25; } 100% { transform: scale(1); opacity: .9; } }
+  @keyframes toastIn { 0% { opacity: 0; transform: translateY(-10px) scale(.96); } 100% { opacity: 1; transform: none; } }
+  @keyframes shimmer { 0% { background-position: -160px 0; } 100% { background-position: 240px 0; } }
+  @keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes fall { 0% { transform: translateY(-14px) scale(0); opacity: 0; } 18% { opacity: 1; transform: translateY(0) scale(1); } 100% { transform: translateY(74px) scale(.5) rotate(40deg); opacity: 0; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-14px); max-height: 0; } to { opacity: 1; transform: none; max-height: 80px; } }
+  @keyframes glowPulse { 0%,100% { opacity: .35; transform: scale(1); } 50% { opacity: .7; transform: scale(1.12); } }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:linear-gradient(180deg,#F4F1E8 0%,#EBE7D9 100%);font-family:'Inter',system-ui,sans-serif;color:#2B2A26;padding:44px 32px 80px;">
+  <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#FBFAF3"/><g fill="none" stroke="#4C3FA6" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"><path d="M44 24 L57 35 L46 44 L57 53"/><path d="M46 44 C58 56 58 64 50 72 C56 66 52 60 44 62"/></g></svg></template>
+
+  <div style="max-width:980px;margin:0 auto 40px;">
+    <div style="font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#9A927F;">Intrada · Paper &amp; Score</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:42px;letter-spacing:-0.01em;margin:8px 0 0;color:#2B2A26;">Explorations</h1>
+    <div style="margin-top:16px;padding:13px 16px;border-radius:12px;background:#F0E7D6;border:1px solid #E5DECD;font-size:12.5px;line-height:1.55;color:#6E6557;max-width:640px;">Explorations only — the <strong style="font-weight:600;color:#2B2A26;">after-dark</strong> (dark-mode) proof and the <strong style="font-weight:600;color:#2B2A26;">live motion lab</strong>. Every shipped screen + component is canonical in <strong style="font-weight:600;color:#2B2A26;">Intrada Design System.dc.html</strong>; the Related-exercises journey lives in <strong style="font-weight:600;color:#2B2A26;">Linked Exercises.dc.html</strong>. See <span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;">design-process.md</span>.</div>
+    <p style="font-size:15px;line-height:1.65;color:#6E6557;max-width:640px;margin:14px 0 0;">Two things that don’t live in the system yet: a dark-mode proof that the tokens invert cleanly, and a live motion lab you can press. Every shipped screen has been folded into the design system.</p>
+  </div>
+
+  <!-- ============ AFTER DARK ============ -->
+  <div style="max-width:980px;margin:80px auto 0;">
+    <div style="display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#1F8A5B;"><span style="width:7px;height:7px;border-radius:50%;background:#1F8A5B;"></span>Decided · light for MVP</div>
+    <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:32px;letter-spacing:-0.01em;margin:8px 0 0;color:#2B2A26;">Paper &amp; Score, after dark</h2>
+    <p style="font-size:15px;line-height:1.65;color:#6E6557;max-width:620px;margin:12px 0 0;"><strong style="font-weight:600;color:#2B2A26;">Light ships for MVP; dark is parked, not dropped.</strong> Practice often happens at a music stand at night, where a bright cream screen glares — so this dark variant stays on the shelf, ready to revisit once the app reaches MVP. Kept here as proof the tokens invert cleanly.</p>
+  </div>
+  <div style="margin:30px auto 0;max-width:1120px;display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start;background:linear-gradient(160deg,#211E16,#15130D);border-radius:28px;padding:44px 32px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);">
+    <div style="width:340px;border-radius:50px;padding:10px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(0,0,0,0.6),0 0 0 2px #000;">
+      <div style="position:relative;width:320px;height:676px;border-radius:41px;overflow:hidden;background:radial-gradient(120% 80% at 50% 20%,#211E17 0%,#17150F 55%,#100E09 100%);display:flex;flex-direction:column;">
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:27px;background:#000;border-radius:16px;z-index:60;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;height:42px;padding:0 22px 0 26px;flex:none;"><span style="font-weight:600;font-size:13px;color:#F1ECDD;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="15" height="15" style="color:#F1ECDD;"></i><i data-lucide="wifi" width="15" height="15" style="color:#F1ECDD;"></i><div style="width:21px;height:11px;border:1.2px solid #F1ECDD;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#F1ECDD;border-radius:1px;"></div></div></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:6px 22px 22px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;"><i data-lucide="chevron-down" width="22" height="22" style="color:#B8AE97;"></i><span style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#B8AE97;">FOCUS · 2 OF 4</span><i data-lucide="ellipsis" width="20" height="20" style="color:#B8AE97;"></i></div>
+          <div style="display:flex;gap:5px;margin-top:13px;"><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(90deg,#9A8CF6,#7A6BE6);"></span><span style="flex:1;height:4px;border-radius:999px;background:linear-gradient(90deg,#9A8CF6,#7A6BE6);"></span><span style="flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,0.12);"></span><span style="flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,0.12);"></span></div>
+          <div style="text-align:center;margin-top:22px;"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;background:rgba(138,124,240,0.18);color:#B6ABF7;font-weight:600;font-size:11px;"><i data-lucide="music" width="12" height="12"></i>Piece</span><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:26px;color:#F1ECDD;line-height:1.1;margin-top:11px;">Clair de Lune</div><div style="font-size:12px;color:#B8AE97;margin-top:3px;">Debussy · Andante</div></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+            <div style="position:relative;width:208px;height:208px;">
+              <svg width="208" height="208" viewBox="0 0 208 208" style="position:relative;display:block;"><circle cx="104" cy="104" r="88" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="9"></circle><circle id="d-ring" cx="104" cy="104" r="88" fill="none" stroke="url(#dkgrad)" stroke-width="9" stroke-linecap="round" transform="rotate(-90 104 104)"></circle><defs><linearGradient id="dkgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9A8CF6"></stop><stop offset="1" stop-color="#6A5BD6"></stop></linearGradient></defs></svg>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;"><div id="d-time" style="font-family:Inter;font-weight:600;font-size:44px;color:#F1ECDD;font-variant-numeric:tabular-nums;line-height:1;">4:32</div><div style="font-size:11px;color:#B8AE97;margin-top:6px;">of 7:00</div><div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#8A8170;margin-top:8px;"><i data-lucide="activity" width="11" height="11"></i>♩ = 66</div></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:30px;">
+            <button style="background:none;border:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;color:#B8AE97;cursor:pointer;"><i data-lucide="skip-back" width="24" height="24"></i></button>
+            <button style="border:none;width:74px;height:74px;border-radius:50%;background:linear-gradient(180deg,#9A8CF6,#6A5BD6);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px -6px rgba(106,91,214,0.7);cursor:pointer;transition:transform .18s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="pause" width="30" height="30" style="color:#fff;fill:#fff;"></i></button>
+            <button style="background:none;border:none;width:46px;height:46px;display:flex;align-items:center;justify-content:center;color:#B8AE97;cursor:pointer;"><i data-lucide="skip-forward" width="24" height="24"></i></button>
+          </div>
+          <button style="width:100%;border:none;background:rgba(255,255,255,0.06);color:#B6ABF7;font-family:Inter;font-weight:600;font-size:14px;padding:14px;border-radius:13px;margin-top:22px;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;">Next · Nocturne Op.9<i data-lucide="arrow-right" width="15" height="15"></i></button>
+        </div>
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:3px;background:#F1ECDD;opacity:0.5;z-index:60;"></div>
+      </div>
+    </div>
+    <div style="width:340px;border-radius:50px;padding:10px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(0,0,0,0.6),0 0 0 2px #000;">
+      <div style="position:relative;width:320px;height:676px;border-radius:41px;overflow:hidden;background:radial-gradient(120% 80% at 50% 18%,#211E17 0%,#17150F 55%,#100E09 100%);display:flex;flex-direction:column;">
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:27px;background:#000;border-radius:16px;z-index:60;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;height:42px;padding:0 22px 0 26px;flex:none;"><span style="font-weight:600;font-size:13px;color:#F1ECDD;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="15" height="15" style="color:#F1ECDD;"></i><i data-lucide="wifi" width="15" height="15" style="color:#F1ECDD;"></i><div style="width:21px;height:11px;border:1.2px solid #F1ECDD;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#F1ECDD;border-radius:1px;"></div></div></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div style="padding:6px 18px 0;display:flex;align-items:flex-start;justify-content:space-between;">
+            <div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:27px;color:#F1ECDD;line-height:1;">Library</div><div style="font-size:11px;color:#B8AE97;margin-top:5px;">8 pieces · 3 exercises</div></div>
+            <div style="width:30px;height:30px;border-radius:50%;background:#7A6BE6;display:flex;align-items:center;justify-content:center;"><i data-lucide="plus" width="15" height="15" style="color:#F1ECDD;"></i></div>
+          </div>
+          <div style="height:1px;background:rgba(255,255,255,0.08);margin:12px 18px 0;"></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:12px 18px 6px;">
+            <div style="display:flex;gap:7px;flex:1;"><span style="padding:5px 12px;border-radius:999px;background:#7A6BE6;color:#F1ECDD;font-weight:500;font-size:12px;">All</span><span style="padding:5px 12px;border-radius:999px;color:#8A8170;font-weight:500;font-size:12px;">Pieces</span><span style="padding:5px 12px;border-radius:999px;color:#8A8170;font-weight:500;font-size:12px;">Exercises</span></div>
+            <i data-lucide="search" width="16" height="16" style="color:#8A8170;"></i>
+          </div>
+          <div style="flex:1;overflow:hidden;padding:10px 18px;display:flex;flex-direction:column;gap:11px;">
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:13px 14px 13px 18px;overflow:hidden;display:flex;align-items:center;gap:12px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9A8CF6,#6A5BD6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#F1ECDD;">Clair de Lune</div><div style="font-size:12px;color:#B8AE97;margin-top:1px;">Debussy · D♭ · ♩=66</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:17px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:20px;border-radius:2px;background:rgba(255,255,255,0.14);"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#8A8170;">4 / 5</span></div></div>
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:13px 14px 13px 18px;overflow:hidden;display:flex;align-items:center;gap:12px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#D6B25A,#B89243);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#F1ECDD;">Scales · C major</div><div style="font-size:12px;color:#B8AE97;margin-top:1px;">Two octaves · ♩=120</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:14px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:17px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:20px;border-radius:2px;background:rgba(255,255,255,0.14);"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#8A8170;">3 / 5</span></div></div>
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:13px 14px 13px 18px;overflow:hidden;display:flex;align-items:center;gap:12px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9A8CF6,#6A5BD6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#F1ECDD;">Nocturne Op.9 No.2</div><div style="font-size:12px;color:#B8AE97;margin-top:1px;">Chopin · E♭ · ♩=132</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:11px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:14px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:17px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:20px;border-radius:2px;background:rgba(255,255,255,0.14);"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#8A8170;">2 / 5</span></div></div>
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:13px 14px 13px 18px;overflow:hidden;display:flex;align-items:center;gap:12px;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9A8CF6,#6A5BD6);"></div><div style="flex:1;min-width:0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:16px;color:#F1ECDD;">Gymnopédie No.1</div><div style="font-size:12px;color:#B8AE97;margin-top:1px;">Satie · D · ♩=80</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;"><div style="display:flex;gap:3px;align-items:flex-end;height:20px;"><span style="width:5px;height:8px;border-radius:2px;background:#9A8CF6;"></span><span style="width:5px;height:11px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:14px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:17px;border-radius:2px;background:rgba(255,255,255,0.14);"></span><span style="width:5px;height:20px;border-radius:2px;background:rgba(255,255,255,0.14);"></span></div><span style="font-size:9px;font-weight:600;letter-spacing:.5px;color:#8A8170;">1 / 5</span></div></div>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:9px 4px 16px;background:rgba(20,18,13,0.82);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border-top:1px solid rgba(255,255,255,0.07);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="23" height="23" style="color:#B6ABF7;"></i><span style="font-size:10px;font-weight:600;color:#B6ABF7;">Library</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Practice</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Routines</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Progress</span></div>
+        </div>
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:3px;background:#F1ECDD;opacity:0.5;z-index:60;"></div>
+      </div>
+    </div>
+
+    <div style="width:340px;border-radius:50px;padding:10px;background:linear-gradient(150deg,#3a3a3c,#1c1c1e);box-shadow:0 30px 60px -20px rgba(0,0,0,0.6),0 0 0 2px #000;">
+      <div style="position:relative;width:320px;height:676px;border-radius:41px;overflow:hidden;background:radial-gradient(120% 80% at 50% 18%,#211E17 0%,#17150F 55%,#100E09 100%);display:flex;flex-direction:column;">
+        <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:27px;background:#000;border-radius:16px;z-index:60;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;height:42px;padding:0 22px 0 26px;flex:none;"><span style="font-weight:600;font-size:13px;color:#F1ECDD;">9:41</span><div style="display:flex;align-items:center;gap:6px;"><i data-lucide="signal" width="15" height="15" style="color:#F1ECDD;"></i><i data-lucide="wifi" width="15" height="15" style="color:#F1ECDD;"></i><div style="width:21px;height:11px;border:1.2px solid #F1ECDD;border-radius:3px;display:flex;align-items:center;padding:1.5px;"><div style="width:72%;height:100%;background:#F1ECDD;border-radius:1px;"></div></div></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0;padding:0 18px;">
+          <div style="padding:6px 0 0;"><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:27px;color:#F1ECDD;line-height:1;">Practice</div><div style="font-size:11px;color:#B8AE97;margin-top:5px;">Thursday · ready when you are</div></div>
+          <div style="position:relative;margin-top:16px;border-radius:22px;padding:24px 20px 22px;background:linear-gradient(165deg,#5A4CC0 0%,#473B98 60%,#3B3184 100%);overflow:hidden;box-shadow:0 20px 40px -16px rgba(0,0,0,0.6);">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:1.4px;color:rgba(241,236,221,0.62);">TODAY'S PLAN · 28 MIN</div>
+            <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:23px;color:#F4F1E8;margin-top:6px;line-height:1.1;">A balanced session</div>
+            <div style="font-size:12px;color:rgba(241,236,221,0.7);margin-top:4px;">4 items · spaced for what's due</div>
+            <div style="display:flex;justify-content:center;margin:20px 0 4px;position:relative;">
+              <div style="position:absolute;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.45),transparent 68%);animation:glowPulse 3.2s ease-in-out infinite;"></div>
+              <button style="position:relative;width:90px;height:90px;border-radius:50%;border:none;background:#F7F4EC;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px -8px rgba(0,0,0,0.55);cursor:pointer;transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.93)"><i data-lucide="play" width="36" height="36" style="color:#4C3FA6;fill:#4C3FA6;margin-left:3px;"></i></button>
+            </div>
+            <div style="text-align:center;font-size:12.5px;font-weight:500;color:rgba(241,236,221,0.85);margin-top:8px;">Tap to begin — one decision</div>
+          </div>
+          <div style="margin-top:16px;font-size:10.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#8A8170;">First up</div>
+          <div style="margin-top:9px;display:flex;flex-direction:column;gap:8px;">
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:11px;padding:10px 13px 10px 17px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#9A8CF6,#6A5BD6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#F1ECDD;">Clair de Lune <span style="font-weight:400;font-size:11px;color:#8A8170;font-family:Inter;">· 7 min</span></div></div>
+            <div style="position:relative;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:11px;padding:10px 13px 10px 17px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#D6B25A,#B89243);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#F1ECDD;">Scales · D♭ major <span style="font-weight:400;font-size:11px;color:#8A8170;font-family:Inter;">· 6 min</span></div></div>
+            <div style="text-align:center;opacity:.7;font-size:11px;color:#8A8170;">+ 2 more · interleaved</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:0;right:0;bottom:0;z-index:55;display:flex;align-items:flex-start;justify-content:space-around;padding:9px 4px 16px;background:rgba(20,18,13,0.82);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border-top:1px solid rgba(255,255,255,0.07);">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="library" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Library</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="timer" width="23" height="23" style="color:#B6ABF7;"></i><span style="font-size:10px;font-weight:600;color:#B6ABF7;">Practice</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="list-music" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Routines</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;flex:1;"><i data-lucide="trending-up" width="23" height="23" style="color:#8A8170;"></i><span style="font-size:10px;font-weight:500;color:#8A8170;">Progress</span></div>
+        </div>
+        <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:5px;border-radius:3px;background:#F1ECDD;opacity:0.5;z-index:60;"></div>
+      </div>
+    </div>
+
+    <div style="width:280px;color:#C9BFA8;">
+      <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px;color:#F1ECDD;">Same bones, lower lumens</div>
+      <div style="font-size:13.5px;line-height:1.65;margin-top:12px;color:#B8AE97;">The indigo lifts to <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#B6ABF7;">#9A8CF6</span> so it stays alive on near-black. Cream becomes the ink. Glow does the work shadows did in light mode. Everything else — the ring, the timer, the spacing — is unchanged.</div>
+      <div style="font-size:12.5px;line-height:1.6;margin-top:16px;padding:13px 15px;border-radius:12px;background:rgba(138,124,240,0.1);border:1px solid rgba(138,124,240,0.2);color:#C9BFA8;">Native makes this nearly free: an asset catalog gives automatic light/dark. <strong style="font-weight:600;color:#E7E1D0;">For MVP we ship light only</strong> — dark gets revisited once the core experience lands.</div>
+    </div>
+  </div>
+
+  <!-- ============ MOTION LAB ============ -->
+  <div style="max-width:980px;margin:80px auto 0;">
+    <div style="font-size:12px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#9A927F;">Make it specified, not asserted</div>
+    <h2 style="font-family:'Source Serif 4',serif;font-weight:600;font-size:32px;letter-spacing:-0.01em;margin:8px 0 0;color:#2B2A26;">Motion, live</h2>
+    <p style="font-size:15px;line-height:1.65;color:#6E6557;max-width:620px;margin:12px 0 0;">The system describes three springs in prose. Here they are as things you can touch — the exact feel engineering should build against. Go on, press them.</p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:28px;">
+
+      <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:18px;padding:24px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Press · snappy</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#4C3FA6;margin-top:5px;">response .28 · damping .9</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px 0 8px;">
+          <button style="border:none;background:linear-gradient(180deg,#6346E5,#4C3FA6);color:#F2EFE8;font-family:Inter;font-weight:600;font-size:15px;padding:14px 30px;border-radius:13px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(76,63,166,0.6);transition:transform .2s cubic-bezier(.34,1.56,.64,1);" style-active="transform:scale(0.92)">Start practising</button>
+        </div>
+        <div style="font-size:12px;color:#6E6557;line-height:1.5;">A press should dip and rebound past rest — confidence, not a dead click.</div>
+      </div>
+
+      <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:18px;padding:24px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Insert · standard</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#4C3FA6;margin-top:5px;">response .35 · damping .85</div>
+        <div id="motion-list" style="flex:1;display:flex;flex-direction:column;gap:8px;padding:16px 0 10px;min-height:96px;">
+          <div style="position:relative;background:#F7F3EA;border:1px solid #E5DECD;border-radius:10px;padding:10px 12px 10px 16px;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#6346E5,#4C3FA6);"></div><div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:14px;color:#2B2A26;">Clair de Lune</div></div>
+        </div>
+        <button id="motion-add" style="border:none;background:#F0E7D6;color:#4C3FA6;font-family:Inter;font-weight:600;font-size:13px;padding:10px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i data-lucide="plus" width="14" height="14"></i>Add to session</button>
+      </div>
+
+      <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:18px;padding:24px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Count-up · gentle</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#4C3FA6;margin-top:5px;">response .45 · damping .82</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 0 10px;"><span id="motion-num" style="font-family:'Source Serif 4',serif;font-weight:600;font-size:46px;color:#2B2A26;line-height:1;">3.4</span><span style="font-size:13px;color:#9A927F;margin-top:14px;">overall mastery</span></div>
+        <button id="motion-replay" style="border:none;background:#F0E7D6;color:#4C3FA6;font-family:Inter;font-weight:600;font-size:13px;padding:10px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><i data-lucide="rotate-ccw" width="14" height="14"></i>Replay count-up</button>
+      </div>
+
+      <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:18px;padding:24px;display:flex;flex-direction:column;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#9A927F;">Segmented · snappy</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:#4C3FA6;margin-top:5px;">response .28 · damping .9</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:18px 0 12px;">
+          <div id="motion-seg" style="position:relative;display:flex;background:#EFE7D6;border-radius:999px;padding:4px;width:240px;">
+            <div id="motion-pill" style="position:absolute;top:4px;left:4px;width:77px;height:32px;border-radius:999px;background:#4C3FA6;box-shadow:0 4px 10px -4px rgba(76,63,166,0.5);transition:transform .32s cubic-bezier(.34,1.4,.6,1);"></div>
+            <button class="seg" data-i="0" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#F2EFE8;padding:8px 0;cursor:pointer;z-index:1;">All</button>
+            <button class="seg" data-i="1" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#6E6557;padding:8px 0;cursor:pointer;z-index:1;">Pieces</button>
+            <button class="seg" data-i="2" style="position:relative;flex:1;border:none;background:none;font-family:Inter;font-weight:600;font-size:13px;color:#6E6557;padding:8px 0;cursor:pointer;z-index:1;">Drills</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#6E6557;line-height:1.5;">The pill leads; labels settle a beat behind. Interrupts cleanly mid-slide.</div>
+      </div>
+
+    </div>
+    <div style="font-size:12.5px;color:#6E6557;margin-top:18px;line-height:1.6;max-width:620px;">Springs over fixed durations — they reverse and interrupt cleanly when a user changes their mind mid-gesture. Reduce Motion collapses each to a 150ms fade.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    if (window.lucide) window.lucide.createIcons();
+    this._raf = [];
+    // hero mastery count-up + dial draw
+    this.animNum('#i-mastery', 0, 3.4, 1500, v => v.toFixed(1));
+    this.drawRing('#i-dial', 54, 0.68, 1500);
+    // live focus-player timer + ring
+    this.startPlayer();
+    // tactile rating
+    this.bindRating();
+    // dark-mode focus player (separate ticking clock + ring)
+    this.startDark();
+    // live motion lab
+    this.bindMotion();
+    // calendar day-picker → day's sessions
+    this.bindPractice();
+    // per-repetition success / miss log
+    this.bindReps();
+  }
+  componentWillUnmount() {
+    (this._raf || []).forEach(id => cancelAnimationFrame(id));
+    clearInterval(this._timer);
+    clearInterval(this._dtimer);
+  }
+  ease(p) { return 1 - Math.pow(1 - p, 3); }
+  animNum(sel, from, to, dur, fmt) {
+    const el = document.querySelector(sel); if (!el) return;
+    const t0 = performance.now();
+    const step = (t) => {
+      const p = this.ease(Math.min(1, (t - t0) / dur));
+      const v = from + (to - from) * p;
+      el.textContent = fmt ? fmt(v) : Math.round(v);
+      if (p < 1) this._raf.push(requestAnimationFrame(step));
+    };
+    this._raf.push(requestAnimationFrame(step));
+  }
+  drawRing(sel, r, toFrac, dur) {
+    const el = document.querySelector(sel); if (!el) return;
+    const circ = 2 * Math.PI * r;
+    el.setAttribute('stroke-dasharray', circ);
+    el.setAttribute('stroke-dashoffset', circ);
+    const t0 = performance.now();
+    const step = (t) => {
+      const p = this.ease(Math.min(1, (t - t0) / dur));
+      el.setAttribute('stroke-dashoffset', circ * (1 - toFrac * p));
+      if (p < 1) this._raf.push(requestAnimationFrame(step));
+    };
+    this._raf.push(requestAnimationFrame(step));
+  }
+  startPlayer() {
+    this.sec = 272; this.total = 420;
+    const r = 100; this.circ = 2 * Math.PI * r;
+    const ring = document.querySelector('#p-ring');
+    if (ring) {
+      ring.setAttribute('stroke-dasharray', this.circ);
+      ring.setAttribute('stroke-dashoffset', this.circ * (1 - this.sec / this.total));
+    }
+    this._timer = setInterval(() => {
+      this.sec += 1;
+      if (this.sec > this.total) this.sec = 272;
+      const el = document.querySelector('#p-time');
+      if (el) { const m = Math.floor(this.sec / 60), s = this.sec % 60; el.textContent = m + ':' + String(s).padStart(2, '0'); }
+      const rg = document.querySelector('#p-ring');
+      if (rg) rg.setAttribute('stroke-dashoffset', this.circ * (1 - this.sec / this.total));
+    }, 1000);
+  }
+  startDark() {
+    const r = 88; const circ = 2 * Math.PI * r;
+    const ring = document.querySelector('#d-ring');
+    if (!ring) return;
+    let sec = 272; const total = 420;
+    ring.setAttribute('stroke-dasharray', circ);
+    ring.setAttribute('stroke-dashoffset', circ * (1 - sec / total));
+    this._dtimer = setInterval(() => {
+      sec += 1; if (sec > total) sec = 272;
+      const el = document.querySelector('#d-time');
+      if (el) { const m = Math.floor(sec / 60), s = sec % 60; el.textContent = m + ':' + String(s).padStart(2, '0'); }
+      ring.setAttribute('stroke-dashoffset', circ * (1 - sec / total));
+    }, 1000);
+  }
+  bindMotion() {
+    // insert-row spring
+    const list = document.querySelector('#motion-list');
+    const add = document.querySelector('#motion-add');
+    const pool = ['Nocturne Op.9', 'Scales · D♭', 'Gymnopédie No.1', 'Hanon No.1', 'ii-V-I · all keys'];
+    const grads = ['#6346E5,#4C3FA6', '#9E7B33,#8A6A2E'];
+    if (add && list) {
+      let n = 0;
+      add.addEventListener('click', () => {
+        const row = document.createElement('div');
+        const g = grads[n % 2]; n++;
+        row.style.cssText = 'position:relative;background:#F7F3EA;border:1px solid #E5DECD;border-radius:10px;padding:10px 12px 10px 16px;overflow:hidden;animation:slideIn .4s cubic-bezier(.2,.8,.3,1) both;';
+        row.innerHTML = '<div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,' + g + ');"></div><div style="font-family:\'Source Serif 4\',serif;font-weight:600;font-size:14px;color:#2B2A26;">' + pool[(n - 1) % pool.length] + '</div>';
+        list.prepend(row);
+        if (list.children.length > 4) list.removeChild(list.lastChild);
+      });
+    }
+    // count-up replay
+    const replay = document.querySelector('#motion-replay');
+    if (replay) replay.addEventListener('click', () => this.animNum('#motion-num', 0, 3.4, 1300, v => v.toFixed(1)));
+    // segmented pill
+    const pill = document.querySelector('#motion-pill');
+    const segs = document.querySelectorAll('.seg');
+    segs.forEach(s => s.addEventListener('click', () => {
+      const i = +s.dataset.i;
+      if (pill) pill.style.transform = 'translateX(' + (i * 77) + 'px)';
+      segs.forEach(x => { x.style.color = (+x.dataset.i === i) ? '#F2EFE8' : '#6E6557'; });
+    }));
+  }
+  bindPractice() {
+    const cells = [...document.querySelectorAll('.pday')];
+    if (!cells.length) return;
+    const days = [
+      { label: 'Monday 12', s: [{ t: 'Morning warm-up', m: '15 min · 2 exercises', c: '#9E7B33,#8A6A2E' }] },
+      { label: 'Tuesday 13', s: [{ t: 'Lunch session', m: '22 min · 1 piece', c: '#6346E5,#4C3FA6' }] },
+      { label: 'Wednesday 14', s: [{ t: 'Evening practice', m: '30 min · 3 pieces', c: '#6346E5,#4C3FA6' }] },
+      { label: 'Today', s: [{ t: 'Morning session', m: '42 min · 4 pieces', c: '#6346E5,#4C3FA6' }, { t: 'Quick drills', m: '12 min · ended early', c: '#9E7B33,#8A6A2E' }] },
+      { label: 'Friday 16', s: [], future: true },
+      { label: 'Saturday 17', s: [], future: true },
+      { label: 'Sunday 18', s: [], future: true }
+    ];
+    const label = document.querySelector('#pp-daylabel');
+    const count = document.querySelector('#pp-daycount');
+    const list = document.querySelector('#pp-sessions');
+    const esc = (s) => s.replace(/'/g, "\\'");
+    const select = (i) => {
+      cells.forEach((c, j) => {
+        const circle = c.querySelector('.pday-c');
+        const fut = c.dataset.future === '1';
+        if (j === i) { circle.style.background = '#4C3FA6'; circle.style.color = '#F2EFE8'; circle.style.fontWeight = '600'; }
+        else { circle.style.background = 'transparent'; circle.style.color = fut ? '#C9C0AC' : '#2B2A26'; circle.style.fontWeight = '500'; }
+      });
+      const d = days[i];
+      label.textContent = d.label;
+      count.textContent = d.s.length ? (d.s.length + (d.s.length > 1 ? ' sessions' : ' session')) : (d.future ? 'Yet to come' : 'Rest day');
+      let html = '';
+      if (d.s.length) {
+        d.s.forEach(x => {
+          html += '<div style="display:flex;align-items:center;gap:11px;background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:12px 14px 12px 16px;position:relative;overflow:hidden;"><div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,' + x.c + ');"></div><div style="flex:1;"><div style="font-family:\'Source Serif 4\',serif;font-weight:600;font-size:15px;color:#2B2A26;">' + esc(x.t) + '</div><div style="font-size:12px;color:#6E6557;margin-top:2px;">' + esc(x.m) + '</div></div><i data-lucide="chevron-right" width="17" height="17" style="color:#B6AEC4;"></i></div>';
+        });
+      } else {
+        const msg = d.future ? "Nothing logged yet — the week\u2019s still young." : "A rest day. No pressure — your schedule has adapted.";
+        const icon = d.future ? 'sunrise' : 'moon';
+        html = '<div style="display:flex;align-items:center;gap:10px;background:#F7F3EA;border:1px dashed #DBD3C0;border-radius:12px;padding:14px 16px;color:#9A927F;font-size:12.5px;line-height:1.4;"><i data-lucide="' + icon + '" width="16" height="16" style="flex:none;"></i>' + msg + '</div>';
+      }
+      list.innerHTML = html;
+      list.style.animation = 'none'; void list.offsetWidth; list.style.animation = 'fadeUp .34s ease';
+      if (window.lucide) window.lucide.createIcons();
+    };
+    cells.forEach((c, i) => c.addEventListener('click', () => select(i)));
+    select(3);
+  }
+  bindReps() {
+    const seq = document.querySelector('#rep-seq');
+    if (!seq) return;
+    const dots = [...seq.children];
+    const total = dots.length; // 12
+    const doneEl = document.querySelector('#rep-done');
+    const togoEl = document.querySelector('#rep-togo');
+    const cb = document.querySelector('#rep-clean-btn');
+    const mb = document.querySelector('#rep-miss-btn');
+    let count = 7;
+    const render = (changed) => {
+      dots.forEach((d, i) => {
+        if (i < count) { d.style.background = '#1F8A5B'; d.style.boxShadow = 'none'; }
+        else { d.style.background = 'transparent'; d.style.boxShadow = 'inset 0 0 0 1.6px #DCD4C1'; }
+      });
+      if (doneEl) doneEl.textContent = count;
+      if (togoEl) togoEl.textContent = Math.max(0, total - count);
+      if (changed != null && dots[changed]) {
+        dots[changed].style.animation = 'none'; void dots[changed].offsetWidth;
+        dots[changed].style.animation = 'pop .35s both';
+      }
+      if (cb) { const max = count >= total; cb.style.opacity = max ? '0.4' : '1'; cb.style.pointerEvents = max ? 'none' : 'auto'; }
+      if (mb) { const min = count <= 0; mb.style.opacity = min ? '0.4' : '1'; mb.style.pointerEvents = min ? 'none' : 'auto'; }
+    };
+    const bump = (ok, btn) => {
+      if (ok && count < total) { count++; render(count - 1); }
+      else if (!ok && count > 0) { count--; render(count); }
+      btn.style.transform = 'scale(1.07)';
+      setTimeout(() => { btn.style.transform = 'scale(1)'; }, 150);
+    };
+    if (cb) cb.addEventListener('click', () => bump(true, cb));
+    if (mb) mb.addEventListener('click', () => bump(false, mb));
+    render(null);
+  }
+  bindRating() {
+    const dots = document.querySelectorAll('.rate');
+    dots.forEach(d => {
+      d.addEventListener('click', () => {
+        const r = +d.dataset.r;
+        dots.forEach(x => {
+          const on = +x.dataset.r <= r;
+          x.style.background = on ? '#4C3FA6' : '#FCFAF3';
+          x.style.color = on ? '#F2EFE8' : '#9A927F';
+          x.style.borderColor = on ? '#4C3FA6' : '#E5DECD';
+        });
+        d.style.transform = 'scale(1.16)';
+        setTimeout(() => { d.style.transform = 'scale(1)'; }, 160);
+      });
+    });
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
