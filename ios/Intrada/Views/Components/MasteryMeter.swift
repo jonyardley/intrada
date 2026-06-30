@@ -4,8 +4,8 @@ import SwiftUI
 /// row. Monochrome indigo — the *count* of filled bars carries the meaning, so
 /// it stays legible to colour-blind users (never recolour by level).
 ///
-/// "Mastery" here is the item's latest 1–5 self-rating (`practice.latestScore`);
-/// the core has no separate mastery axis. `level == nil` → never practised.
+/// `level` is a 0–10 score (`practice.latestScore`); bars map proportionally
+/// (each bar ≈ 2 points). `level == nil` → never practised.
 struct MasteryMeter: View {
   let level: Int?
   var steps: Int = 5
@@ -28,17 +28,18 @@ struct MasteryMeter: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
-      level == nil ? "Not yet practised" : "Mastery \(level ?? 0) of \(steps)")
+      level == nil ? "Not yet practised" : "Mastery \(level ?? 0) of 10")
   }
 
   private func filled(_ index: Int) -> Bool {
     guard let level else { return false }
-    return index < level
+    // 5 bars across a 0–10 scale: each bar ≈ 2 points.
+    return index < Int((Double(level) / 2.0).rounded())
   }
 
   private var caption: String {
     guard let level else { return "—" }
-    return "\(level) / \(steps)"
+    return "\(level) / 10"
   }
 }
 
@@ -47,7 +48,7 @@ struct MasteryMeter: View {
     ZStack {
       PaperBackground()
       HStack(spacing: 20) {
-        ForEach(1...5, id: \.self) { MasteryMeter(level: $0) }
+        ForEach([1, 3, 6, 8, 10], id: \.self) { MasteryMeter(level: $0) }
         MasteryMeter(level: nil)
       }
       .padding(IntradaSpacing.card)

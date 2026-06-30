@@ -282,6 +282,7 @@ pub struct PracticeSessionView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
+    pub session_score: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -365,6 +366,7 @@ pub struct SummaryView {
     pub notes: Option<String>,
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
+    pub session_score: Option<u8>,
 }
 
 // ── View helpers ──────────────────────────────────────────────────────
@@ -432,6 +434,7 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
         notes: summary.session_notes.clone(),
         entries: summary.entries.iter().map(entry_to_view).collect(),
         session_intention: summary.session_intention.clone(),
+        session_score: summary.session_score,
     }
 }
 
@@ -450,6 +453,7 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         notes: session.session_notes.clone(),
         entries: session.entries.iter().map(entry_to_view).collect(),
         session_intention: session.session_intention.clone(),
+        session_score: session.session_score,
     }
 }
 
@@ -623,6 +627,7 @@ mod tests {
             completion_status: CompletionStatus::Completed,
             session_notes: None,
             session_intention: Some("focus".to_string()),
+            session_score: None,
         };
         let view = build_summary_view(&summary);
         assert_eq!(view.total_duration_display, "2m 30s");
@@ -642,10 +647,114 @@ mod tests {
             completed_at: Utc::now(),
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
+            session_score: None,
         };
         let view = session_to_view(&session);
         // Precise (live-timer) form keeps seconds; the summary line drops them.
         assert_eq!(view.total_duration_display, "45m 0s");
         assert_eq!(view.total_duration_summary, "45m");
+    }
+
+    #[test]
+    fn summary_view_exposes_session_score() {
+        let summary = crate::domain::session::SummarySession {
+            id: "sum2".to_string(),
+            entries: vec![],
+            session_started_at: Utc::now(),
+            session_ended_at: Utc::now(),
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            session_score: Some(7),
+        };
+        let view = build_summary_view(&summary);
+        assert_eq!(view.session_score, Some(7));
+    }
+
+    #[test]
+    fn session_to_view_exposes_session_score() {
+        let session = crate::domain::session::PracticeSession {
+            id: "s2".to_string(),
+            entries: vec![],
+            session_notes: None,
+            session_intention: None,
+            started_at: Utc::now(),
+            completed_at: Utc::now(),
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_score: Some(5),
+        };
+        let view = session_to_view(&session);
+        assert_eq!(view.session_score, Some(5));
+    }
+
+    // ── Integration: Event → model → ViewModel ────────────────────────
+
+    fn update_model(model: &mut Model, event: crate::app::Event) {
+        use crux_core::App;
+        let app = crate::app::Intrada;
+        let _cmd = app.update(event, model);
+    }
+
+    fn model_with_summary_state() -> Model {
+        use crate::app::Event;
+        use crate::domain::session::SessionEvent;
+
+        let now = Utc::now();
+        let mut model = Model {
+            items: vec![Item {
+                id: "piece-1".to_string(),
+                title: "Test Piece".to_string(),
+                kind: ItemKind::Piece,
+                composer: None,
+                key: None,
+                modality: None,
+                tempo: None,
+                notes: None,
+                tags: vec![],
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            }],
+            api_base_url: "http://localhost:3001".to_string(),
+            ..Default::default()
+        };
+
+        update_model(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        let t1 = now + chrono::Duration::seconds(60);
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t1 }),
+        );
+        model
+    }
+
+    #[test]
+    fn update_session_score_flows_to_summary_view() {
+        use crate::app::Event;
+        use crate::domain::session::SessionEvent;
+        use crux_core::App;
+
+        let mut model = model_with_summary_state();
+
+        update_model(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionScore { score: Some(7) }),
+        );
+
+        let app = crate::app::Intrada;
+        let vm = app.view(&model);
+        let summary = vm.summary.expect("model should be in Summary state");
+        assert_eq!(summary.session_score, Some(7));
     }
 }

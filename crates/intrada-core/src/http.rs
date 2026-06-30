@@ -623,6 +623,7 @@ mod tests {
             completed_at: fixed_time(),
             total_duration_secs: 600,
             completion_status: crate::domain::session::CompletionStatus::Completed,
+            session_score: None,
         };
         let req = take_http(&mut create_session(BASE, &session));
         assert_eq!(req.method, "POST");

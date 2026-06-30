@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Post-session review (the player's Summary) — the celebration beat. Renders the
 /// core's `SummaryView`: confetti + headline, an optional mastery toast, the recap
-/// of what was played (per-item 1–5 scores intact), a whole-session note, then Save
-/// (persists + returns to Idle) or Discard. Reached after the last item.
+/// of what was played (per-item 1–10 scores), a whole-session note, an overall
+/// session score (1–10), then Save (persists + returns to Idle) or Discard.
+/// Reached after the last item.
 struct SessionSummaryScreen: View {
   @Environment(Store.self) private var store
   @State private var note = ""
@@ -30,7 +31,8 @@ struct SessionSummaryScreen: View {
             }
             recap(summary).fadeUp(2)
             noteSection.fadeUp(3)
-            controls.fadeUp(4)
+            sessionScoreRow(summary).fadeUp(4)
+            controls.fadeUp(5)
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.top, 40)
@@ -143,11 +145,11 @@ struct SessionSummaryScreen: View {
     return parts.joined(separator: " · ")
   }
 
-  /// Tappable 1–5 score. Tapping the current value clears it.
+  /// Tappable 1–10 score. Tapping the current value clears it.
   private func scoreRow(_ entry: SetlistEntryView) -> some View {
     let score = entry.score.map(Int.init) ?? 0
-    return HStack(spacing: 6) {
-      ForEach(1...5, id: \.self) { value in
+    return HStack(spacing: 5) {
+      ForEach(1...10, id: \.self) { value in
         Button {
           let next: UInt8? = entry.score == UInt8(value) ? nil : UInt8(value)
           store.send(.session(.updateEntryScore(entryId: entry.id, score: next)))
@@ -166,7 +168,37 @@ struct SessionSummaryScreen: View {
     .padding(.leading, 19)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Score for \(entry.itemTitle)")
-    .accessibilityValue(score == 0 ? "not scored" : "\(score) of 5")
+    .accessibilityValue(score == 0 ? "not scored" : "\(score) of 10")
+  }
+
+  /// Tappable 1–10 overall session score. Tapping the current value clears it.
+  private func sessionScoreRow(_ summary: SummaryView) -> some View {
+    let score = summary.sessionScore.map(Int.init) ?? 0
+    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+      Text("Overall")
+        .font(IntradaFont.metaMedium)
+        .foregroundStyle(IntradaColor.inkSecondary)
+      HStack(spacing: 5) {
+        ForEach(1...10, id: \.self) { value in
+          Button {
+            let next: UInt8? = summary.sessionScore == UInt8(value) ? nil : UInt8(value)
+            store.send(.session(.updateSessionScore(score: next)))
+          } label: {
+            Circle()
+              .fill(score >= value ? AnyShapeStyle(IntradaColor.accent) : AnyShapeStyle(.clear))
+              .frame(width: 18, height: 18)
+              .overlay(
+                Circle()
+                  .stroke(IntradaColor.divider, lineWidth: 1.5)
+                  .opacity(score >= value ? 0 : 1))
+          }
+          .buttonStyle(.plain)
+        }
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Overall session score")
+      .accessibilityValue(score == 0 ? "not scored" : "\(score) of 10")
+    }
   }
 
   // ── Note + controls ──

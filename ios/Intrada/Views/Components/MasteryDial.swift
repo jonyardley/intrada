@@ -2,10 +2,10 @@ import SwiftUI
 
 /// The overall-mastery ring. On appear the ring draws and the number counts up
 /// together (ease-out over 1.5s); under Reduce Motion both snap to their final
-/// value. `value` is the mean of the library's per-item 1–5 scores.
+/// value. `value` is the mean of the library's per-item 1–10 scores.
 struct MasteryDial: View {
   let value: Double
-  var maxValue: Double = 5
+  var maxValue: Double = 10
   var size: CGFloat = 128
   private let ringWidth: CGFloat = 9
 
