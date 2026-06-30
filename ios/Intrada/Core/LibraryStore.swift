@@ -186,7 +186,7 @@ final class LibraryStore: ItemStore {
         guard var dtos = try? JSONDecoder().decode([StoredEntry].self, from: Data(json.utf8))
         else { continue }
         for i in dtos.indices {
-          if let s = dtos[i].score { dtos[i].score = min(10, s &* 2) }
+          if let s = dtos[i].score { dtos[i].score = UInt8(min(10, Int(s) * 2)) }
         }
         guard let data = try? JSONEncoder().encode(dtos),
           let rescaled = String(data: data, encoding: .utf8)
