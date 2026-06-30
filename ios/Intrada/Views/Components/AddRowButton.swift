@@ -20,7 +20,6 @@ struct AddRowButton: View {
               style: StrokeStyle(lineWidth: 1, dash: [4, 4])))
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(title)
   }
 }
 
