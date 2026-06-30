@@ -254,7 +254,7 @@ final class LibraryStore: ItemStore {
       sessionNotes: row["session_notes"], sessionIntention: row["session_intention"],
       startedAt: row["started_at"], completedAt: row["completed_at"],
       totalDurationSecs: UInt64(row["total_duration_secs"] as Int64),
-      completionStatus: completionStatus(from: row["completion_status"]))
+      completionStatus: completionStatus(from: row["completion_status"]), sessionScore: nil)
   }
 
   // Entries (a nested, optional-heavy aggregate) go to JSON via a Codable DTO,
