@@ -278,7 +278,7 @@ async fn save_session_invalid_score_returns_400() {
                 "duration_secs": 120,
                 "status": "Completed",
                 "notes": null,
-                "score": 6
+                "score": 11
             }],
             "started_at": "2026-02-16T10:00:00Z",
             "completed_at": "2026-02-16T10:02:00Z",
