@@ -503,6 +503,7 @@ mod tests {
             tags: vec!["scale".into(), "warmup".into()],
             created_at: fixed_time(),
             updated_at: fixed_time(),
+            linked_exercise_ids: vec![],
             priority: false,
         }
     }

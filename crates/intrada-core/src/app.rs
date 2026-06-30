@@ -752,6 +752,7 @@ fn sample_items() -> Vec<Item> {
             tags: tags.iter().map(|s| s.to_string()).collect(),
             created_at: ts,
             updated_at: ts,
+            linked_exercise_ids: vec![],
             priority: false,
         }
     };
@@ -959,6 +960,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             },
             Item {
@@ -973,6 +975,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             },
         ];
@@ -1097,6 +1100,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             sessions: vec![PracticeSession {
@@ -1267,6 +1271,7 @@ mod tests {
                     tags: vec!["classical".to_string()],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1284,6 +1289,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1301,6 +1307,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
                 Item {
@@ -1315,6 +1322,7 @@ mod tests {
                     tags: vec![],
                     created_at: now,
                     updated_at: now,
+                    linked_exercise_ids: vec![],
                     priority: false,
                 },
             ],
@@ -1388,6 +1396,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1402,6 +1411,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1461,6 +1471,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1475,6 +1486,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1506,6 +1518,7 @@ mod tests {
             tags: vec!["classical".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.items.push(Item {
@@ -1520,6 +1533,7 @@ mod tests {
             tags: vec!["romantic".to_string(), "piano".to_string()],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -1550,6 +1564,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![
@@ -1591,6 +1606,7 @@ mod tests {
             tags: tags.iter().map(|t| (*t).to_string()).collect(),
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
@@ -1624,6 +1640,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![
@@ -1792,6 +1809,7 @@ mod tests {
                 tags: vec![format!("tag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             });
         }
@@ -1812,6 +1830,7 @@ mod tests {
                 tags: vec![format!("etag{}", i % 10)],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             });
         }
@@ -1956,6 +1975,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         let p2 = Item {
@@ -1970,6 +1990,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         model.items = vec![p1, p2];
@@ -2070,6 +2091,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2171,6 +2193,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2235,6 +2258,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2324,6 +2348,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2532,6 +2557,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -2549,6 +2575,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -2575,6 +2602,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -2592,6 +2620,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -2647,6 +2676,7 @@ mod tests {
             tags: vec![],
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -2961,6 +2991,7 @@ mod tests {
             tags: vec![],
             created_at,
             updated_at: created_at,
+            linked_exercise_ids: vec![],
             priority: false,
         }
     }
@@ -3379,6 +3410,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         });
 
@@ -3394,6 +3426,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
         let _cmd = app.update(
@@ -3426,6 +3459,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         };
 
@@ -3485,6 +3519,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -3549,6 +3584,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()
@@ -3612,6 +3648,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             ..Model::test_default()

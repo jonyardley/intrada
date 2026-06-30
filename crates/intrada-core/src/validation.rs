@@ -1,6 +1,7 @@
 use crate::domain::item::ItemKind;
 use crate::domain::types::{CreateItem, Tempo, UpdateItem};
 use crate::error::LibraryError;
+use crate::model::Model;
 
 /// Validation limits shared across shells (web, CLI).
 pub const MAX_TITLE: usize = 500;
@@ -342,6 +343,58 @@ pub fn validate_rep_consistency(
             });
         }
     }
+    Ok(())
+}
+
+pub fn validate_link_exercise(
+    piece_id: &str,
+    exercise_id: &str,
+    model: &Model,
+) -> Result<(), LibraryError> {
+    if piece_id == exercise_id {
+        return Err(LibraryError::Validation {
+            field: "exercise_id".to_string(),
+            message: "A piece cannot be linked to itself".to_string(),
+        });
+    }
+
+    let piece = model
+        .items
+        .iter()
+        .find(|i| i.id == piece_id)
+        .ok_or_else(|| LibraryError::NotFound {
+            id: piece_id.to_string(),
+        })?;
+
+    if piece.kind != ItemKind::Piece {
+        return Err(LibraryError::Validation {
+            field: "piece_id".to_string(),
+            message: "Target must be a piece, not an exercise".to_string(),
+        });
+    }
+
+    let exercise = model
+        .items
+        .iter()
+        .find(|i| i.id == exercise_id)
+        .ok_or_else(|| LibraryError::NotFound {
+            id: exercise_id.to_string(),
+        })?;
+
+    if exercise.kind != ItemKind::Exercise {
+        return Err(LibraryError::Validation {
+            field: "exercise_id".to_string(),
+            message: "Linked item must be an exercise, not a piece".to_string(),
+        });
+    }
+
+    if piece.linked_exercise_ids.contains(&exercise_id.to_string()) {
+        return Err(LibraryError::Validation {
+            field: "exercise_id".to_string(),
+            message: "Exercise is already linked to this piece".to_string(),
+        });
+    }
+
     Ok(())
 }
 

@@ -86,6 +86,7 @@ mod tests {
             tags: vec![],
             created_at: now,
             updated_at: now,
+            linked_exercise_ids: vec![],
             priority: false,
         }
     }

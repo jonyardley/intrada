@@ -540,6 +540,7 @@ mod tests {
             tags: vec![],
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            linked_exercise_ids: vec![],
             priority: false,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
@@ -714,6 +715,7 @@ mod tests {
                 tags: vec![],
                 created_at: now,
                 updated_at: now,
+                linked_exercise_ids: vec![],
                 priority: false,
             }],
             api_base_url: "http://localhost:3001".to_string(),
