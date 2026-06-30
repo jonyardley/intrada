@@ -52,6 +52,7 @@ pub struct Item {
     pub tempo: Option<Tempo>,
     pub notes: Option<String>,
     pub tags: Vec<String>,
+    // `#[serde(default)]` so absent fields (old clients / bincode) default to `[]`.
     #[serde(default)]
     pub linked_exercise_ids: Vec<String>,
     pub created_at: DateTime<Utc>,
@@ -310,12 +311,20 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 return crux_core::render::render();
             };
 
-            let currently_linked: std::collections::HashSet<&String> =
-                piece.linked_exercise_ids.iter().collect();
-            piece.linked_exercise_ids = ordered_ids
-                .into_iter()
-                .filter(|id| currently_linked.contains(id))
+            let current = piece.linked_exercise_ids.clone();
+            let current_set: std::collections::HashSet<&String> = current.iter().collect();
+            let requested_set: std::collections::HashSet<&String> = ordered_ids.iter().collect();
+            let mut next: Vec<String> = ordered_ids
+                .iter()
+                .filter(|id| current_set.contains(id))
+                .cloned()
                 .collect();
+            for id in &current {
+                if !requested_set.contains(id) {
+                    next.push(id.clone());
+                }
+            }
+            piece.linked_exercise_ids = next;
             piece.updated_at = chrono::Utc::now();
             model.last_error = None;
 
@@ -569,6 +578,38 @@ mod tests {
         assert_eq!(
             piece.linked_exercise_ids,
             vec!["ex-2".to_string(), "ex-1".to_string()]
+        );
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn reorder_linked_exercises_preserves_omitted_ids() {
+        let mut model = model_with_piece_and_exercise();
+        model.items.push(make_exercise("ex-2"));
+        model.items.push(make_exercise("ex-3"));
+
+        for ex in ["ex-1", "ex-2", "ex-3"] {
+            send(
+                &mut model,
+                ItemEvent::LinkExercise {
+                    piece_id: "piece-1".to_string(),
+                    exercise_id: ex.to_string(),
+                },
+            );
+        }
+
+        send(
+            &mut model,
+            ItemEvent::ReorderLinkedExercises {
+                piece_id: "piece-1".to_string(),
+                ordered_ids: vec!["ex-3".to_string(), "ex-1".to_string()],
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert_eq!(
+            piece.linked_exercise_ids,
+            vec!["ex-3".to_string(), "ex-1".to_string(), "ex-2".to_string()]
         );
         assert!(model.last_error.is_none());
     }
