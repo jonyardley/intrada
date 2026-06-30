@@ -79,22 +79,13 @@ struct LibraryDetailScreen: View {
       LibraryEditScreen(item: item)
         .environment(store)
     }
-    // Picker sheet wired in the follow-up task
     .sheet(isPresented: $showingPicker) {
-      NavigationStack {
-        Text("Link an exercise")
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(IntradaColor.paperTop)
-          .navigationTitle("Link an exercise")
-          .navigationBarTitleDisplayMode(.inline)
-          .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-              Button("Done") { showingPicker = false }
-            }
-          }
-      }
+      LinkedExercisePickerSheet(
+        available: availableExercises,
+        pieceId: item.id,
+        onAdd: { ids in linkExercises(ids) }
+      )
+      .environment(store)
     }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
@@ -233,6 +224,23 @@ struct LibraryDetailScreen: View {
   }
 
   // ── Actions ──
+
+  private var availableExercises: [LibraryItemView] {
+    let linked = Swift.Set(item.linkedExercises.map(\.id))
+    return (store.viewModel?.items ?? []).filter {
+      $0.itemType == .exercise && !linked.contains($0.id)
+    }
+  }
+
+  private func linkExercises(_ ids: [String]) {
+    let before = store.viewModel?.error
+    for id in ids {
+      store.send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
+    }
+    if store.viewModel?.error == before {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+  }
 
   private func unlink(_ exercise: LinkedExerciseView) {
     let before = store.viewModel?.error

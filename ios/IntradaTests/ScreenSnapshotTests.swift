@@ -430,6 +430,27 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  func testLinkedExercisePicker() {
+    // Three selectable exercises; the first is pre-selected so "Add 1" is enabled.
+    let sheet = LinkedExercisePickerSheetWrapper(
+      available: [
+        .previewExercise,
+        LibraryItemView(
+          id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
+          key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+        LibraryItemView(
+          id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
+          key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+          notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+      ],
+      pieceId: "piece-3",
+      preselected: ["exercise-1"])
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
