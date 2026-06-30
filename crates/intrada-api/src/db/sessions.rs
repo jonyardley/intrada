@@ -221,6 +221,7 @@ fn row_to_session_without_entries(row: &libsql::Row) -> Result<PracticeSession, 
         total_duration_secs: total_duration_secs as u64,
         completion_status: completion_status_from_str(&completion_status_str)?,
         session_intention,
+        session_score: None,
     })
 }
 
@@ -419,6 +420,7 @@ pub async fn insert_session(
             total_duration_secs: input.total_duration_secs,
             completion_status: input.completion_status.clone(),
             session_intention: input.session_intention.clone(),
+            session_score: None,
         })
     }
     .await;
