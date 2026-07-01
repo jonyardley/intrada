@@ -208,6 +208,70 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(rings), as: config)
   }
 
+  func testScoreRingHero() {
+    let hero = ZStack {
+      PaperBackground()
+      HStack(spacing: 24) {
+        ScoreRing(score: 7, size: 132, showsScale: true)
+        ScoreRing(score: nil, size: 132, showsScale: true)
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(hero), as: config)
+  }
+
+  func testScoreSelectorPills() {
+    let selectors = ZStack {
+      PaperBackground()
+      VStack(spacing: 20) {
+        ScoreSelector(score: 0, accessibilityLabel: "Score") { _ in }
+        ScoreSelector(score: 4, accessibilityLabel: "Score") { _ in }
+        ScoreSelector(score: 10, accessibilityLabel: "Score") { _ in }
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(selectors), as: config)
+  }
+
+  func testRecentSessions() {
+    let block = ZStack {
+      PaperBackground()
+      RecentSessions(sessions: [
+        RecentSession(id: "1", score: 7, dateText: "Tue · Jun 24"),
+        RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
+        RecentSession(id: "3", score: 5, dateText: "Wed · Jun 18"),
+      ])
+      .padding(16)
+    }
+    assertSnapshot(of: host(block), as: config)
+  }
+
+  func testRecentSessionsDeclining() {
+    let block = ZStack {
+      PaperBackground()
+      RecentSessions(sessions: [
+        RecentSession(id: "1", score: 5, dateText: "Tue · Jun 24"),
+        RecentSession(id: "2", score: 6, dateText: "Sat · Jun 21"),
+        RecentSession(id: "3", score: 8, dateText: "Wed · Jun 18"),
+      ])
+      .padding(16)
+    }
+    assertSnapshot(of: host(block), as: config)
+  }
+
+  func testAddRowButtonVariants() {
+    let buttons = ZStack {
+      PaperBackground()
+      VStack(spacing: 16) {
+        AddRowButton(title: "Add a related exercise") {}
+        AddRowButton(title: "Add your first exercise", style: .outlined) {}
+        AddRowButton(title: "Add a related exercise", style: .plain) {}
+      }
+      .padding(16)
+    }
+    assertSnapshot(of: host(buttons), as: config)
+  }
+
   func testMasteryDial() {
     let dial = ZStack {
       PaperBackground()
