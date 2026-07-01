@@ -3087,6 +3087,44 @@ mod tests {
     }
 
     #[test]
+    fn test_mid_session_entry_score_survives_into_summary() {
+        // A per-entry score set mid-session must still be present once the
+        // session finishes and projects into the Summary — the reconciliation
+        // the reflection hand-off (Phase 6) relies on.
+        let (mut model, start) = model_with_active_session(2);
+        let t1 = start + chrono::Duration::seconds(45);
+        let t2 = t1 + chrono::Duration::seconds(30);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::NextItem { now: t1 }),
+        );
+        let entry_id = if let SessionStatus::Active(ref a) = model.session_status {
+            a.entries[0].id.clone()
+        } else {
+            panic!("Expected Active state after advancing one of two items");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateEntryScore {
+                entry_id,
+                score: Some(4),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession { now: t2 }),
+        );
+
+        if let SessionStatus::Summary(ref summary) = model.session_status {
+            assert_eq!(summary.entries[0].score, Some(4));
+        } else {
+            panic!("Expected Summary state after finishing the session");
+        }
+    }
+
+    #[test]
     fn test_update_entry_tempo_works_mid_session_on_completed_entry() {
         let (mut model, start) = model_with_active_session(2);
         let t1 = start + chrono::Duration::seconds(45);
