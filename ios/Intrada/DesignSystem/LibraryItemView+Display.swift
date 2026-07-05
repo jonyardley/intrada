@@ -1,4 +1,26 @@
+import Foundation
 import SharedTypes
+
+extension ItemPracticeSummary {
+  /// Score history (newest first) mapped to `RecentSessions` rows, formatting
+  /// each RFC3339 `sessionDate` as the compact `EEE · MMM d` the design uses.
+  /// Locale/calendar come from the SwiftUI environment so snapshot hosts stay
+  /// deterministic (see `SessionCard.dateDisplay`).
+  func recentSessionRows(locale: Locale, calendar: Calendar) -> [RecentSession] {
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.calendar = calendar
+    formatter.timeZone = calendar.timeZone
+    formatter.dateFormat = "EEE '·' MMM d"
+    return scoreHistory.map { entry in
+      RecentSession(
+        id: entry.sessionId,
+        score: Int(entry.score),
+        dateText: SessionClock.parseRFC3339(entry.sessionDate)
+          .map { formatter.string(from: $0) } ?? "")
+    }
+  }
+}
 
 /// Shell-side presentation formatting for a library item. The core exposes
 /// structured `tempoMarking` / `tempoBpm`; how iOS renders them ("Allegro · ♩ =

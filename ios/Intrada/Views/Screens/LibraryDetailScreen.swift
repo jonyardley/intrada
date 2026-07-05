@@ -7,6 +7,8 @@ struct LibraryDetailScreen: View {
 
   @Environment(Store.self) private var store
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.locale) private var locale
+  @Environment(\.calendar) private var calendar
   @State private var confirmingDelete = false
   @State private var editing = false
   @State private var editingLinks: Bool
@@ -21,7 +23,11 @@ struct LibraryDetailScreen: View {
     ScreenScaffold(title: item.title, subtitle: subtitle) {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.card) {
-          TypeBadge(kind: item.itemType)
+          if item.itemType == .exercise {
+            exerciseHero
+          } else {
+            TypeBadge(kind: item.itemType)
+          }
 
           if !detailRows.isEmpty {
             VStack(spacing: 0) {
@@ -52,8 +58,8 @@ struct LibraryDetailScreen: View {
             linkedExercisesSection
           }
 
-          if item.itemType == .exercise && !item.linkedFromPieces.isEmpty {
-            linkedFromSection
+          if hasRecentSessions {
+            recentSessionsSection
           }
 
           deleteButton
@@ -210,42 +216,58 @@ struct LibraryDetailScreen: View {
     .padding(.vertical, IntradaSpacing.cardCompact)
   }
 
-  // ── Related pieces ──
+  // ── Exercise hero + provenance ──
 
-  private var linkedFromSection: some View {
-    VStack(spacing: 0) {
-      HStack {
-        Text("Related pieces")
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-        Spacer()
-      }
-      .padding(.horizontal, IntradaSpacing.card)
-      .padding(.top, IntradaSpacing.card)
-      .padding(.bottom, IntradaSpacing.cardCompact)
-      ForEach(Array(item.linkedFromPieces.enumerated()), id: \.element.id) { index, piece in
-        if index > 0 {
-          HairlineDivider()
-        }
-        NavigationLink(value: piece.id) {
-          HStack {
-            Text(piece.title)
-              .font(IntradaFont.body)
-              .foregroundStyle(IntradaColor.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right")
-              .imageScale(.small)
-              .font(IntradaFont.meta)
-              .foregroundStyle(IntradaColor.inkFaint)
-          }
-          .padding(.vertical, IntradaSpacing.cardCompact)
-          .padding(.horizontal, IntradaSpacing.card)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(piece.title), related piece")
-      }
+  private var exerciseHero: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      ScoreRing(
+        score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
+      relatedBreadcrumb
     }
-    .cardSurface()
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, IntradaSpacing.controlGap)
+  }
+
+  // Provenance to the primary linking piece; `· +N more` when several pieces
+  // link this exercise (full multi-piece navigation tracked as a follow-up).
+  @ViewBuilder private var relatedBreadcrumb: some View {
+    if let first = item.linkedFromPieces.first {
+      NavigationLink(value: first.id) {
+        HStack(spacing: 5) {
+          Image(systemName: "arrow.turn.down.right")
+            .imageScale(.small)
+            .accessibilityHidden(true)
+          breadcrumbLabel(first)
+        }
+        .foregroundStyle(IntradaColor.exerciseBadgeFg)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(breadcrumbAccessibility(first))
+    }
+  }
+
+  private func breadcrumbLabel(_ piece: PieceRefView) -> Text {
+    let extra = item.linkedFromPieces.count - 1
+    let base =
+      Text("Related to ").font(IntradaFont.metaMedium) + Text(piece.title).font(IntradaFont.badge)
+    return extra > 0 ? base + Text(" · +\(extra) more").font(IntradaFont.metaMedium) : base
+  }
+
+  private func breadcrumbAccessibility(_ piece: PieceRefView) -> String {
+    let extra = item.linkedFromPieces.count - 1
+    let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
+    return "Related to \(piece.title)\(others), related piece"
+  }
+
+  // ── Recent sessions ──
+
+  private var hasRecentSessions: Bool {
+    !(item.practice?.scoreHistory.isEmpty ?? true)
+  }
+
+  private var recentSessionsSection: some View {
+    RecentSessions(
+      sessions: item.practice?.recentSessionRows(locale: locale, calendar: calendar) ?? [])
   }
 
   // ── Actions ──
