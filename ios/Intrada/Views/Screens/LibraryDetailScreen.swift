@@ -91,9 +91,9 @@ struct LibraryDetailScreen: View {
     }
     .sheet(isPresented: $showingPicker) {
       LinkedExercisePickerSheet(
-        available: availableExercises,
-        pieceId: item.id,
-        onAdd: { ids in linkExercises(ids) }
+        available: allExercises,
+        linkedIds: item.linkedExercises.map(\.id),
+        onApply: { applyLinkChanges($0) }
       )
       .environment(store)
     }
@@ -272,23 +272,29 @@ struct LibraryDetailScreen: View {
 
   // ── Actions ──
 
-  private var availableExercises: [LibraryItemView] {
-    let linked = Swift.Set(item.linkedExercises.map(\.id))
-    return (store.viewModel?.items ?? []).filter {
-      $0.itemType == .exercise && !linked.contains($0.id)
-    }
+  private var allExercises: [LibraryItemView] {
+    (store.viewModel?.items ?? []).filter { $0.itemType == .exercise }
   }
 
-  private func linkExercises(_ ids: [String]) {
-    var allSucceeded = true
-    for id in ids {
+  // Reconcile the picker's final set against what's linked now: link the added,
+  // unlink the removed. A failed write surfaces on the global banner (#846), so
+  // the success haptic only fires when every write landed.
+  private func applyLinkChanges(_ selected: Swift.Set<String>) {
+    let current = Swift.Set(item.linkedExercises.map(\.id))
+    let toLink = selected.subtracting(current)
+    let toUnlink = current.subtracting(selected)
+    var ok = true
+    for id in toLink {
       let before = store.viewModel?.error
       store.send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
-      if store.viewModel?.error != before {
-        allSucceeded = false
-      }
+      if store.viewModel?.error != before { ok = false }
     }
-    if allSucceeded {
+    for id in toUnlink {
+      let before = store.viewModel?.error
+      store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
+      if store.viewModel?.error != before { ok = false }
+    }
+    if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }

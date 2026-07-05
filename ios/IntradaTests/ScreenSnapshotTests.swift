@@ -509,8 +509,9 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   func testLinkedExercisePicker() {
-    // Three selectable exercises; the first is pre-selected so "Add 1" is enabled.
-    let sheet = LinkedExercisePickerSheetWrapper(
+    // Three exercises; the first is already related (pre-selected → check), the
+    // rest show the outlined add control.
+    let sheet = LinkedExercisePickerSheet(
       available: [
         .previewExercise,
         LibraryItemView(
@@ -524,8 +525,8 @@ final class ScreenSnapshotTests: XCTestCase {
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
       ],
-      pieceId: "piece-3",
-      preselected: ["exercise-1"])
+      linkedIds: ["exercise-1"],
+      onApply: { _ in })
     assertSnapshot(of: host(sheet), as: config)
   }
 
