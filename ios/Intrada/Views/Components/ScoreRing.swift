@@ -3,6 +3,8 @@ import SwiftUI
 struct ScoreRing: View {
   let score: Int?
   var size: CGFloat = 46
+  /// Hero variant: an "OF 10" caption under the numeral (piece/exercise detail).
+  var showsScale: Bool = false
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.intradaMotionDisabled) private var motionDisabled
@@ -30,14 +32,22 @@ struct ScoreRing: View {
             style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
           .rotationEffect(.degrees(-90))
       }
-      if isUnrated {
-        Text("–")
-          .font(IntradaFont.pageTitle(size * 0.36))
-          .foregroundStyle(IntradaColor.inkFaint)
-      } else {
-        Text("\(clampedScore)")
-          .font(IntradaFont.pageTitle(size * 0.36))
-          .foregroundStyle(IntradaColor.ink)
+      VStack(spacing: size * 0.02) {
+        if isUnrated {
+          Text("–")
+            .font(IntradaFont.pageTitle(size * 0.36))
+            .foregroundStyle(IntradaColor.inkFaint)
+        } else {
+          Text("\(clampedScore)")
+            .font(IntradaFont.pageTitle(size * 0.36))
+            .foregroundStyle(IntradaColor.ink)
+          if showsScale {
+            Text("OF 10")
+              .font(IntradaFont.eyebrow)
+              .kerning(0.5)
+              .foregroundStyle(IntradaColor.inkFaint)
+          }
+        }
       }
     }
     .padding(lineWidth / 2)
