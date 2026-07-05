@@ -1,7 +1,8 @@
 import XCTest
 
-/// Real-bridge UITest for the library-first builder (#935). `--disable-animations`
-/// stops the Practice week-strip's paging TabView defeating XCUITest idle (#941).
+/// Real-bridge UITest for the "Build session" builder (#935). Adding moved into
+/// the "Add to session" sheet. `--disable-animations` stops the Practice
+/// week-strip's paging TabView defeating XCUITest idle (#941).
 @MainActor
 final class SessionBuilderUITests: XCTestCase {
   override func setUp() {
@@ -24,15 +25,20 @@ final class SessionBuilderUITests: XCTestCase {
     XCTAssertTrue(start.waitForExistence(timeout: 10), "Start practising")
     start.tap()
 
-    // The library is inline; add the top two cards (library cards expose
-    // "Not added" / "Added" as their a11y value).
+    // Adding moved to the "Add to session" sheet — open it from the dashed row.
+    let addRow = app.buttons["Add piece or exercise"]
+    XCTAssertTrue(addRow.waitForExistence(timeout: 5), "Add row")
+    addRow.tap()
+
+    // In the sheet, add the top two cards ("Not added" / "Added" a11y value).
     let notAdded = app.buttons.matching(NSPredicate(format: "value == %@", "Not added"))
-    XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "Library cards shown")
+    XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "Library cards in sheet")
     notAdded.firstMatch.tap()
     XCTAssertTrue(notAdded.firstMatch.waitForExistence(timeout: 5), "A second card to add")
     notAdded.firstMatch.tap()
+    app.buttons["Done"].tap()
 
-    // Both land in the queue tray (its remove buttons are "Remove <title>").
+    // Both land as standalone rows (their remove buttons are "Remove <title>").
     let removes = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Remove"))
     XCTAssertTrue(removes.firstMatch.waitForExistence(timeout: 5), "queued items")
     XCTAssertEqual(removes.count, 2, "two items queued")
