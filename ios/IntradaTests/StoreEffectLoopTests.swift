@@ -412,6 +412,16 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(try bridge.view().summary?.entries.first?.score, 4, "score should round-trip")
     _ = try bridge.update(.session(.updateEntryScore(entryId: entryId, score: nil)))
     XCTAssertNil(try bridge.view().summary?.entries.first?.score, "clearing a score round-trips")
+    // Per-entry notes — the hand-off reflection sheet's write, never previously
+    // sent from Swift (#846). Round-trip set + clear through the live bridge.
+    _ = try bridge.update(
+      .session(.updateEntryNotes(entryId: entryId, notes: "RH evenness better at 96")))
+    XCTAssertEqual(
+      try bridge.view().summary?.entries.first?.notes, "RH evenness better at 96",
+      "the reflection sheet's per-entry note should round-trip")
+    _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
+    XCTAssertNil(
+      try bridge.view().summary?.entries.first?.notes, "clearing an entry note round-trips")
     _ = try bridge.update(.session(.updateSessionNotes(notes: "Felt good")))
     XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
     _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
