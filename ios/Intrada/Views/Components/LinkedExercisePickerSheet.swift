@@ -1,34 +1,27 @@
 import SharedTypes
 import SwiftUI
 
-/// Multi-select sheet for linking exercises to a piece. Lists all exercises
-/// not already linked; the user picks one or more then confirms with "Add N".
+/// Add/remove manager for a piece's related exercises. Lists every exercise
+/// with the already-related ones pre-selected; tapping toggles membership and
+/// "Done" hands the final set back — the caller links the added and unlinks the
+/// removed. (Reorder stays in the detail card's Edit mode.)
 struct LinkedExercisePickerSheet: View {
   let available: [LibraryItemView]
-  let pieceId: String
-  let onAdd: ([String]) -> Void
+  let linkedIds: [String]
+  let onApply: (Swift.Set<String>) -> Void
 
   @Environment(\.dismiss) private var dismiss
   @State private var selected: Swift.Set<String>
 
-  init(available: [LibraryItemView], pieceId: String, onAdd: @escaping ([String]) -> Void) {
+  init(
+    available: [LibraryItemView], linkedIds: [String],
+    onApply: @escaping (Swift.Set<String>) -> Void
+  ) {
     self.available = available
-    self.pieceId = pieceId
-    self.onAdd = onAdd
-    _selected = State(initialValue: [])
+    self.linkedIds = linkedIds
+    self.onApply = onApply
+    _selected = State(initialValue: Swift.Set(linkedIds))
   }
-
-  #if DEBUG
-    init(
-      available: [LibraryItemView], pieceId: String, preselected: [String],
-      onAdd: @escaping ([String]) -> Void
-    ) {
-      self.available = available
-      self.pieceId = pieceId
-      self.onAdd = onAdd
-      _selected = State(initialValue: Swift.Set(preselected))
-    }
-  #endif
 
   var body: some View {
     NavigationStack {
@@ -37,50 +30,61 @@ struct LinkedExercisePickerSheet: View {
         if available.isEmpty {
           PlaceholderContent(
             systemImage: "music.note.list",
-            message: "No exercises to add. Create an exercise in your library first.")
+            message: "No exercises yet. Create an exercise to relate it to this piece.")
         } else {
-          ScrollView {
-            VStack(spacing: 0) {
-              createNewRow
-              HairlineDivider().padding(.leading, IntradaSpacing.card)
-              ForEach(available, id: \.id) { exercise in
-                let isOn = selected.contains(exercise.id)
-                Button {
-                  toggle(exercise.id, isOn: isOn)
-                } label: {
-                  exerciseRow(exercise, isOn: isOn)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(rowAccessibilityLabel(exercise, isOn: isOn))
-                .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
-
-                if exercise.id != available.last?.id {
-                  HairlineDivider().padding(.leading, IntradaSpacing.card)
-                }
-              }
-            }
-            .cardSurface()
-            .padding(IntradaSpacing.card)
-          }
+          list
         }
       }
-      .navigationTitle("Related exercises")
+      .navigationTitle("Add exercises")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button("Cancel") { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button(addLabel) {
-            onAdd(Array(selected))
+          Button("Done") {
+            onApply(selected)
             dismiss()
           }
-          .disabled(selected.isEmpty)
-          .accessibilityLabel(addAccessibilityLabel)
         }
       }
     }
     .presentationDetents([.medium, .large])
+  }
+
+  private var list: some View {
+    ScrollView {
+      VStack(spacing: 0) {
+        createNewRow
+        HairlineDivider().padding(.leading, IntradaSpacing.card)
+        Text("Your exercises")
+          .font(IntradaFont.eyebrow)
+          .textCase(.uppercase)
+          .kerning(1.2)
+          .foregroundStyle(IntradaColor.inkFaint)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.top, IntradaSpacing.cardCompact)
+          .padding(.bottom, IntradaSpacing.controlGap)
+        ForEach(available, id: \.id) { exercise in
+          let isOn = selected.contains(exercise.id)
+          Button {
+            toggle(exercise.id, isOn: isOn)
+          } label: {
+            exerciseRow(exercise, isOn: isOn)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(rowAccessibilityLabel(exercise, isOn: isOn))
+          .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+
+          if exercise.id != available.last?.id {
+            HairlineDivider().padding(.leading, IntradaSpacing.card)
+          }
+        }
+      }
+      .cardSurface()
+      .padding(IntradaSpacing.card)
+    }
   }
 
   // ── Rows ──
@@ -88,17 +92,18 @@ struct LinkedExercisePickerSheet: View {
   private var createNewRow: some View {
     NavigationLink(destination: LibraryAddScreen(defaultKind: .exercise)) {
       HStack(spacing: IntradaSpacing.cardCompact) {
-        Image(systemName: "plus.circle.fill")
-          .imageScale(.medium)
-          .font(IntradaFont.body)
+        Image(systemName: "plus")
+          .font(.system(size: 16, weight: .semibold))
           .foregroundStyle(IntradaColor.accent)
+          .frame(width: 28, height: 28)
+          .background(Circle().fill(IntradaColor.pieceBadgeBg))
           .accessibilityHidden(true)
         Text("Create new exercise")
           .font(IntradaFont.bodyMedium)
           .foregroundStyle(IntradaColor.accent)
         Spacer(minLength: 0)
       }
-      .padding(.vertical, IntradaSpacing.row)
+      .padding(.vertical, IntradaSpacing.cardCompact)
       .padding(.horizontal, IntradaSpacing.card)
       .frame(maxWidth: .infinity, alignment: .leading)
       .contentShape(Rectangle())
@@ -107,9 +112,11 @@ struct LinkedExercisePickerSheet: View {
     .accessibilityLabel("Create a new exercise")
   }
 
-  @ViewBuilder
   private func exerciseRow(_ exercise: LibraryItemView, isOn: Bool) -> some View {
-    HStack(spacing: IntradaSpacing.row) {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      ItemKind.exercise.bar
+        .frame(width: 4, height: 30)
+        .clipShape(Capsule())
       VStack(alignment: .leading, spacing: 3) {
         Text(exercise.title)
           .font(IntradaFont.cardTitle())
@@ -121,16 +128,27 @@ struct LinkedExercisePickerSheet: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      if isOn {
-        Image(systemName: "checkmark")
-          .font(IntradaFont.bodyMedium)
-          .foregroundStyle(IntradaColor.accent)
-      }
+      membershipControl(isOn: isOn)
     }
-    .padding(.vertical, IntradaSpacing.row)
+    .padding(.vertical, IntradaSpacing.cardCompact)
     .padding(.horizontal, IntradaSpacing.card)
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(Rectangle())
+  }
+
+  private func membershipControl(isOn: Bool) -> some View {
+    ZStack {
+      Circle()
+        .fill(isOn ? AnyShapeStyle(IntradaColor.exerciseAccent) : AnyShapeStyle(Color.clear))
+        .overlay(
+          Circle()
+            .strokeBorder(IntradaColor.exerciseAccent, lineWidth: 2)
+            .opacity(isOn ? 0 : 1))
+      Image(systemName: isOn ? "checkmark" : "plus")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(isOn ? IntradaColor.onExercise : IntradaColor.exerciseAccent)
+    }
+    .frame(width: 28, height: 28)
   }
 
   // ── Helpers ──
@@ -150,39 +168,17 @@ struct LinkedExercisePickerSheet: View {
     UISelectionFeedbackGenerator().selectionChanged()
   }
 
-  private var addLabel: String {
-    selected.isEmpty ? "Add" : "Add \(selected.count)"
-  }
-
-  private var addAccessibilityLabel: String {
-    if selected.isEmpty { return "Add exercises, disabled" }
-    return "Add \(selected.count) \(selected.count == 1 ? "exercise" : "exercises")"
-  }
-
   private func rowAccessibilityLabel(_ exercise: LibraryItemView, isOn: Bool) -> String {
     var parts = [exercise.title]
     if let meta = metaLine(exercise) { parts.append(meta) }
-    parts.append(isOn ? "selected" : "not selected")
+    parts.append(isOn ? "related, tap to remove" : "not related, tap to add")
     return parts.joined(separator: ", ")
   }
 }
 
 #if DEBUG
-  /// Snapshot seam: exposes the picker with a pre-seeded selection so the test
-  /// captures "some selected + Add N enabled" without UI interaction.
-  struct LinkedExercisePickerSheetWrapper: View {
-    let available: [LibraryItemView]
-    let pieceId: String
-    let preselected: [String]
-
-    var body: some View {
-      LinkedExercisePickerSheet(
-        available: available, pieceId: pieceId, preselected: preselected, onAdd: { _ in })
-    }
-  }
-
-  #Preview("With exercises — some selected") {
-    LinkedExercisePickerSheetWrapper(
+  #Preview("Add or remove — one related") {
+    LinkedExercisePickerSheet(
       available: [
         .previewExercise,
         LibraryItemView(
@@ -196,14 +192,11 @@ struct LinkedExercisePickerSheet: View {
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
       ],
-      pieceId: "piece-1",
-      preselected: ["exercise-1"])
+      linkedIds: ["exercise-1"],
+      onApply: { _ in })
   }
 
   #Preview("Empty") {
-    LinkedExercisePickerSheet(
-      available: [],
-      pieceId: "piece-1",
-      onAdd: { _ in })
+    LinkedExercisePickerSheet(available: [], linkedIds: [], onApply: { _ in })
   }
 #endif

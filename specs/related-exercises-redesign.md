@@ -54,7 +54,7 @@ safe:
 | **2 · Library header + rows** | Already shipped in prior work — "All ▾" `LibraryFilterMenu` dropdown, favourite-star pill, header divider + opaque reveal, rows with ring + inline star + tag chips. This phase only reconciles the remaining fidelity delta: the ScoreRing numeral serif→Inter (`IntradaFont.scoreNumeral`). Dead `LibraryFilterTabs` removal spun off separately. | 1 |
 | **3 · Piece/exercise detail** | Wire `RecentSessions` into both details (map `practice.scoreHistory`; RFC3339→"Tue · Jun 24"); exercise-detail 132px hero ScoreRing + gold "Related to [piece]" breadcrumb (primary + "· +N more", replacing the old related-pieces list). Deferred: "Practise this" CTA (#1034, no single-item practice entry point) + full multi-piece breadcrumb nav (#1035). | 1 |
 | **3b · iPad SplitView** | List↔detail split, built with the screens. | 2, 3 |
-| **4 · Picker** | Reframe `LinkedExercisePickerSheet` from "Add N" to an add/remove manager on shared sheet chrome. | 1, 3 |
+| **4 · Picker** | Reframed `LinkedExercisePickerSheet` from add-only "Add N" to an add/remove **manager** (lists all exercises, pre-selects related, Done applies the link/unlink diff) with the gold circular +/check control, "Your exercises" eyebrow + gold type bars. Deferred (#1037): shared `BottomSheet` extraction (→ Phase 5's second consumer), filter-bar chrome + selected tray, and pruning the card's now-redundant Edit-mode remove. | 1, 3 |
 | **5 · Session builder** | Dedicated "Build session" list, add-sheet, sticky "Start · MM min" bar, grouped-block styling, swipe/Edit removal. | 1 |
 | **6 · Focus reflection** | Hand-off sheet: `ScoreSelector` + note → `updateEntryScore` / `updateEntryNotes` → advance. | 1 |
 
