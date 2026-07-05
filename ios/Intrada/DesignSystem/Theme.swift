@@ -131,6 +131,9 @@ enum IntradaFont {
   static func timer(_ size: CGFloat = 56) -> Font {
     .custom(Inter.semibold, size: size, relativeTo: .largeTitle)
   }
+  static func scoreNumeral(_ size: CGFloat) -> Font {
+    .custom(Inter.semibold, size: size, relativeTo: .title3)
+  }
 
   static let body = Font.custom(Inter.regular, size: 14, relativeTo: .subheadline)
   static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)
