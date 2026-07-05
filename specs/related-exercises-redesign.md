@@ -51,7 +51,7 @@ safe:
 | Phase | Scope | Depends on |
 |---|---|---|
 | **1 · Foundation** | Shared primitives (this branch). | — |
-| **2 · Library header + rows** | "All ▾" dropdown + favourite-star pill (replaces the segmented tabs), header divider/shadow, genre chip + inline star + ring on rows. | 1 |
+| **2 · Library header + rows** | Already shipped in prior work — "All ▾" `LibraryFilterMenu` dropdown, favourite-star pill, header divider + opaque reveal, rows with ring + inline star + tag chips. This phase only reconciles the remaining fidelity delta: the ScoreRing numeral serif→Inter (`IntradaFont.scoreNumeral`). Dead `LibraryFilterTabs` removal spun off separately. | 1 |
 | **3 · Piece/exercise detail** | Reshape the shipped card, add `RecentSessions`, hero ring + "Related to [piece]" breadcrumb. | 1 |
 | **3b · iPad SplitView** | List↔detail split, built with the screens. | 2, 3 |
 | **4 · Picker** | Reframe `LinkedExercisePickerSheet` from "Add N" to an add/remove manager on shared sheet chrome. | 1, 3 |
@@ -80,11 +80,10 @@ Shared primitives every later screen consumes, so screens stay declarative.
 
 **Deferred out of Phase 1 (tracked):**
 
-- **Ring numeral font** — the design draws the ring numeral in Inter; the shipped
-  ring uses Source Serif (`pageTitle`). Flip it in **Phase 2**, where the
-  Library-row snapshots re-record anyway, to avoid churning untouched screens
-  here. (Only `InterVariable` regular/medium/semibold are registered — no bold,
-  so map the design's 700 to semibold.)
+- **Ring numeral font** — the design draws the ring numeral in Inter; Phase 1
+  shipped it in Source Serif (`pageTitle`). **Done in Phase 2**
+  (`IntradaFont.scoreNumeral`, Inter semibold — no bold instance is registered,
+  so the design's 700 maps to semibold).
 - **`BottomSheet` / shared filter-bar chrome** — extract it in **Phase 4**, its
   first real consumer, per "consolidate before you template" (second use, not
   pre-emptively).

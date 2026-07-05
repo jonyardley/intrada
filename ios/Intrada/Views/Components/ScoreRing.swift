@@ -35,11 +35,11 @@ struct ScoreRing: View {
       VStack(spacing: size * 0.02) {
         if isUnrated {
           Text("–")
-            .font(IntradaFont.pageTitle(size * 0.36))
+            .font(IntradaFont.scoreNumeral(size * 0.36))
             .foregroundStyle(IntradaColor.inkFaint)
         } else {
           Text("\(clampedScore)")
-            .font(IntradaFont.pageTitle(size * 0.36))
+            .font(IntradaFont.scoreNumeral(size * 0.36))
             .foregroundStyle(IntradaColor.ink)
           if showsScale {
             Text("OF 10")
