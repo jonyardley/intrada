@@ -33,6 +33,17 @@ ignore = [
     { id = "RUSTSEC-2026-0098", reason = "transitive via libsql; tracked in #568" },
     { id = "RUSTSEC-2026-0099", reason = "transitive via libsql; tracked in #568" },
     { id = "RUSTSEC-2026-0104", reason = "transitive via libsql; tracked in #568" },
+
+    # quick-xml DoS advisories (quadratic duplicate-attr check; unbounded
+    # namespace-declaration allocation). Transitive via rust-s3 0.37.2 →
+    # aws-creds → quick-xml 0.38 (the R2/S3 client, intrada-api only). Fixed in
+    # quick-xml >=0.41, but rust-s3 0.37.2 (latest) still pins ^0.38 — no
+    # upstream bump exists. DoS only, and quick-xml here parses XML *responses*
+    # from Cloudflare R2 (a trusted first-party endpoint), never attacker-
+    # controlled input. Clear when rust-s3 ships a quick-xml >=0.41 release.
+    # Tracked in #1032.
+    { id = "RUSTSEC-2026-0194", reason = "transitive via rust-s3; DoS on trusted R2 XML; no upstream fix; tracked in #1032" },
+    { id = "RUSTSEC-2026-0195", reason = "transitive via rust-s3; DoS on trusted R2 XML; no upstream fix; tracked in #1032" },
 ]
 
 # ── Licenses ─────────────────────────────────────────────────────────────
