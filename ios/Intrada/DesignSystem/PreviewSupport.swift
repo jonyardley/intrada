@@ -339,7 +339,15 @@
         tempoBpm: 72,
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist"], createdAt: "", updatedAt: "",
-        practice: nil, latestAchievedTempo: nil, priority: false,
+        practice: ItemPracticeSummary(
+          sessionCount: 12, totalMinutes: 240, latestScore: 6,
+          scoreHistory: [
+            ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 6, sessionId: "s1"),
+            ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 5, sessionId: "s2"),
+            ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 4, sessionId: "s3"),
+          ],
+          latestTempo: 72, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
+        latestAchievedTempo: nil, priority: false,
         linkedExercises: [
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
@@ -364,7 +372,15 @@
         id: "exercise-1", itemType: .exercise, title: "Hanon No. 1",
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
-        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: ItemPracticeSummary(
+          sessionCount: 9, totalMinutes: 90, latestScore: 7,
+          scoreHistory: [
+            ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1"),
+            ScoreHistoryEntry(sessionDate: "2026-06-21T09:00:00Z", score: 6, sessionId: "e2"),
+            ScoreHistoryEntry(sessionDate: "2026-06-18T09:00:00Z", score: 5, sessionId: "e3"),
+          ],
+          latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune"),
