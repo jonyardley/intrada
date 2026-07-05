@@ -272,6 +272,15 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(buttons), as: config)
   }
 
+  func testReflectionSheet() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", onSave: { _, _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
   func testMasteryDial() {
     let dial = ZStack {
       PaperBackground()

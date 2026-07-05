@@ -14,6 +14,8 @@ struct FocusPlayerScreen: View {
 
   init(referenceDate: Date? = nil) { self.referenceDate = referenceDate }
 
+  @State private var reflecting: ReflectionTarget?
+
   private var active: ActiveSessionView? { store.viewModel?.activeSession }
 
   var body: some View {
@@ -22,6 +24,14 @@ struct FocusPlayerScreen: View {
       if let active {
         content(active)
       }
+    }
+    .sheet(item: $reflecting) { target in
+      ReflectionSheet(
+        itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
+        onSave: { score, note in handleReflection(target, score: score, note: note) },
+        onSkip: { handleSkipRating() }
+      )
+      .presentationDetents([.medium, .large])
     }
   }
 
@@ -142,7 +152,7 @@ struct FocusPlayerScreen: View {
     VStack(spacing: 14) {
       HStack(spacing: 32) {
         Button {
-          store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+          presentReflection(active)
         } label: {
           Image(systemName: "play.fill")
             .font(.system(size: 32))
@@ -173,6 +183,48 @@ struct FocusPlayerScreen: View {
       }
     }
     .padding(.bottom, IntradaSpacing.card)
+  }
+
+  // ── Reflection at hand-off ───────────────────────────────────────────
+
+  private struct ReflectionTarget: Identifiable {
+    let id: String  // the current entry's ulid
+    let title: String
+    let elapsedDisplay: String
+  }
+
+  private func presentReflection(_ active: ActiveSessionView) {
+    let pos = Int(active.currentPosition)
+    guard active.entries.indices.contains(pos) else {
+      store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+      return
+    }
+    let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
+    let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
+    reflecting = ReflectionTarget(
+      id: active.entries[pos].id, title: active.currentItemTitle,
+      elapsedDisplay: SessionClock.clockDisplay(elapsed))
+  }
+
+  // Notes first (no status guard — surfaces a validation error before advancing);
+  // then NextItem completes the entry so the score can land (score needs
+  // Completed). Errors surface on RootView's banner, so dismiss only on success.
+  private func handleReflection(_ target: ReflectionTarget, score: UInt8?, note: String) {
+    if !note.isEmpty {
+      let before = store.viewModel?.error
+      store.send(.session(.updateEntryNotes(entryId: target.id, notes: note)))
+      if store.viewModel?.error != before { return }
+    }
+    store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+    if let score {
+      store.send(.session(.updateEntryScore(entryId: target.id, score: score)))
+    }
+    reflecting = nil
+  }
+
+  private func handleSkipRating() {
+    store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
+    reflecting = nil
   }
 }
 
