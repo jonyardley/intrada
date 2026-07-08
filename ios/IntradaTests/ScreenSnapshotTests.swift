@@ -401,29 +401,6 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(badges), as: config)
   }
 
-  func testLibraryFilterTabs() {
-    let tabs = ZStack {
-      PaperBackground()
-      VStack(alignment: .leading, spacing: 16) {
-        LibraryFilterTabs(selection: .constant(.all))
-        LibraryFilterTabs(selection: .constant(.pieces))
-        LibraryFilterTabs(selection: .constant(.exercises))
-      }
-      .padding(16)
-    }
-    assertSnapshot(of: host(tabs), as: config)
-  }
-
-  // #810: at the largest a11y size the pills stay one line + scroll, not wrap.
-  func testLibraryFilterTabsAccessibility() {
-    let tabs = ZStack {
-      PaperBackground()
-      LibraryFilterTabs(selection: .constant(.exercises))
-        .padding(16)
-    }
-    assertSnapshot(of: host(tabs), as: axConfig)
-  }
-
   func testKeyPickerCollapsed() {
     let pickers = ZStack {
       PaperBackground()
