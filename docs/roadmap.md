@@ -29,8 +29,9 @@ issues disagree, the issues are right.
 Capture, Plan, Space (manual), and Show (analytics) all have working
 surfaces. Auth, library, sessions, routines, scoring, focus mode, tempo
 tracking, design system, multi-device shell, E2E tests — all done. The
-Tauri/Leptos iOS shell is the active iOS path; the SwiftUI shell has been
-removed.
+native SwiftUI iOS app (on the Crux core — see
+[`specs/native-ios.md`](../specs/native-ios.md)) is the active iOS path;
+the Tauri/Leptos shells are paused.
 
 The active gaps are deeper Layer-1 capture (multi-key, sections, archive),
 the Space layer (mastery decay, spaced repetition), and parts of Show
