@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # Pin Xcode 26.5 to match local dev + the native-ios CI job.
       - uses: maxim-lobanov/setup-xcode@v1
         with:
