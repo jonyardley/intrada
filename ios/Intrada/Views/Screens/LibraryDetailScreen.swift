@@ -153,7 +153,8 @@ struct LibraryDetailScreen: View {
       .foregroundStyle(IntradaColor.accent)
       .disabled(item.linkedExercises.isEmpty)
       .opacity(item.linkedExercises.isEmpty ? 0 : 1)
-      .accessibilityLabel(editingLinks ? "Done editing related exercises" : "Edit related exercises")
+      .accessibilityLabel(
+        editingLinks ? "Done editing related exercises" : "Edit related exercises")
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.card)

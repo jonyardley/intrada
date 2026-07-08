@@ -28,12 +28,17 @@ struct ConsistencyBars: View {
         VStack(spacing: 6) {
           Spacer(minLength: 0)
           RoundedRectangle(cornerRadius: 5)
-            .fill(week.isCurrent ? AnyShapeStyle(LinearGradient.brandBar) : AnyShapeStyle(IntradaColor.consistencyTrack))
+            .fill(
+              week.isCurrent
+                ? AnyShapeStyle(LinearGradient.brandBar)
+                : AnyShapeStyle(IntradaColor.consistencyTrack)
+            )
             .frame(maxWidth: .infinity)
             .frame(height: barHeight(for: week))
             .shadow(
               color: week.isCurrent ? IntradaColor.accent.opacity(0.4) : .clear,
-              radius: 6, x: 0, y: 4)
+              radius: 6, x: 0, y: 4
+            )
             .scaleEffect(y: scale, anchor: .bottom)
             .animation(animation(index: index), value: grown)
           Text(week.label)
@@ -43,7 +48,8 @@ struct ConsistencyBars: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(week.label): \(week.minutes) minutes\(week.isCurrent ? ", this week" : "")")
+        .accessibilityLabel(
+          "\(week.label): \(week.minutes) minutes\(week.isCurrent ? ", this week" : "")")
       }
     }
     .frame(height: maxBarHeight + 18, alignment: .bottom)

@@ -49,7 +49,8 @@ struct MasteryDelta: View {
     .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
     .overlay(
       RoundedRectangle(cornerRadius: IntradaRadius.card)
-        .stroke(IntradaColor.hairline, lineWidth: 1))
+        .stroke(IntradaColor.hairline, lineWidth: 1)
+    )
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
   }
@@ -114,7 +115,8 @@ struct MasteryDeltaToast: View {
     .clipShape(RoundedRectangle(cornerRadius: 14))
     .overlay(
       RoundedRectangle(cornerRadius: 14)
-        .stroke(IntradaColor.celebrationBorder, lineWidth: 1))
+        .stroke(IntradaColor.celebrationBorder, lineWidth: 1)
+    )
     .opacity(reveal ? 1 : 0)
     .scaleEffect(reveal ? 1 : 0.96)
     .offset(y: reveal ? 0 : -10)

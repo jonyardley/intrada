@@ -100,7 +100,9 @@ struct SessionBuilderScreen: View {
             .listRowSeparator(.hidden)
             .listRowInsets(rowInsets)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-              Button(role: .destructive) { removeUnit(unit.block) } label: {
+              Button(role: .destructive) {
+                removeUnit(unit.block)
+              } label: {
                 Label(removeLabel(unit.block), systemImage: "trash")
               }
             }
@@ -113,7 +115,8 @@ struct SessionBuilderScreen: View {
           .listRowInsets(
             EdgeInsets(
               top: IntradaSpacing.controlGap, leading: IntradaSpacing.card, bottom: 100,
-              trailing: IntradaSpacing.card))
+              trailing: IntradaSpacing.card)
+          )
           .moveDisabled(true)
           .deleteDisabled(true)
       }
@@ -149,7 +152,9 @@ struct SessionBuilderScreen: View {
           .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer(minLength: IntradaSpacing.controlGap)
-      Button { removeUnit(block) } label: {
+      Button {
+        removeUnit(block)
+      } label: {
         Image(systemName: "xmark").font(IntradaFont.meta).foregroundStyle(IntradaColor.inkFaint)
           .frame(width: 24, height: 24)
       }
@@ -219,7 +224,8 @@ struct SessionBuilderScreen: View {
       .font(IntradaFont.micro).textCase(.uppercase).kerning(0.4)
       .foregroundStyle(IntradaColor.pieceBadgeFg)
       .padding(.horizontal, 6).padding(.vertical, 2)
-      .background(IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
+      .background(
+        IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
   }
 
   private func nestedRow(_ entry: SetlistEntryView) -> some View {

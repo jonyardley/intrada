@@ -29,7 +29,8 @@ struct ScoreRing: View {
           .trim(from: 0, to: settled ? fraction : 0)
           .stroke(
             IntradaColor.masteryFill,
-            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+          )
           .rotationEffect(.degrees(-90))
       }
       VStack(spacing: size * 0.02) {

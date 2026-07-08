@@ -80,18 +80,18 @@ struct LibraryScreen: View {
 
   @ViewBuilder private func libraryRow(_ item: LibraryItemView) -> some View {
     rowLink(item)
-    // Prioritise is a filter now, so the row stays clean (meter only); starring
-    // moves off the row to a long-press menu here + an explicit toggle on the
-    // detail screen. (`.swipeActions` only works inside a `List`.)
-    .contextMenu {
-      Button {
-        toggleStar(item.id)
-      } label: {
-        Label(
-          item.priority ? "Remove from priorities" : "Add to priorities",
-          systemImage: item.priority ? "star.slash" : "star")
+      // Prioritise is a filter now, so the row stays clean (meter only); starring
+      // moves off the row to a long-press menu here + an explicit toggle on the
+      // detail screen. (`.swipeActions` only works inside a `List`.)
+      .contextMenu {
+        Button {
+          toggleStar(item.id)
+        } label: {
+          Label(
+            item.priority ? "Remove from priorities" : "Add to priorities",
+            systemImage: item.priority ? "star.slash" : "star")
+        }
       }
-    }
   }
 
   @ViewBuilder private func rowLink(_ item: LibraryItemView) -> some View {

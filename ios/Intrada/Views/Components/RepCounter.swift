@@ -115,8 +115,9 @@ private struct RepDot: View {
           RepCounter(
             count: count, target: target,
             onClean: { if count < target { count += 1 } },
-            onMissed: { if count > 0 { count -= 1 } })
-            .padding(IntradaSpacing.card)
+            onMissed: { if count > 0 { count -= 1 } }
+          )
+          .padding(IntradaSpacing.card)
         }
       }
     }

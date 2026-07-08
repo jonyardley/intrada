@@ -77,7 +77,8 @@ struct SessionSummaryScreen: View {
   private func topMover(_ summary: SummaryView) -> ScoreChange? {
     guard let changes = store.viewModel?.analytics?.scoreChanges else { return nil }
     let titles = Swift.Set(summary.entries.map(\.itemTitle))
-    return changes
+    return
+      changes
       .filter { titles.contains($0.itemTitle) && $0.delta > 0 }
       .max { $0.delta < $1.delta }
   }

@@ -14,9 +14,12 @@ struct FormErrorBanner: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(IntradaSpacing.cardCompact)
-    .background(IntradaColor.danger.opacity(0.10), in: RoundedRectangle(cornerRadius: IntradaRadius.card))
+    .background(
+      IntradaColor.danger.opacity(0.10), in: RoundedRectangle(cornerRadius: IntradaRadius.card)
+    )
     .overlay(
-      RoundedRectangle(cornerRadius: IntradaRadius.card).strokeBorder(IntradaColor.danger.opacity(0.25))
+      RoundedRectangle(cornerRadius: IntradaRadius.card).strokeBorder(
+        IntradaColor.danger.opacity(0.25))
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Error: \(message)")

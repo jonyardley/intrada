@@ -250,7 +250,8 @@ private struct TimerRing: View {
             .trim(from: 0, to: fraction)
             .stroke(
               LinearGradient.ringSweep,
-              style: StrokeStyle(lineWidth: 10, lineCap: .round))
+              style: StrokeStyle(lineWidth: 10, lineCap: .round)
+            )
             .rotationEffect(.degrees(-90))
         }
       }
