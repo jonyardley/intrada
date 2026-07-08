@@ -2,7 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// Full-width Piece/Exercise selector — the accent-pill language of
-/// `LibraryFilterTabs`, shared by the add and edit forms.
+/// `SegmentedPills`, shared by the add and edit forms.
 struct KindSegment: View {
   @Binding var selection: ItemKind
 

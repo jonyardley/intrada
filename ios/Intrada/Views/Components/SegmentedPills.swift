@@ -2,9 +2,7 @@ import SharedTypes
 import SwiftUI
 
 /// Shared accent-pill segmented control: a sliding `matchedGeometryEffect`
-/// capsule across `options`. Backs both `LibraryFilterTabs` (inline-scrolling
-/// tabs) and `KindSegment` (full-width bordered track) so the pill language
-/// lives in one place (#807).
+/// capsule across `options`, so the pill language lives in one place (#807).
 struct SegmentedPills<Option: Hashable>: View {
   enum Layout: Equatable {
     /// Leading, horizontally-scrollable tabs that hug their labels.
