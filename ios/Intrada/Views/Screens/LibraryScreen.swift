@@ -9,9 +9,17 @@ struct LibraryScreen: View {
   // section. Shell-side over the core-filtered list; #904-style debt, tracked
   // until ListQuery carries a priority dimension.
   @State private var starFilter = false
+  // iPad split mode: when set, rows select into the shared binding (detail pane)
+  // instead of pushing a stack. nil on compact — the unchanged push navigation.
+  private var selection: Binding<String?>? = nil
   private let previewSearch: String?
 
   init() { previewSearch = nil }
+
+  init(selection: Binding<String?>) {
+    previewSearch = nil
+    self.selection = selection
+  }
 
   #if DEBUG
     /// Preview/snapshot seed: render with the search bar already revealed.
@@ -70,11 +78,8 @@ struct LibraryScreen: View {
     }
   }
 
-  private func libraryRow(_ item: LibraryItemView) -> some View {
-    NavigationLink(value: item.id) {
-      LibraryItemCard(item: item, showsMastery: true)
-    }
-    .buttonStyle(.plain)
+  @ViewBuilder private func libraryRow(_ item: LibraryItemView) -> some View {
+    rowLink(item)
     // Prioritise is a filter now, so the row stays clean (meter only); starring
     // moves off the row to a long-press menu here + an explicit toggle on the
     // detail screen. (`.swipeActions` only works inside a `List`.)
@@ -86,6 +91,26 @@ struct LibraryScreen: View {
           item.priority ? "Remove from priorities" : "Add to priorities",
           systemImage: item.priority ? "star.slash" : "star")
       }
+    }
+  }
+
+  @ViewBuilder private func rowLink(_ item: LibraryItemView) -> some View {
+    if let selection {
+      Button {
+        selection.wrappedValue = item.id
+      } label: {
+        LibraryItemCard(item: item, showsMastery: true)
+          .overlay(
+            RoundedRectangle(cornerRadius: IntradaRadius.card)
+              .stroke(IntradaColor.accent, lineWidth: 2)
+              .opacity(selection.wrappedValue == item.id ? 1 : 0))
+      }
+      .buttonStyle(.plain)
+    } else {
+      NavigationLink(value: item.id) {
+        LibraryItemCard(item: item, showsMastery: true)
+      }
+      .buttonStyle(.plain)
     }
   }
 
