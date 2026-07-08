@@ -244,7 +244,12 @@ struct LibraryDetailScreen: View {
       } else {
         Menu {
           ForEach(item.linkedFromPieces, id: \.id) { piece in
-            NavigationLink(value: piece.id) { Text(piece.title) }
+            NavigationLink(value: piece.id) {
+              Text(piece.title)
+              if let subtitle = piece.subtitle {
+                Text(subtitle)
+              }
+            }
           }
         } label: {
           breadcrumbRow(first, discloses: true)

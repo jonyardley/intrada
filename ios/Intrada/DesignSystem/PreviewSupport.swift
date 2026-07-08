@@ -393,8 +393,8 @@
           latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [
-          PieceRefView(id: "piece-1", title: "Clair de Lune"),
-          PieceRefView(id: "piece-2", title: "Gymnopédie No. 1"),
+          PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
+          PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
         ])
     }
 

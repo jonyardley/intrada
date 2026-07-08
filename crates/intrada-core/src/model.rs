@@ -233,6 +233,9 @@ pub struct LinkedExerciseView {
 pub struct PieceRefView {
     pub id: String,
     pub title: String,
+    /// Composer, when the piece has one — disambiguates identically titled
+    /// pieces in provenance UI (#1049).
+    pub subtitle: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
