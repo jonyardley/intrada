@@ -228,22 +228,42 @@ struct LibraryDetailScreen: View {
     .padding(.vertical, IntradaSpacing.controlGap)
   }
 
-  // Provenance to the primary linking piece; `· +N more` when several pieces
-  // link this exercise (full multi-piece navigation tracked as a follow-up).
   @ViewBuilder private var relatedBreadcrumb: some View {
     if let first = item.linkedFromPieces.first {
-      NavigationLink(value: first.id) {
-        HStack(spacing: 5) {
-          Image(systemName: "arrow.turn.down.right")
-            .imageScale(.small)
-            .accessibilityHidden(true)
-          breadcrumbLabel(first)
+      if item.linkedFromPieces.count == 1 {
+        NavigationLink(value: first.id) {
+          breadcrumbRow(first, discloses: false)
         }
-        .foregroundStyle(IntradaColor.exerciseBadgeFg)
+        .buttonStyle(.plain)
+        .accessibilityLabel(breadcrumbAccessibility(first))
+      } else {
+        Menu {
+          ForEach(item.linkedFromPieces, id: \.id) { piece in
+            NavigationLink(value: piece.id) { Text(piece.title) }
+          }
+        } label: {
+          breadcrumbRow(first, discloses: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(breadcrumbAccessibility(first, discloses: true))
+        .accessibilityHint("Choose a piece to open")
       }
-      .buttonStyle(.plain)
-      .accessibilityLabel(breadcrumbAccessibility(first))
     }
+  }
+
+  private func breadcrumbRow(_ piece: PieceRefView, discloses: Bool) -> some View {
+    HStack(spacing: 5) {
+      Image(systemName: "arrow.turn.down.right")
+        .imageScale(.small)
+        .accessibilityHidden(true)
+      breadcrumbLabel(piece)
+      if discloses {
+        Image(systemName: "chevron.down")
+          .imageScale(.small)
+          .accessibilityHidden(true)
+      }
+    }
+    .foregroundStyle(IntradaColor.exerciseBadgeFg)
   }
 
   private func breadcrumbLabel(_ piece: PieceRefView) -> Text {
@@ -253,10 +273,11 @@ struct LibraryDetailScreen: View {
     return extra > 0 ? base + Text(" · +\(extra) more").font(IntradaFont.metaMedium) : base
   }
 
-  private func breadcrumbAccessibility(_ piece: PieceRefView) -> String {
+  private func breadcrumbAccessibility(_ piece: PieceRefView, discloses: Bool = false) -> String {
     let extra = item.linkedFromPieces.count - 1
     let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
-    return "Related to \(piece.title)\(others), related piece"
+    let role = discloses ? "" : ", related piece"
+    return "Related to \(piece.title)\(others)\(role)"
   }
 
   // ── Recent sessions ──
