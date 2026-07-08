@@ -366,6 +366,7 @@ impl App for Intrada {
                             .push(PieceRefView {
                                 id: item.id.clone(),
                                 title: item.title.clone(),
+                                subtitle: item.composer.clone(),
                             });
                     }
                 }
@@ -3849,6 +3850,52 @@ mod tests {
             &mut model,
         );
         assert_eq!(model.items[0].kind, ItemKind::Exercise);
+    }
+
+    #[test]
+    fn linked_from_piece_ref_carries_composer_subtitle() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let piece = Item {
+            id: "piece-1".to_string(),
+            title: "Sonata".to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Debussy".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec!["ex-1".to_string()],
+            priority: false,
+        };
+        let ex = Item {
+            id: "ex-1".to_string(),
+            title: "Scales".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec![],
+            priority: false,
+        };
+        let model = Model {
+            items: vec![piece, ex],
+            ..Model::test_default()
+        };
+        let vm = app.view(&model);
+        let exercise = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            exercise.linked_from_pieces[0].subtitle.as_deref(),
+            Some("Debussy")
+        );
     }
 
     #[test]
