@@ -62,14 +62,14 @@ struct AddToSessionSheet: View {
   }
 
   private func toggle(_ item: LibraryItemView) {
-    let before = store.viewModel?.error
+    let before = store.viewModel?.errorSeq
     if let entryId = entryByItem[item.id] {
       store.send(.session(.removeFromSetlist(entryId: entryId)))
     } else {
       store.send(.session(.addToSetlist(itemId: item.id)))
     }
     // Only ack once the core confirms — errors surface in RootView's banner (#846).
-    if store.viewModel?.error == before {
+    if store.viewModel?.errorSeq == before {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }

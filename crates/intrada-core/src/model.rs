@@ -74,6 +74,9 @@ pub struct Model {
     /// Set from the confirmed `SetSaveSucceeded { request_id }`; per-form
     /// id-matching isolates concurrent `SetSaveForm` instances (#663).
     pub last_set_save_request_id: Option<String>,
+    /// Bumped by every update that concludes with `last_error` present, so
+    /// shells can tell a repeated identical failure from a success (#1056).
+    pub error_seq: u64,
 }
 
 impl Model {
@@ -182,6 +185,8 @@ pub struct ViewModel {
     pub summary: Option<SummaryView>,
     pub session_status: SessionStatusView,
     pub error: Option<String>,
+    /// See `Model::error_seq` — compare around a send instead of the message.
+    pub error_seq: u64,
     pub analytics: Option<AnalyticsView>,
     pub sets: Vec<SetView>,
     pub account_preferences: Option<AccountPreferences>,

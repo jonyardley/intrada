@@ -211,9 +211,9 @@ struct FocusPlayerScreen: View {
   // Completed). Errors surface on RootView's banner, so dismiss only on success.
   private func handleReflection(_ target: ReflectionTarget, score: UInt8?, note: String) {
     if !note.isEmpty {
-      let before = store.viewModel?.error
+      let before = store.viewModel?.errorSeq
       store.send(.session(.updateEntryNotes(entryId: target.id, notes: note)))
-      if store.viewModel?.error != before { return }
+      if store.viewModel?.errorSeq != before { return }
     }
     store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
     if let score {

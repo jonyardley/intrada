@@ -321,13 +321,13 @@ struct SessionBuilderScreen: View {
   // ── Actions ──────────────────────────────────────────────────────────
 
   private func removeUnit(_ block: SetlistBlockView) {
-    let before = store.viewModel?.error
+    let before = store.viewModel?.errorSeq
     if let groupId = block.groupId {
       store.send(.session(.removeBlock(groupId: groupId)))
     } else if let entryId = block.entries.first?.id {
       store.send(.session(.removeFromSetlist(entryId: entryId)))
     }
-    if store.viewModel?.error == before {
+    if store.viewModel?.errorSeq == before {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
@@ -338,7 +338,7 @@ struct SessionBuilderScreen: View {
     let target = from < destination ? destination - 1 : destination
     guard target != from else { return }
     let unit = units[from]
-    let before = store.viewModel?.error
+    let before = store.viewModel?.errorSeq
     if let groupId = unit.block.groupId {
       store.send(.session(.reorderBlock(groupId: groupId, newPosition: UInt64(target))))
     } else if let entryId = unit.block.entries.first?.id {
@@ -350,7 +350,7 @@ struct SessionBuilderScreen: View {
         store.send(.session(.reorderSetlist(entryId: entryId, newPosition: UInt64(newIndex))))
       }
     }
-    if store.viewModel?.error == before {
+    if store.viewModel?.errorSeq == before {
       UISelectionFeedbackGenerator().selectionChanged()
     }
   }
