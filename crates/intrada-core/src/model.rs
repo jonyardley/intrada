@@ -429,14 +429,9 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         rep_target_reached: entry.rep_target_reached,
         rep_history: entry.rep_history.clone(),
         planned_duration_secs: entry.planned_duration_secs,
-        planned_duration_display: entry.planned_duration_secs.map(|secs| {
-            let mins = secs / 60;
-            if secs % 60 == 0 {
-                format!("{mins} min")
-            } else {
-                crate::domain::session::format_duration_display(secs as u64)
-            }
-        }),
+        planned_duration_display: entry
+            .planned_duration_secs
+            .map(|secs| crate::domain::session::format_planned_duration(u64::from(secs))),
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
     }
@@ -479,11 +474,7 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
             .filter_map(|e| e.planned_duration_secs)
             .sum();
         block.duration_display = if total > 0 {
-            if total % 60 == 0 {
-                format!("{} min", total / 60)
-            } else {
-                crate::domain::session::format_duration_display(u64::from(total))
-            }
+            crate::domain::session::format_planned_duration(u64::from(total))
         } else {
             "—".to_string()
         };

@@ -543,7 +543,7 @@ impl App for Intrada {
                         Some(crate::domain::session::format_duration_display(
                             planned_total_secs,
                         )),
-                        Some(crate::domain::session::format_duration_summary(
+                        Some(crate::domain::session::format_planned_duration(
                             planned_total_secs,
                         )),
                     )
@@ -3535,7 +3535,23 @@ mod tests {
         let vm = app.view(&model);
         let building = vm.building_setlist.unwrap();
         assert_eq!(building.total_duration_display.as_deref(), Some("25m 30s"));
-        assert_eq!(building.total_duration_summary.as_deref(), Some("25m"));
+        assert_eq!(building.total_duration_summary.as_deref(), Some("25m 30s"));
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_whole_minutes_matches_block_dialect() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![
+                building_entry("e1", Some(900)),
+                building_entry("e2", Some(300)),
+            ],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_summary.as_deref(), Some("20 min"));
     }
 
     #[test]
