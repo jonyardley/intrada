@@ -26,7 +26,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
     try LibraryStore.migrator.migrate(queue)
 
     try queue.read { db in
-      let row = try Row.fetchOne(db, sql: "SELECT entries, session_score FROM session WHERE id='s1'")!
+      let row = try Row.fetchOne(
+        db, sql: "SELECT entries, session_score FROM session WHERE id='s1'")!
       let entries: String = row["entries"]
       XCTAssertTrue(entries.contains("\"score\":6"), "old score 3 should rescale ×2 to 6")
       XCTAssertNil(row["session_score"] as Int64?, "session_score column exists, null for old rows")
@@ -49,7 +50,9 @@ final class LibraryStoreMigrationTests: XCTestCase {
     try store.saveSession(session)
     let loaded = try store.loadSessions()
     XCTAssertEqual(loaded.count, 1)
-    XCTAssertEqual(loaded[0].sessionScore, 7, "sessionScore UInt8→Int64→UInt8(clamping:) round-trip must preserve 7")
+    XCTAssertEqual(
+      loaded[0].sessionScore, 7,
+      "sessionScore UInt8→Int64→UInt8(clamping:) round-trip must preserve 7")
   }
 
   func testGroupIdRoundTripsThroughTheJsonCodec() throws {
@@ -67,7 +70,9 @@ final class LibraryStoreMigrationTests: XCTestCase {
       totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil)
     try store.saveSession(session)
     let loaded = try store.loadSessions()
-    XCTAssertEqual(loaded.first?.entries.first?.groupId, "block-1", "group_id round-trips through the JSON-blob codec")
+    XCTAssertEqual(
+      loaded.first?.entries.first?.groupId, "block-1",
+      "group_id round-trips through the JSON-blob codec")
   }
 
   func testV5RescaleClampNilAndBlobPreservation() throws {
@@ -95,7 +100,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
       // Score 5 × 2 = 10 — at the clamp boundary.
       XCTAssertTrue(entries.contains("\"score\":10"), "score 5 must clamp to 10 after ×2 rescale")
       // The notes field on entry e1 must survive the decode→re-encode round-trip.
-      XCTAssertTrue(entries.contains("\"notes\":\"keep\""), "notes field must survive blob re-encode")
+      XCTAssertTrue(
+        entries.contains("\"notes\":\"keep\""), "notes field must survive blob re-encode")
       // Entry e2 had no score key — must still have no score after rescale.
       XCTAssertFalse(entries.contains("\"score\":0"), "null-score entry must not gain a zero score")
     }

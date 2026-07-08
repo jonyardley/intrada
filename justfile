@@ -398,6 +398,18 @@ ios-snapshots-optimize:
 ios-snapshots-check:
     bash scripts/check-snapshots.sh
 
+# ios/generated is excluded from both fmt recipes: generated bindings, never
+# hand-edited, so never formatted. Toolchain-bundled swift-format, default config.
+# Format the hand-written Swift trees in place (fixes what ios-fmt-check flags).
+[group('iOS')]
+ios-fmt:
+    swift format --in-place --recursive --parallel ios/Intrada ios/IntradaTests ios/IntradaUITests
+
+# Swift formatting check, lint mode (same as CI). Run before pushing ios/** changes.
+[group('iOS')]
+ios-fmt-check:
+    swift format lint --strict --recursive --parallel ios/Intrada ios/IntradaTests ios/IntradaUITests
+
 # Build + run the whole IntradaTests suite (snapshots + unit tests) on the
 # pinned iPhone 16 / iOS 26.5 sim — the same command CI's `native-ios` job runs.
 # Catches iOS-only breakage (e.g. a Swift type collision) locally instead of via

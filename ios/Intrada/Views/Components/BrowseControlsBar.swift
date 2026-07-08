@@ -81,8 +81,10 @@ struct BrowseControlsBar: View {
         .accessibilityLabel("Show priorities only")
         .accessibilityAddTraits(starFilter.wrappedValue ? [.isSelected] : [])
       }
-      LibraryFilterMenu(current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 })
-        .padding(.leading, IntradaSpacing.controlGap)
+      LibraryFilterMenu(
+        current: filterBinding.wrappedValue, onChange: { filterBinding.wrappedValue = $0 }
+      )
+      .padding(.leading, IntradaSpacing.controlGap)
       Spacer(minLength: IntradaSpacing.controlGap)
       LibrarySortMenu(
         current: store.viewModel?.activeSort

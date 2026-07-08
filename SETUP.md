@@ -341,6 +341,13 @@ Local parity (after the one-time setup): `just testflight`.
 - [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
 
+### One-time git config
+
+```bash
+# Hide the whole-tree swift format reformat commit from git blame
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ### Quick start (recommended)
 
 ```bash

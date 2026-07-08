@@ -42,7 +42,8 @@ struct ReflectionSheet: View {
         .padding(.top, IntradaSpacing.controlGap)
 
       BrandBarButton {
-        onSave(score == 0 ? nil : UInt8(score), note.trimmingCharacters(in: .whitespacesAndNewlines))
+        onSave(
+          score == 0 ? nil : UInt8(score), note.trimmingCharacters(in: .whitespacesAndNewlines))
       } label: {
         Text("Save & continue")
         Image(systemName: "arrow.right")

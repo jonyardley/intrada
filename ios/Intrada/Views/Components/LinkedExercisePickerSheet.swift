@@ -27,16 +27,16 @@ struct LinkedExercisePickerSheet: View {
     BottomSheet(
       title: "Add exercises",
       onDone: { onApply(selected) },
-      leadingAction: { Button("Cancel") { dismiss() } }
-    ) {
-      if available.isEmpty {
-        PlaceholderContent(
-          systemImage: "music.note.list",
-          message: "No exercises yet. Create an exercise to relate it to this piece.")
-      } else {
-        list
-      }
-    }
+      leadingAction: { Button("Cancel") { dismiss() } },
+      content: {
+        if available.isEmpty {
+          PlaceholderContent(
+            systemImage: "music.note.list",
+            message: "No exercises yet. Create an exercise to relate it to this piece.")
+        } else {
+          list
+        }
+      })
   }
 
   private var list: some View {

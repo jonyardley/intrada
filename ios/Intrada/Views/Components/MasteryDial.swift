@@ -27,7 +27,8 @@ struct MasteryDial: View {
         .trim(from: 0, to: settled ? fraction : 0)
         .stroke(
           LinearGradient.ringSweep,
-          style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
+          style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
+        )
         .rotationEffect(.degrees(-90))
       VStack(spacing: 2) {
         CountingNumber(value: settled ? value : 0) { String(format: "%.1f", $0) }

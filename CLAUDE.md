@@ -64,6 +64,8 @@ cargo fmt --check          # must pass before commit AND before push (CI runs bo
 cargo test                 # all workspace tests
 cargo clippy               # lint check — must pass before push
 cargo test -p intrada-api  # API tests only
+just ios-fmt               # native app: format Swift sources in place (swift format)
+just ios-fmt-check         # native app: Swift formatting gate (CI runs this too)
 just ios                   # native app: regen bindings (if core changed) + open Xcode
 just ios-run               # native app: build + launch on simulator + screenshot
 just ios-logs              # native app: stream booted-sim logs, filtered to our subsystem
@@ -132,6 +134,14 @@ your saved rows are still on disk but won't be read back.
 Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushing* —
 not just before committing. Pushing then watching CI fail wastes a full ~3-minute
 roundtrip per agent or contributor; better to catch the formatting tab here.
+Changes under `ios/` additionally need `just ios-fmt-check` (fix with
+`just ios-fmt`); the native-ios CI job enforces it. It covers the hand-written
+trees (`ios/Intrada`, `ios/IntradaTests`, `ios/IntradaUITests`) with the
+toolchain-bundled `swift format` on default config. `ios/generated` is excluded
+(generated bindings, never hand-edited). The one-time whole-tree reformat commit
+is listed in `.git-blame-ignore-revs`; run
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame`
+skips it.
 
 Optional one-time hook install (catches the "pushed onto a merged-PR
 branch and the commits orphaned" pitfall):
