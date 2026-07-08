@@ -6,7 +6,6 @@ import SwiftUI
 /// core forms the block); the shell only sends add/remove.
 struct AddToSessionSheet: View {
   @Environment(Store.self) private var store
-  @Environment(\.dismiss) private var dismiss
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
@@ -15,21 +14,12 @@ struct AddToSessionSheet: View {
   }
 
   var body: some View {
-    NavigationStack {
-      ZStack {
-        PaperBackground()
-        VStack(spacing: 0) {
-          BrowseControlsBar(elevated: true)
-          library
-        }
-      }
-      .navigationTitle("Add to session")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+    BottomSheet(title: "Add to session", detents: [.large]) {
+      VStack(spacing: 0) {
+        BrowseControlsBar(elevated: true)
+        library
       }
     }
-    .presentationDetents([.large])
   }
 
   @ViewBuilder private var library: some View {

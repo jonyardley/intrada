@@ -9,66 +9,55 @@ struct TagFilterSheet: View {
   let selected: [String]
   let onChange: ([String]) -> Void
 
-  @Environment(\.dismiss) private var dismiss
-
   var body: some View {
-    NavigationStack {
-      ZStack {
-        PaperBackground()
-        if available.isEmpty {
-          PlaceholderContent(
-            systemImage: "tag",
-            message: "No tags yet. Add tags to items to filter by them.")
-        } else {
-          ScrollView {
-            VStack(spacing: 0) {
-              ForEach(available, id: \.self) { tag in
-                let isOn = isSelected(tag)
-                Button {
-                  toggle(tag, isOn: isOn)
-                } label: {
-                  HStack(spacing: IntradaSpacing.cardCompact) {
-                    Text(tag)
-                      .font(IntradaFont.body)
-                      .foregroundStyle(IntradaColor.ink)
-                    Spacer(minLength: 0)
-                    if isOn {
-                      Image(systemName: "checkmark")
-                        .font(IntradaFont.bodyMedium)
-                        .foregroundStyle(IntradaColor.accent)
-                    }
+    BottomSheet(
+      title: "Filter by tag",
+      leadingAction: {
+        Button("Clear", action: { onChange([]) })
+          .disabled(selected.isEmpty)
+      }
+    ) {
+      if available.isEmpty {
+        PlaceholderContent(
+          systemImage: "tag",
+          message: "No tags yet. Add tags to items to filter by them.")
+      } else {
+        ScrollView {
+          VStack(spacing: 0) {
+            ForEach(available, id: \.self) { tag in
+              let isOn = isSelected(tag)
+              Button {
+                toggle(tag, isOn: isOn)
+              } label: {
+                HStack(spacing: IntradaSpacing.cardCompact) {
+                  Text(tag)
+                    .font(IntradaFont.body)
+                    .foregroundStyle(IntradaColor.ink)
+                  Spacer(minLength: 0)
+                  if isOn {
+                    Image(systemName: "checkmark")
+                      .font(IntradaFont.bodyMedium)
+                      .foregroundStyle(IntradaColor.accent)
                   }
-                  .padding(.vertical, IntradaSpacing.row)
-                  .padding(.horizontal, IntradaSpacing.card)
-                  .frame(maxWidth: .infinity, alignment: .leading)
-                  .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+                .padding(.vertical, IntradaSpacing.row)
+                .padding(.horizontal, IntradaSpacing.card)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain)
+              .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
-                if tag != available.last {
-                  HairlineDivider().padding(.leading, IntradaSpacing.card)
-                }
+              if tag != available.last {
+                HairlineDivider().padding(.leading, IntradaSpacing.card)
               }
             }
-            .cardSurface()
-            .padding(IntradaSpacing.card)
           }
-        }
-      }
-      .navigationTitle("Filter by tag")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Clear", action: { onChange([]) })
-            .disabled(selected.isEmpty)
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done", action: { dismiss() })
+          .cardSurface()
+          .padding(IntradaSpacing.card)
         }
       }
     }
-    .presentationDetents([.medium, .large])
   }
 
   private func isSelected(_ tag: String) -> Bool {
