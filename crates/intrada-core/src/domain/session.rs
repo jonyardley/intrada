@@ -321,6 +321,16 @@ pub fn format_duration_display(secs: u64) -> String {
     }
 }
 
+/// The builder's planned-duration dialect ("12 min" for whole minutes) —
+/// shared by block rows, per-entry planned labels, and the builder total.
+pub fn format_planned_duration(secs: u64) -> String {
+    if secs % 60 == 0 {
+        format!("{} min", secs / 60)
+    } else {
+        format_duration_display(secs)
+    }
+}
+
 /// Coarse "45m" / "2h 15m" total (Pencil's pattern) for session-summary lines —
 /// minutes floored, seconds dropped. Distinct from `format_duration_display`,
 /// which keeps seconds for the live timer and per-entry rows.
