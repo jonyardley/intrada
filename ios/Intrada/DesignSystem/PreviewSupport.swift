@@ -299,7 +299,15 @@
         key: "Db", modality: .major, tempo: "Andante (72 BPM)", tempoMarking: "Andante",
         tempoBpm: 72,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
+        latestAchievedTempo: nil, priority: false,
+        linkedExercises: [
+          LinkedExerciseView(
+            id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
+            practice: nil),
+          LinkedExerciseView(
+            id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil),
+        ],
+        linkedFromPieces: [])
     }
 
     static var previewExercise: LibraryItemView {
