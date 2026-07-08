@@ -481,6 +481,10 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(fields), as: config)
   }
 
+  func testAddToSessionSheet() {
+    assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
+  }
+
   func testTagFilterSheet() {
     let sheet = TagFilterSheet(
       available: ["classical", "jazz", "recital", "technique", "warm-up"],

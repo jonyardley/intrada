@@ -24,32 +24,19 @@ struct LinkedExercisePickerSheet: View {
   }
 
   var body: some View {
-    NavigationStack {
-      ZStack {
-        PaperBackground()
-        if available.isEmpty {
-          PlaceholderContent(
-            systemImage: "music.note.list",
-            message: "No exercises yet. Create an exercise to relate it to this piece.")
-        } else {
-          list
-        }
-      }
-      .navigationTitle("Add exercises")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            onApply(selected)
-            dismiss()
-          }
-        }
+    BottomSheet(
+      title: "Add exercises",
+      onDone: { onApply(selected) },
+      leadingAction: { Button("Cancel") { dismiss() } }
+    ) {
+      if available.isEmpty {
+        PlaceholderContent(
+          systemImage: "music.note.list",
+          message: "No exercises yet. Create an exercise to relate it to this piece.")
+      } else {
+        list
       }
     }
-    .presentationDetents([.medium, .large])
   }
 
   private var list: some View {
