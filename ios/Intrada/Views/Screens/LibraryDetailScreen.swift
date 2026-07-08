@@ -289,20 +289,10 @@ struct LibraryDetailScreen: View {
   // StartBuildingWith); RootView switches to the Practice tab when
   // `buildingSetlist` goes non-nil.
   private var practiseButton: some View {
-    Button {
-      practiseThis()
-    } label: {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        Image(systemName: "timer")
-        Text("Practise this")
-      }
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.onAccent)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, IntradaSpacing.row)
-      .background(LinearGradient.brandBar, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+    BrandBarButton(action: practiseThis) {
+      Image(systemName: "timer")
+      Text("Practise this")
     }
-    .buttonStyle(.plain)
     .accessibilityLabel("Practise this exercise")
     .accessibilityHint("Starts a session plan with this exercise")
   }
