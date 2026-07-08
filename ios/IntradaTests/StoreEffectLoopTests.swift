@@ -368,6 +368,27 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(try bridge.view().items.first?.priority, false, "star should flip priority off")
   }
 
+  /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing
+  /// write — round-trip it through the real bincode bridge (#846).
+  func testRealBridgePractiseThisSeedsBuilder() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
+    let vm = try bridge.view()
+    XCTAssertNotNil(vm.buildingSetlist, "startBuildingWith should open a seeded setlist")
+    XCTAssertEqual(vm.buildingSetlist?.entries.count, 1)
+    XCTAssertEqual(vm.buildingSetlist?.entries.first?.itemId, itemId)
+    XCTAssertNil(vm.error)
+  }
+
   /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
   /// bridge through Building → Active → Summary → Idle, mirroring the
   /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here

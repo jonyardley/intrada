@@ -4,6 +4,12 @@ import SwiftUI
 struct RootView: View {
   @Environment(Store.self) private var store
 
+  private enum AppTab {
+    case library, practice, routines, progress
+  }
+
+  @State private var selectedTab: AppTab = .library
+
   private let apiBaseURL = "https://intrada-api.fly.dev"
 
   init() {
@@ -12,19 +18,29 @@ struct RootView: View {
   }
 
   var body: some View {
-    TabView {
+    TabView(selection: $selectedTab) {
       LibrarySplitView().screenTransaction("Library")
         .tabItem { Label("Library", systemImage: "books.vertical") }
+        .tag(AppTab.library)
       NavigationStack {
         PracticeScreen().screenTransaction("Practice")
       }
       .tabItem { Label("Practice", systemImage: "timer") }
+      .tag(AppTab.practice)
       RoutinesScreen().screenTransaction("Routines")
         .tabItem { Label("Routines", systemImage: "music.note.list") }
+        .tag(AppTab.routines)
       AnalyticsScreen().screenTransaction("Progress")
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
+        .tag(AppTab.progress)
     }
     .tint(IntradaColor.accent)
+    // State-driven: building can now start outside the Practice tab (the
+    // exercise detail's "Practise this"), and the builder only presents from
+    // PracticeScreen's navigationDestination — so follow the core there.
+    .onChange(of: store.viewModel?.buildingSetlist != nil) { _, isBuilding in
+      if isBuilding { selectedTab = .practice }
+    }
     // The session player takes over the whole screen (no tab bar) while the core
     // is Active or Summary — "the app disappears during practice". State-driven:
     // the core drives presentation and dismissal (Save/Discard → Idle), so there's
