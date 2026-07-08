@@ -228,8 +228,6 @@ struct LibraryDetailScreen: View {
     .padding(.vertical, IntradaSpacing.controlGap)
   }
 
-  // Provenance to the linking pieces: a single piece pushes directly; several
-  // disclose a menu of all linking pieces.
   @ViewBuilder private var relatedBreadcrumb: some View {
     if let first = item.linkedFromPieces.first {
       if item.linkedFromPieces.count == 1 {
@@ -247,7 +245,7 @@ struct LibraryDetailScreen: View {
           breadcrumbRow(first, discloses: true)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(breadcrumbAccessibility(first))
+        .accessibilityLabel(breadcrumbAccessibility(first, discloses: true))
         .accessibilityHint("Choose a piece to open")
       }
     }
@@ -275,10 +273,11 @@ struct LibraryDetailScreen: View {
     return extra > 0 ? base + Text(" · +\(extra) more").font(IntradaFont.metaMedium) : base
   }
 
-  private func breadcrumbAccessibility(_ piece: PieceRefView) -> String {
+  private func breadcrumbAccessibility(_ piece: PieceRefView, discloses: Bool = false) -> String {
     let extra = item.linkedFromPieces.count - 1
     let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
-    return "Related to \(piece.title)\(others), related piece"
+    let role = discloses ? "" : ", related piece"
+    return "Related to \(piece.title)\(others)\(role)"
   }
 
   // ── Recent sessions ──
