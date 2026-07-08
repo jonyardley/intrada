@@ -79,6 +79,7 @@ jobs:
               - 'crates/intrada-ffi/**'
               - 'ios/**'
               - 'scripts/ios-run-sim.sh'
+              - 'justfile'
               - '.github/workflows/ci.yml'
 
   test:
