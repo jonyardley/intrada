@@ -303,9 +303,9 @@ struct LibraryDetailScreen: View {
   }
 
   private func practiseThis() {
-    let before = store.viewModel?.error
+    let before = store.viewModel?.errorSeq
     store.send(.session(.startBuildingWith(itemId: item.id)))
-    if store.viewModel?.error == before {
+    if store.viewModel?.errorSeq == before {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
@@ -336,14 +336,14 @@ struct LibraryDetailScreen: View {
     let toUnlink = current.subtracting(selected)
     var ok = true
     for id in toLink {
-      let before = store.viewModel?.error
+      let before = store.viewModel?.errorSeq
       store.send(.item(.linkExercise(pieceId: item.id, exerciseId: id)))
-      if store.viewModel?.error != before { ok = false }
+      if store.viewModel?.errorSeq != before { ok = false }
     }
     for id in toUnlink {
-      let before = store.viewModel?.error
+      let before = store.viewModel?.errorSeq
       store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
-      if store.viewModel?.error != before { ok = false }
+      if store.viewModel?.errorSeq != before { ok = false }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -355,9 +355,9 @@ struct LibraryDetailScreen: View {
     let dest = index + delta
     guard dest >= 0, dest < ids.count else { return }
     ids.swapAt(index, dest)
-    let before = store.viewModel?.error
+    let before = store.viewModel?.errorSeq
     store.send(.item(.reorderLinkedExercises(pieceId: item.id, orderedIds: ids)))
-    if store.viewModel?.error == before {
+    if store.viewModel?.errorSeq == before {
       UISelectionFeedbackGenerator().selectionChanged()
     }
   }

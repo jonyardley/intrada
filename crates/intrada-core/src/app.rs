@@ -160,6 +160,20 @@ impl App for Intrada {
         event: Self::Event,
         model: &mut Self::Model,
     ) -> Command<Self::Effect, Self::Event> {
+        let command = self.handle_event(event, model);
+        if model.last_error.is_some() {
+            model.error_seq = model.error_seq.wrapping_add(1);
+        }
+        command
+    }
+
+    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+        self.build_view(model)
+    }
+}
+
+impl Intrada {
+    fn handle_event(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
             // ── Lifecycle ────────────────────────────────────────────
             Event::StartApp {
@@ -342,7 +356,7 @@ impl App for Intrada {
         }
     }
 
-    fn view(&self, model: &Self::Model) -> Self::ViewModel {
+    fn build_view(&self, model: &Model) -> ViewModel {
         use std::collections::HashMap;
 
         // Build an id→item index for O(1) linked-exercise lookup.
@@ -627,6 +641,7 @@ impl App for Intrada {
             summary,
             session_status,
             error: model.last_error.clone(),
+            error_seq: model.error_seq,
             analytics,
             sets,
             account_preferences: model.account_preferences.clone(),
@@ -3519,6 +3534,35 @@ mod tests {
             achieved_tempo: None,
             group_id: None,
         }
+    }
+
+    #[test]
+    fn error_seq_bumps_on_each_failed_update_even_with_identical_message() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let fail = || {
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "x".to_string(),
+            })
+        };
+        let _ = app.update(fail(), &mut model);
+        let seq1 = app.view(&model).error_seq;
+        let _ = app.update(fail(), &mut model);
+        let seq2 = app.view(&model).error_seq;
+        assert!(seq1 > 0);
+        assert!(
+            seq2 > seq1,
+            "a repeated identical failure must still advance the sequence"
+        );
+    }
+
+    #[test]
+    fn error_seq_stable_across_successful_updates() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        let before = app.view(&model).error_seq;
+        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        assert_eq!(app.view(&model).error_seq, before);
     }
 
     #[test]
