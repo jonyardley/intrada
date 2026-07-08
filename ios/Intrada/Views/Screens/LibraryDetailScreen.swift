@@ -171,7 +171,6 @@ struct LibraryDetailScreen: View {
           exercise: exercise,
           isFirst: index == 0,
           isLast: index == item.linkedExercises.count - 1,
-          onRemove: { unlink(exercise) },
           onMoveUp: { moveExercise(at: index, by: -1) },
           onMoveDown: { moveExercise(at: index, by: 1) })
       }
@@ -346,14 +345,6 @@ struct LibraryDetailScreen: View {
     }
   }
 
-  private func unlink(_ exercise: LinkedExerciseView) {
-    let before = store.viewModel?.error
-    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: exercise.id)))
-    if store.viewModel?.error == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    }
-  }
-
   private func moveExercise(at index: Int, by delta: Int) {
     var ids = item.linkedExercises.map(\.id)
     let dest = index + delta
@@ -487,20 +478,11 @@ private struct LinkedExerciseEditRow: View {
   let exercise: LinkedExerciseView
   let isFirst: Bool
   let isLast: Bool
-  let onRemove: () -> Void
   let onMoveUp: () -> Void
   let onMoveDown: () -> Void
 
   var body: some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
-      Button(action: onRemove) {
-        Image(systemName: "minus.circle.fill")
-          .imageScale(.medium)
-          .font(IntradaFont.body)
-          .foregroundStyle(IntradaColor.danger)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Remove \(exercise.title)")
       // spacing: 3 — tight title/meta baseline gap, below the token scale floor.
       VStack(alignment: .leading, spacing: 3) {
         Text(exercise.title)
