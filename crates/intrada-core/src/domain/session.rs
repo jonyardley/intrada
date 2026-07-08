@@ -190,6 +190,11 @@ pub enum SessionEvent {
     AddToSetlist {
         item_id: String,
     },
+    /// One-tap "Practise this": from Idle, start building seeded with the
+    /// item (a piece brings its related exercises, as `AddToSetlist`).
+    StartBuildingWith {
+        item_id: String,
+    },
     AddNewItemToSetlist {
         title: String,
         item_type: ItemKind,
@@ -662,6 +667,19 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry.planned_duration_secs = duration_secs;
             model.last_error = None;
             crux_core::render::render()
+        }
+
+        SessionEvent::StartBuildingWith { item_id } => {
+            if !matches!(model.session_status, SessionStatus::Idle) {
+                model.last_error = Some("A practice is already in progress".to_string());
+                return crux_core::render::render();
+            }
+            if !model.items.iter().any(|i| i.id == item_id) {
+                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                return crux_core::render::render();
+            }
+            model.session_status = SessionStatus::Building(BuildingSession::default());
+            handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
         }
 
         SessionEvent::AddToSetlist { item_id } => {
@@ -1539,6 +1557,71 @@ mod tests {
             .iter()
             .find(|e| e.item_id == item_id)
             .and_then(|e| e.group_id.clone())
+    }
+
+    #[test]
+    fn start_building_with_seeds_exercise_from_idle() {
+        let mut m = linked_model();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::StartBuildingWith {
+                item_id: "ex-C".to_string(),
+            }),
+        );
+        let e = building_entries(&m);
+        assert_eq!(e.len(), 1);
+        assert_eq!(e[0].item_id, "ex-C");
+        assert_eq!(e[0].group_id, None);
+        assert_eq!(m.last_error, None);
+    }
+
+    #[test]
+    fn start_building_with_piece_forms_block() {
+        let mut m = linked_model();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::StartBuildingWith {
+                item_id: "piece-P".to_string(),
+            }),
+        );
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        let e = building_entries(&m);
+        assert!(e[0].group_id.is_some(), "block has a group_id");
+        assert!(e.iter().all(|x| x.group_id == e[0].group_id));
+    }
+
+    #[test]
+    fn start_building_with_rejects_when_not_idle() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-A");
+        update(
+            &mut m,
+            Event::Session(SessionEvent::StartBuildingWith {
+                item_id: "ex-C".to_string(),
+            }),
+        );
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some("A practice is already in progress")
+        );
+        assert_eq!(ids(&m), ["ex-A"], "existing setlist untouched");
+    }
+
+    #[test]
+    fn start_building_with_unknown_item_stays_idle() {
+        let mut m = linked_model();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::StartBuildingWith {
+                item_id: "nope".to_string(),
+            }),
+        );
+        assert!(m.last_error.is_some());
+        assert!(
+            matches!(m.session_status, SessionStatus::Idle),
+            "a failed seed must not leave an empty building session"
+        );
     }
 
     #[test]

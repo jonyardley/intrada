@@ -41,21 +41,12 @@ struct ReflectionSheet: View {
         .cardSurface(cornerRadius: IntradaRadius.control)
         .padding(.top, IntradaSpacing.controlGap)
 
-      Button {
+      BrandBarButton {
         onSave(score == 0 ? nil : UInt8(score), note.trimmingCharacters(in: .whitespacesAndNewlines))
       } label: {
-        HStack(spacing: IntradaSpacing.controlGap) {
-          Text("Save & continue")
-          Image(systemName: "arrow.right")
-        }
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, IntradaSpacing.row)
-        .background(
-          LinearGradient.brandBar, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+        Text("Save & continue")
+        Image(systemName: "arrow.right")
       }
-      .buttonStyle(.plain)
       .padding(.top, IntradaSpacing.card)
 
       Button("Skip rating") { onSkip() }

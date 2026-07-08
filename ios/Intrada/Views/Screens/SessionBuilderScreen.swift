@@ -257,20 +257,12 @@ struct SessionBuilderScreen: View {
   // `buildingSetlist` goes nil (this screen auto-pops) and `activeSession` goes
   // non-nil (RootView presents the player). State-driven — no local nav flag.
   private var startBar: some View {
-    Button {
+    BrandBarButton {
       store.send(.session(.startSession(now: SessionClock.nowRFC3339())))
     } label: {
-      HStack(spacing: IntradaSpacing.controlGap) {
-        Image(systemName: "play.fill")
-        Text(startTitle)
-      }
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.onAccent)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, IntradaSpacing.row)
-      .background(LinearGradient.brandBar, in: RoundedRectangle(cornerRadius: IntradaRadius.control))
+      Image(systemName: "play.fill")
+      Text(startTitle)
     }
-    .buttonStyle(.plain)
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.top, IntradaSpacing.cardCompact)
     .padding(.bottom, IntradaSpacing.section)

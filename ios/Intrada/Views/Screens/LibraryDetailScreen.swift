@@ -62,6 +62,11 @@ struct LibraryDetailScreen: View {
             recentSessionsSection
           }
 
+          if item.itemType == .exercise {
+            practiseButton
+              .padding(.top, IntradaSpacing.controlGap)
+          }
+
           deleteButton
             .padding(.top, IntradaSpacing.controlGap)
         }
@@ -278,6 +283,26 @@ struct LibraryDetailScreen: View {
     let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
     let role = discloses ? "" : ", related piece"
     return "Related to \(piece.title)\(others)\(role)"
+  }
+
+  // One-tap into the session builder seeded with this exercise (core
+  // StartBuildingWith); RootView switches to the Practice tab when
+  // `buildingSetlist` goes non-nil.
+  private var practiseButton: some View {
+    BrandBarButton(action: practiseThis) {
+      Image(systemName: "timer")
+      Text("Practise this")
+    }
+    .accessibilityLabel("Practise this exercise")
+    .accessibilityHint("Starts a session plan with this exercise")
+  }
+
+  private func practiseThis() {
+    let before = store.viewModel?.error
+    store.send(.session(.startBuildingWith(itemId: item.id)))
+    if store.viewModel?.error == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
   }
 
   // ── Recent sessions ──
