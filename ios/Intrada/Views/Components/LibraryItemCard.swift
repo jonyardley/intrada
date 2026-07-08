@@ -28,13 +28,16 @@ struct LibraryItemCard: View {
             .font(IntradaFont.meta)
             .foregroundStyle(IntradaColor.inkSecondary)
         }
-        if item.priority || !item.tags.isEmpty {
+        if item.priority || hasLinkedExercises || !item.tags.isEmpty {
           HStack(spacing: 6) {
             if item.priority {
               Image(systemName: "star.fill")
                 .font(.system(size: 11))
                 .foregroundStyle(IntradaColor.accent)
                 .accessibilityHidden(true)
+            }
+            if hasLinkedExercises {
+              linkedCountChip
             }
             if !item.tags.isEmpty {
               TagPills(tags: item.tags)
@@ -67,6 +70,23 @@ struct LibraryItemCard: View {
     .accessibilityLabel(accessibilityLabel)
   }
 
+  private var hasLinkedExercises: Bool {
+    item.itemType == .piece && !item.linkedExercises.isEmpty
+  }
+
+  // Count of related exercises — the gold dumbbell mirrors the exercise type bar.
+  private var linkedCountChip: some View {
+    HStack(spacing: 3) {
+      Image(systemName: "dumbbell.fill").font(.system(size: 9))
+      Text("\(item.linkedExercises.count)").font(IntradaFont.meta)
+    }
+    .foregroundStyle(IntradaColor.exerciseBadgeFg)
+    .padding(.horizontal, 7)
+    .padding(.vertical, 3)
+    .background(IntradaColor.exerciseBadgeBg, in: Capsule())
+    .accessibilityHidden(true)
+  }
+
   private var metaLine: String? {
     let parts = [item.keyDisplay, item.tempoDisplay].compactMap { $0 }.filter { !$0.isEmpty }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -75,6 +95,10 @@ struct LibraryItemCard: View {
   private var accessibilityLabel: String {
     var parts = [item.itemType.label, item.title]
     if item.priority { parts.append("starred") }
+    if hasLinkedExercises {
+      let n = item.linkedExercises.count
+      parts.append("\(n) connected exercise\(n == 1 ? "" : "s")")
+    }
     if !item.subtitle.isEmpty { parts.append(item.subtitle) }
     if let key = item.keyDisplay { parts.append(key) }
     if let tempo = item.tempoSpoken { parts.append(tempo) }
