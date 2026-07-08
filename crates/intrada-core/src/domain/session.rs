@@ -698,6 +698,15 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
+            // Membership is binary (the picker/sheet toggle relies on it):
+            // re-adding a present item is an idempotent no-op, not a duplicate (#939).
+            if let SessionStatus::Building(ref building) = model.session_status {
+                if building.entries.iter().any(|e| e.item_id == item_id) {
+                    model.last_error = None;
+                    return crux_core::render::render();
+                }
+            }
+
             // Resolve the item and — for a piece — its related exercises as owned
             // tuples before taking the mutable Building borrow.
             let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
@@ -1635,6 +1644,42 @@ mod tests {
     }
 
     #[test]
+    fn add_to_setlist_is_idempotent_by_item_id() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "ex-C");
+        add(&mut m, "ex-C");
+        assert_eq!(ids(&m), ["ex-C"], "second add of the same item is a no-op");
+        assert_eq!(m.last_error, None);
+    }
+
+    #[test]
+    fn add_piece_twice_does_not_duplicate_block() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        add(&mut m, "piece-P");
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
+        assert_eq!(m.last_error, None);
+    }
+
+    #[test]
+    fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-Q");
+        if let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") {
+            piece.linked_exercise_ids = vec!["ex-C".to_string()];
+        }
+        add(&mut m, "piece-Q");
+        assert_eq!(
+            ids(&m),
+            ["piece-Q"],
+            "membership no-op wins; newly linked relateds come in by removing and re-adding"
+        );
+    }
+
+    #[test]
     fn add_piece_pulls_related_into_a_block_related_first() {
         let mut m = linked_model();
         update(&mut m, Event::Session(SessionEvent::StartBuilding));
@@ -2119,33 +2164,6 @@ mod tests {
         );
 
         assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_add_duplicate_items_to_setlist() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries.len(), 2);
-            // Each entry has a unique ID
-            assert_ne!(b.entries[0].id, b.entries[1].id);
-        } else {
-            panic!("Expected Building state");
-        }
     }
 
     #[test]
