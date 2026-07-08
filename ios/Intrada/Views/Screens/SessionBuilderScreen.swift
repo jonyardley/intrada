@@ -11,7 +11,20 @@ struct SessionBuilderScreen: View {
   // `SharedTypes`' domain `Set` (setlists) shadows `Swift.Set` here.
   @State private var collapsedGroups: Swift.Set<String> = []
   @State private var addingItems = false
-  @State private var editMode: EditMode = .inactive
+  @State private var editMode: EditMode
+  @State private var configuringEntry: EntrySettingsTarget?
+  @State private var addingExerciseGroupId: String?
+
+  /// `startInEditMode` seeds the Edit-mode nested-row controls for snapshot
+  /// tests (they can't drive the Edit/Done toggle interactively).
+  init(startInEditMode: Bool = false) {
+    _editMode = State(initialValue: startInEditMode ? .active : .inactive)
+  }
+
+  private struct EntrySettingsTarget: Identifiable {
+    let id: String
+    let entry: SetlistEntryView
+  }
 
   private var setlist: BuildingSetlistView? { store.viewModel?.buildingSetlist }
   private var entries: [SetlistEntryView] { setlist?.entries ?? [] }
@@ -53,8 +66,25 @@ struct SessionBuilderScreen: View {
           }
         }
       }
+      if hasGroups && editMode == .active {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button("Ungroup all") { store.send(.session(.ungroupAllBlocks)) }
+            .font(IntradaFont.meta)
+        }
+      }
     }
     .sheet(isPresented: $addingItems) { AddToSessionSheet().environment(store) }
+    .sheet(item: $configuringEntry) { target in
+      EntrySettingsSheet(entry: target.entry).environment(store)
+    }
+    .sheet(
+      isPresented: Binding(
+        get: { addingExerciseGroupId != nil }, set: { if !$0 { addingExerciseGroupId = nil } })
+    ) {
+      if let groupId = addingExerciseGroupId {
+        AddRelatedExerciseSheet(groupId: groupId).environment(store)
+      }
+    }
     .alert("Discard session plan?", isPresented: $confirmingCancel) {
       Button("Discard", role: .destructive) { dismiss() }
       Button("Keep editing", role: .cancel) {}
@@ -152,6 +182,16 @@ struct SessionBuilderScreen: View {
           .font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer(minLength: IntradaSpacing.controlGap)
+      if editMode == .active {
+        Button {
+          configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
+        } label: {
+          Image(systemName: "slider.horizontal.3").font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.inkSecondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(entry.itemTitle) settings")
+      }
       Button {
         removeUnit(block)
       } label: {
@@ -173,10 +213,25 @@ struct SessionBuilderScreen: View {
       if !collapsed {
         // The anchor piece is the header; nested rows are its related exercises
         // (the core orders a block as [related exercises…, piece]).
-        ForEach(block.entries.filter { $0.itemType == .exercise }, id: \.id) { entry in
+        let related = block.entries.filter { $0.itemType == .exercise }
+        ForEach(Array(related.enumerated()), id: \.element.id) { index, entry in
           HairlineDivider().padding(.leading, IntradaSpacing.card)
-          nestedRow(entry)
+          nestedRow(
+            entry, isFirst: index == 0, isLast: index == related.count - 1,
+            onMoveUp: { moveExerciseWithinBlock(entry, by: -1, in: block) },
+            onMoveDown: { moveExerciseWithinBlock(entry, by: 1, in: block) },
+            onRemove: { removeEntry(entry) })
         }
+        HairlineDivider().padding(.leading, IntradaSpacing.card)
+        Button {
+          addingExerciseGroupId = groupId
+        } label: {
+          Label("Add a related exercise", systemImage: "plus")
+            .font(IntradaFont.meta).foregroundStyle(IntradaColor.accent)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, IntradaSpacing.controlGap)
       }
     }
     .cardSurface(cornerRadius: IntradaRadius.card)
@@ -228,7 +283,10 @@ struct SessionBuilderScreen: View {
         IntradaColor.pieceBadgeBg, in: RoundedRectangle(cornerRadius: IntradaRadius.badge))
   }
 
-  private func nestedRow(_ entry: SetlistEntryView) -> some View {
+  private func nestedRow(
+    _ entry: SetlistEntryView, isFirst: Bool, isLast: Bool, onMoveUp: @escaping () -> Void,
+    onMoveDown: @escaping () -> Void, onRemove: @escaping () -> Void
+  ) -> some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
       ItemKind.exercise.bar.frame(width: 3, height: 26).clipShape(Capsule())
       VStack(alignment: .leading, spacing: 1) {
@@ -237,9 +295,52 @@ struct SessionBuilderScreen: View {
         Text(nestedMeta(entry)).font(IntradaFont.micro).foregroundStyle(IntradaColor.inkSecondary)
       }
       Spacer(minLength: 0)
+      if editMode == .active {
+        nestedRowEditControls(
+          entry, isFirst: isFirst, isLast: isLast, onMoveUp: onMoveUp, onMoveDown: onMoveDown,
+          onRemove: onRemove)
+      }
     }
     .padding(.horizontal, IntradaSpacing.card)
     .padding(.vertical, IntradaSpacing.controlGap)
+  }
+
+  private func nestedRowEditControls(
+    _ entry: SetlistEntryView, isFirst: Bool, isLast: Bool, onMoveUp: @escaping () -> Void,
+    onMoveDown: @escaping () -> Void, onRemove: @escaping () -> Void
+  ) -> some View {
+    HStack(spacing: IntradaSpacing.controlGap) {
+      VStack(spacing: 0) {
+        Button(action: onMoveUp) {
+          Image(systemName: "chevron.up").imageScale(.small).font(IntradaFont.meta)
+            .foregroundStyle(isFirst ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(isFirst)
+        .accessibilityLabel("Move \(entry.itemTitle) up")
+        Button(action: onMoveDown) {
+          Image(systemName: "chevron.down").imageScale(.small).font(IntradaFont.meta)
+            .foregroundStyle(isLast ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(isLast)
+        .accessibilityLabel("Move \(entry.itemTitle) down")
+      }
+      Button(action: onRemove) {
+        Image(systemName: "minus.circle").font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.danger)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Remove \(entry.itemTitle) from today's session")
+      Button {
+        configuringEntry = EntrySettingsTarget(id: entry.id, entry: entry)
+      } label: {
+        Image(systemName: "slider.horizontal.3").font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("\(entry.itemTitle) settings")
+    }
   }
 
   private func blockMenu(groupId: String) -> some View {
@@ -327,6 +428,32 @@ struct SessionBuilderScreen: View {
     } else if let entryId = block.entries.first?.id {
       store.send(.session(.removeFromSetlist(entryId: entryId)))
     }
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
+  /// Swaps `entry` with its neighbor within `block`'s related-exercise run
+  /// (never past the anchor piece, which is always last in `block.entries`).
+  private func moveExerciseWithinBlock(
+    _ entry: SetlistEntryView, by delta: Int, in block: SetlistBlockView
+  ) {
+    let related = block.entries.filter { $0.itemType == .exercise }
+    guard let localIndex = related.firstIndex(where: { $0.id == entry.id }) else { return }
+    let destLocal = localIndex + delta
+    guard related.indices.contains(destLocal) else { return }
+    guard let blockStart = entries.firstIndex(where: { $0.id == related[0].id }) else { return }
+    let before = store.viewModel?.errorSeq
+    store.send(
+      .session(.reorderSetlist(entryId: entry.id, newPosition: UInt64(blockStart + destLocal))))
+    if store.viewModel?.errorSeq == before {
+      UISelectionFeedbackGenerator().selectionChanged()
+    }
+  }
+
+  private func removeEntry(_ entry: SetlistEntryView) {
+    let before = store.viewModel?.errorSeq
+    store.send(.session(.removeFromSetlist(entryId: entry.id)))
     if store.viewModel?.errorSeq == before {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

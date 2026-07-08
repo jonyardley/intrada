@@ -226,6 +226,13 @@ pub enum SessionEvent {
     RemoveBlock {
         group_id: String,
     },
+    /// Add one more exercise into an already-present block, positioned before
+    /// the block's anchor piece. Membership is binary, same idempotency as
+    /// `AddToSetlist` (#939): re-adding a present item is a no-op.
+    AddExerciseToBlock {
+        group_id: String,
+        item_id: String,
+    },
     StartSession {
         now: DateTime<Utc>,
     },
@@ -947,6 +954,47 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
                 return crux_core::render::render();
             }
+            reindex_entries(&mut building.entries);
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::AddExerciseToBlock { group_id, item_id } => {
+            let SessionStatus::Building(ref building) = model.session_status else {
+                model.last_error = Some("Not in building state".to_string());
+                return crux_core::render::render();
+            };
+
+            // Membership is binary, same idempotency as `AddToSetlist` (#939).
+            if building.entries.iter().any(|e| e.item_id == item_id) {
+                model.last_error = None;
+                return crux_core::render::render();
+            }
+
+            let Some(anchor_index) = building.entries.iter().position(|e| {
+                e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Piece
+            }) else {
+                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                return crux_core::render::render();
+            };
+            if item.kind != ItemKind::Exercise {
+                model.last_error = Some("Only an exercise can be added to a block".to_string());
+                return crux_core::render::render();
+            }
+            let (id, title, kind) = (item.id.clone(), item.title.clone(), item.kind.clone());
+
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                model.last_error = Some("Internal error: expected Building state".to_string());
+                return crux_core::render::render();
+            };
+            let mut entry = create_entry(&id, &title, kind, anchor_index);
+            entry.group_id = Some(group_id);
+            building.entries.insert(anchor_index, entry);
             reindex_entries(&mut building.entries);
             model.last_error = None;
             crux_core::render::render()
@@ -1734,6 +1782,77 @@ mod tests {
         );
         assert!(e[1].group_id.is_some());
         assert_eq!(e[1].group_id, e[2].group_id, "ex-B + piece form the block");
+    }
+
+    #[test]
+    fn add_exercise_to_block_inserts_before_anchor_piece() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::AddExerciseToBlock {
+                group_id: g.clone(),
+                item_id: "ex-D".to_string(),
+            }),
+        );
+        assert_eq!(m.last_error, None);
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "ex-D", "piece-P"]);
+        assert_eq!(group_of(&m, "ex-D"), Some(g.clone()));
+        assert!(groups_contiguous(building_entries(&m)));
+    }
+
+    #[test]
+    fn add_exercise_to_block_rejects_unknown_group() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        update(
+            &mut m,
+            Event::Session(SessionEvent::AddExerciseToBlock {
+                group_id: "no-such-group".to_string(),
+                item_id: "ex-D".to_string(),
+            }),
+        );
+        assert!(m.last_error.is_some());
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
+    }
+
+    #[test]
+    fn add_exercise_to_block_rejects_non_exercise_item() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        update(
+            &mut m,
+            Event::Session(SessionEvent::AddExerciseToBlock {
+                group_id: g,
+                item_id: "piece-Q".to_string(),
+            }),
+        );
+        assert!(m.last_error.is_some());
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
+    }
+
+    #[test]
+    fn add_exercise_to_block_is_idempotent_by_item_id() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-P");
+        let g = group_of(&m, "piece-P").unwrap();
+        for _ in 0..2 {
+            update(
+                &mut m,
+                Event::Session(SessionEvent::AddExerciseToBlock {
+                    group_id: g.clone(),
+                    item_id: "ex-D".to_string(),
+                }),
+            );
+        }
+        assert_eq!(m.last_error, None);
+        assert_eq!(ids(&m), ["ex-A", "ex-B", "ex-D", "piece-P"]);
     }
 
     #[test]

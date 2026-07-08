@@ -436,6 +436,16 @@
       building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
     }
 
+    /// All three per-entry settings set — the "populated" `EntrySettingsSheet` snapshot.
+    static var previewGroupedScalesConfigured: SetlistEntryView {
+      var e = previewGroupedScales
+      e.intention = "Even RH over the LH arpeggios"
+      e.repTarget = 7
+      e.plannedDurationSecs = 360
+      e.plannedDurationDisplay = "6 min"
+      return e
+    }
+
     private static func building(
       id: String, item: String, title: String, type: ItemKind, position: UInt64,
       group: String? = nil
