@@ -15,49 +15,49 @@ struct TagFilterSheet: View {
       leadingAction: {
         Button("Clear", action: { onChange([]) })
           .disabled(selected.isEmpty)
-      }
-    ) {
-      if available.isEmpty {
-        PlaceholderContent(
-          systemImage: "tag",
-          message: "No tags yet. Add tags to items to filter by them.")
-      } else {
-        ScrollView {
-          VStack(spacing: 0) {
-            ForEach(available, id: \.self) { tag in
-              let isOn = isSelected(tag)
-              Button {
-                toggle(tag, isOn: isOn)
-              } label: {
-                HStack(spacing: IntradaSpacing.cardCompact) {
-                  Text(tag)
-                    .font(IntradaFont.body)
-                    .foregroundStyle(IntradaColor.ink)
-                  Spacer(minLength: 0)
-                  if isOn {
-                    Image(systemName: "checkmark")
-                      .font(IntradaFont.bodyMedium)
-                      .foregroundStyle(IntradaColor.accent)
+      },
+      content: {
+        if available.isEmpty {
+          PlaceholderContent(
+            systemImage: "tag",
+            message: "No tags yet. Add tags to items to filter by them.")
+        } else {
+          ScrollView {
+            VStack(spacing: 0) {
+              ForEach(available, id: \.self) { tag in
+                let isOn = isSelected(tag)
+                Button {
+                  toggle(tag, isOn: isOn)
+                } label: {
+                  HStack(spacing: IntradaSpacing.cardCompact) {
+                    Text(tag)
+                      .font(IntradaFont.body)
+                      .foregroundStyle(IntradaColor.ink)
+                    Spacer(minLength: 0)
+                    if isOn {
+                      Image(systemName: "checkmark")
+                        .font(IntradaFont.bodyMedium)
+                        .foregroundStyle(IntradaColor.accent)
+                    }
                   }
+                  .padding(.vertical, IntradaSpacing.row)
+                  .padding(.horizontal, IntradaSpacing.card)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .contentShape(Rectangle())
                 }
-                .padding(.vertical, IntradaSpacing.row)
-                .padding(.horizontal, IntradaSpacing.card)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
-              .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
-              if tag != available.last {
-                HairlineDivider().padding(.leading, IntradaSpacing.card)
+                if tag != available.last {
+                  HairlineDivider().padding(.leading, IntradaSpacing.card)
+                }
               }
             }
+            .cardSurface()
+            .padding(IntradaSpacing.card)
           }
-          .cardSurface()
-          .padding(IntradaSpacing.card)
         }
-      }
-    }
+      })
   }
 
   private func isSelected(_ tag: String) -> Bool {
