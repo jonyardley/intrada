@@ -13,10 +13,8 @@ struct RootView: View {
 
   var body: some View {
     TabView {
-      NavigationStack {
-        LibraryScreen().screenTransaction("Library")
-      }
-      .tabItem { Label("Library", systemImage: "books.vertical") }
+      LibrarySplitView().screenTransaction("Library")
+        .tabItem { Label("Library", systemImage: "books.vertical") }
       NavigationStack {
         PracticeScreen().screenTransaction("Practice")
       }
