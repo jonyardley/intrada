@@ -262,7 +262,7 @@ struct SessionBuilderScreen: View {
     } label: {
       HStack(spacing: IntradaSpacing.controlGap) {
         Image(systemName: "play.fill")
-        Text("Start session")
+        Text(startTitle)
       }
       .font(IntradaFont.bodyMedium)
       .foregroundStyle(IntradaColor.onAccent)
@@ -278,7 +278,9 @@ struct SessionBuilderScreen: View {
     .overlay(alignment: .top) { Rectangle().fill(IntradaColor.hairline).frame(height: 1) }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Start session")
-    .accessibilityValue("\(entries.count) item\(entries.count == 1 ? "" : "s")")
+    .accessibilityValue(
+      "\(entries.count) item\(entries.count == 1 ? "" : "s")"
+        + (setlist?.totalDurationSummary.map { ", \($0)" } ?? ""))
   }
 
   private func removeLabel(_ block: SetlistBlockView) -> String {
@@ -291,9 +293,18 @@ struct SessionBuilderScreen: View {
   private var summary: String {
     let items = Int(setlist?.itemCount ?? 0)
     let itemStr = "\(items) item\(items == 1 ? "" : "s")"
-    guard hasGroups else { return itemStr }
-    let n = blocks.count
-    return "\(n) block\(n == 1 ? "" : "s") · \(itemStr)"
+    var counts = itemStr
+    if hasGroups {
+      let n = blocks.count
+      counts = "\(n) block\(n == 1 ? "" : "s") · \(itemStr)"
+    }
+    guard let duration = setlist?.totalDurationSummary else { return counts }
+    return "\(duration) · \(counts)"
+  }
+
+  private var startTitle: String {
+    guard let duration = setlist?.totalDurationSummary else { return "Start session" }
+    return "Start session · \(duration)"
   }
 
   private func relatedLabel(_ block: SetlistBlockView) -> String {

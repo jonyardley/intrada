@@ -390,6 +390,10 @@ pub struct BuildingSetlistView {
     /// The same entries grouped into ordered units (blocks + standalone items).
     pub blocks: Vec<SetlistBlockView>,
     pub block_count: usize,
+    /// Sum of the entries' planned durations; `None` when nothing is planned
+    /// so shells can fall back to counts-only copy.
+    pub total_duration_display: Option<String>,
+    pub total_duration_summary: Option<String>,
     pub session_intention: Option<String>,
     pub target_duration_mins: Option<u32>,
     pub source_status: SetSourceStatus,
