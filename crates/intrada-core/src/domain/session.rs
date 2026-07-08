@@ -1654,6 +1654,22 @@ mod tests {
     }
 
     #[test]
+    fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
+        let mut m = linked_model();
+        update(&mut m, Event::Session(SessionEvent::StartBuilding));
+        add(&mut m, "piece-Q");
+        if let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") {
+            piece.linked_exercise_ids = vec!["ex-C".to_string()];
+        }
+        add(&mut m, "piece-Q");
+        assert_eq!(
+            ids(&m),
+            ["piece-Q"],
+            "membership no-op wins; newly linked relateds come in by removing and re-adding"
+        );
+    }
+
+    #[test]
     fn add_piece_pulls_related_into_a_block_related_first() {
         let mut m = linked_model();
         update(&mut m, Event::Session(SessionEvent::StartBuilding));
