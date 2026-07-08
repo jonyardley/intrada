@@ -5,6 +5,11 @@ import SwiftUI
 /// with the already-related ones pre-selected; tapping toggles membership and
 /// "Done" hands the final set back — the caller links the added and unlinks the
 /// removed. (Reorder stays in the detail card's Edit mode.)
+///
+/// The filter bar (star / sort / tag / search) drives *shell-local* state over
+/// the passed-in `available` list — the picker curates its own subset rather
+/// than the core's shared Library `ListQuery`, so filtering here never disturbs
+/// the Library screen. A selected tray of removable chips sits above the list.
 struct LinkedExercisePickerSheet: View {
   let available: [LibraryItemView]
   let linkedIds: [String]
@@ -12,6 +17,15 @@ struct LinkedExercisePickerSheet: View {
 
   @Environment(\.dismiss) private var dismiss
   @State private var selected: Swift.Set<String>
+
+  // Shell-local filter state (not the core ListQuery).
+  @State private var priorityOnly = false
+  @State private var sort = LibrarySort(field: .title, direction: .ascending)
+  @State private var selectedTags: [String] = []
+  @State private var filteringTags = false
+  @State private var searchText = ""
+  @State private var searchRevealed = false
+  @FocusState private var searchFocused: Bool
 
   init(
     available: [LibraryItemView], linkedIds: [String],
@@ -34,9 +48,183 @@ struct LinkedExercisePickerSheet: View {
             systemImage: "music.note.list",
             message: "No exercises yet. Create an exercise to relate it to this piece.")
         } else {
-          list
+          VStack(spacing: 0) {
+            filterBar
+            selectedTray
+            list
+          }
         }
       })
+  }
+
+  // ── Filter bar ──
+
+  private var availableTags: [String] {
+    var seen = Swift.Set<String>()
+    var tags: [String] = []
+    for tag in available.flatMap(\.tags) where seen.insert(tag.lowercased()).inserted {
+      tags.append(tag)
+    }
+    return tags.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+  }
+
+  private var filterBar: some View {
+    VStack(spacing: 0) {
+      // zIndex keeps the header above the revealed search bar so the bar slides
+      // out from *under* it rather than ghosting over it (Design System Rules →
+      // animated reveals).
+      header.zIndex(1)
+      if searchRevealed {
+        LibrarySearchBar(text: $searchText, focused: $searchFocused, onCancel: cancelSearch)
+          .padding(.horizontal, IntradaSpacing.card)
+          .padding(.bottom, IntradaSpacing.cardCompact)
+          .background(IntradaColor.paperTop)
+          .transition(.move(edge: .top).combined(with: .opacity))
+      }
+    }
+    .sensoryFeedback(.selection, trigger: searchRevealed)
+    .sheet(isPresented: $filteringTags) {
+      TagFilterSheet(
+        available: availableTags, selected: selectedTags, onChange: { selectedTags = $0 })
+    }
+  }
+
+  private var header: some View {
+    HStack(spacing: IntradaSpacing.controlGap) {
+      Button {
+        priorityOnly.toggle()
+      } label: {
+        Image(systemName: priorityOnly ? "star.fill" : "star")
+          .font(IntradaFont.tab)
+          .foregroundStyle(priorityOnly ? IntradaColor.accent : IntradaColor.inkFaint)
+          .padding(.vertical, 6)
+          .padding(.horizontal, 10)
+          .overlay(Capsule().stroke(IntradaColor.divider, lineWidth: 1))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Show priorities only")
+      .accessibilityAddTraits(priorityOnly ? [.isSelected] : [])
+      Spacer(minLength: IntradaSpacing.controlGap)
+      LibrarySortMenu(current: sort, onChange: { sort = $0 })
+      Button {
+        filteringTags = true
+      } label: {
+        Image(
+          systemName: selectedTags.isEmpty
+            ? "line.3.horizontal.decrease.circle"
+            : "line.3.horizontal.decrease.circle.fill"
+        )
+        .font(IntradaFont.tab)
+        .foregroundStyle(selectedTags.isEmpty ? IntradaColor.inkFaint : IntradaColor.accent)
+        .padding(IntradaSpacing.controlGap)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Filter by tag")
+      .accessibilityValue(selectedTags.isEmpty ? "Off" : "\(selectedTags.count) selected")
+      Button(action: toggleSearch) {
+        Image(systemName: "magnifyingglass")
+          .font(IntradaFont.tab)
+          .foregroundStyle(searchRevealed ? IntradaColor.accent : IntradaColor.inkFaint)
+          .padding(IntradaSpacing.controlGap)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Search")
+    }
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.top, IntradaSpacing.controlGap)
+    .padding(.bottom, IntradaSpacing.cardCompact)
+    .background(IntradaColor.paperTop)
+    .overlay(alignment: .bottom) { HairlineDivider() }
+  }
+
+  private func toggleSearch() {
+    if searchRevealed {
+      cancelSearch()
+    } else {
+      withAnimation(IntradaMotion.standard) { searchRevealed = true }
+      searchFocused = true
+    }
+  }
+
+  private func cancelSearch() {
+    searchText = ""
+    searchFocused = false
+    withAnimation(IntradaMotion.standard) { searchRevealed = false }
+  }
+
+  // ── Selected tray ──
+
+  private var selectedItems: [LibraryItemView] {
+    available.filter { selected.contains($0.id) }
+  }
+
+  @ViewBuilder private var selectedTray: some View {
+    let items = selectedItems
+    Group {
+      if items.isEmpty {
+        Text("No related exercises yet — tap to add.")
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkFaint)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      } else {
+        VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+          Text("\(items.count) related")
+            .font(IntradaFont.eyebrow)
+            .textCase(.uppercase)
+            .kerning(1.2)
+            .foregroundStyle(IntradaColor.inkFaint)
+          ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+              ForEach(items, id: \.id) { exercise in
+                TagChip(
+                  exercise.title, style: .outlined,
+                  onRemove: { toggle(exercise.id, isOn: true) })
+              }
+            }
+          }
+        }
+      }
+    }
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.top, IntradaSpacing.cardCompact)
+    .padding(.bottom, IntradaSpacing.controlGap)
+  }
+
+  // ── List ──
+
+  private var filtered: [LibraryItemView] {
+    var items = available
+    if priorityOnly { items = items.filter(\.priority) }
+    if !selectedTags.isEmpty {
+      items = items.filter { exercise in
+        selectedTags.contains { tag in
+          exercise.tags.contains { $0.localizedCaseInsensitiveCompare(tag) == .orderedSame }
+        }
+      }
+    }
+    let query = searchText.trimmingCharacters(in: .whitespaces)
+    if !query.isEmpty {
+      items = items.filter {
+        $0.title.localizedCaseInsensitiveContains(query)
+          || (metaLine($0)?.localizedCaseInsensitiveContains(query) ?? false)
+      }
+    }
+    return items.sorted(by: isOrderedBefore)
+  }
+
+  private func isOrderedBefore(_ a: LibraryItemView, _ b: LibraryItemView) -> Bool {
+    let ascending = sort.direction == .ascending
+    switch sort.field {
+    case .title:
+      let result = a.title.localizedCaseInsensitiveCompare(b.title)
+      return ascending ? result == .orderedAscending : result == .orderedDescending
+    case .dateAdded:
+      return ascending ? a.createdAt < b.createdAt : a.createdAt > b.createdAt
+    case .lastPracticed:
+      let la = a.practice?.lastPracticedAt ?? ""
+      let lb = b.practice?.lastPracticedAt ?? ""
+      return ascending ? la < lb : la > lb
+    }
   }
 
   private var list: some View {
@@ -44,34 +232,45 @@ struct LinkedExercisePickerSheet: View {
       VStack(spacing: 0) {
         createNewRow
         HairlineDivider().padding(.leading, IntradaSpacing.card)
-        Text("Your exercises")
-          .font(IntradaFont.eyebrow)
-          .textCase(.uppercase)
-          .kerning(1.2)
-          .foregroundStyle(IntradaColor.inkFaint)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, IntradaSpacing.card)
-          .padding(.top, IntradaSpacing.cardCompact)
-          .padding(.bottom, IntradaSpacing.controlGap)
-        ForEach(available, id: \.id) { exercise in
-          let isOn = selected.contains(exercise.id)
-          Button {
-            toggle(exercise.id, isOn: isOn)
-          } label: {
-            exerciseRow(exercise, isOn: isOn)
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(rowAccessibilityLabel(exercise, isOn: isOn))
-          .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+        let rows = filtered
+        if rows.isEmpty {
+          Text("No exercises match your filters.")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, IntradaSpacing.card)
+            .padding(.vertical, IntradaSpacing.row)
+        } else {
+          Text("Your exercises")
+            .font(IntradaFont.eyebrow)
+            .textCase(.uppercase)
+            .kerning(1.2)
+            .foregroundStyle(IntradaColor.inkFaint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, IntradaSpacing.card)
+            .padding(.top, IntradaSpacing.cardCompact)
+            .padding(.bottom, IntradaSpacing.controlGap)
+          ForEach(rows, id: \.id) { exercise in
+            let isOn = selected.contains(exercise.id)
+            Button {
+              toggle(exercise.id, isOn: isOn)
+            } label: {
+              exerciseRow(exercise, isOn: isOn)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(rowAccessibilityLabel(exercise, isOn: isOn))
+            .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
 
-          if exercise.id != available.last?.id {
-            HairlineDivider().padding(.leading, IntradaSpacing.card)
+            if exercise.id != rows.last?.id {
+              HairlineDivider().padding(.leading, IntradaSpacing.card)
+            }
           }
         }
       }
       .cardSurface()
       .padding(IntradaSpacing.card)
     }
+    .scrollDismissesKeyboard(.interactively)
   }
 
   // ── Rows ──
