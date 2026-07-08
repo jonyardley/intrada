@@ -532,6 +532,24 @@ impl App for Intrada {
                         }
                     }
                 };
+                let planned_total_secs: u64 = building
+                    .entries
+                    .iter()
+                    .filter_map(|e| e.planned_duration_secs)
+                    .map(u64::from)
+                    .sum();
+                let (total_duration_display, total_duration_summary) = if planned_total_secs > 0 {
+                    (
+                        Some(crate::domain::session::format_duration_display(
+                            planned_total_secs,
+                        )),
+                        Some(crate::domain::session::format_duration_summary(
+                            planned_total_secs,
+                        )),
+                    )
+                } else {
+                    (None, None)
+                };
                 (
                     None,
                     Some(BuildingSetlistView {
@@ -539,6 +557,8 @@ impl App for Intrada {
                         item_count,
                         blocks,
                         block_count,
+                        total_duration_display,
+                        total_duration_summary,
                         session_intention: building.session_intention.clone(),
                         target_duration_mins: building.target_duration_mins,
                         source_status,
@@ -3476,6 +3496,60 @@ mod tests {
             building.source_status,
             SetSourceStatus::ModifiedFromSource { .. }
         ));
+    }
+
+    fn building_entry(id: &str, planned_duration_secs: Option<u32>) -> SetlistEntry {
+        SetlistEntry {
+            id: id.to_string(),
+            item_id: format!("item-{id}"),
+            item_title: "Etude".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 0,
+            status: EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs,
+            achieved_tempo: None,
+            group_id: None,
+        }
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_sums_planned() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![
+                building_entry("e1", Some(900)),
+                building_entry("e2", Some(630)),
+                building_entry("e3", None),
+            ],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_display.as_deref(), Some("25m 30s"));
+        assert_eq!(building.total_duration_summary.as_deref(), Some("25m"));
+    }
+
+    #[test]
+    fn view_building_setlist_total_duration_none_when_unplanned() {
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
+            entries: vec![building_entry("e1", None), building_entry("e2", None)],
+            ..Default::default()
+        });
+        let vm = app.view(&model);
+        let building = vm.building_setlist.unwrap();
+        assert_eq!(building.total_duration_display, None);
+        assert_eq!(building.total_duration_summary, None);
     }
 
     #[test]

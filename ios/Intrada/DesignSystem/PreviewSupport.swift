@@ -150,6 +150,7 @@
                 entries: [.previewExercise]),
             ],
             blockCount: 2,
+            totalDurationDisplay: nil, totalDurationSummary: nil,
             sessionIntention: nil, targetDurationMins: nil,
             sourceStatus: .noSource)))
     }
@@ -175,6 +176,7 @@
                 entries: [.previewStandaloneExercise]),
             ],
             blockCount: 2,
+            totalDurationDisplay: "12m 0s", totalDurationSummary: "12m",
             sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
     }
 
