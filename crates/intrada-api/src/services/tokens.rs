@@ -49,7 +49,7 @@ pub async fn create_token(
 ) -> Result<CreatedTokenResponse, ApiError> {
     let trimmed = validate_name(name)?.to_string();
     let (token, hash, prefix) = generate_pat();
-    let id = ulid::Ulid::new().to_string();
+    let id = ulid::Ulid::gen().to_string();
     let created_at = Utc::now();
 
     db::tokens::insert(conn, &id, user_id, &trimmed, &hash, &prefix, created_at).await?;

@@ -40,7 +40,7 @@ pub async fn setup_test_app_with_rate_limit(limit: u32, window: Duration) -> Rou
     let limiter = Arc::new(McpRateLimiter::new(limit, window));
 
     let tmp_dir = std::env::temp_dir();
-    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::gen()));
     let db = libsql::Builder::new_local(&db_path)
         .build()
         .await
@@ -68,7 +68,7 @@ pub async fn setup_test_app_with_oauth_ip_limit(limit: u32, window: Duration) ->
     let limiter = Arc::new(IpRateLimiter::new(limit, window));
 
     let tmp_dir = std::env::temp_dir();
-    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::gen()));
     let db = libsql::Builder::new_local(&db_path)
         .build()
         .await
@@ -96,7 +96,7 @@ pub async fn setup_test_app_with_mcp_ip_limit(limit: u32, window: Duration) -> R
     let limiter = Arc::new(IpRateLimiter::new(limit, window));
 
     let tmp_dir = std::env::temp_dir();
-    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::gen()));
     let db = libsql::Builder::new_local(&db_path)
         .build()
         .await
@@ -132,7 +132,7 @@ pub async fn setup_test_app_with_conn(
     allowed_origin: &str,
 ) -> (Router, libsql::Connection) {
     let tmp_dir = std::env::temp_dir();
-    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::new()));
+    let db_path = tmp_dir.join(format!("intrada_test_{}.db", ulid::Ulid::gen()));
 
     let db = libsql::Builder::new_local(&db_path)
         .build()

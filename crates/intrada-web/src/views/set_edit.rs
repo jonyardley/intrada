@@ -128,7 +128,7 @@ pub fn SetEditView() -> impl IntoView {
             entries.update(|e| e.retain(|x| x.item_id != item_id));
         } else if let Some(item) = vm.items.iter().find(|i| i.id == item_id) {
             let new_entry = SetEntryView {
-                id: ulid::Ulid::new().to_string(),
+                id: ulid::Ulid::gen().to_string(),
                 item_id: item.id.clone(),
                 item_title: item.title.clone(),
                 item_type: item.item_type.clone(),

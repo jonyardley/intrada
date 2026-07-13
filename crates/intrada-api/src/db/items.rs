@@ -123,7 +123,7 @@ pub async fn insert_item(
     user_id: &str,
     input: &CreateItem,
 ) -> Result<Item, ApiError> {
-    let id = ulid::Ulid::new().to_string();
+    let id = ulid::Ulid::gen().to_string();
     let now = Utc::now();
     let now_str = now.to_rfc3339();
     let kind_str = input.kind.to_string();

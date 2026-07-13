@@ -59,7 +59,7 @@ pub fn SetSaveForm(
         }
         error.set(None);
         let vm = view_model.get_untracked();
-        let request_id = ulid::Ulid::new().to_string();
+        let request_id = ulid::Ulid::gen().to_string();
         // Must precede `pending.set(true)` — Effect guards on `my_id.is_some()`.
         my_request_id.set(Some(request_id.clone()));
         error_before_dispatch.set(vm.error.clone());

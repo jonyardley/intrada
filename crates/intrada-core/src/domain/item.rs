@@ -124,7 +124,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let now = chrono::Utc::now();
             let item = Item {
-                id: ulid::Ulid::new().to_string(),
+                id: ulid::Ulid::gen().to_string(),
                 title: input.title,
                 kind: input.kind,
                 composer: input.composer,

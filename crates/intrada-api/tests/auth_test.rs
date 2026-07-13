@@ -346,7 +346,7 @@ async fn extractor_accepts_token_signed_by_second_key() {
 // ── PAT resolution edge cases ─────────────────────────────────────────
 
 async fn seed_pat(conn: &libsql::Connection, token: &str, user_id: &str) {
-    let token_id = ulid::Ulid::new().to_string();
+    let token_id = ulid::Ulid::gen().to_string();
     let hash = intrada_api::db::tokens::hash_token(token);
     let prefix = &token[..16.min(token.len())];
     intrada_api::db::tokens::insert(

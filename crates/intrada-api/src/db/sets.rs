@@ -191,7 +191,7 @@ pub async fn insert_set(
     user_id: &str,
     input: &CreateSetRequest,
 ) -> Result<Set, ApiError> {
-    let id = ulid::Ulid::new().to_string();
+    let id = ulid::Ulid::gen().to_string();
     let now = Utc::now();
     let created_at_str = now.to_rfc3339();
     let updated_at_str = now.to_rfc3339();
@@ -217,7 +217,7 @@ pub async fn insert_set(
         // Insert each set entry
         let mut entries = Vec::with_capacity(input.entries.len());
         for (position, entry) in input.entries.iter().enumerate() {
-            let entry_id = ulid::Ulid::new().to_string();
+            let entry_id = ulid::Ulid::gen().to_string();
             conn.execute(
                 "INSERT INTO routine_entries (id, routine_id, item_id, item_title, item_type, position)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -299,7 +299,7 @@ pub async fn update_set(
         // Insert new entries
         let mut entries = Vec::with_capacity(input.entries.len());
         for (position, entry) in input.entries.iter().enumerate() {
-            let entry_id = ulid::Ulid::new().to_string();
+            let entry_id = ulid::Ulid::gen().to_string();
             conn.execute(
                 "INSERT INTO routine_entries (id, routine_id, item_id, item_title, item_type, position)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
