@@ -63,3 +63,9 @@ ios/build/
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/test_output/
+# graphify knowledge-graph tool — machine-local interpreter path + incremental
+# extraction cache (embeds absolute paths, not portable across clones).
+# graph.json / GRAPH_REPORT.md / manifest.json / cost.json are committed.
+graphify-out/.graphify_python
+graphify-out/.graphify_root
+graphify-out/cache/
