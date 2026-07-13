@@ -53,7 +53,7 @@ pub async fn record_mcp_write(
         AuthSource::Disabled => return,
     };
 
-    let id = ulid::Ulid::new().to_string();
+    let id = ulid::Ulid::gen().to_string();
     let hash = args_hash(args);
     if let Err(e) = db::audit::insert(
         conn,

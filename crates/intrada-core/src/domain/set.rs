@@ -85,14 +85,14 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
 
             let now = Utc::now();
             let set = Set {
-                id: ulid::Ulid::new().to_string(),
+                id: ulid::Ulid::gen().to_string(),
                 name: name.trim().to_string(),
                 entries: building
                     .entries
                     .iter()
                     .enumerate()
                     .map(|(i, e)| SetEntry {
-                        id: ulid::Ulid::new().to_string(),
+                        id: ulid::Ulid::gen().to_string(),
                         item_id: e.item_id.clone(),
                         item_title: e.item_title.clone(),
                         item_type: e.item_type.clone(),
@@ -133,14 +133,14 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
 
             let now = Utc::now();
             let set = Set {
-                id: ulid::Ulid::new().to_string(),
+                id: ulid::Ulid::gen().to_string(),
                 name: name.trim().to_string(),
                 entries: summary
                     .entries
                     .iter()
                     .enumerate()
                     .map(|(i, e)| SetEntry {
-                        id: ulid::Ulid::new().to_string(),
+                        id: ulid::Ulid::gen().to_string(),
                         item_id: e.item_id.clone(),
                         item_title: e.item_title.clone(),
                         item_type: e.item_type.clone(),
@@ -190,7 +190,7 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
 
             for entry in &set.entries {
                 building.entries.push(SetlistEntry {
-                    id: ulid::Ulid::new().to_string(),
+                    id: ulid::Ulid::gen().to_string(),
                     item_id: entry.item_id.clone(),
                     item_title: entry.item_title.clone(),
                     item_type: entry.item_type.clone(),
@@ -292,7 +292,7 @@ pub fn handle_set_event(event: SetEvent, model: &mut Model) -> Command<Effect, E
                 .iter()
                 .enumerate()
                 .map(|(i, e)| SetEntry {
-                    id: ulid::Ulid::new().to_string(),
+                    id: ulid::Ulid::gen().to_string(),
                     item_id: e.item_id.clone(),
                     item_title: e.item_title.clone(),
                     item_type: e.item_type.clone(),
@@ -703,7 +703,7 @@ mod tests {
         model.sets.push(sample_set());
 
         let new_entries = vec![SetEntry {
-            id: ulid::Ulid::new().to_string(),
+            id: ulid::Ulid::gen().to_string(),
             item_id: "item-c".to_string(),
             item_title: "New Item".to_string(),
             item_type: ItemKind::Piece,

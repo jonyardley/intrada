@@ -242,7 +242,7 @@ mod tests {
     use crate::state::Db;
 
     async fn make_state() -> AppState {
-        let db_path = std::env::temp_dir().join(format!("auth_test_{}.db", ulid::Ulid::new()));
+        let db_path = std::env::temp_dir().join(format!("auth_test_{}.db", ulid::Ulid::gen()));
         let db = libsql::Builder::new_local(&db_path)
             .build()
             .await
