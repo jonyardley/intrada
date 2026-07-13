@@ -140,17 +140,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-channel"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81953c529336010edd6d8e358f886d9581267795c61b19475b71314bffa46d35"
-dependencies = [
- "concurrent-queue",
- "event-listener",
- "futures-core",
-]
-
-[[package]]
 name = "async-stream"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -475,17 +464,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cfb"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38f2da7a0a2c4ccf0065be06397cc26a81f4e528be095826eee9d4adbb8c60f"
-dependencies = [
- "byteorder",
- "fnv",
- "uuid",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,15 +565,6 @@ name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
-
-[[package]]
-name = "concurrent-queue"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
-dependencies = [
- "crossbeam-utils",
-]
 
 [[package]]
 name = "const-fnv1a-hash"
@@ -710,7 +679,7 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "crux_macros",
- "facet 0.44.5",
+ "facet",
  "facet_generate",
  "futures",
  "log",
@@ -722,24 +691,25 @@ dependencies = [
 
 [[package]]
 name = "crux_http"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef762ab0e77caf6f0fc22ec06491e83967039fe88f3916ec3c8f83b3c52f7e73"
+checksum = "cb5aec17a4618dc5834f201aaa28f0ea4cad5a5f593714e74a43ff95cf171313"
 dependencies = [
  "anyhow",
  "async-trait",
  "crux_core",
  "derive_builder",
  "encoding_rs",
- "facet 0.44.5",
+ "facet",
  "facet-generate-attrs",
  "futures-util",
- "http-types-red-badger-temporary-fork",
+ "http 1.4.0",
+ "mime",
  "pin-project-lite",
  "serde",
  "serde_bytes",
  "serde_json",
- "serde_qs 1.1.1",
+ "serde_qs",
  "thiserror 2.0.18",
  "url",
  "web-sys",
@@ -1115,41 +1085,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "event-listener"
-version = "2.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "facet"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d643309d7c46d073b6c51e29901ed9bc3d858dc09aa21f5b32b424491e1bbef"
-dependencies = [
- "facet-core 0.31.8",
- "facet-macros 0.31.8",
- "static_assertions",
-]
-
-[[package]]
 name = "facet"
 version = "0.44.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c78066af2cc259674a54fef24323f6081ae54a5f3a3fb53b995af7a867041c81"
 dependencies = [
  "autocfg",
- "facet-core 0.44.4",
- "facet-macros 0.44.4",
-]
-
-[[package]]
-name = "facet-core"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac27076d75388bffb6c5e5118078dcbb46f2090b35256c45372ff1c1910b1aaf"
-dependencies = [
- "bitflags",
- "impls",
+ "facet-core",
+ "facet-macros",
 ]
 
 [[package]]
@@ -1171,7 +1114,7 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b430b495d59ffcf07dabe103a796d8d3ba809d12bb25a5960b605883835b3de"
 dependencies = [
- "facet 0.44.5",
+ "facet",
 ]
 
 [[package]]
@@ -1198,31 +1141,11 @@ dependencies = [
 
 [[package]]
 name = "facet-macros"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391fcf43b68a76ba4a494710629a7b6fb430345a5623a6a87f7c263bfadb1643"
-dependencies = [
- "facet-core 0.31.8",
- "facet-macros-emit",
-]
-
-[[package]]
-name = "facet-macros"
 version = "0.44.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0cc46a94a2725e82f2c0095bac16665057c24d7f4f11169a7a879dbcba81d8f"
 dependencies = [
  "facet-macros-impl",
-]
-
-[[package]]
-name = "facet-macros-emit"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e81e536ccafa7d5ef71822c9a67a28a0b29fe0170eaf2d134c36854a3d56ee9a"
-dependencies = [
- "facet-macros-parse",
- "quote",
 ]
 
 [[package]]
@@ -1240,24 +1163,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "facet-macros-parse"
-version = "0.31.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da5d4ded1874033bdef5000712d80d28feefe2abb48bb6f31b6fe59b7e9792f"
-dependencies = [
- "proc-macro2",
- "quote",
- "unsynn",
-]
-
-[[package]]
 name = "facet_generate"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd2735cffb3535a6d1554197eaf509192103c9fd0f66cf01f143c252ef0f78d7"
 dependencies = [
  "derive_builder",
- "facet 0.44.5",
+ "facet",
  "facet-generate-attrs",
  "heck",
  "include_dir",
@@ -1402,19 +1314,6 @@ name = "futures-io"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cecba35d7ad927e23624b22ad55235f2239cfa44fd10428eecbeba6d6a717718"
-
-[[package]]
-name = "futures-lite"
-version = "2.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
-dependencies = [
- "fastrand",
- "futures-core",
- "futures-io",
- "parking",
- "pin-project-lite",
-]
 
 [[package]]
 name = "futures-macro"
@@ -1715,27 +1614,6 @@ dependencies = [
  "http 1.4.0",
  "http-body 1.0.1",
  "pin-project-lite",
-]
-
-[[package]]
-name = "http-types-red-badger-temporary-fork"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3042c4259fc659f9fa8aea1d71c4ae4201c58a0adddd3406910aed0870c68382"
-dependencies = [
- "anyhow",
- "async-channel",
- "base64 0.22.1",
- "facet 0.31.8",
- "futures-lite",
- "infer",
- "pin-project-lite",
- "rand 0.9.4",
- "serde",
- "serde_json",
- "serde_qs 0.15.0",
- "serde_urlencoded",
- "url",
 ]
 
 [[package]]
@@ -2088,15 +1966,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "infer"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
-dependencies = [
- "cfb",
-]
-
-[[package]]
 name = "intrada-api"
 version = "0.1.0"
 dependencies = [
@@ -2131,7 +2000,7 @@ dependencies = [
  "chrono",
  "crux_core",
  "crux_http",
- "facet 0.44.5",
+ "facet",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2892,12 +2761,6 @@ dependencies = [
  "primeorder",
  "sha2 0.10.9",
 ]
-
-[[package]]
-name = "parking"
-version = "2.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
 
 [[package]]
 name = "parking_lot"
@@ -3896,17 +3759,6 @@ dependencies = [
  "itoa",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "serde_qs"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3faaf9e727533a19351a43cc5a8de957372163c7d35cc48c90b75cdda13c352"
-dependencies = [
- "percent-encoding",
- "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]
