@@ -167,3 +167,16 @@ irreversible actions → confirm dialog.** New destructive actions default to th
 undo-toast path unless the data loss is unrecoverable. Existing destructive
 actions (e.g. item delete's confirm sheet) need a per-action audit to reclassify
 — tracked as a follow-on issue.
+
+### T7 — Reflection capture vs "the app disappears during practice"
+**Status:** DECIDED 2026-07-14 (vision/journey audit).
+Reflection is the good friction T1 protects, but capture must never cost flow.
+Rules: **mid-item capture is one tap from the player, saves, and returns
+straight to the running timer; it never forces an advance** (the current
+hand-off sheet conflates "note" with "next"; that coupling is a bug, not a
+design). **End-of-session reflection is structured**: what improved, what's
+still broken, what to target next time, shown against the session's stated
+intention, skippable, and never a gate on saving. What's captured must feed
+forward: the "next target" answer surfaces as the item's suggested aim next
+time, and reflections are re-readable (session detail, item history, progress
+report). A note the user can never see again is admin, not reflection.

@@ -2,7 +2,10 @@
 
 **Your Intentional Practice Companion**
 
-*Product Vision — April 2026*
+*Product Vision — April 2026, revised July 2026*
+
+*The companion walkthrough of the ideal user journey lives in
+[`docs/journeys.md`](docs/journeys.md); features are judged against it.*
 
 ---
 
@@ -32,7 +35,7 @@ These build on each other. You can't schedule what you haven't captured, you can
 
 **3. Space it for retention.** Intrada schedules returns to material at intervals optimised for long-term retention, not just coverage. Items you're learning surface frequently; items you've consolidated appear less often but before you've forgotten them. The app manages the spacing so you don't have to — and so exercises from six weeks ago don't silently decay while you focus on this week's assignment. This is grounded in decades of research on spaced repetition and interleaved practice.
 
-**4. Show that it's working.** Progress in music is real but gradual. Intrada makes it visible. Mastery ratings per item, per key, and per tempo accumulate over weeks and months into evidence you can see: "Your Db mastery went from 2 to 4 over the last three weeks." This isn't gamification — it's the external confirmation that the process is working, delivered before you can feel it yourself. It turns weeks of invisible improvement into daily visible signals.
+**4. Show that it's working.** Progress in music is real but gradual. Intrada makes it visible. Mastery ratings per item, per key, and per tempo accumulate over weeks and months into evidence you can see: "Your Db mastery went from 2 to 4 over the last three weeks." And the evidence isn't only numbers: Intrada keeps what you *said*, the reflections captured during and after practice, and plays it back against the data. "Two weeks ago you wrote 'bridge still rushing'; this week: 'bridge steady at 96'." Progress reported in your own words is proof no chart can match. This isn't gamification: it's the external confirmation that the process is working, delivered before you can feel it yourself. It turns weeks of invisible improvement into daily visible signals.
 
 **5. Identify gaps and guide what's next.** Over time, Intrada gets smarter. It surfaces patterns you can't see yourself — "You consistently struggle with keys that have four or more flats" or "You spend most of your time on pieces and almost none on the keys you rated lowest." Initially this comes from your practice data alone. Later, it extends to suggesting specific exercises to address weaknesses and generating practice pathways toward goals — the kind of curriculum guidance that a teacher provides instinctively.
 
@@ -70,6 +73,17 @@ Every interaction should feel lightweight. If logging a practice session takes m
 
 Every decision point between "I want to practise" and "I am practising" is a potential session-ending barrier — particularly for musicians with executive function challenges. The default path requires one decision: tap start. Everything else is optional.
 
+### Reflection Closes Every Loop
+
+Practice without reflection is repetition. Intrada treats reflection as a
+first-class act at two moments: a one-tap capture *during* practice that never
+breaks flow, and a short structured beat *after* the session (what improved,
+what's still broken, what to target next time) that is skippable but never
+skipped by design. What you write feeds forward: the next target becomes the
+next session's suggested aim, and your words become the spine of your progress
+report. This is the "good friction" the design principles protect; everything
+else stays frictionless so this can stay deliberate.
+
 ### Celebrate Comeback, Not Streak
 
 Intrada never shows a broken streak counter or a zero. It celebrates returns: "Welcome back — your scheduling has adapted and we've got a session ready." Consistency matters, but the framing determines whether it motivates or shames.
@@ -98,6 +112,16 @@ The app also recognises when a musician always practises keys as a sequential lo
 
 Pieces (repertoire with sections), exercises (scales, arpeggios, technical studies), licks and vocabulary (jazz patterns, typically across keys), and techniques (specific technical goals like left-hand independence or pedalling).
 
+### Piece Scaffolding
+
+A piece is not practised alone; it is built. A jazz standard accumulates the
+exercises that construct it: the melody, shells in each inversion, scales to
+each chord tone on every change, constrained improvisation. Intrada makes that
+relationship first-class: a piece anchors an ordered set of related exercises,
+each tracked separately, practisable together as a block, and navigable in
+both directions. Exercises can serve several pieces; mastery earned in one
+context is visible in every context that shares it.
+
 ### Routines
 
 Reusable sequences of items — a warm-up routine, a technical block, a cool-down set — that can be inserted into any session. This reduces daily decision-making, supports consistency, and is particularly valuable for musicians who struggle with session initiation.
@@ -107,6 +131,8 @@ Reusable sequences of items — a warm-up routine, a technical block, a cool-dow
 ## The Scheduling Intelligence
 
 The scheduler combines spaced repetition urgency (what's overdue for review), interleaved ordering (mixing material types for better retention), goal alignment (what serves the musician's current objectives), and time fitting (what fits in the available session length).
+
+Goals here are deliberately small: an outcome statement ("learn Body and Soul", "improvise fluently over rhythm changes") linked to library items, with an optional target date. Nothing more. An earlier, heavier goals feature (confidence tracking, progress percentages, photos) was built and removed twice; the lesson was that goals earn their place only as an *input to planning*, never as an admin surface of their own. The per-item priority star remains the zero-ceremony shortcut; a goal is the named ambition sitting above it.
 
 This isn't AI — it's an algorithm grounded in well-established learning science. The research basis is documented in the [Research Foundation](docs/research-foundation.md).
 
