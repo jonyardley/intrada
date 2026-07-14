@@ -159,9 +159,11 @@ These are unresolved product questions. Each one likely produces issues
    problem without teacher-facing features.
 
 5. **Goals (re-resolved 2026-07-14).** History: goals were built twice
-   (lessons #273, then Goals #711–#740), judged too complex, and removed
-   twice (last #769), leaving the per-item `priority` flag (#765,
-   `specs/priority-items.md`). The vision/journey audit reopened the
+   (an early goals feature, removed in #213 for a ground-up redesign;
+   then Goals #711–#740, removed in #769), with the lessons vertical
+   (#273) in between, leaving the per-item `priority` flag (#765,
+   `specs/priority-items.md`; priority UI and "neglected priority"
+   signal tracked in #763 / #764). The vision/journey audit reopened the
    question: the ideal journey requires goals that *drive planning*, and
    the ruling is to rebuild them deliberately small: an outcome statement
    linked to library items with an optional target date, consumed by
@@ -171,7 +173,8 @@ These are unresolved product questions. Each one likely produces issues
    `docs/journeys.md` step 4.
 
 6. **Lessons / photos / R2 surface (resolved 2026-07-14).** Rolled back:
-   the lessons vertical was superseded by Goals and both were removed in
-   #769 (migrations 0081–0083); nothing dormant remains. #570 closed as
+   the lessons vertical was superseded by Goals in #711 (migrations
+   0067–0068 dropped the lesson tables); Goals were then removed in #769
+   (migrations 0081–0083). Nothing dormant remains, so #570 closes as
    part of the vision/journey audit. R2 photo storage hardening (#281)
    survives independently as a security item.

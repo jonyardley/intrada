@@ -118,7 +118,7 @@ A piece is not practised alone; it is built. A jazz standard accumulates the
 exercises that construct it: the melody, shells in each inversion, scales to
 each chord tone on every change, constrained improvisation. Intrada makes that
 relationship first-class: a piece anchors an ordered set of related exercises,
-each tracked separately, practisable together as a block, and navigable in
+each tracked separately, practised together as a block, and navigable in
 both directions. Exercises can serve several pieces; mastery earned in one
 context is visible in every context that shares it.
 

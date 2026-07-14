@@ -36,9 +36,9 @@ serving me, Intrada **suggests alternatives** that work the same skill.
 | 1 | Library of pieces | Add a piece in seconds, enrich progressively: composer, key(s), tempo, difficulty, named sections. Find it by any facet. | Partial – multi-key (#46), difficulty (#372), sections (#50) missing |
 | 2 | Exercises scaffold a piece | Build and maintain an ordered set of related exercises per piece; create inline; navigate both directions; practise as a block. | Built |
 | 3 | Track each exercise separately | An exercise's detail answers "how is this going?" across score, tempo, reps, and keys. | Partial – score only; tempo has no iOS input, reps not aggregated, keys absent |
-| 4 | Goals drive planning | Capture an outcome ("learn Body and Soul") linked to items; planning consumes it. | Missing – rebuilt small per the 2026-07 ruling (roadmap Q5) |
+| 4 | Goals drive planning | Capture an outcome ("learn Body and Soul") linked to items; planning consumes it. | Missing – to be rebuilt small per the 2026-07 ruling (roadmap Q5) |
 | 5 | Recommended sessions | The Practice tab proposes one concrete session with per-item reasons; one tap starts it. | Missing – signals exist in core, nothing composes them |
-| 6 | Guided focus mode | One item at a time, chrome-free, survives interruption and relaunch. | Built – crash recovery (#962) and pause (#1000) outstanding |
+| 6 | Guided focus mode | One item at a time, chrome-free, survives interruption and relaunch. | Partial – guided loop shipped; crash recovery (#962) and pause (#1000) outstanding |
 | 7 | Reflection in the moment | One-tap capture mid-item that saves and returns to the timer; never forces advance. | Partial – capture only at item hand-off, and it advances |
 | 8 | End-of-session reflection | Structured prompts (improved / still broken / next target) against the session's intention; skippable, never a gate. | Partial – single unlabelled note box |
 | 9 | Narrative progress | Past sessions re-readable; item note history visible; Progress quotes your words next to the deltas. | Missing on iOS – notes persist but are write-only |
