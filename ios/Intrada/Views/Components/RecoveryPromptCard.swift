@@ -8,6 +8,8 @@ struct RecoveryPromptCard: View {
   @Environment(\.locale) private var locale
 
   let session: ActiveSession
+  /// Injected for deterministic snapshots; production passes "now".
+  var referenceDate: Date = Date()
   let onResume: () -> Void
   let onDiscard: () -> Void
 
@@ -53,7 +55,8 @@ struct RecoveryPromptCard: View {
     let count = "\(position) of \(session.entries.count) items"
     guard let started = SessionClock.parseRFC3339(session.sessionStartedAt) else { return count }
     let formatter = DateFormatter()
-    formatter.dateStyle = .none
+    // An old blob saying just "9:02 AM" reads as today — show the date too.
+    formatter.dateStyle = calendar.isDate(started, inSameDayAs: referenceDate) ? .none : .medium
     formatter.timeStyle = .short
     formatter.calendar = calendar
     formatter.timeZone = calendar.timeZone

@@ -52,6 +52,7 @@ struct PracticeScreen: View {
           if let recoverable = store.recoverableSession {
             RecoveryPromptCard(
               session: recoverable,
+              referenceDate: referenceDate,
               onResume: { store.resumeRecoverableSession() },
               onDiscard: { store.discardSessionInProgress() }
             )
