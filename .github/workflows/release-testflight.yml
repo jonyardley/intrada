@@ -5,7 +5,9 @@ name: Release — TestFlight
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    # X.Y.Z only: the beta lane hard-rejects other shapes, and failing at the
+    # trigger beats failing after ~15 min of 10x-billed macOS build.
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
 
 # Don't cancel an in-flight upload if another tag/dispatch lands.
 concurrency:
@@ -81,8 +83,7 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
-          # Tag drives the version (v0.3.0 → 0.3.0); empty on workflow_dispatch,
-          # where the Fastfile falls back to project.yml's MARKETING_VERSION.
+          # Empty on branch dispatch; the Fastfile then falls back to project.yml.
           MARKETING_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: bundle exec fastlane ios beta
       - name: Upload IPA artifact
