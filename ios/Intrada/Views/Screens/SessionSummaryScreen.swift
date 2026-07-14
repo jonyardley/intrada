@@ -9,6 +9,9 @@ import SwiftUI
 struct SessionSummaryScreen: View {
   @Environment(Store.self) private var store
   @State private var note = ""
+  @State private var improved = ""
+  @State private var stillRough = ""
+  @State private var nextTarget = ""
   @State private var confirmingDiscard = false
 
   private var summary: SummaryView? { store.viewModel?.summary }
@@ -30,9 +33,13 @@ struct SessionSummaryScreen: View {
               .fadeUp(1)
             }
             recap(summary).fadeUp(2)
-            noteSection.fadeUp(3)
-            sessionScoreRow(summary).fadeUp(4)
-            controls.fadeUp(5)
+            if let intention = summary.sessionIntention, !intention.isEmpty {
+              intentionEcho(intention).fadeUp(3)
+            }
+            reflectionSection.fadeUp(4)
+            noteSection.fadeUp(5)
+            sessionScoreRow(summary).fadeUp(6)
+            controls.fadeUp(7)
           }
           .padding(.horizontal, IntradaSpacing.card)
           .padding(.top, 40)
@@ -40,13 +47,81 @@ struct SessionSummaryScreen: View {
         }
       }
     }
-    .onAppear { note = summary?.notes ?? "" }
+    .onAppear {
+      note = summary?.notes ?? ""
+      improved = summary?.reflectionImproved ?? ""
+      stillRough = summary?.reflectionStillRough ?? ""
+      nextTarget = summary?.reflectionNextTarget ?? ""
+    }
     .alert("Discard this session?", isPresented: $confirmingDiscard) {
       Button("Discard", role: .destructive) { store.send(.session(.discardSession)) }
       Button("Keep", role: .cancel) {}
     } message: {
       Text("This practice won't be saved.")
     }
+  }
+
+  // ── Intention echo ──
+
+  private func intentionEcho(_ intention: String) -> some View {
+    HStack(alignment: .top, spacing: IntradaSpacing.controlGap) {
+      Image(systemName: "quote.opening")
+        .font(.system(size: 15))
+        .foregroundStyle(IntradaColor.celebrationInk)
+      VStack(alignment: .leading, spacing: 4) {
+        Eyebrow("Your intention", tint: IntradaColor.celebrationInk)
+        Text("“\(intention)”")
+          .font(IntradaFont.cardTitle(15.5)).italic()
+          .foregroundStyle(IntradaColor.ink)
+      }
+    }
+    .padding(IntradaSpacing.cardCompact)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(LinearGradient.celebration)
+    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+    .overlay(
+      RoundedRectangle(cornerRadius: IntradaRadius.card)
+        .stroke(IntradaColor.celebrationBorder, lineWidth: 1)
+    )
+    .accessibilityElement(children: .combine)
+  }
+
+  // ── Structured reflection (design-principles T7) ──
+
+  private var reflectionSection: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      Eyebrow("Reflect · optional")
+      VStack(spacing: 0) {
+        ReflectionPromptRow(
+          icon: "arrow.up.right", tint: IntradaColor.repCleanFg, tintBg: IntradaColor.repCleanBg,
+          label: "Improved", placeholder: "What moved forward?", text: $improved
+        )
+        .onChange(of: improved) { _, value in pushReflection(.improved, value) }
+        Rectangle().fill(IntradaColor.hairline).frame(height: 1)
+        ReflectionPromptRow(
+          icon: "wrench.fill", tint: IntradaColor.exerciseBadgeFg,
+          tintBg: IntradaColor.exerciseBadgeBg,
+          label: "Still rough", placeholder: "What's still fighting you?", text: $stillRough
+        )
+        .onChange(of: stillRough) { _, value in pushReflection(.stillRough, value) }
+        Rectangle().fill(IntradaColor.hairline).frame(height: 1)
+        ReflectionPromptRow(
+          icon: "target", tint: IntradaColor.pieceBadgeFg, tintBg: IntradaColor.pieceBadgeBg,
+          label: "Next target", placeholder: "Where does the next session start?",
+          text: $nextTarget
+        )
+        .onChange(of: nextTarget) { _, value in pushReflection(.nextTarget, value) }
+      }
+    }
+  }
+
+  // Mirrors noteSection's onChange guard: push real edits only, and only
+  // while still in Summary (avoids a "not in summary" core error if a field
+  // settles during teardown). The core normalises blank/whitespace text to
+  // nil on its own (session.rs UpdateSessionReflection), so no local trim.
+  private func pushReflection(_ field: ReflectionField, _ value: String) {
+    guard summary != nil else { return }
+    store.send(.session(.updateSessionReflection(field: field, text: value.isEmpty ? nil : value)))
   }
 
   // ── Headline ──
@@ -289,6 +364,10 @@ struct SessionSummaryScreen: View {
 #if DEBUG
   #Preview("Completed") {
     SessionSummaryScreen().environment(Store.previewSummary)
+  }
+
+  #Preview("With reflection") {
+    SessionSummaryScreen().environment(Store.previewSummaryWithReflection)
   }
 
   #Preview("Ended early") {

@@ -190,6 +190,11 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(SessionSummaryScreen(), store: .previewSummary), as: config)
   }
 
+  func testSessionSummaryWithReflection() {
+    assertSnapshot(
+      of: host(SessionSummaryScreen(), store: .previewSummaryWithReflection), as: config)
+  }
+
   func testSessionSummaryEndedEarly() {
     assertSnapshot(
       of: host(SessionSummaryScreen(), store: .previewSummaryEndedEarly), as: config)
