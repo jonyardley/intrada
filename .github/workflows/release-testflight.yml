@@ -81,6 +81,9 @@ jobs:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           BUILD_NUMBER: ${{ github.run_number }}
+          # Tag drives the version (v0.3.0 → 0.3.0); empty on workflow_dispatch,
+          # where the Fastfile falls back to project.yml's MARKETING_VERSION.
+          MARKETING_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: bundle exec fastlane ios beta
       - name: Upload IPA artifact
         if: always()
