@@ -489,6 +489,16 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.notes, "clearing an entry note round-trips")
+    // Achieved tempo — the hand-off sheet's TempoStepper write, never previously
+    // sent from Swift (#846). Round-trip set + clear through the live bridge.
+    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: 96)))
+    XCTAssertEqual(
+      try bridge.view().summary?.entries.first?.achievedTempo, 96,
+      "the tempo stepper's achieved tempo should round-trip")
+    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: nil)))
+    XCTAssertNil(
+      try bridge.view().summary?.entries.first?.achievedTempo,
+      "clearing an achieved tempo round-trips")
     _ = try bridge.update(.session(.updateSessionNotes(notes: "Felt good")))
     XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
     _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))

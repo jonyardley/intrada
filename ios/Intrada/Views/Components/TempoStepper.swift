@@ -1,0 +1,73 @@
+import SwiftUI
+
+/// Achieved-tempo control for the hand-off reflection sheet: two 44×44 step
+/// buttons flanking a large tabular BPM readout. A stepper, not a numeric
+/// field, so logging tempo never summons a keyboard mid-sheet; ±2 BPM per tap
+/// covers the practical range in a few taps either way. Prefilled at the
+/// item's target — untouched reads as "played at target" (design/briefs/
+/// 2026-07-reflection-and-narrative.md, DECISIONS.md surface 2).
+struct TempoStepper: View {
+  @Binding var value: Int
+  private let range = 40...208
+  private let step = 2
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.controlGap) {
+      stepButton(systemImage: "minus", label: "Decrease tempo") {
+        value = max(range.lowerBound, value - step)
+      }
+      Text("♩ = \(value)")
+        .font(IntradaFont.scoreNumeral(24))
+        .monospacedDigit()
+        .foregroundStyle(IntradaColor.ink)
+        .frame(maxWidth: .infinity)
+      stepButton(systemImage: "plus", label: "Increase tempo") {
+        value = min(range.upperBound, value + step)
+      }
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Achieved tempo")
+    .accessibilityValue("\(value) beats per minute")
+    .accessibilityAdjustableAction { direction in
+      switch direction {
+      case .increment: value = min(range.upperBound, value + step)
+      case .decrement: value = max(range.lowerBound, value - step)
+      default: break
+      }
+    }
+  }
+
+  private func stepButton(systemImage: String, label: String, action: @escaping () -> Void)
+    -> some View
+  {
+    Button {
+      UISelectionFeedbackGenerator().selectionChanged()
+      action()
+    } label: {
+      Image(systemName: systemImage)
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .frame(width: 44, height: 44)
+        .background(IntradaColor.cardFill)
+        .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.card))
+        .overlay(
+          RoundedRectangle(cornerRadius: IntradaRadius.card)
+            .strokeBorder(IntradaColor.hairline, lineWidth: 1.5))
+    }
+    .buttonStyle(.plain)
+    .accessibilityHidden(true)  // exposed via the container's adjustable action
+    .accessibilityLabel(label)
+  }
+}
+
+#if DEBUG
+  #Preview("Tempo stepper") {
+    VStack(spacing: 24) {
+      TempoStepper(value: .constant(96))
+      TempoStepper(value: .constant(40))
+      TempoStepper(value: .constant(208))
+    }
+    .padding()
+    .background(IntradaColor.paperTop)
+  }
+#endif

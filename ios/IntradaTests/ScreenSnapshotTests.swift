@@ -294,7 +294,18 @@ final class ScreenSnapshotTests: XCTestCase {
     let sheet = ZStack(alignment: .bottom) {
       PaperBackground()
       ReflectionSheet(
-        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", onSave: { _, _ in }, onSkip: {})
+        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
+        onSave: { _, _, _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  func testReflectionSheetWithTempoTarget() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
+        onSave: { _, _, _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }

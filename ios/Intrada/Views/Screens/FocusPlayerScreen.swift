@@ -28,7 +28,10 @@ struct FocusPlayerScreen: View {
     .sheet(item: $reflecting) { target in
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
-        onSave: { score, note in handleReflection(target, score: score, note: note) },
+        tempoTarget: target.tempoTargetBpm,
+        onSave: { score, note, achievedTempo in
+          handleReflection(target, score: score, note: note, achievedTempo: achievedTempo)
+        },
         onSkip: { handleSkipRating() }
       )
       .presentationDetents([.medium, .large])
@@ -208,6 +211,9 @@ struct FocusPlayerScreen: View {
     let id: String  // the current entry's ulid
     let title: String
     let elapsedDisplay: String
+    /// The item's own declared tempo (the practice target), distinct from
+    /// `achievedTempo` logged after the fact. `nil` hides the tempo stepper.
+    let tempoTargetBpm: UInt16?
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -220,13 +226,17 @@ struct FocusPlayerScreen: View {
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
     reflecting = ReflectionTarget(
       id: active.entries[pos].id, title: active.currentItemTitle,
-      elapsedDisplay: SessionClock.clockDisplay(elapsed))
+      elapsedDisplay: SessionClock.clockDisplay(elapsed),
+      tempoTargetBpm: active.currentItemTempoBpm)
   }
 
   // Notes first (no status guard — surfaces a validation error before advancing);
-  // then NextItem completes the entry so the score can land (score needs
-  // Completed). Errors surface on RootView's banner, so dismiss only on success.
-  private func handleReflection(_ target: ReflectionTarget, score: UInt8?, note: String) {
+  // then NextItem completes the entry so the score and tempo can land (both
+  // need Completed). Errors surface on RootView's banner, so dismiss only on
+  // success.
+  private func handleReflection(
+    _ target: ReflectionTarget, score: UInt8?, note: String, achievedTempo: UInt16?
+  ) {
     if !note.isEmpty {
       let before = store.viewModel?.errorSeq
       store.send(.session(.updateEntryNotes(entryId: target.id, notes: note)))
@@ -235,6 +245,9 @@ struct FocusPlayerScreen: View {
     store.send(.session(.nextItem(now: SessionClock.nowRFC3339())))
     if let score {
       store.send(.session(.updateEntryScore(entryId: target.id, score: score)))
+    }
+    if let achievedTempo {
+      store.send(.session(.updateEntryTempo(entryId: target.id, tempo: achievedTempo)))
     }
     reflecting = nil
   }
