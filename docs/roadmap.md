@@ -158,9 +158,23 @@ These are unresolved product questions. Each one likely produces issues
    The teacher-assignment capture (#267) addressed the immediate capture
    problem without teacher-facing features.
 
-5. **Goals → priority flag (resolved).** Goals were judged too complex from a user's perspective and removed. Direction is now a lightweight per-item `priority` flag (see `specs/priority-items.md`); "Plan" is a view over the library. Foundation shipped (#765); the priority UI and a Track "neglected priority" signal are tracked in #763 / #764.
+5. **Goals (re-resolved 2026-07-14).** History: goals were built twice
+   (an early goals feature, removed in #213 for a ground-up redesign;
+   then Goals #711–#740, removed in #769), with the lessons vertical
+   (#273) in between, leaving the per-item `priority` flag (#765,
+   `specs/priority-items.md`; priority UI and "neglected priority"
+   signal tracked in #763 / #764). The vision/journey audit reopened the
+   question: the ideal journey requires goals that *drive planning*, and
+   the ruling is to rebuild them deliberately small: an outcome statement
+   linked to library items with an optional target date, consumed by
+   session planning, and none of the confidence/photo apparatus that sank
+   the previous versions. The priority star stays as the zero-ceremony
+   layer beneath. See VISION.md "The Scheduling Intelligence" and
+   `docs/journeys.md` step 4.
 
-6. **Lessons / photos / R2 surface.** A lessons + photos surface
-   (#274–#281) has started shipping without a roadmap home. Decide
-   whether it's a Layer-1 Capture feature, a separate teacher-facing
-   surface, or scaffolding to roll back.
+6. **Lessons / photos / R2 surface (resolved 2026-07-14).** Rolled back:
+   the lessons vertical was superseded by Goals in #711 (migrations
+   0067–0068 dropped the lesson tables); Goals were then removed in #769
+   (migrations 0081–0083). Nothing dormant remains, so #570 closes as
+   part of the vision/journey audit. R2 photo storage hardening (#281)
+   survives independently as a security item.

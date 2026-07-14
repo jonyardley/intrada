@@ -16,6 +16,15 @@ The `.dc.html` is the working file; the `.html` is its exported snapshot. Both
 trace back to `Theme.swift` — the reference visualises the tokens, it never
 defines new ones.
 
+The Claude Design workspace is the claude.ai/design project **"Intrada"**
+(`claude.ai/design/p/cd74e299-f5c1-4915-a603-347db46158d6`). **The repo stays
+canonical**: Claude Code bridges the two with `DesignSync` — pushing repo
+design files up after they change here, and pulling finished mockups down
+(design sessions save to project paths like `mockups/`; they cannot write to
+GitHub or the repo). Pulled mockups land under `specs/<feature>/design/` per
+the SDLC steps below, with `support.js` copied alongside so they render
+standalone.
+
 ## Committing it
 
 1. Copy into the repo:
