@@ -22,16 +22,21 @@ struct ReflectionPromptRow: View {
           .foregroundStyle(tint)
       }
       .frame(width: 28, height: 28)
+      .accessibilityHidden(true)  // decorative — the eyebrow already labels the row
 
       VStack(alignment: .leading, spacing: 3) {
         Eyebrow(label)
+        // No .accessibilityElement(children:) wrapper: `.combine` would flatten
+        // this TextField's own accessibility actions, breaking VoiceOver
+        // editing (unlike the read-only rows elsewhere that use `.combine`,
+        // this row's whole point is that the value is editable).
         TextField(placeholder, text: $text)
           .font(IntradaFont.body)
           .foregroundStyle(IntradaColor.ink)
+          .accessibilityLabel(label)
       }
     }
     .padding(.vertical, IntradaSpacing.controlGap)
-    .accessibilityElement(children: .combine)
   }
 }
 

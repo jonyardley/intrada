@@ -96,32 +96,42 @@ struct SessionSummaryScreen: View {
           icon: "arrow.up.right", tint: IntradaColor.repCleanFg, tintBg: IntradaColor.repCleanBg,
           label: "Improved", placeholder: "What moved forward?", text: $improved
         )
-        .onChange(of: improved) { _, value in pushReflection(.improved, value) }
+        .onChange(of: improved) { _, value in
+          pushReflection(.improved, value, current: summary?.reflectionImproved)
+        }
         Rectangle().fill(IntradaColor.hairline).frame(height: 1)
         ReflectionPromptRow(
           icon: "wrench.fill", tint: IntradaColor.exerciseBadgeFg,
           tintBg: IntradaColor.exerciseBadgeBg,
           label: "Still rough", placeholder: "What's still fighting you?", text: $stillRough
         )
-        .onChange(of: stillRough) { _, value in pushReflection(.stillRough, value) }
+        .onChange(of: stillRough) { _, value in
+          pushReflection(.stillRough, value, current: summary?.reflectionStillRough)
+        }
         Rectangle().fill(IntradaColor.hairline).frame(height: 1)
         ReflectionPromptRow(
           icon: "target", tint: IntradaColor.pieceBadgeFg, tintBg: IntradaColor.pieceBadgeBg,
           label: "Next target", placeholder: "Where does the next session start?",
           text: $nextTarget
         )
-        .onChange(of: nextTarget) { _, value in pushReflection(.nextTarget, value) }
+        .onChange(of: nextTarget) { _, value in
+          pushReflection(.nextTarget, value, current: summary?.reflectionNextTarget)
+        }
       }
     }
   }
 
-  // Mirrors noteSection's onChange guard: push real edits only, and only
-  // while still in Summary (avoids a "not in summary" core error if a field
-  // settles during teardown). The core normalises blank/whitespace text to
-  // nil on its own (session.rs UpdateSessionReflection), so no local trim.
-  private func pushReflection(_ field: ReflectionField, _ value: String) {
+  // Mirrors noteSection's onChange guard exactly: push real edits only (not
+  // the .onAppear seed re-firing onChange), and only while still in Summary
+  // (avoids a "not in summary" core error if a field settles during
+  // teardown). The core normalises blank/whitespace text to nil on its own
+  // (session.rs UpdateSessionReflection), so no local trim beyond the
+  // empty-string check needed for the comparison itself.
+  private func pushReflection(_ field: ReflectionField, _ value: String, current: String?) {
     guard summary != nil else { return }
-    store.send(.session(.updateSessionReflection(field: field, text: value.isEmpty ? nil : value)))
+    let trimmed = value.isEmpty ? nil : value
+    guard trimmed != current else { return }
+    store.send(.session(.updateSessionReflection(field: field, text: trimmed)))
   }
 
   // ── Headline ──
