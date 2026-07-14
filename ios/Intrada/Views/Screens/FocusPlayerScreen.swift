@@ -41,6 +41,12 @@ struct FocusPlayerScreen: View {
       Spacer(minLength: IntradaSpacing.card)
       centerInfo(active).fadeUp(1)
       timer(active).fadeUp(2).padding(.top, IntradaSpacing.section)
+      if let tempo = active.currentItemTempoDisplay {
+        Label(tempo, systemImage: "metronome")
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+          .padding(.top, IntradaSpacing.controlGap)
+      }
       if active.currentRepTarget != nil {
         repCounter(active).fadeUp(3).padding(.top, 28)
       }
@@ -66,13 +72,13 @@ struct FocusPlayerScreen: View {
         optionsMenu
       }
       SegmentedProgress(
-        total: Int(active.totalItems),
+        types: active.entries.map(\.itemType),
         filled: min(Int(active.currentPosition) + 1, Int(active.totalItems)))
     }
   }
 
   private func positionLabel(_ active: ActiveSessionView) -> String {
-    "\(active.currentPosition + 1) OF \(active.totalItems)"
+    "FOCUS · \(active.currentPosition + 1) OF \(active.totalItems)"
   }
 
   private var optionsMenu: some View {
@@ -112,6 +118,17 @@ struct FocusPlayerScreen: View {
           .font(IntradaFont.pageTitle(34))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
+        if let pieceTitle = active.currentRelatedPieceTitle {
+          Label("Related to \(pieceTitle)", systemImage: "arrow.turn.down.right")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.accent)
+        }
+        if let aim = active.currentItemIntention, !aim.isEmpty {
+          Text("Aim: \(aim)")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .multilineTextAlignment(.center)
+        }
       }
     }
     .padding(.horizontal, IntradaSpacing.card)
@@ -278,21 +295,22 @@ private struct TimerRing: View {
   }
 }
 
-/// Discrete session-position indicator — N filled segments of M. Stepped (not a
-/// continuous fill) so it reads as "which item", distinct from the timer's
-/// continuous target bar.
+/// Discrete session-position indicator — N filled segments of M, one per
+/// setlist entry. Stepped (not a continuous fill) so it reads as "which item",
+/// distinct from the timer's continuous target bar. Completed segments are
+/// tinted by that entry's item type (piece vs. exercise) rather than a single
+/// brand gradient, so the strip doubles as a glance-able session shape.
 struct SegmentedProgress: View {
-  let total: Int
+  let types: [ItemKind]
   let filled: Int
+
+  private var total: Int { types.count }
 
   var body: some View {
     HStack(spacing: 5) {
-      ForEach(0..<max(total, 1), id: \.self) { index in
+      ForEach(Array(types.enumerated()), id: \.offset) { index, type in
         Capsule()
-          .fill(
-            index < filled
-              ? AnyShapeStyle(LinearGradient.brandBar) : AnyShapeStyle(IntradaColor.divider)
-          )
+          .fill(index < filled ? AnyShapeStyle(type.accent) : AnyShapeStyle(IntradaColor.divider))
           .frame(height: 4)
       }
     }

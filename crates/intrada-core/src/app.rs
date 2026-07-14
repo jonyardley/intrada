@@ -581,7 +581,11 @@ impl Intrada {
                     None,
                 )
             }
-            SessionStatus::Active(active) => (Some(build_active_session_view(active)), None, None),
+            SessionStatus::Active(active) => (
+                Some(build_active_session_view(active, &item_index)),
+                None,
+                None,
+            ),
             SessionStatus::Summary(summary_session) => {
                 (None, None, Some(build_summary_view(summary_session)))
             }

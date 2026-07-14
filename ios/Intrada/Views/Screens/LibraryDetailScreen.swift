@@ -172,7 +172,8 @@ struct LibraryDetailScreen: View {
           isFirst: index == 0,
           isLast: index == item.linkedExercises.count - 1,
           onMoveUp: { moveExercise(at: index, by: -1) },
-          onMoveDown: { moveExercise(at: index, by: 1) })
+          onMoveDown: { moveExercise(at: index, by: 1) },
+          onRemove: { removeExercise(id: exercise.id) })
       }
     } else {
       ForEach(Array(item.linkedExercises.enumerated()), id: \.element.id) { index, exercise in
@@ -362,6 +363,14 @@ struct LibraryDetailScreen: View {
     }
   }
 
+  private func removeExercise(id: String) {
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.unlinkExercise(pieceId: item.id, exerciseId: id)))
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
   private var deleteButton: some View {
     DeleteButton(title: "Delete \(item.itemType.label.lowercased())") {
       confirmingDelete = true
@@ -485,6 +494,7 @@ private struct LinkedExerciseEditRow: View {
   let isLast: Bool
   let onMoveUp: () -> Void
   let onMoveDown: () -> Void
+  let onRemove: () -> Void
 
   var body: some View {
     HStack(spacing: IntradaSpacing.cardCompact) {
@@ -500,25 +510,34 @@ private struct LinkedExerciseEditRow: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      VStack(spacing: 0) {
-        Button(action: onMoveUp) {
-          Image(systemName: "chevron.up")
-            .imageScale(.small)
-            .font(IntradaFont.meta)
-            .foregroundStyle(isFirst ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+      HStack(spacing: IntradaSpacing.controlGap) {
+        VStack(spacing: 0) {
+          Button(action: onMoveUp) {
+            Image(systemName: "chevron.up")
+              .imageScale(.small)
+              .font(IntradaFont.meta)
+              .foregroundStyle(isFirst ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+          }
+          .buttonStyle(.plain)
+          .disabled(isFirst)
+          .accessibilityLabel("Move \(exercise.title) up")
+          Button(action: onMoveDown) {
+            Image(systemName: "chevron.down")
+              .imageScale(.small)
+              .font(IntradaFont.meta)
+              .foregroundStyle(isLast ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
+          }
+          .buttonStyle(.plain)
+          .disabled(isLast)
+          .accessibilityLabel("Move \(exercise.title) down")
+        }
+        Button(action: onRemove) {
+          Image(systemName: "minus.circle")
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.danger)
         }
         .buttonStyle(.plain)
-        .disabled(isFirst)
-        .accessibilityLabel("Move \(exercise.title) up")
-        Button(action: onMoveDown) {
-          Image(systemName: "chevron.down")
-            .imageScale(.small)
-            .font(IntradaFont.meta)
-            .foregroundStyle(isLast ? IntradaColor.inkFaint : IntradaColor.inkSecondary)
-        }
-        .buttonStyle(.plain)
-        .disabled(isLast)
-        .accessibilityLabel("Move \(exercise.title) down")
+        .accessibilityLabel("Remove \(exercise.title) from related exercises")
       }
     }
     .padding(.vertical, IntradaSpacing.cardCompact)

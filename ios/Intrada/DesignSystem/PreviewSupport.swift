@@ -519,14 +519,35 @@
       (SessionClock.parseRFC3339(previewStartedAt) ?? .distantPast).addingTimeInterval(252)
     }
 
+    private static func previewEntry(
+      _ position: UInt64, _ title: String, _ type: ItemKind, groupId: String? = nil
+    )
+      -> SetlistEntryView
+    {
+      SetlistEntryView(
+        id: "entry-\(position)", itemId: "item-\(position)", itemTitle: title, itemType: type,
+        position: position, durationDisplay: "10 min", status: .completed, notes: nil,
+        score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
+        repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
+        groupId: groupId)
+    }
+
     static var previewActive: ActiveSessionView {
       ActiveSessionView(
         currentItemTitle: "Clair de Lune", currentItemType: .piece,
         currentPosition: 1, totalItems: 5,
         startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
-        entries: [], sessionIntention: "Even tempo — don't rush the runs",
+        entries: [
+          previewEntry(0, "Hanon No. 1", .exercise),
+          previewEntry(1, "Clair de Lune", .piece),
+          previewEntry(2, "Major Scales", .exercise),
+          previewEntry(3, "Gymnopédie No. 1", .piece),
+          previewEntry(4, "Czerny Op. 299", .exercise),
+        ], sessionIntention: "Even tempo — don't rush the runs",
         currentRepTarget: nil, currentRepCount: nil, currentRepTargetReached: nil,
-        currentRepHistory: nil, currentPlannedDurationSecs: 480, nextItemTitle: "Hanon No. 1")
+        currentRepHistory: nil, currentPlannedDurationSecs: 480, nextItemTitle: "Hanon No. 1",
+        currentItemIntention: "Let the melody breathe", currentRelatedPieceTitle: nil,
+        currentItemTempoMarking: "Andante", currentItemTempoBpm: 66)
     }
 
     static var previewActiveReps: ActiveSessionView {
@@ -534,9 +555,18 @@
         currentItemTitle: "Hanon No. 1", currentItemType: .exercise,
         currentPosition: 2, totalItems: 5,
         startedAt: previewStartedAt, currentItemStartedAt: previewStartedAt,
-        entries: [], sessionIntention: "Keep the wrist relaxed",
+        entries: [
+          previewEntry(0, "Warm-up Scales", .exercise),
+          previewEntry(1, "Etude No. 3", .exercise),
+          previewEntry(2, "Hanon No. 1", .exercise, groupId: "g1"),
+          previewEntry(3, "Moonlight Sonata", .piece, groupId: "g1"),
+          previewEntry(4, "Czerny Op. 299", .exercise),
+        ], sessionIntention: "Keep the wrist relaxed",
         currentRepTarget: 8, currentRepCount: 3, currentRepTargetReached: false,
-        currentRepHistory: nil, currentPlannedDurationSecs: nil, nextItemTitle: "Czerny Op. 299")
+        currentRepHistory: nil, currentPlannedDurationSecs: nil, nextItemTitle: "Czerny Op. 299",
+        currentItemIntention: "Land each finger evenly",
+        currentRelatedPieceTitle: "Moonlight Sonata",
+        currentItemTempoMarking: "Allegro", currentItemTempoBpm: 132)
     }
   }
 
@@ -546,7 +576,9 @@
         totalDurationDisplay: "37m 50s", completionStatus: .completed, notes: nil,
         entries: [
           summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", .completed, score: 3),
-          summaryEntry("e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4, tempo: 96),
+          summaryEntry(
+            "e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4, tempo: 96,
+            intention: "Land each finger evenly"),
           summaryEntry("e3", "Gymnopédie No. 1", .piece, "11m 30s", .completed, score: 5),
           summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", .completed, score: 3),
         ], sessionIntention: nil, sessionScore: 8)
@@ -564,11 +596,11 @@
 
     private static func summaryEntry(
       _ id: String, _ title: String, _ type: ItemKind, _ duration: String,
-      _ status: EntryStatus, score: UInt8?, tempo: UInt16? = nil
+      _ status: EntryStatus, score: UInt8?, tempo: UInt16? = nil, intention: String? = nil
     ) -> SetlistEntryView {
       SetlistEntryView(
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
-        durationDisplay: duration, status: status, notes: nil, score: score, intention: nil,
+        durationDisplay: duration, status: status, notes: nil, score: score, intention: intention,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil)
     }
