@@ -51,6 +51,19 @@ platform :ios do
     # GENERATE_INFOPLIST_FILE=YES (PlistBuddy on the partial plist won't work).
     build_number = ENV.fetch("BUILD_NUMBER", "1")
 
+    # Tag-derived (v0.3.0 → 0.3.0) so each tagged release is a new TestFlight
+    # version. Unset (local runs, branch dispatch): project.yml's value.
+    marketing_version = ENV.fetch("MARKETING_VERSION", "").delete_prefix("v")
+    unless marketing_version.empty? || marketing_version.match?(/\A\d+\.\d+\.\d+\z/)
+      UI.user_error!("MARKETING_VERSION #{marketing_version.inspect} is not X.Y.Z")
+    end
+
+    xcargs = [
+      "CURRENT_PROJECT_VERSION=#{build_number}",
+      ("MARKETING_VERSION=#{marketing_version}" unless marketing_version.empty?),
+      "-clonedSourcePackagesDirPath build/spm"
+    ].compact.join(" ")
+
     build_app(
       project: "ios/Intrada.xcodeproj",
       scheme: "Intrada",
@@ -63,7 +76,7 @@ platform :ios do
       export_options: {
         provisioningProfiles: { APP_IDENTIFIER => PROFILE_NAME }
       },
-      xcargs: "CURRENT_PROJECT_VERSION=#{build_number} -clonedSourcePackagesDirPath build/spm"
+      xcargs: xcargs
     )
 
     upload_to_testflight(
