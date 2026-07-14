@@ -485,6 +485,33 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(AddToSessionSheet(), store: .previewBuilding), as: config)
   }
 
+  func testSessionBuilderGroupedEditing() {
+    // editMode is @State — seed via the startInEditMode init to capture the
+    // nested-row reorder/remove/settings controls without UI interaction.
+    assertSnapshot(
+      of: host(
+        NavigationStack { SessionBuilderScreen(startInEditMode: true) },
+        store: .previewBuildingGrouped), as: config)
+  }
+
+  func testAddRelatedExerciseSheet() {
+    assertSnapshot(
+      of: host(AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGrouped), as: config)
+  }
+
+  func testEntrySettingsSheetEmpty() {
+    assertSnapshot(
+      of: host(EntrySettingsSheet(entry: .previewGroupedScales), store: .previewBuildingGrouped),
+      as: config)
+  }
+
+  func testEntrySettingsSheetPopulated() {
+    assertSnapshot(
+      of: host(
+        EntrySettingsSheet(entry: .previewGroupedScalesConfigured), store: .previewBuildingGrouped
+      ), as: config)
+  }
+
   func testTagFilterSheet() {
     let sheet = TagFilterSheet(
       available: ["classical", "jazz", "recital", "technique", "warm-up"],

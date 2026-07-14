@@ -259,7 +259,8 @@ struct KeyPicker: View {
   /// Point at `radius` on the wheel for spoke `ring` (C at top, clockwise).
   private func point(radius: CGFloat, ring: Int) -> CGPoint {
     let radians = (270.0 + 30.0 * Double(ring)) * .pi / 180
-    return CGPoint(x: 150 + radius * cos(radians), y: 150 + radius * sin(radians))
+    return CGPoint(
+      x: 150 + radius * CGFloat(cos(radians)), y: 150 + radius * CGFloat(sin(radians)))
   }
 
   private func tap(ring: Int, mode: Modality) {
