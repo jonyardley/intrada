@@ -25,10 +25,11 @@ one string is write-only prose downstream.
    with `ReflectionField::{Improved, StillRough, NextTarget}` — one handler,
    one validation path, instead of three clones of `UpdateSessionNotes`
    (consolidate-before-template).
-3. **Semantics.** Blank or whitespace-only text normalises to `None`
-   ("blank prompts save as nothing" — DECISIONS surface 3). Length cap
-   `MAX_REFLECTION = 500` chars per field (single-line prompts;
-   `validation.rs` stays the single source of truth).
+3. **Semantics.** Retained text is trimmed; blank or whitespace-only text
+   normalises to `None` ("blank prompts save as nothing" — DECISIONS
+   surface 3). Length cap `MAX_REFLECTION = 500` bytes per field (matching
+   the byte-length convention of every existing cap in `validation.rs`,
+   which stays the single source of truth).
 4. **Carry-through.** `SaveSession` copies the three fields onto the saved
    `PracticeSession`; `build_summary_view` and `session_to_view` expose them
    so the summary screen and (later) past-session surfaces can render them.

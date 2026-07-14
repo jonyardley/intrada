@@ -1412,7 +1412,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 return crux_core::render::render();
             }
 
-            let text = text.filter(|t| !t.trim().is_empty());
+            let text = text.map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
             match field {
                 ReflectionField::Improved => summary.reflection_improved = text,
                 ReflectionField::StillRough => summary.reflection_still_rough = text,
@@ -2837,6 +2837,24 @@ mod tests {
             panic!("Expected Summary state");
         };
         assert_eq!(s.reflection_improved, None);
+    }
+
+    #[test]
+    fn test_update_session_reflection_trims_retained_text() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::NextTarget,
+                text: Some("  bridge at 80  ".to_string()),
+            }),
+        );
+
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(s.reflection_next_target, Some("bridge at 80".to_string()));
     }
 
     #[test]
