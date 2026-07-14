@@ -28,8 +28,18 @@ struct ReflectionSheet: View {
     self.tempoTarget = tempoTarget
     self.onSave = onSave
     self.onSkip = onSkip
-    // Prefilled at target — untouched reads as "played at target".
-    _achievedTempo = State(initialValue: Int(tempoTarget ?? 96))
+    // Prefilled at target — untouched reads as "played at target". Clamped:
+    // a target outside the stepper's 40-208 UI range (a Presto marking, say)
+    // must not seed a display value the stepper itself can't represent.
+    _achievedTempo = State(initialValue: TempoStepper.clamp(Int(tempoTarget ?? 96)))
+  }
+
+  /// Pure resolution of the onSave payload's tempo argument — pulled out of
+  /// the button closure so the "no target → never send a write" branch is
+  /// directly testable without rendering the view.
+  static func resolvedAchievedTempo(tempoTarget: UInt16?, current: Int) -> UInt16? {
+    guard tempoTarget != nil else { return nil }
+    return UInt16(current)
   }
 
   var body: some View {
@@ -70,7 +80,7 @@ struct ReflectionSheet: View {
         onSave(
           score == 0 ? nil : UInt8(score),
           note.trimmingCharacters(in: .whitespacesAndNewlines),
-          tempoTarget == nil ? nil : UInt16(achievedTempo))
+          Self.resolvedAchievedTempo(tempoTarget: tempoTarget, current: achievedTempo))
       } label: {
         Text("Save & continue")
         Image(systemName: "arrow.right")
