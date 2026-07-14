@@ -128,6 +128,19 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  func testRecoveryPromptCard() {
+    // Component-level (not full-screen): the card is the load-bearing state and
+    // the flat crop keeps the reference PNG well under the size ceiling (#840).
+    let session = Store.previewPracticeRecovery.recoverableSession!
+    let card = RecoveryPromptCard(session: session, onResume: {}, onDiscard: {})
+      .padding(IntradaSpacing.card)
+      .background(IntradaColor.paperTop)
+      .frame(width: 390)
+    assertSnapshot(
+      of: host(card),
+      as: .image(perceptualPrecision: 0.98, size: CGSize(width: 390, height: 240)))
+  }
+
   func testPracticeScreenQuietDay() {
     // Open on Monday — a day with no practice — to lock the per-day empty state.
     let monday = PracticeWeek.days(

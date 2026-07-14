@@ -585,6 +585,24 @@ mod tests {
     }
 
     #[test]
+    fn recover_session_event_round_trips_on_ffi_bincode_wire() {
+        use crate::domain::session::{ActiveSession, SessionEvent};
+        use chrono::TimeZone;
+        let anchor = chrono::Utc.timestamp_opt(1_700_000_000, 0).unwrap();
+        assert_round_trips(SessionEvent::RecoverSession {
+            session: ActiveSession {
+                id: "s1".to_string(),
+                entries: vec![],
+                current_index: 0,
+                current_item_started_at: anchor,
+                session_started_at: anchor,
+                session_intention: Some("even RH at 96".to_string()),
+            },
+            now: anchor,
+        });
+    }
+
+    #[test]
     fn practice_session_with_reflections_round_trips_on_ffi_bincode_wire() {
         use crate::domain::session::{CompletionStatus, PracticeSession};
         use chrono::TimeZone;

@@ -131,6 +131,35 @@
         ]))
     }
 
+    /// Practice home with a crash-recovery blob pending (#962) — drives the
+    /// Resume / Discard prompt above the hero.
+    static var previewPracticeRecovery: Store {
+      let store = Store(
+        bridge: PreviewBridge(sessions: [
+          .previewCompleted, .previewEndedEarly,
+        ]))
+      store.recoverableSession = ActiveSession(
+        id: "recover-1",
+        entries: [
+          SetlistEntry(
+            id: "re1", itemId: "i1", itemTitle: "Scales · D♭ major", itemType: .exercise,
+            position: 0, durationSecs: 180, status: .completed,
+            notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+            repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+            groupId: nil),
+          SetlistEntry(
+            id: "re2", itemId: "i2", itemTitle: "Clair de Lune", itemType: .piece,
+            position: 1, durationSecs: 0, status: .notAttempted,
+            notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+            repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+            groupId: nil),
+        ],
+        currentIndex: 1,
+        currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
+        sessionIntention: nil)
+      return store
+    }
+
     /// Session builder mid-assembly: a non-empty setlist for the populated-state
     /// preview + snapshot. Injected directly (deterministic, offline) rather than
     /// driven through the core, whose ulids/timestamps aren't snapshot-stable.

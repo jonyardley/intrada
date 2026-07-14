@@ -213,8 +213,11 @@ pub fn App() -> impl IntoView {
             // Recover any in-progress session from localStorage (FR-008).
             if let Some(session) = load_session_in_progress() {
                 let core_ref = core_for_init.borrow();
-                let effects = core_ref
-                    .process_event(Event::Session(SessionEvent::RecoverSession { session }));
+                let effects =
+                    core_ref.process_event(Event::Session(SessionEvent::RecoverSession {
+                        session,
+                        now: chrono::Utc::now(),
+                    }));
                 process_effects(&core_ref, effects, &view_model, &is_loading, &is_submitting);
             }
 
