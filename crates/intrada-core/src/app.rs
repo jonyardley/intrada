@@ -982,6 +982,9 @@ fn sample_sessions() -> Vec<PracticeSession> {
             total_duration_secs,
             completion_status,
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         }
     };
 
@@ -1224,6 +1227,9 @@ mod tests {
                 total_duration_secs: 60,
                 completion_status: CompletionStatus::Completed,
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             }],
             session_status: SessionStatus::Active(ActiveSession {
                 id: "active1".to_string(),
@@ -2014,6 +2020,9 @@ mod tests {
                 session_intention: None,
                 entries,
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             });
         }
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -2173,6 +2182,9 @@ mod tests {
                     group_id: None,
                 },
             ],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
         model.practice_summaries = build_practice_summaries(&model.sessions);
 
@@ -2254,6 +2266,9 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
 
         // Session 2: newer, score 5
@@ -2285,6 +2300,9 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -2358,6 +2376,9 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -2445,6 +2466,9 @@ mod tests {
                     group_id: None,
                 },
             ],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -2516,6 +2540,9 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         });
 
         model.practice_summaries = build_practice_summaries(&model.sessions);
@@ -2583,6 +2610,9 @@ mod tests {
                 achieved_tempo: tempo,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         }
     }
 
@@ -2637,6 +2667,9 @@ mod tests {
                 achieved_tempo: None,
                 group_id: None,
             }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         };
 
         let summaries = build_practice_summaries(&[mk("s1", earlier), mk("s2", later)]);
@@ -3384,6 +3417,9 @@ mod tests {
                 session_notes: None,
                 session_intention: None,
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             },
             PracticeSession {
                 id: "s2".to_string(),
@@ -3395,6 +3431,9 @@ mod tests {
                 session_notes: None,
                 session_intention: None,
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             },
         ];
         let vm = app.view(&model);

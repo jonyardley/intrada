@@ -107,15 +107,19 @@ final class LibraryStore: ItemStore {
         sql: """
           INSERT INTO session
             (id, started_at, completed_at, total_duration_secs, completion_status,
-             session_notes, session_intention, entries, updated_at, deleted_at, session_score)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+             session_notes, session_intention, entries, updated_at, deleted_at, session_score,
+             reflection_improved, reflection_still_rough, reflection_next_target)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             started_at = excluded.started_at, completed_at = excluded.completed_at,
             total_duration_secs = excluded.total_duration_secs,
             completion_status = excluded.completion_status,
             session_notes = excluded.session_notes, session_intention = excluded.session_intention,
             entries = excluded.entries, updated_at = excluded.updated_at, deleted_at = NULL,
-            session_score = excluded.session_score
+            session_score = excluded.session_score,
+            reflection_improved = excluded.reflection_improved,
+            reflection_still_rough = excluded.reflection_still_rough,
+            reflection_next_target = excluded.reflection_next_target
           """,
         arguments: [
           session.id, session.startedAt, session.completedAt,
@@ -123,6 +127,8 @@ final class LibraryStore: ItemStore {
           session.sessionNotes, session.sessionIntention,
           Self.encodeEntries(session.entries), session.completedAt,
           session.sessionScore.map { Int($0) },
+          session.reflectionImproved, session.reflectionStillRough,
+          session.reflectionNextTarget,
         ])
     }
   }
@@ -200,6 +206,11 @@ final class LibraryStore: ItemStore {
     migrator.registerMigration("v6_item_linked_exercises") { db in
       try db.execute(
         sql: "ALTER TABLE item ADD COLUMN linked_exercise_ids TEXT NOT NULL DEFAULT '[]'")
+    }
+    migrator.registerMigration("v7_session_reflections") { db in
+      try db.execute(sql: "ALTER TABLE session ADD COLUMN reflection_improved TEXT")
+      try db.execute(sql: "ALTER TABLE session ADD COLUMN reflection_still_rough TEXT")
+      try db.execute(sql: "ALTER TABLE session ADD COLUMN reflection_next_target TEXT")
     }
     return migrator
   }()
@@ -296,7 +307,10 @@ final class LibraryStore: ItemStore {
       startedAt: row["started_at"], completedAt: row["completed_at"],
       totalDurationSecs: UInt64(row["total_duration_secs"] as Int64),
       completionStatus: completionStatus(from: row["completion_status"]),
-      sessionScore: score.map { UInt8(clamping: $0) })
+      sessionScore: score.map { UInt8(clamping: $0) },
+      reflectionImproved: row["reflection_improved"],
+      reflectionStillRough: row["reflection_still_rough"],
+      reflectionNextTarget: row["reflection_next_target"])
   }
 
   // Entries (a nested, optional-heavy aggregate) go to JSON via a Codable DTO,

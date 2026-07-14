@@ -46,13 +46,49 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "sess-rt", entries: [entry],
       sessionNotes: nil, sessionIntention: nil,
       startedAt: "2026-01-01T10:00:00Z", completedAt: "2026-01-01T10:30:00Z",
-      totalDurationSecs: 1800, completionStatus: .completed, sessionScore: 7)
+      totalDurationSecs: 1800, completionStatus: .completed, sessionScore: 7,
+      reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     try store.saveSession(session)
     let loaded = try store.loadSessions()
     XCTAssertEqual(loaded.count, 1)
     XCTAssertEqual(
       loaded[0].sessionScore, 7,
       "sessionScore UInt8→Int64→UInt8(clamping:) round-trip must preserve 7")
+  }
+
+  func testSessionReflectionsRoundTrip() throws {
+    let store = try LibraryStore.inMemory()
+    let session = PracticeSession(
+      id: "sess-refl", entries: [],
+      sessionNotes: nil, sessionIntention: "even RH at 96",
+      startedAt: "2026-07-14T10:00:00Z", completedAt: "2026-07-14T10:30:00Z",
+      totalDurationSecs: 1800, completionStatus: .completed, sessionScore: nil,
+      reflectionImproved: "thumb-unders even at 92",
+      reflectionStillRough: "bars 12-14 rush past 88",
+      reflectionNextTarget: "bars 12-14 at 80, hands together")
+    try store.saveSession(session)
+    let loaded = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(loaded.reflectionImproved, "thumb-unders even at 92")
+    XCTAssertEqual(loaded.reflectionStillRough, "bars 12-14 rush past 88")
+    XCTAssertEqual(loaded.reflectionNextTarget, "bars 12-14 at 80, hands together")
+  }
+
+  func testV6SessionSurvivesReflectionMigration() throws {
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v6_item_linked_exercises",
+      seed: """
+        INSERT INTO session
+          (id, started_at, completed_at, total_duration_secs, completion_status,
+           session_notes, session_intention, entries, updated_at, deleted_at, session_score)
+        VALUES ('s-pre', '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', 60, 'completed',
+                'old note', NULL, '[]', '2026-01-01T00:00:00Z', NULL, 7)
+        """)
+    let loaded = try XCTUnwrap(try store.loadSessions().first)
+    XCTAssertEqual(loaded.sessionNotes, "old note", "pre-migration row survives intact")
+    XCTAssertEqual(loaded.sessionScore, 7)
+    XCTAssertNil(loaded.reflectionImproved, "old rows read back with nil reflections")
+    XCTAssertNil(loaded.reflectionStillRough)
+    XCTAssertNil(loaded.reflectionNextTarget)
   }
 
   func testGroupIdRoundTripsThroughTheJsonCodec() throws {
@@ -67,7 +103,8 @@ final class LibraryStoreMigrationTests: XCTestCase {
       id: "sess-g", entries: [entry],
       sessionNotes: nil, sessionIntention: nil,
       startedAt: "2026-01-01T10:00:00Z", completedAt: "2026-01-01T10:30:00Z",
-      totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil)
+      totalDurationSecs: 60, completionStatus: .completed, sessionScore: nil,
+      reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     try store.saveSession(session)
     let loaded = try store.loadSessions()
     XCTAssertEqual(

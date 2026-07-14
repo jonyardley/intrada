@@ -565,6 +565,9 @@ mod tests {
                 session_intention: None,
                 completion_status: CompletionStatus::Completed,
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             }),
             ..Default::default()
         };

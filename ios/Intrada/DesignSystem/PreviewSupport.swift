@@ -484,7 +484,8 @@
           previewEntry(1, "Gymnopédie No. 1", .piece),
           previewEntry(2, "Nocturne Op. 9 No. 2", .piece),
         ],
-        sessionIntention: nil, sessionScore: nil)
+        sessionIntention: nil, sessionScore: nil,
+        reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     }
 
     static var previewEndedEarly: PracticeSessionView {
@@ -496,7 +497,8 @@
           previewEntry(0, "Hanon No. 1", .exercise),
           previewEntry(1, "Major Scales", .exercise),
         ],
-        sessionIntention: nil, sessionScore: nil)
+        sessionIntention: nil, sessionScore: nil,
+        reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     }
 
     private static func previewEntry(_ position: UInt64, _ title: String, _ type: ItemKind)
@@ -581,7 +583,8 @@
             intention: "Land each finger evenly"),
           summaryEntry("e3", "Gymnopédie No. 1", .piece, "11m 30s", .completed, score: 5),
           summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", .completed, score: 3),
-        ], sessionIntention: nil, sessionScore: 8)
+        ], sessionIntention: nil, sessionScore: 8,
+        reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     }
 
     static var previewSummaryEndedEarly: SummaryView {
@@ -591,7 +594,8 @@
           summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", .completed, score: 3),
           summaryEntry("e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4),
           summaryEntry("e3", "Étude Op. 10", .piece, "0s", .notAttempted, score: nil),
-        ], sessionIntention: nil, sessionScore: 8)
+        ], sessionIntention: nil, sessionScore: 8,
+        reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
     }
 
     private static func summaryEntry(
