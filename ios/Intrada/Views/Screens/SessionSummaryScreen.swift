@@ -111,6 +111,11 @@ struct SessionSummaryScreen: View {
           Text(metaLine(entry, unfinished: unfinished))
             .font(IntradaFont.micro)
             .foregroundStyle(IntradaColor.inkFaint)
+          if let aim = entry.intention, !aim.isEmpty {
+            Text("“\(aim)”")
+              .font(IntradaFont.micro).italic()
+              .foregroundStyle(IntradaColor.inkFaint)
+          }
         }
         Spacer()
         if !unfinished {

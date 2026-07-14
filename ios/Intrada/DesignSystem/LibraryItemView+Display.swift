@@ -22,27 +22,42 @@ extension ItemPracticeSummary {
   }
 }
 
-/// Shell-side presentation formatting for a library item. The core exposes
-/// structured `tempoMarking` / `tempoBpm`; how iOS renders them ("Allegro · ♩ =
-/// 132") is the shell's call, shared here so the card and detail agree.
+/// Shell-side presentation formatting shared by any screen with a structured
+/// `tempoMarking` / `tempoBpm` pair (the core's call, not iOS's — see
+/// `LibraryItemView`/`ActiveSessionView`), so the card, detail, and
+/// focus-player screens all agree on "Allegro · ♩ = 132".
+enum TempoFormatting {
+  /// Visual tempo: "Allegro · ♩ = 132". ♩ is U+2669 (no SF Symbol equivalent).
+  static func display(marking: String?, bpm: UInt16?) -> String? {
+    let parts = [marking, bpm.map { "♩ = \($0)" }].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
+  /// Spoken tempo for VoiceOver — spells the BPM out instead of the ♩ glyph.
+  static func spoken(marking: String?, bpm: UInt16?) -> String? {
+    let parts = [
+      marking.flatMap { $0.isEmpty ? nil : $0 }, bpm.map { "\($0) beats per minute" },
+    ]
+    .compactMap { $0 }
+    return parts.isEmpty ? nil : parts.joined(separator: ", ")
+  }
+}
+
 extension LibraryItemView {
   var keyDisplay: String? {
     KeyHelper.display(key: key, modality: modality)
   }
 
-  /// Visual tempo: "Allegro · ♩ = 132". ♩ is U+2669 (no SF Symbol equivalent).
-  var tempoDisplay: String? {
-    let parts = [tempoMarking, tempoBpm.map { "♩ = \($0)" }]
-      .compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? nil : parts.joined(separator: " · ")
-  }
+  var tempoDisplay: String? { TempoFormatting.display(marking: tempoMarking, bpm: tempoBpm) }
 
-  /// Spoken tempo for VoiceOver — spells the BPM out instead of the ♩ glyph.
-  var tempoSpoken: String? {
-    let parts = [
-      tempoMarking.flatMap { $0.isEmpty ? nil : $0 }, tempoBpm.map { "\($0) beats per minute" },
-    ]
-    .compactMap { $0 }
-    return parts.isEmpty ? nil : parts.joined(separator: ", ")
+  var tempoSpoken: String? { TempoFormatting.spoken(marking: tempoMarking, bpm: tempoBpm) }
+}
+
+extension ActiveSessionView {
+  /// The current item's own declared tempo (the practice target) — distinct
+  /// from `achievedTempo` on a `SetlistEntryView`, which is logged after the
+  /// fact. "Allegro · ♩ = 132".
+  var currentItemTempoDisplay: String? {
+    TempoFormatting.display(marking: currentItemTempoMarking, bpm: currentItemTempoBpm)
   }
 }

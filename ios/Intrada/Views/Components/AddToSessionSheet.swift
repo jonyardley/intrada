@@ -6,8 +6,12 @@ import SwiftUI
 /// core forms the block); the shell only sends add/remove.
 struct AddToSessionSheet: View {
   @Environment(Store.self) private var store
+  @State private var starFilter = false
 
   private var items: [LibraryItemView] { store.viewModel?.items ?? [] }
+  private var displayedItems: [LibraryItemView] {
+    starFilter ? items.filter(\.priority) : items
+  }
   private var entries: [SetlistEntryView] { store.viewModel?.buildingSetlist?.entries ?? [] }
   private var entryByItem: [String: String] {
     Dictionary(entries.map { ($0.itemId, $0.id) }, uniquingKeysWith: { first, _ in first })
@@ -16,22 +20,25 @@ struct AddToSessionSheet: View {
   var body: some View {
     BottomSheet(title: "Add to session", detents: [.large]) {
       VStack(spacing: 0) {
-        BrowseControlsBar(elevated: true)
+        BrowseControlsBar(elevated: true, starFilter: $starFilter)
         library
       }
     }
   }
 
   @ViewBuilder private var library: some View {
-    if items.isEmpty {
-      PlaceholderContent(
-        systemImage: isSearching ? "magnifyingglass" : "books.vertical", message: emptyMessage
-      )
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    if displayedItems.isEmpty {
+      PlaceholderContent(systemImage: emptyIcon, message: emptyMessage)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else {
       ScrollView {
-        LazyVStack(spacing: IntradaSpacing.cardCompact) {
-          ForEach(items, id: \.id) { libraryRow($0) }
+        VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+          Text("Pieces bring their related exercises as a group.")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+          LazyVStack(spacing: IntradaSpacing.cardCompact) {
+            ForEach(displayedItems, id: \.id) { libraryRow($0) }
+          }
         }
         .padding(IntradaSpacing.card)
       }
@@ -76,7 +83,15 @@ struct AddToSessionSheet: View {
 
   private var isSearching: Bool { !(store.viewModel?.activeQuery?.text ?? "").isEmpty }
 
+  private var emptyIcon: String {
+    if starFilter { return "star" }
+    return isSearching ? "magnifyingglass" : "books.vertical"
+  }
+
   private var emptyMessage: String {
+    if starFilter && !items.isEmpty {
+      return "No priorities yet. Swipe a row to star it."
+    }
     if let text = store.viewModel?.activeQuery?.text, !text.isEmpty {
       return "No items match “\(text)”."
     }

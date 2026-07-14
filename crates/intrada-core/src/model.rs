@@ -358,6 +358,17 @@ pub struct ActiveSessionView {
     pub current_rep_history: Option<Vec<RepAction>>,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
+    /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
+    pub current_item_intention: Option<String>,
+    /// The anchor piece's title, when the current entry is a related exercise
+    /// grouped into that piece's block; `None` for a standalone entry or when
+    /// the current entry *is* the anchor piece itself.
+    pub current_related_piece_title: Option<String>,
+    /// The current item's own declared tempo marking/bpm (from its library
+    /// entry) — the practice target, distinct from `achieved_tempo` (what was
+    /// actually played, logged after completion).
+    pub current_item_tempo_marking: Option<String>,
+    pub current_item_tempo_bpm: Option<u16>,
 }
 
 /// Whether the builder's entries originate from, and relate to, a saved Set.
@@ -490,11 +501,34 @@ pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
     blocks
 }
 
-pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
+pub fn build_active_session_view(
+    active: &ActiveSession,
+    item_index: &HashMap<&str, &Item>,
+) -> ActiveSessionView {
     let safe_index = active
         .current_index
         .min(active.entries.len().saturating_sub(1));
     let current = &active.entries[safe_index];
+
+    // Breadcrumb only applies to a related exercise practiced inside a block —
+    // not the anchor piece itself.
+    let current_related_piece_title = (current.item_type != ItemKind::Piece)
+        .then_some(current.group_id.as_deref())
+        .flatten()
+        .and_then(|group_id| {
+            active
+                .entries
+                .iter()
+                .find(|e| e.item_type == ItemKind::Piece && e.group_id.as_deref() == Some(group_id))
+                .map(|e| e.item_title.clone())
+        });
+
+    // O(1) via the caller's id→Item index (same one build_view uses for
+    // linked-exercise lookups) rather than a linear scan over the library.
+    let current_item_tempo = item_index
+        .get(current.item_id.as_str())
+        .and_then(|i| i.tempo.as_ref());
+
     ActiveSessionView {
         current_item_title: current.item_title.clone(),
         current_item_type: current.item_type.clone(),
@@ -513,6 +547,10 @@ pub fn build_active_session_view(active: &ActiveSession) -> ActiveSessionView {
             .entries
             .get(safe_index + 1)
             .map(|e| e.item_title.clone()),
+        current_item_intention: current.intention.clone(),
+        current_related_piece_title,
+        current_item_tempo_marking: current_item_tempo.and_then(|t| t.marking.clone()),
+        current_item_tempo_bpm: current_item_tempo.and_then(|t| t.bpm),
     }
 }
 
@@ -682,7 +720,7 @@ mod tests {
             current_item_started_at: Utc::now(),
             session_intention: None,
         };
-        let view = build_active_session_view(&active);
+        let view = build_active_session_view(&active, &HashMap::new());
         assert_eq!(view.next_item_title.as_deref(), Some("Etude"));
     }
 
@@ -699,8 +737,140 @@ mod tests {
             current_item_started_at: Utc::now(),
             session_intention: None,
         };
-        let view = build_active_session_view(&active);
+        let view = build_active_session_view(&active, &HashMap::new());
         assert!(view.next_item_title.is_none());
+    }
+
+    #[test]
+    fn active_session_view_promotes_current_item_intention() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.intention = Some("evenness".to_string());
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active, &HashMap::new());
+        assert_eq!(view.current_item_intention.as_deref(), Some("evenness"));
+    }
+
+    #[test]
+    fn active_session_view_related_piece_title_for_grouped_exercise() {
+        let mut exercise = make_entry("e1", "i1", "Scale", 0);
+        exercise.item_type = ItemKind::Exercise;
+        exercise.group_id = Some("g1".to_string());
+        let mut piece = make_entry("e2", "i2", "Clair de Lune", 1);
+        piece.item_type = ItemKind::Piece;
+        piece.group_id = Some("g1".to_string());
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![exercise, piece],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active, &HashMap::new());
+        assert_eq!(
+            view.current_related_piece_title.as_deref(),
+            Some("Clair de Lune")
+        );
+    }
+
+    #[test]
+    fn active_session_view_no_related_piece_title_for_standalone_entry() {
+        // Explicitly Exercise + no group_id: distinct from the anchor-piece
+        // test below, which covers item_type == Piece separately. make_entry's
+        // default item_type is Piece, so this must override it to actually
+        // exercise the "ungrouped exercise" branch rather than short-circuiting
+        // on the item_type check alone.
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.item_type = ItemKind::Exercise;
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active, &HashMap::new());
+        assert!(view.current_related_piece_title.is_none());
+    }
+
+    #[test]
+    fn active_session_view_no_related_piece_title_when_current_is_the_anchor_piece() {
+        let mut piece = make_entry("e1", "i1", "Clair de Lune", 0);
+        piece.item_type = ItemKind::Piece;
+        piece.group_id = Some("g1".to_string());
+        let mut exercise = make_entry("e2", "i2", "Scale", 1);
+        exercise.item_type = ItemKind::Exercise;
+        exercise.group_id = Some("g1".to_string());
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![piece, exercise],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active, &HashMap::new());
+        assert!(
+            view.current_related_piece_title.is_none(),
+            "breadcrumb is for exercises related to a piece, not the piece itself"
+        );
+    }
+
+    #[test]
+    fn active_session_view_current_item_tempo_from_item_library() {
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![make_entry("e1", "i1", "Scale", 0)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let item = Item {
+            id: "i1".to_string(),
+            title: "Scale".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: Some(crate::domain::types::Tempo {
+                marking: Some("Allegro".to_string()),
+                bpm: Some(132),
+            }),
+            notes: None,
+            tags: vec![],
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            linked_exercise_ids: vec![],
+            priority: false,
+        };
+        let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
+        let view = build_active_session_view(&active, &item_index);
+        assert_eq!(view.current_item_tempo_marking.as_deref(), Some("Allegro"));
+        assert_eq!(view.current_item_tempo_bpm, Some(132));
+    }
+
+    #[test]
+    fn active_session_view_current_item_tempo_none_when_item_missing() {
+        let active = ActiveSession {
+            id: "as1".to_string(),
+            entries: vec![make_entry("e1", "i1", "Scale", 0)],
+            current_index: 0,
+            session_started_at: Utc::now(),
+            current_item_started_at: Utc::now(),
+            session_intention: None,
+        };
+        let view = build_active_session_view(&active, &HashMap::new());
+        assert!(view.current_item_tempo_marking.is_none());
+        assert!(view.current_item_tempo_bpm.is_none());
     }
 
     // ── build_summary_view ─────────────────────────────────────────────
