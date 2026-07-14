@@ -16,6 +16,12 @@ The `.dc.html` is the working file; the `.html` is its exported snapshot. Both
 trace back to `Theme.swift` — the reference visualises the tokens, it never
 defines new ones.
 
+A synced copy lives in the claude.ai/design project **"Intrada Paper & Score"**
+(design system, screen mockups, process docs, briefs) so Claude Design sessions
+can pull it directly. **The repo stays canonical**: sync direction is repo →
+project, pushed via `DesignSync` after design files change here. Mockups made
+in Claude Design still land back in the repo per the SDLC steps below.
+
 ## Committing it
 
 1. Copy into the repo:
