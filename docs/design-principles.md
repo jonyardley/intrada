@@ -180,3 +180,24 @@ intention, skippable, and never a gate on saving. What's captured must feed
 forward: the "next target" answer surfaces as the item's suggested aim next
 time, and reflections are re-readable (session detail, item history, progress
 report). A note the user can never see again is admin, not reflection.
+
+### T8 — Session builder: direct manipulation always on, Edit is bulk remove only
+**Status:** DECIDED 2026-07-15 (builder UX audit vs `design/Linked Exercises.dc.html`).
+The builder's arrange/configure actions must not sit behind a mode switch.
+Every line (block header, nested exercise, standalone) is its **own List row**,
+so the platform's long-press lift reorders any of them outside Edit (static
+grip glyphs advertise it), swipe-to-remove works on every row (mock frame 13),
+and tapping a row opens its settings sheet (which carries the visible "Remove
+from this session" path — T4's non-gesture floor). Edit/Done shrinks to
+**bulk remove** (system minus-circles), per mock frame 14. Invented affordances
+that deviate from the mock (chevron tap-steppers, Edit-gated settings glyphs)
+were removed. This also **overturns decision 3 of
+`specs/related-exercises-redesign.md` (2026-07-01)**: the per-exercise
+"include today" toggle returns (off = stays visible but dimmed, excluded from
+totals, dropped at session start) — needs a core event, tracked as
+jonyardley/intrada#1101. Recorded deviation: the mock draws the block dragging
+as one visual unit; here a block moves by its **header row** and the exercises
+follow on drop. A custom in-card drag that preserved the unit visual lost a
+touch-delivery race against the List's own lift (holding a nested grip lifted
+the whole block), so consistency won: the same gesture means the same thing on
+every row.
