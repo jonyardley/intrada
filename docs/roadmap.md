@@ -42,14 +42,15 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ### Current focus (2026-07)
 
-The lesson-to-mastery loop (capture a lesson in one pass, track exercises
-per piece, suggest the next session, step/key ladders — see the
-[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087)) is
-**on hold**: workstream A (lesson capture, #1080) is being rethought before
-more is built on it, and its merged core event was reverted (#1092).
-Workstreams B/R/C are unaffected and can proceed independently. Check the
+The lesson-to-mastery loop — see the
+[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087) — continues
+with workstream **B next: track exercises per piece** (context derived from
+session blocks, #1081), followed by R (suggest the next session, #1082) and
+C (step/key ladders, #1083). Workstream **A (capture a lesson in one pass,
+#1080) is on hold**: it's being rethought before more is built on it, and its
+merged core event was reverted (#1092). Check the
 [project board](https://github.com/users/jonyardley/projects/2) for what's
-actually in flight while this is reconsidered.
+actually in flight.
 
 ---
 
