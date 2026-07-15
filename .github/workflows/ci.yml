@@ -832,9 +832,11 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Pinned: typos dictionary updates can start flagging previously-clean
+      # words, failing unrelated PRs. Bump deliberately, with mise.toml.
       - uses: taiki-e/install-action@v2
         with:
-          tool: typos,cargo-shear
+          tool: typos@1.48,cargo-shear@1.13
       # ── typos ──────────────────────────────────────────────────────────
       # Source-tree spell check (docs-heavy repo; also catches identifier
       # typos clippy/swift-format never will). Project words: _typos.toml.
@@ -844,7 +846,7 @@ jobs:
       # Unused workspace dependencies: the paused crates (intrada-web,
       # intrada-mobile) accumulate dead deps that inflate every CI build.
       - name: Unused dependencies (cargo-shear)
-        run: cargo shear
+        run: cargo-shear
 
   api-docker-build:
     # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered

@@ -48,6 +48,7 @@ check-web:
 
 # Run all tests: nextest + doc tests, same exclusions as CI's `test` job.
 # Local green must mean CI green: keep these flags in lockstep with ci.yml.
+# (CI adds --profile ci for junit output only; assertions are identical.)
 test:
     cargo nextest run --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
     cargo test --doc --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
@@ -64,8 +65,14 @@ fmt:
 fmt-check:
     cargo fmt --all -- --check
 
-# Check everything (fmt → clippy → test, cheapest first)
-check: fmt-check lint test
+# Spell check + unused deps (what CI's Security & hygiene job runs).
+# Both tools come from mise.toml (`mise install`) or brew.
+hygiene:
+    typos
+    cargo-shear
+
+# Check everything (fmt → clippy → test → hygiene, cheapest first)
+check: fmt-check lint test hygiene
 
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check

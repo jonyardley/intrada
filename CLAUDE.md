@@ -60,9 +60,10 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 ## Commands
 
 ```bash
-cargo fmt --check          # must pass before commit AND before push (CI runs both)
-cargo test                 # all workspace tests
-cargo clippy               # lint check — must pass before push
+just check                 # fmt-check → lint → test → hygiene; mirrors CI — run before push
+just test                  # nextest + doc tests (CI's exact exclusions)
+just lint                  # clippy -D warnings (CI's exact targets + exclusions)
+just hygiene               # typos + cargo-shear (CI's Security & hygiene job)
 cargo test -p intrada-api  # API tests only
 just ios-fmt               # native app: format Swift sources in place (swift format)
 just ios-fmt-check         # native app: Swift formatting gate (CI runs this too)
@@ -132,10 +133,12 @@ items and **skips store hydration**, so don't use it when testing persistence �
 your saved rows are still on disk but won't be read back.
 
 Run `just check` *locally before pushing*, not just before committing. Its
-`fmt-check` / `lint` / `test` recipes mirror CI's exact flags and crate
-exclusions, so local green means CI green; pushing then watching CI fail wastes
-a full ~3-minute roundtrip per agent or contributor. Keep the justfile recipes
-and ci.yml in lockstep when either changes.
+`fmt-check` / `lint` / `test` / `hygiene` recipes mirror CI's fmt, clippy,
+test, typos and cargo-shear gates with the exact flags and crate exclusions,
+so local green means CI green (cargo-deny/Gitleaks run in CI only); pushing
+then watching CI fail wastes a full ~3-minute roundtrip per agent or
+contributor. Keep the justfile recipes and ci.yml in lockstep when either
+changes.
 Changes under `ios/` additionally need `just ios-fmt-check` (fix with
 `just ios-fmt`); the native-ios CI job enforces it. It covers the hand-written
 trees (`ios/Intrada`, `ios/IntradaTests`, `ios/IntradaUITests`) with the

@@ -3,17 +3,17 @@
 
 [default]
 extend-ignore-re = [
-    # Backticked short identifiers (e.g. Pencil node refs like `vFOGv`)
-    '`[A-Za-z0-9]{4,6}`',
+    # Backticked ref-shaped tokens containing an uppercase letter or digit
+    # (e.g. Pencil node refs like `vFOGv`); all-lowercase words still checked
+    '`[a-z]*[A-Z0-9][A-Za-z0-9]{2,8}`',
     # Escaped-quoted two-letter search examples in UI copy (\"ba\", \"ch\")
     '\\"[a-z]{2}\\"',
 ]
 
 [files]
 extend-exclude = [
-    # Generated / minified design-system exports
+    # Generated / minified design-system exports (covers *.dc.html too)
     "design/*.html",
-    "design/*.dc.html",
     # Retired docs, reference only (mirrors .graphifyignore)
     "specs/_archive/",
     ".specify/",

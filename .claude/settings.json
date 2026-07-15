@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/install-git-hooks.sh >/dev/null 2>&1 || true"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/install-git-hooks.sh >/dev/null 2>&1 || true"
           }
         ]
       }

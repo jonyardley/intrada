@@ -16,6 +16,7 @@ Coverage: <!-- Tier 2+: "full: <what the new tests cover>" or the expected patch
 
 - [ ] `just check` passes (fmt + clippy + tests, mirrors CI's flags)
 - [ ] `ios/` changes: `just ios-fmt-check` + `just ios-test` pass; snapshots re-recorded + `just ios-snapshots-optimize` if UI changed
+- [ ] New UI uses `Intrada*` tokens (colour, spacing, radius, type), no raw literals
 - [ ] Persistence / new-entity changes: offline-first PR checklist in CLAUDE.md applied (`updated_at`/`deleted_at`, client-minted ulid, `local_first` branches tested both ways)
 - [ ] CLAUDE.md updated (if architecture, components, or patterns changed)
 - [ ] Roadmap updated (if a feature is now complete or scope changed)
