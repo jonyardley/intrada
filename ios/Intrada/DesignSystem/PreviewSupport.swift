@@ -226,6 +226,11 @@
       Store(bridge: PreviewBridge(summary: .previewSummary, analytics: .previewAnalytics))
     }
 
+    /// Player Summary — intention echo + all three reflection prompts filled.
+    static var previewSummaryWithReflection: Store {
+      Store(bridge: PreviewBridge(summary: .previewSummaryWithReflection))
+    }
+
     /// Player Summary — ended early, so the unreached item shows not-attempted.
     static var previewSummaryEndedEarly: Store {
       Store(bridge: PreviewBridge(summary: .previewSummaryEndedEarly))
@@ -614,6 +619,22 @@
           summaryEntry("e4", "Czerny Op. 299", .exercise, "5m 30s", .completed, score: 3),
         ], sessionIntention: nil, sessionScore: 8,
         reflectionImproved: nil, reflectionStillRough: nil, reflectionNextTarget: nil)
+    }
+
+    /// Intention echo + all three reflection prompts filled — locks the
+    /// surface-3 reflection block (design/briefs/2026-07-reflection-and-narrative.md).
+    static var previewSummaryWithReflection: SummaryView {
+      SummaryView(
+        totalDurationDisplay: "37m 50s", completionStatus: .completed, notes: nil,
+        entries: [
+          summaryEntry("e1", "Clair de Lune", .piece, "12m 40s", .completed, score: 3),
+          summaryEntry(
+            "e2", "Hanon No. 1", .exercise, "8m 10s", .completed, score: 4, tempo: 96,
+            intention: "Land each finger evenly"),
+        ], sessionIntention: "Even RH through bars 12–14", sessionScore: 8,
+        reflectionImproved: "Thumb-unders even at 92 — bars 1–8 clean twice in a row.",
+        reflectionStillRough: "Bars 12–14 rush every run past 88.",
+        reflectionNextTarget: "Bars 12–14 at 80, hands together, before pushing tempo.")
     }
 
     static var previewSummaryEndedEarly: SummaryView {
