@@ -49,6 +49,15 @@ struct PracticeScreen: View {
     ScreenScaffold(title: "Practice", subtitle: subtitle) {
       ScrollView {
         VStack(spacing: IntradaSpacing.section) {
+          if let recoverable = store.recoverableSession {
+            RecoveryPromptCard(
+              session: recoverable,
+              referenceDate: referenceDate,
+              onResume: { store.resumeRecoverableSession() },
+              onDiscard: { store.discardSessionInProgress() }
+            )
+            .fadeUp(0)
+          }
           hero
             .fadeUp(0)
           thisWeek

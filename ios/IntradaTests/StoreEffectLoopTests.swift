@@ -37,6 +37,52 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(store.viewModel?.error, "refreshed", "render effect should re-read view()")
   }
 
+  func testSaveSessionInProgressEffectWritesBlobAndClearRemovesIt() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
+    let active = ActiveSession(
+      id: "s-crash", entries: [], currentIndex: 0,
+      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
+      sessionIntention: "even RH at 96")
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.send(.setQuery(nil))
+
+    let pending = try XCTUnwrap(
+      store.pendingSessionInProgress(), "the save effect must persist a recoverable blob")
+    XCTAssertEqual(pending.id, "s-crash")
+    XCTAssertEqual(pending.sessionIntention, "even RH at 96")
+
+    bridge.updateHandler = { _ in [Request(id: 2, effect: .app(.clearSessionInProgress))] }
+    store.send(.setQuery(nil))
+    XCTAssertNil(
+      store.pendingSessionInProgress(), "the clear effect must remove the recoverable blob")
+  }
+
+  func testDiscardSessionInProgressRemovesBlobWithoutCoreEvent() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "sip-\(UUID().uuidString)"))
+    let active = ActiveSession(
+      id: "s-stale", entries: [], currentIndex: 0,
+      currentItemStartedAt: "2026-07-14T10:00:00Z", sessionStartedAt: "2026-07-14T10:00:00Z",
+      sessionIntention: nil)
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveSessionInProgress(active)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+    store.send(.setQuery(nil))
+    store.recoverableSession = store.pendingSessionInProgress()
+    XCTAssertNotNil(store.recoverableSession)
+
+    store.discardSessionInProgress()
+
+    XCTAssertNil(store.pendingSessionInProgress())
+    XCTAssertNil(store.recoverableSession)
+  }
+
   func testAppEffectIsNotResolved() {
     // Why never resolve: testRealBridgeAppEffectIsNeverResolved (#882).
     let bridge = FakeBridge()
@@ -443,6 +489,16 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.session(.updateEntryNotes(entryId: entryId, notes: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.notes, "clearing an entry note round-trips")
+    // Achieved tempo — the hand-off sheet's TempoStepper write, never previously
+    // sent from Swift (#846). Round-trip set + clear through the live bridge.
+    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: 96)))
+    XCTAssertEqual(
+      try bridge.view().summary?.entries.first?.achievedTempo, 96,
+      "the tempo stepper's achieved tempo should round-trip")
+    _ = try bridge.update(.session(.updateEntryTempo(entryId: entryId, tempo: nil)))
+    XCTAssertNil(
+      try bridge.view().summary?.entries.first?.achievedTempo,
+      "clearing an achieved tempo round-trips")
     _ = try bridge.update(.session(.updateSessionNotes(notes: "Felt good")))
     XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
     _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
@@ -469,6 +525,28 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(saved.summary, "saveSession clears the summary (session persisted)")
     XCTAssertNil(saved.activeSession)
     XCTAssertNil(saved.error, "a clean save surfaces no error")
+
+    // Crash recovery — RecoverSession (with its new `now` re-anchor field) has
+    // never crossed the live bridge from Swift before (#846, #962). The stale
+    // anchor must come back re-anchored to the `now` we send.
+    let blobEntry = SetlistEntry(
+      id: "re1", itemId: "i1", itemTitle: "Recovered Scales", itemType: .exercise,
+      position: 0, durationSecs: 0, status: .notAttempted,
+      notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: nil)
+    let blob = ActiveSession(
+      id: "recovered", entries: [blobEntry], currentIndex: 0,
+      currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
+      sessionIntention: nil)
+    _ = try bridge.update(.session(.recoverSession(session: blob, now: "2026-06-16T11:00:00Z")))
+    let recovered = try bridge.view()
+    XCTAssertEqual(recovered.activeSession?.currentItemTitle, "Recovered Scales")
+    XCTAssertEqual(
+      recovered.activeSession?.currentItemStartedAt, "2026-06-16T11:00:00+00:00",
+      "recovery must re-anchor the running item's timer to `now`")
+    _ = try bridge.update(.session(.abandonSession))
+    XCTAssertNil(try bridge.view().activeSession, "abandon after recover returns to Idle")
   }
 
   /// App effects come from `notify_shell` — fire-and-forget notifications the

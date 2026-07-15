@@ -16,6 +16,7 @@ final class Store {
   /// CLAUDE.md "only small singletons in crux_kv"; we use the existing
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
+  static let sessionInProgressKey = "intrada.session-in-progress"
 
   private let bridge: CoreBridge
   private let session: URLSession
@@ -73,10 +74,43 @@ final class Store {
       if let bytes = guarded({ try sort.bincodeSerialize() }) {
         sortDefaults.set(Data(bytes), forKey: Self.sortDefaultsKey)
       }
-    case .saveSessionInProgress, .clearSessionInProgress:
-      // localStorage crash-recovery variants are no-ops on native for now.
-      break
+    case .saveSessionInProgress(let active):
+      if let bytes = guarded({ try active.bincodeSerialize() }) {
+        sortDefaults.set(Data(bytes), forKey: Self.sessionInProgressKey)
+      }
+    case .clearSessionInProgress:
+      sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
+      recoverableSession = nil
     }
+  }
+
+  /// Crash-recovery blob found at launch; non-nil drives the Practice tab's
+  /// Resume / Discard prompt (#962).
+  var recoverableSession: ActiveSession?
+
+  func pendingSessionInProgress() -> ActiveSession? {
+    guard let data = sortDefaults.data(forKey: Self.sessionInProgressKey) else { return nil }
+    return guarded { try ActiveSession.bincodeDeserialize(input: [UInt8](data)) }
+  }
+
+  func loadRecoverableSession() {
+    guard viewModel?.activeSession == nil, viewModel?.summary == nil else { return }
+    recoverableSession = pendingSessionInProgress()
+  }
+
+  func resumeRecoverableSession() {
+    guard let session = recoverableSession else { return }
+    send(.session(.recoverSession(session: session, now: SessionClock.nowRFC3339())))
+    if viewModel?.activeSession != nil {
+      recoverableSession = nil
+    }
+  }
+
+  /// Pre-recovery discard is pure KV cleanup: the model is Idle, and
+  /// AbandonSession (the core's clearing path) requires an Active session (#962).
+  func discardSessionInProgress() {
+    sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
+    recoverableSession = nil
   }
 
   func restorePersistedSort() {

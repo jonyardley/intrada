@@ -324,6 +324,7 @@ pub enum SessionEvent {
     // === Recovery ===
     RecoverSession {
         session: ActiveSession,
+        now: DateTime<Utc>,
     },
 
     // === History ===
@@ -1515,13 +1516,18 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         }
 
         // ── Recovery ───────────────────────────────────────────────
-        SessionEvent::RecoverSession { session } => {
+        SessionEvent::RecoverSession { session, now } => {
             if !matches!(model.session_status, SessionStatus::Idle) {
                 model.last_error =
                     Some("Cannot recover: a practice is already in progress".to_string());
                 return crux_core::render::render();
             }
 
+            // Re-anchor the running item's wall-clock timer: the blob's anchor
+            // is from before the kill, so resuming hours later would otherwise
+            // show that gap as elapsed practice (#962).
+            let mut session = session;
+            session.current_item_started_at = now;
             model.session_status = SessionStatus::Active(session);
             model.last_error = None;
             crux_core::render::render()
@@ -3080,7 +3086,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::RecoverSession { session: active }),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
         );
 
         assert!(model.last_error.is_none());
@@ -3089,6 +3098,47 @@ mod tests {
         } else {
             panic!("Expected Active state");
         }
+    }
+
+    #[test]
+    fn test_recover_session_reanchors_current_item_timer() {
+        let mut model = model_with_library();
+        let started_yesterday = Utc::now() - chrono::Duration::hours(20);
+        let now = Utc::now();
+
+        let active = ActiveSession {
+            id: "stale-session".to_string(),
+            entries: vec![create_entry(
+                "piece-1",
+                "Moonlight Sonata",
+                ItemKind::Piece,
+                0,
+            )],
+            current_index: 0,
+            current_item_started_at: started_yesterday,
+            session_started_at: started_yesterday,
+            session_intention: None,
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
+        );
+
+        let SessionStatus::Active(ref a) = model.session_status else {
+            panic!("Expected Active state");
+        };
+        assert_eq!(
+            a.current_item_started_at, now,
+            "resume must re-anchor the running item's timer, not show 20h elapsed"
+        );
+        assert_eq!(
+            a.session_started_at, started_yesterday,
+            "the session's historical start stays untouched"
+        );
     }
 
     #[test]
@@ -3108,7 +3158,10 @@ mod tests {
 
         update(
             &mut model,
-            Event::Session(SessionEvent::RecoverSession { session: active }),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
         );
 
         assert!(model.last_error.is_some());
