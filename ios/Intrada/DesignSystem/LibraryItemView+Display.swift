@@ -43,6 +43,34 @@ enum TempoFormatting {
   }
 }
 
+extension ExerciseContextView {
+  /// The piece's name, or the standalone bucket's label (#1087 B2).
+  var contextTitle: String { piece?.title ?? "On its own" }
+
+  /// Composer/sessions/date meta for a "By piece" row: e.g.
+  /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
+  /// since-deleted piece (#1093, 2a). Composer is dropped when the piece is gone.
+  func metaLine(locale: Locale, calendar: Calendar) -> String {
+    var parts: [String] = []
+    if pieceRemoved {
+      parts.append("Removed")
+    } else if let subtitle = piece?.subtitle, !subtitle.isEmpty {
+      parts.append(subtitle)
+    }
+    let n = Int(sessionCount)
+    parts.append("\(n) \(n == 1 ? "session" : "sessions")")
+    if let date = lastPracticedAt.flatMap(SessionClock.parseRFC3339) {
+      let formatter = DateFormatter()
+      formatter.locale = locale
+      formatter.calendar = calendar
+      formatter.timeZone = calendar.timeZone
+      formatter.dateFormat = "MMM d"
+      parts.append(formatter.string(from: date))
+    }
+    return parts.joined(separator: " · ")
+  }
+}
+
 extension LibraryItemView {
   var keyDisplay: String? {
     KeyHelper.display(key: key, modality: modality)

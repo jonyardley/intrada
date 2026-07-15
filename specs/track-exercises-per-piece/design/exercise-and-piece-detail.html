@@ -1,0 +1,223 @@
+<title>B2 — Track exercises per piece (mock)</title>
+<style>
+  :root{
+    --paper-top:#F4F1E8; --paper-bottom:#EBE7D9; --card:#FCFAF3; --sunken:#F0E7D6;
+    --hairline:#E5DECD; --divider:#E0D9C8;
+    --ink:#2B2A26; --ink2:#6E6557; --faint:#9A927F;
+    --accent:#4C3FA6; --on-accent:#F2EFE8;
+    --piece-bg:#E7E3F4; --piece-fg:#4C3FA6;
+    --ex-bg:#F0E5CC; --ex-fg:#8A6A2E;
+    --teal:#1F8A5B; --mastery:#4C3FA6; --track:#E2DBC9;
+    --serif:Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#efece1,#e4e0d1);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 28px 72px}
+  .lead{max-width:720px;margin:0 0 34px}
+  .kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:0 0 10px}
+  h1{font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.15;margin:0 0 12px;text-wrap:balance}
+  .lead p{font-size:15px;line-height:1.6;color:var(--ink2);margin:0}
+  .stage{display:flex;gap:34px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:14px}
+  .caption{font-size:12px;color:var(--ink2);max-width:300px;line-height:1.5}
+  .caption b{color:var(--ink);font-weight:600}
+
+  /* phone */
+  .phone{width:300px;background:linear-gradient(180deg,var(--paper-top),var(--paper-bottom));
+    border-radius:30px;border:1px solid #d9d2c0;box-shadow:0 22px 50px -22px rgba(60,52,30,.5),0 2px 0 #fff inset;
+    overflow:hidden}
+  .nav{display:flex;align-items:center;gap:10px;padding:14px 16px 10px}
+  .nav .chev{color:var(--accent);font-size:19px;line-height:1}
+  .nav .title{font-family:var(--serif);font-weight:600;font-size:18px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;letter-spacing:.02em}
+  .badge.piece{background:var(--piece-bg);color:var(--piece-fg)}
+  .badge.ex{background:var(--ex-bg);color:var(--ex-fg)}
+  .screen{padding:6px 16px 22px}
+
+  /* ring */
+  .ring{--sz:132px;--sc:7;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;position:relative;margin:0 auto}
+  .ring::before{content:"";position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(var(--mastery) calc(var(--sc)*36deg),var(--track) 0);
+    -webkit-mask:radial-gradient(circle,transparent calc(50% - 12px),#000 calc(50% - 12px));
+            mask:radial-gradient(circle,transparent calc(50% - 12px),#000 calc(50% - 12px))}
+  .ring .num{font-family:var(--sans);font-weight:600;font-size:calc(var(--sz)*.36);line-height:1}
+  .ring .of{font-size:10px;letter-spacing:.09em;color:var(--faint);font-weight:600;margin-top:2px}
+  .ring.sm{--sz:44px}
+  .ring.sm .num{font-size:16px}
+  .ring.muted::before{background:conic-gradient(#b9b09a calc(var(--sc)*36deg),var(--track) 0)}
+  .ring.muted .num{color:var(--faint)}
+
+  .heroblock{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0 6px}
+  .overall-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .breadcrumb{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ex-fg);font-weight:600}
+  .breadcrumb .dim{color:var(--ink2);font-weight:500}
+
+  .cta{margin:12px 2px 4px;display:flex;align-items:center;justify-content:center;gap:8px;
+    background:linear-gradient(180deg,#6346E5,#4C3FA6);color:var(--on-accent);
+    font-weight:600;font-size:15px;padding:13px;border-radius:14px;box-shadow:0 8px 18px -8px rgba(76,63,166,.7)}
+
+  .eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:22px 2px 10px;display:flex;align-items:center;gap:8px}
+  .eyebrow .count{color:var(--ink2)}
+
+  .card{background:var(--card);border:1px solid var(--hairline);border-radius:12px;overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;padding:13px 14px}
+  .row + .row{border-top:1px solid var(--divider)}
+  .row .body{flex:1;min-width:0}
+  .row .rtitle{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .rmeta{font-size:12px;color:var(--ink2);margin-top:2px}
+  .row .chev{color:var(--faint);font-size:16px}
+  .row.gone .rtitle{color:var(--ink2)}
+  .row.gone{background:repeating-linear-gradient(135deg,transparent,transparent 9px,rgba(154,146,127,.05) 9px,rgba(154,146,127,.05) 18px)}
+  .removed-tag{font-size:10px;font-weight:600;color:var(--faint);border:1px solid var(--hairline);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  .onown .rtitle{font-family:var(--sans);font-weight:600;color:var(--ink2)}
+
+  /* filter pills */
+  .pills{display:flex;gap:8px;overflow-x:auto;padding:14px 2px 4px;scrollbar-width:none}
+  .pills::-webkit-scrollbar{display:none}
+  .pill{white-space:nowrap;font-size:13px;font-weight:500;padding:6px 13px;border-radius:999px;color:var(--ink2);background:transparent;border:1px solid transparent}
+  .pill.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+  .pill.gone{color:var(--faint)}
+
+  .sessions{margin-top:4px}
+  .srow{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--divider);font-size:13px}
+  .srow:last-child{border-bottom:0}
+  .srow .sdate{color:var(--ink2)}
+  .srow .sscore{font-weight:600;font-variant-numeric:tabular-nums}
+  .scaption{font-size:11px;color:var(--faint);margin:8px 2px 0}
+
+  .cardhead{display:flex;align-items:baseline;justify-content:space-between;padding:12px 14px 8px;border-bottom:1px solid var(--divider)}
+  .cardhead .h{font-family:var(--serif);font-weight:600;font-size:15px}
+  .cardhead .sub{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600}
+
+  .legend{background:var(--card);border:1px solid var(--hairline);border-radius:14px;padding:20px 22px;max-width:340px}
+  .legend h3{font-family:var(--serif);font-size:16px;margin:0 0 14px}
+  .legend ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:13px}
+  .legend li{font-size:13px;line-height:1.5;color:var(--ink2);padding-left:20px;position:relative}
+  .legend li::before{content:"";position:absolute;left:0;top:6px;width:8px;height:8px;border-radius:2px;background:var(--accent)}
+  .legend li.reuse::before{background:var(--teal)}
+  .legend li.ask::before{background:var(--ex-fg)}
+  .legend li b{color:var(--ink);font-weight:600}
+  .legend .key{display:flex;gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid var(--divider);font-size:11px;color:var(--ink2)}
+  .legend .key span{display:inline-flex;align-items:center;gap:6px}
+  .legend .key i{width:9px;height:9px;border-radius:2px;display:inline-block}
+  .footnote{margin-top:34px;font-size:11px;color:var(--faint);max-width:720px;line-height:1.6}
+</style>
+
+<div class="wrap">
+  <div class="lead">
+    <p class="kicker">Intrada · Track · Epic #1087 workstream B · B2 mock</p>
+    <h1>Tracking an exercise per piece</h1>
+    <p>One exercise, many pieces, one flat score today — so “7 on Strasbourg, 4 on Blue Bossa” is invisible. B2 renders the per-piece contexts B1 derived: a captioned <b>overall</b> ring, a <b>By piece</b> breakdown, and the per-this-piece score echoed on the piece card. Built entirely from existing kit — <b>ScoreRing</b>, <b>SectionHeader</b>, <b>HairlineDivider</b>, <b>Eyebrow</b>. No new primitives, no new filter control — the rows carry the insight.</p>
+  </div>
+
+  <div class="stage">
+
+    <!-- EXERCISE DETAIL -->
+    <div class="col">
+      <div class="phone">
+        <div class="nav">
+          <span class="chev">‹</span>
+          <span class="title">Enclosures</span>
+          <span class="badge ex">◇ Exercise</span>
+        </div>
+        <div class="screen">
+          <div class="heroblock">
+            <div class="ring" style="--sc:7"><div style="text-align:center"><div class="num">7</div><div class="of">OF 10</div></div></div>
+            <div class="overall-eyebrow">Overall</div>
+            <div class="breadcrumb">↳ Related to&nbsp;<span>Strasbourg / St. Denis</span>&nbsp;<span class="dim">· +1 more</span></div>
+          </div>
+          <div class="cta">◷ Practise this</div>
+
+          <div class="eyebrow">By piece <span class="count">· 3</span></div>
+          <div class="card">
+            <div class="row">
+              <div class="ring sm" style="--sc:7"><div class="num">7</div></div>
+              <div class="body"><div class="rtitle">Strasbourg / St. Denis</div><div class="rmeta">Bud Powell · 3 sessions · last Tue</div></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="row">
+              <div class="ring sm" style="--sc:4"><div class="num">4</div></div>
+              <div class="body"><div class="rtitle">Blue Bossa</div><div class="rmeta">Kenny Dorham · 2 sessions · last 6 Jul</div></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="row gone">
+              <div class="ring sm muted" style="--sc:5"><div class="num">5</div></div>
+              <div class="body"><div class="rtitle">Autumn Leaves<span class="removed-tag">removed</span></div><div class="rmeta">1 session · 28 Jun</div></div>
+            </div>
+            <div class="row onown">
+              <div class="ring sm" style="--sc:6"><div class="num">6</div></div>
+              <div class="body"><div class="rtitle">On its own</div><div class="rmeta">4 sessions · last 4 Jul</div></div>
+            </div>
+          </div>
+
+          <div class="eyebrow" style="margin-bottom:2px">Recent sessions</div>
+          <div class="sessions">
+            <div class="srow"><span class="sdate">Tue · Strasbourg / St. Denis</span><span class="sscore">7</span></div>
+            <div class="srow"><span class="sdate">Sun · On its own</span><span class="sscore">6</span></div>
+            <div class="srow"><span class="sdate">6 Jul · Blue Bossa</span><span class="sscore">4</span></div>
+            <div class="srow"><span class="sdate">4 Jul · On its own</span><span class="sscore">6</span></div>
+          </div>
+          <div class="scaption">The existing session list, unchanged. The per-piece breakdown lives in the rows above — no second filter control.</div>
+        </div>
+      </div>
+      <div class="caption"><b>Exercise detail.</b> Overall ring keeps the top slot but gains an <b>Overall</b> caption so it can’t be read as one piece’s score. The “By piece” rows are the new part — a removed piece stays as a muted, non-tappable row (decision 2a). Recent sessions below are unchanged.</div>
+    </div>
+
+    <!-- PIECE DETAIL -->
+    <div class="col">
+      <div class="phone">
+        <div class="nav">
+          <span class="chev">‹</span>
+          <span class="title">Strasbourg / St. Denis</span>
+          <span class="badge piece">♪ Piece</span>
+        </div>
+        <div class="screen">
+          <div class="heroblock">
+            <div class="ring" style="--sc:8"><div style="text-align:center"><div class="num">8</div><div class="of">OF 10</div></div></div>
+            <div class="overall-eyebrow">Overall</div>
+          </div>
+          <div class="cta">◷ Practise this</div>
+
+          <div class="eyebrow">Related exercises <span class="count">· 2</span></div>
+          <div class="card">
+            <div class="cardhead"><span class="h">Practised alongside</span><span class="sub">Score on this piece</span></div>
+            <div class="row">
+              <div class="body"><div class="rtitle">Enclosures</div><div class="rmeta">C · ♩ = 120</div></div>
+              <div class="ring sm" style="--sc:7"><div class="num">7</div></div>
+              <span class="chev">›</span>
+            </div>
+            <div class="row">
+              <div class="body"><div class="rtitle">ii–V–I voicings</div><div class="rmeta">All keys · ♩ = 90</div></div>
+              <div class="ring sm" style="--sc:6"><div class="num">6</div></div>
+              <span class="chev">›</span>
+            </div>
+          </div>
+          <div class="scaption">Each ring is the exercise’s score <b>on this piece</b>, not its overall — derived in the core.</div>
+        </div>
+      </div>
+      <div class="caption"><b>Piece detail.</b> The related-exercises card already shows a score ring per exercise; B2 changes its <b>source</b> to the per-this-piece context score, headed “Score on this piece”.</div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend">
+      <h3>What B2 adds</h3>
+      <ul>
+        <li><b>Overall caption</b> under the hero ring on exercise detail — the only change to the existing hero.</li>
+        <li><b>By piece</b> section: one row per derived context, newest-first, “On its own” last. Piece rows tap through; removed pieces don’t.</li>
+        <li>Piece card ring re-sourced to the <b>per-this-piece</b> score, via a new core field on <code>LinkedExerciseView</code>.</li>
+        <li>Existing <b>Recent sessions</b> list is untouched — the By-piece rows carry the breakdown, so no filter control is added.</li>
+        <li class="reuse"><b>Reused as-is:</b> ScoreRing (132 &amp; 44), SectionHeader, HairlineDivider, breadcrumb. Zero new primitives.</li>
+        <li class="reuse"><b>Cut:</b> the filter pills — they doubled up the By-piece rows. Segmented pills stay reserved for real inputs (the Piece/Exercise form toggle, tags).</li>
+      </ul>
+      <div class="key">
+        <span><i style="background:var(--accent)"></i>new</span>
+        <span><i style="background:var(--teal)"></i>reused</span>
+        <span><i style="background:var(--ex-fg)"></i>needs a nod</span>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footnote">Faithful to <b>Theme.swift</b> tokens (Paper &amp; Score: paperTop #F4F1E8, ink #2B2A26, accent #4C3FA6, exercise gold #8A6A2E, mastery #4C3FA6 on track #E2DBC9). Mock uses Georgia/system as stand-ins for the bundled Source Serif 4 + Inter. Copy follows the epic’s rule — “overall”, “By piece”, “On its own” on screen; no “rollup / context / standalone”.</p>
+</div>

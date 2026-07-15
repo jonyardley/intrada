@@ -406,6 +406,20 @@ impl Intrada {
                         if ex.kind != ItemKind::Exercise {
                             return None;
                         }
+                        // The exercise's score in *this piece's* context, pulled
+                        // from the same derivation the exercise screen uses so
+                        // both sides agree (#1087 B2).
+                        let piece_context_score = contexts_by_exercise
+                            .get(ex.id.as_str())
+                            .and_then(|contexts| {
+                                contexts
+                                    .iter()
+                                    .find(|c| {
+                                        c.piece.as_ref().map(|p| p.id.as_str())
+                                            == Some(item.id.as_str())
+                                    })
+                                    .and_then(|c| c.latest_score)
+                            });
                         Some(LinkedExerciseView {
                             id: ex.id.clone(),
                             title: ex.title.clone(),
@@ -416,6 +430,7 @@ impl Intrada {
                                 .map(|t| t.format_display())
                                 .filter(|s| !s.is_empty()),
                             practice: model.practice_summaries.get(&ex.id).cloned(),
+                            piece_context_score,
                         })
                     })
                     .collect()
@@ -837,19 +852,33 @@ fn build_exercise_contexts(
 
     let mut by_exercise: HashMap<String, Vec<ExerciseContextView>> = HashMap::new();
     for ((exercise_id, piece_id), record) in acc {
-        let piece = piece_id.map(|id| PieceRefView {
-            title: record.piece_title.unwrap_or_default(),
-            subtitle: item_index.get(id.as_str()).and_then(|p| p.composer.clone()),
-            id,
+        // #1093 (1a): prefer the live piece's current title so a rename shows
+        // through; fall back to the practice-time snapshot when the piece is
+        // gone. `piece_removed` records that fall-back so the shell can render
+        // the row as retired history (2a).
+        let piece = piece_id.map(|id| {
+            let live = item_index.get(id.as_str());
+            (
+                PieceRefView {
+                    title: live
+                        .map(|p| p.title.clone())
+                        .unwrap_or_else(|| record.piece_title.unwrap_or_default()),
+                    subtitle: live.and_then(|p| p.composer.clone()),
+                    id,
+                },
+                live.is_none(),
+            )
         });
+        let piece_removed = piece.as_ref().is_some_and(|(_, removed)| *removed);
         by_exercise
             .entry(exercise_id)
             .or_default()
             .push(ExerciseContextView {
-                piece,
+                piece: piece.map(|(p, _)| p),
                 latest_score: record.latest_scored.map(|(_, s)| s),
                 session_count: record.session_ids.len(),
                 last_practiced_at: record.last_practiced_at,
+                piece_removed,
             });
     }
 
@@ -4426,6 +4455,137 @@ mod tests {
         assert_eq!(ex1.exercise_contexts.len(), 1);
         assert!(ex1.exercise_contexts[0].piece.is_none());
         assert_eq!(ex1.exercise_contexts[0].latest_score, Some(5));
+    }
+
+    /// #1093 (1a): a piece renamed since practice shows its *current* title (and
+    /// composer), not the practice-time snapshot — the live item wins while it
+    /// exists, and `piece_removed` stays false.
+    #[test]
+    fn test_exercise_context_prefers_live_title_over_snapshot() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let model = Model {
+            // Library now calls it "Sonata No. 14"; the session was recorded when
+            // it was just "Sonata".
+            items: vec![
+                ctx_item("P", "Sonata No. 14", ItemKind::Piece, Some("Beethoven")),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(6), Some("g1")),
+                    ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
+            ..Default::default()
+        };
+
+        let ex1 = app
+            .view(&model)
+            .items
+            .into_iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap();
+        let ctx = &ex1.exercise_contexts[0];
+        let piece = ctx.piece.as_ref().expect("piece context");
+        assert_eq!(piece.title, "Sonata No. 14", "live title, not snapshot");
+        assert_eq!(piece.subtitle.as_deref(), Some("Beethoven"));
+        assert!(!ctx.piece_removed, "piece still exists");
+    }
+
+    /// #1093 (2a): a piece deleted since practice keeps its context (the sessions
+    /// are real history) with the snapshot title and no composer, flagged
+    /// `piece_removed` so the shell renders it as retired, non-tappable history.
+    #[test]
+    fn test_exercise_context_keeps_removed_piece_as_snapshot_history() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let model = Model {
+            // Only the exercise survives; piece "P" was deleted.
+            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![
+                    ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(5), Some("g1")),
+                    ctx_entry("P", "Autumn Leaves", ItemKind::Piece, None, Some("g1")),
+                ],
+            )],
+            ..Default::default()
+        };
+
+        let ex1 = app
+            .view(&model)
+            .items
+            .into_iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap();
+        assert_eq!(
+            ex1.exercise_contexts.len(),
+            1,
+            "removed piece kept, not dropped"
+        );
+        let ctx = &ex1.exercise_contexts[0];
+        let piece = ctx.piece.as_ref().expect("context retained");
+        assert_eq!(piece.id, "P");
+        assert_eq!(piece.title, "Autumn Leaves", "snapshot title survives");
+        assert_eq!(piece.subtitle, None, "no live composer for a gone piece");
+        assert!(ctx.piece_removed, "flagged removed");
+        assert_eq!(ctx.latest_score, Some(5), "its history still counts");
+    }
+
+    /// #1087 B2: a piece's linked-exercise row carries the exercise's score *in
+    /// this piece's context*, not its flat overall score. Same drill scored 7
+    /// with the piece and 9 standalone → the piece card shows 7.
+    #[test]
+    fn test_linked_exercise_carries_per_piece_context_score() {
+        let app = Intrada;
+        let earlier = chrono::Utc::now() - chrono::Duration::days(1);
+        let later = chrono::Utc::now();
+        let mut piece = ctx_item("P", "Sonata", ItemKind::Piece, None);
+        piece.linked_exercise_ids = vec!["ex-1".to_string()];
+        let model = Model {
+            items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            sessions: vec![
+                // With the piece: scored 7.
+                ctx_session(
+                    "s1",
+                    earlier,
+                    vec![
+                        ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
+                        ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+                    ],
+                ),
+                // Standalone, later: scored 9 — the higher, more recent overall.
+                ctx_session(
+                    "s2",
+                    later,
+                    vec![ctx_entry(
+                        "ex-1",
+                        "Scales",
+                        ItemKind::Exercise,
+                        Some(9),
+                        None,
+                    )],
+                ),
+            ],
+            ..Default::default()
+        };
+
+        let piece_view = app
+            .view(&model)
+            .items
+            .into_iter()
+            .find(|i| i.id == "P")
+            .unwrap();
+        let linked = &piece_view.linked_exercises[0];
+        assert_eq!(
+            linked.piece_context_score,
+            Some(7),
+            "score on this piece, not the standalone 9"
+        );
     }
 
     /// Invariant 6: the derivation is identical whether sessions arrive via the
