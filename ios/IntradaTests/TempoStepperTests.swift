@@ -3,11 +3,6 @@ import XCTest
 @testable import Intrada
 
 final class TempoStepperTests: XCTestCase {
-  // ── Clamp is symmetric: a tap can only move a value toward the valid
-  // range, never past it in the direction it was already out of range
-  // (e.g. a Presto target at 220 must not jump *down* to 208 on an
-  // increment tap) ────────────────────────────────────────────────────
-
   func testClampWithinRangeIsUnchanged() {
     XCTAssertEqual(TempoStepper.clamp(96), 96)
     XCTAssertEqual(TempoStepper.clamp(TempoStepper.range.lowerBound), 40)
@@ -23,8 +18,6 @@ final class TempoStepperTests: XCTestCase {
   }
 
   func testIncrementFromOutOfRangeMovesTowardRangeNotAway() {
-    // A value already below range must not overshoot further away from the
-    // range on an increment — it should land at the clamp, not `value + step`.
     XCTAssertEqual(TempoStepper.stepped(from: 30, by: 2), 40)
   }
 
@@ -44,10 +37,6 @@ final class TempoStepperTests: XCTestCase {
 }
 
 final class ReflectionSheetTempoResolutionTests: XCTestCase {
-  // ── The onSave payload: whether an achieved-tempo write happens at all
-  // hinges on this one branch, so it's pulled into a pure, directly
-  // testable function rather than only living inside a button closure ──
-
   func testNoTempoTargetResolvesToNilRegardlessOfStepperValue() {
     XCTAssertNil(ReflectionSheet.resolvedAchievedTempo(tempoTarget: nil, current: 96))
     XCTAssertNil(ReflectionSheet.resolvedAchievedTempo(tempoTarget: nil, current: 0))

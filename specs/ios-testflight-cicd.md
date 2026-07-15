@@ -69,7 +69,11 @@ workflow_dispatch / tag v*
    xcodebuild build setting (not PlistBuddy — under `GENERATE_INFOPLIST_FILE=YES`
    `CFBundleVersion` is generated from `CURRENT_PROJECT_VERSION`). `run_number`
    is monotonic across the repo, satisfying TestFlight's "unique build per
-   version" rule. `MARKETING_VERSION` stays `0.1.0`.
+   version" rule. `MARKETING_VERSION` is derived from the release tag
+   (`v0.3.0` → `0.3.0`), validated as `X.Y.Z` in the lane and injected the
+   same way, so each tagged release appears in TestFlight as a new version.
+   When unset (local runs, branch dispatch) the lane falls back to
+   `project.yml`'s value.
 
 5. **Release core, device slice.** The lane runs `cargo swift package … --release`
    (debug cores are 10–100× slower in hot paths). Verified at source level

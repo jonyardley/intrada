@@ -1,10 +1,8 @@
 import SwiftUI
 
 /// Hand-off reflection: after an item, score it (1–10), log the tempo reached
-/// (when the item declares a target), and jot an optional note. Selector-only
-/// — the ring was dropped as redundant with the pills. Pure UI: the caller
-/// applies the writes and advances (the score and tempo both need the entry
-/// Completed first, so ordering lives in the player, not here).
+/// (when the item declares a target), and jot an optional note. Pure UI —
+/// the caller applies the writes and advances.
 struct ReflectionSheet: View {
   let itemTitle: String
   let elapsedDisplay: String
@@ -28,9 +26,8 @@ struct ReflectionSheet: View {
     self.tempoTarget = tempoTarget
     self.onSave = onSave
     self.onSkip = onSkip
-    // Prefilled at target — untouched reads as "played at target". Clamped:
-    // a target outside the stepper's 40-208 UI range (a Presto marking, say)
-    // must not seed a display value the stepper itself can't represent.
+    // Prefilled at target (clamped to the stepper's range) — untouched reads
+    // as "played at target".
     _achievedTempo = State(initialValue: TempoStepper.clamp(Int(tempoTarget ?? 96)))
   }
 
