@@ -32,7 +32,7 @@ pub struct UpdateSetRequest {
     pub entries: Vec<CreateSetEntry>,
 }
 
-/// Column list for routine_entries SELECTs.
+/// Column list for routine_entries SELECT queries.
 ///
 /// Note: the table is still called `routine_entries` in the database
 /// — we kept the table name to avoid a migration when renaming the

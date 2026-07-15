@@ -1,0 +1,31 @@
+# Config for the typos CI gate (Security & hygiene job). Keep exceptions
+# minimal: prefer rewording prose over widening this allowlist.
+
+[default]
+extend-ignore-re = [
+    # Backticked ref-shaped tokens containing an uppercase letter or digit
+    # (e.g. Pencil node refs like `vFOGv`); all-lowercase words still checked
+    '`[a-z]*[A-Z0-9][A-Za-z0-9]{2,8}`',
+    # Escaped-quoted two-letter search examples in UI copy (\"ba\", \"ch\")
+    '\\"[a-z]{2}\\"',
+]
+
+[files]
+extend-exclude = [
+    # Generated / minified design-system exports (covers *.dc.html too)
+    "design/*.html",
+    # Retired docs, reference only (mirrors .graphifyignore)
+    "specs/_archive/",
+    ".specify/",
+    "docs/superpowers/",
+    # Vendored JS
+    "crates/intrada-web/static/",
+    # Generated scan artefacts (e.g. gitleaks/clippy SARIF left in the workspace)
+    "*.sarif",
+]
+
+[default.extend-words]
+# Apple's simulator/device identifier really is UDID, not UUID
+udid = "udid"
+# Domain term in intrada-core: the related-items list on a session entry
+relateds = "relateds"

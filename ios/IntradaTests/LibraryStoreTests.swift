@@ -194,7 +194,7 @@ final class LibraryStoreTests: XCTestCase {
   }
 
   /// Unknown stored enum strings (an older binary reading a newer row) fall back
-  /// to conservative defaults rather than silently mis-categorising (#949).
+  /// to conservative defaults rather than silently miscategorising (#949).
   func testUnknownStoredEnumStringsFallBackToConservativeDefaults() throws {
     let entries =
       #"[{"id":"e1","itemId":"i1","itemTitle":"X","itemType":"klingon","position":0,"durationSecs":0,"status":"quantum","repHistory":["warp"]}]"#

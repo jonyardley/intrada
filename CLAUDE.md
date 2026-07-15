@@ -60,9 +60,10 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 ## Commands
 
 ```bash
-cargo fmt --check          # must pass before commit AND before push (CI runs both)
-cargo test                 # all workspace tests
-cargo clippy               # lint check — must pass before push
+just check                 # fmt-check → lint → test → hygiene; mirrors CI — run before push
+just test                  # nextest + doc tests (CI's exact exclusions)
+just lint                  # clippy -D warnings (CI's exact targets + exclusions)
+just hygiene               # typos + cargo-shear (CI's Security & hygiene job)
 cargo test -p intrada-api  # API tests only
 just ios-fmt               # native app: format Swift sources in place (swift format)
 just ios-fmt-check         # native app: Swift formatting gate (CI runs this too)
@@ -131,9 +132,13 @@ real data. Seed mode (`Event::LoadSampleData`) replaces the model with demo
 items and **skips store hydration**, so don't use it when testing persistence —
 your saved rows are still on disk but won't be read back.
 
-Run `cargo fmt --check` and `cargo clippy -- -D warnings` *locally before pushing* —
-not just before committing. Pushing then watching CI fail wastes a full ~3-minute
-roundtrip per agent or contributor; better to catch the formatting tab here.
+Run `just check` *locally before pushing*, not just before committing. Its
+`fmt-check` / `lint` / `test` / `hygiene` recipes mirror CI's fmt, clippy,
+test, typos and cargo-shear gates with the exact flags and crate exclusions,
+so local green means CI green (cargo-deny/Gitleaks run in CI only); pushing
+then watching CI fail wastes a full ~3-minute roundtrip per agent or
+contributor. Keep the justfile recipes and ci.yml in lockstep when either
+changes.
 Changes under `ios/` additionally need `just ios-fmt-check` (fix with
 `just ios-fmt`); the native-ios CI job enforces it. It covers the hand-written
 trees (`ios/Intrada`, `ios/IntradaTests`, `ios/IntradaUITests`) with the
@@ -143,8 +148,10 @@ is listed in `.git-blame-ignore-revs`; run
 `git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame`
 skips it.
 
-Optional one-time hook install (catches the "pushed onto a merged-PR
-branch and the commits orphaned" pitfall):
+Git hooks install automatically for Claude Code sessions (a `SessionStart`
+hook in `.claude/settings.json` runs the script below), catching the "pushed
+onto a merged-PR branch and the commits orphaned" pitfall. Manual/one-time
+install for non-Claude shells:
 ```bash
 bash scripts/install-git-hooks.sh   # sets core.hooksPath = .githooks
 ```
@@ -178,6 +185,31 @@ Without them set, the build will use defaults and Clerk auth won't work.
 `0.0.0.0:8080` so the iOS simulator can reach it via the host's LAN IP.
 Anyone on your Wi-Fi network can reach it (and the proxied `/api/`) while it's
 running. Don't run `tauri-dev` on public/untrusted Wi-Fi.
+
+## Knowledge graph (graphify)
+
+A graphify knowledge graph of the repo lives in the **main checkout** at
+`graphify-out/` (gitignored; worktrees don't carry it. Find the main checkout
+from any worktree via `git rev-parse --path-format=absolute --git-common-dir`,
+then its parent). Scope is controlled by the committed `.graphifyignore`:
+vendored/minified JS, `specs/_archive/`, `.specify/` and generated schemas are
+excluded. **Never build or update the graph without that file in place**: an
+unscoped run pollutes the god nodes with minified symbols and burns tokens on
+retired docs.
+
+- **Query it first for architecture, cross-document, or spec-archaeology
+  questions** ("what touches persistence across core, specs, and the
+  offline-first invariants?"): from the main checkout root run
+  `graphify query "<question>"`; `graphify path A B` traces how two concepts
+  connect. For symbol-level code navigation use grep/LSP instead; it's faster
+  and always current.
+- **Refresh**: the post-commit/post-checkout hooks in the main checkout do
+  free AST-only code refreshes automatically. After doc-heavy merges (specs/,
+  docs/, CLAUDE.md), run `graphify . --update` from the main checkout;
+  incremental and content-hash cached, so it costs a small fraction of a full
+  build.
+- An empty or weak query result means the graph can't answer it: fall back
+  to grep/LSP; don't trigger a rebuild for one question.
 
 ## Architecture (Non-Negotiables)
 
@@ -307,7 +339,7 @@ the non-negotiables above.
 ### Snapshot test hygiene
 
 The `swift-snapshot-test` references (`ios/IntradaTests/__Snapshots__/**/*.png`)
-are PNGs committed to git and **re-recorded on every intentional UI change** —
+are PNG files committed to git and **re-recorded on every intentional UI change** —
 binaries don't delta-compress, so each re-record adds a *full* copy to history
 forever. Left unmanaged this compounds (a single theme/token sweep re-records
 the whole suite at once). On the free offline tier this is the only quality
@@ -611,6 +643,12 @@ What to test:
   via the test harness (auth-disabled mode gives a fake user).
 - DB write functions: correct rows affected, idempotency, cross-user isolation.
 - Pure functions: edge cases, None/empty inputs.
+
+**iOS test framework policy**: new unit/snapshot test files use **Swift
+Testing** (`import Testing`; swift-snapshot-testing supports it). Migrate
+existing XCTest files only when already touching them, no wholesale rewrite.
+XCUITest (`IntradaUITests`) stays on XCTest: UI tests have no Swift Testing
+equivalent.
 
 When skipping tests, say so explicitly in the PR description with the reason
 (e.g. "requires real HTTP to an external API and we don't have a mock server").

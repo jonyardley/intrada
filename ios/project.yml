@@ -58,7 +58,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         # App icon = the Icon Composer AppIcon.icon bundle (no asset catalog).
-        # actool rasterises back-compat PNGs for iOS 17/18; iOS 26 gets the
+        # actool rasterises back-compat PNG icons for iOS 17/18; iOS 26 gets the
         # layered Liquid Glass rendering.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Custom Info.plist keys (SENTRY_DSN) are dropped by GENERATE_INFOPLIST_FILE —
