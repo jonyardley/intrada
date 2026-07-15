@@ -386,27 +386,6 @@ pub fn validate_link_exercise(
         });
     }
 
-    validate_exercise_target(exercise_id, model, "exercise_id")?;
-
-    if piece.linked_exercise_ids.contains(&exercise_id.to_string()) {
-        return Err(LibraryError::Validation {
-            field: "exercise_id".to_string(),
-            message: "Exercise is already linked to this piece".to_string(),
-        });
-    }
-
-    Ok(())
-}
-
-pub fn validate_scaffold_link_target(exercise_id: &str, model: &Model) -> Result<(), LibraryError> {
-    validate_exercise_target(exercise_id, model, "scaffold")
-}
-
-fn validate_exercise_target(
-    exercise_id: &str,
-    model: &Model,
-    field: &str,
-) -> Result<(), LibraryError> {
     let exercise = model
         .items
         .iter()
@@ -417,8 +396,15 @@ fn validate_exercise_target(
 
     if exercise.kind != ItemKind::Exercise {
         return Err(LibraryError::Validation {
-            field: field.to_string(),
+            field: "exercise_id".to_string(),
             message: "Linked item must be an exercise, not a piece".to_string(),
+        });
+    }
+
+    if piece.linked_exercise_ids.contains(&exercise_id.to_string()) {
+        return Err(LibraryError::Validation {
+            field: "exercise_id".to_string(),
+            message: "Exercise is already linked to this piece".to_string(),
         });
     }
 

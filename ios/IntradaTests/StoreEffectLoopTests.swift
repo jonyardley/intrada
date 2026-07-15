@@ -379,44 +379,6 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
-  /// Real-bridge lesson capture (#1080): AddPieceWithScaffold carries the new
-  /// ScaffoldEntry enum, so drive the actual Swift-to-Rust bincode wire (#846)
-  /// and assert the composite lands: piece + new exercises, linked in order.
-  func testRealBridgeAddPieceWithScaffoldAppliesToViewModel() throws {
-    let bridge = LiveBridge()
-    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Enclosures", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
-    let existingId = try XCTUnwrap(try bridge.view().items.first?.id)
-
-    _ = try bridge.update(
-      .item(
-        .addPieceWithScaffold(
-          piece: CreateItem(
-            title: "Strasbourg / St. Denis", kind: .piece, composer: "Roy Hargrove",
-            key: nil, modality: nil, tempo: nil, notes: nil, tags: []),
-          scaffold: [
-            .new(
-              CreateItem(
-                title: "Learn the melody", kind: .exercise, composer: nil, key: nil,
-                modality: nil, tempo: nil, notes: nil, tags: [])),
-            .existing(id: existingId),
-          ])))
-
-    let after = try bridge.view()
-    XCTAssertNil(after.error, "composite should apply (err=\(after.error ?? "nil"))")
-    XCTAssertEqual(after.items.count, 3, "existing exercise + new exercise + piece")
-    let piece = try XCTUnwrap(after.items.first { $0.title == "Strasbourg / St. Denis" })
-    let melodyId = try XCTUnwrap(after.items.first { $0.title == "Learn the melody" }?.id)
-    XCTAssertEqual(
-      piece.linkedExercises.map(\.id), [melodyId, existingId],
-      "scaffold order preserved across the real bridge")
-  }
-
   /// Real-bridge priority toggle (#763): the star sends an UpdateItem with every
   /// optional field "no change" (outer nil) and only `priority` set — a different
   /// bincode shape than the full edit, so round-trip it through the live bridge to
@@ -725,7 +687,6 @@ private struct TestError: Error {}
 private struct FailingStore: ItemStore {
   func loadItems() throws -> [Item] { throw TestError() }
   func save(_ item: Item) throws { throw TestError() }
-  func save(_ items: [Item]) throws { throw TestError() }
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
