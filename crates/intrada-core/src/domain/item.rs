@@ -346,6 +346,20 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             save_or_put(model, piece)
         }
         ItemEvent::AddPieceWithScaffold { piece, scaffold } => {
+            if !model.local_first {
+                // Online items use the temp-id dance (server-assigned ids), which
+                // can't remap a piece's linked_exercise_ids minted client-side —
+                // the composite is local-first-only for now (#1080).
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "scaffold".to_string(),
+                        message: "Adding a lesson is not available online yet".to_string(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            }
+
             // Validate everything before mutating anything — the event is
             // atomic in the model: on any invalid part, nothing is applied.
             let piece_input = validation::normalize_create_item(piece);
@@ -393,20 +407,6 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                         entries.push(ScaffoldEntry::Existing { id });
                     }
                 }
-            }
-
-            if !model.local_first {
-                // Online items use the temp-id dance (server-assigned ids), which
-                // can't remap a piece's linked_exercise_ids minted client-side —
-                // the composite is local-first-only for now (#1080).
-                model.last_error = Some(
-                    LibraryError::Validation {
-                        field: "scaffold".to_string(),
-                        message: "Adding a lesson is not available online yet".to_string(),
-                    }
-                    .to_string(),
-                );
-                return crux_core::render::render();
             }
 
             let now = chrono::Utc::now();
@@ -462,13 +462,15 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             model.last_error = None;
             model.record_success();
 
-            let mut cmds: Vec<Command<Effect, Event>> = new_items
-                .into_iter()
-                .map(crate::persistence::save_item)
-                .collect();
-            cmds.push(crate::persistence::save_item(piece_item));
-            cmds.push(crux_core::render::render());
-            Command::all(cmds)
+            // One SaveItems batch (shell executes it in a single transaction),
+            // exercises before the piece — the composite can't half-land on
+            // disk and the piece never exists without its scaffold (#1080).
+            let mut to_save = new_items;
+            to_save.push(piece_item);
+            Command::all([
+                crate::persistence::save_items(to_save),
+                crux_core::render::render(),
+            ])
         }
     }
 }
@@ -1006,7 +1008,7 @@ mod tests {
     }
 
     #[test]
-    fn add_piece_with_scaffold_local_first_saves_all_items_piece_last_no_http() {
+    fn add_piece_with_scaffold_local_first_saves_one_transactional_batch_no_http() {
         let mut model = model_with_piece_and_exercise();
 
         let mut cmd = send_cmd(
@@ -1022,17 +1024,21 @@ mod tests {
             },
         );
 
-        let mut saved_ids: Vec<String> = vec![];
+        let mut batches: Vec<Vec<String>> = vec![];
         let mut saw_http = false;
+        let mut saw_single_save = false;
         for effect in cmd.effects() {
             match effect {
                 crate::app::Effect::Http(_) => saw_http = true,
-                crate::app::Effect::Persistence(req) => {
-                    if let crate::persistence::PersistenceOperation::SaveItem(item) = &req.operation
-                    {
-                        saved_ids.push(item.id.clone());
+                crate::app::Effect::Persistence(req) => match &req.operation {
+                    crate::persistence::PersistenceOperation::SaveItems(items) => {
+                        batches.push(items.iter().map(|i| i.id.clone()).collect());
                     }
-                }
+                    crate::persistence::PersistenceOperation::SaveItem(_) => {
+                        saw_single_save = true;
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -1041,6 +1047,13 @@ mod tests {
             !saw_http,
             "local-first path must be HTTP-free (invariant 1)"
         );
+        assert!(
+            !saw_single_save,
+            "composite must not use independent SaveItem ops — a partial \
+             failure would land a piece with dangling links"
+        );
+        assert_eq!(batches.len(), 1, "exactly one all-or-nothing batch");
+
         let piece_id = model
             .items
             .iter()
@@ -1048,21 +1061,80 @@ mod tests {
             .unwrap()
             .id
             .clone();
-        assert_eq!(saved_ids.len(), 2, "one new exercise + the piece");
+        let melody_id = model
+            .items
+            .iter()
+            .find(|i| i.title == "Learn the melody")
+            .unwrap()
+            .id
+            .clone();
         assert_eq!(
-            saved_ids.last(),
-            Some(&piece_id),
-            "piece saved after its exercises"
+            batches[0],
+            vec![melody_id, piece_id],
+            "new exercises first, piece last; already-persisted Existing \
+             entries are not re-saved"
         );
     }
 
-    // FFI bincode round-trip (#846): mirrors `assert_round_trips` in types.rs —
-    // ScaffoldEntry is a new bridge-crossing type.
+    #[test]
+    fn add_piece_with_scaffold_empty_scaffold_creates_bare_piece_locally() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .expect("bare piece created");
+        assert!(piece.linked_exercise_ids.is_empty());
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_allows_duplicate_new_titles() {
+        // Same policy as ItemEvent::Add: titles are not unique. Two identical
+        // New entries are two distinct exercises (A3's typeahead is the UX
+        // guard against accidental duplicates, not the domain layer).
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![
+                    ScaffoldEntry::New(create_exercise_input("Enclosures")),
+                    ScaffoldEntry::New(create_exercise_input("Enclosures")),
+                ],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        let dupes: Vec<&Item> = model
+            .items
+            .iter()
+            .filter(|i| i.title == "Enclosures")
+            .collect();
+        assert_eq!(dupes.len(), 2);
+        assert_ne!(dupes[0].id, dupes[1].id);
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .unwrap();
+        assert_eq!(piece.linked_exercise_ids.len(), 2);
+    }
+
+    // FFI bincode round-trip (#846) — ScaffoldEntry is a new bridge-crossing type.
     #[test]
     fn add_piece_with_scaffold_event_round_trips_on_ffi_bincode_wire() {
-        use crux_core::bridge::{BincodeFfiFormat, FfiFormat};
-
-        let event = ItemEvent::AddPieceWithScaffold {
+        crate::domain::types::assert_round_trips(ItemEvent::AddPieceWithScaffold {
             piece: create_piece_input("Strasbourg / St. Denis"),
             scaffold: vec![
                 ScaffoldEntry::New(create_exercise_input("Learn the melody")),
@@ -1070,12 +1142,6 @@ mod tests {
                     id: "ex-1".to_string(),
                 },
             ],
-        };
-
-        let mut bytes = Vec::new();
-        BincodeFfiFormat::serialize(&mut bytes, &event).expect("serialize");
-        let back: ItemEvent =
-            BincodeFfiFormat::deserialize(&bytes).expect("must decode on the FFI wire (#846)");
-        assert_eq!(event, back, "round-trip changed the value");
+        });
     }
 }

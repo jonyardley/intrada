@@ -386,20 +386,7 @@ pub fn validate_link_exercise(
         });
     }
 
-    let exercise = model
-        .items
-        .iter()
-        .find(|i| i.id == exercise_id)
-        .ok_or_else(|| LibraryError::NotFound {
-            id: exercise_id.to_string(),
-        })?;
-
-    if exercise.kind != ItemKind::Exercise {
-        return Err(LibraryError::Validation {
-            field: "exercise_id".to_string(),
-            message: "Linked item must be an exercise, not a piece".to_string(),
-        });
-    }
+    validate_exercise_target(exercise_id, model, "exercise_id")?;
 
     if piece.linked_exercise_ids.contains(&exercise_id.to_string()) {
         return Err(LibraryError::Validation {
@@ -412,6 +399,14 @@ pub fn validate_link_exercise(
 }
 
 pub fn validate_scaffold_link_target(exercise_id: &str, model: &Model) -> Result<(), LibraryError> {
+    validate_exercise_target(exercise_id, model, "scaffold")
+}
+
+fn validate_exercise_target(
+    exercise_id: &str,
+    model: &Model,
+    field: &str,
+) -> Result<(), LibraryError> {
     let exercise = model
         .items
         .iter()
@@ -422,7 +417,7 @@ pub fn validate_scaffold_link_target(exercise_id: &str, model: &Model) -> Result
 
     if exercise.kind != ItemKind::Exercise {
         return Err(LibraryError::Validation {
-            field: "scaffold".to_string(),
+            field: field.to_string(),
             message: "Linked item must be an exercise, not a piece".to_string(),
         });
     }
