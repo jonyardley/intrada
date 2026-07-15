@@ -815,7 +815,7 @@ jobs:
           bash scripts/check-comment-density.sh
 
   security:
-    name: Security (cargo-deny + Gitleaks)
+    name: Security & hygiene (cargo-deny, Gitleaks, typos, cargo-shear)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -832,6 +832,19 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: typos,cargo-shear
+      # ── typos ──────────────────────────────────────────────────────────
+      # Source-tree spell check (docs-heavy repo; also catches identifier
+      # typos clippy/swift-format never will). Project words: _typos.toml.
+      - name: Spell check (typos)
+        run: typos
+      # ── cargo-shear ────────────────────────────────────────────────────
+      # Unused workspace dependencies: the paused crates (intrada-web,
+      # intrada-mobile) accumulate dead deps that inflate every CI build.
+      - name: Unused dependencies (cargo-shear)
+        run: cargo shear
 
   api-docker-build:
     # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered

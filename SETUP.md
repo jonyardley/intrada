@@ -337,9 +337,20 @@ Local parity (after the one-time setup): `just testflight`.
 
 ### Prerequisites
 
-- Rust stable (1.75+)
-- [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
-- [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
+The dev toolchain (just, xcodegen, oxipng, Ruby for fastlane, pinned cargo
+tools like cargo-swift 0.9.0) is declared in `mise.toml`. Install
+[mise](https://mise.jdx.dev) once, then let it provision everything:
+
+```bash
+brew install mise
+mise install
+```
+
+Managed outside mise:
+
+- Rust stable (1.75+) via rustup
+- [Trunk](https://trunkrs.dev/) (`cargo install trunk`): paused web shell only
+- CocoaPods (`brew install cocoapods`): paused Tauri shell only
 
 ### One-time git config
 

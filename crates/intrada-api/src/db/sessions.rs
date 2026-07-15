@@ -117,7 +117,7 @@ fn parse_rep_history(json_str: &str) -> Result<Vec<RepAction>, ApiError> {
         .collect()
 }
 
-/// Column list for setlist_entries SELECTs.
+/// Column list for setlist_entries SELECT queries.
 const ENTRY_COLUMNS: &str = "id, item_id, item_title, item_type, position, duration_secs, status, notes, score, intention, rep_target, rep_count, rep_target_reached, rep_history, planned_duration_secs, achieved_tempo";
 
 /// Subquery to select session IDs for a user. Shared between the parent query

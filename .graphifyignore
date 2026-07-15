@@ -1,0 +1,23 @@
+# Scope for the graphify knowledge graph (gitignore syntax; graphify also
+# honours .gitignore). Keeps vendored/minified/generated/archived files out of
+# the graph; without these the god nodes are minified Clerk/Sentry symbols.
+
+# Vendored / minified JS
+crates/intrada-web/static/clerk/
+crates/intrada-web/static/sentry/
+design/support.js
+worker.js
+
+# Design-system exports (large generated HTML) + image assets
+design/*.dc.html
+design/intrada-design-system.html
+design/assets/
+ios/AppIcon-exports/
+
+# Retired / archived docs: reference only, they drown the live doc graph
+specs/_archive/
+.specify/
+docs/superpowers/
+
+# Generated Tauri permission schemas
+crates/intrada-mobile/plugins/*/permissions/schemas/

@@ -1,13 +1,23 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/install-git-hooks.sh >/dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$f\" >/dev/null 2>&1 ;; *.swift) command -v swift-format >/dev/null 2>&1 && swift-format format -i \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *ios/generated/*) ;; *.rs) command -v rustfmt >/dev/null 2>&1 && rustfmt --edition 2021 \"$f\" >/dev/null 2>&1 ;; *.swift) swift format --in-place \"$f\" >/dev/null 2>&1 ;; esac; exit 0"
           }
         ]
       }

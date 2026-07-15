@@ -109,7 +109,7 @@ gesture (e.g. pull-to-reveal) never fired.
 
 Git worktrees and the main checkout are **isolated on disk** — separate working
 trees, DerivedData (keyed by project *path*), `ios/generated` bindings, cargo
-`target/`, and snapshot PNGs. Building or recording in one never overwrites the
+`target/`, and snapshot PNG files. Building or recording in one never overwrites the
 other's files.
 
 **The simulator is the exception.** The iOS Simulator and

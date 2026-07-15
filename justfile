@@ -46,23 +46,26 @@ check-fast:
 check-web:
     cargo check -p intrada-web --target wasm32-unknown-unknown
 
-# Run all tests
+# Run all tests: nextest + doc tests, same exclusions as CI's `test` job.
+# Local green must mean CI green: keep these flags in lockstep with ci.yml.
 test:
-    cargo test --workspace
+    cargo nextest run --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+    cargo test --doc --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
 
-# Run clippy with -D warnings (matches CI)
+# Clippy with -D warnings: same targets + exclusions as CI's `clippy` job.
 lint:
-    cargo clippy --workspace -- -D warnings
+    cargo clippy --workspace --all-targets --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session -- -D warnings
 
 # Format code
 fmt:
     cargo fmt --all
 
-# Check everything (fmt → clippy → test, cheapest first)
-check:
+# Format check only (what CI's fmt job runs)
+fmt-check:
     cargo fmt --all -- --check
-    cargo clippy --workspace -- -D warnings
-    cargo test --workspace
+
+# Check everything (fmt → clippy → test, cheapest first)
+check: fmt-check lint test
 
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check
@@ -252,7 +255,7 @@ tauri-dev-device:
     echo "  ✓ trunk ready"
     echo "Starting Tauri iOS dev (device)..."
     # --no-dev-server-wait: we already verified trunk above, skip Tauri's
-    # own 180 s poll (which also mis-resolves the port to :80).
+    # own 180 s poll (which also resolves the port to :80, incorrectly).
     # --config overrides devUrl with the LAN IP so the device WebView loads
     # the correct address (localhost is unreachable from the physical device).
     cd crates/intrada-mobile/src-tauri && cargo tauri ios dev \

@@ -1,0 +1,12 @@
+# Dev toolchain, pinned in one place. Run `mise install` after cloning (SETUP.md §7).
+# Rust itself stays with rustup; CocoaPods (paused Tauri shell only) stays with brew.
+[tools]
+just = "1"
+xcodegen = "2"
+oxipng = "10"
+# fastlane (TestFlight lane) needs Ruby >= 3; system Ruby 2.6 is too old.
+ruby = "3.4"
+"cargo:cargo-nextest" = "0.9"
+# Pinned exactly: cargo-swift 0.9.0's bundled uniffi-bindgen matches our
+# uniffi 0.29.4 runtime contract (see justfile ios-package). Bump in lockstep.
+"cargo:cargo-swift" = "0.9.0"
