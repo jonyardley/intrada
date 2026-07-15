@@ -44,12 +44,10 @@ enum TempoFormatting {
 }
 
 extension ExerciseContextView {
-  /// The piece's name, or the standalone bucket's label (#1087 B2).
   var contextTitle: String { piece?.title ?? "On its own" }
 
-  /// Composer/sessions/date meta for a "By piece" row: e.g.
   /// "Beethoven · 3 sessions · Jul 8", or "Removed · 1 session · Jun 28" for a
-  /// since-deleted piece (#1093, 2a). Composer is dropped when the piece is gone.
+  /// since-deleted piece (#1093, 2a) — composer dropped once the piece is gone.
   func metaLine(locale: Locale, calendar: Calendar) -> String {
     var parts: [String] = []
     if pieceRemoved {

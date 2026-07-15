@@ -542,9 +542,6 @@ private struct LinkedExerciseRow: View {
   }
 }
 
-/// A "By piece" row on the exercise detail: the exercise's score, sessions, and
-/// date in one derived context — a linked piece, a since-removed piece, or the
-/// "On its own" bucket (#1087 B2).
 private struct ByPieceRow: View {
   let context: ExerciseContextView
   let locale: Locale

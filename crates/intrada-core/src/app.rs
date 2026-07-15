@@ -4457,16 +4457,13 @@ mod tests {
         assert_eq!(ex1.exercise_contexts[0].latest_score, Some(5));
     }
 
-    /// #1093 (1a): a piece renamed since practice shows its *current* title (and
-    /// composer), not the practice-time snapshot — the live item wins while it
-    /// exists, and `piece_removed` stays false.
+    // #1093 (1a): a live rename shows through; the snapshot title is only a
+    // fallback for a since-deleted piece.
     #[test]
     fn test_exercise_context_prefers_live_title_over_snapshot() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            // Library now calls it "Sonata No. 14"; the session was recorded when
-            // it was just "Sonata".
             items: vec![
                 ctx_item("P", "Sonata No. 14", ItemKind::Piece, Some("Beethoven")),
                 ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
@@ -4495,15 +4492,13 @@ mod tests {
         assert!(!ctx.piece_removed, "piece still exists");
     }
 
-    /// #1093 (2a): a piece deleted since practice keeps its context (the sessions
-    /// are real history) with the snapshot title and no composer, flagged
-    /// `piece_removed` so the shell renders it as retired, non-tappable history.
+    // #1093 (2a): a deleted piece's context is kept (real history) with the
+    // snapshot title, no composer, and `piece_removed` set — not filtered out.
     #[test]
     fn test_exercise_context_keeps_removed_piece_as_snapshot_history() {
         let app = Intrada;
         let now = chrono::Utc::now();
         let model = Model {
-            // Only the exercise survives; piece "P" was deleted.
             items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
             sessions: vec![ctx_session(
                 "s1",
@@ -4536,9 +4531,8 @@ mod tests {
         assert_eq!(ctx.latest_score, Some(5), "its history still counts");
     }
 
-    /// #1087 B2: a piece's linked-exercise row carries the exercise's score *in
-    /// this piece's context*, not its flat overall score. Same drill scored 7
-    /// with the piece and 9 standalone → the piece card shows 7.
+    // #1087 B2: the piece's linked-exercise row scores the exercise *on this
+    // piece* — 7 with the piece must win over a later, higher standalone 9.
     #[test]
     fn test_linked_exercise_carries_per_piece_context_score() {
         let app = Intrada;
@@ -4549,7 +4543,6 @@ mod tests {
         let model = Model {
             items: vec![piece, ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
             sessions: vec![
-                // With the piece: scored 7.
                 ctx_session(
                     "s1",
                     earlier,
@@ -4558,7 +4551,6 @@ mod tests {
                         ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
                     ],
                 ),
-                // Standalone, later: scored 9 — the higher, more recent overall.
                 ctx_session(
                     "s2",
                     later,
