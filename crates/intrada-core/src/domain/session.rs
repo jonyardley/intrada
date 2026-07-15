@@ -5034,4 +5034,32 @@ mod tests {
             panic!("Expected Summary state");
         }
     }
+
+    /// `group_id` rides `SetlistEntry` across the bincode FFI wire (in the
+    /// persisted `PracticeSession` and the ViewModel). It is the sole input to
+    /// the B1 context derivation, so a silent drop on the wire would erase every
+    /// piece context. Guard the whole entry, with `group_id` set, against the
+    /// #846 class.
+    #[test]
+    fn setlist_entry_with_group_id_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "ex-1".to_string(),
+            item_title: "Scales".to_string(),
+            item_type: ItemKind::Exercise,
+            position: 0,
+            duration_secs: 300,
+            status: EntryStatus::Completed,
+            notes: Some("warm up".to_string()),
+            score: Some(6),
+            intention: Some("even tone".to_string()),
+            rep_target: Some(5),
+            rep_count: Some(5),
+            rep_target_reached: Some(true),
+            rep_history: Some(vec![RepAction::Success, RepAction::Missed]),
+            planned_duration_secs: Some(300),
+            achieved_tempo: Some(96),
+            group_id: Some("g1".to_string()),
+        });
+    }
 }
