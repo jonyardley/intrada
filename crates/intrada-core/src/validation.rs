@@ -411,6 +411,25 @@ pub fn validate_link_exercise(
     Ok(())
 }
 
+pub fn validate_scaffold_link_target(exercise_id: &str, model: &Model) -> Result<(), LibraryError> {
+    let exercise = model
+        .items
+        .iter()
+        .find(|i| i.id == exercise_id)
+        .ok_or_else(|| LibraryError::NotFound {
+            id: exercise_id.to_string(),
+        })?;
+
+    if exercise.kind != ItemKind::Exercise {
+        return Err(LibraryError::Validation {
+            field: "scaffold".to_string(),
+            message: "Linked item must be an exercise, not a piece".to_string(),
+        });
+    }
+
+    Ok(())
+}
+
 pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {
