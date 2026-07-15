@@ -343,7 +343,7 @@
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil),
         ],
-        linkedFromPieces: [])
+        linkedFromPieces: [], exerciseContexts: [])
     }
 
     static var previewExercise: LibraryItemView {
@@ -352,7 +352,8 @@
         subtitle: "Charles-Louis Hanon",
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+        exerciseContexts: [])
     }
 
     static var previewDetail: LibraryItemView {
@@ -363,7 +364,7 @@
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [])
+        linkedFromPieces: [], exerciseContexts: [])
     }
 
     static var previewMinimal: LibraryItemView {
@@ -371,7 +372,8 @@
         id: "piece-2", itemType: .piece, title: "Prelude in C", subtitle: "",
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [])
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+        exerciseContexts: [])
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -407,7 +409,7 @@
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
             practice: nil),
         ],
-        linkedFromPieces: [])
+        linkedFromPieces: [], exerciseContexts: [])
     }
 
     /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
@@ -429,7 +431,7 @@
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ])
+        ], exerciseContexts: [])
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -440,7 +442,7 @@
         tempoMarking: "Lent et douloureux",
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
-        linkedExercises: [], linkedFromPieces: [])
+        linkedExercises: [], linkedFromPieces: [], exerciseContexts: [])
     }
   }
 

@@ -387,6 +387,10 @@ impl Intrada {
             }
         }
 
+        // Derived per-exercise practice contexts (piece + "on its own"), keyed
+        // by exercise id. Built once over sessions, attached to exercises below.
+        let contexts_by_exercise = build_exercise_contexts(&model.sessions, &item_index);
+
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for item in &model.items {
@@ -428,6 +432,15 @@ impl Intrada {
                 vec![]
             };
 
+            let exercise_contexts = if item.kind == ItemKind::Exercise {
+                contexts_by_exercise
+                    .get(item.id.as_str())
+                    .cloned()
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.clone(),
@@ -451,6 +464,7 @@ impl Intrada {
                 priority: item.priority,
                 linked_exercises,
                 linked_from_pieces,
+                exercise_contexts,
             });
         }
 
@@ -748,6 +762,111 @@ pub(crate) fn build_practice_summaries(
             },
         )
         .collect()
+}
+
+/// Derive, per exercise, the piece/standalone contexts it has been practised
+/// in across `sessions` (#1087 B1). For each session entry that is an exercise,
+/// the context is the piece sharing its block `group_id` in that same session,
+/// or the "On its own" bucket (`piece: None`) when the entry is ungrouped or its
+/// block carries no piece. Rollup v1 keeps the latest recorded score, distinct
+/// session count, and most-recent date per context.
+fn build_exercise_contexts(
+    sessions: &[PracticeSession],
+    item_index: &std::collections::HashMap<&str, &crate::domain::item::Item>,
+) -> std::collections::HashMap<String, Vec<crate::model::ExerciseContextView>> {
+    use crate::model::{ExerciseContextView, PieceRefView};
+    use std::collections::{HashMap, HashSet};
+
+    // (exercise_id, piece_id | None) → accumulated rollup for that context.
+    struct Acc {
+        piece_title: Option<String>,
+        session_ids: HashSet<String>,
+        last_practiced_at: Option<String>,
+        // (date, score) of the most recent scored entry in this context.
+        latest_scored: Option<(String, u8)>,
+    }
+
+    let mut acc: HashMap<(String, Option<String>), Acc> = HashMap::new();
+
+    for session in sessions {
+        let date = session.started_at.to_rfc3339();
+        for entry in &session.entries {
+            if entry.item_type != ItemKind::Exercise {
+                continue;
+            }
+            // Context = the piece sharing this entry's block in the same
+            // session; ungrouped or piece-less blocks fall to the None bucket.
+            let piece = entry.group_id.as_deref().and_then(|g| {
+                session
+                    .entries
+                    .iter()
+                    .find(|e| e.item_type == ItemKind::Piece && e.group_id.as_deref() == Some(g))
+            });
+            let piece_id = piece.map(|p| p.item_id.clone());
+
+            let record = acc
+                .entry((entry.item_id.clone(), piece_id))
+                .or_insert_with(|| Acc {
+                    piece_title: None,
+                    session_ids: HashSet::new(),
+                    last_practiced_at: None,
+                    latest_scored: None,
+                });
+            if let Some(p) = piece {
+                record.piece_title = Some(p.item_title.clone());
+            }
+            record.session_ids.insert(session.id.clone());
+            if record
+                .last_practiced_at
+                .as_ref()
+                .map_or(true, |cur| date > *cur)
+            {
+                record.last_practiced_at = Some(date.clone());
+            }
+            if let Some(score) = entry.score {
+                if record
+                    .latest_scored
+                    .as_ref()
+                    .map_or(true, |(d, _)| date > *d)
+                {
+                    record.latest_scored = Some((date.clone(), score));
+                }
+            }
+        }
+    }
+
+    let mut by_exercise: HashMap<String, Vec<ExerciseContextView>> = HashMap::new();
+    for ((exercise_id, piece_id), record) in acc {
+        let piece = piece_id.map(|id| PieceRefView {
+            title: record.piece_title.unwrap_or_default(),
+            subtitle: item_index.get(id.as_str()).and_then(|p| p.composer.clone()),
+            id,
+        });
+        by_exercise
+            .entry(exercise_id)
+            .or_default()
+            .push(ExerciseContextView {
+                piece,
+                latest_score: record.latest_scored.map(|(_, s)| s),
+                session_count: record.session_ids.len(),
+                last_practiced_at: record.last_practiced_at,
+            });
+    }
+
+    // Deterministic order: piece contexts first (most-recent practice first,
+    // tie-broken by piece id), then the "On its own" bucket last.
+    for contexts in by_exercise.values_mut() {
+        contexts.sort_by(|a, b| match (&a.piece, &b.piece) {
+            (Some(x), Some(y)) => b
+                .last_practiced_at
+                .cmp(&a.last_practiced_at)
+                .then_with(|| x.id.cmp(&y.id)),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+    }
+    by_exercise
 }
 
 fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
@@ -4122,6 +4241,253 @@ mod tests {
         let ex3_view = vm.items.iter().find(|i| i.id == "ex-3").unwrap();
         assert!(ex3_view.linked_exercises.is_empty());
         assert!(ex3_view.linked_from_pieces.is_empty());
+    }
+
+    // ── Exercise context derivation (#1087 B1) ───────────────────────────
+
+    fn ctx_entry(
+        item_id: &str,
+        title: &str,
+        kind: ItemKind,
+        score: Option<u8>,
+        group: Option<&str>,
+    ) -> SetlistEntry {
+        SetlistEntry {
+            id: format!("{item_id}-{}", group.unwrap_or("solo")),
+            item_id: item_id.to_string(),
+            item_title: title.to_string(),
+            item_type: kind,
+            position: 0,
+            duration_secs: 300,
+            status: EntryStatus::Completed,
+            notes: None,
+            score,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: group.map(String::from),
+        }
+    }
+
+    fn ctx_session(
+        id: &str,
+        started: chrono::DateTime<chrono::Utc>,
+        entries: Vec<SetlistEntry>,
+    ) -> PracticeSession {
+        PracticeSession {
+            id: id.to_string(),
+            started_at: started,
+            completed_at: started,
+            total_duration_secs: 300,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            session_score: None,
+            entries,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
+        }
+    }
+
+    fn ctx_item(id: &str, title: &str, kind: ItemKind, composer: Option<&str>) -> Item {
+        let now = chrono::Utc::now();
+        Item {
+            id: id.to_string(),
+            title: title.to_string(),
+            kind,
+            composer: composer.map(String::from),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec![],
+            priority: false,
+        }
+    }
+
+    /// The core B1 derivation: an exercise practised in a piece's block twice
+    /// and standalone once yields two contexts — the piece (latest score, count,
+    /// date rolled up) then the "On its own" bucket last.
+    #[test]
+    fn test_exercise_contexts_derive_piece_and_on_its_own() {
+        let app = Intrada;
+        let d1 = chrono::Utc::now() - chrono::Duration::days(5);
+        let d2 = chrono::Utc::now() - chrono::Duration::days(3);
+        let d3 = chrono::Utc::now() - chrono::Duration::days(1);
+
+        let model = Model {
+            items: vec![
+                ctx_item("P", "Sonata", ItemKind::Piece, Some("Beethoven")),
+                ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+            ],
+            sessions: vec![
+                // s1 (earliest): ex-1 scored 4 in block g1 with piece P.
+                ctx_session(
+                    "s1",
+                    d1,
+                    vec![
+                        ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(4), Some("g1")),
+                        ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+                    ],
+                ),
+                // s2 (middle): ex-1 scored 6 again in a P block.
+                ctx_session(
+                    "s2",
+                    d2,
+                    vec![
+                        ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(6), Some("g2")),
+                        ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g2")),
+                    ],
+                ),
+                // s3 (latest): ex-1 scored 8 standalone.
+                ctx_session(
+                    "s3",
+                    d3,
+                    vec![ctx_entry(
+                        "ex-1",
+                        "Scales",
+                        ItemKind::Exercise,
+                        Some(8),
+                        None,
+                    )],
+                ),
+            ],
+            ..Default::default()
+        };
+
+        let vm = app.view(&model);
+        let ex1 = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex1.exercise_contexts.len(), 2, "piece + on-its-own");
+
+        let piece_ctx = &ex1.exercise_contexts[0];
+        let piece = piece_ctx.piece.as_ref().expect("piece context first");
+        assert_eq!(piece.id, "P");
+        assert_eq!(piece.title, "Sonata");
+        assert_eq!(
+            piece.subtitle.as_deref(),
+            Some("Beethoven"),
+            "composer live"
+        );
+        assert_eq!(
+            piece_ctx.latest_score,
+            Some(6),
+            "latest scored in P is d2's 6"
+        );
+        assert_eq!(piece_ctx.session_count, 2);
+        assert_eq!(piece_ctx.last_practiced_at, Some(d2.to_rfc3339()));
+
+        let solo = &ex1.exercise_contexts[1];
+        assert!(solo.piece.is_none(), "'On its own' bucket has no piece");
+        assert_eq!(solo.latest_score, Some(8));
+        assert_eq!(solo.session_count, 1);
+        assert_eq!(solo.last_practiced_at, Some(d3.to_rfc3339()));
+
+        // Pieces themselves carry no contexts.
+        let piece_view = vm.items.iter().find(|i| i.id == "P").unwrap();
+        assert!(piece_view.exercise_contexts.is_empty());
+    }
+
+    /// A grouped run with no piece entry (a dissolved block) falls into the
+    /// "On its own" bucket, not a phantom piece context.
+    #[test]
+    fn test_exercise_contexts_grouped_without_piece_is_on_its_own() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let model = Model {
+            items: vec![ctx_item("ex-1", "Scales", ItemKind::Exercise, None)],
+            sessions: vec![ctx_session(
+                "s1",
+                now,
+                vec![ctx_entry(
+                    "ex-1",
+                    "Scales",
+                    ItemKind::Exercise,
+                    Some(5),
+                    Some("orphan-group"),
+                )],
+            )],
+            ..Default::default()
+        };
+
+        let ex1 = app
+            .view(&model)
+            .items
+            .into_iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap();
+        assert_eq!(ex1.exercise_contexts.len(), 1);
+        assert!(ex1.exercise_contexts[0].piece.is_none());
+        assert_eq!(ex1.exercise_contexts[0].latest_score, Some(5));
+    }
+
+    /// Invariant 6: the derivation is identical whether sessions arrive via the
+    /// online `SessionsLoaded` path or the local-first `SessionsStoreLoaded`
+    /// persistence path — it's a pure projection over `model.sessions`.
+    #[test]
+    fn test_exercise_contexts_identical_in_both_modes() {
+        let app = Intrada;
+        let now = chrono::Utc::now();
+        let items = vec![
+            ctx_item("P", "Sonata", ItemKind::Piece, None),
+            ctx_item("ex-1", "Scales", ItemKind::Exercise, None),
+        ];
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![
+                ctx_entry("ex-1", "Scales", ItemKind::Exercise, Some(7), Some("g1")),
+                ctx_entry("P", "Sonata", ItemKind::Piece, None, Some("g1")),
+            ],
+        )];
+
+        // Online: local_first stays false, sessions arrive via SessionsLoaded.
+        let mut online = Model::test_default();
+        online.items = items.clone();
+        let _ = app.update(
+            Event::SessionsLoaded {
+                sessions: sessions.clone(),
+            },
+            &mut online,
+        );
+        let online_ctx = app
+            .view(&online)
+            .items
+            .into_iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .exercise_contexts;
+
+        // Local-first: sessions arrive via the persistence store.
+        let mut local = Model::test_default();
+        local.local_first = true;
+        local.items = items;
+        let _ = app.update(
+            Event::SessionsStoreLoaded(PersistenceOutput::Sessions(sessions)),
+            &mut local,
+        );
+        let local_ctx = app
+            .view(&local)
+            .items
+            .into_iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .exercise_contexts;
+
+        assert_eq!(online_ctx.len(), 1);
+        assert_eq!(online_ctx[0].piece.as_ref().unwrap().id, "P");
+        assert_eq!(online_ctx[0].latest_score, Some(7));
+        assert_eq!(
+            online_ctx, local_ctx,
+            "context derivation must not depend on load path (invariant 6)"
+        );
     }
 
     #[test]

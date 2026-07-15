@@ -569,12 +569,14 @@ final class ScreenSnapshotTests: XCTestCase {
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+          exerciseContexts: []),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+          exerciseContexts: []),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })
@@ -591,12 +593,14 @@ final class ScreenSnapshotTests: XCTestCase {
           id: "exercise-2", itemType: .exercise, title: "Db Major Scale", subtitle: "",
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+          exerciseContexts: []),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
-          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: []),
+          latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+          exerciseContexts: []),
       ],
       linkedIds: ["exercise-1", "exercise-3"],
       onApply: { _ in })
