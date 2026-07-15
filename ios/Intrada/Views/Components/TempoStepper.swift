@@ -1,26 +1,16 @@
 import SwiftUI
 
-/// Achieved-tempo control for the hand-off reflection sheet: two 44×44 step
-/// buttons flanking a large tabular BPM readout. A stepper, not a numeric
-/// field, so logging tempo never summons a keyboard mid-sheet; ±2 BPM per tap
-/// covers the practical range in a few taps either way. Prefilled at the
-/// item's target — untouched reads as "played at target" (design/briefs/
-/// 2026-07-reflection-and-narrative.md, DECISIONS.md surface 2).
+/// Stepper (not a numeric field, to avoid a keyboard mid-sheet) for logging
+/// achieved tempo on the hand-off reflection sheet.
 struct TempoStepper: View {
   @Binding var value: Int
 
-  /// The UI-designed range (DECISIONS.md surface 2). Narrower than the
-  /// core's 1–400 BPM validation by design — a target outside this range
-  /// (e.g. a Presto marking) is clamped on entry via `clamp(_:)` rather
-  /// than widening the control past what fits the sheet.
+  /// UI range (DECISIONS.md surface 2) — narrower than the core's 1–400 BPM
+  /// validation; out-of-range targets are clamped via `clamp(_:)`.
   static let range = 40...208
   static let step = 2
 
-  /// Symmetric clamp: always moves an out-of-range value *toward* the
-  /// range, never away from it (a plain `min`/`max` pair applied
-  /// one-sided would let an increment on a below-range value overshoot
-  /// further below, or a decrement on an above-range value overshoot
-  /// further above).
+  /// Moves an out-of-range value toward the range, never past it further.
   static func clamp(_ value: Int) -> Int {
     min(range.upperBound, max(range.lowerBound, value))
   }
@@ -55,9 +45,8 @@ struct TempoStepper: View {
     }
   }
 
-  // The parent's `.accessibilityElement(children: .ignore)` already removes
-  // these from the accessibility tree — no per-button label/hidden needed
-  // (matches `ScoreSelector`'s pattern).
+  // Parent's `.accessibilityElement(children: .ignore)` already hides these
+  // (matches `ScoreSelector`'s pattern) — no per-button label needed.
   private func stepButton(systemImage: String, action: @escaping () -> Void)
     -> some View
   {
