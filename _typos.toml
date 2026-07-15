@@ -20,6 +20,8 @@ extend-exclude = [
     "docs/superpowers/",
     # Vendored JS
     "crates/intrada-web/static/",
+    # Generated scan artefacts (e.g. gitleaks/clippy SARIF left in the workspace)
+    "*.sarif",
 ]
 
 [default.extend-words]

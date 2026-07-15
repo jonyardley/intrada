@@ -821,6 +821,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      # Pinned: typos dictionary updates can start flagging previously-clean
+      # words, failing unrelated PRs. Bump deliberately, with mise.toml.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: typos@1.48,cargo-shear@1.13
+      # ── typos ──────────────────────────────────────────────────────────
+      # Source-tree spell check (docs-heavy repo; also catches identifier
+      # typos clippy/swift-format never will). Project words: _typos.toml.
+      # Runs BEFORE gitleaks: that action writes results.sarif into the
+      # workspace and typos would flag words inside the generated file.
+      - name: Spell check (typos)
+        run: typos
+      # ── cargo-shear ────────────────────────────────────────────────────
+      # Unused workspace dependencies: the paused crates (intrada-web,
+      # intrada-mobile) accumulate dead deps that inflate every CI build.
+      - name: Unused dependencies (cargo-shear)
+        run: cargo-shear
       # ── cargo-deny ─────────────────────────────────────────────────────
       # Replaces cargo-audit. Checks advisories (same RustSec DB), license
       # compliance, crate bans, and source restrictions in one pass.
@@ -832,21 +849,6 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Pinned: typos dictionary updates can start flagging previously-clean
-      # words, failing unrelated PRs. Bump deliberately, with mise.toml.
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: typos@1.48,cargo-shear@1.13
-      # ── typos ──────────────────────────────────────────────────────────
-      # Source-tree spell check (docs-heavy repo; also catches identifier
-      # typos clippy/swift-format never will). Project words: _typos.toml.
-      - name: Spell check (typos)
-        run: typos
-      # ── cargo-shear ────────────────────────────────────────────────────
-      # Unused workspace dependencies: the paused crates (intrada-web,
-      # intrada-mobile) accumulate dead deps that inflate every CI build.
-      - name: Unused dependencies (cargo-shear)
-        run: cargo-shear
 
   api-docker-build:
     # Catches Dockerfile / API-specific build bugs on PRs. Narrowly filtered
