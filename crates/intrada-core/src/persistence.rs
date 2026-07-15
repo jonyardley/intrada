@@ -25,9 +25,6 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
-    /// Multi-item write in one shell transaction — all-or-nothing, so a
-    /// composite (piece + its scaffold) can never half-land on disk (#1080).
-    SaveItems(Vec<Item>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -51,11 +48,6 @@ pub fn load_items() -> Command<Effect, Event> {
 
 pub fn save_item(item: Item) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
-}
-
-pub fn save_items(items: Vec<Item>) -> Command<Effect, Event> {
-    Command::request_from_shell(PersistenceOperation::SaveItems(items))
-        .then_send(Event::StoreWritten)
 }
 
 pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
@@ -203,37 +195,6 @@ mod tests {
     fn save_item_requests_a_save_op() {
         let mut cmd = save_item(sample_item("p1"));
         assert!(has_save(&mut cmd, "p1"));
-    }
-
-    #[test]
-    fn save_items_requests_one_batch_op_preserving_order() {
-        let mut cmd = save_items(vec![sample_item("ex-a"), sample_item("piece-z")]);
-        let ids: Vec<Vec<String>> = cmd
-            .effects()
-            .filter_map(|e| match e {
-                Effect::Persistence(req) => match &req.operation {
-                    PersistenceOperation::SaveItems(items) => {
-                        Some(items.iter().map(|i| i.id.clone()).collect())
-                    }
-                    _ => None,
-                },
-                _ => None,
-            })
-            .collect();
-        assert_eq!(
-            ids,
-            vec![vec!["ex-a".to_string(), "piece-z".to_string()]],
-            "one SaveItems op, order preserved"
-        );
-    }
-
-    // FFI bincode round-trip (#846) — SaveItems is a new bridge-crossing op.
-    #[test]
-    fn save_items_op_round_trips_on_ffi_bincode_wire() {
-        crate::domain::types::assert_round_trips(PersistenceOperation::SaveItems(vec![
-            sample_item("ex-a"),
-            sample_item("piece-z"),
-        ]));
     }
 
     #[test]

@@ -40,14 +40,17 @@ horizon.
 
 Filter `is:open is:issue` on the board to see what's currently in flight.
 
-### Current focus (2026-07): the lesson-to-mastery loop
+### Current focus (2026-07)
 
-Making the weekly teacher-lesson loop first-class: capture a lesson in one
-pass (#1080), track exercises per piece (#1081), suggest the next session
-(#1082), and let exercises progress along step/key ladders (#1083, closes
-#46). Sequenced A -> B -> R -> C; decisions and the phase checklist live in
-the [lesson-to-mastery epic (#1087)](https://github.com/jonyardley/intrada/issues/1087),
-which is the live progress view for this slice.
+The lesson-to-mastery loop — see the
+[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087) — continues
+with workstream **B next: track exercises per piece** (context derived from
+session blocks, #1081), followed by R (suggest the next session, #1082) and
+C (step/key ladders, #1083). Workstream **A (capture a lesson in one pass,
+#1080) is on hold**: it's being rethought before more is built on it, and its
+merged core event was reverted (#1092). Check the
+[project board](https://github.com/users/jonyardley/projects/2) for what's
+actually in flight.
 
 ---
 
