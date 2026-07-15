@@ -21,3 +21,12 @@ docs/superpowers/
 
 # Generated Tauri permission schemas
 crates/intrada-mobile/plugins/*/permissions/schemas/
+
+# Images (snapshot test references, icons): no semantic value in the graph,
+# and each image costs its own vision-extraction agent
+*.png
+*.svg
+*.jpg
+*.jpeg
+*.ico
+*.icns
