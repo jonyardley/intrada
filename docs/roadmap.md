@@ -40,6 +40,15 @@ horizon.
 
 Filter `is:open is:issue` on the board to see what's currently in flight.
 
+### Current focus (2026-07): the lesson-to-mastery loop
+
+Making the weekly teacher-lesson loop first-class: capture a lesson in one
+pass (#1080), track exercises per piece (#1081), suggest the next session
+(#1082), and let exercises progress along step/key ladders (#1083, closes
+#46). Sequenced A -> B -> R -> C; decisions and the phase checklist live in
+the [lesson-to-mastery epic (#1087)](https://github.com/jonyardley/intrada/issues/1087),
+which is the live progress view for this slice.
+
 ---
 
 ## Three pillars
