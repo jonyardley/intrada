@@ -310,6 +310,9 @@ pub struct PracticeSessionView {
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
     pub session_score: Option<u8>,
+    pub reflection_improved: Option<String>,
+    pub reflection_still_rough: Option<String>,
+    pub reflection_next_target: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -427,6 +430,9 @@ pub struct SummaryView {
     pub entries: Vec<SetlistEntryView>,
     pub session_intention: Option<String>,
     pub session_score: Option<u8>,
+    pub reflection_improved: Option<String>,
+    pub reflection_still_rough: Option<String>,
+    pub reflection_next_target: Option<String>,
 }
 
 // ── View helpers ──────────────────────────────────────────────────────
@@ -563,6 +569,9 @@ pub fn build_summary_view(summary: &SummarySession) -> SummaryView {
         entries: summary.entries.iter().map(entry_to_view).collect(),
         session_intention: summary.session_intention.clone(),
         session_score: summary.session_score,
+        reflection_improved: summary.reflection_improved.clone(),
+        reflection_still_rough: summary.reflection_still_rough.clone(),
+        reflection_next_target: summary.reflection_next_target.clone(),
     }
 }
 
@@ -582,6 +591,9 @@ pub fn session_to_view(session: &PracticeSession) -> PracticeSessionView {
         entries: session.entries.iter().map(entry_to_view).collect(),
         session_intention: session.session_intention.clone(),
         session_score: session.session_score,
+        reflection_improved: session.reflection_improved.clone(),
+        reflection_still_rough: session.reflection_still_rough.clone(),
+        reflection_next_target: session.reflection_next_target.clone(),
     }
 }
 
@@ -890,6 +902,9 @@ mod tests {
             session_notes: None,
             session_intention: Some("focus".to_string()),
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         };
         let view = build_summary_view(&summary);
         assert_eq!(view.total_duration_display, "2m 30s");
@@ -910,6 +925,9 @@ mod tests {
             total_duration_secs: 2700,
             completion_status: CompletionStatus::Completed,
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         };
         let view = session_to_view(&session);
         // Precise (live-timer) form keeps seconds; the summary line drops them.
@@ -928,6 +946,9 @@ mod tests {
             session_notes: None,
             session_intention: None,
             session_score: Some(7),
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         };
         let view = build_summary_view(&summary);
         assert_eq!(view.session_score, Some(7));
@@ -945,9 +966,64 @@ mod tests {
             total_duration_secs: 60,
             completion_status: CompletionStatus::Completed,
             session_score: Some(5),
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         };
         let view = session_to_view(&session);
         assert_eq!(view.session_score, Some(5));
+    }
+
+    #[test]
+    fn session_to_view_exposes_reflections() {
+        let session = crate::domain::session::PracticeSession {
+            id: "s3".to_string(),
+            entries: vec![],
+            session_notes: None,
+            session_intention: None,
+            started_at: Utc::now(),
+            completed_at: Utc::now(),
+            total_duration_secs: 60,
+            completion_status: CompletionStatus::Completed,
+            session_score: None,
+            reflection_improved: Some("bars 1-8 clean".to_string()),
+            reflection_still_rough: Some("bridge rushes".to_string()),
+            reflection_next_target: Some("bridge at 80".to_string()),
+        };
+        let view = session_to_view(&session);
+        assert_eq!(view.reflection_improved, Some("bars 1-8 clean".to_string()));
+        assert_eq!(
+            view.reflection_still_rough,
+            Some("bridge rushes".to_string())
+        );
+        assert_eq!(
+            view.reflection_next_target,
+            Some("bridge at 80".to_string())
+        );
+    }
+
+    #[test]
+    fn summary_view_exposes_reflections() {
+        let summary = crate::domain::session::SummarySession {
+            id: "s4".to_string(),
+            entries: vec![],
+            session_started_at: Utc::now(),
+            session_ended_at: Utc::now(),
+            session_notes: None,
+            session_intention: Some("even RH at 96".to_string()),
+            completion_status: CompletionStatus::Completed,
+            session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: Some("bridge rushes".to_string()),
+            reflection_next_target: None,
+        };
+        let view = build_summary_view(&summary);
+        assert_eq!(view.reflection_improved, None);
+        assert_eq!(
+            view.reflection_still_rough,
+            Some("bridge rushes".to_string())
+        );
+        assert_eq!(view.reflection_next_target, None);
     }
 
     // ── Integration: Event → model → ViewModel ────────────────────────

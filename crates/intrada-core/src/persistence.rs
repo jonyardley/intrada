@@ -478,6 +478,9 @@ mod tests {
             total_duration_secs: 0,
             completion_status: crate::domain::session::CompletionStatus::Completed,
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         }
     }
 

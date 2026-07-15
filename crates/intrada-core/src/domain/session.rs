@@ -100,6 +100,23 @@ pub struct PracticeSession {
     pub completion_status: CompletionStatus,
     #[serde(default)]
     pub session_score: Option<u8>,
+    #[serde(default)]
+    pub reflection_improved: Option<String>,
+    #[serde(default)]
+    pub reflection_still_rough: Option<String>,
+    #[serde(default)]
+    pub reflection_next_target: Option<String>,
+}
+
+/// Which of the three structured end-of-session reflection prompts an
+/// `UpdateSessionReflection` targets (design-principles T7).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum ReflectionField {
+    Improved,
+    StillRough,
+    NextTarget,
 }
 
 // ── Transient State Types ──────────────────────────────────────────────
@@ -143,6 +160,9 @@ pub struct SummarySession {
     pub session_intention: Option<String>,
     pub completion_status: CompletionStatus,
     pub session_score: Option<u8>,
+    pub reflection_improved: Option<String>,
+    pub reflection_still_rough: Option<String>,
+    pub reflection_next_target: Option<String>,
 }
 
 /// The lifecycle state of a session in the core Model.
@@ -291,6 +311,10 @@ pub enum SessionEvent {
     },
     UpdateSessionNotes {
         notes: Option<String>,
+    },
+    UpdateSessionReflection {
+        field: ReflectionField,
+        text: Option<String>,
     },
     SaveSession {
         now: DateTime<Utc>,
@@ -527,6 +551,9 @@ fn transition_to_summary(
         session_intention: active.session_intention.clone(),
         completion_status,
         session_score: None,
+        reflection_improved: None,
+        reflection_still_rough: None,
+        reflection_next_target: None,
     }
 }
 
@@ -1108,6 +1135,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                     session_intention: active.session_intention.clone(),
                     completion_status: CompletionStatus::Completed,
                     session_score: None,
+                    reflection_improved: None,
+                    reflection_still_rough: None,
+                    reflection_next_target: None,
                 };
                 model.session_status = SessionStatus::Summary(summary);
                 model.last_error = None;
@@ -1371,6 +1401,27 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             crux_core::render::render()
         }
 
+        SessionEvent::UpdateSessionReflection { field, text } => {
+            let SessionStatus::Summary(ref mut summary) = model.session_status else {
+                model.last_error = Some("Not in summary state".to_string());
+                return crux_core::render::render();
+            };
+
+            if let Err(e) = validation::validate_reflection(&text) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let text = text.map(|t| t.trim().to_string()).filter(|t| !t.is_empty());
+            match field {
+                ReflectionField::Improved => summary.reflection_improved = text,
+                ReflectionField::StillRough => summary.reflection_still_rough = text,
+                ReflectionField::NextTarget => summary.reflection_next_target = text,
+            }
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
         SessionEvent::UpdateSessionNotes { notes } => {
             let SessionStatus::Summary(ref mut summary) = model.session_status else {
                 model.last_error = Some("Not in summary state".to_string());
@@ -1420,6 +1471,9 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
                 total_duration_secs,
                 completion_status: summary.completion_status.clone(),
                 session_score: summary.session_score,
+                reflection_improved: summary.reflection_improved.clone(),
+                reflection_still_rough: summary.reflection_still_rough.clone(),
+                reflection_next_target: summary.reflection_next_target.clone(),
             };
 
             model.sessions.push(practice_session.clone());
@@ -2700,6 +2754,151 @@ mod tests {
         );
 
         assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn test_update_session_reflection_sets_each_field_in_summary() {
+        let mut model = model_with_summary();
+
+        for (field, text) in [
+            (ReflectionField::Improved, "Thumb-unders even at 92"),
+            (ReflectionField::StillRough, "Bars 12-14 rush past 88"),
+            (
+                ReflectionField::NextTarget,
+                "Bars 12-14 at 80, hands together",
+            ),
+        ] {
+            update(
+                &mut model,
+                Event::Session(SessionEvent::UpdateSessionReflection {
+                    field,
+                    text: Some(text.to_string()),
+                }),
+            );
+            assert!(model.last_error.is_none());
+        }
+
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(
+            s.reflection_improved,
+            Some("Thumb-unders even at 92".to_string())
+        );
+        assert_eq!(
+            s.reflection_still_rough,
+            Some("Bars 12-14 rush past 88".to_string())
+        );
+        assert_eq!(
+            s.reflection_next_target,
+            Some("Bars 12-14 at 80, hands together".to_string())
+        );
+    }
+
+    #[test]
+    fn test_update_session_reflection_rejected_outside_summary() {
+        let (mut model, _start) = model_with_active_session(2);
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::Improved,
+                text: Some("mid-session thought".to_string()),
+            }),
+        );
+
+        assert_eq!(model.last_error, Some("Not in summary state".to_string()));
+        let SessionStatus::Active(_) = model.session_status else {
+            panic!("Active session must be untouched");
+        };
+    }
+
+    #[test]
+    fn test_update_session_reflection_blank_normalises_to_none() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::Improved,
+                text: Some("real note".to_string()),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::Improved,
+                text: Some("   ".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_none());
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(s.reflection_improved, None);
+    }
+
+    #[test]
+    fn test_update_session_reflection_trims_retained_text() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::NextTarget,
+                text: Some("  bridge at 80  ".to_string()),
+            }),
+        );
+
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(s.reflection_next_target, Some("bridge at 80".to_string()));
+    }
+
+    #[test]
+    fn test_update_session_reflection_over_cap_rejected() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::NextTarget,
+                text: Some("x".repeat(validation::MAX_REFLECTION + 1)),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        let SessionStatus::Summary(ref s) = model.session_status else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(s.reflection_next_target, None);
+    }
+
+    #[test]
+    fn test_save_session_carries_reflections() {
+        let mut model = model_with_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::UpdateSessionReflection {
+                field: ReflectionField::StillRough,
+                text: Some("left hand collapses in the bridge".to_string()),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+
+        assert_eq!(model.sessions.len(), 1);
+        assert_eq!(model.sessions[0].reflection_improved, None);
+        assert_eq!(
+            model.sessions[0].reflection_still_rough,
+            Some("left hand collapses in the bridge".to_string())
+        );
+        assert_eq!(model.sessions[0].reflection_next_target, None);
     }
 
     #[test]

@@ -492,6 +492,9 @@ mod tests {
             session_intention: None,
             entries,
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         }
     }
 
@@ -757,6 +760,9 @@ mod tests {
                 session_intention: None,
                 entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, None)],
                 session_score: None,
+                reflection_improved: None,
+                reflection_still_rough: None,
+                reflection_next_target: None,
             }
         };
 
@@ -1530,6 +1536,9 @@ mod tests {
             session_intention: None,
             entries: vec![make_entry("p1", "Sonata", ItemKind::Piece, 600, Some(3))],
             session_score: None,
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
         }];
 
         let analytics = compute_analytics(&sessions, &[], today);

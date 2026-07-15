@@ -447,6 +447,22 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(try bridge.view().summary?.notes, "Felt good", "notes should round-trip")
     _ = try bridge.update(.session(.updateSessionNotes(notes: nil)))
     XCTAssertNil(try bridge.view().summary?.notes, "clearing notes round-trips")
+    // Structured reflection — a brand-new wire surface (ReflectionField's
+    // variant indices) never sent from Swift before (#846). Set + clear each.
+    _ = try bridge.update(
+      .session(.updateSessionReflection(field: .improved, text: "thumb-unders even")))
+    XCTAssertEqual(
+      try bridge.view().summary?.reflectionImproved, "thumb-unders even",
+      "reflection 'improved' should round-trip the live bridge")
+    _ = try bridge.update(
+      .session(.updateSessionReflection(field: .stillRough, text: "bridge rushes")))
+    XCTAssertEqual(try bridge.view().summary?.reflectionStillRough, "bridge rushes")
+    _ = try bridge.update(
+      .session(.updateSessionReflection(field: .nextTarget, text: "bridge at 80")))
+    XCTAssertEqual(try bridge.view().summary?.reflectionNextTarget, "bridge at 80")
+    _ = try bridge.update(.session(.updateSessionReflection(field: .improved, text: nil)))
+    XCTAssertNil(
+      try bridge.view().summary?.reflectionImproved, "clearing a reflection round-trips")
 
     _ = try bridge.update(.session(.saveSession(now: "2026-06-16T10:20:30Z")))
     let saved = try bridge.view()
