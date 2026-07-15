@@ -134,6 +134,9 @@ final class Store {
       case .saveItem(let item):
         try store.save(item)
         return .ack
+      case .saveItems(let items):
+        try store.save(items)
+        return .ack
       case .deleteItem(let id, let deletedAt):
         try store.delete(id: id, deletedAt: deletedAt)
         return .ack

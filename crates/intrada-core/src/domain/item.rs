@@ -93,6 +93,20 @@ pub enum ItemEvent {
         piece_id: String,
         ordered_ids: Vec<String>,
     },
+    AddPieceWithScaffold {
+        piece: CreateItem,
+        scaffold: Vec<ScaffoldEntry>,
+    },
+}
+
+/// One entry in a new piece's ordered exercise scaffold: create alongside the
+/// piece, or link an exercise already in the library.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum ScaffoldEntry {
+    New(CreateItem),
+    Existing { id: String },
 }
 
 /// Shared by Update / AddTags / RemoveTags.
@@ -330,6 +344,133 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let piece = piece.clone();
             save_or_put(model, piece)
+        }
+        ItemEvent::AddPieceWithScaffold { piece, scaffold } => {
+            if !model.local_first {
+                // Online items use the temp-id dance (server-assigned ids), which
+                // can't remap a piece's linked_exercise_ids minted client-side —
+                // the composite is local-first-only for now (#1080).
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "scaffold".to_string(),
+                        message: "Adding a lesson is not available online yet".to_string(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            }
+
+            // Validate everything before mutating anything — the event is
+            // atomic in the model: on any invalid part, nothing is applied.
+            let piece_input = validation::normalize_create_item(piece);
+            if let Err(e) = validation::validate_create_item(&piece_input) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+            if piece_input.kind != ItemKind::Piece {
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "kind".to_string(),
+                        message: "A lesson starts from a piece, not an exercise".to_string(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            }
+
+            let mut entries = Vec::with_capacity(scaffold.len());
+            for entry in scaffold {
+                match entry {
+                    ScaffoldEntry::New(input) => {
+                        let input = validation::normalize_create_item(input);
+                        if let Err(e) = validation::validate_create_item(&input) {
+                            model.last_error = Some(e.to_string());
+                            return crux_core::render::render();
+                        }
+                        if input.kind != ItemKind::Exercise {
+                            model.last_error = Some(
+                                LibraryError::Validation {
+                                    field: "scaffold".to_string(),
+                                    message: "Scaffold entries must be exercises".to_string(),
+                                }
+                                .to_string(),
+                            );
+                            return crux_core::render::render();
+                        }
+                        entries.push(ScaffoldEntry::New(input));
+                    }
+                    ScaffoldEntry::Existing { id } => {
+                        if let Err(e) = validation::validate_scaffold_link_target(&id, model) {
+                            model.last_error = Some(e.to_string());
+                            return crux_core::render::render();
+                        }
+                        entries.push(ScaffoldEntry::Existing { id });
+                    }
+                }
+            }
+
+            let now = chrono::Utc::now();
+            let mut new_items: Vec<Item> = Vec::new();
+            let mut linked_ids: Vec<String> = Vec::new();
+            for entry in entries {
+                match entry {
+                    ScaffoldEntry::New(input) => {
+                        let item = Item {
+                            id: ulid::Ulid::gen().to_string(),
+                            title: input.title,
+                            kind: input.kind,
+                            composer: input.composer,
+                            key: input.key,
+                            modality: input.modality,
+                            tempo: input.tempo,
+                            notes: input.notes,
+                            tags: input.tags,
+                            linked_exercise_ids: vec![],
+                            created_at: now,
+                            updated_at: now,
+                            priority: false,
+                        };
+                        linked_ids.push(item.id.clone());
+                        new_items.push(item);
+                    }
+                    ScaffoldEntry::Existing { id } => {
+                        if !linked_ids.contains(&id) {
+                            linked_ids.push(id);
+                        }
+                    }
+                }
+            }
+
+            let piece_item = Item {
+                id: ulid::Ulid::gen().to_string(),
+                title: piece_input.title,
+                kind: ItemKind::Piece,
+                composer: piece_input.composer,
+                key: piece_input.key,
+                modality: piece_input.modality,
+                tempo: piece_input.tempo,
+                notes: piece_input.notes,
+                tags: piece_input.tags,
+                linked_exercise_ids: linked_ids,
+                created_at: now,
+                updated_at: now,
+                priority: false,
+            };
+
+            model.items.extend(new_items.iter().cloned());
+            model.items.push(piece_item.clone());
+            model.last_error = None;
+            model.record_success();
+
+            // One SaveItems batch (shell executes it in a single transaction),
+            // exercises before the piece — the composite can't half-land on
+            // disk and the piece never exists without its scaffold (#1080).
+            let mut to_save = new_items;
+            to_save.push(piece_item);
+            Command::all([
+                crate::persistence::save_items(to_save),
+                crux_core::render::render(),
+            ])
         }
     }
 }
@@ -637,5 +778,370 @@ mod tests {
         let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
         assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
         assert!(model.last_error.is_none());
+    }
+
+    // ── AddPieceWithScaffold ──
+
+    fn create_piece_input(title: &str) -> CreateItem {
+        CreateItem {
+            title: title.to_string(),
+            kind: ItemKind::Piece,
+            composer: Some("Roy Hargrove".to_string()),
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        }
+    }
+
+    fn create_exercise_input(title: &str) -> CreateItem {
+        CreateItem {
+            title: title.to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+        }
+    }
+
+    fn send_cmd(
+        model: &mut Model,
+        event: ItemEvent,
+    ) -> crux_core::Command<crate::app::Effect, crate::app::Event> {
+        let app = Intrada;
+        app.update(crate::app::Event::Item(event), model)
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_creates_piece_and_new_exercises_linked_in_order() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis "),
+                scaffold: vec![
+                    ScaffoldEntry::New(create_exercise_input("Learn the melody")),
+                    ScaffoldEntry::Existing {
+                        id: "ex-1".to_string(),
+                    },
+                    ScaffoldEntry::New(create_exercise_input("Enclosures")),
+                ],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        // 2 pre-existing + piece + 2 new exercises
+        assert_eq!(model.items.len(), 5);
+
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .expect("piece created with normalized (trimmed) title");
+        assert_eq!(piece.kind, ItemKind::Piece);
+
+        let melody = model
+            .items
+            .iter()
+            .find(|i| i.title == "Learn the melody")
+            .expect("new exercise created");
+        assert_eq!(melody.kind, ItemKind::Exercise);
+        let enclosures = model
+            .items
+            .iter()
+            .find(|i| i.title == "Enclosures")
+            .expect("new exercise created");
+
+        assert_eq!(
+            piece.linked_exercise_ids,
+            vec![melody.id.clone(), "ex-1".to_string(), enclosures.id.clone()],
+            "scaffold order is the teacher's assignment order"
+        );
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_rejects_invalid_new_entry_and_applies_nothing() {
+        let mut model = model_with_piece_and_exercise();
+        let count_before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![
+                    ScaffoldEntry::New(create_exercise_input("Valid one")),
+                    ScaffoldEntry::New(create_exercise_input("   ")),
+                ],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before, "nothing applied");
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_rejects_unknown_existing_id_and_applies_nothing() {
+        let mut model = model_with_piece_and_exercise();
+        let count_before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![ScaffoldEntry::Existing {
+                    id: "no-such-id".to_string(),
+                }],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before);
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_rejects_existing_id_that_is_a_piece() {
+        let mut model = model_with_piece_and_exercise();
+        let count_before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![ScaffoldEntry::Existing {
+                    id: "piece-1".to_string(),
+                }],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before);
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_rejects_non_piece_kind_input() {
+        let mut model = model_with_piece_and_exercise();
+        let count_before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_exercise_input("Not a piece"),
+                scaffold: vec![],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before);
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_rejects_new_entry_with_piece_kind() {
+        let mut model = model_with_piece_and_exercise();
+        let count_before = model.items.len();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![ScaffoldEntry::New(create_piece_input("Nested piece"))],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before);
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_dedupes_repeated_existing_ids() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![
+                    ScaffoldEntry::Existing {
+                        id: "ex-1".to_string(),
+                    },
+                    ScaffoldEntry::Existing {
+                        id: "ex-1".to_string(),
+                    },
+                ],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .unwrap();
+        assert_eq!(piece.linked_exercise_ids, vec!["ex-1".to_string()]);
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_errors_in_online_mode_and_applies_nothing() {
+        let mut model = model_with_piece_and_exercise();
+        model.local_first = false;
+        let count_before = model.items.len();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![ScaffoldEntry::New(create_exercise_input("Melody"))],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(model.items.len(), count_before);
+        assert!(
+            !cmd.effects()
+                .any(|e| matches!(e, crate::app::Effect::Http(_))),
+            "online rejection must not fire HTTP"
+        );
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_local_first_saves_one_transactional_batch_no_http() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![
+                    ScaffoldEntry::New(create_exercise_input("Learn the melody")),
+                    ScaffoldEntry::Existing {
+                        id: "ex-1".to_string(),
+                    },
+                ],
+            },
+        );
+
+        let mut batches: Vec<Vec<String>> = vec![];
+        let mut saw_http = false;
+        let mut saw_single_save = false;
+        for effect in cmd.effects() {
+            match effect {
+                crate::app::Effect::Http(_) => saw_http = true,
+                crate::app::Effect::Persistence(req) => match &req.operation {
+                    crate::persistence::PersistenceOperation::SaveItems(items) => {
+                        batches.push(items.iter().map(|i| i.id.clone()).collect());
+                    }
+                    crate::persistence::PersistenceOperation::SaveItem(_) => {
+                        saw_single_save = true;
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+
+        assert!(
+            !saw_http,
+            "local-first path must be HTTP-free (invariant 1)"
+        );
+        assert!(
+            !saw_single_save,
+            "composite must not use independent SaveItem ops — a partial \
+             failure would land a piece with dangling links"
+        );
+        assert_eq!(batches.len(), 1, "exactly one all-or-nothing batch");
+
+        let piece_id = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .unwrap()
+            .id
+            .clone();
+        let melody_id = model
+            .items
+            .iter()
+            .find(|i| i.title == "Learn the melody")
+            .unwrap()
+            .id
+            .clone();
+        assert_eq!(
+            batches[0],
+            vec![melody_id, piece_id],
+            "new exercises first, piece last; already-persisted Existing \
+             entries are not re-saved"
+        );
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_empty_scaffold_creates_bare_piece_locally() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .expect("bare piece created");
+        assert!(piece.linked_exercise_ids.is_empty());
+    }
+
+    #[test]
+    fn add_piece_with_scaffold_allows_duplicate_new_titles() {
+        // Same policy as ItemEvent::Add: titles are not unique. Two identical
+        // New entries are two distinct exercises (A3's typeahead is the UX
+        // guard against accidental duplicates, not the domain layer).
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::AddPieceWithScaffold {
+                piece: create_piece_input("Strasbourg / St. Denis"),
+                scaffold: vec![
+                    ScaffoldEntry::New(create_exercise_input("Enclosures")),
+                    ScaffoldEntry::New(create_exercise_input("Enclosures")),
+                ],
+            },
+        );
+
+        assert!(model.last_error.is_none());
+        let dupes: Vec<&Item> = model
+            .items
+            .iter()
+            .filter(|i| i.title == "Enclosures")
+            .collect();
+        assert_eq!(dupes.len(), 2);
+        assert_ne!(dupes[0].id, dupes[1].id);
+        let piece = model
+            .items
+            .iter()
+            .find(|i| i.title == "Strasbourg / St. Denis")
+            .unwrap();
+        assert_eq!(piece.linked_exercise_ids.len(), 2);
+    }
+
+    // FFI bincode round-trip (#846) — ScaffoldEntry is a new bridge-crossing type.
+    #[test]
+    fn add_piece_with_scaffold_event_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(ItemEvent::AddPieceWithScaffold {
+            piece: create_piece_input("Strasbourg / St. Denis"),
+            scaffold: vec![
+                ScaffoldEntry::New(create_exercise_input("Learn the melody")),
+                ScaffoldEntry::Existing {
+                    id: "ex-1".to_string(),
+                },
+            ],
+        });
     }
 }
