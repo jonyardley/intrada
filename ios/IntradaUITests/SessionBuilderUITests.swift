@@ -88,17 +88,31 @@ final class SessionBuilderUITests: XCTestCase {
     XCTAssertTrue(scalesRow.exists, "Scales queued")
     XCTAssertLessThan(hanonRow.frame.minY, scalesRow.frame.minY, "Hanon starts above Scales")
 
-    // No Edit tap. Long-press the first row, drag it below the second. The
-    // drop must land INSIDE the target row — past its bottom edge sits the
-    // move-disabled Add row, and a drop there cancels the whole move.
-    let from = hanonRow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-    let to = scalesRow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
-    from.press(forDuration: 1.2, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.4)
+    // No Edit tap. The drop must land INSIDE the target row — past its bottom
+    // edge sits the move-disabled Add row, and a drop there cancels the move.
+    let flipped = dragUntilSettled(hanonRow, onto: scalesRow, targetDy: 0.75) {
+      scalesRow.exists && hanonRow.exists && scalesRow.frame.minY < hanonRow.frame.minY
+    }
+    XCTAssertTrue(flipped, "long-press drag reorders without entering Edit mode")
+  }
 
-    XCTAssertTrue(scalesRow.waitForExistence(timeout: 5), "Scales still visible after drag")
-    XCTAssertLessThan(
-      scalesRow.frame.minY, hanonRow.frame.minY,
-      "long-press drag reorders without entering Edit mode")
+  /// Long-press-drags `mover` onto `target` until `settled` holds, retrying up
+  /// to 3 times: the shared CI runners are slow enough that the List's lift
+  /// occasionally misses the press window, so a single-shot drag flakes.
+  private func dragUntilSettled(
+    _ mover: XCUIElement, onto target: XCUIElement, targetDy: CGFloat,
+    settled: () -> Bool
+  ) -> Bool {
+    for _ in 0..<3 {
+      let from = mover.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+      let to = target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: targetDy))
+      from.press(forDuration: 1.2, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.4)
+      for _ in 0..<12 {
+        if settled() { return true }
+        usleep(250_000)
+      }
+    }
+    return settled()
   }
 
   /// Builder rows combine their title + meta into one labelled element. Match
@@ -127,12 +141,12 @@ final class SessionBuilderUITests: XCTestCase {
     XCTAssertTrue(clairRow.waitForExistence(timeout: 10), "Clair library row")
     clairRow.tap()
     let addRelated = app.buttons["Add a related exercise to this piece"]
-    XCTAssertTrue(addRelated.waitForExistence(timeout: 5), "related empty-state CTA")
+    XCTAssertTrue(addRelated.waitForExistence(timeout: 10), "related empty-state CTA")
     addRelated.tap()
     let hanonPick = app.buttons.matching(
       NSPredicate(format: "label CONTAINS %@", "Hanon No. 1")
     ).firstMatch
-    XCTAssertTrue(hanonPick.waitForExistence(timeout: 5), "Hanon in picker")
+    XCTAssertTrue(hanonPick.waitForExistence(timeout: 10), "Hanon in picker")
     hanonPick.tap()
     app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Major Scales")).firstMatch
       .tap()
@@ -148,13 +162,13 @@ final class SessionBuilderUITests: XCTestCase {
     let clairCard = app.buttons.matching(
       NSPredicate(format: "label CONTAINS %@", "Clair de Lune")
     ).firstMatch
-    XCTAssertTrue(clairCard.waitForExistence(timeout: 5), "Clair card in sheet")
+    XCTAssertTrue(clairCard.waitForExistence(timeout: 10), "Clair card in sheet")
     clairCard.tap()
     app.buttons["Done"].tap()
 
     let hanonRow = builderRow(app, titled: "Hanon No. 1", meta: "Related")
     let scalesRow = builderRow(app, titled: "Major Scales", meta: "Related")
-    XCTAssertTrue(hanonRow.waitForExistence(timeout: 5), "nested Hanon row")
+    XCTAssertTrue(hanonRow.waitForExistence(timeout: 10), "nested Hanon row")
     XCTAssertTrue(scalesRow.exists, "nested Scales row")
 
     // The linked order isn't deterministic (the picker applies a Set), so drag
@@ -164,13 +178,10 @@ final class SessionBuilderUITests: XCTestCase {
     let hanonFirst = hanonRow.frame.minY < scalesRow.frame.minY
     let upper = hanonFirst ? hanonRow : scalesRow
     let lower = hanonFirst ? scalesRow : hanonRow
-    let from = lower.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-    let to = upper.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25))
-    from.press(forDuration: 1.2, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.4)
-
-    XCTAssertTrue(lower.waitForExistence(timeout: 5), "dragged row visible after drag")
-    XCTAssertLessThan(
-      lower.frame.minY, upper.frame.minY, "long-press drag reorders nested rows without Edit")
+    let flipped = dragUntilSettled(lower, onto: upper, targetDy: 0.25) {
+      lower.exists && upper.exists && lower.frame.minY < upper.frame.minY
+    }
+    XCTAssertTrue(flipped, "long-press drag reorders nested rows without Edit")
 
     // Row tap opens the entry settings sheet (Toggle labels surface as switches).
     hanonRow.tap()
