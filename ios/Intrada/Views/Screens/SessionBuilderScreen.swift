@@ -1,7 +1,7 @@
 import SharedTypes
 import SwiftUI
 
-// Dedicated "Build session" list. Interaction model per T8
+// Dedicated "Build session" list. Interaction model per T9
 // (docs/design-principles.md): every line is its own List row so the native
 // long-press lift, swipe-to-remove, and Edit-mode delete apply everywhere;
 // blocks render as joined card segments and move whole via their header row.

@@ -58,6 +58,10 @@ struct LibraryDetailScreen: View {
             linkedExercisesSection
           }
 
+          if item.itemType == .exercise, !item.exerciseContexts.isEmpty {
+            byPieceSection
+          }
+
           if hasRecentSessions {
             recentSessionsSection
           }
@@ -120,6 +124,16 @@ struct LibraryDetailScreen: View {
       if item.linkedExercises.isEmpty {
         linkedExercisesEmptyState
       } else {
+        if !editingLinks {
+          // The rings below are each exercise's score *on this piece*, not its
+          // overall — say so, mirroring the exercise hero's "Overall" (#1087 B2).
+          Text("Scores shown are for this piece")
+            .font(IntradaFont.meta)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, IntradaSpacing.card)
+            .padding(.bottom, IntradaSpacing.cardCompact)
+        }
         linkedExercisesRows
         linkExerciseButton
       }
@@ -226,8 +240,15 @@ struct LibraryDetailScreen: View {
 
   private var exerciseHero: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
-      ScoreRing(
-        score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
+      VStack(spacing: 6) {
+        ScoreRing(
+          score: item.practice?.latestScore.map(Int.init), size: 132, showsScale: true)
+        // Names the hero as the score across every piece, so it can't be read as
+        // one piece's — the distinction the "By piece" rows below make (#1087 B2).
+        if !item.exerciseContexts.isEmpty {
+          Eyebrow("Overall")
+        }
+      }
       relatedBreadcrumb
     }
     .frame(maxWidth: .infinity)
@@ -289,6 +310,38 @@ struct LibraryDetailScreen: View {
     let others = extra > 0 ? " and \(extra) more \(extra == 1 ? "piece" : "pieces")" : ""
     let role = discloses ? "" : ", related piece"
     return "Related to \(piece.title)\(others)\(role)"
+  }
+
+  // ── By piece (exercise contexts) ──
+
+  // Per-piece score breakdown derived from session blocks (#1087 B2): where this
+  // drill has done its work and how it scores there. Gated on non-empty upstream.
+  private var byPieceSection: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionHeader(title: "By piece")
+      VStack(spacing: 0) {
+        ForEach(Array(item.exerciseContexts.enumerated()), id: \.offset) { index, context in
+          if index > 0 {
+            HairlineDivider()
+          }
+          byPieceRow(context)
+        }
+      }
+      .cardSurface()
+    }
+  }
+
+  @ViewBuilder private func byPieceRow(_ context: ExerciseContextView) -> some View {
+    // A live piece taps through; the "On its own" bucket and since-removed pieces
+    // (#1093, 2a) are inert rows — nowhere to navigate.
+    if let piece = context.piece, !context.pieceRemoved {
+      NavigationLink(value: piece.id) {
+        ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: true)
+      }
+      .buttonStyle(.plain)
+    } else {
+      ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: false)
+    }
   }
 
   // One-tap into the session builder seeded with this exercise (core
@@ -457,7 +510,9 @@ private struct LinkedExerciseRow: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      ScoreRing(score: exercise.practice?.latestScore.map(Int.init), size: 44)
+      // The score *on this piece* (#1087 B2), not the exercise's flat overall —
+      // the section caption tells the reader which. Unrated until practised here.
+      ScoreRing(score: exercise.pieceContextScore.map(Int.init), size: 44)
     }
     .padding(.vertical, IntradaSpacing.row)
     .padding(.leading, 20)
@@ -478,11 +533,60 @@ private struct LinkedExerciseRow: View {
   private var accessibilityLabel: String {
     var parts = ["Exercise", exercise.title]
     if let meta = metaLine { parts.append(meta) }
-    if let score = exercise.practice?.latestScore {
-      parts.append("Score \(score) of 10")
+    if let score = exercise.pieceContextScore {
+      parts.append("Score \(score) of 10 on this piece")
     } else {
-      parts.append("Not yet rated")
+      parts.append("Not yet rated on this piece")
     }
+    return parts.joined(separator: ", ")
+  }
+}
+
+private struct ByPieceRow: View {
+  let context: ExerciseContextView
+  let locale: Locale
+  let calendar: Calendar
+  let discloses: Bool
+
+  private var isStandalone: Bool { context.piece == nil }
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.row) {
+      ScoreRing(score: context.latestScore.map(Int.init), size: 44)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(context.contextTitle)
+          .font(isStandalone ? IntradaFont.bodyMedium : IntradaFont.cardTitle())
+          .foregroundStyle(context.pieceRemoved ? IntradaColor.inkSecondary : IntradaColor.ink)
+        Text(context.metaLine(locale: locale, calendar: calendar))
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      if discloses {
+        Image(systemName: "chevron.right")
+          .imageScale(.small)
+          .foregroundStyle(IntradaColor.inkFaint)
+          .accessibilityHidden(true)
+      }
+    }
+    .padding(.vertical, IntradaSpacing.row)
+    .padding(.horizontal, IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel)
+    .accessibilityAddTraits(discloses ? [.isButton] : [])
+  }
+
+  private var accessibilityLabel: String {
+    var parts = [context.contextTitle]
+    if context.pieceRemoved { parts.append("removed from your library") }
+    if let score = context.latestScore {
+      parts.append("score \(score) of 10")
+    } else {
+      parts.append("not yet rated")
+    }
+    let n = Int(context.sessionCount)
+    parts.append("\(n) \(n == 1 ? "session" : "sessions")")
     return parts.joined(separator: ", ")
   }
 }

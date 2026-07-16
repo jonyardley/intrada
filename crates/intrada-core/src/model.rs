@@ -231,6 +231,12 @@ pub struct LinkedExerciseView {
     pub key: Option<String>,
     pub tempo: Option<String>,
     pub practice: Option<ItemPracticeSummary>,
+    /// This exercise's latest score *on the piece it's linked from* (#1087 B2),
+    /// derived from the shared session block — distinct from `practice`, which
+    /// is the exercise's flat score across every context. `None` when the pair
+    /// has never been practised together (or scored) in a session.
+    #[serde(default)]
+    pub piece_context_score: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -260,6 +266,13 @@ pub struct ExerciseContextView {
     pub session_count: usize,
     /// Most recent session date for this context (RFC3339, sorts as a string).
     pub last_practiced_at: Option<String>,
+    /// `true` when this context's `piece` no longer exists in the library — the
+    /// piece was deleted since it was practised (#1093, decision 2a). The
+    /// context is kept (its sessions are real history), but `piece.title` is the
+    /// snapshot title and the shell renders the row muted + non-tappable. Always
+    /// `false` for the "On its own" bucket.
+    #[serde(default)]
+    pub piece_removed: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -639,6 +652,21 @@ mod tests {
             latest_score: Some(6),
             session_count: 2,
             last_practiced_at: Some("2026-07-01T00:00:00+00:00".to_string()),
+            piece_removed: true,
+        });
+    }
+
+    /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
+    /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
+    #[test]
+    fn linked_exercise_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(LinkedExerciseView {
+            id: "E".to_string(),
+            title: "Enclosures".to_string(),
+            key: Some("C".to_string()),
+            tempo: Some("♩ = 120".to_string()),
+            practice: None,
+            piece_context_score: Some(7),
         });
     }
 

@@ -339,9 +339,10 @@
         linkedExercises: [
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
-            practice: nil),
+            practice: nil, pieceContextScore: 7),
           LinkedExerciseView(
-            id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil),
+            id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil,
+            pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [])
     }
@@ -395,19 +396,23 @@
           latestTempo: 72, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
         latestAchievedTempo: nil, priority: false,
         linkedExercises: [
+          // Per-piece scores deliberately differ from the exercises' overall
+          // `latestScore` (7 / 4), so the snapshot shows the B2 re-source.
           LinkedExerciseView(
             id: "exercise-1", title: "Hanon No. 1", key: "C major", tempo: "♩ = 108",
             practice: ItemPracticeSummary(
               sessionCount: 8, totalMinutes: 60, latestScore: 7, scoreHistory: [],
-              latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-28T09:00:00Z")),
+              latestTempo: 108, tempoHistory: [], lastPracticedAt: "2026-06-28T09:00:00Z"),
+            pieceContextScore: 5),
           LinkedExerciseView(
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil,
             practice: ItemPracticeSummary(
               sessionCount: 3, totalMinutes: 20, latestScore: 4, scoreHistory: [],
-              latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-06-25T09:00:00Z")),
+              latestTempo: nil, tempoHistory: [], lastPracticedAt: "2026-06-25T09:00:00Z"),
+            pieceContextScore: 6),
           LinkedExerciseView(
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
-            practice: nil),
+            practice: nil, pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [])
     }
@@ -432,6 +437,41 @@
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
         ], exerciseContexts: [])
+    }
+
+    /// An exercise with a full "By piece" breakdown — a live piece, a
+    /// since-removed piece (snapshot title, no composer, muted), and the "On its
+    /// own" bucket — for the B2 exercise-detail snapshot (#1087 B2).
+    static var previewExerciseWithContexts: LibraryItemView {
+      LibraryItemView(
+        id: "exercise-1", itemType: .exercise, title: "Enclosures",
+        subtitle: "Bebop vocabulary",
+        key: "C", modality: .major, tempo: "120 BPM", tempoMarking: nil, tempoBpm: 120,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: ItemPracticeSummary(
+          sessionCount: 10, totalMinutes: 120, latestScore: 7,
+          scoreHistory: [
+            ScoreHistoryEntry(sessionDate: "2026-06-24T09:00:00Z", score: 7, sessionId: "e1")
+          ],
+          latestTempo: 120, tempoHistory: [], lastPracticedAt: "2026-06-24T09:00:00Z"),
+        latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [
+          PieceRefView(id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw")
+        ],
+        exerciseContexts: [
+          ExerciseContextView(
+            piece: PieceRefView(
+              id: "piece-1", title: "Strasbourg / St. Denis", subtitle: "Woody Shaw"),
+            latestScore: 7, sessionCount: 3, lastPracticedAt: "2026-06-24T09:00:00Z",
+            pieceRemoved: false),
+          ExerciseContextView(
+            piece: PieceRefView(id: "piece-gone", title: "Blue Bossa", subtitle: nil),
+            latestScore: 4, sessionCount: 2, lastPracticedAt: "2026-06-20T09:00:00Z",
+            pieceRemoved: true),
+          ExerciseContextView(
+            piece: nil, latestScore: 6, sessionCount: 4,
+            lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
+        ])
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
