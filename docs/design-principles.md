@@ -180,3 +180,16 @@ intention, skippable, and never a gate on saving. What's captured must feed
 forward: the "next target" answer surfaces as the item's suggested aim next
 time, and reflections are re-readable (session detail, item history, progress
 report). A note the user can never see again is admin, not reflection.
+
+### T8 — Segmented pills are inputs, not a second view of a list
+**Status:** DECIDED 2026-07-15 (#1081 B2).
+`SegmentedPills` (and pill/tab controls generally) are for genuine **inputs** —
+an either/or choice (the Piece/Exercise form toggle, `KindSegment`) or tag
+selection. **Do not add a pill row as a filter over content already shown as a
+list on the same screen** — that's two controls for one insight and reads as
+clutter (violates principle C). B2 originally proposed context filter-pills on
+the exercise detail to scope a session history, directly above a "By piece"
+rows list that already carried the same per-piece breakdown; the pills were cut
+and the rows made to carry it. When a list is on screen, let the rows (with
+their own scores/meta, tappable) do the work; reach for pills only for choice
+and tags.

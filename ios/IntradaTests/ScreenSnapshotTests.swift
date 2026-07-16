@@ -408,6 +408,15 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  // #1087 B2: overall-ring caption + "By piece" rows (live, removed, on-its-own).
+  func testExerciseDetailByPiece() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithContexts]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithContexts.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   func testLibraryAddScreen() {
     assertSnapshot(of: host(LibraryAddScreen()), as: config)
   }
