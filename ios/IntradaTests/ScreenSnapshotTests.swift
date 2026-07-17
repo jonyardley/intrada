@@ -448,13 +448,47 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  // #1083 C2: Steps section — solid / current / unrated ring states.
+  // #1083 C2: Steps section — solid / current / unrated ring states, horizontal
+  // scroller, "N of M solid" header; Key/Tempo rows hidden for laddered exercises.
   func testExerciseDetailWithSteps() {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExerciseWithSteps.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  /// Largest accessibility text size — proves the Steps scroller reflows
+  /// rather than clipping or wrapping (#1083 C2).
+  func testExerciseDetailWithStepsAccessibilitySize() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithSteps.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: axConfig)
+  }
+
+  // #1083 C2: 12-step ladder — survives max realistic length without wrapping.
+  func testExerciseDetailWith12Steps() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithFullLadder]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithFullLadder.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  // #1083 C2: no ladder — quiet "+ Add steps" text link, Key/Tempo rows still shown.
+  func testExerciseDetailNoSteps() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExercise.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  // #1083 C2: minimal step-list creation sheet, opened from the "+ Add steps" link.
+  func testAddStepsSheet() {
+    assertSnapshot(of: host(AddStepsSheet(itemId: "exercise-1")), as: config)
   }
 
   func testLibraryAddScreen() {

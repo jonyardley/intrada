@@ -527,6 +527,29 @@
         ])
     }
 
+    /// A 12-step chromatic ladder — stress-tests the Steps horizontal scroller
+    /// at max realistic length (#1083 C2).
+    static var previewExerciseWithFullLadder: LibraryItemView {
+      let keys = [
+        "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B",
+      ]
+      return LibraryItemView(
+        id: "exercise-3", itemType: .exercise, title: "Chromatic run",
+        subtitle: "All 12 keys",
+        key: nil, modality: nil, tempo: "72 BPM", tempoMarking: nil, tempoBpm: 72,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        variants: keys.enumerated().map { index, label in
+          let solid = index < 4
+          let current = index == 4
+          return VariantView(
+            id: "step-\(index)", label: label, position: UInt64(index),
+            latestScore: solid ? 9 : (current ? 6 : nil), scoreHistory: [],
+            isSolid: solid, isCurrent: current)
+        })
+    }
+
     /// A piece with no linked exercises — for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(

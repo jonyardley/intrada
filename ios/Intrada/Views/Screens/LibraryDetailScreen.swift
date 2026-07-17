@@ -15,6 +15,7 @@ struct LibraryDetailScreen: View {
   @State private var showingPicker = false
   @State private var editingChart = false
   @State private var showingScaffold = false
+  @State private var showingAddSteps = false
 
   init(item: LibraryItemView, startEditingLinks: Bool = false) {
     self.item = item
@@ -31,8 +32,15 @@ struct LibraryDetailScreen: View {
             TypeBadge(kind: item.itemType)
           }
 
-          if item.itemType == .exercise, !item.variants.isEmpty {
-            stepsSection
+          if item.itemType == .exercise {
+            if !item.variants.isEmpty {
+              stepsSection
+            } else {
+              AddRowButton(title: "Add steps", style: .plain) {
+                showingAddSteps = true
+              }
+              .accessibilityLabel("Add steps to this exercise")
+            }
           }
 
           if !detailRows.isEmpty {
@@ -127,6 +135,10 @@ struct LibraryDetailScreen: View {
       if let preview = item.scaffoldPreview {
         ScaffoldPreviewSheet(preview: preview, onCommit: commitScaffold)
       }
+    }
+    .sheet(isPresented: $showingAddSteps) {
+      AddStepsSheet(itemId: item.id)
+        .environment(store)
     }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
@@ -436,17 +448,23 @@ struct LibraryDetailScreen: View {
 
   private var stepsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "Steps")
-      VStack(spacing: 0) {
-        ForEach(Array(item.variants.enumerated()), id: \.offset) { index, step in
-          if index > 0 {
-            HairlineDivider()
+      SectionHeader(
+        title: "Steps",
+        trailing: "\(solidStepCount) of \(item.variants.count) solid")
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: IntradaSpacing.card) {
+          ForEach(item.variants, id: \.id) { step in
+            StepRingItem(step: step)
           }
-          StepRow(step: step)
         }
+        .padding(IntradaSpacing.cardCompact)
       }
-      .cardSurface()
+      .cardSurface(cornerRadius: IntradaRadius.card)
     }
+  }
+
+  private var solidStepCount: Int {
+    item.variants.filter(\.isSolid).count
   }
 
   // ── By piece (exercise contexts) ──
@@ -600,7 +618,10 @@ struct LibraryDetailScreen: View {
     item.subtitle.isEmpty ? nil : item.subtitle
   }
 
+  // A laddered exercise drops the item-level Key/Tempo rows: each step carries
+  // its own target, so a single value here would be misleading (#1083 C2).
   private var detailRows: [(label: String, value: String)] {
+    guard item.itemType != .exercise || item.variants.isEmpty else { return [] }
     var rows: [(String, String)] = []
     if let key = item.keyDisplay { rows.append(("Key", key)) }
     if let tempo = item.tempoDisplay { rows.append(("Tempo", tempo)) }
@@ -690,38 +711,43 @@ private struct LinkedExerciseRow: View {
   }
 }
 
-private struct StepRow: View {
+/// One column in the Steps horizontal scroller: a ring (letter + progress arc)
+/// and a state caption below — Solid (accent), Current (badge gold, calm and
+/// static, no pulse — retired per the `breathe`/`metro` rulings), or a dash for
+/// not yet reached.
+private struct StepRingItem: View {
   let step: VariantView
 
   var body: some View {
-    HStack(spacing: IntradaSpacing.row) {
-      ScoreRing(score: step.latestScore.map(Int.init), size: 44, solid: step.isSolid)
-      VStack(alignment: .leading, spacing: 3) {
-        Text(step.label)
-          .font(IntradaFont.cardTitle())
-          .foregroundStyle(IntradaColor.ink)
-        Text("Step \(step.position + 1)")
-          .font(IntradaFont.meta)
-          .foregroundStyle(IntradaColor.inkSecondary)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
+    VStack(spacing: 6) {
+      ScoreRing(
+        score: step.latestScore.map(Int.init), size: 44, solid: step.isSolid,
+        labelOverride: step.label)
+      Text(captionText)
+        .font(IntradaFont.meta)
+        .foregroundStyle(captionColor)
     }
-    .padding(.vertical, IntradaSpacing.row)
-    .padding(.horizontal, IntradaSpacing.card)
-    .background(IntradaColor.cardFill)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
     .accessibilityLabel(accessibilityLabel)
   }
 
+  private var captionText: String {
+    if step.isSolid { return "Solid" }
+    if step.isCurrent { return "Current" }
+    return "—"
+  }
+
+  private var captionColor: Color {
+    if step.isSolid { return IntradaColor.accent }
+    if step.isCurrent { return IntradaColor.exerciseBadgeFg }
+    return IntradaColor.inkFaint
+  }
+
   private var accessibilityLabel: String {
-    var parts = [step.label]
-    if let score = step.latestScore {
-      parts.append("score \(score) of 10")
-    } else {
-      parts.append("not yet rated")
-    }
-    if step.isSolid { parts.append("Solid") }
-    return parts.joined(separator: ", ")
+    if step.isCurrent { return "\(step.label), current step" }
+    guard let score = step.latestScore else { return "\(step.label), not yet attempted" }
+    return step.isSolid
+      ? "\(step.label), solid, \(score) of 10" : "\(step.label), \(score) of 10"
   }
 }
 
