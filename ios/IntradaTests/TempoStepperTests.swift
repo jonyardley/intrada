@@ -1,3 +1,4 @@
+import SharedTypes
 import XCTest
 
 @testable import Intrada
@@ -47,5 +48,31 @@ final class ReflectionSheetTempoResolutionTests: XCTestCase {
       ReflectionSheet.resolvedAchievedTempo(tempoTarget: 96, current: 96), 96,
       "untouched stepper reads as \"played at target\"")
     XCTAssertEqual(ReflectionSheet.resolvedAchievedTempo(tempoTarget: 96, current: 102), 102)
+  }
+}
+
+@MainActor
+final class ReflectionSheetStepSelectionTests: XCTestCase {
+  private func step(_ id: String, _ position: UInt64) -> VariantView {
+    VariantView(
+      id: id, label: id, position: position, latestScore: nil, scoreHistory: [], isSolid: false,
+      isCurrent: false)
+  }
+
+  func testNoStepsResolvesToNil() {
+    XCTAssertNil(ReflectionSheet.initialVariantId(currentVariantId: nil, variants: []))
+  }
+
+  func testCurrentVariantIdWinsWhenPresent() {
+    let variants = [step("s1", 0), step("s2", 1)]
+    XCTAssertEqual(
+      ReflectionSheet.initialVariantId(currentVariantId: "s2", variants: variants), "s2")
+  }
+
+  func testFallsBackToFirstStepByPositionWhenNoCurrentVariant() {
+    let variants = [step("s1", 0), step("s2", 1)]
+    XCTAssertEqual(
+      ReflectionSheet.initialVariantId(currentVariantId: nil, variants: variants), "s1",
+      "never leaves the picker unset — defaults to the first step")
   }
 }

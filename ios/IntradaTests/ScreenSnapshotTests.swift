@@ -300,7 +300,7 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: nil,
-        onSave: { _, _, _ in }, onSkip: {})
+        onSave: { _, _, _, _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }
@@ -310,7 +310,22 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "Scales · D♭", elapsedDisplay: "7:00", tempoTarget: 96,
-        onSave: { _, _, _ in }, onSkip: {})
+        onSave: { _, _, _, _ in }, onSkip: {})
+    }
+    assertSnapshot(of: host(sheet), as: config)
+  }
+
+  // #1083 C2: Step picker, pre-selected to the current (not-yet-solid) step.
+  func testReflectionSheetWithStepPicker() {
+    let sheet = ZStack(alignment: .bottom) {
+      PaperBackground()
+      ReflectionSheet(
+        itemTitle: "ii–V–i Enclosures", elapsedDisplay: "7:00", tempoTarget: nil,
+        variants: LibraryItemView.previewExerciseWithSteps.variants,
+        currentVariantId: LibraryItemView.previewExerciseWithSteps.variants.first(
+          where: \.isCurrent
+        )?.id,
+        onSave: { _, _, _, _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
   }
@@ -429,6 +444,15 @@ final class ScreenSnapshotTests: XCTestCase {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithContexts]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExerciseWithContexts.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  // #1083 C2: Steps section — solid / current / unrated ring states.
+  func testExerciseDetailWithSteps() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExerciseWithSteps.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
   }

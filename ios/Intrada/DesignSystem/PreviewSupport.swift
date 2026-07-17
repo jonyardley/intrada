@@ -504,6 +504,29 @@
         ], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
+    /// A step-ladder exercise — one solid, one current (rated but not
+    /// yet solid), one unrated. `currentVariantId` points at the current step.
+    static var previewExerciseWithSteps: LibraryItemView {
+      LibraryItemView(
+        id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
+        subtitle: "Bebop vocabulary, 12 keys",
+        key: "C", modality: .major, tempo: "132 BPM", tempoMarking: nil, tempoBpm: 132,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        variants: [
+          VariantView(
+            id: "step-c", label: "C", position: 0, latestScore: 9, scoreHistory: [],
+            isSolid: true, isCurrent: false),
+          VariantView(
+            id: "step-f", label: "F", position: 1, latestScore: 5, scoreHistory: [],
+            isSolid: false, isCurrent: true),
+          VariantView(
+            id: "step-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
+            isSolid: false, isCurrent: false),
+        ])
+    }
+
     /// A piece with no linked exercises — for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(

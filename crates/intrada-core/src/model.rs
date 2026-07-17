@@ -888,6 +888,14 @@ mod tests {
         assert_eq!(view.planned_duration_display.as_deref(), Some("1m 30s"));
     }
 
+    #[test]
+    fn entry_to_view_carries_variant_id() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.variant_id = Some("variant-1".to_string());
+        let view = entry_to_view(&entry);
+        assert_eq!(view.variant_id.as_deref(), Some("variant-1"));
+    }
+
     // ── build_active_session_view ──────────────────────────────────────
 
     #[test]

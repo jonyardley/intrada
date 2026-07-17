@@ -29,8 +29,10 @@ struct FocusPlayerScreen: View {
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm,
-        onSave: { score, note, achievedTempo in
-          handleReflection(target, score: score, note: note, achievedTempo: achievedTempo)
+        variants: target.variants, currentVariantId: target.currentVariantId,
+        onSave: { score, note, achievedTempo, variantId in
+          handleReflection(
+            target, score: score, note: note, achievedTempo: achievedTempo, variantId: variantId)
         },
         onSkip: { handleSkipRating() }
       )
@@ -214,6 +216,10 @@ struct FocusPlayerScreen: View {
     /// The item's own declared tempo (the practice target), distinct from
     /// `achievedTempo` logged after the fact. `nil` hides the tempo stepper.
     let tempoTargetBpm: UInt16?
+    /// The item's step ladder, if any. Empty when the item isn't in the
+    /// library (shouldn't happen) or has no steps.
+    let variants: [VariantView]
+    let currentVariantId: String?
   }
 
   private func presentReflection(_ active: ActiveSessionView) {
@@ -224,10 +230,17 @@ struct FocusPlayerScreen: View {
     }
     let start = SessionClock.parseRFC3339(active.currentItemStartedAt) ?? Date()
     let elapsed = max(Int((referenceDate ?? Date()).timeIntervalSince(start)), 0)
+    let entry = active.entries[pos]
+    let item = store.viewModel?.items.first(where: { $0.id == entry.itemId })
     reflecting = ReflectionTarget(
-      id: active.entries[pos].id, title: active.currentItemTitle,
+      id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
-      tempoTargetBpm: active.currentItemTempoBpm)
+      tempoTargetBpm: active.currentItemTempoBpm,
+      // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
+      // over the item's derived "current step" — otherwise a pre-assigned
+      // step would be silently overwritten on save.
+      variants: item?.variants ?? [],
+      currentVariantId: entry.variantId ?? item?.variants.first(where: \.isCurrent)?.id)
   }
 
   // Notes first (no status guard — surfaces a validation error before advancing);
@@ -235,7 +248,8 @@ struct FocusPlayerScreen: View {
   // need Completed). Errors surface on RootView's banner, so dismiss only on
   // success.
   private func handleReflection(
-    _ target: ReflectionTarget, score: UInt8?, note: String, achievedTempo: UInt16?
+    _ target: ReflectionTarget, score: UInt8?, note: String, achievedTempo: UInt16?,
+    variantId: String?
   ) {
     if !note.isEmpty {
       let before = store.viewModel?.errorSeq
@@ -248,6 +262,9 @@ struct FocusPlayerScreen: View {
     }
     if let achievedTempo {
       store.send(.session(.updateEntryTempo(entryId: target.id, tempo: achievedTempo)))
+    }
+    if !target.variants.isEmpty {
+      store.send(.session(.setEntryVariant(entryId: target.id, variantId: variantId)))
     }
     reflecting = nil
   }
