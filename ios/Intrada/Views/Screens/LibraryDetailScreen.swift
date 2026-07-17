@@ -31,7 +31,7 @@ struct LibraryDetailScreen: View {
             TypeBadge(kind: item.itemType)
           }
 
-          if item.itemType == .exercise, !item.variants.isEmpty {
+          if item.itemType == .exercise {
             stepsSection
           }
 
@@ -437,15 +437,38 @@ struct LibraryDetailScreen: View {
   private var stepsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(title: "Steps")
-      VStack(spacing: 0) {
-        ForEach(Array(item.variants.enumerated()), id: \.offset) { index, step in
-          if index > 0 {
-            HairlineDivider()
+      if item.variants.isEmpty {
+        stepsEmptyState
+      } else {
+        VStack(spacing: 0) {
+          ForEach(Array(item.variants.enumerated()), id: \.offset) { index, step in
+            if index > 0 {
+              HairlineDivider()
+            }
+            StepRow(step: step)
           }
-          StepRow(step: step)
         }
+        .cardSurface()
       }
-      .cardSurface()
+    }
+  }
+
+  private var stepsEmptyState: some View {
+    VStack(spacing: IntradaSpacing.controlGap) {
+      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circleMajor) }
+        .accessibilityLabel("Add 12 major keys as this exercise's step ladder")
+      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circleMinor) }
+        .accessibilityLabel("Add 12 minor keys as this exercise's step ladder")
+    }
+    .padding(IntradaSpacing.card)
+    .cardSurface()
+  }
+
+  private func addKeyPreset(_ labels: [String]) {
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.setVariants(id: item.id, labels: labels)))
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
 

@@ -448,6 +448,15 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  // #1083 C3: Steps section empty state — the two key-preset buttons.
+  func testExerciseDetailStepsEmptyState() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExercise.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   // #1083 C2: Steps section — solid / current / unrated ring states.
   func testExerciseDetailWithSteps() {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))
