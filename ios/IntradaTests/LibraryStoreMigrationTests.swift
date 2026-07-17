@@ -202,7 +202,7 @@ final class LibraryStoreMigrationTests: XCTestCase {
                 '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)
         """)
     let columns = try store.columnNames(ofTable: "variant")
-    for expected in ["id", "exercise_id", "label", "position", "updated_at", "deleted_at"] {
+    for expected in ["id", "item_id", "label", "position", "updated_at", "deleted_at"] {
       XCTAssertTrue(
         columns.contains(expected), "v9 variant table must carry \(expected); got \(columns)")
     }

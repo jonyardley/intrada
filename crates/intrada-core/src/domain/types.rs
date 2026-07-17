@@ -546,11 +546,11 @@ mod tests {
             entry_id: "e1".to_string(),
             duration_secs: None,
         });
-        assert_round_trips(SessionEvent::UpdateEntryVariant {
+        assert_round_trips(SessionEvent::SetEntryVariant {
             entry_id: "e1".to_string(),
             variant_id: Some("v-1".to_string()),
         });
-        assert_round_trips(SessionEvent::UpdateEntryVariant {
+        assert_round_trips(SessionEvent::SetEntryVariant {
             entry_id: "e1".to_string(),
             variant_id: None,
         });

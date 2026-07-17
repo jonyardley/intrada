@@ -379,6 +379,62 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  /// Real-bridge step round-trip (#846, #1083): `AddVariant` pushes a `Variant`
+  /// onto the exercise, which then rides the whole `Item` and the derived
+  /// `steps`/`currentVariantId` back across the bincode wire — a shape the stub
+  /// bridge can't exercise. A wire break would drop the ladder silently.
+  func testRealBridgeAddVariantSurfacesStepsInViewModel() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.item(.addVariant(itemId: id, label: "F major")))
+    _ = try bridge.update(.item(.addVariant(itemId: id, label: "Bb major")))
+
+    let view = try bridge.view()
+    let ex = try XCTUnwrap(view.items.first { $0.id == id })
+    XCTAssertEqual(
+      ex.variants.map(\.label), ["F major", "Bb major"],
+      "steps round-trip the live bridge in ladder order (err=\(view.error ?? "nil"))")
+    XCTAssertFalse(ex.variants.contains { $0.isSolid }, "unpractised steps aren't solid")
+    XCTAssertEqual(
+      ex.variants.first?.isCurrent, true,
+      "current step is the first not-yet-solid step")
+  }
+
+  /// Real-bridge rung tag (#846, #1083): `SetEntryVariant` carries an optional
+  /// String across the bincode wire (the absent-vs-present hazard). Drive it
+  /// through the live bridge and assert it decodes without error.
+  func testRealBridgeTagEntryWithVariantDecodesOnWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "F major")))
+    let stepId = try XCTUnwrap(try bridge.view().items.first?.variants.first?.id)
+
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
+    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: stepId)))
+    XCTAssertNil(try bridge.view().error, "tagging a rung must decode on the wire (#846)")
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: nil)))
+    XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
+  }
+
   /// Real-bridge chord-chart round-trip (#846): `SetChordChart` carries a String
   /// but returns a nested `ChordChart` + `ScaffoldPreviewView` across the bincode
   /// wire — a shape a stub bridge can't exercise. A bad chart must surface an
@@ -657,12 +713,12 @@ final class StoreEffectLoopTests: XCTestCase {
     let summary = try bridge.view()
     let entryId = try XCTUnwrap(summary.summary?.entries.first?.id)
 
-    _ = try bridge.update(.session(.updateEntryVariant(entryId: entryId, variantId: stepId)))
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: stepId)))
     let attributed = try bridge.view()
     XCTAssertEqual(
       attributed.summary?.entries.first?.variantId, stepId,
       "the step attribution should round-trip (err=\(attributed.error ?? "nil"))")
-    _ = try bridge.update(.session(.updateEntryVariant(entryId: entryId, variantId: nil)))
+    _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: nil)))
     XCTAssertNil(
       try bridge.view().summary?.entries.first?.variantId,
       "clearing the attribution round-trips")

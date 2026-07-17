@@ -150,6 +150,9 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertEqual(got.variants.map(\.id), ["v-c", "v-f", "v-g"], "ladder order by position")
     XCTAssertEqual(got.variants.map(\.label), ["C", "F", "G"])
     XCTAssertEqual(
+      got.variants[0].updatedAt, "2026-07-01T00:00:00+00:00",
+      "per-step sync timestamp is preserved")
+    XCTAssertEqual(
       got.variants[2].deletedAt, "2026-07-02T00:00:00+00:00",
       "the tombstone survives the round trip; no hard deletes")
   }

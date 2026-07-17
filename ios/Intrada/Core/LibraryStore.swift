@@ -48,14 +48,11 @@ final class LibraryStore: ItemStore {
     try dbQueue.read { db in
       // Variants load tombstones included: the core owns reconciliation
       // (resurrect-by-label) and history labels resolve through them (#1083).
-      let variantsByExercise = try Self.loadVariantsByExercise(db)
+      let variantsByItem = try Self.variantsByItem(db)
       return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map { row in
-        let id: String = row["id"]
-        return Self.item(from: row, variants: variantsByExercise[id] ?? [])
-      }
+      .map { row in Self.item(from: row, variants: variantsByItem[row["id"]] ?? []) }
     }
   }
 
@@ -103,21 +100,20 @@ final class LibraryStore: ItemStore {
         Self.encodeChordChart(item.chordChart),
       ])
     // Same transaction as the item row, keyed by id; no delete-missing: the
-    // core always carries the tombstones it loaded, so Swift never diffs.
-    for variant in item.variants {
+    // core always carries the tombstones it loaded and writes them back
+    // verbatim, so Swift never diffs and a tombstone round-trips (fixes the
+    // forced-NULL resurrect hazard, #1113).
+    for v in item.variants {
       try db.execute(
         sql: """
-          INSERT INTO variant (id, exercise_id, label, position, updated_at, deleted_at)
+          INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
           VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
-            exercise_id = excluded.exercise_id, label = excluded.label,
+            item_id = excluded.item_id, label = excluded.label,
             position = excluded.position, updated_at = excluded.updated_at,
             deleted_at = excluded.deleted_at
           """,
-        arguments: [
-          variant.id, item.id, variant.label, Int(variant.position),
-          variant.updatedAt, variant.deletedAt,
-        ])
+        arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt, v.deletedAt])
     }
   }
 
@@ -259,22 +255,22 @@ final class LibraryStore: ItemStore {
       try db.execute(sql: "ALTER TABLE item ADD COLUMN chord_chart TEXT")
     }
     migrator.registerMigration("v9_variant") { db in
-      // The store's first child table: one row per ladder step, with its own
-      // updated_at + deleted_at so a step can LWW-sync independently of its
-      // exercise (#1083, invariant 2). Steps live embedded in Item on the
-      // wire; this table is their per-row persistence shape.
+      // Exercise step ladders (#1083). First normalized child table: per-row
+      // `updated_at`/`deleted_at` give the future sync engine per-step LWW +
+      // tombstones (invariant 2) that a JSON blob on `item` couldn't. Additive —
+      // existing exercises simply have no rows here (an empty ladder).
       try db.execute(
         sql: """
           CREATE TABLE variant (
             id TEXT PRIMARY KEY NOT NULL,
-            exercise_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
             label TEXT NOT NULL,
             position INTEGER NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT
           )
           """)
-      try db.execute(sql: "CREATE INDEX idx_variant_exercise_id ON variant(exercise_id)")
+      try db.execute(sql: "CREATE INDEX index_variant_on_item_id ON variant(item_id)")
     }
     return migrator
   }()
@@ -309,20 +305,24 @@ final class LibraryStore: ItemStore {
 
   // ── Row ↔ Variant codec ──────────────────────────────────────────────
 
-  private static func loadVariantsByExercise(_ db: Database) throws -> [String: [Variant]] {
-    var byExercise: [String: [Variant]] = [:]
-    for row in try Row.fetchAll(db, sql: "SELECT * FROM variant ORDER BY position, id") {
-      let exerciseId: String = row["exercise_id"]
-      byExercise[exerciseId, default: []].append(variant(from: row))
-    }
-    return byExercise
-  }
-
   private static func variant(from row: Row) -> Variant {
     Variant(
-      id: row["id"], label: row["label"],
-      position: UInt64(row["position"] as Int64),
+      id: row["id"], label: row["label"], position: UInt64(row["position"] as Int),
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  /// All variants (steps) grouped by owning item, in ladder order — tombstones
+  /// included, per the core's reconciliation contract (#1083). One query for
+  /// the whole library, keyed by `item_id`, so `loadItems` stays O(1) reads.
+  private static func variantsByItem(_ db: Database) throws -> [String: [Variant]] {
+    let rows = try Row.fetchAll(
+      db,
+      sql: "SELECT * FROM variant ORDER BY item_id, position, id")
+    var byItem: [String: [Variant]] = [:]
+    for row in rows {
+      byItem[row["item_id"], default: []].append(variant(from: row))
+    }
+    return byItem
   }
 
   private static func kindString(_ kind: ItemKind) -> String {

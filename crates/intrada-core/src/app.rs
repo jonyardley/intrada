@@ -4669,6 +4669,111 @@ mod tests {
         }
     }
 
+    // ── Step (variant) derivation (#1083 C1) ──
+
+    fn variant_entry(item_id: &str, variant_id: &str, score: Option<u8>) -> SetlistEntry {
+        let mut e = ctx_entry(item_id, "Scales", ItemKind::Exercise, score, None);
+        e.variant_id = Some(variant_id.to_string());
+        e
+    }
+
+    fn exercise_with_variants(id: &str, labels: &[&str]) -> Item {
+        let mut ex = ctx_item(id, "Scales", ItemKind::Exercise, None);
+        let now = chrono::Utc::now();
+        ex.variants = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| crate::domain::item::Variant {
+                id: format!("{id}-v{i}"),
+                label: l.to_string(),
+                position: i,
+                updated_at: now,
+                deleted_at: None,
+            })
+            .collect();
+        ex
+    }
+
+    fn derived_variants(
+        item: &Item,
+        sessions: &[PracticeSession],
+    ) -> Vec<crate::model::VariantView> {
+        build_variant_views(item, &build_variant_score_index(sessions))
+    }
+
+    #[test]
+    fn variant_views_derive_latest_score_and_current_step() {
+        let ex = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
+        let t0 = chrono::Utc::now() - chrono::Duration::days(2);
+        let t1 = chrono::Utc::now();
+        let sessions = vec![
+            ctx_session("s0", t0, vec![variant_entry("ex-1", "ex-1-v0", Some(4))]),
+            ctx_session(
+                "s1",
+                t1,
+                vec![
+                    variant_entry("ex-1", "ex-1-v0", Some(9)),
+                    variant_entry("ex-1", "ex-1-v1", Some(5)),
+                ],
+            ),
+        ];
+
+        let steps = derived_variants(&ex, &sessions);
+
+        assert_eq!(steps.len(), 3);
+        assert_eq!(
+            steps[0].latest_score,
+            Some(9),
+            "latest session wins over older"
+        );
+        assert!(steps[0].is_solid, "score >= threshold is solid");
+        assert_eq!(steps[1].latest_score, Some(5));
+        assert!(!steps[1].is_solid);
+        assert!(steps[1].is_current, "current = first non-solid step");
+        assert_eq!(steps[2].latest_score, None, "unpractised step has no score");
+        assert!(!steps[2].is_solid);
+        assert!(!steps[2].is_current);
+    }
+
+    #[test]
+    fn variant_views_no_current_when_all_solid() {
+        let ex = exercise_with_variants("ex-1", &["F", "Bb"]);
+        let now = chrono::Utc::now();
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![
+                variant_entry("ex-1", "ex-1-v0", Some(8)),
+                variant_entry("ex-1", "ex-1-v1", Some(10)),
+            ],
+        )];
+
+        let steps = derived_variants(&ex, &sessions);
+        assert!(steps.iter().all(|s| s.is_solid));
+        assert!(
+            steps.iter().all(|s| !s.is_current),
+            "a fully solid ladder has no current step"
+        );
+    }
+
+    #[test]
+    fn variant_views_scope_scores_to_this_item() {
+        let ex = exercise_with_variants("ex-1", &["F"]);
+        let now = chrono::Utc::now();
+        // A different item reusing the same variant-id string must not leak in.
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![variant_entry("other", "ex-1-v0", Some(10))],
+        )];
+        let steps = derived_variants(&ex, &sessions);
+        assert_eq!(
+            steps[0].latest_score, None,
+            "scores are scoped to this item"
+        );
+        assert!(steps[0].is_current);
+    }
+
     /// The core B1 derivation: an exercise practised in a piece's block twice
     /// and standalone once yields two contexts — the piece (latest score, count,
     /// date rolled up) then the "On its own" bucket last.

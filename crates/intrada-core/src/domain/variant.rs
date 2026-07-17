@@ -2,8 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// One rung of an exercise's step ladder: "C", "Root position", "Land on
-/// the 3rd". Users see "Steps"; `variant` is the core's name and never
-/// appears on screen (#1083).
+/// the 3rd". The core's name; the UI says "Steps"/"Keys" (#1083). Score
+/// history is derived from session entries tagged with this `id`, never
+/// stored here.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Variant {
