@@ -62,6 +62,51 @@ async fn save_session_valid() {
     assert_eq!(session.total_duration_secs, 900);
 }
 
+/// Invariant 6, consciously scoped (#1083): the online server has no step
+/// support yet. A session whose entries carry a `variant_id` must still save —
+/// the field is silently dropped (as `group_id` is), never a 400. Server step
+/// tables arrive with the sync engine.
+#[tokio::test]
+async fn save_session_with_variant_id_on_entries_drops_it_gracefully() {
+    let app = common::setup_test_app().await;
+    let body = json!({
+        "entries": [{
+            "id": "entry-001",
+            "item_id": "exercise-001",
+            "item_title": "Scales",
+            "item_type": "exercise",
+            "position": 0,
+            "duration_secs": 300,
+            "status": "Completed",
+            "notes": null,
+            "score": 8,
+            "variant_id": "variant-abc"
+        }],
+        "started_at": "2026-02-16T10:00:00Z",
+        "completed_at": "2026-02-16T10:15:00Z",
+        "total_duration_secs": 300,
+        "completion_status": "Completed"
+    });
+
+    let (status, resp) = common::post_json(app, "/api/sessions", body).await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "unknown step field is not rejected"
+    );
+    let session: PracticeSession = common::json(&resp);
+    assert_eq!(session.entries.len(), 1);
+    assert_eq!(
+        session.entries[0].variant_id, None,
+        "server drops variant_id until the sync engine ships"
+    );
+    assert_eq!(
+        session.entries[0].score,
+        Some(8),
+        "known fields still persist"
+    );
+}
+
 #[tokio::test]
 async fn save_session_empty_entries_returns_400() {
     let app = common::setup_test_app().await;

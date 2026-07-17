@@ -83,6 +83,12 @@ pub struct SetlistEntry {
     /// of entries with the same id; `None` = standalone.
     #[serde(default)]
     pub group_id: Option<String>,
+    /// Which step (variant) of the exercise this rep practised (#1083). `None`
+    /// for entries with no ladder. Appended LAST + `#[serde(default)]` so old
+    /// bincode/JSON rows decode (positional wire; #846). Dropped server-side
+    /// until the sync engine, exactly like `group_id` — invariant 6 scoped.
+    #[serde(default)]
+    pub variant_id: Option<String>,
 }
 
 /// A completed practice session (persisted to localStorage).
@@ -194,6 +200,12 @@ pub enum SessionEvent {
     SetEntryIntention {
         entry_id: String,
         intention: Option<String>,
+    },
+    /// Tag a building-phase entry with the exercise step (variant) it practises
+    /// (#1083). `None` clears the rung.
+    SetEntryVariant {
+        entry_id: String,
+        variant_id: Option<String>,
     },
     /// Set or clear the rep target for an entry during building phase.
     /// `None` disables the counter; `Some(n)` enables it with target `n`.
@@ -409,6 +421,7 @@ fn create_entry(
         planned_duration_secs: None,
         achieved_tempo: None,
         group_id: None,
+        variant_id: None,
     }
 }
 
@@ -506,6 +519,7 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         updated_at: now,
         priority: false,
         chord_chart: None,
+        variants: vec![],
     }
 }
 
@@ -660,6 +674,24 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             entry.intention = intention;
+            model.last_error = None;
+            crux_core::render::render()
+        }
+
+        SessionEvent::SetEntryVariant {
+            entry_id,
+            variant_id,
+        } => {
+            let SessionStatus::Building(ref mut building) = model.session_status else {
+                return crux_core::render::render();
+            };
+
+            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+                return crux_core::render::render();
+            };
+
+            entry.variant_id = variant_id;
             model.last_error = None;
             crux_core::render::render()
         }
@@ -1582,6 +1614,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "piece-2".to_string(),
@@ -1598,6 +1631,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "exercise-1".to_string(),
@@ -1614,6 +1648,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             api_base_url: "http://localhost:3001".to_string(),
@@ -1645,6 +1680,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         Model {
             items: vec![
@@ -4118,6 +4154,66 @@ mod tests {
     }
 
     #[test]
+    fn test_set_entry_variant_tags_the_rung() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "piece-1".to_string(),
+            }),
+        );
+
+        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].variant_id, None, "entries start with no rung");
+            b.entries[0].id.clone()
+        } else {
+            panic!("Expected Building state");
+        };
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id: entry_id.clone(),
+                variant_id: Some("var-1".to_string()),
+            }),
+        );
+        assert!(model.last_error.is_none());
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].variant_id, Some("var-1".to_string()));
+        } else {
+            panic!("Expected Building state");
+        }
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: None,
+            }),
+        );
+        if let SessionStatus::Building(ref b) = model.session_status {
+            assert_eq!(b.entries[0].variant_id, None, "None clears the rung");
+        } else {
+            panic!("Expected Building state");
+        }
+    }
+
+    #[test]
+    fn test_set_entry_variant_unknown_entry_surfaces_error() {
+        let mut model = model_with_library();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id: "nope".to_string(),
+                variant_id: Some("var-1".to_string()),
+            }),
+        );
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
     fn test_intention_too_long() {
         let mut model = model_with_library();
         update(&mut model, Event::Session(SessionEvent::StartBuilding));
@@ -5065,6 +5161,42 @@ mod tests {
             planned_duration_secs: Some(300),
             achieved_tempo: Some(96),
             group_id: Some("g1".to_string()),
+            variant_id: None,
         });
+    }
+
+    /// The rung tag (#1083) is the newest bincode field on the entry and the
+    /// sole input to per-step score derivation — a silent drop on the wire would
+    /// unscore every step. Guard the entry with `variant_id` set, and the event
+    /// that writes it, against the #846 class.
+    #[test]
+    fn set_entry_variant_payloads_round_trip_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "ex-1".to_string(),
+            item_title: "Scales".to_string(),
+            item_type: ItemKind::Exercise,
+            position: 0,
+            duration_secs: 300,
+            status: EntryStatus::Completed,
+            notes: None,
+            score: Some(8),
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: None,
+            variant_id: Some("v1".to_string()),
+        });
+
+        crate::domain::types::assert_round_trips(crate::app::Event::Session(
+            SessionEvent::SetEntryVariant {
+                entry_id: "e1".to_string(),
+                variant_id: Some("v1".to_string()),
+            },
+        ));
     }
 }

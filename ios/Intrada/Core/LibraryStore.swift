@@ -46,10 +46,11 @@ final class LibraryStore: ItemStore {
 
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
-      try Row.fetchAll(
+      let variantsByItem = try Self.variantsByItem(db)
+      return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map(Self.item(from:))
+      .map { row in Self.item(from: row, variants: variantsByItem[row["id"]] ?? []) }
     }
   }
 
@@ -96,6 +97,26 @@ final class LibraryStore: ItemStore {
         item.createdAt, item.updatedAt, item.priority,
         Self.encodeChordChart(item.chordChart),
       ])
+
+    // Variants are a child table (per-row sync tombstones, invariant 2 — #1083).
+    // Upsert each active step the core holds; each carries its own core-stamped
+    // `updated_at` for LWW. Absent rows are left untouched (no hard delete;
+    // archive lands in C4). Safe in C1 because only AddVariant writes and the
+    // core never holds a tombstoned variant (loadItems filters them out).
+    // FIXME(#1113): the forced `deleted_at = NULL` would resurrect a tombstone —
+    // C4 archive must not route a `deleted_at`-set variant through this upsert.
+    for v in item.variants {
+      try db.execute(
+        sql: """
+          INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, NULL)
+          ON CONFLICT(id) DO UPDATE SET
+            item_id = excluded.item_id, label = excluded.label,
+            position = excluded.position, updated_at = excluded.updated_at,
+            deleted_at = NULL
+          """,
+        arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt])
+    }
   }
 
   /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same
@@ -235,6 +256,24 @@ final class LibraryStore: ItemStore {
       // Nullable JSON column; NULL = no chart. Additive, non-destructive.
       try db.execute(sql: "ALTER TABLE item ADD COLUMN chord_chart TEXT")
     }
+    migrator.registerMigration("v9_variant") { db in
+      // Exercise step ladders (#1083). First normalized child table: per-row
+      // `updated_at`/`deleted_at` give the future sync engine per-step LWW +
+      // tombstones (invariant 2) that a JSON blob on `item` couldn't. Additive —
+      // existing exercises simply have no rows here (an empty ladder).
+      try db.execute(
+        sql: """
+          CREATE TABLE variant (
+            id TEXT PRIMARY KEY NOT NULL,
+            item_id TEXT NOT NULL,
+            label TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(sql: "CREATE INDEX index_variant_on_item_id ON variant(item_id)")
+    }
     return migrator
   }()
 
@@ -250,7 +289,7 @@ final class LibraryStore: ItemStore {
     var description: String { "unknown \(kind) on decode: \"\(raw)\"" }
   }
 
-  private static func item(from row: Row) -> Item {
+  private static func item(from row: Row, variants: [Variant]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
@@ -262,7 +301,27 @@ final class LibraryStore: ItemStore {
       linkedExerciseIds: decodeLinkedExerciseIds(row["linked_exercise_ids"]),
       createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"],
-      chordChart: decodeChordChart(row["chord_chart"]))
+      chordChart: decodeChordChart(row["chord_chart"]),
+      variants: variants)
+  }
+
+  private static func variant(from row: Row) -> Variant {
+    Variant(
+      id: row["id"], label: row["label"], position: UInt64(row["position"] as Int),
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  /// Active variants (steps) grouped by owning item, in ladder order. One query
+  /// for the whole library, keyed by `item_id`, so `loadItems` stays O(1) reads.
+  private static func variantsByItem(_ db: Database) throws -> [String: [Variant]] {
+    let rows = try Row.fetchAll(
+      db,
+      sql: "SELECT * FROM variant WHERE deleted_at IS NULL ORDER BY item_id, position")
+    var byItem: [String: [Variant]] = [:]
+    for row in rows {
+      byItem[row["item_id"], default: []].append(variant(from: row))
+    }
+    return byItem
   }
 
   private static func kindString(_ kind: ItemKind) -> String {
@@ -489,6 +548,7 @@ final class LibraryStore: ItemStore {
     var plannedDurationSecs: UInt32?
     var achievedTempo: UInt16?
     var groupId: String?
+    var variantId: String?
   }
 
   private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
@@ -500,7 +560,7 @@ final class LibraryStore: ItemStore {
         repCount: e.repCount, repTargetReached: e.repTargetReached,
         repHistory: e.repHistory.map { $0.map(repActionString) },
         plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo,
-        groupId: e.groupId)
+        groupId: e.groupId, variantId: e.variantId)
     }
     guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
     else { return "[]" }
@@ -519,7 +579,7 @@ final class LibraryStore: ItemStore {
         repCount: d.repCount, repTargetReached: d.repTargetReached,
         repHistory: d.repHistory.map { $0.map(repAction(from:)) },
         plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo,
-        groupId: d.groupId)
+        groupId: d.groupId, variantId: d.variantId)
     }
   }
 

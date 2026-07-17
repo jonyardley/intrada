@@ -475,6 +475,7 @@ mod tests {
             planned_duration_secs: Some(300),
             achieved_tempo: Some(120),
             group_id: None,
+            variant_id: None,
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -568,6 +569,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: Some("block-1".to_string()),
+            variant_id: None,
         });
     }
 

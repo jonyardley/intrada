@@ -457,6 +457,13 @@ impl Intrada {
                 vec![]
             };
 
+            let (steps, current_variant_id) =
+                if item.kind == ItemKind::Exercise && !item.variants.is_empty() {
+                    build_step_views(item, &model.sessions)
+                } else {
+                    (vec![], None)
+                };
+
             // `already_linked` uses the same reconciliation key `CommitScaffold`
             // does, so the read-only preview and the commit agree.
             let scaffold_preview = item.chord_chart.as_ref().map(|chart| {
@@ -526,6 +533,8 @@ impl Intrada {
                 exercise_contexts,
                 scaffold_preview,
                 chord_chart: item.chord_chart.clone(),
+                steps,
+                current_variant_id,
             });
         }
 
@@ -825,6 +834,65 @@ pub(crate) fn build_practice_summaries(
         .collect()
 }
 
+/// A step counts as "Solid" once its latest score reaches this (scores are
+/// 1–10). Drives `current_variant_id` = first non-solid step (#1083 C1). A named
+/// const so retuning the ladder's progress rule is a one-line change.
+pub(crate) const SOLID_THRESHOLD: u8 = 8;
+
+/// Derive an exercise's step ladder with per-step scores, plus the current step
+/// (#1083 C1). A step's latest score is the `score` of the most recent session
+/// entry tagged with that step's id *for this item*; a step with no such score
+/// is not solid. `current` is the first step (by position) that isn't solid, or
+/// `None` when the ladder is empty or fully solid.
+pub(crate) fn build_step_views(
+    item: &crate::domain::item::Item,
+    sessions: &[PracticeSession],
+) -> (Vec<crate::model::StepView>, Option<String>) {
+    use crate::model::StepView;
+
+    // variant_id -> (latest score, its session date) for the latest *scored*
+    // entry on THIS item — an unrated practice must not blank a prior rating
+    // (mirrors `build_practice_summaries`).
+    let mut latest: std::collections::HashMap<&str, (u8, String)> =
+        std::collections::HashMap::new();
+    for session in sessions {
+        let date = session.started_at.to_rfc3339();
+        for entry in &session.entries {
+            if entry.item_id != item.id {
+                continue;
+            }
+            let Some(vid) = entry.variant_id.as_deref() else {
+                continue;
+            };
+            let Some(score) = entry.score else {
+                continue;
+            };
+            let take = latest.get(vid).map_or(true, |(_, cur)| date > *cur);
+            if take {
+                latest.insert(vid, (score, date.clone()));
+            }
+        }
+    }
+
+    let steps: Vec<StepView> = item
+        .variants
+        .iter()
+        .map(|v| {
+            let latest_score = latest.get(v.id.as_str()).map(|(s, _)| *s);
+            StepView {
+                id: v.id.clone(),
+                label: v.label.clone(),
+                position: v.position,
+                latest_score,
+                solid: latest_score.is_some_and(|s| s >= SOLID_THRESHOLD),
+            }
+        })
+        .collect();
+
+    let current = steps.iter().find(|s| !s.solid).map(|s| s.id.clone());
+    (steps, current)
+}
+
 /// Derive, per exercise, the piece/standalone contexts it has been practised
 /// in across `sessions` (#1087 B1). For each session entry that is an exercise,
 /// the context is the piece sharing its block `group_id` in that same session,
@@ -1059,6 +1127,7 @@ fn sample_items() -> Vec<Item> {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     };
 
@@ -1157,6 +1226,7 @@ fn sample_sessions() -> Vec<PracticeSession> {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     };
 
@@ -1273,6 +1343,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let _ = app.update(
@@ -1323,6 +1394,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             },
             Item {
                 id: "ex1".to_string(),
@@ -1339,6 +1411,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             },
         ];
 
@@ -1465,6 +1538,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -1640,6 +1714,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "p2".to_string(),
@@ -1659,6 +1734,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "p3".to_string(),
@@ -1678,6 +1754,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "e1".to_string(),
@@ -1694,6 +1771,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
@@ -1769,6 +1847,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -1785,6 +1864,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let vm = app.view(&model);
@@ -1846,6 +1926,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1862,6 +1943,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         model.active_query = Some(ListQuery {
@@ -1895,6 +1977,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1911,6 +1994,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         model.active_query = Some(ListQuery {
@@ -1943,6 +2027,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -1986,6 +2071,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -2021,6 +2107,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -2196,6 +2283,7 @@ mod tests {
                 linked_exercise_ids,
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             });
         }
         for i in 0..5000 {
@@ -2218,6 +2306,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             });
         }
         let populate_time = start.elapsed();
@@ -2271,6 +2360,7 @@ mod tests {
                         planned_duration_secs: None,
                         achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
                         group_id: None,
+                        variant_id: None,
                     }
                 })
                 .collect();
@@ -2375,6 +2465,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -2391,6 +2482,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![p1, p2];
 
@@ -2427,6 +2519,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2446,6 +2539,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
             ],
             reflection_improved: None,
@@ -2498,6 +2592,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2532,6 +2627,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2566,6 +2662,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2609,6 +2706,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2643,6 +2741,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2679,6 +2778,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2714,6 +2814,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2733,6 +2834,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
             ],
             reflection_improved: None,
@@ -2775,6 +2877,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2809,6 +2912,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2879,6 +2983,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: tempo,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2936,6 +3041,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2997,6 +3103,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -3016,6 +3123,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -3044,6 +3152,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -3063,6 +3172,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -3120,6 +3230,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -3436,6 +3547,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -3774,6 +3886,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -3818,6 +3931,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -3852,6 +3966,7 @@ mod tests {
             planned_duration_secs,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     }
 
@@ -3963,6 +4078,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let server_item = Item {
@@ -3980,6 +4096,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -4014,6 +4131,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -4075,6 +4193,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4141,6 +4260,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4206,6 +4326,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4256,6 +4377,7 @@ mod tests {
             linked_exercise_ids: vec!["ex-1".to_string()],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -4272,6 +4394,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let model = Model {
             items: vec![piece, ex],
@@ -4318,6 +4441,7 @@ mod tests {
                     ],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -4337,6 +4461,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -4353,6 +4478,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -4369,6 +4495,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
@@ -4439,6 +4566,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: group.map(String::from),
+            variant_id: None,
         }
     }
 
@@ -4480,7 +4608,106 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
+    }
+
+    // ── Step (variant) derivation (#1083 C1) ──
+
+    fn variant_entry(item_id: &str, variant_id: &str, score: Option<u8>) -> SetlistEntry {
+        let mut e = ctx_entry(item_id, "Scales", ItemKind::Exercise, score, None);
+        e.variant_id = Some(variant_id.to_string());
+        e
+    }
+
+    fn exercise_with_variants(id: &str, labels: &[&str]) -> Item {
+        let mut ex = ctx_item(id, "Scales", ItemKind::Exercise, None);
+        let now = chrono::Utc::now();
+        ex.variants = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| crate::domain::item::Variant {
+                id: format!("{id}-v{i}"),
+                label: l.to_string(),
+                position: i,
+                updated_at: now,
+                deleted_at: None,
+            })
+            .collect();
+        ex
+    }
+
+    #[test]
+    fn step_views_derive_latest_score_and_current_step() {
+        let ex = exercise_with_variants("ex-1", &["F", "Bb", "Eb"]);
+        let t0 = chrono::Utc::now() - chrono::Duration::days(2);
+        let t1 = chrono::Utc::now();
+        let sessions = vec![
+            ctx_session("s0", t0, vec![variant_entry("ex-1", "ex-1-v0", Some(4))]),
+            ctx_session(
+                "s1",
+                t1,
+                vec![
+                    variant_entry("ex-1", "ex-1-v0", Some(9)),
+                    variant_entry("ex-1", "ex-1-v1", Some(5)),
+                ],
+            ),
+        ];
+
+        let (steps, current) = build_step_views(&ex, &sessions);
+
+        assert_eq!(steps.len(), 3);
+        assert_eq!(
+            steps[0].latest_score,
+            Some(9),
+            "latest session wins over older"
+        );
+        assert!(steps[0].solid, "score >= threshold is solid");
+        assert_eq!(steps[1].latest_score, Some(5));
+        assert!(!steps[1].solid);
+        assert_eq!(steps[2].latest_score, None, "unpractised step has no score");
+        assert!(!steps[2].solid);
+        assert_eq!(
+            current,
+            Some("ex-1-v1".to_string()),
+            "current = first non-solid step"
+        );
+    }
+
+    #[test]
+    fn step_views_current_is_none_when_all_solid() {
+        let ex = exercise_with_variants("ex-1", &["F", "Bb"]);
+        let now = chrono::Utc::now();
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![
+                variant_entry("ex-1", "ex-1-v0", Some(8)),
+                variant_entry("ex-1", "ex-1-v1", Some(10)),
+            ],
+        )];
+
+        let (steps, current) = build_step_views(&ex, &sessions);
+        assert!(steps.iter().all(|s| s.solid));
+        assert_eq!(current, None, "a fully solid ladder has no current step");
+    }
+
+    #[test]
+    fn step_views_scope_scores_to_this_item() {
+        let ex = exercise_with_variants("ex-1", &["F"]);
+        let now = chrono::Utc::now();
+        // A different item reusing the same variant-id string must not leak in.
+        let sessions = vec![ctx_session(
+            "s1",
+            now,
+            vec![variant_entry("other", "ex-1-v0", Some(10))],
+        )];
+        let (steps, current) = build_step_views(&ex, &sessions);
+        assert_eq!(
+            steps[0].latest_score, None,
+            "scores are scoped to this item"
+        );
+        assert_eq!(current, Some("ex-1-v0".to_string()));
     }
 
     /// The core B1 derivation: an exercise practised in a piece's block twice
@@ -4809,6 +5036,7 @@ mod tests {
                     linked_exercise_ids: vec!["item-b".to_string()],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -4825,6 +5053,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
