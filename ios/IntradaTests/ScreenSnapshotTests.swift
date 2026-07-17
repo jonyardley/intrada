@@ -448,6 +448,15 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  // #1083 C2/C3: Steps section empty state — key-preset buttons + custom-steps link.
+  func testExerciseDetailStepsEmptyState() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
+    let pushed = NavigationStack(
+      path: .constant([LibraryItemView.previewExercise.id])
+    ) { LibraryScreen() }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
   // #1083 C2: Steps section — solid / current / unrated ring states, horizontal
   // scroller, "N of M solid" header; Key/Tempo rows hidden for laddered exercises.
   func testExerciseDetailWithSteps() {
@@ -473,15 +482,6 @@ final class ScreenSnapshotTests: XCTestCase {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithFullLadder]))
     let pushed = NavigationStack(
       path: .constant([LibraryItemView.previewExerciseWithFullLadder.id])
-    ) { LibraryScreen() }
-    assertSnapshot(of: host(pushed, store: store), as: config)
-  }
-
-  // #1083 C2: no ladder — quiet "+ Add steps" text link, Key/Tempo rows still shown.
-  func testExerciseDetailNoSteps() {
-    let store = Store(bridge: PreviewBridge(items: [.previewExercise]))
-    let pushed = NavigationStack(
-      path: .constant([LibraryItemView.previewExercise.id])
     ) { LibraryScreen() }
     assertSnapshot(of: host(pushed, store: store), as: config)
   }

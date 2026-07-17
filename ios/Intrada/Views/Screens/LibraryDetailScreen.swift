@@ -33,14 +33,7 @@ struct LibraryDetailScreen: View {
           }
 
           if item.itemType == .exercise {
-            if !item.variants.isEmpty {
-              stepsSection
-            } else {
-              AddRowButton(title: "Add steps", style: .plain) {
-                showingAddSteps = true
-              }
-              .accessibilityLabel("Add steps to this exercise")
-            }
+            stepsSection
           }
 
           if !detailRows.isEmpty {
@@ -450,16 +443,43 @@ struct LibraryDetailScreen: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(
         title: "Steps",
-        trailing: "\(solidStepCount) of \(item.variants.count) solid")
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: IntradaSpacing.card) {
-          ForEach(item.variants, id: \.id) { step in
-            StepRingItem(step: step)
+        trailing: item.variants.isEmpty ? nil : "\(solidStepCount) of \(item.variants.count) solid")
+      if item.variants.isEmpty {
+        stepsEmptyState
+      } else {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: IntradaSpacing.card) {
+            ForEach(item.variants, id: \.id) { step in
+              StepRingItem(step: step)
+            }
           }
+          .padding(IntradaSpacing.cardCompact)
         }
-        .padding(IntradaSpacing.cardCompact)
+        .cardSurface(cornerRadius: IntradaRadius.card)
       }
-      .cardSurface(cornerRadius: IntradaRadius.card)
+    }
+  }
+
+  private var stepsEmptyState: some View {
+    VStack(spacing: IntradaSpacing.controlGap) {
+      AddRowButton(title: "Add 12 major keys") { addKeyPreset(KeyHelper.circleMajor) }
+        .accessibilityLabel("Add 12 major keys as this exercise's step ladder")
+      AddRowButton(title: "Add 12 minor keys") { addKeyPreset(KeyHelper.circleMinor) }
+        .accessibilityLabel("Add 12 minor keys as this exercise's step ladder")
+      AddRowButton(title: "Add custom steps", style: .plain) {
+        showingAddSteps = true
+      }
+      .accessibilityLabel("Add custom steps to this exercise")
+    }
+    .padding(IntradaSpacing.card)
+    .cardSurface()
+  }
+
+  private func addKeyPreset(_ labels: [String]) {
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.setVariants(id: item.id, labels: labels)))
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
 
