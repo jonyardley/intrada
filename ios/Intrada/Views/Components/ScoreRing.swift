@@ -35,9 +35,10 @@ struct ScoreRing: View {
       }
       VStack(spacing: size * 0.02) {
         if isUnrated {
-          Text("–")
-            .font(IntradaFont.scoreNumeral(size * 0.36))
-            .foregroundStyle(IntradaColor.inkFaint)
+          // "Not yet played" reads as a rest (see EighthRestShape).
+          EighthRestShape()
+            .fill(IntradaColor.inkFaint)
+            .frame(width: size * 0.45 * EighthRestShape.aspect, height: size * 0.45)
         } else {
           Text("\(clampedScore)")
             .font(IntradaFont.scoreNumeral(size * 0.36))
