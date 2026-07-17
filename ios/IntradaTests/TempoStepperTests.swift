@@ -53,24 +53,26 @@ final class ReflectionSheetTempoResolutionTests: XCTestCase {
 
 @MainActor
 final class ReflectionSheetStepSelectionTests: XCTestCase {
-  private func step(_ id: String, _ position: UInt64) -> StepView {
-    StepView(id: id, label: id, position: position, latestScore: nil, solid: false)
+  private func step(_ id: String, _ position: UInt64) -> VariantView {
+    VariantView(
+      id: id, label: id, position: position, latestScore: nil, scoreHistory: [], isSolid: false,
+      isCurrent: false)
   }
 
   func testNoStepsResolvesToNil() {
-    XCTAssertNil(ReflectionSheet.initialVariantId(currentVariantId: nil, steps: []))
+    XCTAssertNil(ReflectionSheet.initialVariantId(currentVariantId: nil, variants: []))
   }
 
   func testCurrentVariantIdWinsWhenPresent() {
-    let steps = [step("s1", 0), step("s2", 1)]
+    let variants = [step("s1", 0), step("s2", 1)]
     XCTAssertEqual(
-      ReflectionSheet.initialVariantId(currentVariantId: "s2", steps: steps), "s2")
+      ReflectionSheet.initialVariantId(currentVariantId: "s2", variants: variants), "s2")
   }
 
   func testFallsBackToFirstStepByPositionWhenNoCurrentVariant() {
-    let steps = [step("s1", 0), step("s2", 1)]
+    let variants = [step("s1", 0), step("s2", 1)]
     XCTAssertEqual(
-      ReflectionSheet.initialVariantId(currentVariantId: nil, steps: steps), "s1",
+      ReflectionSheet.initialVariantId(currentVariantId: nil, variants: variants), "s1",
       "never leaves the picker unset — defaults to the first step")
   }
 }

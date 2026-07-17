@@ -29,7 +29,7 @@ struct FocusPlayerScreen: View {
       ReflectionSheet(
         itemTitle: target.title, elapsedDisplay: target.elapsedDisplay,
         tempoTarget: target.tempoTargetBpm,
-        steps: target.steps, currentVariantId: target.currentVariantId,
+        variants: target.variants, currentVariantId: target.currentVariantId,
         onSave: { score, note, achievedTempo, variantId in
           handleReflection(
             target, score: score, note: note, achievedTempo: achievedTempo, variantId: variantId)
@@ -218,7 +218,7 @@ struct FocusPlayerScreen: View {
     let tempoTargetBpm: UInt16?
     /// The item's step ladder, if any. Empty when the item isn't in the
     /// library (shouldn't happen) or has no steps.
-    let steps: [StepView]
+    let variants: [VariantView]
     let currentVariantId: String?
   }
 
@@ -239,7 +239,8 @@ struct FocusPlayerScreen: View {
       // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
       // over the item's derived "current step" — otherwise a pre-assigned
       // step would be silently overwritten on save.
-      steps: item?.steps ?? [], currentVariantId: entry.variantId ?? item?.currentVariantId)
+      variants: item?.variants ?? [],
+      currentVariantId: entry.variantId ?? item?.variants.first(where: \.isCurrent)?.id)
   }
 
   // Notes first (no status guard — surfaces a validation error before advancing);
@@ -262,7 +263,7 @@ struct FocusPlayerScreen: View {
     if let achievedTempo {
       store.send(.session(.updateEntryTempo(entryId: target.id, tempo: achievedTempo)))
     }
-    if !target.steps.isEmpty {
+    if !target.variants.isEmpty {
       store.send(.session(.setEntryVariant(entryId: target.id, variantId: variantId)))
     }
     reflecting = nil

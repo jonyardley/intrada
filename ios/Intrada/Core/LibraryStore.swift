@@ -46,6 +46,8 @@ final class LibraryStore: ItemStore {
 
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
+      // Variants load tombstones included: the core owns reconciliation
+      // (resurrect-by-label) and history labels resolve through them (#1083).
       let variantsByItem = try Self.variantsByItem(db)
       return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
@@ -97,25 +99,21 @@ final class LibraryStore: ItemStore {
         item.createdAt, item.updatedAt, item.priority,
         Self.encodeChordChart(item.chordChart),
       ])
-
-    // Variants are a child table (per-row sync tombstones, invariant 2 — #1083).
-    // Upsert each active step the core holds; each carries its own core-stamped
-    // `updated_at` for LWW. Absent rows are left untouched (no hard delete;
-    // archive lands in C4). Safe in C1 because only AddVariant writes and the
-    // core never holds a tombstoned variant (loadItems filters them out).
-    // FIXME(#1113): the forced `deleted_at = NULL` would resurrect a tombstone —
-    // C4 archive must not route a `deleted_at`-set variant through this upsert.
+    // Same transaction as the item row, keyed by id; no delete-missing: the
+    // core always carries the tombstones it loaded and writes them back
+    // verbatim, so Swift never diffs and a tombstone round-trips (fixes the
+    // forced-NULL resurrect hazard, #1113).
     for v in item.variants {
       try db.execute(
         sql: """
           INSERT INTO variant (id, item_id, label, position, updated_at, deleted_at)
-          VALUES (?, ?, ?, ?, ?, NULL)
+          VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
             item_id = excluded.item_id, label = excluded.label,
             position = excluded.position, updated_at = excluded.updated_at,
-            deleted_at = NULL
+            deleted_at = excluded.deleted_at
           """,
-        arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt])
+        arguments: [v.id, item.id, v.label, Int(v.position), v.updatedAt, v.deletedAt])
     }
   }
 
@@ -305,18 +303,21 @@ final class LibraryStore: ItemStore {
       variants: variants)
   }
 
+  // ── Row ↔ Variant codec ──────────────────────────────────────────────
+
   private static func variant(from row: Row) -> Variant {
     Variant(
       id: row["id"], label: row["label"], position: UInt64(row["position"] as Int),
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
-  /// Active variants (steps) grouped by owning item, in ladder order. One query
-  /// for the whole library, keyed by `item_id`, so `loadItems` stays O(1) reads.
+  /// All variants (steps) grouped by owning item, in ladder order — tombstones
+  /// included, per the core's reconciliation contract (#1083). One query for
+  /// the whole library, keyed by `item_id`, so `loadItems` stays O(1) reads.
   private static func variantsByItem(_ db: Database) throws -> [String: [Variant]] {
     let rows = try Row.fetchAll(
       db,
-      sql: "SELECT * FROM variant WHERE deleted_at IS NULL ORDER BY item_id, position")
+      sql: "SELECT * FROM variant ORDER BY item_id, position, id")
     var byItem: [String: [Variant]] = [:]
     for row in rows {
       byItem[row["item_id"], default: []].append(variant(from: row))

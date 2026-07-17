@@ -321,8 +321,10 @@ final class ScreenSnapshotTests: XCTestCase {
       PaperBackground()
       ReflectionSheet(
         itemTitle: "ii–V–i Enclosures", elapsedDisplay: "7:00", tempoTarget: nil,
-        steps: LibraryItemView.previewExerciseWithSteps.steps,
-        currentVariantId: LibraryItemView.previewExerciseWithSteps.currentVariantId,
+        variants: LibraryItemView.previewExerciseWithSteps.variants,
+        currentVariantId: LibraryItemView.previewExerciseWithSteps.variants.first(
+          where: \.isCurrent
+        )?.id,
         onSave: { _, _, _, _ in }, onSkip: {})
     }
     assertSnapshot(of: host(sheet), as: config)
@@ -577,7 +579,9 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testAddRelatedExerciseSheet() {
     assertSnapshot(
-      of: host(AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGrouped), as: config)
+      of: host(
+        AddRelatedExerciseSheet(groupId: "g1"), store: .previewBuildingGrouped),
+      as: config)
   }
 
   func testEntrySettingsSheetEmpty() {
@@ -617,15 +621,13 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-          currentVariantId: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-          currentVariantId: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })
@@ -643,15 +645,13 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-          currentVariantId: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-          currentVariantId: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
       ],
       linkedIds: ["exercise-1", "exercise-3"],
       onApply: { _ in })

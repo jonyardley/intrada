@@ -190,6 +190,49 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertNil(loaded[0].chordChart, "pre-existing row defaults to no chart")
   }
 
+  func testV9CreatesVariantTableAndPreservesRows() throws {
+    // Populate at v8 (no variant table), insert an exercise row, then finish.
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v8_item_chord_chart",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, deleted_at, chord_chart)
+        VALUES ('e1', 'Legacy Exercise', 'exercise', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)
+        """)
+    let columns = try store.columnNames(ofTable: "variant")
+    for expected in ["id", "item_id", "label", "position", "updated_at", "deleted_at"] {
+      XCTAssertTrue(
+        columns.contains(expected), "v9 variant table must carry \(expected); got \(columns)")
+    }
+
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1, "pre-existing row must survive v9 migration")
+    XCTAssertEqual(loaded[0].variants, [], "a pre-v9 exercise starts with an empty ladder")
+  }
+
+  func testV9OldEntriesBlobDecodesWithNilVariantId() throws {
+    // A session written before variantId existed must decode with the
+    // attribution absent; the blob is keyed JSON, so no migration runs.
+    let entries =
+      #"[{"id":"e1","itemId":"i1","itemTitle":"Scales","itemType":"exercise","position":0,"durationSecs":60,"status":"completed","score":6}]"#
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v8_item_chord_chart",
+      seed: """
+        INSERT INTO session
+          (id, started_at, completed_at, total_duration_secs, completion_status,
+           session_notes, session_intention, entries, updated_at, deleted_at)
+        VALUES ('s1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 60, 'completed',
+                NULL, NULL, '\(entries)', '2026-01-01T00:00:00Z', NULL)
+        """)
+
+    let got = try XCTUnwrap(try store.loadSessions().first)
+    let entry = try XCTUnwrap(got.entries.first)
+    XCTAssertEqual(entry.score, 6, "the old blob still decodes in full")
+    XCTAssertNil(entry.variantId, "a pre-variant entry reads as unattributed")
+  }
+
   func testV8ChordChartRoundTrip() throws {
     let store = try LibraryStore.inMemory()
     let symbol = ChordSymbol(
@@ -212,56 +255,6 @@ final class LibraryStoreMigrationTests: XCTestCase {
     XCTAssertEqual(
       loaded[0].chordChart, chart,
       "chord_chart must round-trip through JSON storage intact")
-  }
-
-  func testV9AddsVariantTableAndKeepsItemsIntact() throws {
-    // Populate at v8 (no variant table), insert an exercise, then finish to v9.
-    let store = try LibraryStore.upgradeTestStore(
-      migratedTo: "v8_item_chord_chart",
-      seed: """
-        INSERT INTO item
-          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-           linked_exercise_ids, created_at, updated_at, priority, deleted_at, chord_chart)
-        VALUES ('ex1', 'Scales', 'exercise', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
-                '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL, NULL)
-        """)
-
-    let columns = try store.columnNames(ofTable: "variant")
-    XCTAssertTrue(
-      columns.contains("updated_at") && columns.contains("deleted_at"),
-      "v9 must create the variant child table with sync columns; got \(columns)")
-
-    let loaded = try store.loadItems()
-    XCTAssertEqual(loaded.count, 1, "pre-existing item must survive v9 migration")
-    XCTAssertTrue(loaded[0].variants.isEmpty, "an item with no steps loads an empty ladder")
-  }
-
-  func testV9VariantRoundTrip() throws {
-    let store = try LibraryStore.inMemory()
-    let ex = Item(
-      id: "ex1", title: "Scales", kind: .exercise, composer: nil, key: nil, modality: nil,
-      tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
-      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
-      chordChart: nil,
-      variants: [
-        Variant(
-          id: "v1", label: "F major", position: 0, updatedAt: "2026-01-02T00:00:00Z",
-          deletedAt: nil),
-        Variant(
-          id: "v2", label: "Bb major", position: 1, updatedAt: "2026-01-02T00:00:00Z",
-          deletedAt: nil),
-      ])
-    try store.save(ex)
-
-    let loaded = try store.loadItems()
-    XCTAssertEqual(loaded.count, 1)
-    XCTAssertEqual(
-      loaded[0].variants.map(\.label), ["F major", "Bb major"],
-      "steps round-trip through the child table in ladder order")
-    XCTAssertEqual(loaded[0].variants.map(\.position), [0, 1])
-    XCTAssertEqual(
-      loaded[0].variants[0].updatedAt, "2026-01-02T00:00:00Z",
-      "per-step sync timestamp is preserved")
   }
 
   func testV6LinkedExerciseIdsRoundTrip() throws {

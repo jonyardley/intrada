@@ -12,7 +12,7 @@ struct ReflectionSheet: View {
   /// `nil` hides the tempo stepper entirely — nothing to log against.
   let tempoTarget: UInt16?
   /// The item's step ladder, if any. Empty hides the step picker entirely.
-  let steps: [StepView]
+  let variants: [VariantView]
   let currentVariantId: String?
   let onSave:
     (_ score: UInt8?, _ note: String, _ achievedTempo: UInt16?, _ variantId: String?) -> Void
@@ -25,7 +25,7 @@ struct ReflectionSheet: View {
 
   init(
     itemTitle: String, elapsedDisplay: String, tempoTarget: UInt16?,
-    steps: [StepView] = [], currentVariantId: String? = nil,
+    variants: [VariantView] = [], currentVariantId: String? = nil,
     onSave:
       @escaping (
         _ score: UInt8?, _ note: String, _ achievedTempo: UInt16?, _ variantId: String?
@@ -35,7 +35,7 @@ struct ReflectionSheet: View {
     self.itemTitle = itemTitle
     self.elapsedDisplay = elapsedDisplay
     self.tempoTarget = tempoTarget
-    self.steps = steps
+    self.variants = variants
     self.currentVariantId = currentVariantId
     self.onSave = onSave
     self.onSkip = onSkip
@@ -43,14 +43,14 @@ struct ReflectionSheet: View {
     // as "played at target".
     _achievedTempo = State(initialValue: TempoStepper.clamp(Int(tempoTarget ?? 96)))
     _selectedVariantId = State(
-      initialValue: Self.initialVariantId(currentVariantId: currentVariantId, steps: steps))
+      initialValue: Self.initialVariantId(currentVariantId: currentVariantId, variants: variants))
   }
 
   /// Always pre-selected — falls back to the first step by position when
   /// nothing's been tagged yet, so the picker never opens unset. Pulled out
   /// for the same reason as `resolvedAchievedTempo`: directly testable.
-  static func initialVariantId(currentVariantId: String?, steps: [StepView]) -> String? {
-    currentVariantId ?? steps.first?.id
+  static func initialVariantId(currentVariantId: String?, variants: [VariantView]) -> String? {
+    currentVariantId ?? variants.first?.id
   }
 
   /// Pure resolution of the onSave payload's tempo argument — pulled out of
@@ -80,7 +80,7 @@ struct ReflectionSheet: View {
       }
       .padding(.top, IntradaSpacing.controlGap)
 
-      if !steps.isEmpty {
+      if !variants.isEmpty {
         eyebrow("Step").padding(.top, IntradaSpacing.card)
         stepPicker
           .padding(.top, IntradaSpacing.controlGap)
@@ -127,7 +127,7 @@ struct ReflectionSheet: View {
   // down to make a choice — this is only for the rare "actually it was step 3".
   private var stepPicker: some View {
     Menu {
-      ForEach(steps, id: \.id) { step in
+      ForEach(variants, id: \.id) { step in
         Button(step.label) { selectedVariantId = step.id }
       }
     } label: {
@@ -149,7 +149,7 @@ struct ReflectionSheet: View {
   }
 
   private var selectedStepLabel: String {
-    steps.first(where: { $0.id == selectedVariantId })?.label ?? "Choose a step"
+    variants.first(where: { $0.id == selectedVariantId })?.label ?? "Choose a step"
   }
 
   private func eyebrow(_ text: String) -> some View {

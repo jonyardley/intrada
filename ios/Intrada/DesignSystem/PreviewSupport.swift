@@ -345,7 +345,7 @@
             pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     static var previewExercise: LibraryItemView {
@@ -355,8 +355,7 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     static var previewDetail: LibraryItemView {
@@ -368,7 +367,7 @@
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     /// A charted piece — exercises the chord-chart card (parsed grid + preview).
@@ -395,8 +394,7 @@
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, variants: [])
     }
 
     static var previewMinimal: LibraryItemView {
@@ -405,8 +403,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -447,7 +444,7 @@
             practice: nil, pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
@@ -469,8 +466,7 @@
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// An exercise with a full "By piece" breakdown — a live piece, a
@@ -505,7 +501,7 @@
           ExerciseContextView(
             piece: nil, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, steps: [], currentVariantId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// A step-ladder exercise — one solid, one current (rated but not
@@ -518,11 +514,17 @@
         notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [
-          StepView(id: "step-c", label: "C", position: 0, latestScore: 9, solid: true),
-          StepView(id: "step-f", label: "F", position: 1, latestScore: 5, solid: false),
-          StepView(id: "step-bb", label: "B♭", position: 2, latestScore: nil, solid: false),
-        ], currentVariantId: "step-f")
+        variants: [
+          VariantView(
+            id: "step-c", label: "C", position: 0, latestScore: 9, scoreHistory: [],
+            isSolid: true, isCurrent: false),
+          VariantView(
+            id: "step-f", label: "F", position: 1, latestScore: 5, scoreHistory: [],
+            isSolid: false, isCurrent: true),
+          VariantView(
+            id: "step-bb", label: "B♭", position: 2, latestScore: nil, scoreHistory: [],
+            isSolid: false, isCurrent: false),
+        ])
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -534,7 +536,7 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
-        chordChart: nil, steps: [], currentVariantId: nil)
+        chordChart: nil, variants: [])
     }
   }
 

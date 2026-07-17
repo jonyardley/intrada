@@ -31,7 +31,7 @@ struct LibraryDetailScreen: View {
             TypeBadge(kind: item.itemType)
           }
 
-          if item.itemType == .exercise, !item.steps.isEmpty {
+          if item.itemType == .exercise, !item.variants.isEmpty {
             stepsSection
           }
 
@@ -438,7 +438,7 @@ struct LibraryDetailScreen: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
       SectionHeader(title: "Steps")
       VStack(spacing: 0) {
-        ForEach(Array(item.steps.enumerated()), id: \.offset) { index, step in
+        ForEach(Array(item.variants.enumerated()), id: \.offset) { index, step in
           if index > 0 {
             HairlineDivider()
           }
@@ -691,11 +691,11 @@ private struct LinkedExerciseRow: View {
 }
 
 private struct StepRow: View {
-  let step: StepView
+  let step: VariantView
 
   var body: some View {
     HStack(spacing: IntradaSpacing.row) {
-      ScoreRing(score: step.latestScore.map(Int.init), size: 44, solid: step.solid)
+      ScoreRing(score: step.latestScore.map(Int.init), size: 44, solid: step.isSolid)
       VStack(alignment: .leading, spacing: 3) {
         Text(step.label)
           .font(IntradaFont.cardTitle())
@@ -720,7 +720,7 @@ private struct StepRow: View {
     } else {
       parts.append("not yet rated")
     }
-    if step.solid { parts.append("Solid") }
+    if step.isSolid { parts.append("Solid") }
     return parts.joined(separator: ", ")
   }
 }

@@ -18,8 +18,8 @@ struct EntrySettingsSheet: View {
 
   // Looked up rather than threaded in, since the sheet only ever holds the
   // flat entry — mirrors the same lookup in FocusPlayerScreen.
-  private var steps: [StepView] {
-    store.viewModel?.items.first(where: { $0.id == entry.itemId })?.steps ?? []
+  private var variants: [VariantView] {
+    store.viewModel?.items.first(where: { $0.id == entry.itemId })?.variants ?? []
   }
 
   // Mirrors crates/intrada-core/src/validation.rs MIN/MAX_REP_TARGET.
@@ -42,7 +42,7 @@ struct EntrySettingsSheet: View {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
-          if !steps.isEmpty {
+          if !variants.isEmpty {
             stepSection
           }
           repsSection
@@ -81,7 +81,7 @@ struct EntrySettingsSheet: View {
     VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
       Eyebrow("Step")
       Menu {
-        ForEach(steps, id: \.id) { step in
+        ForEach(variants, id: \.id) { step in
           Button(step.label) {
             guard step.id != variantId else { return }
             variantId = step.id
@@ -108,7 +108,7 @@ struct EntrySettingsSheet: View {
   }
 
   private var selectedStepLabel: String {
-    steps.first(where: { $0.id == variantId })?.label ?? "Not tagged to a step"
+    variants.first(where: { $0.id == variantId })?.label ?? "Not tagged to a step"
   }
 
   private var repsSection: some View {
