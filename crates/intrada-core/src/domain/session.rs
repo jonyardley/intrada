@@ -1398,7 +1398,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
         } => {
             if !model.local_first {
                 // Steps are local-first-only until sync (#1083; invariant 6
-                // consciously scoped) — surfaced, never a silent no-op.
+                // consciously scoped); surfaced, never a silent no-op.
                 model.last_error = Some("Steps aren't available online yet".to_string());
                 return crux_core::render::render();
             }
@@ -3923,7 +3923,7 @@ mod tests {
     }
 
     /// Summary state whose single completed entry is the laddered exercise.
-    /// Local-first, as on iOS — steps are gated to that mode (#1083).
+    /// Local-first, as on iOS; steps are gated to that mode (#1083).
     fn model_with_exercise_summary() -> (Model, String) {
         let mut model = model_with_library();
         model.local_first = true;
@@ -4056,7 +4056,7 @@ mod tests {
 
     #[test]
     fn update_entry_variant_requires_a_completed_entry() {
-        // Build [exercise-1, piece-1]; skip the exercise, finish on the piece —
+        // Build [exercise-1, piece-1]; skip the exercise, finish on the piece;
         // the exercise entry ends Skipped and can't take a step.
         let mut model = model_with_library();
         model.local_first = true;
@@ -4137,7 +4137,7 @@ mod tests {
     #[test]
     fn update_entry_variant_online_mode_is_scoped_out_gracefully() {
         // Invariant 6 consciously scoped (#1083): steps are local-first-only
-        // until sync — online surfaces the scope-out and changes nothing.
+        // until sync; online surfaces the scope-out and changes nothing.
         let (mut model, entry_id) = model_with_exercise_summary();
         model.local_first = false;
 

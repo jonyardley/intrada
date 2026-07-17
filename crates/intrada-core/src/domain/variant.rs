@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// One rung of an exercise's step ladder — "C", "Root position", "Land on
+/// One rung of an exercise's step ladder; "C", "Root position", "Land on
 /// the 3rd". Users see "Steps"; `variant` is the core's name and never
 /// appears on screen (#1083).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -21,13 +21,13 @@ pub struct Variant {
 }
 
 /// A step is "Solid" (UI copy) once its latest score reaches this, of 10.
-/// The current step is the first that isn't — progress means advancing the
+/// The current step is the first that isn't; progress means advancing the
 /// rung, not polishing one rating (#1083; threshold decision in
 /// specs/exercise-variants.md).
 pub const SOLID_SCORE_MIN: u8 = 8;
 
 /// Reconcile a ladder against the requested `labels` (ordered), matching by
-/// case-insensitive label. A match keeps its id — and so its score history —
+/// case-insensitive label. A match keeps its id; and so its score history;
 /// adopting the incoming casing and position. `updated_at` bumps only on rows
 /// that actually changed (per-row LWW hygiene).
 pub fn reconcile_variants(
@@ -40,7 +40,7 @@ pub fn reconcile_variants(
 
     for (position, label) in labels.iter().enumerate() {
         // Prefer a live match; fall back to a tombstone, which a re-added
-        // label resurrects — its id, and so its score history, come back.
+        // label resurrects; its id, and so its score history, come back.
         let matched = pool
             .iter()
             .position(|v| v.deleted_at.is_none() && v.label.to_lowercase() == label.to_lowercase())

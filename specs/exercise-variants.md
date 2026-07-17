@@ -4,7 +4,7 @@
 > ([#1083], epic [#1087]). Status: **C1 (core + data) implemented on this
 > branch**; C2 (Steps UI + reflection picker), C3 (12-keys preset, closes #46)
 > and C4 (step management polish) follow as their own PRs. **Scope:
-> `intrada-core` + native iOS only** — web/API (Turso) out of scope until sync
+> `intrada-core` + native iOS only**; web/API (Turso) out of scope until sync
 > (see Offline-first below). Users see **"Steps"** (or "Keys"); "variant" is
 > the core's name and never appears on screen.
 
@@ -19,7 +19,7 @@ score, so progress along any of these reads as noise: score 8 in C says
 nothing about F♯. Multi-key practice (#46) and the chart-to-scaffold twelve-key
 ladder ([#1107], a blocked consumer) both need the same thing: an exercise
 that owns an **ordered list of variants, each scored independently**, where
-progress means advancing the step — not polishing one rating.
+progress means advancing the step; not polishing one rating.
 
 ## Approach
 
@@ -28,7 +28,7 @@ One generic mechanism, no per-preset code. An exercise owns
 Session entries gain an optional `variant_id` recording *which step* a score
 belongs to. Everything else is derived: per-step score history, whether a step
 is **solid**, and the **current step** (the first that isn't yet solid).
-Presets (twelve keys, inversions) are just label lists — C3 ships the first.
+Presets (twelve keys, inversions) are just label lists; C3 ships the first.
 
 ```text
 Item (exercise)
@@ -52,36 +52,36 @@ ViewModel
    rename against a score without whole-item conflicts (invariant 2).
 2. **No hard deletes; tombstones stay in the model.** Removing a step sets
    `deleted_at`; the row stays in the table *and* in `Item.variants` (views
-   filter it). Kept in-model so (a) the core owns reconciliation — the shell
+   filter it). Kept in-model so (a) the core owns reconciliation; the shell
    never diffs child rows (invariant 4), and (b) history keeps resolving: a
    session entry pointing at a removed step still finds its label.
 3. **`SetVariants { id, labels }` reconciles by label.** One event defines the
    whole ladder: labels matching an existing variant (case-insensitive) keep
-   its id — and its score history; removed labels tombstone; a re-added label
+   its id; and its score history; removed labels tombstone; a re-added label
    **resurrects** the tombstoned variant, history intact. Rename is
    deliberately *not* expressible here (indistinguishable from remove+add);
    C4 adds an id-based rename event.
-4. **"Solid" is `latest step score >= 8` (of 10)** — `SOLID_SCORE_MIN` in
+4. **"Solid" is `latest step score >= 8` (of 10)**; `SOLID_SCORE_MIN` in
    `domain/variant.rs`. A named constant, not a per-user setting, until real
    use argues otherwise. "Current step" = first live step by position that
    isn't solid; a fully-solid ladder has no current step (it's done).
    Derivation lives in `build_view`, computed per render like
-   `exercise_contexts` — never stored.
+   `exercise_contexts`; never stored.
 5. **`variant_id` joins the session-entry codec, not the schema.** Entries are
    a JSON blob in the session row, so old rows decode the missing key to
-   `None` — no migration. The core writes `variant_id` only via
+   `None`; no migration. The core writes `variant_id` only via
    `UpdateEntryVariant` (summary/active reflection, mirroring
    `UpdateEntryScore`); scores stay on the entry, the variant says which rung
    they belong to. No snapshot label in the entry: labels resolve live via
    decision 2 (revisit only if exercise deletion in history proves to matter).
 6. **Local-first only until sync** (epic decision, invariant 6 consciously
    scoped). Online mode: `SetVariants` / `UpdateEntryVariant` surface a clear
-   error, mutate nothing, emit no HTTP — pinned by tests, so the scope-out is
+   error, mutate nothing, emit no HTTP; pinned by tests, so the scope-out is
    explicit rather than a silent no-op (#846 class). The API keeps compiling
    (`variants: vec![]` at its construction sites, the `modality` precedent);
    server tables arrive with the sync engine.
 7. **Step scope capped: label + position + score history.** No per-step tempo,
-   notes or targets in v1 — every extra field is a migration on the tier where
+   notes or targets in v1; every extra field is a migration on the tier where
    the device is the only copy of the data.
 
 ## Validation
@@ -114,7 +114,7 @@ CREATE INDEX idx_variant_exercise_id ON variant(exercise_id);
 - `loadItems()` attaches **all** variant rows (tombstones included) per
   decision 2, ordered by position.
 - Deleting an exercise tombstones the item row only; its variant rows stay,
-  unreferenced — harmless, and sync-safe.
+  unreferenced; harmless, and sync-safe.
 
 ## Testing
 
@@ -141,5 +141,5 @@ CREATE INDEX idx_variant_exercise_id ON variant(exercise_id);
 - **C4:** rename (id-based), drag reorder, archive UI on top of the
   already-shipped tombstones.
 - Whether `SOLID_SCORE_MIN` should ever be user-tunable, and whether "solid"
-  should decay with time (research-foundation.md's consolidation model) —
+  should decay with time (research-foundation.md's consolidation model);
   out of scope until the scheduler epic.

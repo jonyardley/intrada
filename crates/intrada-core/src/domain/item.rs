@@ -65,7 +65,7 @@ pub struct Item {
     /// piece's `updated_at`. `None` for exercises and un-charted pieces.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
-    /// The exercise's step ladder (exercises only), tombstones included —
+    /// The exercise's step ladder (exercises only), tombstones included;
     /// persisted to the `variant` child table, not an item column (#1083).
     #[serde(default)]
     pub variants: Vec<Variant>,
@@ -469,7 +469,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
         ItemEvent::SetVariants { id, labels } => {
             if !model.local_first {
                 // Steps are local-first-only until sync (#1083; invariant 6
-                // consciously scoped) — surfaced, never a silent no-op.
+                // consciously scoped); surfaced, never a silent no-op.
                 model.last_error = Some("Steps aren't available online yet".to_string());
                 return crux_core::render::render();
             }
@@ -1435,7 +1435,7 @@ mod tests {
     #[test]
     fn set_variants_online_mode_is_scoped_out_gracefully() {
         // Invariant 6 consciously scoped (#1083): steps are local-first-only
-        // until sync. Online must surface that — never mutate, never POST.
+        // until sync. Online must surface that; never mutate, never POST.
         let mut model = model_with_piece_and_exercise();
         model.local_first = false;
 

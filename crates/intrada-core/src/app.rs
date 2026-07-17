@@ -392,7 +392,7 @@ impl Intrada {
         // by exercise id. Built once over sessions, attached to exercises below.
         let contexts_by_exercise = build_exercise_contexts(&model.sessions, &item_index);
 
-        // Per-step score history, keyed by (item id, variant id) — one pass
+        // Per-step score history, keyed by (item id, variant id); one pass
         // over sessions, attached to laddered exercises below (#1083).
         let variant_scores = build_variant_score_index(&model.sessions);
 

@@ -357,7 +357,7 @@ pub struct VariantView {
     pub score_history: Vec<ScoreHistoryEntry>,
     /// Latest score has reached `SOLID_SCORE_MIN` (8 of 10).
     pub is_solid: bool,
-    /// The first step that isn't yet solid — the rung to work on. At most one
+    /// The first step that isn't yet solid; the rung to work on. At most one
     /// per ladder; a fully solid ladder has none.
     pub is_current: bool,
 }
@@ -738,7 +738,7 @@ mod tests {
     }
 
     /// `VariantView` crosses the bincode wire inside `LibraryItemView.variants`
-    /// (#1083) — guard it against the #846 drop class.
+    /// (#1083); guard it against the #846 drop class.
     #[test]
     fn variant_view_round_trips_on_ffi_bincode_wire() {
         crate::domain::types::assert_round_trips(VariantView {
