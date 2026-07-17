@@ -20,6 +20,8 @@ pub const MIN_REP_TARGET: u8 = 3;
 pub const MAX_REP_TARGET: u8 = 10;
 pub const MAX_REP_HISTORY: usize = 500;
 pub const MAX_SET_NAME: usize = 200;
+pub const MAX_VARIANT_LABEL: usize = 100;
+pub const MAX_VARIANTS: usize = 24;
 pub const DEFAULT_PLANNED_DURATION_SECS: u32 = 300;
 pub const MIN_PLANNED_DURATION_SECS: u32 = 60;
 pub const MAX_PLANNED_DURATION_SECS: u32 = 3600;
@@ -427,6 +429,56 @@ pub fn validate_chart_host(piece_id: &str, model: &Model) -> Result<(), LibraryE
             field: "piece_id".to_string(),
             message: "Only a piece can have a chord chart".to_string(),
         });
+    }
+
+    Ok(())
+}
+
+pub fn validate_variant_host(id: &str, model: &Model) -> Result<(), LibraryError> {
+    let item = model
+        .items
+        .iter()
+        .find(|i| i.id == id)
+        .ok_or_else(|| LibraryError::NotFound { id: id.to_string() })?;
+
+    if item.kind != ItemKind::Exercise {
+        return Err(LibraryError::Validation {
+            field: "id".to_string(),
+            message: "Only an exercise can have steps".to_string(),
+        });
+    }
+
+    Ok(())
+}
+
+pub fn normalize_variant_labels(labels: Vec<String>) -> Vec<String> {
+    labels.into_iter().map(|l| l.trim().to_string()).collect()
+}
+
+pub fn validate_variant_labels(labels: &[String]) -> Result<(), LibraryError> {
+    if labels.len() > MAX_VARIANTS {
+        return Err(LibraryError::Validation {
+            field: "labels".to_string(),
+            message: format!("An exercise can have at most {MAX_VARIANTS} steps"),
+        });
+    }
+
+    let mut seen = std::collections::HashSet::new();
+    for label in labels {
+        if label.is_empty() || label.len() > MAX_VARIANT_LABEL {
+            return Err(LibraryError::Validation {
+                field: "labels".to_string(),
+                message: format!(
+                    "Each step label must be between 1 and {MAX_VARIANT_LABEL} characters"
+                ),
+            });
+        }
+        if !seen.insert(label.to_lowercase()) {
+            return Err(LibraryError::Validation {
+                field: "labels".to_string(),
+                message: format!("Duplicate step \u{201c}{label}\u{201d}"),
+            });
+        }
     }
 
     Ok(())

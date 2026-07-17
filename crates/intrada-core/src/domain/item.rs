@@ -5,6 +5,7 @@ use std::fmt;
 
 use super::chart::{ChordChart, ScaffoldKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
+use super::variant::Variant;
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
 use crate::model::Model;
@@ -64,6 +65,10 @@ pub struct Item {
     /// piece's `updated_at`. `None` for exercises and un-charted pieces.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// The exercise's step ladder (exercises only), tombstones included —
+    /// persisted to the `variant` child table, not an item column (#1083).
+    #[serde(default)]
+    pub variants: Vec<Variant>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -115,6 +120,15 @@ pub enum ItemEvent {
     CommitScaffold {
         piece_id: String,
         kinds: Vec<ScaffoldKind>,
+    },
+    /// Define an exercise's whole step ladder from ordered `labels`,
+    /// reconciled by case-insensitive label: matching variants keep their id
+    /// (and score history), removed labels tombstone, re-added labels
+    /// resurrect. Empty = clear the ladder. Local-first only until sync
+    /// (#1083 C1).
+    SetVariants {
+        id: String,
+        labels: Vec<String>,
     },
 }
 
@@ -203,6 +217,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 updated_at: now,
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             };
 
             model.items.push(item.clone());
@@ -451,6 +466,39 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let piece = piece.clone();
             save_or_put(model, piece)
         }
+        ItemEvent::SetVariants { id, labels } => {
+            if !model.local_first {
+                // Steps are local-first-only until sync (#1083; invariant 6
+                // consciously scoped) — surfaced, never a silent no-op.
+                model.last_error = Some("Steps aren't available online yet".to_string());
+                return crux_core::render::render();
+            }
+
+            let labels = validation::normalize_variant_labels(labels);
+            if let Err(e) = validation::validate_variant_host(&id, model)
+                .and_then(|()| validation::validate_variant_labels(&labels))
+            {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let Some(item) = model.items.iter_mut().find(|i| i.id == id) else {
+                model.last_error = Some(LibraryError::NotFound { id }.to_string());
+                return crux_core::render::render();
+            };
+
+            let now = chrono::Utc::now();
+            item.variants = super::variant::reconcile_variants(
+                std::mem::take(&mut item.variants),
+                &labels,
+                now,
+            );
+            item.updated_at = now;
+            model.last_error = None;
+
+            let item = item.clone();
+            save_or_put(model, item)
+        }
         ItemEvent::CommitScaffold { piece_id, kinds } => {
             if let Err(e) = validation::validate_chart_host(&piece_id, model) {
                 model.last_error = Some(e.to_string());
@@ -502,6 +550,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     updated_at: now,
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 })
                 .collect();
 
@@ -576,6 +625,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -596,6 +646,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -1040,6 +1091,369 @@ mod tests {
         assert_eq!(exercise_titles(&model).len(), before, "nothing created");
         assert!(emits_save_items(&mut cmd).is_none());
         assert!(model.last_error.is_none());
+    }
+
+    // ── SetVariants ──
+
+    #[test]
+    fn set_variants_creates_a_ladder_and_persists_locally() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string(), "Bb".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.variants.len(), 3);
+        assert!(ex.variants.iter().all(|v| v.deleted_at.is_none()));
+        assert_eq!(
+            ex.variants
+                .iter()
+                .map(|v| v.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["C", "F", "Bb"]
+        );
+        assert_eq!(
+            ex.variants.iter().map(|v| v.position).collect::<Vec<_>>(),
+            vec![0, 1, 2]
+        );
+        assert!(model.last_error.is_none());
+        assert!(
+            emits_save(&mut cmd, "ex-1"),
+            "local-first persists the exercise"
+        );
+        assert!(!emits_http(&mut cmd), "no HTTP (invariant 1)");
+    }
+
+    #[test]
+    fn set_variants_reorder_preserves_ids_by_label() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string(), "Bb".to_string()],
+            },
+        );
+        let ids_by_label: std::collections::HashMap<String, String> = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .variants
+            .iter()
+            .map(|v| (v.label.clone(), v.id.clone()))
+            .collect();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["Bb".to_string(), "C".to_string(), "F".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.variants.len(), 3);
+        for v in &ex.variants {
+            assert_eq!(
+                ids_by_label.get(&v.label),
+                Some(&v.id),
+                "reordering keeps each step's id (and so its history)"
+            );
+        }
+        assert_eq!(
+            ex.variants
+                .iter()
+                .map(|v| (v.label.as_str(), v.position))
+                .collect::<Vec<_>>(),
+            vec![("Bb", 0), ("C", 1), ("F", 2)]
+        );
+    }
+
+    #[test]
+    fn set_variants_removing_a_label_tombstones_never_hard_deletes() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let live: Vec<_> = ex
+            .variants
+            .iter()
+            .filter(|v| v.deleted_at.is_none())
+            .collect();
+        assert_eq!(live.len(), 1);
+        assert_eq!(live[0].label, "C");
+        let dead: Vec<_> = ex
+            .variants
+            .iter()
+            .filter(|v| v.deleted_at.is_some())
+            .collect();
+        assert_eq!(dead.len(), 1, "the removed step is kept as a tombstone");
+        assert_eq!(dead[0].label, "F");
+    }
+
+    #[test]
+    fn set_variants_readding_a_label_resurrects_its_tombstone() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let f_id = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .variants
+            .iter()
+            .find(|v| v.label == "F")
+            .unwrap()
+            .id
+            .clone();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.variants.len(),
+            2,
+            "no duplicate row for the re-added label"
+        );
+        let f = ex.variants.iter().find(|v| v.label == "F").unwrap();
+        assert_eq!(
+            f.id, f_id,
+            "the re-added step resurrects its old id (score history intact)"
+        );
+        assert!(f.deleted_at.is_none());
+        assert_eq!(f.position, 1);
+    }
+
+    fn exercise_variants(model: &Model) -> &Vec<crate::domain::variant::Variant> {
+        &model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .variants
+    }
+
+    #[test]
+    fn set_variants_rejects_a_piece_host() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "piece-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(piece.variants.is_empty(), "a piece never gets a ladder");
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_variants_rejects_duplicate_labels_case_insensitively() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "c".to_string()],
+            },
+        );
+
+        assert!(exercise_variants(&model).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_variants_rejects_a_blank_label() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "   ".to_string()],
+            },
+        );
+
+        assert!(exercise_variants(&model).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_variants_trims_labels() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["  C  ".to_string()],
+            },
+        );
+
+        assert_eq!(exercise_variants(&model)[0].label, "C");
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn set_variants_rejects_more_than_the_cap() {
+        let mut model = model_with_piece_and_exercise();
+        let labels: Vec<String> = (0..=validation::MAX_VARIANTS)
+            .map(|i| i.to_string())
+            .collect();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels,
+            },
+        );
+
+        assert!(exercise_variants(&model).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_variants_rejects_an_overlong_label() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["x".repeat(validation::MAX_VARIANT_LABEL + 1)],
+            },
+        );
+
+        assert!(exercise_variants(&model).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_variants_empty_list_clears_the_ladder() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec![],
+            },
+        );
+
+        let variants = exercise_variants(&model);
+        assert_eq!(variants.len(), 2, "cleared steps remain as tombstones");
+        assert!(variants.iter().all(|v| v.deleted_at.is_some()));
+        assert!(model.last_error.is_none());
+        assert!(emits_save(&mut cmd, "ex-1"), "the clear persists");
+    }
+
+    #[test]
+    fn set_variants_untouched_step_keeps_its_updated_at() {
+        // Per-row LWW hygiene: only rows that changed get a new timestamp.
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let c_updated_at = exercise_variants(&model)[0].updated_at;
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "G".to_string()],
+            },
+        );
+
+        let variants = exercise_variants(&model);
+        let c = variants.iter().find(|v| v.label == "C").unwrap();
+        assert_eq!(
+            c.updated_at, c_updated_at,
+            "an untouched step keeps its LWW timestamp"
+        );
+        let f = variants.iter().find(|v| v.label == "F").unwrap();
+        assert!(
+            f.updated_at > c_updated_at,
+            "the tombstoned step is stamped"
+        );
+    }
+
+    #[test]
+    fn set_variants_online_mode_is_scoped_out_gracefully() {
+        // Invariant 6 consciously scoped (#1083): steps are local-first-only
+        // until sync. Online must surface that — never mutate, never POST.
+        let mut model = model_with_piece_and_exercise();
+        model.local_first = false;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+
+        assert!(exercise_variants(&model).is_empty(), "model unchanged");
+        assert!(
+            model.last_error.is_some(),
+            "scope-out is surfaced, not silent"
+        );
+        assert!(!emits_http(&mut cmd), "no HTTP");
+        assert!(!emits_save(&mut cmd, "ex-1"), "nothing persisted");
     }
 
     // ── Bridge round-trip for the write events (#846) ──

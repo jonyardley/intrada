@@ -506,6 +506,7 @@ fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
         updated_at: now,
         priority: false,
         chord_chart: None,
+        variants: vec![],
     }
 }
 
@@ -1582,6 +1583,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "piece-2".to_string(),
@@ -1598,6 +1600,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "exercise-1".to_string(),
@@ -1614,6 +1617,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             api_base_url: "http://localhost:3001".to_string(),
@@ -1645,6 +1649,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         Model {
             items: vec![

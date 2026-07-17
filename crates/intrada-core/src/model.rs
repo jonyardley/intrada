@@ -807,6 +807,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -988,6 +989,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1180,6 +1182,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()

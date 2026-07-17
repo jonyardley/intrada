@@ -1059,6 +1059,7 @@ fn sample_items() -> Vec<Item> {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     };
 
@@ -1273,6 +1274,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let _ = app.update(
@@ -1323,6 +1325,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             },
             Item {
                 id: "ex1".to_string(),
@@ -1339,6 +1342,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             },
         ];
 
@@ -1465,6 +1469,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -1640,6 +1645,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "p2".to_string(),
@@ -1659,6 +1665,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "p3".to_string(),
@@ -1678,6 +1685,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "e1".to_string(),
@@ -1694,6 +1702,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
@@ -1769,6 +1778,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -1785,6 +1795,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let vm = app.view(&model);
@@ -1846,6 +1857,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1862,6 +1874,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         model.active_query = Some(ListQuery {
@@ -1895,6 +1908,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1911,6 +1925,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         model.active_query = Some(ListQuery {
@@ -1943,6 +1958,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -1986,6 +2002,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -2021,6 +2038,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -2196,6 +2214,7 @@ mod tests {
                 linked_exercise_ids,
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             });
         }
         for i in 0..5000 {
@@ -2218,6 +2237,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             });
         }
         let populate_time = start.elapsed();
@@ -2375,6 +2395,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -2391,6 +2412,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         model.items = vec![p1, p2];
 
@@ -2498,6 +2520,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2609,6 +2632,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2679,6 +2703,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2775,6 +2800,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         use crate::domain::session::{
@@ -2997,6 +3023,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -3016,6 +3043,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -3044,6 +3072,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -3063,6 +3092,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -3120,6 +3150,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -3436,6 +3467,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -3963,6 +3995,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
 
         let server_item = Item {
@@ -3980,6 +4013,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -4014,6 +4048,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -4075,6 +4110,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4141,6 +4177,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4206,6 +4243,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             ..Model::test_default()
         };
@@ -4256,6 +4294,7 @@ mod tests {
             linked_exercise_ids: vec!["ex-1".to_string()],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -4272,6 +4311,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let model = Model {
             items: vec![piece, ex],
@@ -4318,6 +4358,7 @@ mod tests {
                     ],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -4337,6 +4378,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -4353,6 +4395,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -4369,6 +4412,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
@@ -4480,6 +4524,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -4809,6 +4854,7 @@ mod tests {
                     linked_exercise_ids: vec!["item-b".to_string()],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -4825,6 +4871,7 @@ mod tests {
                     linked_exercise_ids: vec![],
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 },
             ],
             ..Default::default()
