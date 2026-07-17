@@ -422,6 +422,10 @@ final class LibraryStore: ItemStore {
     case .six: "six"
     case .min6: "min6"
     case .alt: "alt"
+    case .sus4: "sus4"
+    case .sus2: "sus2"
+    case .aug: "aug"
+    case .dom7Sharp5: "dom7Sharp5"
     case .other: "other"
     }
   }
@@ -437,6 +441,10 @@ final class LibraryStore: ItemStore {
     case "six": return .six
     case "min6": return .min6
     case "alt": return .alt
+    case "sus4": return .sus4
+    case "sus2": return .sus2
+    case "aug": return .aug
+    case "dom7Sharp5": return .dom7Sharp5
     case "other": return .other
     default:
       report(UnknownStoredEnum(kind: "ChordQuality", raw: raw), decodeContext)

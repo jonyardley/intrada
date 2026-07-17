@@ -49,6 +49,12 @@ pub enum ChordQuality {
     Six,
     Min6,
     Alt,
+    // Phase C vocabulary. Suspensions have no 3rd (the sus tone stands in for
+    // shells/guide-tones); Aug/Dom7Sharp5 carry a ♯5.
+    Sus4,
+    Sus2,
+    Aug,
+    Dom7Sharp5,
     Other,
 }
 
@@ -241,10 +247,10 @@ fn parse_chord(token: &str, bar_no: usize) -> Result<ChordSymbol, ChartParseErro
         message,
     };
 
-    // Split off a slash bass first: `Dm7/G`.
+    // A `/` before a non-letter is a tension (`C6/9`), not a slash bass (`Dm7/G`).
     let (head, bass) = match token.split_once('/') {
-        Some((h, b)) => (h, Some(b)),
-        None => (token, None),
+        Some((h, b)) if b.starts_with(|c: char| letter_pc(c).is_some()) => (h, Some(b)),
+        _ => (token, None),
     };
 
     let mut chars = head.chars();
@@ -351,6 +357,28 @@ fn parse_quality(rest: &str) -> (ChordQuality, Vec<String>) {
         ("min7", ChordQuality::Min7),
         ("min", ChordQuality::Min7),
         ("-7", ChordQuality::Min7),
+        // `sus2` before `sus`/`sus4`; a 7/9/11/13-bearing sus is the dominant sus.
+        ("7sus4", ChordQuality::Sus4),
+        ("7sus", ChordQuality::Sus4),
+        ("9sus4", ChordQuality::Sus4),
+        ("9sus", ChordQuality::Sus4),
+        ("11sus4", ChordQuality::Sus4),
+        ("11sus", ChordQuality::Sus4),
+        ("13sus4", ChordQuality::Sus4),
+        ("13sus", ChordQuality::Sus4),
+        ("sus2", ChordQuality::Sus2),
+        ("sus4", ChordQuality::Sus4),
+        ("sus", ChordQuality::Sus4),
+        // Dominant ♯5 (`+7`/`aug7`) before the bare augmented triad.
+        ("aug7", ChordQuality::Dom7Sharp5),
+        ("7aug", ChordQuality::Dom7Sharp5),
+        ("7#5", ChordQuality::Dom7Sharp5),
+        ("7♯5", ChordQuality::Dom7Sharp5),
+        ("7+5", ChordQuality::Dom7Sharp5),
+        ("9#5", ChordQuality::Dom7Sharp5),
+        ("+7", ChordQuality::Dom7Sharp5),
+        ("aug", ChordQuality::Aug),
+        ("+", ChordQuality::Aug),
         ("alt", ChordQuality::Alt),
         ("7alt", ChordQuality::Alt),
         ("6", ChordQuality::Six),
@@ -393,12 +421,20 @@ fn parse_quality(rest: &str) -> (ChordQuality, Vec<String>) {
 /// Semitone of the chord third above the root (major 3rd = 4, minor 3rd = 3).
 fn third_interval(q: ChordQuality) -> Option<u8> {
     match q {
-        ChordQuality::Maj7 | ChordQuality::Dom7 | ChordQuality::Six | ChordQuality::Alt => Some(4),
+        ChordQuality::Maj7
+        | ChordQuality::Dom7
+        | ChordQuality::Six
+        | ChordQuality::Alt
+        | ChordQuality::Aug
+        | ChordQuality::Dom7Sharp5 => Some(4),
         ChordQuality::Min7
         | ChordQuality::Min7b5
         | ChordQuality::Dim7
         | ChordQuality::MinMaj7
         | ChordQuality::Min6 => Some(3),
+        // No 3rd; the sus tone stands in as the upper shell voice.
+        ChordQuality::Sus4 => Some(5),
+        ChordQuality::Sus2 => Some(2),
         ChordQuality::Other => None,
     }
 }
@@ -408,11 +444,16 @@ fn third_interval(q: ChordQuality) -> Option<u8> {
 fn seventh_interval(q: ChordQuality) -> Option<u8> {
     match q {
         ChordQuality::Maj7 | ChordQuality::MinMaj7 => Some(11),
-        ChordQuality::Dom7 | ChordQuality::Min7 | ChordQuality::Min7b5 | ChordQuality::Alt => {
-            Some(10)
-        }
+        ChordQuality::Dom7
+        | ChordQuality::Min7
+        | ChordQuality::Min7b5
+        | ChordQuality::Alt
+        | ChordQuality::Sus4
+        | ChordQuality::Dom7Sharp5 => Some(10),
         ChordQuality::Dim7 => Some(9),
         ChordQuality::Six | ChordQuality::Min6 => Some(9),
+        // Bare triads carry no seventh; shells fall back.
+        ChordQuality::Sus2 | ChordQuality::Aug => None,
         ChordQuality::Other => None,
     }
 }
@@ -430,6 +471,10 @@ fn chord_tone_intervals(q: ChordQuality) -> Option<Vec<u8>> {
         ChordQuality::Six => vec![0, 4, 7, 9],
         ChordQuality::Min6 => vec![0, 3, 7, 9],
         ChordQuality::Alt => vec![0, 4, 10], // root, M3, m7 (tensions omitted)
+        ChordQuality::Sus4 => vec![0, 5, 7, 10],
+        ChordQuality::Sus2 => vec![0, 2, 7],
+        ChordQuality::Aug => vec![0, 4, 8],
+        ChordQuality::Dom7Sharp5 => vec![0, 4, 8, 10],
         ChordQuality::Other => return None,
     };
     Some(tones)
@@ -446,9 +491,39 @@ fn scale_intervals(q: ChordQuality) -> Option<Vec<u8>> {
         ChordQuality::Dim7 => vec![0, 2, 3, 5, 6, 8, 9, 11], // whole-half diminished
         ChordQuality::MinMaj7 => vec![0, 2, 3, 5, 7, 9, 11], // melodic minor
         ChordQuality::Alt => vec![0, 1, 3, 4, 6, 8, 10],     // altered (super-locrian)
+        ChordQuality::Sus4 => vec![0, 2, 4, 5, 7, 9, 10],    // Mixolydian (4 is the sus)
+        ChordQuality::Sus2 => vec![0, 2, 4, 5, 7, 9, 11],    // Ionian
+        ChordQuality::Aug | ChordQuality::Dom7Sharp5 => vec![0, 2, 4, 6, 8, 10], // whole-tone
         ChordQuality::Other => return None,
     };
     Some(scale)
+}
+
+/// The modal [`scale_intervals`], but a dominant is overridden by how it resolves
+/// — the bounded ii–V–i / tritone-sub recognition (spec Phase C): to a minor a 4th
+/// up → altered (Mixolydian's natural 9/13 are wrong there); down a semitone → a
+/// tritone-sub → lydian-dominant. The major V–I is unchanged.
+fn scale_for_change(sym: &ChordSymbol, next: Option<&ChordSymbol>) -> Option<Vec<u8>> {
+    if sym.quality == ChordQuality::Dom7 {
+        if let Some(next) = next {
+            let up_a_fourth = (sym.root + 5) % OCTAVE;
+            let down_a_semitone = (sym.root + OCTAVE - 1) % OCTAVE;
+            if next.root == up_a_fourth && is_minor_target(next.quality) {
+                return Some(vec![0, 1, 3, 4, 6, 8, 10]); // altered
+            }
+            if next.root == down_a_semitone {
+                return Some(vec![0, 2, 4, 6, 7, 9, 10]); // lydian dominant
+            }
+        }
+    }
+    scale_intervals(sym.quality)
+}
+
+fn is_minor_target(q: ChordQuality) -> bool {
+    matches!(
+        q,
+        ChordQuality::Min7 | ChordQuality::Min6 | ChordQuality::MinMaj7 | ChordQuality::Min7b5
+    )
 }
 
 fn transpose(root: u8, intervals: &[u8]) -> Vec<u8> {
@@ -470,6 +545,44 @@ pub enum ScaffoldKind {
     GuideToneLines,
     ScalesToChordTones,
     ConstrainedImprov,
+}
+
+/// Prefix of the reserved generated-from tag (spec Resolved #2). Kept on the item
+/// so re-derivation reconciles by kind (rename-robust); hidden from the tag UI.
+pub const SCAFFOLD_TAG_PREFIX: &str = "scaffold:";
+
+impl ScaffoldKind {
+    // Slug is independent of the renameable title, so reconciliation survives a rename.
+    fn slug(self) -> &'static str {
+        match self {
+            ScaffoldKind::Melody => "melody",
+            ScaffoldKind::Shells => "shells",
+            ScaffoldKind::GuideToneLines => "guide-tone-lines",
+            ScaffoldKind::ScalesToChordTones => "scales-to-chord-tones",
+            ScaffoldKind::ConstrainedImprov => "constrained-improv",
+        }
+    }
+
+    pub fn scaffold_tag(self) -> String {
+        format!("{SCAFFOLD_TAG_PREFIX}{}", self.slug())
+    }
+
+    pub fn from_scaffold_tag(tag: &str) -> Option<ScaffoldKind> {
+        let slug = tag.strip_prefix(SCAFFOLD_TAG_PREFIX)?;
+        [
+            ScaffoldKind::Melody,
+            ScaffoldKind::Shells,
+            ScaffoldKind::GuideToneLines,
+            ScaffoldKind::ScalesToChordTones,
+            ScaffoldKind::ConstrainedImprov,
+        ]
+        .into_iter()
+        .find(|k| k.slug() == slug)
+    }
+}
+
+pub fn is_scaffold_tag(tag: &str) -> bool {
+    tag.starts_with(SCAFFOLD_TAG_PREFIX)
 }
 
 /// The derived per-change content of one exercise. `pitch_classes` is what the
@@ -620,20 +733,24 @@ fn scales_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
     let mut fallback_count = 0;
     let content = changes
         .iter()
-        .map(|sym| match scale_intervals(sym.quality) {
-            Some(scale) => ChangeVoicing {
-                chord: sym.raw.clone(),
-                pitch_classes: transpose(sym.root, &scale),
-                fallback: false,
-            },
-            None => {
-                fallback_count += 1;
-                // Arpeggio fallback: the chord tones we do know, else root+5th.
-                let intervals = chord_tone_intervals(sym.quality).unwrap_or_else(|| vec![0, 7]);
-                ChangeVoicing {
+        .enumerate()
+        .map(|(i, sym)| {
+            let next = changes.get(i + 1).copied();
+            match scale_for_change(sym, next) {
+                Some(scale) => ChangeVoicing {
                     chord: sym.raw.clone(),
-                    pitch_classes: transpose(sym.root, &intervals),
-                    fallback: true,
+                    pitch_classes: transpose(sym.root, &scale),
+                    fallback: false,
+                },
+                None => {
+                    fallback_count += 1;
+                    // Arpeggio fallback: the chord tones we do know, else root+5th.
+                    let intervals = chord_tone_intervals(sym.quality).unwrap_or_else(|| vec![0, 7]);
+                    ChangeVoicing {
+                        chord: sym.raw.clone(),
+                        pitch_classes: transpose(sym.root, &intervals),
+                        fallback: true,
+                    }
                 }
             }
         })
@@ -642,7 +759,7 @@ fn scales_spec(changes: &[&ChordSymbol], key: &str) -> ScaffoldSpec {
         kind: ScaffoldKind::ScalesToChordTones,
         title: "Scales to chord tones".to_string(),
         key: key.to_string(),
-        rationale: "Run each chord-scale, landing on a chord tone".to_string(),
+        rationale: "Run each chord-scale, landing on a chord tone (ii–V aware)".to_string(),
         content,
         fallback_count,
     }
@@ -733,8 +850,97 @@ mod tests {
     }
 
     #[test]
+    fn recognises_phase_c_vocabulary() {
+        // Suspensions: any 7-bearing sus is the dominant sus; sus2 keeps its 2nd.
+        assert_eq!(quality_of("C7sus4"), ChordQuality::Sus4);
+        assert_eq!(quality_of("Csus4"), ChordQuality::Sus4);
+        assert_eq!(quality_of("Csus"), ChordQuality::Sus4);
+        assert_eq!(quality_of("C9sus4"), ChordQuality::Sus4);
+        // A number-bearing sus (13sus/11sus) must stay a sus, not decay to the
+        // bare-dominant it prefixes.
+        assert_eq!(quality_of("C13sus"), ChordQuality::Sus4);
+        assert_eq!(quality_of("C11sus4"), ChordQuality::Sus4);
+        assert_eq!(quality_of("Csus2"), ChordQuality::Sus2);
+        // Augmented: bare triad vs dominant ♯5.
+        assert_eq!(quality_of("Caug"), ChordQuality::Aug);
+        assert_eq!(quality_of("C+"), ChordQuality::Aug);
+        assert_eq!(quality_of("C7#5"), ChordQuality::Dom7Sharp5);
+        assert_eq!(quality_of("C+7"), ChordQuality::Dom7Sharp5);
+        assert_eq!(quality_of("Caug7"), ChordQuality::Dom7Sharp5);
+    }
+
+    #[test]
+    fn six_nine_is_a_major_six_not_a_broken_slash_bass() {
+        // Regression: `C6/9` used to split on `/` and fail parsing a "9" bass;
+        // the digit-after-slash guard keeps it a major 6 with a 9 tension.
+        let sym = parse_chord("C6/9", 1).unwrap();
+        assert_eq!((sym.root, sym.quality), (0, ChordQuality::Six));
+        assert_eq!(sym.bass, None);
+    }
+
+    #[test]
+    fn slash_bass_still_parses_after_the_six_nine_guard() {
+        let sym = parse_chord("C/E", 1).unwrap();
+        assert_eq!(
+            (sym.root, sym.quality, sym.bass),
+            (0, ChordQuality::Maj7, Some(4))
+        );
+    }
+
+    #[test]
+    fn new_qualities_derive_their_scale_and_tones() {
+        let sus = parse_chord("C7sus4", 1).unwrap(); // Mixolydian, tones root/4/5/b7
+        assert_eq!(
+            scale_intervals(sus.quality),
+            Some(vec![0, 2, 4, 5, 7, 9, 10])
+        );
+        assert_eq!(chord_tone_intervals(sus.quality), Some(vec![0, 5, 7, 10]));
+        let aug7 = parse_chord("C7#5", 1).unwrap(); // whole-tone, tones root/M3/♯5/b7
+        assert_eq!(scale_intervals(aug7.quality), Some(vec![0, 2, 4, 6, 8, 10]));
+        assert_eq!(chord_tone_intervals(aug7.quality), Some(vec![0, 4, 8, 10]));
+    }
+
+    #[test]
     fn unknown_quality_falls_back_to_other() {
-        assert_eq!(quality_of("Csus4"), ChordQuality::Other);
+        assert_eq!(quality_of("Cadd9"), ChordQuality::Other);
+    }
+
+    // ── Context-aware scale selection (ii–V–i / tritone sub) ──
+
+    #[test]
+    fn minor_two_five_dominant_takes_the_altered_scale() {
+        // Autumn Leaves' D7 → Gm7 (up a 4th to minor i): D altered, not Mixolydian.
+        let specs = derive_scaffold(&autumn_leaves());
+        let scales = &specs[3];
+        let d7 = scales
+            .content
+            .iter()
+            .find(|c| c.chord == "D7")
+            .expect("D7 is in the changes");
+        assert_eq!(d7.pitch_classes, transpose(2, &[0, 1, 3, 4, 6, 8, 10]));
+    }
+
+    #[test]
+    fn major_five_one_dominant_stays_mixolydian() {
+        let specs = derive_scaffold(&autumn_leaves()); // F7 → Bbmaj7 is a major V–I
+        let scales = &specs[3];
+        assert_eq!(scales.content[1].chord, "F7");
+        assert_eq!(
+            scales.content[1].pitch_classes,
+            transpose(5, &[0, 2, 4, 5, 7, 9, 10])
+        );
+    }
+
+    #[test]
+    fn tritone_sub_dominant_takes_lydian_dominant() {
+        // Db7 → Cmaj7 (down a semitone): tritone-sub, Db lydian-dominant.
+        let chart = parse_chart("| Db7 | Cmaj7 |", "C", Modality::Major).unwrap();
+        let scales = &derive_scaffold(&chart)[3];
+        assert_eq!(scales.content[0].chord, "Db7");
+        assert_eq!(
+            scales.content[0].pitch_classes,
+            transpose(1, &[0, 2, 4, 6, 7, 9, 10])
+        );
     }
 
     #[test]
@@ -920,7 +1126,8 @@ mod tests {
 
     #[test]
     fn out_of_vocab_chord_falls_back_to_arpeggio_and_is_flagged() {
-        let chart = parse_chart("| Csus4 |", "C", Modality::Major).unwrap();
+        // `add9` stays out of vocab (major triad add 9, no mapped scale).
+        let chart = parse_chart("| Cadd9 |", "C", Modality::Major).unwrap();
         let specs = derive_scaffold(&chart);
         let scales = &specs[3];
         assert!(scales.content[0].fallback);
@@ -929,12 +1136,24 @@ mod tests {
         assert_eq!(scales.content[0].pitch_classes, vec![0, 7]);
     }
 
+    #[test]
+    fn seventh_less_triads_fall_back_on_shells() {
+        // Sus2 and Aug have no 7th, so shells (3rd + 7th) can't voice them and
+        // flag the fallback rather than inventing a seventh.
+        let chart = parse_chart("| Csus2 | Caug |", "C", Modality::Major).unwrap();
+        let shells = &derive_scaffold(&chart)[1];
+        assert!(shells.content.iter().all(|c| c.fallback));
+        assert_eq!(shells.fallback_count, 2);
+    }
+
     // ── Bridge round-trip (#846) ──
 
     #[test]
     fn chord_chart_round_trips_on_the_ffi_bincode_wire() {
+        // Includes every Phase C quality (sus4/sus2/aug/dom7♯5) so the new enum
+        // variants are exercised on the bincode wire, not just the JSON one (#846).
         let chart = parse_chart(
-            "[A] | Cmaj7 F7 | Dm7/G | Cø7 | Bbdim7 | Ealt |",
+            "[A] | Cmaj7 F7 | Dm7/G | Cø7 | Bbdim7 | Ealt | G7sus4 Dsus2 | Faug C7#5 |",
             "C",
             Modality::Major,
         )

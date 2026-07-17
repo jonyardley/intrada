@@ -457,14 +457,11 @@ impl Intrada {
                 vec![]
             };
 
-            // Read-only scaffold preview (Phase A): derive from the stored chart.
-            // `already_linked` is a best-effort title match against the piece's
-            // linked exercises; true dedup lands with Phase B's commit.
+            // `already_linked` uses the same reconciliation key `CommitScaffold`
+            // does, so the read-only preview and the commit agree.
             let scaffold_preview = item.chord_chart.as_ref().map(|chart| {
-                let linked_titles: std::collections::HashSet<String> = linked_exercises
-                    .iter()
-                    .map(|e| e.title.to_lowercase())
-                    .collect();
+                let (linked_kinds, linked_titles) =
+                    crate::domain::item::linked_scaffold_state(model, &item.id);
                 let specs = crate::domain::chart::derive_scaffold(chart);
                 let mut fallback_total: u8 = 0;
                 let spec_views = specs
@@ -480,7 +477,12 @@ impl Intrada {
                             rationale: s.rationale.clone(),
                             key: s.key.clone(),
                             fallback,
-                            already_linked: linked_titles.contains(&s.title.to_lowercase()),
+                            already_linked: crate::domain::item::scaffold_already_linked(
+                                &linked_kinds,
+                                &linked_titles,
+                                s.kind,
+                                &s.title,
+                            ),
                         }
                     })
                     .collect();
@@ -506,7 +508,14 @@ impl Intrada {
                 tempo_marking: item.tempo.as_ref().and_then(|t| t.marking.clone()),
                 tempo_bpm: item.tempo.as_ref().and_then(|t| t.bpm),
                 notes: item.notes.clone(),
-                tags: item.tags.clone(),
+                // Reserved scaffold markers never reach the UI or the tag
+                // vocabulary (`available_tags` derives from these view tags).
+                tags: item
+                    .tags
+                    .iter()
+                    .filter(|t| !crate::domain::chart::is_scaffold_tag(t))
+                    .cloned()
+                    .collect(),
                 created_at: item.created_at.to_rfc3339(),
                 updated_at: item.updated_at.to_rfc3339(),
                 practice,

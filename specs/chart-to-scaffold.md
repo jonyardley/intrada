@@ -1,11 +1,14 @@
 # Chart-to-scaffold generation
 
-> Tier 3 lightweight spec. Status: **Phases A + B implemented.** A (#1109):
-> parser + derivation + `SetChordChart`/`ClearChordChart` + preview ViewModel +
-> GRDB migration + iOS chart-entry & read-only preview. B (#1106): `SaveItems`
-> atomic batch persistence op + `CommitScaffold` (title-dedup / no clobber) +
-> the selectable "Add N" commit sheet. **Scope: `intrada-core` + native iOS
-> only.** Web/API (Turso) out of scope (see Deferred).
+> Tier 3 lightweight spec. Status: **Phases A + B + C (less the twelve-key
+> ladder) implemented.** A (#1109): parser + derivation +
+> `SetChordChart`/`ClearChordChart` + preview ViewModel + GRDB migration + iOS
+> chart-entry & read-only preview. B (#1106): `SaveItems` atomic batch
+> persistence op + `CommitScaffold` (title-dedup / no clobber) + the selectable
+> "Add N" commit sheet. C (#1107): broader chord vocabulary + ii–V–i / tritone-sub
+> scale recognition + reserved generated-from tag / regenerate-on-edit reconcile
+> — **twelve-key step ladder still deferred, blocks on C ([#1083]).** **Scope:
+> `intrada-core` + native iOS only.** Web/API (Turso) out of scope (see Deferred).
 > Bet 1 of the on-device AI wow-factor brainstorm ([#1098]). Design mocks:
 > [`design/`](chart-to-scaffold/design/) (`chart-entry.dc.html`,
 > `scaffold-preview.dc.html`, `DECISIONS.md`; also in Claude Design →
@@ -255,6 +258,13 @@ phases, each its own PR after A:
   it.
 - **C — vocabulary + polish.** Broader chord-quality coverage, ii–V–I /
   tritone-sub recognition, fallback-flag UX, regeneration on chart edit.
+  Shipped less the twelve-key ladder: sus4/sus2/aug/7♯5 qualities + a
+  6/9 slash-guard (shrinking the arpeggio fallback); context-aware chord-scale
+  selection (dominant→minor gets altered, tritone-sub gets lydian-dominant);
+  the reserved `scaffold:<kind>` generated-from tag so re-deriving after a chart
+  edit reconciles by kind (rename-robust) and the tag stays hidden from the tag
+  vocabulary. **Twelve-key step ladder stays deferred — it blocks on C
+  ([#1083], unstarted); #1107 remains open for it (Resolved #5).**
 
 ## Deferred / out of scope (tracked)
 
