@@ -88,6 +88,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     }
 

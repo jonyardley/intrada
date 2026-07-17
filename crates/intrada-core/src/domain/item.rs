@@ -3,6 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::chart::ChordChart;
 use super::types::{CreateItem, Tempo, UpdateItem};
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
@@ -59,6 +60,10 @@ pub struct Item {
     pub updated_at: DateTime<Utc>,
     #[serde(default)]
     pub priority: bool,
+    /// Parsed chord changes (pieces only). Additive + local-first; rides the
+    /// piece's `updated_at`. `None` for exercises and un-charted pieces.
+    #[serde(default)]
+    pub chord_chart: Option<ChordChart>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -92,6 +97,15 @@ pub enum ItemEvent {
     ReorderLinkedExercises {
         piece_id: String,
         ordered_ids: Vec<String>,
+    },
+    /// Parse `raw_chart` and store it on the piece. A parse error surfaces on
+    /// `last_error` and stores nothing — never a partial chart.
+    SetChordChart {
+        piece_id: String,
+        raw_chart: String,
+    },
+    ClearChordChart {
+        piece_id: String,
     },
 }
 
@@ -137,6 +151,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 created_at: now,
                 updated_at: now,
                 priority: false,
+                chord_chart: None,
             };
 
             model.items.push(item.clone());
@@ -331,6 +346,60 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let piece = piece.clone();
             save_or_put(model, piece)
         }
+        ItemEvent::SetChordChart {
+            piece_id,
+            raw_chart,
+        } => {
+            if let Err(e) = validation::validate_chart_host(&piece_id, model) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            // The chart derives in the piece's key (default C major when unset).
+            let (key, modality) = model
+                .items
+                .iter()
+                .find(|i| i.id == piece_id)
+                .map(|p| {
+                    (
+                        p.key.clone().unwrap_or_else(|| "C".to_string()),
+                        p.modality.unwrap_or(Modality::Major),
+                    )
+                })
+                .expect("validate_chart_host guarantees the piece exists");
+
+            let chart = match super::chart::parse_chart(&raw_chart, &key, modality) {
+                Ok(chart) => chart,
+                Err(e) => {
+                    // Surface the parse error; store nothing (never a partial).
+                    model.last_error = Some(e.to_string());
+                    return crux_core::render::render();
+                }
+            };
+
+            let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                return crux_core::render::render();
+            };
+            piece.chord_chart = Some(chart);
+            piece.updated_at = chrono::Utc::now();
+            model.last_error = None;
+
+            let piece = piece.clone();
+            save_or_put(model, piece)
+        }
+        ItemEvent::ClearChordChart { piece_id } => {
+            let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                return crux_core::render::render();
+            };
+            piece.chord_chart = None;
+            piece.updated_at = chrono::Utc::now();
+            model.last_error = None;
+
+            let piece = piece.clone();
+            save_or_put(model, piece)
+        }
     }
 }
 
@@ -357,6 +426,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             priority: false,
+            chord_chart: None,
         }
     }
 
@@ -376,6 +446,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             priority: false,
+            chord_chart: None,
         }
     }
 
@@ -391,6 +462,178 @@ mod tests {
     fn send(model: &mut Model, event: ItemEvent) {
         let app = Intrada;
         let _cmd = app.update(crate::app::Event::Item(event), model);
+    }
+
+    fn send_cmd(
+        model: &mut Model,
+        event: ItemEvent,
+    ) -> crux_core::Command<crate::app::Effect, crate::app::Event> {
+        let app = Intrada;
+        app.update(crate::app::Event::Item(event), model)
+    }
+
+    fn emits_http(cmd: &mut crux_core::Command<crate::app::Effect, crate::app::Event>) -> bool {
+        cmd.effects()
+            .any(|e| matches!(e, crate::app::Effect::Http(_)))
+    }
+
+    fn emits_save(
+        cmd: &mut crux_core::Command<crate::app::Effect, crate::app::Event>,
+        id: &str,
+    ) -> bool {
+        cmd.effects().any(|e| {
+            matches!(e, crate::app::Effect::Persistence(req)
+                if matches!(&req.operation, crate::persistence::PersistenceOperation::SaveItem(item) if item.id == id))
+        })
+    }
+
+    // ── SetChordChart / ClearChordChart ──
+
+    #[test]
+    fn set_chord_chart_parses_stores_and_persists_without_http() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "piece-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 | F7 | Bbmaj7 |".to_string(),
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        let chart = piece.chord_chart.as_ref().expect("chart stored");
+        assert_eq!(chart.changes().len(), 3);
+        assert!(piece.updated_at >= before);
+        assert!(model.last_error.is_none());
+        assert!(
+            emits_save(&mut cmd, "piece-1"),
+            "local-first persists the piece"
+        );
+        assert!(
+            !emits_http(&mut cmd),
+            "local-first stores no HTTP (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn set_chord_chart_parse_error_surfaces_and_stores_nothing() {
+        let mut model = model_with_piece_and_exercise();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 | Hm7b5 |".to_string(),
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(
+            piece.chord_chart.is_none(),
+            "no partial chart on parse error"
+        );
+        let err = model.last_error.as_deref().expect("parse error surfaced");
+        assert!(
+            err.contains("Bar 2"),
+            "error names the offending bar: {err}"
+        );
+        assert!(
+            !emits_save(&mut cmd, "piece-1"),
+            "nothing persisted on error"
+        );
+    }
+
+    #[test]
+    fn set_chord_chart_rejects_a_non_piece_host() {
+        let mut model = model_with_piece_and_exercise();
+
+        send(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "ex-1".to_string(),
+                raw_chart: "| Cm7 |".to_string(),
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.chord_chart.is_none());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn set_chord_chart_uses_the_piece_key() {
+        let mut model = model_with_piece_and_exercise();
+        if let Some(p) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+            p.key = Some("G".to_string());
+            p.modality = Some(Modality::Minor);
+        }
+
+        send(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 |".to_string(),
+            },
+        );
+
+        let chart = model
+            .items
+            .iter()
+            .find(|i| i.id == "piece-1")
+            .unwrap()
+            .chord_chart
+            .as_ref()
+            .unwrap();
+        assert_eq!(chart.key, "G");
+        assert_eq!(chart.modality, Modality::Minor);
+    }
+
+    #[test]
+    fn clear_chord_chart_removes_it() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 |".to_string(),
+            },
+        );
+        assert!(model.items[0].chord_chart.is_some());
+
+        send(
+            &mut model,
+            ItemEvent::ClearChordChart {
+                piece_id: "piece-1".to_string(),
+            },
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(piece.chord_chart.is_none());
+        assert!(model.last_error.is_none());
+    }
+
+    // ── Bridge round-trip for the write events (#846) ──
+
+    #[test]
+    fn chord_chart_events_round_trip_on_the_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::SetChordChart {
+                piece_id: "P".to_string(),
+                raw_chart: "| Cm7 | F7 |".to_string(),
+            },
+        ));
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::ClearChordChart {
+                piece_id: "P".to_string(),
+            },
+        ));
     }
 
     // ── LinkExercise ──

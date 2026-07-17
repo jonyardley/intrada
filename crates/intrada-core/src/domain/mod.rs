@@ -1,4 +1,5 @@
 pub mod account;
+pub mod chart;
 pub mod item;
 pub mod mcp_audit;
 pub mod mcp_tokens;

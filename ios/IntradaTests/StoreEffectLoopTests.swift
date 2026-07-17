@@ -379,6 +379,41 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
   }
 
+  /// Real-bridge chord-chart round-trip (#846): `SetChordChart` carries a String
+  /// but returns a nested `ChordChart` + `ScaffoldPreviewView` across the bincode
+  /// wire — a shape a stub bridge can't exercise. A bad chart must surface an
+  /// error and never store a partial.
+  func testRealBridgeSetChordChartDerivesScaffoldPreview() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
+            modality: .minor, tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | F7 | Bbmaj7 |")))
+    let ok = try bridge.view()
+    let piece = try XCTUnwrap(ok.items.first { $0.id == id })
+    let preview = try XCTUnwrap(
+      piece.scaffoldPreview, "charted piece derives a preview (err=\(ok.error ?? "nil"))")
+    XCTAssertEqual(preview.key, "G")
+    XCTAssertEqual(preview.specs.count, 5, "five generators")
+    XCTAssertEqual(piece.chordChart?.sections.first?.bars.count, 3, "three bars round-trip")
+
+    // A bad token surfaces an error and leaves the prior chart intact.
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | Hxyz |")))
+    let bad = try bridge.view()
+    XCTAssertNotNil(bad.error, "a parse error must surface, not vanish (#846)")
+    XCTAssertEqual(
+      bad.items.first { $0.id == id }?.chordChart?.sections.first?.bars.count, 3,
+      "a failed parse never overwrites the stored chart")
+  }
+
   /// Real-bridge priority toggle (#763): the star sends an UpdateItem with every
   /// optional field "no change" (outer nil) and only `priority` set — a different
   /// bincode shape than the full edit, so round-trip it through the live bridge to
@@ -608,7 +643,7 @@ final class StoreEffectLoopTests: XCTestCase {
     id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
     tempo: nil,
     notes: nil, tags: [], linkedExerciseIds: [], createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z", priority: false)
+    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil)
 
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral

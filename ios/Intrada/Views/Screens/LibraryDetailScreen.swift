@@ -13,6 +13,8 @@ struct LibraryDetailScreen: View {
   @State private var editing = false
   @State private var editingLinks: Bool
   @State private var showingPicker = false
+  @State private var editingChart = false
+  @State private var showingScaffold = false
 
   init(item: LibraryItemView, startEditingLinks: Bool = false) {
     self.item = item
@@ -52,6 +54,10 @@ struct LibraryDetailScreen: View {
 
           if !item.tags.isEmpty {
             tags
+          }
+
+          if item.itemType == .piece {
+            chordChartSection
           }
 
           if item.itemType == .piece {
@@ -106,6 +112,18 @@ struct LibraryDetailScreen: View {
       )
       .environment(store)
     }
+    .sheet(isPresented: $editingChart) {
+      ChordChartEditSheet(
+        pieceId: item.id, pieceKey: item.key, pieceModality: item.modality,
+        existingChart: item.chordChart
+      )
+      .environment(store)
+    }
+    .sheet(isPresented: $showingScaffold) {
+      if let preview = item.scaffoldPreview {
+        ScaffoldPreviewSheet(preview: preview)
+      }
+    }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
     // iPad/regular-width where a confirmationDialog popover hides it.
     .alert("Delete \(item.title)?", isPresented: $confirmingDelete) {
@@ -114,6 +132,104 @@ struct LibraryDetailScreen: View {
     } message: {
       Text("This can't be undone.")
     }
+  }
+
+  // ── Chord chart ──
+
+  private var chordChartSection: some View {
+    VStack(spacing: 0) {
+      HStack {
+        Text("Chord chart")
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        Spacer()
+        Button(item.chordChart == nil ? "Add" : "Edit") { editingChart = true }
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.accent)
+          .accessibilityLabel(item.chordChart == nil ? "Add a chord chart" : "Edit chord chart")
+      }
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.top, IntradaSpacing.card)
+      .padding(.bottom, item.chordChart == nil ? IntradaSpacing.card : IntradaSpacing.cardCompact)
+
+      if let chart = item.chordChart {
+        chartSubtitle(chart)
+        chartBarGrid(chart)
+        seeCurriculumButton
+      } else {
+        chartEmptyState
+      }
+    }
+    .cardSurface()
+  }
+
+  private func chartSubtitle(_ chart: ChordChart) -> some View {
+    let bars = chart.sections.reduce(0) { $0 + $1.bars.count }
+    let changes = chart.sections.reduce(0) { $0 + $1.bars.reduce(0) { $0 + $1.chords.count } }
+    let key = item.keyDisplay ?? chart.key
+    return Text("\(key) · \(bars) \(bars == 1 ? "bar" : "bars") · \(changes) changes")
+      .font(IntradaFont.meta)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.bottom, IntradaSpacing.cardCompact)
+  }
+
+  private func chartBarGrid(_ chart: ChordChart) -> some View {
+    let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 4)
+    return VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+      ForEach(Array(chart.sections.enumerated()), id: \.offset) { _, section in
+        if let label = section.label, !label.isEmpty {
+          Eyebrow(label)
+        }
+        LazyVGrid(columns: columns, spacing: 6) {
+          ForEach(Array(sectionChords(section).enumerated()), id: \.offset) { _, raw in
+            Text(raw)
+              .font(IntradaFont.cardTitle())
+              .foregroundStyle(IntradaColor.ink)
+              .lineLimit(1)
+              .minimumScaleFactor(0.7)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, IntradaSpacing.controlGap)
+              .padding(.horizontal, 4)
+              .background(
+                RoundedRectangle(cornerRadius: IntradaRadius.badge)
+                  .fill(IntradaColor.paperTop)
+                  .stroke(IntradaColor.divider, lineWidth: 1)
+              )
+          }
+        }
+      }
+    }
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.bottom, IntradaSpacing.cardCompact)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      "Chord chart: " + chart.sections.flatMap { sectionChords($0) }.joined(separator: ", "))
+  }
+
+  private func sectionChords(_ section: ChartSection) -> [String] {
+    section.bars.flatMap { $0.chords.map { $0.symbol.raw } }
+  }
+
+  private var seeCurriculumButton: some View {
+    BrandBarButton(action: { showingScaffold = true }) {
+      Image(systemName: "sparkles")
+      Text("See the curriculum")
+    }
+    .padding(.horizontal, IntradaSpacing.card)
+    .padding(.bottom, IntradaSpacing.card)
+    .accessibilityLabel("See the derived curriculum")
+    .accessibilityHint("Shows the exercises derived from these changes")
+  }
+
+  private var chartEmptyState: some View {
+    Text("Paste the changes to see the exercises they imply.")
+      .font(IntradaFont.body)
+      .foregroundStyle(IntradaColor.inkSecondary)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, IntradaSpacing.card)
+      .padding(.bottom, IntradaSpacing.card)
   }
 
   // ── Related exercises ──

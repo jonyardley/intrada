@@ -169,12 +169,58 @@ final class LibraryStoreMigrationTests: XCTestCase {
       "pre-existing row gets empty-array default for linked_exercise_ids")
   }
 
+  func testV8AddsChordChartColumnDefaultingToNull() throws {
+    // Populate at v7 (no chord_chart column), insert an item row, then finish.
+    let store = try LibraryStore.upgradeTestStore(
+      migratedTo: "v7_session_reflections",
+      seed: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, deleted_at)
+        VALUES ('p1', 'Legacy Piece', 'piece', NULL, NULL, NULL, NULL, NULL, NULL, '[]',
+                '[]', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z', 0, NULL)
+        """)
+    let columns = try store.columnNames(ofTable: "item")
+    XCTAssertTrue(
+      columns.contains("chord_chart"),
+      "v8 must add chord_chart column; got \(columns)")
+
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1, "pre-existing row must survive v8 migration")
+    XCTAssertNil(loaded[0].chordChart, "pre-existing row defaults to no chart")
+  }
+
+  func testV8ChordChartRoundTrip() throws {
+    let store = try LibraryStore.inMemory()
+    let symbol = ChordSymbol(
+      root: 0, quality: .min7, extensions: [], bass: 7, raw: "Cm7/G")
+    let chart = ChordChart(
+      key: "G", modality: .minor, metre: 4,
+      sections: [
+        ChartSection(
+          label: "A",
+          bars: [Bar(chords: [ChartChord(symbol: symbol, beats: 4)])])
+      ])
+    let item = Item(
+      id: "p3", title: "Autumn Leaves", kind: .piece, composer: nil, key: "G",
+      modality: .minor, tempo: nil, notes: nil, tags: [], linkedExerciseIds: [],
+      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
+      chordChart: chart)
+    try store.save(item)
+    let loaded = try store.loadItems()
+    XCTAssertEqual(loaded.count, 1)
+    XCTAssertEqual(
+      loaded[0].chordChart, chart,
+      "chord_chart must round-trip through JSON storage intact")
+  }
+
   func testV6LinkedExerciseIdsRoundTrip() throws {
     let store = try LibraryStore.inMemory()
     let item = Item(
       id: "p2", title: "Étude", kind: .piece, composer: nil, key: nil, modality: nil,
       tempo: nil, notes: nil, tags: [], linkedExerciseIds: ["e1", "e2"],
-      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false)
+      createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", priority: false,
+      chordChart: nil)
     try store.save(item)
     let loaded = try store.loadItems()
     XCTAssertEqual(loaded.count, 1)
