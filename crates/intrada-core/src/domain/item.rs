@@ -40,6 +40,23 @@ pub enum Modality {
     Minor,
 }
 
+/// One rung of an exercise's step ladder (keys, levels, inversions). The core's
+/// name; the UI says "Steps"/"Keys" (#1083). Score history is derived from
+/// session entries tagged with this `id`, never stored here. `updated_at` /
+/// `deleted_at` are per-row so the future sync engine can LWW-merge and tombstone
+/// individual steps (invariant 2) — the reason variants are a child table at the
+/// GRDB layer, not a JSON blob on the item row. Archive UX lands in C4.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct Variant {
+    pub id: String,
+    pub label: String,
+    pub position: usize,
+    pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct Item {
@@ -64,6 +81,10 @@ pub struct Item {
     /// piece's `updated_at`. `None` for exercises and un-charted pieces.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// Ordered step ladder (exercises only). `#[serde(default)]` + appended last
+    /// so old rows / bincode snapshots decode to an empty ladder (#846, #1083).
+    #[serde(default)]
+    pub variants: Vec<Variant>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -115,6 +136,12 @@ pub enum ItemEvent {
     CommitScaffold {
         piece_id: String,
         kinds: Vec<ScaffoldKind>,
+    },
+    /// Append a step to an exercise's ladder. Mints a client ulid (invariant 3),
+    /// positions it after the last existing step. Rename/reorder/archive are C4.
+    AddVariant {
+        item_id: String,
+        label: String,
     },
 }
 
@@ -203,6 +230,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 updated_at: now,
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             };
 
             model.items.push(item.clone());
@@ -502,6 +530,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     updated_at: now,
                     priority: false,
                     chord_chart: None,
+                    variants: vec![],
                 })
                 .collect();
 
@@ -549,6 +578,39 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 Command::all(cmds)
             }
         }
+        ItemEvent::AddVariant { item_id, label } => {
+            let label = label.trim().to_string();
+            if label.is_empty() {
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "label".into(),
+                        message: "Step needs a label".into(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            }
+
+            let Some(item) = model.items.iter_mut().find(|i| i.id == item_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                return crux_core::render::render();
+            };
+
+            let now = chrono::Utc::now();
+            let position = item.variants.len();
+            item.variants.push(Variant {
+                id: ulid::Ulid::gen().to_string(),
+                label,
+                position,
+                updated_at: now,
+                deleted_at: None,
+            });
+            item.updated_at = now;
+            model.last_error = None;
+
+            let item = item.clone();
+            save_or_put(model, item)
+        }
     }
 }
 
@@ -576,6 +638,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -596,6 +659,7 @@ mod tests {
             updated_at: now,
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 
@@ -713,6 +777,120 @@ mod tests {
 
         let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(ex.chord_chart.is_none());
+        assert!(model.last_error.is_some());
+    }
+
+    // ── Variants (steps) ──
+
+    #[test]
+    fn add_variant_appends_a_variant_and_persists_without_http() {
+        let mut model = model_with_piece_and_exercise();
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddVariant {
+                item_id: "ex-1".to_string(),
+                label: "F major".to_string(),
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.variants.len(), 1, "variant appended");
+        let v = &ex.variants[0];
+        assert_eq!(v.label, "F major");
+        assert_eq!(v.position, 0, "first variant is position 0");
+        assert!(!v.id.is_empty(), "variant gets a client-minted id");
+        assert!(v.deleted_at.is_none());
+        assert!(ex.updated_at >= before, "touches the item's updated_at");
+        assert!(model.last_error.is_none());
+        assert!(
+            emits_save(&mut cmd, "ex-1"),
+            "local-first persists the item"
+        );
+        assert!(
+            !emits_http(&mut cmd),
+            "local-first stores no HTTP (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn add_variant_assigns_incrementing_positions() {
+        let mut model = model_with_piece_and_exercise();
+        for label in ["F", "Bb", "Eb"] {
+            send(
+                &mut model,
+                ItemEvent::AddVariant {
+                    item_id: "ex-1".to_string(),
+                    label: label.to_string(),
+                },
+            );
+        }
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let ladder: Vec<(usize, &str)> = ex
+            .variants
+            .iter()
+            .map(|v| (v.position, v.label.as_str()))
+            .collect();
+        assert_eq!(ladder, vec![(0, "F"), (1, "Bb"), (2, "Eb")]);
+    }
+
+    #[test]
+    fn add_variant_in_online_mode_updates_via_http_not_local_save() {
+        // Invariant 6: the shared handler must work in both modes. Online mode
+        // has no variant storage yet (server drops it, like `group_id`) — the
+        // add still succeeds and PUTs the item; steps degrade gracefully.
+        let mut model = model_with_piece_and_exercise();
+        model.local_first = false;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::AddVariant {
+                item_id: "ex-1".to_string(),
+                label: "F major".to_string(),
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.variants.len(), 1, "variant added in online mode too");
+        assert!(model.last_error.is_none());
+        assert!(emits_http(&mut cmd), "online mode PUTs the item");
+        assert!(
+            !emits_save(&mut cmd, "ex-1"),
+            "online mode does not local-save"
+        );
+    }
+
+    #[test]
+    fn add_variant_to_missing_item_surfaces_not_found() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::AddVariant {
+                item_id: "nope".to_string(),
+                label: "F".to_string(),
+            },
+        );
+        assert!(model.last_error.is_some(), "missing item surfaces an error");
+    }
+
+    #[test]
+    fn add_variant_rejects_a_blank_label() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::AddVariant {
+                item_id: "ex-1".to_string(),
+                label: "   ".to_string(),
+            },
+        );
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.variants.is_empty(), "blank label adds nothing");
         assert!(model.last_error.is_some());
     }
 
@@ -1063,6 +1241,47 @@ mod tests {
                 kinds: vec![ScaffoldKind::Shells, ScaffoldKind::ScalesToChordTones],
             },
         ));
+    }
+
+    #[test]
+    fn variant_payloads_round_trip_on_the_ffi_bincode_wire() {
+        // The event that crosses the bridge.
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::AddVariant {
+            item_id: "ex-1".to_string(),
+            label: "F major".to_string(),
+        }));
+
+        // Bare Variant, with the tombstone set (deleted_at is a later bincode
+        // field — guard both levels).
+        let now = chrono::Utc::now();
+        crate::domain::types::assert_round_trips(Variant {
+            id: "v1".to_string(),
+            label: "F major".to_string(),
+            position: 2,
+            updated_at: now,
+            deleted_at: Some(now),
+        });
+
+        // The whole exercise carries its ladder in ViewModel/persistence
+        // payloads, so round-trip an Item with variants populated.
+        let mut ex = make_exercise("ex-1");
+        ex.variants = vec![
+            Variant {
+                id: "v1".to_string(),
+                label: "F".to_string(),
+                position: 0,
+                updated_at: now,
+                deleted_at: None,
+            },
+            Variant {
+                id: "v2".to_string(),
+                label: "Bb".to_string(),
+                position: 1,
+                updated_at: now,
+                deleted_at: None,
+            },
+        ];
+        crate::domain::types::assert_round_trips(ex);
     }
 
     // ── LinkExercise ──

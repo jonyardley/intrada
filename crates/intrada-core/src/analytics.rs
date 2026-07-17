@@ -523,6 +523,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     }
 
@@ -1125,6 +1126,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         }
     }
 

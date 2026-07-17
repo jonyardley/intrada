@@ -14,7 +14,7 @@ final class LibraryStoreTests: XCTestCase {
       id: id, title: title, kind: kind, composer: "Chopin", key: "C", modality: .major,
       tempo: Tempo(marking: "Allegro", bpm: 132), notes: "evenness",
       tags: ["scale", "warmup"], linkedExerciseIds: [], createdAt: createdAt,
-      updatedAt: createdAt, priority: true, chordChart: nil)
+      updatedAt: createdAt, priority: true, chordChart: nil, variants: [])
   }
 
   func testSaveThenLoadRoundTrips() throws {
@@ -132,7 +132,7 @@ final class LibraryStoreTests: XCTestCase {
       durationSecs: 300, status: .completed, notes: "good", score: 4, intention: "evenness",
       repTarget: 5, repCount: 5, repTargetReached: true,
       repHistory: [.success, .missed, .success], plannedDurationSecs: 300, achievedTempo: 120,
-      groupId: nil)
+      groupId: nil, variantId: nil)
   }
 
   private func session(_ id: String, completedAt: String = "2026-01-01T00:00:00Z")

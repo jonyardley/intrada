@@ -338,6 +338,29 @@ pub struct LibraryItemView {
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// The exercise's step ladder with derived per-step scores (#1083 C1). Empty
+    /// for pieces and for exercises with no steps.
+    #[serde(default)]
+    pub steps: Vec<StepView>,
+    /// The current step: the first step not yet solid. `None` when there are no
+    /// steps or the ladder is complete (every step solid) (#1083 C1).
+    #[serde(default)]
+    pub current_variant_id: Option<String>,
+}
+
+/// One rung of an exercise's step ladder, with its derived score (#1083 C1).
+/// `label`/`position` come from the stored `Variant`; `latest_score`/`solid` are
+/// derived from session entries tagged with this step. The UI renders per-step
+/// rings; "Solid" is the user-facing word for `solid`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct StepView {
+    pub id: String,
+    pub label: String,
+    pub position: usize,
+    #[serde(default)]
+    pub latest_score: Option<u8>,
+    pub solid: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -744,6 +767,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     }
 
@@ -807,6 +831,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -988,6 +1013,7 @@ mod tests {
             linked_exercise_ids: vec![],
             priority: false,
             chord_chart: None,
+            variants: vec![],
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1180,6 +1206,7 @@ mod tests {
                 linked_exercise_ids: vec![],
                 priority: false,
                 chord_chart: None,
+                variants: vec![],
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()
