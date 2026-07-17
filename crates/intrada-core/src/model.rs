@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
+use crate::domain::chart::ChordChart;
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
@@ -239,6 +240,31 @@ pub struct LinkedExerciseView {
     pub piece_context_score: Option<u8>,
 }
 
+/// The derived scaffold curriculum for a charted piece — the read-only preview
+/// (Phase A). Recomputed from the stored chart in `build_view`; the shell renders
+/// it and never derives.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ScaffoldPreviewView {
+    /// The key the exercises are derived in (the piece's key).
+    pub key: String,
+    pub specs: Vec<ScaffoldSpecView>,
+    /// How many specs hit the arpeggio fallback (out-of-vocab chord).
+    pub fallback_total: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct ScaffoldSpecView {
+    pub title: String,
+    pub rationale: String,
+    pub key: String,
+    /// This spec fell back to the chord's arpeggio for at least one change.
+    pub fallback: bool,
+    /// A matching exercise is already linked to the piece (dedup surface).
+    pub already_linked: bool,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct PieceRefView {
@@ -301,6 +327,14 @@ pub struct LibraryItemView {
     /// pieces.
     #[serde(default)]
     pub exercise_contexts: Vec<ExerciseContextView>,
+    /// For a charted piece: the derived scaffold curriculum (read-only preview).
+    /// `None` for exercises and un-charted pieces.
+    #[serde(default)]
+    pub scaffold_preview: Option<ScaffoldPreviewView>,
+    /// The parsed chord chart, for pieces that have one — the shell renders the
+    /// bar grid from `symbol.raw` and pre-fills the editor from it.
+    #[serde(default)]
+    pub chord_chart: Option<ChordChart>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -656,6 +690,23 @@ mod tests {
         });
     }
 
+    /// `ScaffoldPreviewView` crosses the bincode wire inside the ViewModel
+    /// (`LibraryItemView.scaffold_preview`) — guard it against the #846 drop class.
+    #[test]
+    fn scaffold_preview_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(ScaffoldPreviewView {
+            key: "G".to_string(),
+            specs: vec![ScaffoldSpecView {
+                title: "Shells".to_string(),
+                rationale: "3rd + 7th of every chord".to_string(),
+                key: "G".to_string(),
+                fallback: false,
+                already_linked: true,
+            }],
+            fallback_total: 0,
+        });
+    }
+
     /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
     /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
     #[test]
@@ -751,6 +802,7 @@ mod tests {
             updated_at: Utc::now(),
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
         model.last_set_save_request_id = Some("req-1".to_string());
         model.reset_for_sign_out();
@@ -931,6 +983,7 @@ mod tests {
             updated_at: Utc::now(),
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         let item_index: HashMap<&str, &Item> = HashMap::from([("i1", &item)]);
         let view = build_active_session_view(&active, &item_index);
@@ -1122,6 +1175,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             api_base_url: "http://localhost:3001".to_string(),
             ..Default::default()

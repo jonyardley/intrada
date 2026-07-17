@@ -8,6 +8,10 @@ extend-ignore-re = [
     '`[a-z]*[A-Z0-9][A-Za-z0-9]{2,8}`',
     # Escaped-quoted two-letter search examples in UI copy (\"ba\", \"ch\")
     '\\"[a-z]{2}\\"',
+    # Numeric music ordinals — chord tones by scale degree (3rds, 7ths, 5ths,
+    # 1st…). A recurring domain token class in chart-to-scaffold, not prose;
+    # typos otherwise splits "7ths" and flags "ths"→"the".
+    '\b\d+(st|nd|rd|ths?)\b',
 ]
 
 [files]

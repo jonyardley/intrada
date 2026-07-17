@@ -344,7 +344,7 @@
             id: "exercise-2", title: "Db Major Scale", key: "Db major", tempo: nil, practice: nil,
             pieceContextScore: nil),
         ],
-        linkedFromPieces: [], exerciseContexts: [])
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
     }
 
     static var previewExercise: LibraryItemView {
@@ -354,7 +354,7 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
     }
 
     static var previewDetail: LibraryItemView {
@@ -365,7 +365,34 @@
         notes: "Focus on the rubato in the opening phrase; keep the left hand soft.",
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
-        linkedFromPieces: [], exerciseContexts: [])
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
+    }
+
+    /// A charted piece — exercises the chord-chart card (parsed grid + preview).
+    static var previewCharted: LibraryItemView {
+      func chord(_ raw: String, _ root: UInt8, _ q: ChordQuality) -> ChartChord {
+        ChartChord(
+          symbol: ChordSymbol(root: root, quality: q, extensions: [], bass: nil, raw: raw),
+          beats: 4)
+      }
+      let chart = ChordChart(
+        key: "G", modality: .minor, metre: 4,
+        sections: [
+          ChartSection(
+            label: "A",
+            bars: [
+              Bar(chords: [chord("Cm7", 0, .min7)]),
+              Bar(chords: [chord("F7", 5, .dom7)]),
+              Bar(chords: [chord("Bbmaj7", 10, .maj7)]),
+              Bar(chords: [chord("Ebmaj7", 3, .maj7)]),
+            ])
+        ])
+      return LibraryItemView(
+        id: "piece-charted", itemType: .piece, title: "Autumn Leaves", subtitle: "Standard",
+        key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
+        notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
+        latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
+        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart)
     }
 
     static var previewMinimal: LibraryItemView {
@@ -374,7 +401,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [])
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -414,7 +441,7 @@
             id: "exercise-3", title: "Arpeggios in Db", key: nil, tempo: nil,
             practice: nil, pieceContextScore: nil),
         ],
-        linkedFromPieces: [], exerciseContexts: [])
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
     }
 
     /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
@@ -436,7 +463,7 @@
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ], exerciseContexts: [])
+        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil)
     }
 
     /// An exercise with a full "By piece" breakdown — a live piece, a
@@ -471,7 +498,7 @@
           ExerciseContextView(
             piece: nil, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
-        ])
+        ], scaffoldPreview: nil, chordChart: nil)
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -482,7 +509,8 @@
         tempoMarking: "Lent et douloureux",
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
-        linkedExercises: [], linkedFromPieces: [], exerciseContexts: [])
+        linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
+        chordChart: nil)
     }
   }
 

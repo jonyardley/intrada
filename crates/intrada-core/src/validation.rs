@@ -411,6 +411,27 @@ pub fn validate_link_exercise(
     Ok(())
 }
 
+/// A chord chart hangs off a piece. The host must exist and be a `Piece` —
+/// exercises don't carry changes.
+pub fn validate_chart_host(piece_id: &str, model: &Model) -> Result<(), LibraryError> {
+    let piece = model
+        .items
+        .iter()
+        .find(|i| i.id == piece_id)
+        .ok_or_else(|| LibraryError::NotFound {
+            id: piece_id.to_string(),
+        })?;
+
+    if piece.kind != ItemKind::Piece {
+        return Err(LibraryError::Validation {
+            field: "piece_id".to_string(),
+            message: "Only a piece can have a chord chart".to_string(),
+        });
+    }
+
+    Ok(())
+}
+
 pub fn validate_set_entry_fields(item_id: &str, item_title: &str) -> Result<(), LibraryError> {
     if item_id.trim().is_empty() {
         return Err(LibraryError::Validation {

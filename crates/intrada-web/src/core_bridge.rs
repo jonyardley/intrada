@@ -382,6 +382,7 @@ mod tests {
             created_at: now,
             updated_at: now,
             priority: false,
+            chord_chart: None,
         };
         let _ = core.process_event(Event::DataLoaded { items: vec![item] });
         let _ = core.process_event(Event::SessionsLoaded { sessions: vec![] });

@@ -1124,6 +1124,7 @@ mod tests {
             updated_at: chrono::Utc::now(),
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     }
 

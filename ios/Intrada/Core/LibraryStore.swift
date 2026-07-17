@@ -58,15 +58,16 @@ final class LibraryStore: ItemStore {
         sql: """
           INSERT INTO item
             (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-             linked_exercise_ids, created_at, updated_at, priority, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+             linked_exercise_ids, created_at, updated_at, priority, chord_chart, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
           ON CONFLICT(id) DO UPDATE SET
             title = excluded.title, kind = excluded.kind, composer = excluded.composer,
             key = excluded.key, modality = excluded.modality,
             tempo_marking = excluded.tempo_marking,
             tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
             linked_exercise_ids = excluded.linked_exercise_ids,
-            updated_at = excluded.updated_at, priority = excluded.priority, deleted_at = NULL
+            updated_at = excluded.updated_at, priority = excluded.priority,
+            chord_chart = excluded.chord_chart, deleted_at = NULL
           """,
         arguments: [
           item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
@@ -75,6 +76,7 @@ final class LibraryStore: ItemStore {
           Self.encodeTags(item.tags),
           Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
           item.createdAt, item.updatedAt, item.priority,
+          Self.encodeChordChart(item.chordChart),
         ])
     }
   }
@@ -212,6 +214,10 @@ final class LibraryStore: ItemStore {
       try db.execute(sql: "ALTER TABLE session ADD COLUMN reflection_still_rough TEXT")
       try db.execute(sql: "ALTER TABLE session ADD COLUMN reflection_next_target TEXT")
     }
+    migrator.registerMigration("v8_item_chord_chart") { db in
+      // Nullable JSON column; NULL = no chart. Additive, non-destructive.
+      try db.execute(sql: "ALTER TABLE item ADD COLUMN chord_chart TEXT")
+    }
     return migrator
   }()
 
@@ -238,7 +244,8 @@ final class LibraryStore: ItemStore {
       tags: decodeTags(row["tags"]),
       linkedExerciseIds: decodeLinkedExerciseIds(row["linked_exercise_ids"]),
       createdAt: row["created_at"], updatedAt: row["updated_at"],
-      priority: row["priority"])
+      priority: row["priority"],
+      chordChart: decodeChordChart(row["chord_chart"]))
   }
 
   private static func kindString(_ kind: ItemKind) -> String {
@@ -295,6 +302,129 @@ final class LibraryStore: ItemStore {
 
   private static func decodeLinkedExerciseIds(_ json: String) -> [String] {
     (try? JSONDecoder().decode([String].self, from: Data(json.utf8))) ?? []
+  }
+
+  // ── Row ↔ ChordChart codec ───────────────────────────────────────────
+  // A nested aggregate, so JSON via a Codable DTO (like StoredEntry) — never
+  // bincode: positional encoding would fail to decode old rows after a field
+  // change, and the device is the only copy.
+
+  private struct StoredChart: Codable {
+    var key: String
+    var modality: String
+    var metre: UInt8
+    var sections: [StoredSection]
+  }
+  private struct StoredSection: Codable {
+    var label: String?
+    var bars: [StoredBar]
+  }
+  private struct StoredBar: Codable {
+    var chords: [StoredChartChord]
+  }
+  private struct StoredChartChord: Codable {
+    var symbol: StoredChordSymbol
+    var beats: UInt8
+  }
+  private struct StoredChordSymbol: Codable {
+    var root: UInt8
+    var quality: String
+    var extensions: [String]
+    var bass: UInt8?
+    var raw: String
+  }
+
+  private struct ChartCodecError: Error, CustomStringConvertible {
+    let phase: String
+    var description: String { "chord chart failed to \(phase)" }
+  }
+
+  private static func encodeChordChart(_ chart: ChordChart?) -> String? {
+    guard let chart else { return nil }
+    let dto = StoredChart(
+      key: chart.key, modality: modalityString(chart.modality) ?? "major", metre: chart.metre,
+      sections: chart.sections.map { section in
+        StoredSection(
+          label: section.label,
+          bars: section.bars.map { bar in
+            StoredBar(
+              chords: bar.chords.map { chord in
+                StoredChartChord(
+                  symbol: StoredChordSymbol(
+                    root: chord.symbol.root, quality: chordQualityString(chord.symbol.quality),
+                    extensions: chord.symbol.extensions, bass: chord.symbol.bass,
+                    raw: chord.symbol.raw),
+                  beats: chord.beats)
+              })
+          })
+      })
+    guard let data = try? JSONEncoder().encode(dto), let json = String(data: data, encoding: .utf8)
+    else {
+      // Surface, don't swallow: a chart that fails to encode would otherwise be
+      // stored as NULL (silently "no chart") on the only copy of the data.
+      report(ChartCodecError(phase: "encode"), decodeContext)
+      return nil
+    }
+    return json
+  }
+
+  private static func decodeChordChart(_ json: String?) -> ChordChart? {
+    guard let json else { return nil }  // no chart — legitimate
+    guard let dto = try? JSONDecoder().decode(StoredChart.self, from: Data(json.utf8)) else {
+      report(ChartCodecError(phase: "decode"), decodeContext)
+      return nil
+    }
+    return ChordChart(
+      key: dto.key, modality: modality(from: dto.modality) ?? .major, metre: dto.metre,
+      sections: dto.sections.map { section in
+        ChartSection(
+          label: section.label,
+          bars: section.bars.map { bar in
+            Bar(
+              chords: bar.chords.map { chord in
+                ChartChord(
+                  symbol: ChordSymbol(
+                    root: chord.symbol.root,
+                    quality: chordQuality(from: chord.symbol.quality),
+                    extensions: chord.symbol.extensions, bass: chord.symbol.bass,
+                    raw: chord.symbol.raw),
+                  beats: chord.beats)
+              })
+          })
+      })
+  }
+
+  private static func chordQualityString(_ q: ChordQuality) -> String {
+    switch q {
+    case .maj7: "maj7"
+    case .dom7: "dom7"
+    case .min7: "min7"
+    case .min7b5: "min7b5"
+    case .dim7: "dim7"
+    case .minMaj7: "minMaj7"
+    case .six: "six"
+    case .min6: "min6"
+    case .alt: "alt"
+    case .other: "other"
+    }
+  }
+
+  private static func chordQuality(from raw: String) -> ChordQuality {
+    switch raw {
+    case "maj7": return .maj7
+    case "dom7": return .dom7
+    case "min7": return .min7
+    case "min7b5": return .min7b5
+    case "dim7": return .dim7
+    case "minMaj7": return .minMaj7
+    case "six": return .six
+    case "min6": return .min6
+    case "alt": return .alt
+    case "other": return .other
+    default:
+      report(UnknownStoredEnum(kind: "ChordQuality", raw: raw), decodeContext)
+      return .other  // conservative: an unknown quality falls back to arpeggio
+    }
   }
 
   // ── Row ↔ PracticeSession codec ──────────────────────────────────────

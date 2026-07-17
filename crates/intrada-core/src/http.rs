@@ -505,6 +505,7 @@ mod tests {
             updated_at: fixed_time(),
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     }
 

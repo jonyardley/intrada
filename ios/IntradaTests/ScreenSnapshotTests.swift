@@ -377,6 +377,20 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  /// The chord-chart card: parsed bar grid + "See the curriculum" (Phase A).
+  func testLibraryDetailChordChartCard() {
+    let store = Store(bridge: PreviewBridge(items: [.previewCharted]))
+    let pushed = NavigationStack(path: .constant([LibraryItemView.previewCharted.id])) {
+      LibraryScreen()
+    }
+    assertSnapshot(of: host(pushed, store: store), as: config)
+  }
+
+  /// The read-only derived-curriculum sheet, with already-linked + fallback flags.
+  func testScaffoldPreviewSheet() {
+    assertSnapshot(of: host(ScaffoldPreviewSheet(preview: .preview)), as: config)
+  }
+
   func testPieceDetailLinkedPopulated() {
     let store = Store(bridge: PreviewBridge(items: [.previewDetailWithLinkedExercises]))
     let pushed = NavigationStack(
@@ -579,13 +593,13 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })
@@ -603,13 +617,13 @@ final class ScreenSnapshotTests: XCTestCase {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: []),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
       ],
       linkedIds: ["exercise-1", "exercise-3"],
       onApply: { _ in })

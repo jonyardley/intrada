@@ -25,7 +25,8 @@ use crate::http;
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
     BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
-    PieceRefView, SessionStatusView, SetSourceStatus, ViewModel,
+    PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, SetSourceStatus,
+    ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -456,6 +457,39 @@ impl Intrada {
                 vec![]
             };
 
+            // Read-only scaffold preview (Phase A): derive from the stored chart.
+            // `already_linked` is a best-effort title match against the piece's
+            // linked exercises; true dedup lands with Phase B's commit.
+            let scaffold_preview = item.chord_chart.as_ref().map(|chart| {
+                let linked_titles: std::collections::HashSet<String> = linked_exercises
+                    .iter()
+                    .map(|e| e.title.to_lowercase())
+                    .collect();
+                let specs = crate::domain::chart::derive_scaffold(chart);
+                let mut fallback_total: u8 = 0;
+                let spec_views = specs
+                    .iter()
+                    .map(|s| {
+                        let fallback = s.fallback_count > 0;
+                        if fallback {
+                            fallback_total = fallback_total.saturating_add(1);
+                        }
+                        ScaffoldSpecView {
+                            title: s.title.clone(),
+                            rationale: s.rationale.clone(),
+                            key: s.key.clone(),
+                            fallback,
+                            already_linked: linked_titles.contains(&s.title.to_lowercase()),
+                        }
+                    })
+                    .collect();
+                ScaffoldPreviewView {
+                    key: chart.key.clone(),
+                    specs: spec_views,
+                    fallback_total,
+                }
+            });
+
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.clone(),
@@ -480,6 +514,8 @@ impl Intrada {
                 linked_exercises,
                 linked_from_pieces,
                 exercise_contexts,
+                scaffold_preview,
+                chord_chart: item.chord_chart.clone(),
             });
         }
 
@@ -1012,6 +1048,7 @@ fn sample_items() -> Vec<Item> {
             updated_at: ts,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     };
 
@@ -1204,6 +1241,57 @@ mod tests {
     use super::*;
 
     #[test]
+    fn charted_piece_surfaces_a_scaffold_preview_in_the_view() {
+        use crate::domain::item::ItemEvent;
+        let app = Intrada;
+        let mut model = Model::test_default();
+        model.local_first = true;
+
+        let now = chrono::Utc::now();
+        model.items.push(Item {
+            id: "p1".to_string(),
+            title: "Autumn Leaves".to_string(),
+            kind: ItemKind::Piece,
+            composer: None,
+            key: Some("G".to_string()),
+            modality: Some(crate::domain::item::Modality::Minor),
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec![],
+            priority: false,
+            chord_chart: None,
+        });
+
+        let _ = app.update(
+            Event::Item(ItemEvent::SetChordChart {
+                piece_id: "p1".to_string(),
+                raw_chart: "| Cm7 | F7 | Bbmaj7 | Ebmaj7 |".to_string(),
+            }),
+            &mut model,
+        );
+
+        let vm = app.view(&model);
+        let piece = vm.items.iter().find(|i| i.id == "p1").unwrap();
+        let preview = piece
+            .scaffold_preview
+            .as_ref()
+            .expect("charted piece has a preview");
+        assert_eq!(preview.key, "G");
+        assert_eq!(preview.specs.len(), 5);
+        assert_eq!(preview.specs[0].title, "Learn the melody");
+        assert_eq!(preview.fallback_total, 0);
+
+        // An un-charted exercise has no preview.
+        let uncharted = vm.items.iter().find(|i| i.id != "p1");
+        assert!(uncharted
+            .map(|i| i.scaffold_preview.is_none())
+            .unwrap_or(true));
+    }
+
+    #[test]
     fn test_data_loaded_populates_model() {
         let app = Intrada;
         let mut model = Model::test_default();
@@ -1224,6 +1312,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             },
             Item {
                 id: "ex1".to_string(),
@@ -1239,6 +1328,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             },
         ];
 
@@ -1364,6 +1454,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             sessions: vec![PracticeSession {
                 id: "sess1".to_string(),
@@ -1538,6 +1629,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "p2".to_string(),
@@ -1556,6 +1648,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "p3".to_string(),
@@ -1574,6 +1667,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "e1".to_string(),
@@ -1589,6 +1683,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
             ],
             ..Default::default()
@@ -1663,6 +1758,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
         model.items.push(Item {
             id: "e1".to_string(),
@@ -1678,6 +1774,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         let vm = app.view(&model);
@@ -1738,6 +1835,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1753,6 +1851,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -1785,6 +1884,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
         model.items.push(Item {
             id: "p2".to_string(),
@@ -1800,6 +1900,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         model.active_query = Some(ListQuery {
@@ -1831,6 +1932,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         model.items = vec![
             mk("a", "Bebop", &["jazz"]),
@@ -1873,6 +1975,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         model.items = vec![mk("a", &["Jazz", "piano"]), mk("b", &["classical", "jazz"])];
         // Case-insensitive dedupe (first-seen casing), sorted by lowercase — the
@@ -1907,6 +2010,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         model.items = vec![
             mk("p1", ItemKind::Piece, Some("Chopin")),
@@ -2081,6 +2185,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids,
                 priority: false,
+                chord_chart: None,
             });
         }
         for i in 0..5000 {
@@ -2102,6 +2207,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             });
         }
         let populate_time = start.elapsed();
@@ -2258,6 +2364,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         let p2 = Item {
             id: "p2".to_string(),
@@ -2273,6 +2380,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         model.items = vec![p1, p2];
 
@@ -2379,6 +2487,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         use crate::domain::session::{
@@ -2489,6 +2598,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         use crate::domain::session::{
@@ -2558,6 +2668,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         use crate::domain::session::{
@@ -2653,6 +2764,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         use crate::domain::session::{
@@ -2874,6 +2986,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             ..Model::test_default()
         };
@@ -2892,6 +3005,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: updated }, &mut model);
@@ -2919,6 +3033,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             ..Model::test_default()
         };
@@ -2937,6 +3052,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
 
         let _cmd = app.update(Event::ItemUpdated { item: unknown }, &mut model);
@@ -2993,6 +3109,7 @@ mod tests {
             updated_at: chrono::Utc::now(),
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         let _cmd = app.update(Event::DeleteConfirmed, &mut model);
@@ -3308,6 +3425,7 @@ mod tests {
             updated_at: created_at,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     }
 
@@ -3834,6 +3952,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         });
 
         let server_item = Item {
@@ -3850,6 +3969,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         let _cmd = app.update(
             Event::ItemCreated {
@@ -3883,6 +4003,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
 
         // No optimistic entry — caller may have navigated away and back.
@@ -3943,6 +4064,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             ..Model::test_default()
         };
@@ -4008,6 +4130,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             ..Model::test_default()
         };
@@ -4072,6 +4195,7 @@ mod tests {
                 updated_at: now,
                 linked_exercise_ids: vec![],
                 priority: false,
+                chord_chart: None,
             }],
             ..Model::test_default()
         };
@@ -4121,6 +4245,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec!["ex-1".to_string()],
             priority: false,
+            chord_chart: None,
         };
         let ex = Item {
             id: "ex-1".to_string(),
@@ -4136,6 +4261,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         };
         let model = Model {
             items: vec![piece, ex],
@@ -4181,6 +4307,7 @@ mod tests {
                         "ex-2".to_string(),
                     ],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "ex-1".to_string(),
@@ -4199,6 +4326,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "ex-2".to_string(),
@@ -4214,6 +4342,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "ex-3".to_string(),
@@ -4229,6 +4358,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
             ],
             ..Default::default()
@@ -4339,6 +4469,7 @@ mod tests {
             updated_at: now,
             linked_exercise_ids: vec![],
             priority: false,
+            chord_chart: None,
         }
     }
 
@@ -4667,6 +4798,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec!["item-b".to_string()],
                     priority: false,
+                    chord_chart: None,
                 },
                 Item {
                     id: "item-b".to_string(),
@@ -4682,6 +4814,7 @@ mod tests {
                     updated_at: now,
                     linked_exercise_ids: vec![],
                     priority: false,
+                    chord_chart: None,
                 },
             ],
             ..Default::default()
