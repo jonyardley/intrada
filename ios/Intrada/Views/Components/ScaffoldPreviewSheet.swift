@@ -1,33 +1,57 @@
 import SharedTypes
 import SwiftUI
 
-/// Read-only preview of the curriculum derived from a piece's chord chart
-/// (chart-to-scaffold Phase A). The core derives; this only renders. Committing
-/// the specs into real linked exercises is Phase B — hence no selection here.
+/// The curriculum derived from a piece's chord chart, as a selectable commit
+/// sheet (chart-to-scaffold Phase B). The core derives; this only renders and
+/// hands back the ticked `kind`s — the core re-derives and materialises them,
+/// so no spec content crosses the wire (#1106). Already-linked specs are shown
+/// but not selectable (dedup); "Add N" commits the rest.
 struct ScaffoldPreviewSheet: View {
   let preview: ScaffoldPreviewView
+  let onCommit: (Swift.Set<ScaffoldKind>) -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @State private var selected: Swift.Set<ScaffoldKind>
+
+  init(preview: ScaffoldPreviewView, onCommit: @escaping (Swift.Set<ScaffoldKind>) -> Void) {
+    self.preview = preview
+    self.onCommit = onCommit
+    // Pre-tick everything not already linked — the common case is "add them all".
+    _selected = State(
+      initialValue: Swift.Set(preview.specs.filter { !$0.alreadyLinked }.map(\.kind)))
+  }
 
   var body: some View {
-    BottomSheet(title: "Your curriculum") {
-      ScrollView {
-        VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-          header
-          VStack(spacing: 0) {
-            ForEach(Array(preview.specs.enumerated()), id: \.offset) { index, spec in
-              if index > 0 {
-                HairlineDivider()
+    BottomSheet(
+      title: "Your curriculum",
+      confirmationLabel: confirmationLabel,
+      confirmationDisabled: selected.isEmpty,
+      onDone: { onCommit(selected) },
+      leadingAction: { Button("Cancel") { dismiss() } },
+      content: {
+        ScrollView {
+          VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+            header
+            VStack(spacing: 0) {
+              ForEach(Array(preview.specs.enumerated()), id: \.offset) { index, spec in
+                if index > 0 {
+                  HairlineDivider()
+                }
+                specRow(spec)
               }
-              SpecRow(spec: spec)
+            }
+            .cardSurface()
+            if preview.fallbackTotal > 0 {
+              fallbackLegend
             }
           }
-          .cardSurface()
-          if preview.fallbackTotal > 0 {
-            fallbackLegend
-          }
+          .padding(IntradaSpacing.card)
         }
-        .padding(IntradaSpacing.card)
-      }
-    }
+      })
+  }
+
+  private var confirmationLabel: String {
+    selected.isEmpty ? "Add" : "Add \(selected.count)"
   }
 
   private var header: some View {
@@ -43,6 +67,30 @@ struct ScaffoldPreviewSheet: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Derived in \(preview.key), \(preview.specs.count) exercises")
+  }
+
+  @ViewBuilder private func specRow(_ spec: ScaffoldSpecView) -> some View {
+    if spec.alreadyLinked {
+      SpecRow(spec: spec, isOn: false, selectable: false)
+    } else {
+      let isOn = selected.contains(spec.kind)
+      Button {
+        toggle(spec.kind, isOn: isOn)
+      } label: {
+        SpecRow(spec: spec, isOn: isOn, selectable: true)
+      }
+      .buttonStyle(.plain)
+      .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+    }
+  }
+
+  private func toggle(_ kind: ScaffoldKind, isOn: Bool) {
+    if isOn {
+      selected.remove(kind)
+    } else {
+      selected.insert(kind)
+    }
+    UISelectionFeedbackGenerator().selectionChanged()
   }
 
   private var fallbackLegend: some View {
@@ -61,6 +109,8 @@ struct ScaffoldPreviewSheet: View {
 
 private struct SpecRow: View {
   let spec: ScaffoldSpecView
+  let isOn: Bool
+  let selectable: Bool
 
   var body: some View {
     HStack(spacing: IntradaSpacing.row) {
@@ -85,18 +135,42 @@ private struct SpecRow: View {
           .fixedSize(horizontal: false, vertical: true)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+      if selectable {
+        membershipControl(isOn: isOn)
+      }
     }
     .padding(.vertical, IntradaSpacing.row)
     .padding(.leading, 20)
     .padding(.trailing, IntradaSpacing.card)
     .background(IntradaColor.cardFill)
+    .contentShape(Rectangle())
+    .opacity(selectable ? 1 : 0.6)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
   }
 
+  private func membershipControl(isOn: Bool) -> some View {
+    ZStack {
+      Circle()
+        .fill(isOn ? AnyShapeStyle(IntradaColor.exerciseAccent) : AnyShapeStyle(Color.clear))
+        .overlay(
+          Circle()
+            .strokeBorder(IntradaColor.exerciseAccent, lineWidth: 2)
+            .opacity(isOn ? 0 : 1))
+      Image(systemName: isOn ? "checkmark" : "plus")
+        .font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(isOn ? IntradaColor.onExercise : IntradaColor.exerciseAccent)
+    }
+    .frame(width: 28, height: 28)
+  }
+
   private var accessibilityLabel: String {
     var parts = [spec.title, spec.rationale]
-    if spec.alreadyLinked { parts.append("already linked") }
+    if spec.alreadyLinked {
+      parts.append("already linked")
+    } else {
+      parts.append(isOn ? "selected, tap to remove" : "not selected, tap to add")
+    }
     if spec.fallback { parts.append("uses an arpeggio fallback") }
     return parts.joined(separator: ", ")
   }
@@ -122,7 +196,7 @@ private struct FlagBadge: View {
 #if DEBUG
   #Preview("Curriculum") {
     Color.clear.sheet(isPresented: .constant(true)) {
-      ScaffoldPreviewSheet(preview: .preview)
+      ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })
     }
   }
 
@@ -132,20 +206,24 @@ private struct FlagBadge: View {
         key: "G",
         specs: [
           ScaffoldSpecView(
-            title: "Learn the melody", rationale: "Hear the tune before you build on it",
+            kind: .melody, title: "Learn the melody",
+            rationale: "Hear the tune before you build on it",
             key: "G", fallback: false, alreadyLinked: true),
           ScaffoldSpecView(
-            title: "Shells", rationale: "3rd + 7th of every chord — the voice-leading skeleton",
+            kind: .shells, title: "Shells",
+            rationale: "3rd + 7th of every chord — the voice-leading skeleton",
             key: "G", fallback: false, alreadyLinked: false),
           ScaffoldSpecView(
-            title: "Guide-tone lines", rationale: "Connect 3rds to 7ths across each change",
+            kind: .guideToneLines, title: "Guide-tone lines",
+            rationale: "Connect 3rds to 7ths across each change",
             key: "G", fallback: false, alreadyLinked: false),
           ScaffoldSpecView(
-            title: "Scales to chord tones",
+            kind: .scalesToChordTones, title: "Scales to chord tones",
             rationale: "Run each chord-scale, landing on a chord tone",
             key: "G", fallback: true, alreadyLinked: false),
           ScaffoldSpecView(
-            title: "Constrained improv", rationale: "Chord tones only, then rhythm — one ladder",
+            kind: .constrainedImprov, title: "Constrained improv",
+            rationale: "Chord tones only, then rhythm — one ladder",
             key: "G", fallback: false, alreadyLinked: false),
         ],
         fallbackTotal: 1)

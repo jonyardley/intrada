@@ -386,9 +386,11 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
-  /// The read-only derived-curriculum sheet, with already-linked + fallback flags.
+  /// The selectable derived-curriculum commit sheet, with already-linked (not
+  /// selectable) + fallback flags and per-row selection controls.
   func testScaffoldPreviewSheet() {
-    assertSnapshot(of: host(ScaffoldPreviewSheet(preview: .preview)), as: config)
+    assertSnapshot(
+      of: host(ScaffoldPreviewSheet(preview: .preview, onCommit: { _ in })), as: config)
   }
 
   func testPieceDetailLinkedPopulated() {

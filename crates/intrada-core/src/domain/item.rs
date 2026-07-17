@@ -3,7 +3,7 @@ use crux_core::Command;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::chart::ChordChart;
+use super::chart::{ChordChart, ScaffoldKind};
 use super::types::{CreateItem, Tempo, UpdateItem};
 use crate::app::{Effect, Event};
 use crate::error::LibraryError;
@@ -106,6 +106,15 @@ pub enum ItemEvent {
     },
     ClearChordChart {
         piece_id: String,
+    },
+    /// Materialise the selected scaffold `kinds` into real exercises linked to
+    /// the piece. The core re-derives from the stored chart (deterministic), so
+    /// only the ticked `kind`s cross the wire — never spec content (#1106).
+    /// Dedups by title against the piece's already-linked exercises; a batch
+    /// with nothing new to add is a no-op.
+    CommitScaffold {
+        piece_id: String,
+        kinds: Vec<ScaffoldKind>,
     },
 }
 
@@ -400,6 +409,114 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let piece = piece.clone();
             save_or_put(model, piece)
         }
+        ItemEvent::CommitScaffold { piece_id, kinds } => {
+            if let Err(e) = validation::validate_chart_host(&piece_id, model) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            // Re-derive from the stored chart — deterministic, so the committed
+            // exercises equal the previewed ones.
+            let Some(chart) = model
+                .items
+                .iter()
+                .find(|i| i.id == piece_id)
+                .and_then(|p| p.chord_chart.clone())
+            else {
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "piece_id".to_string(),
+                        message: "This piece has no chord chart to build from".to_string(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            };
+
+            // Dedup by title against the piece's already-linked exercises — the
+            // same key the preview's `already_linked` flag uses, so re-running
+            // never duplicates and never clobbers a hand-made one.
+            let linked_ids: std::collections::HashSet<String> = model
+                .items
+                .iter()
+                .find(|i| i.id == piece_id)
+                .map(|p| p.linked_exercise_ids.iter().cloned().collect())
+                .unwrap_or_default();
+            let linked_titles: std::collections::HashSet<String> = model
+                .items
+                .iter()
+                .filter(|i| linked_ids.contains(&i.id))
+                .map(|i| i.title.to_lowercase())
+                .collect();
+
+            let selected: std::collections::HashSet<ScaffoldKind> = kinds.into_iter().collect();
+            let now = chrono::Utc::now();
+            let new_exercises: Vec<Item> = super::chart::derive_scaffold(&chart)
+                .into_iter()
+                .filter(|s| selected.contains(&s.kind))
+                .filter(|s| !linked_titles.contains(&s.title.to_lowercase()))
+                .map(|s| Item {
+                    id: ulid::Ulid::gen().to_string(),
+                    title: s.title,
+                    kind: ItemKind::Exercise,
+                    composer: None,
+                    key: Some(s.key),
+                    modality: None,
+                    tempo: None,
+                    notes: Some(s.rationale),
+                    tags: vec![],
+                    linked_exercise_ids: vec![],
+                    created_at: now,
+                    updated_at: now,
+                    priority: false,
+                    chord_chart: None,
+                })
+                .collect();
+
+            if new_exercises.is_empty() {
+                // Everything deselected or already linked — a benign no-op, not
+                // an error, and nothing to persist.
+                model.last_error = None;
+                return crux_core::render::render();
+            }
+
+            let new_ids: Vec<String> = new_exercises.iter().map(|e| e.id.clone()).collect();
+
+            let Some(piece) = model.items.iter_mut().find(|i| i.id == piece_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: piece_id }.to_string());
+                return crux_core::render::render();
+            };
+            piece.linked_exercise_ids.extend(new_ids);
+            piece.updated_at = now;
+            let piece = piece.clone();
+            model.last_error = None;
+
+            model.items.extend(new_exercises.iter().cloned());
+
+            if model.local_first {
+                // No server callback to clear the dismiss-mute, so record here.
+                model.record_success();
+                let mut batch = new_exercises;
+                batch.push(piece);
+                Command::all([
+                    crate::persistence::save_items(batch),
+                    crux_core::render::render(),
+                ])
+            } else {
+                // Online batch is deferred with the web/API work (invariant 6):
+                // compiles against existing plumbing, non-atomic, untested path.
+                // FIXME(#1108): these links use the client ulid, but create_item
+                // is the temp-id path where the server reassigns the id — the
+                // online links would dangle. Reconcile ids before wiring web.
+                let mut cmds: Vec<Command<Effect, Event>> = new_exercises
+                    .iter()
+                    .map(|ex| crate::http::create_item(&model.api_base_url, ex, &ex.id))
+                    .collect();
+                cmds.push(crate::http::update_item(&model.api_base_url, &piece));
+                cmds.push(crux_core::render::render());
+                Command::all(cmds)
+            }
+        }
     }
 }
 
@@ -619,6 +736,207 @@ mod tests {
         assert!(model.last_error.is_none());
     }
 
+    // ── CommitScaffold ──
+
+    use super::ScaffoldKind;
+
+    fn emits_save_items(
+        cmd: &mut crux_core::Command<crate::app::Effect, crate::app::Event>,
+    ) -> Option<Vec<String>> {
+        cmd.effects().find_map(|e| match e {
+            crate::app::Effect::Persistence(req) => match req.operation {
+                crate::persistence::PersistenceOperation::SaveItems(items) => {
+                    Some(items.iter().map(|i| i.id.clone()).collect())
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+    }
+
+    fn charted_model() -> Model {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetChordChart {
+                piece_id: "piece-1".to_string(),
+                raw_chart: "| Cm7 | F7 | Bbmaj7 |".to_string(),
+            },
+        );
+        model
+    }
+
+    fn exercise_titles(model: &Model) -> Vec<String> {
+        model
+            .items
+            .iter()
+            .filter(|i| i.kind == ItemKind::Exercise)
+            .map(|i| i.title.clone())
+            .collect()
+    }
+
+    #[test]
+    fn commit_scaffold_creates_selected_exercises_links_them_and_persists_a_batch() {
+        let mut model = charted_model();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells, ScaffoldKind::GuideToneLines],
+            },
+        );
+
+        let new: Vec<&Item> = model
+            .items
+            .iter()
+            .filter(|i| i.kind == ItemKind::Exercise && i.id != "ex-1")
+            .collect();
+        assert_eq!(new.len(), 2, "two ticked kinds create two exercises");
+        let titles: std::collections::HashSet<&str> =
+            new.iter().map(|e| e.title.as_str()).collect();
+        assert!(titles.contains("Shells") && titles.contains("Guide-tone lines"));
+        assert!(
+            new.iter().all(|e| e.key.as_deref() == Some("C")),
+            "exercises carry the chart's key"
+        );
+
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        for e in &new {
+            assert!(
+                piece.linked_exercise_ids.contains(&e.id),
+                "each new exercise is linked to the piece"
+            );
+        }
+        assert!(model.last_error.is_none());
+
+        let batch = emits_save_items(&mut cmd).expect("a SaveItems batch is persisted");
+        assert_eq!(batch.len(), 3, "two exercises + the piece, one transaction");
+        assert!(batch.contains(&"piece-1".to_string()));
+        assert!(
+            !emits_http(&mut cmd),
+            "local-first commit makes no HTTP (invariant 1)"
+        );
+    }
+
+    #[test]
+    fn commit_scaffold_dedups_on_rerun_no_duplicates() {
+        let mut model = charted_model();
+        let kinds = vec![ScaffoldKind::Shells];
+
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: kinds.clone(),
+            },
+        );
+        let after_first = exercise_titles(&model).len();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds,
+            },
+        );
+
+        assert_eq!(
+            exercise_titles(&model).len(),
+            after_first,
+            "re-committing the same kind adds no duplicate"
+        );
+        assert!(
+            emits_save_items(&mut cmd).is_none(),
+            "a no-op commit persists nothing"
+        );
+        assert!(model.last_error.is_none(), "a no-op commit is not an error");
+    }
+
+    #[test]
+    fn commit_scaffold_does_not_clobber_a_handmade_exercise_of_the_same_title() {
+        let mut model = charted_model();
+        // A hand-made "Shells" already linked to the piece.
+        let mut handmade = make_exercise("handmade-shells");
+        handmade.title = "Shells".to_string();
+        handmade.notes = Some("my own".to_string());
+        model.items.push(handmade);
+        if let Some(piece) = model.items.iter_mut().find(|i| i.id == "piece-1") {
+            piece
+                .linked_exercise_ids
+                .push("handmade-shells".to_string());
+        }
+
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+
+        let shells: Vec<&Item> = model.items.iter().filter(|i| i.title == "Shells").collect();
+        assert_eq!(shells.len(), 1, "no duplicate 'Shells' created");
+        assert_eq!(
+            shells[0].id, "handmade-shells",
+            "the hand-made exercise is untouched"
+        );
+        assert_eq!(shells[0].notes.as_deref(), Some("my own"));
+    }
+
+    #[test]
+    fn commit_scaffold_without_a_chart_surfaces_an_error() {
+        let mut model = model_with_piece_and_exercise(); // no chart set
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+
+        assert!(
+            model.last_error.is_some(),
+            "no chart is surfaced, not silent"
+        );
+        assert!(emits_save_items(&mut cmd).is_none(), "nothing persisted");
+        assert_eq!(exercise_titles(&model), vec!["C Major Scale".to_string()]);
+    }
+
+    #[test]
+    fn commit_scaffold_rejects_a_non_piece_host() {
+        let mut model = charted_model();
+
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "ex-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn commit_scaffold_empty_selection_is_a_benign_noop() {
+        let mut model = charted_model();
+        let before = exercise_titles(&model).len();
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![],
+            },
+        );
+
+        assert_eq!(exercise_titles(&model).len(), before, "nothing created");
+        assert!(emits_save_items(&mut cmd).is_none());
+        assert!(model.last_error.is_none());
+    }
+
     // ── Bridge round-trip for the write events (#846) ──
 
     #[test]
@@ -632,6 +950,12 @@ mod tests {
         crate::domain::types::assert_round_trips(crate::app::Event::Item(
             ItemEvent::ClearChordChart {
                 piece_id: "P".to_string(),
+            },
+        ));
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::CommitScaffold {
+                piece_id: "P".to_string(),
+                kinds: vec![ScaffoldKind::Shells, ScaffoldKind::ScalesToChordTones],
             },
         ));
     }

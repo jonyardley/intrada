@@ -414,6 +414,40 @@ final class StoreEffectLoopTests: XCTestCase {
       "a failed parse never overwrites the stored chart")
   }
 
+  /// Real-bridge commit (#1106): `CommitScaffold` carries a `Vec<ScaffoldKind>`
+  /// — round-trip it through the live bincode bridge so the write payload can't
+  /// silently misalign (#846), and assert the core materialises + links the
+  /// selected exercises.
+  func testRealBridgeCommitScaffoldLinksExercises() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Autumn Leaves", kind: .piece, composer: "Joseph Kosma", key: "G",
+            modality: .minor, tempo: nil, notes: nil, tags: []))))
+    let id = try XCTUnwrap(try bridge.view().items.first?.id)
+    _ = try bridge.update(
+      .item(.setChordChart(pieceId: id, rawChart: "| Cm7 | F7 | Bbmaj7 |")))
+
+    _ = try bridge.update(
+      .item(.commitScaffold(pieceId: id, kinds: [.shells, .guideToneLines])))
+
+    let after = try bridge.view()
+    XCTAssertNil(after.error, "commit surfaces no error (err=\(after.error ?? "nil"))")
+    let piece = try XCTUnwrap(after.items.first { $0.id == id })
+    XCTAssertEqual(piece.linkedExercises.count, 2, "two selected kinds become linked exercises")
+    let titles = Swift.Set(piece.linkedExercises.map(\.title))
+    XCTAssertTrue(titles.contains("Shells") && titles.contains("Guide-tone lines"))
+
+    // Re-committing the same kinds dedups — no duplicate exercises.
+    _ = try bridge.update(.item(.commitScaffold(pieceId: id, kinds: [.shells])))
+    let reran = try bridge.view()
+    let shells = reran.items.filter { $0.title == "Shells" }
+    XCTAssertEqual(shells.count, 1, "re-commit adds no duplicate (#1106 dedup)")
+  }
+
   /// Real-bridge priority toggle (#763): the star sends an UpdateItem with every
   /// optional field "no change" (outer nil) and only `priority` set — a different
   /// bincode shape than the full edit, so round-trip it through the live bridge to
@@ -722,6 +756,7 @@ private struct TestError: Error {}
 private struct FailingStore: ItemStore {
   func loadItems() throws -> [Item] { throw TestError() }
   func save(_ item: Item) throws { throw TestError() }
+  func save(_ items: [Item]) throws { throw TestError() }
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }

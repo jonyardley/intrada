@@ -475,6 +475,7 @@ impl Intrada {
                             fallback_total = fallback_total.saturating_add(1);
                         }
                         ScaffoldSpecView {
+                            kind: s.kind,
                             title: s.title.clone(),
                             rationale: s.rationale.clone(),
                             key: s.key.clone(),
