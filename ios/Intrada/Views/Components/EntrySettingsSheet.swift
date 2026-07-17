@@ -2,12 +2,12 @@ import SharedTypes
 import SwiftUI
 
 /// Per-entry session-builder settings: an "Aim" note, a rep-target counter, and
-/// a planned duration — opened from a nested/standalone row's Edit-mode gear
-/// icon. Every field pushes on change (no separate Save), matching the
-/// `SessionSummaryScreen` notes idiom.
+/// a planned duration — opened by tapping a builder row. Every field pushes on
+/// change (no separate Save), matching the `SessionSummaryScreen` notes idiom.
 struct EntrySettingsSheet: View {
   let entry: SetlistEntryView
   @Environment(Store.self) private var store
+  @Environment(\.dismiss) private var dismiss
 
   @State private var intention: String
   @State private var tracksReps: Bool
@@ -36,6 +36,12 @@ struct EntrySettingsSheet: View {
           aimSection
           repsSection
           durationSection
+          // A grouped piece is the block's anchor: removing it dissolves the
+          // whole block (core §7.4), so that call stays with the header menu's
+          // explicit "Just the piece" / "Remove block" wording.
+          if !(entry.itemType == .piece && entry.groupId != nil) {
+            removeButton
+          }
         }
         .padding(IntradaSpacing.card)
       }
@@ -105,6 +111,24 @@ struct EntrySettingsSheet: View {
       }
     }
     .padding(IntradaSpacing.cardCompact)
+    .cardSurface(cornerRadius: IntradaRadius.control)
+  }
+
+  // The row's non-gesture removal path (T4): dropping it from today's session
+  // leaves the piece↔exercise relation untouched.
+  private var removeButton: some View {
+    Button(role: .destructive) {
+      if store.send(.session(.removeFromSetlist(entryId: entry.id)), onSuccess: .impact) {
+        dismiss()
+      }
+    } label: {
+      Text("Remove from this session")
+        .font(IntradaFont.bodyMedium)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, IntradaSpacing.cardCompact)
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(IntradaColor.danger)
     .cardSurface(cornerRadius: IntradaRadius.control)
   }
 }
