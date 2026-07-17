@@ -508,6 +508,23 @@
         ], scaffoldPreview: nil, chordChart: nil, steps: [], currentVariantId: nil)
     }
 
+    /// A step-ladder exercise — one solid, one current (rated but not
+    /// yet solid), one unrated. `currentVariantId` points at the current step.
+    static var previewExerciseWithSteps: LibraryItemView {
+      LibraryItemView(
+        id: "exercise-2", itemType: .exercise, title: "ii–V–i Enclosures",
+        subtitle: "Bebop vocabulary, 12 keys",
+        key: "C", modality: .major, tempo: "132 BPM", tempoMarking: nil, tempoBpm: 132,
+        notes: nil, tags: [], createdAt: "", updatedAt: "",
+        practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
+        linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
+        steps: [
+          StepView(id: "step-c", label: "C", position: 0, latestScore: 9, solid: true),
+          StepView(id: "step-f", label: "F", position: 1, latestScore: 5, solid: false),
+          StepView(id: "step-bb", label: "B♭", position: 2, latestScore: nil, solid: false),
+        ], currentVariantId: "step-f")
+    }
+
     /// A piece with no linked exercises — for the empty-state snapshot.
     static var previewDetailLinkedEmpty: LibraryItemView {
       LibraryItemView(
@@ -565,7 +582,8 @@
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
+        variantId: nil)
     }
   }
 
@@ -620,7 +638,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: nil)
+        groupId: nil, variantId: nil)
     }
   }
 
@@ -642,7 +660,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: groupId)
+        groupId: groupId, variantId: nil)
     }
 
     static var previewActive: ActiveSessionView {
@@ -733,7 +751,8 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: nil, score: score, intention: intention,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil,
+        variantId: nil)
     }
   }
 #endif

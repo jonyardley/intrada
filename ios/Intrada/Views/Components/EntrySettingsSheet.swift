@@ -14,6 +14,13 @@ struct EntrySettingsSheet: View {
   @State private var repTarget: Int
   @State private var hasPlannedDuration: Bool
   @State private var plannedMinutes: Int
+  @State private var variantId: String?
+
+  // Looked up rather than threaded in, since the sheet only ever holds the
+  // flat entry — mirrors the same lookup in FocusPlayerScreen.
+  private var steps: [StepView] {
+    store.viewModel?.items.first(where: { $0.id == entry.itemId })?.steps ?? []
+  }
 
   // Mirrors crates/intrada-core/src/validation.rs MIN/MAX_REP_TARGET.
   private let repTargetRange = 3...10
@@ -27,6 +34,7 @@ struct EntrySettingsSheet: View {
     _repTarget = State(initialValue: Int(entry.repTarget ?? 5))
     _hasPlannedDuration = State(initialValue: entry.plannedDurationSecs != nil)
     _plannedMinutes = State(initialValue: Int((entry.plannedDurationSecs ?? 360) / 60))
+    _variantId = State(initialValue: entry.variantId)
   }
 
   var body: some View {
@@ -34,6 +42,9 @@ struct EntrySettingsSheet: View {
       ScrollView {
         VStack(alignment: .leading, spacing: IntradaSpacing.section) {
           aimSection
+          if !steps.isEmpty {
+            stepSection
+          }
           repsSection
           durationSection
           // A grouped piece is the block's anchor: removing it dissolves the
@@ -64,6 +75,40 @@ struct EntrySettingsSheet: View {
           store.send(.session(.setEntryIntention(entryId: entry.id, intention: next)))
         }
     }
+  }
+
+  private var stepSection: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+      Eyebrow("Step")
+      Menu {
+        ForEach(steps, id: \.id) { step in
+          Button(step.label) {
+            guard step.id != variantId else { return }
+            variantId = step.id
+            store.send(.session(.setEntryVariant(entryId: entry.id, variantId: step.id)))
+          }
+        }
+      } label: {
+        HStack {
+          Text(selectedStepLabel)
+            .font(IntradaFont.body)
+            .foregroundStyle(IntradaColor.ink)
+          Spacer()
+          Image(systemName: "chevron.up.chevron.down")
+            .imageScale(.small)
+            .foregroundStyle(IntradaColor.inkFaint)
+        }
+        .padding(IntradaSpacing.cardCompact)
+        .cardSurface(cornerRadius: IntradaRadius.control)
+      }
+      .accessibilityLabel("Step: \(selectedStepLabel)")
+      .accessibilityHint("Choose a different step")
+      .buttonStyle(.plain)
+    }
+  }
+
+  private var selectedStepLabel: String {
+    steps.first(where: { $0.id == variantId })?.label ?? "Not tagged to a step"
   }
 
   private var repsSection: some View {

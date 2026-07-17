@@ -434,6 +434,9 @@ pub struct SetlistEntryView {
     pub achieved_tempo: Option<u16>,
     /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
+    /// The step of the exercise this entry is tagged against, if any. Mirrors
+    /// `SetlistEntry.variant_id`; set via `SessionEvent::SetEntryVariant`.
+    pub variant_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -556,6 +559,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
             .map(|secs| crate::domain::session::format_planned_duration(u64::from(secs))),
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
+        variant_id: entry.variant_id.clone(),
     }
 }
 
@@ -864,6 +868,14 @@ mod tests {
         entry.planned_duration_secs = Some(90);
         let view = entry_to_view(&entry);
         assert_eq!(view.planned_duration_display.as_deref(), Some("1m 30s"));
+    }
+
+    #[test]
+    fn entry_to_view_carries_variant_id() {
+        let mut entry = make_entry("e1", "i1", "Scale", 0);
+        entry.variant_id = Some("variant-1".to_string());
+        let view = entry_to_view(&entry);
+        assert_eq!(view.variant_id.as_deref(), Some("variant-1"));
     }
 
     // ── build_active_session_view ──────────────────────────────────────

@@ -31,6 +31,10 @@ struct LibraryDetailScreen: View {
             TypeBadge(kind: item.itemType)
           }
 
+          if item.itemType == .exercise, !item.steps.isEmpty {
+            stepsSection
+          }
+
           if !detailRows.isEmpty {
             VStack(spacing: 0) {
               ForEach(Array(detailRows.enumerated()), id: \.offset) { index, row in
@@ -428,6 +432,23 @@ struct LibraryDetailScreen: View {
     return "Related to \(piece.title)\(others)\(role)"
   }
 
+  // ── Steps (exercise step ladder) ──
+
+  private var stepsSection: some View {
+    VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
+      SectionHeader(title: "Steps")
+      VStack(spacing: 0) {
+        ForEach(Array(item.steps.enumerated()), id: \.offset) { index, step in
+          if index > 0 {
+            HairlineDivider()
+          }
+          StepRow(step: step)
+        }
+      }
+      .cardSurface()
+    }
+  }
+
   // ── By piece (exercise contexts) ──
 
   // Per-piece score breakdown derived from session blocks (#1087 B2): where this
@@ -665,6 +686,41 @@ private struct LinkedExerciseRow: View {
     } else {
       parts.append("Not yet rated on this piece")
     }
+    return parts.joined(separator: ", ")
+  }
+}
+
+private struct StepRow: View {
+  let step: StepView
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.row) {
+      ScoreRing(score: step.latestScore.map(Int.init), size: 44, solid: step.solid)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(step.label)
+          .font(IntradaFont.cardTitle())
+          .foregroundStyle(IntradaColor.ink)
+        Text("Step \(step.position + 1)")
+          .font(IntradaFont.meta)
+          .foregroundStyle(IntradaColor.inkSecondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .padding(.vertical, IntradaSpacing.row)
+    .padding(.horizontal, IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityLabel)
+  }
+
+  private var accessibilityLabel: String {
+    var parts = [step.label]
+    if let score = step.latestScore {
+      parts.append("score \(score) of 10")
+    } else {
+      parts.append("not yet rated")
+    }
+    if step.solid { parts.append("Solid") }
     return parts.joined(separator: ", ")
   }
 }

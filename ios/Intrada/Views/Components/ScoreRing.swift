@@ -5,6 +5,8 @@ struct ScoreRing: View {
   var size: CGFloat = 46
   /// Hero variant: an "OF 10" caption under the numeral (piece/exercise detail).
   var showsScale: Bool = false
+  /// Mastered variant: fills with `accent` instead of the usual `masteryFill`.
+  var solid: Bool = false
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.intradaMotionDisabled) private var motionDisabled
@@ -28,7 +30,7 @@ struct ScoreRing: View {
         Circle()
           .trim(from: 0, to: settled ? fraction : 0)
           .stroke(
-            IntradaColor.masteryFill,
+            solid ? IntradaColor.accent : IntradaColor.masteryFill,
             style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
           )
           .rotationEffect(.degrees(-90))
