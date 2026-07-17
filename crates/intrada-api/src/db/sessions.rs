@@ -168,6 +168,7 @@ fn row_to_entry(row: &libsql::Row) -> Result<SetlistEntry, ApiError> {
         planned_duration_secs,
         achieved_tempo,
         group_id: None,
+        variant_id: None,
     })
 }
 
@@ -413,6 +414,7 @@ pub async fn insert_session(
                 planned_duration_secs: entry.planned_duration_secs,
                 achieved_tempo: entry.achieved_tempo,
                 group_id: None,
+                variant_id: None,
             });
         }
 

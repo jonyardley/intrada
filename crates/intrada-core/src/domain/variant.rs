@@ -20,6 +20,12 @@ pub struct Variant {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
+/// A step is "Solid" (UI copy) once its latest score reaches this, of 10.
+/// The current step is the first that isn't — progress means advancing the
+/// rung, not polishing one rating (#1083; threshold decision in
+/// specs/exercise-variants.md).
+pub const SOLID_SCORE_MIN: u8 = 8;
+
 /// Reconcile a ladder against the requested `labels` (ordered), matching by
 /// case-insensitive label. A match keeps its id — and so its score history —
 /// adopting the incoming casing and position. `updated_at` bumps only on rows

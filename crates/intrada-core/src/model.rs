@@ -338,6 +338,28 @@ pub struct LibraryItemView {
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
+    /// The exercise's step ladder with per-step practice state (#1083);
+    /// empty for pieces and un-laddered exercises.
+    #[serde(default)]
+    pub variants: Vec<VariantView>,
+}
+
+/// One step of an exercise's ladder with its derived practice state (#1083).
+/// Only live (non-tombstoned) steps reach the view, in ladder order. Users
+/// see "Steps"; `variant` is the core's name and never appears on screen.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct VariantView {
+    pub id: String,
+    pub label: String,
+    pub position: usize,
+    pub latest_score: Option<u8>,
+    pub score_history: Vec<ScoreHistoryEntry>,
+    /// Latest score has reached `SOLID_SCORE_MIN` (8 of 10).
+    pub is_solid: bool,
+    /// The first step that isn't yet solid — the rung to work on. At most one
+    /// per ladder; a fully solid ladder has none.
+    pub is_current: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -411,6 +433,9 @@ pub struct SetlistEntryView {
     pub achieved_tempo: Option<u16>,
     /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
+    /// The ladder step this entry practised, when attributed (#1083).
+    #[serde(default)]
+    pub variant_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -533,6 +558,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
             .map(|secs| crate::domain::session::format_planned_duration(u64::from(secs))),
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
+        variant_id: entry.variant_id.clone(),
     }
 }
 

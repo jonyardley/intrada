@@ -392,6 +392,10 @@ impl Intrada {
         // by exercise id. Built once over sessions, attached to exercises below.
         let contexts_by_exercise = build_exercise_contexts(&model.sessions, &item_index);
 
+        // Per-step score history, keyed by (item id, variant id) — one pass
+        // over sessions, attached to laddered exercises below (#1083).
+        let variant_scores = build_variant_score_index(&model.sessions);
+
         let mut items: Vec<LibraryItemView> = Vec::new();
 
         for item in &model.items {
@@ -493,6 +497,12 @@ impl Intrada {
                 }
             });
 
+            let variants = if item.kind == ItemKind::Exercise {
+                build_variant_views(item, &variant_scores)
+            } else {
+                vec![]
+            };
+
             items.push(LibraryItemView {
                 id: item.id.clone(),
                 item_type: item.kind.clone(),
@@ -526,6 +536,7 @@ impl Intrada {
                 exercise_contexts,
                 scaffold_preview,
                 chord_chart: item.chord_chart.clone(),
+                variants,
             });
         }
 
@@ -942,6 +953,78 @@ fn build_exercise_contexts(
         });
     }
     by_exercise
+}
+
+/// Per-step score history from session entries that were attributed to a
+/// ladder step, keyed by (item id, variant id), newest first (#1083).
+fn build_variant_score_index(
+    sessions: &[PracticeSession],
+) -> std::collections::HashMap<(&str, &str), Vec<crate::model::ScoreHistoryEntry>> {
+    use crate::model::ScoreHistoryEntry;
+    use std::collections::HashMap;
+
+    let mut index: HashMap<(&str, &str), Vec<ScoreHistoryEntry>> = HashMap::new();
+    for session in sessions {
+        for entry in &session.entries {
+            let (Some(variant_id), Some(score)) = (&entry.variant_id, entry.score) else {
+                continue;
+            };
+            index
+                .entry((entry.item_id.as_str(), variant_id.as_str()))
+                .or_default()
+                .push(ScoreHistoryEntry {
+                    session_date: session.started_at.to_rfc3339(),
+                    score,
+                    session_id: session.id.clone(),
+                });
+        }
+    }
+    for history in index.values_mut() {
+        history.sort_by(|a, b| b.session_date.cmp(&a.session_date));
+    }
+    index
+}
+
+/// Project an exercise's ladder for the view: live steps only, in ladder
+/// order, with per-step scores, the solid flag, and the single current rung.
+fn build_variant_views(
+    item: &crate::domain::item::Item,
+    variant_scores: &std::collections::HashMap<(&str, &str), Vec<crate::model::ScoreHistoryEntry>>,
+) -> Vec<crate::model::VariantView> {
+    use crate::domain::variant::SOLID_SCORE_MIN;
+    use crate::model::VariantView;
+
+    let mut live: Vec<_> = item
+        .variants
+        .iter()
+        .filter(|v| v.deleted_at.is_none())
+        .collect();
+    live.sort_by_key(|v| v.position);
+
+    let mut views: Vec<VariantView> = live
+        .into_iter()
+        .map(|v| {
+            let score_history = variant_scores
+                .get(&(item.id.as_str(), v.id.as_str()))
+                .cloned()
+                .unwrap_or_default();
+            let latest_score = score_history.first().map(|e| e.score);
+            VariantView {
+                id: v.id.clone(),
+                label: v.label.clone(),
+                position: v.position,
+                latest_score,
+                score_history,
+                is_solid: latest_score.is_some_and(|s| s >= SOLID_SCORE_MIN),
+                is_current: false,
+            }
+        })
+        .collect();
+
+    if let Some(current) = views.iter_mut().find(|v| !v.is_solid) {
+        current.is_current = true;
+    }
+    views
 }
 
 fn sort_library_items(items: &mut [LibraryItemView], sort: &LibrarySort) {
@@ -4908,6 +4991,208 @@ mod tests {
         assert!(
             item_b.linked_from_pieces.is_empty(),
             "reverse path must drop non-Exercise from linked_from_pieces (symmetric drop)"
+        );
+    }
+    // ── Step ladder view derivation (#1083 C1) ─────────────────────────
+
+    fn laddered_exercise(id: &str) -> Item {
+        use crate::domain::variant::Variant;
+        let now = chrono::Utc::now();
+        let mut item = make_item(id, "Shells", ItemKind::Exercise, now);
+        item.variants = vec![
+            Variant {
+                id: "v-f".to_string(),
+                label: "F".to_string(),
+                position: 1,
+                updated_at: now,
+                deleted_at: None,
+            },
+            Variant {
+                id: "v-c".to_string(),
+                label: "C".to_string(),
+                position: 0,
+                updated_at: now,
+                deleted_at: None,
+            },
+            Variant {
+                id: "v-g".to_string(),
+                label: "G".to_string(),
+                position: 2,
+                updated_at: now,
+                deleted_at: Some(now),
+            },
+        ];
+        item
+    }
+
+    fn step_session(
+        id: &str,
+        item_id: &str,
+        variant_id: Option<&str>,
+        score: Option<u8>,
+        started_at: chrono::DateTime<chrono::Utc>,
+    ) -> PracticeSession {
+        PracticeSession {
+            id: id.to_string(),
+            started_at,
+            completed_at: started_at,
+            total_duration_secs: 300,
+            completion_status: CompletionStatus::Completed,
+            session_notes: None,
+            session_intention: None,
+            session_score: None,
+            entries: vec![SetlistEntry {
+                id: format!("{id}-e1"),
+                item_id: item_id.to_string(),
+                item_title: "Shells".to_string(),
+                item_type: ItemKind::Exercise,
+                position: 0,
+                duration_secs: 300,
+                status: EntryStatus::Completed,
+                notes: None,
+                score,
+                intention: None,
+                rep_target: None,
+                rep_count: None,
+                rep_target_reached: None,
+                rep_history: None,
+                planned_duration_secs: None,
+                achieved_tempo: None,
+                group_id: None,
+                variant_id: variant_id.map(str::to_string),
+            }],
+            reflection_improved: None,
+            reflection_still_rough: None,
+            reflection_next_target: None,
+        }
+    }
+
+    fn step_view_model(sessions: Vec<PracticeSession>) -> ViewModel {
+        let app = Intrada;
+        let mut model = Model {
+            items: vec![laddered_exercise("ex-1")],
+            sessions,
+            ..Default::default()
+        };
+        model.practice_summaries = build_practice_summaries(&model.sessions);
+        app.view(&model)
+    }
+
+    #[test]
+    fn view_exposes_live_steps_sorted_by_position_tombstones_excluded() {
+        let vm = step_view_model(vec![]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.variants
+                .iter()
+                .map(|v| (v.id.as_str(), v.label.as_str(), v.position))
+                .collect::<Vec<_>>(),
+            vec![("v-c", "C", 0), ("v-f", "F", 1)],
+            "live steps only, in ladder order"
+        );
+    }
+
+    #[test]
+    fn view_derives_per_step_latest_score_and_history() {
+        let t0 = chrono::Utc::now();
+        let vm = step_view_model(vec![
+            step_session("s1", "ex-1", Some("v-c"), Some(5), t0),
+            step_session(
+                "s2",
+                "ex-1",
+                Some("v-c"),
+                Some(7),
+                t0 + chrono::Duration::days(1),
+            ),
+            // A flat (unattributed) score never counts towards a step.
+            step_session("s3", "ex-1", None, Some(9), t0 + chrono::Duration::days(2)),
+            step_session(
+                "s4",
+                "ex-1",
+                Some("v-f"),
+                Some(3),
+                t0 + chrono::Duration::days(3),
+            ),
+        ]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let c = ex.variants.iter().find(|v| v.id == "v-c").unwrap();
+        assert_eq!(c.latest_score, Some(7));
+        assert_eq!(c.score_history.len(), 2);
+        assert_eq!(c.score_history[0].score, 7, "history is newest-first");
+        let f = ex.variants.iter().find(|v| v.id == "v-f").unwrap();
+        assert_eq!(f.latest_score, Some(3));
+        assert_eq!(f.score_history.len(), 1);
+    }
+
+    #[test]
+    fn view_marks_solid_steps_and_the_first_unsolid_as_current() {
+        let t0 = chrono::Utc::now();
+        let vm = step_view_model(vec![
+            step_session("s1", "ex-1", Some("v-c"), Some(8), t0),
+            step_session(
+                "s2",
+                "ex-1",
+                Some("v-f"),
+                Some(7),
+                t0 + chrono::Duration::days(1),
+            ),
+        ]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        let c = ex.variants.iter().find(|v| v.id == "v-c").unwrap();
+        assert!(c.is_solid, "8 of 10 is solid");
+        assert!(!c.is_current);
+        let f = ex.variants.iter().find(|v| v.id == "v-f").unwrap();
+        assert!(!f.is_solid, "7 of 10 is not yet solid");
+        assert!(f.is_current, "the first unsolid step is current");
+    }
+
+    #[test]
+    fn view_unrated_ladder_starts_current_at_the_first_step() {
+        let vm = step_view_model(vec![]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.variants[0].is_current);
+        assert!(!ex.variants[1].is_current);
+    }
+
+    #[test]
+    fn view_fully_solid_ladder_has_no_current_step() {
+        let t0 = chrono::Utc::now();
+        let vm = step_view_model(vec![
+            step_session("s1", "ex-1", Some("v-c"), Some(8), t0),
+            step_session(
+                "s2",
+                "ex-1",
+                Some("v-f"),
+                Some(10),
+                t0 + chrono::Duration::days(1),
+            ),
+        ]);
+
+        let ex = vm.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(
+            ex.variants.iter().all(|v| !v.is_current),
+            "a finished ladder has no current step"
+        );
+    }
+
+    #[test]
+    fn view_session_entries_expose_variant_id() {
+        let vm = step_view_model(vec![step_session(
+            "s1",
+            "ex-1",
+            Some("v-c"),
+            Some(6),
+            chrono::Utc::now(),
+        )]);
+
+        assert_eq!(
+            vm.sessions[0].entries[0].variant_id.as_deref(),
+            Some("v-c"),
+            "history entries carry their step through the view"
         );
     }
 }
