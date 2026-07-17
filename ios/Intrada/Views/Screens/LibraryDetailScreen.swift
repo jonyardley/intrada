@@ -713,8 +713,8 @@ private struct LinkedExerciseRow: View {
 
 /// One column in the Steps horizontal scroller: a ring (letter + progress arc)
 /// and a state caption below — Solid (accent), Current (badge gold, calm and
-/// static, no pulse — retired per the `breathe`/`metro` rulings), or a dash for
-/// not yet reached.
+/// static — no pulse; `breathe`/`metro` are retired per `design/CLAUDE.md`
+/// "Motion"), or a dash for not yet reached.
 private struct StepRingItem: View {
   let step: VariantView
 

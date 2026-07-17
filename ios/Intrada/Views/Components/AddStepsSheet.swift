@@ -57,12 +57,19 @@ struct AddStepsSheet: View {
   }
 
   private var trimmedLabels: [String] {
+    Self.trimmedLabels(labels)
+  }
+
+  /// Trims and drops blank rows — pulled out as a static func so it's directly
+  /// testable, same as `ReflectionSheet.resolvedAchievedTempo`.
+  static func trimmedLabels(_ labels: [String]) -> [String] {
     labels.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
   }
 
   private func save() {
-    guard !trimmedLabels.isEmpty else { return }
-    store.send(.item(.setVariants(id: itemId, labels: trimmedLabels)))
+    let trimmed = trimmedLabels
+    guard !trimmed.isEmpty else { return }
+    store.send(.item(.setVariants(id: itemId, labels: trimmed)))
   }
 }
 
