@@ -101,7 +101,10 @@ final class LibraryStore: ItemStore {
     // Variants are a child table (per-row sync tombstones, invariant 2 — #1083).
     // Upsert each active step the core holds; each carries its own core-stamped
     // `updated_at` for LWW. Absent rows are left untouched (no hard delete;
-    // archive lands in C4), so a prior tombstone survives.
+    // archive lands in C4). Safe in C1 because only AddVariant writes and the
+    // core never holds a tombstoned variant (loadItems filters them out).
+    // FIXME(#1113): the forced `deleted_at = NULL` would resurrect a tombstone —
+    // C4 archive must not route a `deleted_at`-set variant through this upsert.
     for v in item.variants {
       try db.execute(
         sql: """

@@ -596,6 +596,17 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 return crux_core::render::render();
             };
 
+            if item.kind != ItemKind::Exercise {
+                model.last_error = Some(
+                    LibraryError::Validation {
+                        field: "kind".into(),
+                        message: "Only exercises have steps".into(),
+                    }
+                    .to_string(),
+                );
+                return crux_core::render::render();
+            }
+
             let now = chrono::Utc::now();
             let position = item.variants.len();
             item.variants.push(Variant {
@@ -842,9 +853,15 @@ mod tests {
 
     #[test]
     fn add_variant_in_online_mode_updates_via_http_not_local_save() {
-        // Invariant 6: the shared handler must work in both modes. Online mode
-        // has no variant storage yet (server drops it, like `group_id`) — the
-        // add still succeeds and PUTs the item; steps degrade gracefully.
+        // Invariant 6: the shared handler must not panic or misbehave in online
+        // mode. It optimistically adds the step and PUTs the item — but the
+        // server has no step storage yet, `update_item` sends `UpdateItem` (no
+        // variants field), and the eventual `ItemUpdated` echo replaces the row
+        // with `variants: []`. So online is add-then-drop, NOT persistence: the
+        // ladder is a local-first-only feature until the sync engine (the
+        // consciously-scoped invariant-6 boundary — the entry `variant_id` path
+        // is client-owned and unaffected). This test asserts the optimistic add
+        // + PUT + no local-save; the post-echo wipe is the documented boundary.
         let mut model = model_with_piece_and_exercise();
         model.local_first = false;
 
@@ -857,7 +874,7 @@ mod tests {
         );
 
         let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
-        assert_eq!(ex.variants.len(), 1, "variant added in online mode too");
+        assert_eq!(ex.variants.len(), 1, "optimistic add lands pre-echo");
         assert!(model.last_error.is_none());
         assert!(emits_http(&mut cmd), "online mode PUTs the item");
         assert!(
@@ -877,6 +894,24 @@ mod tests {
             },
         );
         assert!(model.last_error.is_some(), "missing item surfaces an error");
+    }
+
+    #[test]
+    fn add_variant_rejects_a_piece_host() {
+        // Steps are an exercise concept (Item.variants doc: "exercises only");
+        // a variant on a piece would be stored-but-invisible (the derivation
+        // only runs for exercises). Reject it rather than store a dead row.
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::AddVariant {
+                item_id: "piece-1".to_string(),
+                label: "F major".to_string(),
+            },
+        );
+        let piece = model.items.iter().find(|i| i.id == "piece-1").unwrap();
+        assert!(piece.variants.is_empty(), "pieces don't own steps");
+        assert!(model.last_error.is_some());
     }
 
     #[test]
