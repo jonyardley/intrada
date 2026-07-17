@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
-use crate::domain::chart::ChordChart;
+use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
 use crate::domain::mcp_tokens::{CreatedMcpToken, McpToken};
@@ -256,6 +256,9 @@ pub struct ScaffoldPreviewView {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ScaffoldSpecView {
+    /// Row identity: the shell sends the ticked `kind`s back on commit and the
+    /// core re-derives, so spec content never crosses the wire (#1106).
+    pub kind: ScaffoldKind,
     pub title: String,
     pub rationale: String,
     pub key: String,
@@ -697,6 +700,7 @@ mod tests {
         crate::domain::types::assert_round_trips(ScaffoldPreviewView {
             key: "G".to_string(),
             specs: vec![ScaffoldSpecView {
+                kind: ScaffoldKind::Shells,
                 title: "Shells".to_string(),
                 rationale: "3rd + 7th of every chord".to_string(),
                 key: "G".to_string(),

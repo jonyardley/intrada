@@ -1,9 +1,11 @@
 # Chart-to-scaffold generation
 
-> Tier 3 lightweight spec. Status: **Phase A implemented** (parser + derivation
-> + `SetChordChart`/`ClearChordChart` + preview ViewModel + GRDB migration + iOS
-> chart-entry & read-only preview; commit is Phase B). **Scope: `intrada-core` +
-> native iOS only.** Web/API (Turso) out of scope (see Deferred).
+> Tier 3 lightweight spec. Status: **Phases A + B implemented.** A (#1109):
+> parser + derivation + `SetChordChart`/`ClearChordChart` + preview ViewModel +
+> GRDB migration + iOS chart-entry & read-only preview. B (#1106): `SaveItems`
+> atomic batch persistence op + `CommitScaffold` (title-dedup / no clobber) +
+> the selectable "Add N" commit sheet. **Scope: `intrada-core` + native iOS
+> only.** Web/API (Turso) out of scope (see Deferred).
 > Bet 1 of the on-device AI wow-factor brainstorm ([#1098]). Design mocks:
 > [`design/`](chart-to-scaffold/design/) (`chart-entry.dc.html`,
 > `scaffold-preview.dc.html`, `DECISIONS.md`; also in Claude Design →
@@ -241,9 +243,16 @@ phases, each its own PR after A:
   ViewModel, GRDB migration + codec, iOS chart-entry + preview UI (read-only
   preview, **no commit yet**), the parser/derivation golden tests. Shippable as
   "see your standard's curriculum."
-- **B — commit.** `SaveItems` batch persistence op, `CommitScaffold`, dedup /
-  reconciliation, the "Add N exercises" flow. Turns preview into real linked
-  exercises.
+- **B — commit (implemented, #1106).** `SaveItems` batch persistence op,
+  `CommitScaffold`, dedup / reconciliation, the "Add N exercises" flow. Turns
+  preview into real linked exercises. **Payload shape changed from the sketch:**
+  `CommitScaffold` carries `kinds: Vec<ScaffoldKind>` (the ticked rows), not
+  `Vec<ScaffoldSpec>` — the core re-derives from the stored chart
+  (deterministic), so no spec content crosses the bincode bridge and the shell
+  can't corrupt derived content (invariant 4). Dedup is by exercise title (the
+  same key the preview's `already_linked` flag uses); the reserved generated-from
+  tag stays deferred (Resolved #2) — Phase C's regenerate-on-edit is what needs
+  it.
 - **C — vocabulary + polish.** Broader chord-quality coverage, ii–V–I /
   tritone-sub recognition, fallback-flag UX, regeneration on chart edit.
 

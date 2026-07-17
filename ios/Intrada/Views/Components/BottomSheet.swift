@@ -5,6 +5,8 @@ import SwiftUI
 struct BottomSheet<Content: View, LeadingAction: View>: View {
   private let title: String
   private let detents: Set<PresentationDetent>
+  private let confirmationLabel: String
+  private let confirmationDisabled: Bool
   private let onDone: () -> Void
   private let leadingAction: LeadingAction
   private let content: Content
@@ -14,12 +16,16 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
   init(
     title: String,
     detents: Set<PresentationDetent> = [.medium, .large],
+    confirmationLabel: String = "Done",
+    confirmationDisabled: Bool = false,
     onDone: @escaping () -> Void = {},
     @ViewBuilder leadingAction: () -> LeadingAction,
     @ViewBuilder content: () -> Content
   ) {
     self.title = title
     self.detents = detents
+    self.confirmationLabel = confirmationLabel
+    self.confirmationDisabled = confirmationDisabled
     self.onDone = onDone
     self.leadingAction = leadingAction()
     self.content = content()
@@ -36,10 +42,11 @@ struct BottomSheet<Content: View, LeadingAction: View>: View {
       .toolbar {
         ToolbarItem(placement: .cancellationAction) { leadingAction }
         ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
+          Button(confirmationLabel) {
             onDone()
             dismiss()
           }
+          .disabled(confirmationDisabled)
         }
       }
     }
@@ -51,11 +58,14 @@ extension BottomSheet where LeadingAction == EmptyView {
   init(
     title: String,
     detents: Set<PresentationDetent> = [.medium, .large],
+    confirmationLabel: String = "Done",
+    confirmationDisabled: Bool = false,
     onDone: @escaping () -> Void = {},
     @ViewBuilder content: () -> Content
   ) {
     self.init(
-      title: title, detents: detents, onDone: onDone,
+      title: title, detents: detents, confirmationLabel: confirmationLabel,
+      confirmationDisabled: confirmationDisabled, onDone: onDone,
       leadingAction: { EmptyView() }, content: content)
   }
 }

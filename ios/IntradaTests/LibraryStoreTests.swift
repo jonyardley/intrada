@@ -32,6 +32,13 @@ final class LibraryStoreTests: XCTestCase {
     XCTAssertTrue(got.priority)
   }
 
+  func testBatchSaveUpsertsEveryRow() throws {
+    let store = try makeStore()
+    try store.save([item("a", title: "One"), item("b", title: "Two"), item("c", title: "Three")])
+    let loaded = try store.loadItems()
+    XCTAssertEqual(Swift.Set(loaded.map(\.id)), ["a", "b", "c"], "all batch rows land")
+  }
+
   func testExerciseKindAndNilTempoRoundTrip() throws {
     let store = try makeStore()
     var ex = item("e1", kind: .exercise)

@@ -6,6 +6,8 @@ import SharedTypes
 protocol ItemStore {
   func loadItems() throws -> [Item]
   func save(_ item: Item) throws
+  /// Upsert a batch in one transaction — all rows land or none do (#1106).
+  func save(_ items: [Item]) throws
   func delete(id: String, deletedAt: String) throws
   func loadSessions() throws -> [PracticeSession]
   func saveSession(_ session: PracticeSession) throws
@@ -54,31 +56,46 @@ final class LibraryStore: ItemStore {
   /// Insert or update by id; clears any tombstone (an upsert revives a row).
   func save(_ item: Item) throws {
     try dbQueue.write { db in
-      try db.execute(
-        sql: """
-          INSERT INTO item
-            (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
-             linked_exercise_ids, created_at, updated_at, priority, chord_chart, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
-          ON CONFLICT(id) DO UPDATE SET
-            title = excluded.title, kind = excluded.kind, composer = excluded.composer,
-            key = excluded.key, modality = excluded.modality,
-            tempo_marking = excluded.tempo_marking,
-            tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
-            linked_exercise_ids = excluded.linked_exercise_ids,
-            updated_at = excluded.updated_at, priority = excluded.priority,
-            chord_chart = excluded.chord_chart, deleted_at = NULL
-          """,
-        arguments: [
-          item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
-          Self.modalityString(item.modality),
-          item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
-          Self.encodeTags(item.tags),
-          Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
-          item.createdAt, item.updatedAt, item.priority,
-          Self.encodeChordChart(item.chordChart),
-        ])
+      try Self.upsert(item, in: db)
     }
+  }
+
+  /// Batch upsert in a single transaction — the chart-to-scaffold commit writes
+  /// N exercises + the piece all-or-nothing, so a mid-batch failure never
+  /// orphans exercises against a half-linked piece (#1106, invariant 5).
+  func save(_ items: [Item]) throws {
+    try dbQueue.write { db in
+      for item in items {
+        try Self.upsert(item, in: db)
+      }
+    }
+  }
+
+  private static func upsert(_ item: Item, in db: Database) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO item
+          (id, title, kind, composer, key, modality, tempo_marking, tempo_bpm, notes, tags,
+           linked_exercise_ids, created_at, updated_at, priority, chord_chart, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title, kind = excluded.kind, composer = excluded.composer,
+          key = excluded.key, modality = excluded.modality,
+          tempo_marking = excluded.tempo_marking,
+          tempo_bpm = excluded.tempo_bpm, notes = excluded.notes, tags = excluded.tags,
+          linked_exercise_ids = excluded.linked_exercise_ids,
+          updated_at = excluded.updated_at, priority = excluded.priority,
+          chord_chart = excluded.chord_chart, deleted_at = NULL
+        """,
+      arguments: [
+        item.id, item.title, Self.kindString(item.kind), item.composer, item.key,
+        Self.modalityString(item.modality),
+        item.tempo?.marking, item.tempo?.bpm.map { Int($0) }, item.notes,
+        Self.encodeTags(item.tags),
+        Self.encodeLinkedExerciseIds(item.linkedExerciseIds),
+        item.createdAt, item.updatedAt, item.priority,
+        Self.encodeChordChart(item.chordChart),
+      ])
   }
 
   /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same

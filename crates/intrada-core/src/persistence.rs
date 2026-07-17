@@ -17,6 +17,10 @@ use crate::domain::session::PracticeSession;
 pub enum PersistenceOperation {
     LoadItems,
     SaveItem(Item),
+    /// Upsert a batch atomically — the shell wraps all rows in one transaction,
+    /// so a batch create (chart-to-scaffold commit) is all-or-nothing, never a
+    /// half-linked piece with orphan exercises (#1106, invariant 5).
+    SaveItems(Vec<Item>),
     /// Same `DateTime<Utc>` type as `Item::updated_at` so the tombstone bridges
     /// through the identical codec — byte-identical format under LWW, no drift.
     DeleteItem {
@@ -48,6 +52,11 @@ pub fn load_items() -> Command<Effect, Event> {
 
 pub fn save_item(item: Item) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::SaveItem(item)).then_send(Event::StoreWritten)
+}
+
+pub fn save_items(items: Vec<Item>) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::SaveItems(items))
+        .then_send(Event::StoreWritten)
 }
 
 pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
@@ -196,6 +205,24 @@ mod tests {
     fn save_item_requests_a_save_op() {
         let mut cmd = save_item(sample_item("p1"));
         assert!(has_save(&mut cmd, "p1"));
+    }
+
+    #[test]
+    fn save_items_requests_one_batch_op_with_all_rows() {
+        let mut cmd = save_items(vec![sample_item("a"), sample_item("b")]);
+        let ids = cmd
+            .effects()
+            .find_map(|e| match e {
+                Effect::Persistence(req) => match req.operation {
+                    PersistenceOperation::SaveItems(items) => {
+                        Some(items.iter().map(|i| i.id.clone()).collect::<Vec<_>>())
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("expected one SaveItems persistence effect");
+        assert_eq!(ids, vec!["a".to_string(), "b".to_string()]);
     }
 
     #[test]

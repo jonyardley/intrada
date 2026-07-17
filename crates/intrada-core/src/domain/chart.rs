@@ -457,7 +457,13 @@ fn transpose(root: u8, intervals: &[u8]) -> Vec<u8> {
 
 // ── Scaffold specs (core-internal in Phase A) ─────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Which scaffold exercise a spec is. Crosses the bincode bridge: it rides in
+/// `ScaffoldSpecView` (the preview's per-row identity) and is the commit
+/// payload — the shell sends the ticked `kind`s and the core re-derives, so no
+/// `ScaffoldSpec` content ever crosses the wire (#1106).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ScaffoldKind {
     Melody,
     Shells,

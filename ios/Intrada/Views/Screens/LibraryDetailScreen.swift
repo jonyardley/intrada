@@ -121,7 +121,7 @@ struct LibraryDetailScreen: View {
     }
     .sheet(isPresented: $showingScaffold) {
       if let preview = item.scaffoldPreview {
-        ScaffoldPreviewSheet(preview: preview)
+        ScaffoldPreviewSheet(preview: preview, onCommit: commitScaffold)
       }
     }
     // Alert (not confirmationDialog): always renders the Cancel button, incl.
@@ -516,6 +516,17 @@ struct LibraryDetailScreen: View {
       if store.viewModel?.errorSeq != before { ok = false }
     }
     if ok && !(toLink.isEmpty && toUnlink.isEmpty) {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+  }
+
+  private func commitScaffold(_ kinds: Swift.Set<ScaffoldKind>) {
+    guard !kinds.isEmpty else { return }
+    // Optimistic UI reconciles with the core's confirmed outcome — only fire the
+    // success haptic when no error was surfaced (surface-don't-swallow).
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.commitScaffold(pieceId: item.id, kinds: Array(kinds))))
+    if store.viewModel?.errorSeq == before {
       UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }
