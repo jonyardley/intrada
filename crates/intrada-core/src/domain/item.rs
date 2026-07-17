@@ -119,6 +119,48 @@ pub enum ItemEvent {
 }
 
 /// Shared by Update / AddTags / RemoveTags.
+/// The reconciliation key shared by `CommitScaffold` and the preview's
+/// `already_linked` flag: kinds (from the reserved tag, rename-robust) + titles
+/// (guarding hand-made exercises) already linked to the piece.
+pub(crate) fn linked_scaffold_state(
+    model: &Model,
+    piece_id: &str,
+) -> (
+    std::collections::HashSet<ScaffoldKind>,
+    std::collections::HashSet<String>,
+) {
+    let linked_ids: std::collections::HashSet<&String> = model
+        .items
+        .iter()
+        .find(|i| i.id == piece_id)
+        .map(|p| p.linked_exercise_ids.iter().collect())
+        .unwrap_or_default();
+    let linked = model.items.iter().filter(|i| linked_ids.contains(&i.id));
+
+    let mut kinds = std::collections::HashSet::new();
+    let mut titles = std::collections::HashSet::new();
+    for item in linked {
+        titles.insert(item.title.to_lowercase());
+        for tag in &item.tags {
+            if let Some(kind) = ScaffoldKind::from_scaffold_tag(tag) {
+                kinds.insert(kind);
+            }
+        }
+    }
+    (kinds, titles)
+}
+
+/// Whether a spec is already linked — by reserved kind (rename-robust) or a
+/// hand-made title collision.
+pub(crate) fn scaffold_already_linked(
+    kinds: &std::collections::HashSet<ScaffoldKind>,
+    titles: &std::collections::HashSet<String>,
+    kind: ScaffoldKind,
+    title: &str,
+) -> bool {
+    kinds.contains(&kind) || titles.contains(&title.to_lowercase())
+}
+
 fn save_or_put(model: &mut Model, item: Item) -> Command<Effect, Event> {
     if model.local_first {
         // No server callback to clear the dismiss-mute later (online does that
@@ -433,28 +475,18 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                 return crux_core::render::render();
             };
 
-            // Dedup by title against the piece's already-linked exercises — the
-            // same key the preview's `already_linked` flag uses, so re-running
-            // never duplicates and never clobbers a hand-made one.
-            let linked_ids: std::collections::HashSet<String> = model
-                .items
-                .iter()
-                .find(|i| i.id == piece_id)
-                .map(|p| p.linked_exercise_ids.iter().cloned().collect())
-                .unwrap_or_default();
-            let linked_titles: std::collections::HashSet<String> = model
-                .items
-                .iter()
-                .filter(|i| linked_ids.contains(&i.id))
-                .map(|i| i.title.to_lowercase())
-                .collect();
+            // Skip specs already linked (by reserved kind or hand-made title) —
+            // same predicate the preview's `already_linked` flag uses.
+            let (linked_kinds, linked_titles) = linked_scaffold_state(model, &piece_id);
 
             let selected: std::collections::HashSet<ScaffoldKind> = kinds.into_iter().collect();
             let now = chrono::Utc::now();
             let new_exercises: Vec<Item> = super::chart::derive_scaffold(&chart)
                 .into_iter()
                 .filter(|s| selected.contains(&s.kind))
-                .filter(|s| !linked_titles.contains(&s.title.to_lowercase()))
+                .filter(|s| {
+                    !scaffold_already_linked(&linked_kinds, &linked_titles, s.kind, &s.title)
+                })
                 .map(|s| Item {
                     id: ulid::Ulid::gen().to_string(),
                     title: s.title,
@@ -464,7 +496,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     modality: None,
                     tempo: None,
                     notes: Some(s.rationale),
-                    tags: vec![],
+                    tags: vec![s.kind.scaffold_tag()],
                     linked_exercise_ids: vec![],
                     created_at: now,
                     updated_at: now,
@@ -882,6 +914,79 @@ mod tests {
             "the hand-made exercise is untouched"
         );
         assert_eq!(shells[0].notes.as_deref(), Some("my own"));
+    }
+
+    #[test]
+    fn commit_scaffold_reconciles_after_rename_via_reserved_tag() {
+        // Regenerate-on-edit robustness: a generated exercise the user renamed
+        // still carries its reserved scaffold tag, so re-committing reconciles by
+        // kind and doesn't create a second copy (title-only dedup would duplicate).
+        let mut model = charted_model();
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+        let shells_id = model
+            .items
+            .iter()
+            .find(|i| i.tags.contains(&ScaffoldKind::Shells.scaffold_tag()))
+            .expect("a tagged Shells exercise was created")
+            .id
+            .clone();
+        model
+            .items
+            .iter_mut()
+            .find(|i| i.id == shells_id)
+            .unwrap()
+            .title = "3rds & 7ths".to_string();
+
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+
+        let tagged = model
+            .items
+            .iter()
+            .filter(|i| i.tags.contains(&ScaffoldKind::Shells.scaffold_tag()))
+            .count();
+        assert_eq!(tagged, 1, "the renamed generated exercise isn't duplicated");
+    }
+
+    #[test]
+    fn committed_exercise_tag_is_hidden_from_the_view_and_vocabulary() {
+        let mut model = charted_model();
+        send(
+            &mut model,
+            ItemEvent::CommitScaffold {
+                piece_id: "piece-1".to_string(),
+                kinds: vec![ScaffoldKind::Shells],
+            },
+        );
+        let shells = model
+            .items
+            .iter()
+            .find(|i| i.tags.contains(&ScaffoldKind::Shells.scaffold_tag()))
+            .expect("the committed exercise carries the reserved tag");
+
+        let vm = Intrada.view(&model);
+        let shells_view = vm.items.iter().find(|v| v.id == shells.id).unwrap();
+        assert!(
+            shells_view.tags.iter().all(|t| !t.starts_with("scaffold:")),
+            "no reserved tag reaches the item view"
+        );
+        assert!(
+            vm.available_tags
+                .iter()
+                .all(|t| !t.starts_with("scaffold:")),
+            "no reserved tag reaches the tag vocabulary"
+        );
     }
 
     #[test]
