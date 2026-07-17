@@ -83,10 +83,11 @@ pub struct SetlistEntry {
     /// of entries with the same id; `None` = standalone.
     #[serde(default)]
     pub group_id: Option<String>,
-    /// Which step (variant) of the exercise this rep practised (#1083). `None`
-    /// for entries with no ladder. Appended LAST + `#[serde(default)]` so old
-    /// bincode/JSON rows decode (positional wire; #846). Dropped server-side
-    /// until the sync engine, exactly like `group_id` — invariant 6 scoped.
+    /// Which step of the exercise's ladder this entry practised (#1083).
+    /// `None` = unattributed (no ladder, or the user didn't say). Appended
+    /// LAST + `#[serde(default)]` so old bincode snapshots and JSON blob rows
+    /// decode (positional wire; #846). Dropped server-side until the sync
+    /// engine, like `group_id` (invariant 6 scoped).
     #[serde(default)]
     pub variant_id: Option<String>,
 }
@@ -201,8 +202,10 @@ pub enum SessionEvent {
         entry_id: String,
         intention: Option<String>,
     },
-    /// Tag a building-phase entry with the exercise step (variant) it practises
-    /// (#1083). `None` clears the rung.
+    /// Attribute an entry to one step of its exercise's ladder; `None` clears
+    /// (#1083). Valid in every phase: Building tags the rung you plan to
+    /// practise, Active/Summary is the reflection attribution. The step must
+    /// be a live variant of the entry's item. Local-first only until sync.
     SetEntryVariant {
         entry_id: String,
         variant_id: Option<String>,
@@ -539,6 +542,28 @@ fn entry_for_update_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a 
     }
 }
 
+// Unlike score/notes (post-play reflection only, `entry_for_update_mut`), the
+// step tag is also a Building-phase plan ("which rung am I about to climb"),
+// so its lookup spans all three phases (#1083). The immutable twin exists for
+// checks that also read the library (a mutable borrow would lock the model).
+fn entry_for_variant<'a>(model: &'a Model, entry_id: &str) -> Option<&'a SetlistEntry> {
+    match &model.session_status {
+        SessionStatus::Building(building) => building.entries.iter().find(|e| e.id == entry_id),
+        SessionStatus::Active(active) => active.entries.iter().find(|e| e.id == entry_id),
+        SessionStatus::Summary(summary) => summary.entries.iter().find(|e| e.id == entry_id),
+        SessionStatus::Idle => None,
+    }
+}
+
+fn entry_for_variant_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a mut SetlistEntry> {
+    match &mut model.session_status {
+        SessionStatus::Building(building) => building.entries.iter_mut().find(|e| e.id == entry_id),
+        SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
+        SessionStatus::Summary(summary) => summary.entries.iter_mut().find(|e| e.id == entry_id),
+        SessionStatus::Idle => None,
+    }
+}
+
 fn transition_to_summary(
     active: &mut ActiveSession,
     now: DateTime<Utc>,
@@ -682,15 +707,39 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             entry_id,
             variant_id,
         } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
+            if !model.local_first {
+                // Steps are local-first-only until sync (#1083; invariant 6
+                // consciously scoped); surfaced, never a silent no-op.
+                model.last_error = Some("Steps aren't available online yet".to_string());
+                return crux_core::render::render();
+            }
+
+            let Some(entry) = entry_for_variant(model, &entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
 
-            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
+            if let Some(vid) = &variant_id {
+                let owns_live_variant = model
+                    .items
+                    .iter()
+                    .find(|i| i.id == entry.item_id)
+                    .is_some_and(|item| {
+                        item.variants
+                            .iter()
+                            .any(|v| v.id == *vid && v.deleted_at.is_none())
+                    });
+                if !owns_live_variant {
+                    model.last_error =
+                        Some("That step doesn't belong to this exercise".to_string());
+                    return crux_core::render::render();
+                }
+            }
+
+            let Some(entry) = entry_for_variant_mut(model, &entry_id) else {
+                model.last_error = Some(format!("Entry '{entry_id}' not found"));
                 return crux_core::render::render();
             };
-
             entry.variant_id = variant_id;
             model.last_error = None;
             crux_core::render::render()
@@ -3857,6 +3906,282 @@ mod tests {
         }
     }
 
+    // --- SetEntryVariant Tests (#1083 C1) ---
+
+    fn give_exercise_a_ladder(model: &mut Model) -> (String, String) {
+        let now = Utc::now();
+        let ex = model
+            .items
+            .iter_mut()
+            .find(|i| i.id == "exercise-1")
+            .expect("fixture exercise");
+        ex.variants = vec![
+            crate::domain::variant::Variant {
+                id: "v-c".to_string(),
+                label: "C".to_string(),
+                position: 0,
+                updated_at: now,
+                deleted_at: None,
+            },
+            crate::domain::variant::Variant {
+                id: "v-f".to_string(),
+                label: "F".to_string(),
+                position: 1,
+                updated_at: now,
+                deleted_at: None,
+            },
+        ];
+        ("v-c".to_string(), "v-f".to_string())
+    }
+
+    /// Summary state whose single completed entry is the laddered exercise.
+    /// Local-first, as on iOS; steps are gated to that mode (#1083).
+    fn model_with_exercise_summary() -> (Model, String) {
+        let mut model = model_with_library();
+        model.local_first = true;
+        give_exercise_a_ladder(&mut model);
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        update(
+            &mut model,
+            Event::Session(SessionEvent::AddToSetlist {
+                item_id: "exercise-1".to_string(),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession {
+                now: now + chrono::Duration::seconds(60),
+            }),
+        );
+        let entry_id = if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].id.clone()
+        } else {
+            panic!("Expected Summary state");
+        };
+        (model, entry_id)
+    }
+
+    fn summary_entry_variant(model: &Model) -> Option<String> {
+        if let SessionStatus::Summary(ref s) = model.session_status {
+            s.entries[0].variant_id.clone()
+        } else {
+            panic!("Expected Summary state");
+        }
+    }
+
+    #[test]
+    fn set_entry_variant_sets_and_clears_on_a_completed_entry() {
+        let (mut model, entry_id) = model_with_exercise_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id: entry_id.clone(),
+                variant_id: Some("v-c".to_string()),
+            }),
+        );
+        assert!(model.last_error.is_none());
+        assert_eq!(summary_entry_variant(&model).as_deref(), Some("v-c"));
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: None,
+            }),
+        );
+        assert!(model.last_error.is_none());
+        assert_eq!(summary_entry_variant(&model), None);
+    }
+
+    #[test]
+    fn set_entry_variant_rejects_a_variant_of_another_item() {
+        let (mut model, entry_id) = model_with_exercise_summary();
+        // A ladder on a different exercise.
+        let now = Utc::now();
+        model.items.push(Item {
+            id: "exercise-2".to_string(),
+            title: "Arpeggios".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            created_at: now,
+            updated_at: now,
+            linked_exercise_ids: vec![],
+            priority: false,
+            chord_chart: None,
+            variants: vec![crate::domain::variant::Variant {
+                id: "v-other".to_string(),
+                label: "C".to_string(),
+                position: 0,
+                updated_at: now,
+                deleted_at: None,
+            }],
+        });
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: Some("v-other".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(summary_entry_variant(&model), None);
+    }
+
+    #[test]
+    fn set_entry_variant_rejects_a_tombstoned_variant() {
+        let (mut model, entry_id) = model_with_exercise_summary();
+        model
+            .items
+            .iter_mut()
+            .find(|i| i.id == "exercise-1")
+            .unwrap()
+            .variants
+            .iter_mut()
+            .find(|v| v.id == "v-f")
+            .unwrap()
+            .deleted_at = Some(Utc::now());
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: Some("v-f".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(summary_entry_variant(&model), None);
+    }
+
+    #[test]
+    fn set_entry_variant_accepts_a_skipped_entry() {
+        // The tag is a plan as much as a reflection: a skipped entry may still
+        // carry the rung it was meant to climb. With no score it contributes
+        // nothing to per-step history, so stats stay clean.
+        let mut model = model_with_library();
+        model.local_first = true;
+        give_exercise_a_ladder(&mut model);
+        let now = Utc::now();
+        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        for id in ["exercise-1", "piece-1"] {
+            update(
+                &mut model,
+                Event::Session(SessionEvent::AddToSetlist {
+                    item_id: id.to_string(),
+                }),
+            );
+        }
+        update(
+            &mut model,
+            Event::Session(SessionEvent::StartSession { now }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SkipItem {
+                now: now + chrono::Duration::seconds(5),
+            }),
+        );
+        update(
+            &mut model,
+            Event::Session(SessionEvent::FinishSession {
+                now: now + chrono::Duration::seconds(60),
+            }),
+        );
+
+        let (skipped_id, status) = if let SessionStatus::Summary(ref s) = model.session_status {
+            (s.entries[0].id.clone(), s.entries[0].status.clone())
+        } else {
+            panic!("Expected Summary state");
+        };
+        assert_eq!(
+            status,
+            EntryStatus::Skipped,
+            "fixture: exercise was skipped"
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id: skipped_id,
+                variant_id: Some("v-c".to_string()),
+            }),
+        );
+
+        assert_eq!(summary_entry_variant(&model).as_deref(), Some("v-c"));
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn set_entry_variant_flows_into_the_saved_session() {
+        let (mut model, entry_id) = model_with_exercise_summary();
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: Some("v-c".to_string()),
+            }),
+        );
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SaveSession { now: Utc::now() }),
+        );
+
+        assert_eq!(model.sessions.len(), 1);
+        assert_eq!(
+            model.sessions[0].entries[0].variant_id.as_deref(),
+            Some("v-c"),
+            "the chosen step rides the persisted session"
+        );
+    }
+
+    #[test]
+    fn set_entry_variant_online_mode_is_scoped_out_gracefully() {
+        // Invariant 6 consciously scoped (#1083): steps are local-first-only
+        // until sync; online surfaces the scope-out and changes nothing.
+        let (mut model, entry_id) = model_with_exercise_summary();
+        model.local_first = false;
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id,
+                variant_id: Some("v-c".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_some(), "surfaced, not silent");
+        assert_eq!(summary_entry_variant(&model), None);
+    }
+
+    #[test]
+    fn set_entry_variant_unknown_entry_surfaces_an_error() {
+        let (mut model, _) = model_with_exercise_summary();
+
+        update(
+            &mut model,
+            Event::Session(SessionEvent::SetEntryVariant {
+                entry_id: "no-such-entry".to_string(),
+                variant_id: Some("v-c".to_string()),
+            }),
+        );
+
+        assert!(model.last_error.is_some());
+    }
+
     // --- UpdateEntryTempo Tests ---
 
     #[test]
@@ -4154,13 +4479,15 @@ mod tests {
     }
 
     #[test]
-    fn test_set_entry_variant_tags_the_rung() {
+    fn test_set_entry_variant_tags_the_rung_while_building() {
         let mut model = model_with_library();
+        model.local_first = true;
+        give_exercise_a_ladder(&mut model);
         update(&mut model, Event::Session(SessionEvent::StartBuilding));
         update(
             &mut model,
             Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
+                item_id: "exercise-1".to_string(),
             }),
         );
 
@@ -4175,12 +4502,12 @@ mod tests {
             &mut model,
             Event::Session(SessionEvent::SetEntryVariant {
                 entry_id: entry_id.clone(),
-                variant_id: Some("var-1".to_string()),
+                variant_id: Some("v-c".to_string()),
             }),
         );
         assert!(model.last_error.is_none());
         if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].variant_id, Some("var-1".to_string()));
+            assert_eq!(b.entries[0].variant_id, Some("v-c".to_string()));
         } else {
             panic!("Expected Building state");
         }
@@ -4202,6 +4529,7 @@ mod tests {
     #[test]
     fn test_set_entry_variant_unknown_entry_surfaces_error() {
         let mut model = model_with_library();
+        model.local_first = true;
         update(&mut model, Event::Session(SessionEvent::StartBuilding));
         update(
             &mut model,
@@ -5161,7 +5489,7 @@ mod tests {
             planned_duration_secs: Some(300),
             achieved_tempo: Some(96),
             group_id: Some("g1".to_string()),
-            variant_id: None,
+            variant_id: Some("v-1".to_string()),
         });
     }
 

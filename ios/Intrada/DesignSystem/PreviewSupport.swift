@@ -345,7 +345,7 @@
             pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     static var previewExercise: LibraryItemView {
@@ -355,8 +355,7 @@
         key: "C", modality: .major, tempo: "108 BPM", tempoMarking: nil, tempoBpm: 108,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     static var previewDetail: LibraryItemView {
@@ -368,7 +367,7 @@
         tags: ["recital", "impressionist", "memorised"], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false, linkedExercises: [],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     /// A charted piece — exercises the chord-chart card (parsed grid + preview).
@@ -395,8 +394,7 @@
         key: "G", modality: .minor, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: .preview, chordChart: chart, variants: [])
     }
 
     static var previewMinimal: LibraryItemView {
@@ -405,8 +403,7 @@
         key: nil, modality: nil, tempo: nil, tempoMarking: nil, tempoBpm: nil,
         notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
         latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// A piece with a populated linked-exercises list (3 items, varied scores including
@@ -447,7 +444,7 @@
             practice: nil, pieceContextScore: nil),
         ],
         linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil,
-        steps: [], currentVariantId: nil)
+        variants: [])
     }
 
     /// An exercise related to 2 pieces — for the "Related pieces" card snapshot.
@@ -469,8 +466,7 @@
         linkedFromPieces: [
           PieceRefView(id: "piece-1", title: "Clair de Lune", subtitle: "Claude Debussy"),
           PieceRefView(id: "piece-2", title: "Gymnopédie No. 1", subtitle: "Erik Satie"),
-        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, steps: [],
-        currentVariantId: nil)
+        ], exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// An exercise with a full "By piece" breakdown — a live piece, a
@@ -505,7 +501,7 @@
           ExerciseContextView(
             piece: nil, latestScore: 6, sessionCount: 4,
             lastPracticedAt: "2026-06-22T09:00:00Z", pieceRemoved: false),
-        ], scaffoldPreview: nil, chordChart: nil, steps: [], currentVariantId: nil)
+        ], scaffoldPreview: nil, chordChart: nil, variants: [])
     }
 
     /// A piece with no linked exercises — for the empty-state snapshot.
@@ -517,7 +513,7 @@
         tempoBpm: 60, notes: nil, tags: [], createdAt: "", updatedAt: "",
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
-        chordChart: nil, steps: [], currentVariantId: nil)
+        chordChart: nil, variants: [])
     }
   }
 
@@ -565,7 +561,8 @@
         id: id, itemId: item, itemTitle: title, itemType: type, position: position,
         durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
+        variantId: nil)
     }
   }
 
@@ -620,7 +617,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: nil)
+        groupId: nil, variantId: nil)
     }
   }
 
@@ -642,7 +639,7 @@
         position: position, durationDisplay: "10 min", status: .completed, notes: nil,
         score: nil, intention: nil, repTarget: nil, repCount: nil, repTargetReached: nil,
         repHistory: nil, plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil,
-        groupId: groupId)
+        groupId: groupId, variantId: nil)
     }
 
     static var previewActive: ActiveSessionView {
@@ -733,7 +730,8 @@
         id: id, itemId: id, itemTitle: title, itemType: type, position: 0,
         durationDisplay: duration, status: status, notes: nil, score: score, intention: intention,
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil)
+        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil,
+        variantId: nil)
     }
   }
 #endif

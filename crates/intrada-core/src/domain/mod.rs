@@ -7,6 +7,7 @@ pub mod oauth;
 pub mod session;
 pub mod set;
 pub mod types;
+pub mod variant;
 
 pub use account::{AccountEvent, AccountPreferences};
 pub use item::{Item, ItemEvent, ItemKind, Modality};
@@ -22,3 +23,4 @@ pub use types::{
     CreateItem, CreateSetEntryRequest, CreateSetRequest, LibraryData, LibrarySort, ListQuery,
     SortDirection, SortField, Tempo, UpdateItem, UpdateSetRequest,
 };
+pub use variant::Variant;

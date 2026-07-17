@@ -338,29 +338,28 @@ pub struct LibraryItemView {
     /// bar grid from `symbol.raw` and pre-fills the editor from it.
     #[serde(default)]
     pub chord_chart: Option<ChordChart>,
-    /// The exercise's step ladder with derived per-step scores (#1083 C1). Empty
-    /// for pieces and for exercises with no steps.
+    /// The exercise's step ladder with per-step practice state (#1083);
+    /// empty for pieces and un-laddered exercises.
     #[serde(default)]
-    pub steps: Vec<StepView>,
-    /// The current step: the first step not yet solid. `None` when there are no
-    /// steps or the ladder is complete (every step solid) (#1083 C1).
-    #[serde(default)]
-    pub current_variant_id: Option<String>,
+    pub variants: Vec<VariantView>,
 }
 
-/// One rung of an exercise's step ladder, with its derived score (#1083 C1).
-/// `label`/`position` come from the stored `Variant`; `latest_score`/`solid` are
-/// derived from session entries tagged with this step. The UI renders per-step
-/// rings; "Solid" is the user-facing word for `solid`.
+/// One step of an exercise's ladder with its derived practice state (#1083).
+/// Only live (non-tombstoned) steps reach the view, in ladder order. Users
+/// see "Steps"; `variant` is the core's name and never appears on screen.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct StepView {
+pub struct VariantView {
     pub id: String,
     pub label: String,
     pub position: usize,
-    #[serde(default)]
     pub latest_score: Option<u8>,
-    pub solid: bool,
+    pub score_history: Vec<ScoreHistoryEntry>,
+    /// Latest score has reached `SOLID_SCORE_MIN` (8 of 10).
+    pub is_solid: bool,
+    /// The first step that isn't yet solid; the rung to work on. At most one
+    /// per ladder; a fully solid ladder has none.
+    pub is_current: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -434,6 +433,9 @@ pub struct SetlistEntryView {
     pub achieved_tempo: Option<u16>,
     /// The block this entry belongs to in the builder; `None` = standalone.
     pub group_id: Option<String>,
+    /// The ladder step this entry practised, when attributed (#1083).
+    #[serde(default)]
+    pub variant_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -556,6 +558,7 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
             .map(|secs| crate::domain::session::format_planned_duration(u64::from(secs))),
         achieved_tempo: entry.achieved_tempo,
         group_id: entry.group_id.clone(),
+        variant_id: entry.variant_id.clone(),
     }
 }
 
@@ -731,6 +734,25 @@ mod tests {
                 already_linked: true,
             }],
             fallback_total: 0,
+        });
+    }
+
+    /// `VariantView` crosses the bincode wire inside `LibraryItemView.variants`
+    /// (#1083); guard it against the #846 drop class.
+    #[test]
+    fn variant_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(VariantView {
+            id: "v-1".to_string(),
+            label: "B♭".to_string(),
+            position: 2,
+            latest_score: Some(8),
+            score_history: vec![ScoreHistoryEntry {
+                session_date: "2026-07-01T00:00:00+00:00".to_string(),
+                score: 8,
+                session_id: "s1".to_string(),
+            }],
+            is_solid: true,
+            is_current: false,
         });
     }
 
