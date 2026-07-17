@@ -1409,6 +1409,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
 
             if entry.status != EntryStatus::Completed {
+                model.last_error = Some("Only a played entry can take a step".to_string());
                 return crux_core::render::render();
             }
 
@@ -4108,6 +4109,10 @@ mod tests {
         );
 
         assert_eq!(summary_entry_variant(&model), None);
+        assert!(
+            model.last_error.is_some(),
+            "a skipped entry can't take a step; surfaced, not swallowed"
+        );
     }
 
     #[test]

@@ -488,11 +488,24 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             };
 
             let now = chrono::Utc::now();
-            item.variants = super::variant::reconcile_variants(
-                std::mem::take(&mut item.variants),
-                &labels,
-                now,
-            );
+            let existing = std::mem::take(&mut item.variants);
+            let reconciled = super::variant::reconcile_variants(existing.clone(), &labels, now);
+
+            // Order-insensitive: the store loads by position (tombstones
+            // interleaved) while reconcile emits live-then-tombstones.
+            let sorted_by_id = |mut v: Vec<Variant>| {
+                v.sort_by(|a, b| a.id.cmp(&b.id));
+                v
+            };
+            if sorted_by_id(existing.clone()) == sorted_by_id(reconciled.clone()) {
+                // No-op: don't bump the parent LWW stamp or write (it could
+                // spuriously win a future sync merge).
+                item.variants = existing;
+                model.last_error = None;
+                return crux_core::render::render();
+            }
+
+            item.variants = reconciled;
             item.updated_at = now;
             model.last_error = None;
 
@@ -1430,6 +1443,71 @@ mod tests {
             f.updated_at > c_updated_at,
             "the tombstoned step is stamped"
         );
+    }
+
+    #[test]
+    fn set_variants_adopts_incoming_casing_keeping_the_id() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["bb".to_string()],
+            },
+        );
+        let id_before = exercise_variants(&model)[0].id.clone();
+
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["Bb".to_string()],
+            },
+        );
+
+        let variants = exercise_variants(&model);
+        assert_eq!(variants.len(), 1);
+        assert_eq!(
+            variants[0].label, "Bb",
+            "a relabel in casing only is adopted"
+        );
+        assert_eq!(variants[0].id, id_before, "same step, history intact");
+    }
+
+    #[test]
+    fn set_variants_identical_labels_is_a_noop_without_a_save() {
+        // LWW hygiene one level up: a no-op must not bump the parent row's
+        // timestamp or write, or it could spuriously win a future sync merge.
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(
+            ex.updated_at, before,
+            "an unchanged ladder leaves the item stamp"
+        );
+        assert!(!emits_save(&mut cmd, "ex-1"), "nothing to persist");
+        assert!(model.last_error.is_none());
     }
 
     #[test]

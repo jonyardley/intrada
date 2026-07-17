@@ -42,8 +42,8 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ### Current focus (2026-07)
 
-The lesson-to-mastery loop — see the
-[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087) — has
+The lesson-to-mastery loop (see the
+[epic, #1087](https://github.com/jonyardley/intrada/issues/1087)) has
 workstream **B: track exercises per piece** (#1081) merged (B1 #1095, B2
 #1097). **C: exercise steps** (#1083) is under way: C1 (the core variant
 mechanism + GRDB child table, spec in `specs/exercise-variants.md`) has

@@ -54,7 +54,10 @@ ViewModel
    `deleted_at`; the row stays in the table *and* in `Item.variants` (views
    filter it). Kept in-model so (a) the core owns reconciliation; the shell
    never diffs child rows (invariant 4), and (b) history keeps resolving: a
-   session entry pointing at a removed step still finds its label.
+   session entry pointing at a removed step still finds its label. Note for
+   C4's drag-reorder: tombstones keep their stale `position`, which can
+   collide with a live step's; nothing may assume positions are unique
+   across the mixed list, only among live steps.
 3. **`SetVariants { id, labels }` reconciles by label.** One event defines the
    whole ladder: labels matching an existing variant (case-insensitive) keep
    its id; and its score history; removed labels tombstone; a re-added label
@@ -74,6 +77,10 @@ ViewModel
    `UpdateEntryScore`); scores stay on the entry, the variant says which rung
    they belong to. No snapshot label in the entry: labels resolve live via
    decision 2 (revisit only if exercise deletion in history proves to matter).
+   Known trade-off: the *crash-recovery* blob (UserDefaults) is positional
+   bincode, so this field change invalidates a blob written by the previous
+   build; one resume prompt is lost across that upgrade, as with `group_id`
+   before it (tracked: #1116).
 6. **Local-first only until sync** (epic decision, invariant 6 consciously
    scoped). Online mode: `SetVariants` / `UpdateEntryVariant` surface a clear
    error, mutate nothing, emit no HTTP; pinned by tests, so the scope-out is
@@ -130,7 +137,9 @@ CREATE INDEX idx_variant_exercise_id ON variant(exercise_id);
   through actual bincode.
 - **iOS:** `v9` upgrade-path test from a populated v8 DB (rows intact, empty
   ladders); variant save/load round-trip incl. tombstone + ordering; old
-  entries blob (no `variantId` key) decodes to `nil`; batch save atomicity.
+  entries blob (no `variantId` key) decodes to `nil`; batch save writes each
+  item's ladder (atomicity itself comes from the shared `dbQueue.write`
+  transaction, #1106).
 
 ## Open questions (deferred, tracked on #1083)
 
