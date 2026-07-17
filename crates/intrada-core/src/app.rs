@@ -1146,7 +1146,7 @@ fn sample_items() -> Vec<Item> {
         }
     };
 
-    vec![
+    let mut items = vec![
         item(
             0,
             "sample-clair",
@@ -1207,7 +1207,24 @@ fn sample_items() -> Vec<Item> {
             None,
             &["technique"],
         ),
-    ]
+    ];
+
+    // Demo step ladder (#1083): Major Scales climbs a starter run of keys, so
+    // seed mode shows per-step progress (sample_sessions scores the first two).
+    if let Some(scales) = items.iter_mut().find(|i| i.id == "sample-scales") {
+        scales.variants = ["C", "G", "D", "A", "E"]
+            .iter()
+            .enumerate()
+            .map(|(position, label)| crate::domain::variant::Variant {
+                id: format!("sample-scales-step-{}", label.to_lowercase()),
+                label: (*label).to_string(),
+                position,
+                updated_at: scales.updated_at,
+                deleted_at: None,
+            })
+            .collect();
+    }
+    items
 }
 
 /// Canonical demo practice history for `Event::LoadSampleData`. Entries
@@ -1297,7 +1314,12 @@ fn sample_sessions() -> Vec<PracticeSession> {
             CompletionStatus::Completed,
             vec![
                 entry(0, "sample-hanon", "Hanon No. 1", ItemKind::Exercise, 480),
-                entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600),
+                {
+                    let mut e = entry(1, "sample-scales", "Major Scales", ItemKind::Exercise, 600);
+                    e.variant_id = Some("sample-scales-step-g".to_string());
+                    e.score = Some(7);
+                    e
+                },
             ],
         ),
         session(
@@ -1320,13 +1342,12 @@ fn sample_sessions() -> Vec<PracticeSession> {
             "sample-session-5d",
             5,
             CompletionStatus::Completed,
-            vec![entry(
-                0,
-                "sample-scales",
-                "Major Scales",
-                ItemKind::Exercise,
-                720,
-            )],
+            vec![{
+                let mut e = entry(0, "sample-scales", "Major Scales", ItemKind::Exercise, 720);
+                e.variant_id = Some("sample-scales-step-c".to_string());
+                e.score = Some(8);
+                e
+            }],
         ),
     ]
 }
@@ -1662,6 +1683,27 @@ mod tests {
             .items
             .iter()
             .any(|i| i.tempo.as_ref().and_then(|t| t.bpm).is_some()));
+    }
+
+    #[test]
+    fn load_sample_data_gives_scales_a_step_ladder_with_progress() {
+        let app = Intrada;
+        let mut model = Model::default();
+        let _ = app.update(Event::LoadSampleData, &mut model);
+
+        let vm = app.view(&model);
+        let scales = vm.items.iter().find(|i| i.id == "sample-scales").unwrap();
+        assert!(
+            scales.variants.len() >= 3,
+            "the demo exercise carries a keys ladder"
+        );
+        let first = &scales.variants[0];
+        assert!(first.is_solid, "the first demo step reads as Solid");
+        assert!(
+            scales.variants[1].is_current,
+            "the second demo step is the current rung"
+        );
+        assert!(first.latest_score.is_some());
     }
 
     #[test]

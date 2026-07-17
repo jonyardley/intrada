@@ -737,6 +737,25 @@ mod tests {
         });
     }
 
+    /// `VariantView` crosses the bincode wire inside `LibraryItemView.variants`
+    /// (#1083) — guard it against the #846 drop class.
+    #[test]
+    fn variant_view_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(VariantView {
+            id: "v-1".to_string(),
+            label: "B♭".to_string(),
+            position: 2,
+            latest_score: Some(8),
+            score_history: vec![ScoreHistoryEntry {
+                session_date: "2026-07-01T00:00:00+00:00".to_string(),
+                score: 8,
+                session_id: "s1".to_string(),
+            }],
+            is_solid: true,
+            is_current: false,
+        });
+    }
+
     /// `LinkedExerciseView` crosses the same bincode wire; `piece_context_score`
     /// (#1087 B2) is a trailing `Option` — guard it against the #846 drop class.
     #[test]

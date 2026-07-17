@@ -1456,6 +1456,14 @@ mod tests {
         assert!(!emits_save(&mut cmd, "ex-1"), "nothing persisted");
     }
 
+    #[test]
+    fn set_variants_event_round_trips_on_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(ItemEvent::SetVariants {
+            id: "ex-1".to_string(),
+            labels: vec!["C".to_string(), "F♯".to_string()],
+        }));
+    }
+
     // ── Bridge round-trip for the write events (#846) ──
 
     #[test]

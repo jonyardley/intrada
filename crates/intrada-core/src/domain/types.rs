@@ -475,7 +475,7 @@ mod tests {
             planned_duration_secs: Some(300),
             achieved_tempo: Some(120),
             group_id: None,
-            variant_id: None,
+            variant_id: Some("v-1".to_string()),
         };
         assert_round_trips(PersistenceOperation::SaveSession(PracticeSession {
             id: "s1".to_string(),
@@ -546,6 +546,58 @@ mod tests {
             entry_id: "e1".to_string(),
             duration_secs: None,
         });
+        assert_round_trips(SessionEvent::UpdateEntryVariant {
+            entry_id: "e1".to_string(),
+            variant_id: Some("v-1".to_string()),
+        });
+        assert_round_trips(SessionEvent::UpdateEntryVariant {
+            entry_id: "e1".to_string(),
+            variant_id: None,
+        });
+    }
+
+    #[test]
+    fn save_item_ops_with_variants_round_trip_on_ffi_bincode_wire() {
+        // The ladder rides SaveItem/SaveItems to the GRDB store; a tombstoned
+        // step exercises the Option<DateTime> side of the wire (#846 class).
+        use crate::domain::variant::Variant;
+        use crate::persistence::PersistenceOperation;
+        use chrono::TimeZone;
+        let at = chrono::Utc.timestamp_opt(1_700_000_000, 0).unwrap();
+        let item = Item {
+            id: "ex-1".to_string(),
+            title: "Shells".to_string(),
+            kind: ItemKind::Exercise,
+            composer: None,
+            key: None,
+            modality: None,
+            tempo: None,
+            notes: None,
+            tags: vec![],
+            linked_exercise_ids: vec![],
+            created_at: at,
+            updated_at: at,
+            priority: false,
+            chord_chart: None,
+            variants: vec![
+                Variant {
+                    id: "v-1".to_string(),
+                    label: "B♭".to_string(),
+                    position: 0,
+                    updated_at: at,
+                    deleted_at: None,
+                },
+                Variant {
+                    id: "v-2".to_string(),
+                    label: "E♭".to_string(),
+                    position: 1,
+                    updated_at: at,
+                    deleted_at: Some(at),
+                },
+            ],
+        };
+        assert_round_trips(PersistenceOperation::SaveItem(item.clone()));
+        assert_round_trips(PersistenceOperation::SaveItems(vec![item]));
     }
 
     #[test]
