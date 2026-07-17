@@ -523,6 +523,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     }
 

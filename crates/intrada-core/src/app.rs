@@ -1158,6 +1158,7 @@ fn sample_sessions() -> Vec<PracticeSession> {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     };
 
@@ -2291,6 +2292,7 @@ mod tests {
                         planned_duration_secs: None,
                         achieved_tempo: if e % 3 == 0 { Some(120) } else { None },
                         group_id: None,
+                        variant_id: None,
                     }
                 })
                 .collect();
@@ -2449,6 +2451,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2468,6 +2471,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
             ],
             reflection_improved: None,
@@ -2555,6 +2559,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2589,6 +2594,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2667,6 +2673,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2739,6 +2746,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
                 SetlistEntry {
                     id: "e2".to_string(),
@@ -2758,6 +2766,7 @@ mod tests {
                     planned_duration_secs: None,
                     achieved_tempo: None,
                     group_id: None,
+                    variant_id: None,
                 },
             ],
             reflection_improved: None,
@@ -2835,6 +2844,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2905,6 +2915,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: tempo,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -2962,6 +2973,7 @@ mod tests {
                 planned_duration_secs: None,
                 achieved_tempo: None,
                 group_id: None,
+                variant_id: None,
             }],
             reflection_improved: None,
             reflection_still_rough: None,
@@ -3806,6 +3818,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -3850,6 +3863,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         };
         model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
             entries: vec![entry],
@@ -3884,6 +3898,7 @@ mod tests {
             planned_duration_secs,
             achieved_tempo: None,
             group_id: None,
+            variant_id: None,
         }
     }
 
@@ -4483,6 +4498,7 @@ mod tests {
             planned_duration_secs: None,
             achieved_tempo: None,
             group_id: group.map(String::from),
+            variant_id: None,
         }
     }
 
