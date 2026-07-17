@@ -46,10 +46,16 @@ final class LibraryStore: ItemStore {
 
   func loadItems() throws -> [Item] {
     try dbQueue.read { db in
-      try Row.fetchAll(
+      // Variants load tombstones included: the core owns reconciliation
+      // (resurrect-by-label) and history labels resolve through them (#1083).
+      let variantsByExercise = try Self.loadVariantsByExercise(db)
+      return try Row.fetchAll(
         db, sql: "SELECT * FROM item WHERE deleted_at IS NULL ORDER BY created_at DESC"
       )
-      .map(Self.item(from:))
+      .map { row in
+        let id: String = row["id"]
+        return Self.item(from: row, variants: variantsByExercise[id] ?? [])
+      }
     }
   }
 
@@ -96,6 +102,23 @@ final class LibraryStore: ItemStore {
         item.createdAt, item.updatedAt, item.priority,
         Self.encodeChordChart(item.chordChart),
       ])
+    // Same transaction as the item row, keyed by id; no delete-missing: the
+    // core always carries the tombstones it loaded, so Swift never diffs.
+    for variant in item.variants {
+      try db.execute(
+        sql: """
+          INSERT INTO variant (id, exercise_id, label, position, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            exercise_id = excluded.exercise_id, label = excluded.label,
+            position = excluded.position, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          variant.id, item.id, variant.label, Int(variant.position),
+          variant.updatedAt, variant.deletedAt,
+        ])
+    }
   }
 
   /// Soft-delete: write the core-stamped `deletedAt` tombstone (RFC3339, same
@@ -235,6 +258,24 @@ final class LibraryStore: ItemStore {
       // Nullable JSON column; NULL = no chart. Additive, non-destructive.
       try db.execute(sql: "ALTER TABLE item ADD COLUMN chord_chart TEXT")
     }
+    migrator.registerMigration("v9_variant") { db in
+      // The store's first child table: one row per ladder step, with its own
+      // updated_at + deleted_at so a step can LWW-sync independently of its
+      // exercise (#1083, invariant 2). Steps live embedded in Item on the
+      // wire; this table is their per-row persistence shape.
+      try db.execute(
+        sql: """
+          CREATE TABLE variant (
+            id TEXT PRIMARY KEY NOT NULL,
+            exercise_id TEXT NOT NULL,
+            label TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(sql: "CREATE INDEX idx_variant_exercise_id ON variant(exercise_id)")
+    }
     return migrator
   }()
 
@@ -250,7 +291,7 @@ final class LibraryStore: ItemStore {
     var description: String { "unknown \(kind) on decode: \"\(raw)\"" }
   }
 
-  private static func item(from row: Row) -> Item {
+  private static func item(from row: Row, variants: [Variant]) -> Item {
     let marking: String? = row["tempo_marking"]
     let bpm: UInt16? = (row["tempo_bpm"] as Int?).map { UInt16($0) }
     let tempo = (marking == nil && bpm == nil) ? nil : Tempo(marking: marking, bpm: bpm)
@@ -262,7 +303,26 @@ final class LibraryStore: ItemStore {
       linkedExerciseIds: decodeLinkedExerciseIds(row["linked_exercise_ids"]),
       createdAt: row["created_at"], updatedAt: row["updated_at"],
       priority: row["priority"],
-      chordChart: decodeChordChart(row["chord_chart"]))
+      chordChart: decodeChordChart(row["chord_chart"]),
+      variants: variants)
+  }
+
+  // ── Row ↔ Variant codec ──────────────────────────────────────────────
+
+  private static func loadVariantsByExercise(_ db: Database) throws -> [String: [Variant]] {
+    var byExercise: [String: [Variant]] = [:]
+    for row in try Row.fetchAll(db, sql: "SELECT * FROM variant ORDER BY position, id") {
+      let exerciseId: String = row["exercise_id"]
+      byExercise[exerciseId, default: []].append(variant(from: row))
+    }
+    return byExercise
+  }
+
+  private static func variant(from row: Row) -> Variant {
+    Variant(
+      id: row["id"], label: row["label"],
+      position: UInt64(row["position"] as Int64),
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
   private static func kindString(_ kind: ItemKind) -> String {
@@ -489,6 +549,7 @@ final class LibraryStore: ItemStore {
     var plannedDurationSecs: UInt32?
     var achievedTempo: UInt16?
     var groupId: String?
+    var variantId: String?
   }
 
   private static func encodeEntries(_ entries: [SetlistEntry]) -> String {
@@ -500,7 +561,7 @@ final class LibraryStore: ItemStore {
         repCount: e.repCount, repTargetReached: e.repTargetReached,
         repHistory: e.repHistory.map { $0.map(repActionString) },
         plannedDurationSecs: e.plannedDurationSecs, achievedTempo: e.achievedTempo,
-        groupId: e.groupId)
+        groupId: e.groupId, variantId: e.variantId)
     }
     guard let data = try? JSONEncoder().encode(dtos), let json = String(data: data, encoding: .utf8)
     else { return "[]" }
@@ -519,7 +580,7 @@ final class LibraryStore: ItemStore {
         repCount: d.repCount, repTargetReached: d.repTargetReached,
         repHistory: d.repHistory.map { $0.map(repAction(from:)) },
         plannedDurationSecs: d.plannedDurationSecs, achievedTempo: d.achievedTempo,
-        groupId: d.groupId)
+        groupId: d.groupId, variantId: d.variantId)
     }
   }
 

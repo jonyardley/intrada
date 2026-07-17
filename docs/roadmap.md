@@ -43,13 +43,15 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 ### Current focus (2026-07)
 
 The lesson-to-mastery loop — see the
-[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087) — is
-progressing through workstream **B: track exercises per piece** (context
-derived from session blocks, #1081): B1 (core derivation, #1095) merged and B2
-(the iOS By-piece rows + per-piece score, #1097) is in review. Then R (suggest
-the next session, #1082) and C (step/key ladders, #1083). Workstream **A (capture a lesson in one pass,
-#1080) is on hold**: it's being rethought before more is built on it, and its
-merged core event was reverted (#1092). Check the
+[epic (#1087)](https://github.com/jonyardley/intrada/issues/1087) — has
+workstream **B: track exercises per piece** (#1081) merged (B1 #1095, B2
+#1097). **C: exercise steps** (#1083) is under way: C1 (the core variant
+mechanism + GRDB child table, spec in `specs/exercise-variants.md`) has
+landed; C2 (Steps UI + reflection picker), C3 (12-keys preset, closes #46 and
+unblocks the #1107 twelve-key scaffold ladder) and C4 (step management) follow.
+R (suggest the next session, #1082) remains queued. Workstream **A (capture a
+lesson in one pass, #1080) is on hold**: it's being rethought before more is
+built on it, and its merged core event was reverted (#1092). Check the
 [project board](https://github.com/users/jonyardley/projects/2) for what's
 actually in flight.
 

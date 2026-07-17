@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// One rung of an exercise's step ladder; "C", "Root position", "Land on
+/// One rung of an exercise's step ladder: "C", "Root position", "Land on
 /// the 3rd". Users see "Steps"; `variant` is the core's name and never
 /// appears on screen (#1083).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -27,9 +27,9 @@ pub struct Variant {
 pub const SOLID_SCORE_MIN: u8 = 8;
 
 /// Reconcile a ladder against the requested `labels` (ordered), matching by
-/// case-insensitive label. A match keeps its id; and so its score history;
-/// adopting the incoming casing and position. `updated_at` bumps only on rows
-/// that actually changed (per-row LWW hygiene).
+/// case-insensitive label. A match keeps its id (and so its score history)
+/// and adopts the incoming casing and position. `updated_at` bumps only on
+/// rows that actually changed (per-row LWW hygiene).
 pub fn reconcile_variants(
     existing: Vec<Variant>,
     labels: &[String],

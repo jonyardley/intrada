@@ -372,13 +372,13 @@ struct LinkedExercisePickerSheet: View {
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
         LibraryItemView(
           id: "exercise-3", itemType: .exercise, title: "Arpeggios in Db", subtitle: "",
           key: "Db", modality: .major, tempo: nil, tempoMarking: nil, tempoBpm: nil,
           notes: nil, tags: [], createdAt: "", updatedAt: "", practice: nil,
           latestAchievedTempo: nil, priority: false, linkedExercises: [], linkedFromPieces: [],
-          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil),
+          exerciseContexts: [], scaffoldPreview: nil, chordChart: nil, variants: []),
       ],
       linkedIds: ["exercise-1"],
       onApply: { _ in })

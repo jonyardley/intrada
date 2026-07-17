@@ -603,7 +603,7 @@ final class StoreEffectLoopTests: XCTestCase {
       position: 0, durationSecs: 0, status: .notAttempted,
       notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
       repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
-      groupId: nil)
+      groupId: nil, variantId: nil)
     let blob = ActiveSession(
       id: "recovered", entries: [blobEntry], currentIndex: 0,
       currentItemStartedAt: "2026-06-16T08:00:00Z", sessionStartedAt: "2026-06-16T08:00:00Z",
@@ -616,6 +616,56 @@ final class StoreEffectLoopTests: XCTestCase {
       "recovery must re-anchor the running item's timer to `now`")
     _ = try bridge.update(.session(.abandonSession))
     XCTAssertNil(try bridge.view().activeSession, "abandon after recover returns to Idle")
+  }
+
+  /// Real-bridge step-ladder lifecycle (#1083 C1): SetVariants and
+  /// UpdateEntryVariant have never crossed the live bincode bridge from Swift
+  /// before; a wire break here is the silent no-op class (#846). Drives
+  /// ladder create → reorder-preserves-ids → per-entry attribution set/clear.
+  func testRealBridgeStepLadderAndEntryAttribution() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(
+      .item(
+        .add(
+          CreateItem(
+            title: "Shells", kind: .exercise, composer: nil, key: nil, modality: nil,
+            tempo: nil, notes: nil, tags: []))))
+    let exId = try XCTUnwrap(try bridge.view().items.first?.id)
+
+    _ = try bridge.update(.item(.setVariants(id: exId, labels: ["C", "F", "B♭"])))
+    let afterSet = try bridge.view()
+    let ladder = try XCTUnwrap(afterSet.items.first?.variants)
+    XCTAssertEqual(
+      ladder.map(\.label), ["C", "F", "B♭"],
+      "the ladder should land (err=\(afterSet.error ?? "nil"))")
+    XCTAssertTrue(ladder.allSatisfy { !$0.isSolid }, "an unrated ladder has no solid steps")
+    XCTAssertEqual(ladder.first?.isCurrent, true, "an unrated ladder starts at step one")
+    let stepId = try XCTUnwrap(ladder.first?.id)
+
+    // Reorder must keep ids (and so score history); reconcile-by-label.
+    _ = try bridge.update(.item(.setVariants(id: exId, labels: ["F", "C", "B♭"])))
+    let reordered = try XCTUnwrap(try bridge.view().items.first?.variants)
+    XCTAssertEqual(
+      reordered.first { $0.label == "C" }?.id, stepId, "reordering keeps each step's id")
+
+    // Practise it to the summary, then attribute the entry to a step + clear.
+    _ = try bridge.update(.session(.startBuilding))
+    _ = try bridge.update(.session(.addToSetlist(itemId: exId)))
+    _ = try bridge.update(.session(.startSession(now: "2026-07-17T10:00:00Z")))
+    _ = try bridge.update(.session(.nextItem(now: "2026-07-17T10:10:00Z")))
+    let summary = try bridge.view()
+    let entryId = try XCTUnwrap(summary.summary?.entries.first?.id)
+
+    _ = try bridge.update(.session(.updateEntryVariant(entryId: entryId, variantId: stepId)))
+    let attributed = try bridge.view()
+    XCTAssertEqual(
+      attributed.summary?.entries.first?.variantId, stepId,
+      "the step attribution should round-trip (err=\(attributed.error ?? "nil"))")
+    _ = try bridge.update(.session(.updateEntryVariant(entryId: entryId, variantId: nil)))
+    XCTAssertNil(
+      try bridge.view().summary?.entries.first?.variantId,
+      "clearing the attribution round-trips")
   }
 
   /// App effects come from `notify_shell` — fire-and-forget notifications the
@@ -677,7 +727,7 @@ final class StoreEffectLoopTests: XCTestCase {
     id: "p1", title: "Etude", kind: .piece, composer: "Chopin", key: nil, modality: nil,
     tempo: nil,
     notes: nil, tags: [], linkedExerciseIds: [], createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil)
+    updatedAt: "2026-01-01T00:00:00Z", priority: false, chordChart: nil, variants: [])
 
   private func mockSession() -> URLSession {
     let config = URLSessionConfiguration.ephemeral
