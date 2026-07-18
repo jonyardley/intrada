@@ -12,13 +12,15 @@ struct LibraryDetailScreen: View {
   @State private var confirmingDelete = false
   @State private var editing = false
   @State private var editingLinks: Bool
+  @State private var editingSteps: Bool
   @State private var showingPicker = false
   @State private var editingChart = false
   @State private var showingScaffold = false
 
-  init(item: LibraryItemView, startEditingLinks: Bool = false) {
+  init(item: LibraryItemView, startEditingLinks: Bool = false, startEditingSteps: Bool = false) {
     self.item = item
     _editingLinks = State(initialValue: startEditingLinks)
+    _editingSteps = State(initialValue: startEditingSteps)
   }
 
   var body: some View {
@@ -436,9 +438,25 @@ struct LibraryDetailScreen: View {
 
   private var stepsSection: some View {
     VStack(alignment: .leading, spacing: IntradaSpacing.cardCompact) {
-      SectionHeader(title: "Steps")
+      stepsHeader
       if item.variants.isEmpty {
         stepsEmptyState
+      } else if editingSteps {
+        VStack(spacing: 0) {
+          ForEach(Array(item.variants.enumerated()), id: \.element.id) { index, step in
+            if index > 0 {
+              HairlineDivider()
+            }
+            StepEditRow(
+              step: step,
+              onRename: { renameStep(id: step.id, to: $0) },
+              onMoveUp: { moveStep(id: step.id, by: -1) },
+              onMoveDown: { moveStep(id: step.id, by: 1) },
+              onRemove: { removeStep(id: step.id) },
+              onDrop: { droppedId in moveStep(id: droppedId, before: step.id) })
+          }
+        }
+        .cardSurface()
       } else {
         VStack(spacing: 0) {
           ForEach(Array(item.variants.enumerated()), id: \.offset) { index, step in
@@ -449,6 +467,24 @@ struct LibraryDetailScreen: View {
           }
         }
         .cardSurface()
+      }
+    }
+    .onChange(of: item.variants.isEmpty) { _, isEmpty in
+      if isEmpty { editingSteps = false }
+    }
+  }
+
+  private var stepsHeader: some View {
+    HStack(alignment: .firstTextBaseline) {
+      Eyebrow("Steps")
+      Spacer()
+      if !item.variants.isEmpty {
+        Button(editingSteps ? "Done" : "Edit") {
+          editingSteps.toggle()
+        }
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .accessibilityLabel(editingSteps ? "Done editing steps" : "Edit steps")
       }
     }
   }
@@ -465,6 +501,52 @@ struct LibraryDetailScreen: View {
   }
 
   private func addKeyPreset(_ labels: [String]) {
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.setVariants(id: item.id, labels: labels)))
+    if store.viewModel?.errorSeq == before {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
+  private func renameStep(id: String, to newLabel: String) {
+    store.send(.item(.renameVariant(itemId: item.id, variantId: id, newLabel: newLabel)))
+  }
+
+  private func moveStep(id: String, by delta: Int) {
+    var ids = item.variants.map(\.id)
+    guard let index = ids.firstIndex(of: id) else { return }
+    let dest = index + delta
+    guard dest >= 0, dest < ids.count else { return }
+    ids.swapAt(index, dest)
+    reorderSteps(ids)
+  }
+
+  // Drop-onto-a-row reorder: move the dragged step to just before the target.
+  private func moveStep(id: String, before targetId: String) {
+    guard id != targetId else { return }
+    var ids = item.variants.map(\.id)
+    guard ids.contains(id), let sourceIndex = ids.firstIndex(of: id) else { return }
+    ids.remove(at: sourceIndex)
+    let insertIndex = ids.firstIndex(of: targetId) ?? ids.count
+    ids.insert(id, at: insertIndex)
+    reorderSteps(ids)
+  }
+
+  // Reordering existing labels resolves by label match (core-tested), so no
+  // labels actually change — only position — and every id/score history is
+  // preserved.
+  private func reorderSteps(_ orderedIds: [String]) {
+    let labelsById = Dictionary(uniqueKeysWithValues: item.variants.map { ($0.id, $0.label) })
+    let labels = orderedIds.compactMap { labelsById[$0] }
+    let before = store.viewModel?.errorSeq
+    store.send(.item(.setVariants(id: item.id, labels: labels)))
+    if store.viewModel?.errorSeq == before {
+      UISelectionFeedbackGenerator().selectionChanged()
+    }
+  }
+
+  private func removeStep(id: String) {
+    let labels = item.variants.filter { $0.id != id }.map(\.label)
     let before = store.viewModel?.errorSeq
     store.send(.item(.setVariants(id: item.id, labels: labels)))
     if store.viewModel?.errorSeq == before {
@@ -748,6 +830,70 @@ private struct StepRow: View {
   }
 }
 
+/// Edit-mode row: drag handle (native drag reorder) + inline rename field +
+/// remove button. VoiceOver gets move-up/move-down actions since a drag
+/// gesture alone isn't screen-reader-operable.
+private struct StepEditRow: View {
+  let step: VariantView
+  let onRename: (String) -> Void
+  let onMoveUp: () -> Void
+  let onMoveDown: () -> Void
+  let onRemove: () -> Void
+  let onDrop: (String) -> Void
+
+  @State private var label: String
+
+  init(
+    step: VariantView, onRename: @escaping (String) -> Void, onMoveUp: @escaping () -> Void,
+    onMoveDown: @escaping () -> Void, onRemove: @escaping () -> Void,
+    onDrop: @escaping (String) -> Void
+  ) {
+    self.step = step
+    self.onRename = onRename
+    self.onMoveUp = onMoveUp
+    self.onMoveDown = onMoveDown
+    self.onRemove = onRemove
+    self.onDrop = onDrop
+    _label = State(initialValue: step.label)
+  }
+
+  var body: some View {
+    HStack(spacing: IntradaSpacing.cardCompact) {
+      Image(systemName: "line.3.horizontal")
+        .imageScale(.small)
+        .foregroundStyle(IntradaColor.inkFaint)
+        .accessibilityLabel("Reorder \(step.label)")
+        .accessibilityHint("Drag to change this step's position")
+        .accessibilityAction(named: "Move up", onMoveUp)
+        .accessibilityAction(named: "Move down", onMoveDown)
+        .draggable(step.id)
+      TextField("Step label", text: $label)
+        .font(IntradaFont.cardTitle())
+        .foregroundStyle(IntradaColor.ink)
+        .onChange(of: label) { _, value in
+          let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+          guard !trimmed.isEmpty, trimmed != step.label else { return }
+          onRename(trimmed)
+        }
+      Button(action: onRemove) {
+        Image(systemName: "minus.circle")
+          .font(IntradaFont.bodyMedium)
+          .foregroundStyle(IntradaColor.danger)
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel("Remove \(step.label) from steps")
+    }
+    .padding(.vertical, IntradaSpacing.cardCompact)
+    .padding(.horizontal, IntradaSpacing.card)
+    .background(IntradaColor.cardFill)
+    .dropDestination(for: String.self) { items, _ in
+      guard let droppedId = items.first else { return false }
+      onDrop(droppedId)
+      return true
+    }
+  }
+}
+
 private struct ByPieceRow: View {
   let context: ExerciseContextView
   let locale: Locale
@@ -904,6 +1050,18 @@ private struct LinkedExerciseEditRow: View {
     var body: some View {
       NavigationStack {
         LibraryDetailScreen(item: item, startEditingLinks: true)
+      }
+    }
+  }
+
+  /// Snapshot seed: renders the detail screen with editingSteps already on,
+  /// so the test can capture the Steps edit-mode row layout without UI
+  /// interaction.
+  struct EditingStepsWrapper: View {
+    let item: LibraryItemView
+    var body: some View {
+      NavigationStack {
+        LibraryDetailScreen(item: item, startEditingSteps: true)
       }
     }
   }

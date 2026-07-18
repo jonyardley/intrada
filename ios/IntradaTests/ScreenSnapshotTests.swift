@@ -457,6 +457,13 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(pushed, store: store), as: config)
   }
 
+  // #1083 C4: Steps edit mode — drag handle, inline rename field, remove button.
+  func testExerciseDetailStepsEditing() {
+    let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))
+    let editing = EditingStepsWrapper(item: .previewExerciseWithSteps)
+    assertSnapshot(of: host(editing, store: store), as: config)
+  }
+
   // #1083 C2: Steps section — solid / current / unrated ring states.
   func testExerciseDetailWithSteps() {
     let store = Store(bridge: PreviewBridge(items: [.previewExerciseWithSteps]))

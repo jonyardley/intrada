@@ -133,10 +133,19 @@ pub enum ItemEvent {
     },
     /// Append one step; sugar over the same reconciliation as `SetVariants`
     /// (shared validation; a tombstoned label resurrects, never duplicates).
-    /// Rename/reorder/archive are C4.
     AddVariant {
         item_id: String,
         label: String,
+    },
+    /// Rename a step in place, matched by `variant_id` rather than label —
+    /// `SetVariants`'s label-keyed reconciliation can't express a rename
+    /// (a changed label is indistinguishable from remove+add, which would
+    /// drop score history). `new_label` is validated against the item's
+    /// other live steps for duplicates (#1083 C4).
+    RenameVariant {
+        item_id: String,
+        variant_id: String,
+        new_label: String,
     },
 }
 
@@ -665,6 +674,82 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
             let item = item.clone();
             save_or_put(model, item)
         }
+        ItemEvent::RenameVariant {
+            item_id,
+            variant_id,
+            new_label,
+        } => {
+            if !model.local_first {
+                // Same scope-out as SetVariants/AddVariant (#1083; invariant 6).
+                model.last_error = Some("Steps aren't available online yet".to_string());
+                return crux_core::render::render();
+            }
+
+            if let Err(e) = validation::validate_variant_host(&item_id, model) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let Some(item) = model.items.iter_mut().find(|i| i.id == item_id) else {
+                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
+                return crux_core::render::render();
+            };
+
+            let Some(variant) = item
+                .variants
+                .iter()
+                .find(|v| v.id == variant_id && v.deleted_at.is_none())
+            else {
+                model.last_error = Some(LibraryError::NotFound { id: variant_id }.to_string());
+                return crux_core::render::render();
+            };
+
+            let new_label = new_label.trim().to_string();
+            if new_label == variant.label {
+                // No-op: don't bump the parent LWW stamp or write.
+                model.last_error = None;
+                return crux_core::render::render();
+            }
+
+            // Validate the substituted label against the item's other live
+            // steps — same duplicate/length/count checks AddVariant gets,
+            // applied to the renamed value rather than an appended one.
+            let mut live: Vec<&Variant> = item
+                .variants
+                .iter()
+                .filter(|v| v.deleted_at.is_none())
+                .collect();
+            live.sort_by_key(|v| v.position);
+            let labels: Vec<String> = live
+                .iter()
+                .map(|v| {
+                    if v.id == variant_id {
+                        new_label.clone()
+                    } else {
+                        v.label.clone()
+                    }
+                })
+                .collect();
+
+            if let Err(e) = validation::validate_variant_labels(&labels) {
+                model.last_error = Some(e.to_string());
+                return crux_core::render::render();
+            }
+
+            let now = chrono::Utc::now();
+            let variant = item
+                .variants
+                .iter_mut()
+                .find(|v| v.id == variant_id)
+                .expect("checked above");
+            variant.label = new_label;
+            variant.updated_at = now;
+            item.updated_at = now;
+            model.last_error = None;
+
+            let item = item.clone();
+            save_or_put(model, item)
+        }
     }
 }
 
@@ -1019,6 +1104,252 @@ mod tests {
         let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
         assert!(ex.variants.is_empty(), "blank label adds nothing");
         assert!(model.last_error.is_some());
+    }
+
+    // ── RenameVariant ──
+
+    #[test]
+    fn rename_variant_renames_in_place_keeping_id_and_history() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let c_id = exercise_variants(&model)
+            .iter()
+            .find(|v| v.label == "C")
+            .unwrap()
+            .id
+            .clone();
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c_id.clone(),
+                new_label: "Do".to_string(),
+            },
+        );
+
+        let variants = exercise_variants(&model);
+        let renamed = variants.iter().find(|v| v.id == c_id).unwrap();
+        assert_eq!(renamed.label, "Do", "label updated");
+        assert_eq!(variants.len(), 2, "no new row created");
+        assert!(
+            variants.iter().any(|v| v.label == "F"),
+            "other step untouched"
+        );
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert!(ex.updated_at >= before, "touches the item's updated_at");
+        assert!(model.last_error.is_none());
+        assert!(emits_save(&mut cmd, "ex-1"), "local-first persists");
+    }
+
+    #[test]
+    fn rename_variant_rejects_a_duplicate_against_another_live_step() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let c_id = exercise_variants(&model)
+            .iter()
+            .find(|v| v.label == "C")
+            .unwrap()
+            .id
+            .clone();
+
+        send(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c_id,
+                new_label: "f".to_string(),
+            },
+        );
+
+        assert!(
+            model.last_error.is_some(),
+            "case-insensitive duplicate rejected"
+        );
+        let variants = exercise_variants(&model);
+        assert!(variants.iter().any(|v| v.label == "C"), "unchanged");
+        assert!(variants.iter().any(|v| v.label == "F"), "unchanged");
+    }
+
+    #[test]
+    fn rename_variant_is_a_noop_without_a_save_when_unchanged() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+        let c_id = exercise_variants(&model)[0].id.clone();
+        let before = model
+            .items
+            .iter()
+            .find(|i| i.id == "ex-1")
+            .unwrap()
+            .updated_at;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c_id,
+                new_label: "C".to_string(),
+            },
+        );
+
+        let ex = model.items.iter().find(|i| i.id == "ex-1").unwrap();
+        assert_eq!(ex.updated_at, before, "unchanged label leaves the stamp");
+        assert!(!emits_save(&mut cmd, "ex-1"), "nothing to persist");
+        assert!(model.last_error.is_none());
+    }
+
+    #[test]
+    fn rename_variant_rejects_a_blank_label() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+        let c_id = exercise_variants(&model)[0].id.clone();
+
+        send(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c_id,
+                new_label: "   ".to_string(),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(exercise_variants(&model)[0].label, "C", "unchanged");
+    }
+
+    #[test]
+    fn rename_variant_on_missing_variant_surfaces_not_found() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+
+        send(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: "nope".to_string(),
+                new_label: "Do".to_string(),
+            },
+        );
+
+        assert!(model.last_error.is_some());
+        assert_eq!(exercise_variants(&model)[0].label, "C", "unchanged");
+    }
+
+    #[test]
+    fn rename_variant_on_a_tombstoned_step_surfaces_not_found() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string(), "F".to_string()],
+            },
+        );
+        let f_id = exercise_variants(&model)
+            .iter()
+            .find(|v| v.label == "F")
+            .unwrap()
+            .id
+            .clone();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+
+        send(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: f_id,
+                new_label: "Fa".to_string(),
+            },
+        );
+
+        assert!(
+            model.last_error.is_some(),
+            "a tombstoned step can't be renamed"
+        );
+    }
+
+    #[test]
+    fn rename_variant_online_mode_is_scoped_out_gracefully() {
+        let mut model = model_with_piece_and_exercise();
+        send(
+            &mut model,
+            ItemEvent::SetVariants {
+                id: "ex-1".to_string(),
+                labels: vec!["C".to_string()],
+            },
+        );
+        let c_id = exercise_variants(&model)[0].id.clone();
+        model.local_first = false;
+
+        let mut cmd = send_cmd(
+            &mut model,
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: c_id,
+                new_label: "Do".to_string(),
+            },
+        );
+
+        assert_eq!(exercise_variants(&model)[0].label, "C", "model unchanged");
+        assert!(
+            model.last_error.is_some(),
+            "scope-out is surfaced, not silent"
+        );
+        assert!(!emits_http(&mut cmd), "no HTTP");
+        assert!(!emits_save(&mut cmd, "ex-1"), "nothing persisted");
+    }
+
+    #[test]
+    fn rename_variant_event_round_trips_on_the_ffi_bincode_wire() {
+        crate::domain::types::assert_round_trips(crate::app::Event::Item(
+            ItemEvent::RenameVariant {
+                item_id: "ex-1".to_string(),
+                variant_id: "v-1".to_string(),
+                new_label: "Do".to_string(),
+            },
+        ));
     }
 
     #[test]
