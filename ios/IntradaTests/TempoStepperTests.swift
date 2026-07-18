@@ -76,3 +76,22 @@ final class ReflectionSheetStepSelectionTests: XCTestCase {
       "never leaves the picker unset — defaults to the first step")
   }
 }
+
+@MainActor
+final class AddStepsSheetTests: XCTestCase {
+  func testEmptyArrayTrimsToEmpty() {
+    XCTAssertEqual(AddStepsSheet.trimmedLabels([]), [])
+  }
+
+  func testAllWhitespaceRowsAreDropped() {
+    XCTAssertEqual(AddStepsSheet.trimmedLabels(["", "  ", "\n"]), [])
+  }
+
+  func testMixedBlankAndPopulatedRowsKeepsOnlyPopulated() {
+    XCTAssertEqual(AddStepsSheet.trimmedLabels(["C", "", "G", "  "]), ["C", "G"])
+  }
+
+  func testLeadingAndTrailingWhitespaceIsTrimmed() {
+    XCTAssertEqual(AddStepsSheet.trimmedLabels(["  C  ", " G"]), ["C", "G"])
+  }
+}
