@@ -7,6 +7,9 @@ struct ScoreRing: View {
   var showsScale: Bool = false
   /// Mastered variant: fills with `accent` instead of the usual `masteryFill`.
   var solid: Bool = false
+  /// Step-ladder variant: renders this text (e.g. a key letter) instead of the
+  /// numeral/rest glyph. Scales down and truncates for labels too long to fit.
+  var labelOverride: String? = nil
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.intradaMotionDisabled) private var motionDisabled
@@ -36,7 +39,13 @@ struct ScoreRing: View {
           .rotationEffect(.degrees(-90))
       }
       VStack(spacing: size * 0.02) {
-        if isUnrated {
+        if let labelOverride {
+          Text(labelOverride)
+            .font(IntradaFont.scoreNumeral(size * 0.33))
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+            .foregroundStyle(isUnrated ? IntradaColor.inkFaint : IntradaColor.ink)
+        } else if isUnrated {
           // "Not yet played" reads as a rest (see EighthRestShape).
           EighthRestShape()
             .fill(IntradaColor.inkFaint)

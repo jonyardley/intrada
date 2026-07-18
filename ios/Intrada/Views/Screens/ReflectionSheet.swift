@@ -123,33 +123,24 @@ struct ReflectionSheet: View {
     .padding(.bottom, IntradaSpacing.section)
   }
 
-  // Menu-driven, not a sheet: pre-selected, so the everyday save never slows
-  // down to make a choice — this is only for the rare "actually it was step 3".
+  // Tap-to-select chips, pre-selected to the current step: this is an input
+  // (unlike the display-only ladder on the detail screen), so SegmentedPills
+  // applies. The everyday save never touches it — only the rare "actually it
+  // was step 3" changes the selection.
   private var stepPicker: some View {
-    Menu {
-      ForEach(variants, id: \.id) { step in
-        Button(step.label) { selectedVariantId = step.id }
-      }
-    } label: {
-      HStack {
-        Text(selectedStepLabel)
-          .font(IntradaFont.body)
-          .foregroundStyle(IntradaColor.ink)
-        Spacer()
-        Image(systemName: "chevron.up.chevron.down")
-          .imageScale(.small)
-          .foregroundStyle(IntradaColor.inkFaint)
-      }
-      .padding(IntradaSpacing.cardCompact)
-      .cardSurface(cornerRadius: IntradaRadius.control)
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Step: \(selectedStepLabel)")
-    .accessibilityHint("Choose a different step")
+    SegmentedPills(
+      options: variants.map(\.id), selection: selectedVariantIdBinding, label: chipLabel)
   }
 
-  private var selectedStepLabel: String {
-    variants.first(where: { $0.id == selectedVariantId })?.label ?? "Choose a step"
+  private var selectedVariantIdBinding: Binding<String> {
+    Binding(
+      get: { selectedVariantId ?? variants.first?.id ?? "" },
+      set: { selectedVariantId = $0 })
+  }
+
+  private func chipLabel(for id: String) -> String {
+    guard let step = variants.first(where: { $0.id == id }) else { return "" }
+    return step.isCurrent ? "\(step.label) · current" : step.label
   }
 
   private func eyebrow(_ text: String) -> some View {
