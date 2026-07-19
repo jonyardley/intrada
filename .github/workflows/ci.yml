@@ -602,7 +602,7 @@ jobs:
       # Prerender marketing routes (/, /login) so crawlers see real
       # HTML content. Runs headless Chromium via Playwright against
       # the just-built dist/, writes to dist/prerendered/.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
       # Pin playwright to the version e2e resolves (e2e/package-lock.json) so the
@@ -663,7 +663,7 @@ jobs:
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: 'npm'
@@ -723,7 +723,7 @@ jobs:
     if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: 'npm'
