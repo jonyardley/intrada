@@ -1,19 +1,21 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-06-01.
+> Last reviewed: 2026-07-19.
 
-> ## ⚠️ CURRENT FOCUS: NATIVE iOS ONLY — web is paused
+> ## ⚠️ CURRENT FOCUS: NATIVE iOS ONLY — the web and Tauri shells are removed
 >
-> As of 2026-06, the **only** platform under active development is the
-> **native SwiftUI iOS app** (on the Crux core — see
-> [`specs/native-ios.md`](specs/native-ios.md)). **Do NOT build new features
-> in the Leptos web shell (`crates/intrada-web`) or the Tauri shell
-> (`crates/intrada-mobile`) — both are PAUSED.** New UI work lands in the
-> native iOS app. Design happens in **Claude Design** (see
+> As of 2026-07, the **only** shell is the **native SwiftUI iOS app** (on the
+> Crux core — see [`specs/native-ios.md`](specs/native-ios.md)). The Leptos
+> web shell (`crates/intrada-web`) and the Tauri iOS host
+> (`crates/intrada-mobile`) were **deleted** (see
+> [`docs/rebuild-review.md`](docs/rebuild-review.md) for the rationale) — do
+> not resurrect them or add new features assuming they exist. New UI work
+> lands in the native iOS app. Design happens in **Claude Design** (see
 > [`docs/design-workflow.md`](docs/design-workflow.md)); the living reference is
 > [`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html),
-> derived from `Theme.swift`. Implementations target SwiftUI, not Leptos. If a
-> request seems to imply web/Leptos work, confirm the platform before writing code.
+> derived from `Theme.swift`. Implementations target SwiftUI. If a request
+> seems to imply web/Leptos work, confirm the platform before writing code —
+> that shell no longer exists in this repo.
 
 ## Project Overview
 
@@ -23,46 +25,43 @@ build reusable routines, and view analytics. Organised around three pillars:
 **Plan** (library, routines), **Practice** (focus mode, timers, scoring),
 **Track** (analytics, insights).
 
-**Platform**: Active development is the **native SwiftUI iOS app** (on the Crux
-core). The **Leptos shell (`crates/intrada-web`)** historically shipped as both
-the web app (Cloudflare Workers) and the Tauri 2 iOS WKWebView host
-(`crates/intrada-mobile`) — **both are now paused** (see the banner above). The
-web shell still builds and its tests still run in CI, but it is not receiving
-new features; treat it as maintenance-only until web is explicitly un-paused.
+**Platform**: The **native SwiftUI iOS app** (on the Crux core) is the only
+shell. The Leptos web shell and the Tauri 2 iOS WKWebView host were removed
+(see the banner above); two pieces of native Swift worth reusing from the
+Tauri plugins (background audio session handling, a Live Activity
+implementation) were preserved as reference under `ios/Reference/` — see its
+README.
 
 ## Project Structure
 
 ```text
 crates/
   intrada-core/          # Pure Crux core — business logic, no I/O
-  intrada-web/           # Leptos 0.8 CSR + WASM — UI shell (web + iOS)
+  intrada-ffi/           # UniFFI bridge — generates the Swift bindings
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
-  intrada-mobile/        # Tauri 2 iOS host — wraps intrada-web in WKWebView
-    src-tauri/           #   Rust host, tauri.conf.json, Swift plugins
+ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
+  Reference/             #   Reference Swift preserved from the removed Tauri shell (not built)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Product roadmap (single source of truth)
-e2e/                     # Playwright E2E tests
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
 ## Tech Stack
 
 - **Rust** stable (1.90.0 CI; MSRV 1.75+, intrada-api 1.78+)
-- **Core**: crux_core 0.18.0, serde, ulid, chrono, thiserror
+- **Core**: crux_core 0.19.0, serde, ulid, chrono, thiserror
 - **API**: axum 0.8, tokio, libsql 0.9 (Turso), tower-http (CORS), jsonwebtoken 10
-- **Web + iOS UI**: leptos 0.8 (CSR), Tailwind CSS v4, trunk 0.21
-- **iOS host**: Tauri 2, iOS 17.0+, WKWebView, tauri-plugin-haptics, tauri-plugin-deep-link
-- **Auth**: Clerk (Google OAuth), JWT RS256 against JWKS
+- **Native iOS**: SwiftUI, iOS 17.0+, UniFFI + facet typegen for bindings, GRDB (on-device persistence)
+- **Auth**: Clerk (Google OAuth) in the browser flow, exchanged for a long-lived PAT on iOS; JWT RS256 against JWKS
 - **DB**: Turso (managed libsql/SQLite) via HTTP
-- **E2E**: Playwright
-- **CI/CD**: GitHub Actions → Cloudflare Workers (web) + Fly.io (API)
+- **CI/CD**: GitHub Actions → Fly.io (API) + native iOS build/test; TestFlight via a separate release lane
 
 ## Commands
 
 ```bash
 just check                 # fmt-check → lint → test → hygiene; mirrors CI — run before push
-just test                  # nextest + doc tests (CI's exact exclusions)
-just lint                  # clippy -D warnings (CI's exact targets + exclusions)
+just test                  # nextest + doc tests, same as CI's `test` job
+just lint                  # clippy -D warnings, same targets as CI's `clippy` job
 just hygiene               # typos + cargo-shear (CI's Security & hygiene job)
 cargo test -p intrada-api  # API tests only
 just ios-fmt               # native app: format Swift sources in place (swift format)
@@ -71,7 +70,6 @@ just ios                   # native app: regen bindings (if core changed) + open
 just ios-run               # native app: build + launch on simulator + screenshot
 just ios-logs              # native app: stream booted-sim logs, filtered to our subsystem
 just testflight            # native app: signed Release .ipa → TestFlight (needs setup; see below)
-just tauri-dev             # Tauri shell (on hold): iOS dev session (sim)
 ```
 
 `just testflight` builds a signed Release `.ipa` and uploads it to TestFlight
@@ -91,7 +89,7 @@ leaves no trace where Sentry has no DSN (CI always; dev unless
 `just ios` / `just ios-run` auto-regenerate the Swift bindings only when
 `intrada-core`/`intrada-ffi` changed (a `ios/generated/.gen-stamp` hash), so
 they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
-full regenerate. The Tauri `tauri-*` recipes are the on-hold WKWebView shell.
+full regenerate.
 
 **Simulator build/snapshot/UI testing** — the `xcrun simctl` / `xcodebuild`
 CLI workflow (screenshots via `xcrun simctl io <udid> screenshot`), the optional
@@ -162,29 +160,19 @@ from `origin/main`. Bypass for legitimate edge cases:
 
 First-time iOS setup (run once after cloning or pulling this branch):
 ```bash
-cargo install tauri-cli --version "^2" --locked   # Tauri CLI
-brew install cocoapods                             # CocoaPods (required by Tauri iOS)
-brew install xcodegen                              # xcodegen (required by Tauri iOS)
+brew install xcodegen   # generates the Xcode project from ios/project.yml
 # Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
-just tauri-init   # generates Xcode project + applies post-init patches
+just ios   # regenerates bindings (if needed) + generates the Xcode project + opens it
 ```
 
-`just tauri-init` runs `cargo tauri ios init` then the two post-init Ruby scripts
-(`fix-ios-build-config.rb`, `add-live-activity-target.rb`) that patch the
-generated `project.yml`. Re-run it after any `cargo tauri ios init` regeneration.
+If you're forking this repo, update the development team in `ios/project.yml`
+to your own Apple Team ID (find it at developer.apple.com → Membership, or
+Xcode → Settings → Accounts).
 
-If you're forking this repo, update `bundle.iOS.developmentTeam` in
-`crates/intrada-mobile/src-tauri/tauri.conf.json` to your own Apple Team ID
-(find it at developer.apple.com → Membership, or Xcode → Settings → Accounts).
-
-`just tauri-dev` reads `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY` from your
-shell or a `.env` file at the repo root (the justfile uses `set dotenv-load`).
-Without them set, the build will use defaults and Clerk auth won't work.
-
-**Development security warning**: `just tauri-dev` binds the Trunk dev server to
-`0.0.0.0:8080` so the iOS simulator can reach it via the host's LAN IP.
-Anyone on your Wi-Fi network can reach it (and the proxied `/api/`) while it's
-running. Don't run `tauri-dev` on public/untrusted Wi-Fi.
+`just ios` / `just ios-run` read `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY`
+from your shell or a `.env` file at the repo root (the justfile uses
+`set dotenv-load`). Without them set, the build will use defaults and Clerk
+auth won't work.
 
 ## Knowledge graph (graphify)
 
@@ -216,28 +204,28 @@ retired docs.
 ### Crux capabilities pattern
 
 ```text
-User → Events → crux_core (Rust) → Effects (Http, KeyValue, Render) → Shell → I/O
+User → Events → crux_core (Rust) → Effects (Http, Persistence, App, Render) → Shell (Swift) → I/O
 ```
 
 1. **Core owns all logic.** HTTP requests built in core via `crux_http`. Core does
-   all JSON serialization. Shells never understand domain types.
-2. **Shells are dumb pipes.** Receive `HttpRequest` (URL, method, headers, bytes),
-   return `HttpResponse`. No domain type imports.
-3. **One UI codebase.** The Leptos shell talks to the core via `wasm-bindgen` —
-   no typegen step. Domain types live in Rust and the WASM consumer uses them
-   directly.
+   all JSON serialization. The shell never understands domain types.
+2. **The shell is a dumb pipe.** Receives `HttpRequest` (URL, method, headers, bytes)
+   and fulfils it via `URLSession`, returns `HttpResponse`. No domain type imports.
+3. **Typed bindings, no hand-written FFI.** `Event`/`Effect`/`ViewModel` cross the
+   bridge via generated bincode serializers (facet typegen + UniFFI) — Swift never
+   hand-encodes a domain type.
 
 ### State boundary
 
 | State kind | Where it lives |
 |------------|---------------|
 | Domain data | Crux `Model` → `ViewModel` (single source of truth) |
-| UI interaction | Leptos signals (web + iOS via Tauri) |
-| Crash recovery | localStorage (`intrada:session-in-progress` only) |
-| iOS auth credentials | localStorage (`__ios_pat`, `__ios_user_id`, `__ios_user_email`) |
+| UI interaction | SwiftUI `@State` / `@Observable` view state |
+| Crash recovery | iOS UserDefaults (`AppEffect::SaveSessionInProgress`) |
+| Local-first persistence | On-device GRDB/SQLite (`PersistenceOperation` effect) |
 
 Domain state flows through `Event` → `Model` → `ViewModel`. Never store domain
-data in shell-local state. UI-only state stays in Leptos signals.
+data in shell-local state. UI-only state stays in SwiftUI.
 
 ### Other patterns
 
@@ -265,9 +253,9 @@ data in shell-local state. UI-only state stays in Leptos signals.
 
 ## Native iOS Shell (SwiftUI + Crux)
 
-> Applies once Phase A lands. The native SwiftUI app is replacing the Tauri
-> shell — see [`specs/native-ios.md`](specs/native-ios.md). App-first,
-> local-first. These rules are non-negotiable when touching the native shell.
+> The native SwiftUI app is the only shell — see
+> [`specs/native-ios.md`](specs/native-ios.md). App-first, local-first. These
+> rules are non-negotiable when touching the native shell.
 
 **The shell is a dumb pipe — it owns ZERO domain logic.** It sends `Event`s,
 fulfils `Effect`s (HTTP via `URLSession`, persistence via GRDB, etc.), and
@@ -436,54 +424,50 @@ can't un-ship it.
 
 ## Authentication
 
-Two auth paths, same API surface:
-
-- **Web**: Clerk JS (cookies) → short-lived JWT on every request. Standard
-  browser flow, Clerk handles Google OAuth natively.
 - **iOS**: Google OAuth runs in Safari via `ASWebAuthenticationSession` (Google
-  blocks OAuth in WKWebView). The resulting Clerk JWT is exchanged for a
-  long-lived PAT via `POST /api/auth/ios/exchange`, stored in localStorage.
-  All subsequent API calls use the PAT. No Clerk JS in the WKWebView.
+  blocks OAuth in an in-app browser). The resulting Clerk JWT is exchanged for
+  a long-lived PAT via `POST /api/auth/ios/exchange`. All subsequent API calls
+  use the PAT.
 
 Common:
 - JWT RS256 validated against JWKS. PATs validated via SHA-256 hash lookup.
 - All DB queries scoped by `user_id` (from JWT `sub` or PAT owner).
 - When `CLERK_ISSUER_URL` unset: auth disabled (local dev only).
-- Frontend retries once with fresh token on 401.
 - Key files: `intrada-api/src/auth.rs`, `intrada-api/src/routes/auth_ios.rs`,
-  `intrada-api/src/clerk.rs`, `intrada-web/index.html` (JS bridge),
-  `intrada-web/static/ios-auth.html`
+  `intrada-api/src/clerk.rs`.
 
 ## Environment Variables
 
 ### API (intrada-api)
 `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (required), `CLERK_ISSUER_URL` (required
-in prod), `ALLOWED_ORIGIN` (default `http://localhost:8080`), `PORT` (default 3001)
+in prod), `ALLOWED_ORIGIN` (see SETUP.md §2), `PORT` (default 3001)
 
 ### R2 photo storage (optional — API starts without it, photo endpoints return 500)
 `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`,
-`R2_PUBLIC_URL`. See `SETUP.md` §4 for provisioning steps.
+`R2_PUBLIC_URL`. See `SETUP.md` §3 for provisioning steps.
 
-### Web (compile-time)
+### Native iOS build (compile-time)
 `CLERK_PUBLISHABLE_KEY`, `INTRADA_API_URL` (default `https://intrada-api.fly.dev`)
 
 ### Native iOS (optional)
 `SENTRY_DSN_NATIVE` — put in `.env` to capture crash/error events from local dev
-builds (reports to the `intrada-mobile` Sentry project, tagged
-`environment=development`). `xcodegen` writes it to the `SENTRY_DSN` build
-setting; the target's partial `Info.plist` (`ios/Intrada/Info.plist`) carries
-`SENTRY_DSN = $(SENTRY_DSN)` so the value lands in the built plist — a custom key
-**can't** ride `INFOPLIST_KEY_*`, which `GENERATE_INFOPLIST_FILE` only honours for
-Apple-recognised keys (that gap meant Sentry silently never started). The
-justfile's `set dotenv-load` feeds the var in. **Unset in CI**, so test/smoke runs
-send nothing. The app only starts Sentry on a real `https://` DSN, so an empty or
-unexpanded value is a safe no-op.
+builds, tagged `environment=development`. `xcodegen` writes it to the
+`SENTRY_DSN` build setting; the target's partial `Info.plist`
+(`ios/Intrada/Info.plist`) carries `SENTRY_DSN = $(SENTRY_DSN)` so the value
+lands in the built plist — a custom key **can't** ride `INFOPLIST_KEY_*`, which
+`GENERATE_INFOPLIST_FILE` only honours for Apple-recognised keys (that gap
+meant Sentry silently never started). The justfile's `set dotenv-load` feeds
+the var in. **Unset in CI**, so test/smoke runs send nothing. The app only
+starts Sentry on a real `https://` DSN, so an empty or unexpanded value is a
+safe no-op.
 
 ## Design System Rules
 
-The Leptos shell uses a dark-on-dark glassmorphism aesthetic. Web and iOS run
-the same UI codebase; iOS-specific look-and-feel is layered on with platform
-gating (see iOS native-feel rules below).
+The native app uses a "Paper & Score" light theme: warm paper backgrounds,
+serif titles (Source Serif 4), sans body text (Inter). All colour/type/motion
+tokens live in `Theme.swift` (`ios/Intrada/DesignSystem/Theme.swift`); the
+shareable reference export is
+[`design/intrada-design-system.dc.html`](design/intrada-design-system.dc.html).
 
 **Interaction & design principles** (the *why* behind the visual rules, plus how
 we think about friction, simplicity, and clutter) live in
@@ -496,16 +480,21 @@ disclosure, and reversible-by-default. It also carries a dated decisions log
 (T1–T6) recording the reasoning behind each ruling — when a new decision is
 made, append to that log rather than deciding silently.
 
-### Hierarchy: Tokens → Utilities → Components → Views
+### Hierarchy: Tokens → Modifiers → Components → Screens
 
-1. **Tokens first**: Every colour traces to a named token. Never use raw colours
-   (`text-gray-400`). Source: `crates/intrada-web/style/input.css`.
-2. **Reuse before creating**: Check existing components before building new
-   markup. Source: `crates/intrada-web/src/components/`.
-3. **Design catalogue**: New components get a showcase entry in
-   `views/design_catalogue.rs`.
-4. **Spacing tokens only**: `p-card` (16), `p-card-compact` (12),
-   `p-card-comfortable` (24).
+1. **Tokens first**: Every colour, font, spacing, and radius value traces to a
+   named token in `Theme.swift` (`IntradaColor`, `IntradaFont`, `IntradaSpacing`,
+   `IntradaRadius`). Never hard-code a hex, a raw `.padding(16)`, or
+   `cornerRadius: 12`.
+2. **Reuse before creating**: Check `ios/Intrada/DesignSystem/` and
+   `ios/Intrada/Views/Components/` before building new markup.
+3. **Known primitives to reach for**: `TagChip`, `TypeBadge`, `ScoreRing`,
+   `BottomSheet`, `SegmentedPills`, `CardSurface`/`CardShadow`, `GlobalBanner`,
+   `FormErrorBanner`, `PlaceholderContent` (empty state), `ScreenScaffold`
+   (shared screen shell), `SectionHeader`, `HairlineDivider`.
+4. **Every top-level screen** is built from `ScreenScaffold`
+   (`ios/Intrada/DesignSystem/ScreenScaffold.swift`) so navigation chrome,
+   safe areas, and background stay consistent.
 
 ### Animated reveals need an opaque backing
 
@@ -526,56 +515,40 @@ reveal animation without checking what shows through behind it.
 
 ### Don't deviate from the system unless you're explicitly redesigning
 
-Hand-rolled markup that duplicates an existing primitive is the #1 source of
+Hand-rolled views that duplicate an existing primitive are the #1 source of
 visual drift in this codebase. Before writing UI code:
 
-- **Grep first.** If you're about to write `inline-flex items-center rounded-md
-  px-2 py-0.5 text-xs font-medium`, `text-2xl font-bold text-primary`,
-  `rounded-lg bg-surface-secondary px-3 py-2`, or any other shape that already
-  appears in the codebase — stop and use the existing utility/component instead.
-- **Extend, don't clone.** If a primitive *almost* fits, add a variant prop
-  (e.g. `compact: bool` on `SetlistEntryRow`) or a new utility class once, in
-  the shared place. Don't ship a parallel one-off.
-- **Known primitives to reach for**: `AccentRow`, `SetlistEntryRow` (with
-  `compact` mode for review-sheet style rows), `BuilderItemRow`, `BottomSheet`
-  (with `nav_action_label` for the iOS Mail-compose pattern), `Button`,
-  `Card`, `DetailGroup`, `GroupedList`, `EmptyState`, `TypeBadge`,
-  `InlineTypeIndicator`, `LibraryTypeTabs`, `TypeTabs`. Typography utilities:
-  `page-title`, `card-title`, `section-title`, `field-label`, `form-label`.
-  Spacing: `p-card`, `p-card-compact`, `p-card-comfortable`.
+- **Grep first.** If you're about to hand-roll a chip, badge, sheet, or card
+  that already has a component under `ios/Intrada/DesignSystem/` or
+  `ios/Intrada/Views/Components/` — stop and use the existing one instead.
+- **Extend, don't clone.** If a primitive *almost* fits, add a parameter (the
+  way `SegmentedPills` and `LibraryItemCard` already take variant params) to
+  the shared component. Don't ship a parallel one-off.
+- **Typography**: use the `IntradaFont` tokens (e.g. `.pageTitle`,
+  `.cardTitle`, `.sectionTitle`, `.fieldLabel`), never a raw `.font(.system(...))`.
+- **Spacing**: use `IntradaSpacing` tokens (`controlGap`, `cardCompact`, `row`,
+  `card`), never a literal `.padding(16)`.
 
 Deviation is only acceptable when **explicitly redesigning** a surface — and
 that should be a deliberate, flagged conversation (Claude Design first, then Plan
 mode), not an accident inside an unrelated feature PR. A redesign produces
-*updated tokens / primitives*, not a hand-rolled clone in a single view.
+*updated tokens / primitives* in `Theme.swift`, not a hand-rolled clone in a
+single view.
 
-### iOS native-feel rules (Leptos shell in Tauri WKWebView)
+### iOS native-feel rules
 
-These rules apply when building or modifying views/components that will run
-inside the Tauri iOS shell. Gate iOS-only CSS with `[data-platform="ios"]`
-(set on `<html>` from `lib.rs` `setup` hook on iOS) — never with raw media
-queries alone.
-
-- **CSS reset**: `-webkit-touch-callout: none`, `-webkit-tap-highlight-color: transparent`,
-  `-webkit-user-select: none` on chrome (not text content), `touch-action: manipulation`
-  on interactive elements, `overscroll-behavior: none` on root.
-- **Inputs**: `font-size: 16px` minimum (prevents iOS zoom-on-focus).
-- **Safe areas**: `env(safe-area-inset-*)` on tab bar, headers, sticky bars.
-  `viewport-fit=cover` already set in `index.html`.
-- **Scroll**: only inner regions scroll; `overscroll-behavior: contain` on scroll containers.
-- **View Transitions**: wrap route changes in `document.startViewTransition()` via wasm-bindgen.
-- **Haptics**: use `tauri-plugin-haptics` — `selection` for tabs, `light` for taps,
-  `success` for saves, `warning` for destructive confirms.
-- **iPad**: all list→detail screens use `<SplitView>` (CSS-grid sidebar + detail pane,
-  viewport-driven visibility). Build it before the view, not as a retrofit.
-- **Typography**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui`.
-- **Animations**: Motion One spring config `stiffness: 300, damping: 30` ≈ iOS default.
-
-### Web-specific rules
-
-- Never use raw Tailwind colour classes. Use token classes (`text-primary`, etc.).
-- Typography utilities: `card-title`, `section-title`, `field-label`, `form-label`.
-- New components go in `components/` and re-export from `components/mod.rs`.
+- **Haptics**: use `UIImpactFeedbackGenerator`/`UISelectionFeedbackGenerator`
+  via the `Store+Feedback` helpers — `selection` for tabs, `light` for taps,
+  `success` for saves (only after the core confirms — see "Surface, don't
+  swallow" below), `warning` for destructive confirms.
+- **iPad**: list→detail screens use `LibrarySplitView` (adaptive
+  sidebar + detail pane at regular width class). Build it before the view,
+  not as a retrofit.
+- **Safe areas**: respect them by default (`ScreenScaffold` handles this for
+  every top-level screen); don't fight SwiftUI's layout system with manual
+  insets unless a genuine edge-to-edge treatment calls for it.
+- **Animations**: use the tokens in `Motion.swift`, not ad hoc
+  `.animation(.spring(...))` literals.
 
 ## Code Style
 
@@ -668,8 +641,8 @@ PRs get an automated patch-coverage comment (70% target, informational
   70% for reasons you didn't anticipate, either push a follow-up commit
   with tests or add an explanatory PR comment.
 
-Ignored paths (no coverage expected): `intrada-web` (WASM shell),
-`intrada-mobile` (iOS/Tauri), `migrations.rs` (SQL strings).
+Ignored paths (no coverage expected): `ios/` (native Swift shell, see the
+`codecov.yml` note), `migrations.rs` (SQL strings).
 
 ## Project-specific gotchas
 
@@ -707,28 +680,6 @@ Rules of thumb for any type that crosses the FFI bridge (`Event`, `Effect`,
   the actual Swift↔Rust bincode (de)serialization — see
   `testRealBridgeEditAppliesToViewModel`.
 
-### Tauri WebView origin is `tauri://localhost`
-
-Inside the Tauri 2 iOS shell the WebView's runtime origin is `tauri://localhost`
-— **not** the dev server URL (`http://192.168.x.x:8080`) and not whatever the
-production web app runs at. This affects:
-
-- **CORS** allowlists in `intrada-api` (`ALLOWED_ORIGIN`) — must include
-  `tauri://localhost`, otherwise simulator/device API calls hit preflight 403s.
-- **OAuth redirect URIs** in Clerk — register the `tauri://` origin alongside
-  the web ones, or sign-in returns to a broken URL.
-- **CSP** in `tauri.conf.json` and any meta tags — `tauri:` scheme must be in
-  `connect-src` / `frame-src` etc.
-
-### Leptos + Crux callbacks need owner context
-
-Callbacks invoked from raw `addEventListener` / `web_sys::EventTarget`
-listeners run **outside** the Leptos owner that called `expect_context`. They
-panic on context lookup. Use the `*_with_core` helpers (e.g.
-`process_effects_with_core` instead of `process_effects`) which take
-`SharedCore` explicitly. Sites where this matters: pull-to-refresh, drag
-reorder pointer events, anything wired up via wasm-bindgen `Closure`.
-
 ### `option_env!` needs `cargo:rerun-if-env-changed`
 
 If a build script (or `option_env!` site indirectly via macro expansion)
@@ -736,36 +687,6 @@ reads an env var, pair it with `println!("cargo:rerun-if-env-changed=NAME")`
 in `build.rs`. Without it, cargo caches the macro expansion across builds and
 your "I changed the env var" rebuild silently uses stale values. We've hit this
 on `CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
-
-### Leptos SVG attribute values must be strings
-
-`view! { <svg width=24 ... /> }` compiles but renders blank. SVG attribute
-values in Leptos 0.8 must be strings — `width="24".to_string()` or
-`width=format!("{px}")`. Same for `height`, `x`, `y`, `r`, `cx`, `cy`,
-`viewBox`, etc. Numeric literals work for HTML attrs (which Leptos coerces)
-but not SVG.
-
-### Linux CI doesn't lint `#[cfg(target_os = "ios")]` branches in Tauri plugins
-
-Plugins under `crates/intrada-mobile/plugins/` depend on `tauri = "2"` which
-pulls in glib/GTK system libs that aren't on the Ubuntu CI runners. CI works
-around it by `--exclude tauri-plugin-background-audio` from the workspace
-clippy/test commands. That means **iOS-only code paths inside those plugins
-get zero CI coverage**: a `#[cfg(target_os = "ios")] { ... return result; }`
-that clippy would normally flag as `needless_return` will pass CI clean and
-only fail the next time someone runs `cargo build --target aarch64-apple-ios`
-locally — which on iOS-only changes is "never, until release prep."
-
-Before pushing changes to any plugin under `crates/intrada-mobile/plugins/`,
-run clippy against the iOS target locally:
-
-```bash
-cargo clippy -p tauri-plugin-<name> --target aarch64-apple-ios -- -D warnings
-```
-
-`aarch64-apple-ios` is enough — the simulator targets (`x86_64-apple-ios`,
-`aarch64-apple-ios-sim`) don't add coverage clippy doesn't already get from
-the device target.
 
 ## Workflow
 
@@ -806,8 +727,8 @@ Do not run `/speckit-*` slash commands. Historical SpecKit folders under
 `specs/` are reference only.
 
 ### Domain sensitivity override
-Changes to auth, Tauri plugin IPC contracts, DB schema, or migrations go
-up at least one tier regardless of file count or apparent size.
+Changes to auth, the FFI bridge contract (Event/Effect/ViewModel), DB schema,
+or migrations go up at least one tier regardless of file count or apparent size.
 
 ### Decision rule
 If unsure between tiers, go one tier lighter. Drift up if scope expands.
