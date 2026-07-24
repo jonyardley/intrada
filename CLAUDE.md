@@ -376,10 +376,12 @@ that as the app grows — break one and the app silently stops being offline.
 5. **A failed local write is never a silent success.** Storage ops resolve a
    real failure output (`PersistenceOutput::Failed`) and the core surfaces it —
    never fake an `Ack` (#816).
-6. **Both modes must keep working.** The shared core powers offline-iOS *and*
-   online-web. Any change to a domain handler must preserve both `local_first`
-   branches, and be tested both ways. (The likeliest regression: an iOS-driven
-   core change that breaks web.)
+6. **Existing dual-mode handlers stay intact; new code is local-first only.**
+   Legacy domain handlers still branch on `local_first` (the online branches
+   predate the web shell's removal) — when touching one, keep both branches
+   passing, since core tests still exercise the online path. New engine/domain
+   code targets local-first only: the build-and-test-both-modes requirement is
+   retired for new work (see `docs/rebuild-review.md` §3).
 7. **No account gate on core functionality.** Only sync (the paid tier) may
    require auth. The free app works fully signed-out.
 8. **Relational data in the GRDB store; only small singletons in `crux_kv`**
@@ -393,7 +395,8 @@ that as the app grows — break one and the app silently stops being offline.
 - [ ] Any merge/reconciliation logic is in the core, not the shell (4)
 - [ ] Write handlers branch on `local_first` (or use `save_or_put`) and a local
       failure resolves `Failed`, not `Ack` (5)
-- [ ] Domain-handler changes tested in **both** `local_first` and online modes (6)
+- [ ] Changes to an existing dual-mode handler keep both `local_first` branches
+      tested; new code is local-first only (6)
 - [ ] Data-model change: new migration appended (never edits a shipped one),
       additive where possible; core type + migration + codec updated together;
       ships an upgrade-path test (see Local data migrations)

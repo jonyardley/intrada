@@ -1,5 +1,5 @@
 # Dev toolchain, pinned in one place. Run `mise install` after cloning (SETUP.md §7).
-# Rust itself stays with rustup; CocoaPods (paused Tauri shell only) stays with brew.
+# Rust itself stays with rustup.
 [tools]
 just = "1"
 xcodegen = "2"
