@@ -26,7 +26,10 @@ serde_json = { workspace = true }
 ulid = { workspace = true }
 chrono = { workspace = true }
 
-jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto", "use_pem"] }
+# v11: Header.extras became a typed `Extras` map of serde_json::Value, fixing
+# upstream #489 (Clerk's numeric `oiat` header field failed deserialization).
+# v10 needed a git-forked patch for this; the fork was later deleted (broke CI).
+jsonwebtoken = { version = "11", default-features = false, features = ["rust_crypto", "use_pem"] }
 reqwest = { version = "0.13", default-features = false, features = ["native-tls", "json", "multipart"] }
 rust-s3 = { version = "0.37", default-features = false, features = ["tokio-native-tls"] }
 
