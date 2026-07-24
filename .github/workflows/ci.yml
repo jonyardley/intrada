@@ -24,7 +24,6 @@ permissions:
 
 env:
   RUST_VERSION: "1.90.0"
-  TAILWIND_VERSION: "4.1.18"
   SENTRY_ORG: jon-yardley
 
 jobs:
@@ -37,8 +36,6 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       api: ${{ steps.filter.outputs.api }}
-      web: ${{ steps.filter.outputs.web }}
-      mobile: ${{ steps.filter.outputs.mobile }}
       native: ${{ steps.filter.outputs.native }}
     steps:
       - uses: actions/checkout@v7
@@ -54,23 +51,6 @@ jobs:
             api:
               - 'Dockerfile'
               - 'crates/intrada-api/**'
-              - '.github/workflows/ci.yml'
-            web:
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'crates/intrada-web/**'
-              - 'crates/intrada-core/**'
-              - 'e2e/**'
-              - '.github/workflows/ci.yml'
-            mobile:
-              - 'Cargo.toml'
-              - 'Cargo.lock'
-              - 'crates/intrada-mobile/**'
-              - 'crates/intrada-web/**'
-              - 'crates/intrada-core/**'
-              - 'scripts/ios-simulator-smoke.sh'
-              - 'scripts/fix-ios-build-config.rb'
-              - 'scripts/add-live-activity-target.rb'
               - '.github/workflows/ci.yml'
             native:
               - 'Cargo.toml'
@@ -103,15 +83,9 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      # intrada-mobile + its plugins (Tauri 2) require GTK/glib system libs
-      # not present on Ubuntu runners — iOS-only crates with no meaningful
-      # unit tests on Linux.
-      # intrada-web excluded too: iOS-pivot focus mode — the Leptos web shell is
-      # on hold and allowed to drift. It's still built+tested for wasm on main
-      # (wasm-build/wasm-test). intrada-api stays in (the iOS app's sync target).
-      - run: cargo nextest run --workspace --profile ci --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+      - run: cargo nextest run --workspace --profile ci
       - name: Doc tests
-        run: cargo test --doc --workspace --exclude intrada-mobile --exclude intrada-web --exclude tauri-plugin-background-audio --exclude tauri-plugin-live-activity --exclude tauri-plugin-auth-session
+        run: cargo test --doc --workspace
       - name: Publish test results
         if: always()
         uses: dorny/test-reporter@v3
@@ -144,11 +118,6 @@ jobs:
         run: >
           cargo llvm-cov nextest
           --workspace
-          --exclude intrada-mobile
-          --exclude intrada-web
-          --exclude tauri-plugin-background-audio
-          --exclude tauri-plugin-live-activity
-          --exclude tauri-plugin-auth-session
           --codecov
           --output-path codecov.json
       - name: Upload to Codecov
@@ -177,11 +146,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: clippy-sarif,sarif-fmt
-      # intrada-mobile + its plugins excluded: Tauri 2 needs GTK/glib system libs on Linux.
       # Run clippy with JSON output piped through clippy-sarif for GitHub
       # code scanning annotations, then check the exit code to fail the job.
-      # iOS-pivot focus mode: web shell on hold — intrada-web excluded and the
-      # WASM clippy pass dropped. Restore both at parity.
       # --all-targets so test/bench code is linted too, not just lib/bin — a
       # dropped `#[must_use]` Command shipped in a test once because the gate
       # stopped at lib targets.
@@ -190,11 +156,6 @@ jobs:
         run: |
           set +o pipefail
           cargo clippy --workspace --all-targets \
-            --exclude intrada-mobile \
-            --exclude intrada-web \
-            --exclude tauri-plugin-background-audio \
-            --exclude tauri-plugin-live-activity \
-            --exclude tauri-plugin-auth-session \
             --message-format=json -- -D warnings 2>&1 \
             | clippy-sarif | tee clippy-native.sarif | sarif-fmt
           exit ${PIPESTATUS[0]}
@@ -205,164 +166,6 @@ jobs:
           sarif_file: clippy-native.sarif
           category: clippy-native
           wait-for-processing: true
-
-  ios-build:
-    # Full iOS CI — clippy lints (device target) + simulator build, with
-    # smoke test on main only. Combines the former ios-clippy job into one
-    # macOS runner to halve expensive macOS minutes when both would trigger.
-    #
-    # Clippy runs against aarch64-apple-ios (device) to lint iOS-only
-    # #[cfg] branches that Linux runners can't compile. The full build
-    # targets aarch64-apple-ios-sim (simulator, unsigned) to verify the
-    # Tauri host, plugins, WASM frontend, and Xcode project all link.
-    #
-    # PR optimisations (vs main):
-    #   - Debug builds for WASM + native (skips LTO/optimisations)
-    #   - Smoke test skipped (sim boot + install + deep link)
-    # Main pushes get full release builds + smoke test (gates deploy).
-    #
-    # Path-filtered: fires on any change to mobile, web, or core crates.
-    # Always runs on main pushes.
-    name: iOS (Clippy + Build + Smoke)
-    runs-on: macos-latest
-    timeout-minutes: 40
-    needs: changes
-    # DISABLED during the native-iOS focus (2026-06): the Tauri/Leptos shell is
-    # paused, so we don't spend ~14 min of 10×-billed macOS on every main push
-    # building a release we never deploy. Nothing gates on this job (deploy /
-    # deploy-api don't list it in `needs`). To re-enable when the Tauri shell
-    # comes off hold, restore the push guard:
-    #   if: github.event_name == 'push' || needs.changes.outputs.mobile == 'true'
-    if: false
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: clippy
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "ios-build"
-          cache-on-failure: true
-      # dtolnay/rust-toolchain skips adding ~/.cargo/bin to PATH when
-      # rustup is pre-installed on the macOS image. Without this, `cargo`
-      # resolves to Apple's /usr/bin/cargo stub (rustup-init shim) and
-      # every subsequent cargo command fails.
-      - name: Ensure cargo is on PATH
-        run: |
-          echo "$CARGO_HOME/bin" >> $GITHUB_PATH
-          cargo --version
-      # ── Clippy (device target) — lints #[cfg(target_os = "ios")] branches ──
-      - name: Clippy iOS plugins (device target)
-        run: |
-          cargo clippy -p tauri-plugin-background-audio --target aarch64-apple-ios -- -D warnings
-          cargo clippy -p tauri-plugin-live-activity --target aarch64-apple-ios -- -D warnings
-          cargo clippy -p tauri-plugin-auth-session --target aarch64-apple-ios -- -D warnings
-      # ── Build (simulator target) ───────────────────────────────────────────
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-bindgen-cli@0.2.121
-      - uses: jetli/trunk-action@v0.5.1
-      - name: Cache Tailwind CSS binary
-        id: tailwind-cache
-        uses: actions/cache@v6
-        with:
-          path: /usr/local/bin/tailwindcss
-          key: tailwindcss-v${{ env.TAILWIND_VERSION }}-macos-arm64
-      - name: Install Tailwind CSS v4 standalone CLI
-        if: steps.tailwind-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-macos-arm64"
-          chmod +x tailwindcss-macos-arm64
-          mv tailwindcss-macos-arm64 /usr/local/bin/tailwindcss
-      - name: Build WASM frontend
-        working-directory: crates/intrada-web
-        env:
-          INTRADA_API_URL: https://intrada-api.fly.dev
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        # Debug WASM on PRs (faster); release on main (gates deploy).
-        run: trunk build ${{ github.event_name == 'push' && '--release' || '' }}
-      - name: Cache Homebrew packages
-        id: brew-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/Library/Caches/Homebrew/downloads
-          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
-      - name: Install xcodegen
-        run: brew install xcodegen
-      - name: Cache Tauri CLI binary
-        id: tauri-cli-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cargo/bin/cargo-tauri
-          key: tauri-cli-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('crates/intrada-mobile/src-tauri/Cargo.toml') }}
-      - name: Install Tauri CLI
-        if: steps.tauri-cli-cache.outputs.cache-hit != 'true'
-        run: cargo install tauri-cli --version "^2" --locked
-      - name: Generate Xcode project
-        working-directory: crates/intrada-mobile/src-tauri
-        run: cargo tauri ios init
-      - name: Patch Xcode project (fix duplicate libapp.a output)
-        working-directory: crates/intrada-mobile
-        run: ruby scripts/fix-ios-build-config.rb
-      - name: Add Live Activity widget target
-        working-directory: crates/intrada-mobile
-        run: ruby scripts/add-live-activity-target.rb
-      - name: Disable code signing in Xcode project (CI)
-        working-directory: crates/intrada-mobile/src-tauri/gen/apple
-        run: |
-          ruby -ryaml -e '
-            proj = YAML.load_file("project.yml")
-            (proj["targets"] || {}).each do |_, t|
-              s = t["settings"] ||= {}
-              base = s["base"] ||= {}
-              base["CODE_SIGN_IDENTITY"] = ""
-              base["CODE_SIGNING_REQUIRED"] = "NO"
-              base["CODE_SIGNING_ALLOWED"] = "NO"
-            end
-            File.write("project.yml", proj.to_yaml)
-          '
-          xcodegen generate --no-env --spec project.yml
-      - name: Build iOS app (simulator, unsigned)
-        working-directory: crates/intrada-mobile/src-tauri
-        env:
-          GIT_SHA: ${{ github.sha }}
-        # Debug build on PRs (skips LTO/optimisations, ~40-60% faster);
-        # release on main (gates deploy). Note: inverted condition because
-        # empty string is falsy in GHA expressions — `true && ''` would
-        # fall through to the `||` branch.
-        run: cargo tauri ios build --ci --target aarch64-sim ${{ github.event_name != 'push' && '--debug' || '' }}
-      # ── Smoke test (main only) ─────────────────────────────────────────
-      # Simulator boot + install + launch + deep-link adds ~3.5 min.
-      # The build step already proves linking; smoke catches runtime crashes
-      # which are rare enough to gate on merge, not every PR.
-      - name: Locate built .app bundle
-        if: github.event_name == 'push'
-        id: find-app
-        run: |
-          APP_PATH=$(find crates/intrada-mobile/src-tauri/gen/apple/build \
-            -name "Intrada.app" -type d | head -1)
-          if [[ -z "$APP_PATH" ]]; then
-            echo "::error::Could not find Intrada.app in build output"
-            find crates/intrada-mobile/src-tauri/gen/apple/build -type d -maxdepth 4
-            exit 1
-          fi
-          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
-          echo "Found .app at: $APP_PATH"
-      - name: Run iOS simulator smoke test
-        if: github.event_name == 'push'
-        env:
-          SMOKE_WAIT_SECS: "15"
-        run: scripts/ios-simulator-smoke.sh "${{ steps.find-app.outputs.app_path }}"
-      - name: Upload iOS screenshots
-        if: always() && github.event_name == 'push'
-        uses: actions/upload-artifact@v7
-        with:
-          name: ios-simulator-screenshots
-          path: ios-screenshots/
-          retention-days: 7
-          if-no-files-found: ignore
 
   native-ios:
     # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
@@ -555,233 +358,6 @@ jobs:
       - name: Check snapshot references (orphans + size ceiling)
         run: bash scripts/check-snapshots.sh
 
-  wasm-build:
-    name: WASM Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: changes
-    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "wasm"
-          cache-on-failure: true
-      - uses: jetli/trunk-action@v0.5.1
-      # Pin wasm-bindgen-cli so trunk finds it locally instead of downloading
-      # from GitHub Releases at build time (avoids transient 502 failures).
-      # Version must match the wasm-bindgen dependency in Cargo.lock.
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-bindgen-cli@0.2.121
-      # Tailwind v4 standalone binary doesn't change between runs — cache it.
-      - name: Cache Tailwind CSS binary
-        id: tailwind-cache
-        uses: actions/cache@v6
-        with:
-          path: /usr/local/bin/tailwindcss
-          key: tailwindcss-v${{ env.TAILWIND_VERSION }}-linux-x64
-      - name: Install Tailwind CSS v4 standalone CLI
-        if: steps.tailwind-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -sLO "https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64"
-          chmod +x tailwindcss-linux-x64
-          mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
-      - name: Build WASM (release)
-        working-directory: crates/intrada-web
-        env:
-          INTRADA_API_URL: https://intrada-api.fly.dev
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
-        run: trunk build --release
-      # Prerender marketing routes (/, /login) so crawlers see real
-      # HTML content. Runs headless Chromium via Playwright against
-      # the just-built dist/, writes to dist/prerendered/.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-      # Pin playwright to the version e2e resolves (e2e/package-lock.json) so the
-      # downloaded Chromium revision matches — letting this job share the exact
-      # same browser cache key as the `e2e` / `deploy-smoke` jobs. ubuntu-latest
-      # already ships Chromium's system libs (the e2e job runs it without
-      # `--with-deps`), so we skip that here too.
-      - name: Install prerender dependencies
-        run: npm install playwright@1.60.0 serve
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
-      - name: Install Playwright Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install chromium
-      - name: Prerender marketing routes
-        run: node scripts/prerender.mjs crates/intrada-web/dist
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: web-dist
-          path: crates/intrada-web/dist/
-          retention-days: 1
-
-  wasm-test:
-    name: WASM Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: changes
-    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    # Revert to `|| needs.changes.outputs.web == 'true'` at parity.
-    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "wasm"
-          save-if: "false"
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Run WASM tests
-        working-directory: crates/intrada-web
-        run: wasm-pack test --headless --chrome -- --test wasm
-
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: wasm-build
-    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: e2e/package-lock.json
-      - name: Download web-dist artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: web-dist
-          path: web-dist
-      - name: Install dependencies
-        working-directory: e2e
-        run: npm ci
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
-      - name: Install Playwright Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: e2e
-        run: npx playwright install chromium
-      - name: Run E2E tests
-        working-directory: e2e
-        env:
-          DIST_DIR: ${{ github.workspace }}/web-dist
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results.xml
-        # `--grep-invert "smoke:"` excludes the deploy-smoke spec — that
-        # one runs against the *post-modification* dist in the
-        # `deploy-smoke` job below (where SRI invalidation could be
-        # caught), not the pristine artifact this job uses.
-        run: npx playwright test --grep-invert "smoke:" --reporter=junit,list
-      - name: Publish E2E test results
-        if: always()
-        uses: dorny/test-reporter@v3
-        with:
-          name: E2E Test Results
-          path: e2e/results.xml
-          reporter: java-junit
-          fail-on-error: false
-
-  # Deploy smoke — exercises the SAME post-build modification chain as
-  # the production deploy (sentry-cli inject → release placeholder →
-  # SRI recompute → SRI verify) on EVERY PR, then loads the resulting
-  # dist in headless Chromium and asserts the page actually renders.
-  #
-  # Closes the gap that broke prod on 2026-05-09: the post-build chain
-  # only ran on main pushes, so PR CI passed green and a runtime-
-  # blocking regression (stale SRI hashes after inject) shipped to
-  # users before anyone noticed. See #605.
-  deploy-smoke:
-    name: Deploy Smoke
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: wasm-build
-    # iOS-pivot focus mode: web shell on hold — run on main only, not PRs.
-    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: e2e/package-lock.json
-      - name: Download web-dist artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: web-dist
-          path: crates/intrada-web/dist
-      # Sentry-cli `sourcemaps inject` doesn't need a token (only the
-      # `upload` subcommand does), so this runs unconditionally. The
-      # WHOLE point of the smoke job is to fire the chain that broke
-      # prod, regardless of secret availability on PR builds.
-      - name: Inject Sentry DebugIds
-        run: npx --yes @sentry/cli@latest sourcemaps inject crates/intrada-web/dist
-      # Substitute a fixed placeholder value rather than ${{ github.sha }}.
-      # Smoke job intent is to test the chain, not to mint a real release
-      # tag — and using the SHA would tag PR-time builds with their
-      # commit hash in dist/index.html, confusing post-merge triage.
-      - name: Inject Sentry release placeholder (smoke)
-        run: |
-          find crates/intrada-web/dist -name '*.html' -exec sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|pr-smoke|g" {} +
-          grep -q "pr-smoke" crates/intrada-web/dist/index.html
-      - name: Refresh SRI integrity hashes after inject
-        run: python3 scripts/refresh-sri-hashes.py
-      - name: Verify SRI integrity hashes match on-disk files
-        run: python3 scripts/verify-sri-hashes.py
-      - name: Install Playwright dependencies
-        working-directory: e2e
-        run: npm ci
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
-      - name: Install Playwright Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: e2e
-        run: npx playwright install chromium
-      - name: Run smoke spec against post-modification dist
-        working-directory: e2e
-        env:
-          DIST_DIR: ${{ github.workspace }}/crates/intrada-web/dist
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: smoke-results.xml
-        # `--grep "smoke:"` runs only the deploy-smoke.spec.ts test —
-        # everything else in tests/ is the regular E2E suite, run in
-        # the `e2e` job above (against the pristine artifact).
-        run: npx playwright test --grep "smoke:" --reporter=junit,list
-      - name: Publish smoke test results
-        if: always()
-        uses: dorny/test-reporter@v3
-        with:
-          name: Deploy Smoke Results
-          path: e2e/smoke-results.xml
-          reporter: java-junit
-          fail-on-error: false
-
   fmt:
     name: Formatting
     runs-on: ubuntu-latest
@@ -834,8 +410,7 @@ jobs:
       - name: Spell check (typos)
         run: typos
       # ── cargo-shear ────────────────────────────────────────────────────
-      # Unused workspace dependencies: the paused crates (intrada-web,
-      # intrada-mobile) accumulate dead deps that inflate every CI build.
+      # Unused workspace dependencies — catches dead deps that inflate CI builds.
       - name: Unused dependencies (cargo-shear)
         run: cargo-shear
       # ── cargo-deny ─────────────────────────────────────────────────────
@@ -892,90 +467,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy to Cloudflare
-    runs-on: ubuntu-latest
-    # ios-build (Tauri) is intentionally NOT a gate here: the native app isn't
-    # deployed by this job and the Tauri host is on hold, so blocking the web
-    # deploy on its ~14 min macOS build only added latency. It still runs on
-    # main pushes for its own signal — it just no longer holds up the deploy.
-    needs: [test, clippy, fmt, wasm-build, wasm-test, e2e, deploy-smoke]
-    if: false  # disabled: web/tauri shell paused — see CLAUDE.md (iOS-only)
-    steps:
-      - uses: actions/checkout@v7
-      - name: Download web-dist artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: web-dist
-          path: crates/intrada-web/dist
-      # Inject Sentry DebugIds into JS + WASM artifacts BEFORE wrangler
-      # publish, so the deployed files match the artifacts uploaded by
-      # action-release later. DebugIds let Sentry symbolicate stack frames
-      # without relying on filename-based source-map lookup (which breaks
-      # under content-hashed filenames or strict CSP). #485.
-      #
-      # Skipped when SENTRY_AUTH_TOKEN is unset — still want deploys to
-      # succeed for the rare case the token is rotated mid-deploy.
-      - name: Inject Sentry DebugIds into dist
-        if: env.SENTRY_AUTH_TOKEN != ''
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-        run: npx --yes @sentry/cli@latest sourcemaps inject crates/intrada-web/dist
-      # Inject the release id into the prebuilt index.html before publishing.
-      # The placeholder is set in the source — this swap only happens in the
-      # main-branch deploy path, so PR builds keep `release: undefined`.
-      - name: Inject Sentry release into HTML files
-        run: |
-          find crates/intrada-web/dist -name '*.html' -exec sed -i "s|__SENTRY_RELEASE_PLACEHOLDER__|${{ github.sha }}|g" {} +
-          grep -q "${{ github.sha }}" crates/intrada-web/dist/index.html
-      # Recompute SHA-384 integrity hashes — `sentry-cli sourcemaps
-      # inject` modifies JS files in place, leaving the SRI attributes
-      # Trunk pre-computed in index.html stale. Without this step the
-      # browser blocks every modified file ("Failed to find a valid
-      # digest in the 'integrity' attribute"), the inline module
-      # script never resolves, and the page renders blank.
-      # Production blank-page incident 2026-05-09 (PR #594) → #604.
-      - name: Refresh SRI integrity hashes after inject
-        run: python3 scripts/refresh-sri-hashes.py
-      # Belt-and-braces assertion: any post-build modification step
-      # added between recompute and wrangler publish (or removal of
-      # the recompute step above) fails the deploy loud rather than
-      # silently shipping a blank page. Same script also runs on
-      # every PR via the `deploy-smoke` job — see below.
-      - name: Verify SRI integrity hashes match on-disk files
-        run: python3 scripts/verify-sri-hashes.py
-      - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      # Tag the release in Sentry + upload sourcemaps once Cloudflare has
-      # the build. The `sourcemaps:` input re-runs `sentry-cli sourcemaps
-      # inject` (idempotent — DebugIds are content-deterministic) and then
-      # uploads the artifact bundle. Failure here shouldn't block a
-      # successful deploy, so continue-on-error.
-      - name: Create Sentry release (intrada-web) + upload sourcemaps
-        if: env.SENTRY_AUTH_TOKEN != ''
-        continue-on-error: true
-        uses: getsentry/action-release@v3
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_PROJECT: intrada-web
-        with:
-          environment: production
-          version: ${{ github.sha }}
-          set_commits: auto
-          finalize: true
-          sourcemaps: ./crates/intrada-web/dist
-
   deploy-api:
     name: Deploy API to Fly.io
     runs-on: ubuntu-latest
-    # Web/Tauri jobs (wasm-build/wasm-test/e2e) are now disabled (paused — see
-    # CLAUDE.md), so they no longer gate the API deploy — a skipped `needs`
-    # would otherwise block this job. api-docker-build only runs on main when
-    # the API changed; when it skips, this job skips with it (so an unchanged
-    # API isn't needlessly redeployed).
+    # api-docker-build only runs on main when the API changed; when it skips,
+    # this job skips with it (so an unchanged API isn't needlessly redeployed).
     needs: [test, clippy, fmt, api-docker-build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:

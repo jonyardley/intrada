@@ -30,13 +30,12 @@ fi
 
 range="$base...HEAD"
 
-files=$(git diff --name-only "$range" -- \
+# One diff call so git's rename detection stays intact: a get-names-then-
+# re-diff-those-paths two-step loses the pairing with the old path, so a
+# 100%-identical file relocated by `git mv` (or an agent recreating the same
+# content elsewhere) reads as pure new content instead of a zero-line rename.
+diff_out=$(git diff "$range" -- \
   '*.rs' '*.swift' '*.css' '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || true)
-if [ -z "$files" ]; then
-  exit 0
-fi
-
-diff_out=$(git diff "$range" -- $files 2>/dev/null || true)
 if [ -z "$diff_out" ]; then
   exit 0
 fi

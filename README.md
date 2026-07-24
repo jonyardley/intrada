@@ -4,36 +4,37 @@ An intentional practice companion for musicians, built with [Crux](https://redba
 
 Intrada is organised around three activity pillars: **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working). See [`docs/roadmap.md`](docs/roadmap.md) for the full roadmap and [`VISION.md`](VISION.md) for the research foundation.
 
+The active platform is the **native SwiftUI iOS app**. A Leptos web shell and Tauri iOS host previously shared this core; both were removed (see [`docs/rebuild-review.md`](docs/rebuild-review.md)) as the product pivots to a practice-coach vision that is native-iOS-only.
+
 ## Architecture
 
 ```
-┌─────────────────────────┐                    ┌──────────────────┐               ┌──────────┐
-│  Cloudflare Workers     │     HTTPS/REST     │  Fly.io (Axum)   │    libsql     │  Turso   │
-│  Leptos WASM (web app)  │ ─────────────────→ │  intrada-api     │ ────────────→ │  (SQLite) │
-└─────────────────────────┘                    └──────────────────┘               └──────────┘
-            ▲                                          ▲
-            │ same WASM bundle                         │
-┌───────────┴─────────────┐    HTTPS/REST              │
-│  Tauri 2 (iOS)          │ ───────────────────────────┘
-│  WKWebView host         │
-└─────────────────────────┘
+┌──────────────────────┐    UniFFI/bincode    ┌──────────────────┐
+│  SwiftUI (iOS)       │ ───────────────────→ │  intrada-core    │
+│  Store: Event in,    │ ←─────────────────── │  (Crux, no I/O)  │
+│  ViewModel out        │    Effects           └──────────────────┘
+└──────────────────────┘                               │
+        │  HTTPS/REST                                  │ GRDB (on-device)
+        ▼                                               ▼
+┌──────────────────┐    libsql    ┌──────────┐   ┌──────────────┐
+│  Fly.io (Axum)   │ ───────────→ │  Turso   │   │  SQLite      │
+│  intrada-api     │               │  (SQLite)│   │  (local-first)│
+└──────────────────┘               └──────────┘   └──────────────┘
 ```
 
-Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all business logic with zero side effects. Events go in, commands (effects) come out. The Leptos shell is the single UI codebase — it ships as the web app on Cloudflare Workers and as the iOS app inside a Tauri 2 WKWebView host.
+Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all business logic with zero side effects. Events go in, effects come out. The native SwiftUI shell is a dumb pipe: it sends `Event`s, fulfils effects (HTTP via `URLSession`, persistence via GRDB), and renders the `ViewModel`. No domain logic lives in Swift.
 
-- **UI shell**: Leptos 0.8 CSR + WASM
-- **Web host**: Cloudflare Workers (static asset serving)
-- **iOS host**: Tauri 2 (WKWebView, native plugins for haptics + deep links)
+- **Shell**: SwiftUI (iOS 17.0+), bindings generated via UniFFI + facet typegen
+- **Core**: Crux 0.19 (Rust), zero I/O
 - **API**: Axum 0.8 REST server on Fly.io
-- **Database**: Turso (managed libsql/SQLite) via HTTP
-- **Auth**: Clerk (Google OAuth), JWT RS256
+- **Database**: Turso (managed libsql/SQLite) via HTTP; on-device GRDB/SQLite for local-first
+- **Auth**: Clerk (Google OAuth) in the browser flow, exchanged for a long-lived PAT on iOS; JWT RS256
 
 ## Prerequisites
 
 - Rust stable (2021 edition, 1.75+)
-- [Trunk](https://trunkrs.dev/) (`cargo install trunk`)
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
-- For iOS: Xcode 16+, iOS 17.0+ target, Tauri CLI (`cargo install tauri-cli --version "^2" --locked`), CocoaPods (`brew install cocoapods`)
+- Xcode 26+, iOS 17.0+ target, [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 
 ## Quick start
 
@@ -42,11 +43,13 @@ Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all busi
 cp .env.example .env
 # Edit .env with your Turso credentials
 
-# 2. Start both API and web dev servers
+# 2. Start the API dev server
 just dev
-# → API on :3001, web on :8080 (proxies /api/* to API)
+# → API on :3001
 
-# 3. Open http://localhost:8080
+# 3. Open the iOS app
+just ios
+# → regenerates Swift bindings if the core changed, then opens Xcode
 ```
 
 ## Available commands
@@ -55,9 +58,7 @@ Run `just` to see all commands. Key ones:
 
 ```bash
 # Development
-just dev          # Start API + web dev servers concurrently
-just dev-api      # Start only the API server
-just dev-web      # Start only the Trunk dev server
+just dev          # Start the API dev server
 
 # Quality
 just test         # Run all tests
@@ -65,19 +66,11 @@ just lint         # Run clippy
 just fmt          # Format code
 just check        # Run test + clippy + format check
 
-# Web
-just build        # Build WASM for production/E2E
-just e2e          # Build + run Playwright E2E tests
-
-# iOS (native SwiftUI — the active app)
+# iOS (native SwiftUI)
 just ios              # Regenerate bindings (if core changed) + open in Xcode
 just ios-run          # Build + launch on a simulator + screenshot (seeds demo data)
 SEED=0 just ios-run   # …launch against your real on-device data instead of demo data
-
-# iOS (Tauri shell — on hold, being replaced)
-just tauri-dev        # Run on simulator (trunk serve + tauri ios dev)
-just tauri-dev-device # Run on a connected physical device
-just tauri-build      # Build for device (Xcode sideload, no TestFlight)
+just ios-test         # Build + run the snapshot/unit test suite
 
 # Data
 just seed         # Seed development data (API must be running)
@@ -88,22 +81,21 @@ just seed         # Seed development data (API must be running)
 ```
 crates/
   intrada-core/       # Pure Crux core (no I/O, no side effects)
-  intrada-web/        # Leptos CSR + WASM — the UI shell (web + iOS)
-  intrada-api/        # REST API (Axum + Turso)
-  intrada-mobile/     # Tauri 2 iOS host — wraps intrada-web in WKWebView
-    src-tauri/        #   Rust host, tauri.conf.json, Swift plugins
+  intrada-ffi/        # UniFFI bridge — generates the Swift bindings
+  intrada-api/         # REST API (Axum + Turso)
+ios/                  # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
 design/               # Claude Design system (intrada-design-system.dc.html)
 docs/                 # Product roadmap and documentation
-e2e/                  # Playwright E2E tests
-scripts/              # Development utilities (seed data)
-specs/                # SpecKit design artifacts
+scripts/              # Development utilities (seed data, simulator helpers)
+specs/                # Design specs for major features
 ```
 
 ## Data storage
 
-- **API server**: Items (pieces and exercises), sessions, and routines are stored in Turso (managed SQLite) via the REST API. Migrations run automatically on server startup.
-- **Browser / WKWebView (localStorage)**: Only used for crash recovery of in-progress sessions (`intrada:session-in-progress` key). All other data flows through the API.
-- **IDs**: ULIDs generated server-side.
+- **On-device (GRDB/SQLite)**: local-first source of truth for items and sessions — the app works fully offline. `updated_at` + soft-delete tombstones on every table.
+- **API server (Turso)**: sync target and MCP server backing store; migrations run automatically on server startup.
+- **iOS UserDefaults**: crash-recovery of an in-progress session, and the persisted library sort order.
+- **IDs**: client-minted ULIDs.
 
 ## Documentation
 
@@ -114,14 +106,15 @@ specs/                # SpecKit design artifacts
 | [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars) — **single source of truth** |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
-| [`SETUP.md`](SETUP.md) | Deployment & configuration (Cloudflare, Fly.io, Turso, CI/CD) |
+| [`docs/rebuild-review.md`](docs/rebuild-review.md) | Rebuild-vs-pivot review against the practice-coach design |
+| [`SETUP.md`](SETUP.md) | Deployment & configuration (Fly.io, Turso, TestFlight) |
 
 ## CI/CD
 
 GitHub Actions runs on every push:
 
-- **PR checks**: test, clippy, fmt, WASM build, WASM tests, E2E tests (Playwright)
-- **Push to main**: all checks + deploy frontend (Cloudflare Workers) + deploy API (Fly.io)
+- **PR checks**: test, clippy, fmt, security & hygiene, native iOS build + snapshot tests, API Docker build
+- **Push to main**: all checks + deploy the API (Fly.io) + native iOS release build (TestFlight lane runs separately on tag/dispatch)
 
 ## License
 

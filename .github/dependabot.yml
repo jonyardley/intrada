@@ -13,8 +13,6 @@ updates:
       crux:
         patterns:
           - "crux*"
-    # iOS-pivot focus mode: pause bumps for the web/Tauri shells (on hold).
-    # Core + API deps still auto-update. Remove this ignore list at parity.
     ignore:
       # Manually pinned to versions other tooling dictates — never auto-bump:
       #   facet  -> must match crux_core's `facet =0.44` pin (typegen reflection)
@@ -25,23 +23,7 @@ updates:
       - dependency-name: "uniffi"
       - dependency-name: "uniffi-*"
       - dependency-name: "uniffi_*"
-      - dependency-name: "tauri"
-      - dependency-name: "tauri-*"
-      - dependency-name: "leptos"
-      - dependency-name: "leptos_*"
-      - dependency-name: "leptos-*"
-      - dependency-name: "trunk"
-      - dependency-name: "wasm-bindgen"
-      - dependency-name: "wasm-bindgen-*"
-      - dependency-name: "web-sys"
-      - dependency-name: "js-sys"
-      - dependency-name: "gloo"
-      - dependency-name: "gloo-*"
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "e2e/"
     schedule:
       interval: "weekly"

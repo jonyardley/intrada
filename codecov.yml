@@ -30,14 +30,6 @@ ignore:
   # measured. Wiring xccov→Codecov is tracked in #896 (horizon:later).
   - "ios/**"
 
-  # Leptos web shell — UI code compiled to WASM, not covered by
-  # cargo-llvm-cov (excluded from the coverage job entirely).
-  - "crates/intrada-web/**"
-
-  # Tauri iOS host + plugins — excluded from coverage job (needs
-  # macOS + iOS target, not available on ubuntu runners).
-  - "crates/intrada-mobile/**"
-
   # Migrations — pure SQL strings, validated by integration tests
   # but the Rust wrapper lines are just string constants.
   - "crates/intrada-api/src/migrations.rs"
