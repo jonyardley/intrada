@@ -6,6 +6,30 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 
 ---
 
+> ## ⚠️ THE 2026-07 PIVOT: THE PRACTICE COACH
+>
+> As of July 2026 the product direction is the **practice coach** — the app
+> decides what you practise, listens over MIDI while you play, scores every
+> attempt deterministically, and tells you when you're done. The vision,
+> pedagogy model, and phased build plan live in
+> [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
+> the codebase assessment and pivot strategy (pivot in place, new engine
+> module, notebook-era machinery deleted at Phase 2) in
+> [`docs/rebuild-review.md`](rebuild-review.md).
+>
+> **The notebook-era backlog below is superseded.** Issues carrying the
+> [`superseded-by-pivot`](https://github.com/jonyardley/intrada/labels/superseded-by-pivot)
+> label (the lesson-to-mastery epic #1087, session-builder work #1101, the
+> twelve-key ladder #1107) are parked — don't pick them up without revisiting
+> the pivot plan. Keep-column assets (chord theory in `chart.rs`, the GRDB
+> persistence pattern, the design system, the FFI toolchain) carry forward.
+>
+> Current phase: **Phase 0** (paper teacher — content authoring + practice
+> logs, no code) in parallel with **Phase 1** (MIDI capture harness →
+> attempt-segmentation spike → lick-transposition scoring).
+
+---
+
 ## How to read this doc
 
 intrada serves the five layers of the [Product Vision](../VISION.md):
@@ -42,19 +66,14 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 ### Current focus (2026-07)
 
-The lesson-to-mastery loop (see the
-[epic, #1087](https://github.com/jonyardley/intrada/issues/1087)) has
-workstream **B: track exercises per piece** (#1081) merged (B1 #1095, B2
-#1097). **C: exercise steps** (#1083) is under way: C1 (the core variant
-mechanism + GRDB child table, spec in `specs/exercise-variants.md`), C2
-(exercise-detail Steps section, reflection + builder step-picker), and C3
-(12-keys preset, closed #46, unblocks the #1107 twelve-key scaffold ladder)
-have landed; C4 (step management: rename/reorder/archive) follows.
-R (suggest the next session, #1082) remains queued. Workstream **A (capture a
-lesson in one pass, #1080) is on hold**: it's being rethought before more is
-built on it, and its merged core event was reverted (#1092). Check the
-[project board](https://github.com/users/jonyardley/projects/2) for what's
-actually in flight.
+The practice-coach pivot (see the banner at the top). The lesson-to-mastery
+loop that was the previous focus (epic #1087; workstreams B and C largely
+landed, A reverted) is parked under `superseded-by-pivot`. Active work is
+the Phase 1 opening from
+[`docs/rebuild-review.md`](rebuild-review.md) §6: clear the decks (#1133),
+then a MIDI capture harness + click, then the attempt-segmentation spike.
+Check the [project board](https://github.com/users/jonyardley/projects/2)
+for what's actually in flight.
 
 ---
 
