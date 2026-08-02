@@ -80,7 +80,7 @@ traversal schedule, never in one session.
 
 ## 3. Phrase transposition — `phrase-transposition`
 
-**Circle:** bridge (head → hands) · **Mode:** keys; advanced rung away
+**Circle:** bridge (head → hands) · **Mode:** keys→away
 
 **What.** The front half of the lick pipeline: take the current phrase
 ([`p001`](phrases/p001-flat9-turnaround.md)) from its home key through all
@@ -148,7 +148,7 @@ self-rating is logged alongside, not gated on.
 
 ## 5. Micro-transcription — `micro-transcription`
 
-**Circle:** head · **Mode:** ladder from keys to away
+**Circle:** head · **Mode:** keys→away
 
 **What.** Lifting 1–2 bar phrases from records by ear — never whole solos.
 The modes are a difficulty ladder (per the fluency frame): listen-and-repeat

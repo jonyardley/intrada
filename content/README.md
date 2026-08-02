@@ -22,12 +22,13 @@ the deliverable; the content is the instrument.
 
 ## Circle tags (the fluency frame)
 
-Every node and drill carries two tags from the spec's fluency-frame
-subsection:
+Every node carries two tags from the spec's fluency-frame subsection
+(drills inherit their node's tags unless marked otherwise):
 
 - **Circle**: `head` (music you can hear/imagine), `hands` (what you can
   execute), or `bridge` (grows the overlap — the point of the whole thing).
-- **Mode**: `keys` or `away` (no instrument needed).
+- **Mode**: `keys`, `away` (no instrument needed), or `keys→away` (a
+  difficulty ladder from the instrument toward pure audiation).
 
 Known imbalance, stated up front: this v1 set is 2× hands, 2× bridge,
 1× head — measurable-first content leans hands-circle exactly as the frame

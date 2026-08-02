@@ -4,6 +4,9 @@
 #
 # Timing is always consistency/trend, never absolute deviation (decision 6).
 # "clean" = zero wrong notes + timing consistent within the rep.
+# Recognised optional gate fields: per_key, consecutive, keys_required,
+# keys_chained_min, first_attempt, max_think_bars, max_listens,
+# self_confirmed, self_rating_logged, new_keys_per_session_min/_max.
 
 schema_version = "0.1"
 
@@ -35,7 +38,7 @@ mature_drill = "predict-then-reveal"
 single_failure = "cross plus one fact, nothing else"
 
 [escalation]
-fail_trigger = 3                 # consecutive fails of the same thing
+consecutive_fail_trigger = 3
 ladder = ["tempo-down-20pct", "shrink-scope", "change-mode", "swap-drill"]
 name_the_wall_max_times = 1      # the second encouragement is a nag
 
@@ -94,7 +97,7 @@ clean_passes = 2
 tempo_bpm = 80
 click_level = "l1"
 
-[gates.rootless-cycle]                     # the node's done-criterion
+[gates.rootless-cycle]
 node = "rootless-a-b"
 criterion = "full cycle of fourths, A/B alternating, no stops"
 clean_passes = 1
@@ -113,7 +116,8 @@ click_level = "l2"
 [gates.phrase-nearby-keys]
 node = "phrase-transposition"
 criterion = "clean in both whole-step neighbours, resolution lands on beat 1"
-clean_passes = 2                 # per key
+clean_passes = 2
+per_key = true
 keys_required = 2
 tempo_bpm = 90
 click_level = "l1"
@@ -146,7 +150,8 @@ click_level = "l1"
 [gates.targeting-approach]
 node = "chord-tone-targeting"
 criterion = "two-bar cells: free bar, then target chord tone on beat 1 of the change"
-clean_passes = 4                 # consecutive cells landed
+clean_passes = 4
+consecutive = true
 tempo_bpm = 90
 click_level = "l1"
 

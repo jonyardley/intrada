@@ -11,11 +11,13 @@ structure is the schema (README, day-one checklist).
 
 ## The phrase
 
-Two bars over a ii–V–I, eighth notes, shown in the home key of C:
+Two bars over a ii–V–I (two beats each on the ii and V), shown in the home
+key of C. Eight consecutive swing eighths from beat 1; the A♭ falls on the
+and-of-4, and the G lands on beat 1 of bar 2:
 
 ```text
-   Dm7           G7            Cmaj7
-| F  E  D  C  | B  D  F  A♭ | G — |
+   Dm7        G7           Cmaj7
+| F E D C    B D F A♭    | G — — — |
 ```
 
 Descending scalar line from the 3rd of Dm7; up the G7♭9 arpeggio from its
@@ -24,7 +26,8 @@ landing on beat 1. Target tempo: 120 bpm, swing eighths, click L2.
 
 **Generate-ladder rung 1 (preview, not yet in flight):** same line, enclosed
 ending — replace the landing with F–D♯–E so it resolves to the 3rd instead
-of the 5th. Stays parked until this phrase reaches stage 5.
+of the 5th. Stays parked until extract (stage 5) is done and generate
+(stage 6) opens.
 
 ## Analysis (stage 4 preview — the annotation the app will one day write)
 
