@@ -80,7 +80,7 @@ jobs:
       # nextest runs the same assertions as `cargo test` but with a smarter
       # scheduler — typically 40–50% faster. Doc tests are run separately
       # below since nextest doesn't execute them.
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-nextest
       - run: cargo nextest run --workspace --profile ci
@@ -111,7 +111,7 @@ jobs:
         with:
           prefix-key: "coverage"
           cache-on-failure: true
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-llvm-cov,cargo-nextest
       - name: Generate coverage
@@ -143,7 +143,7 @@ jobs:
         with:
           prefix-key: "native"
           save-if: "false"
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@v2.85.5
         with:
           tool: clippy-sarif,sarif-fmt
       # Run clippy with JSON output piped through clippy-sarif for GitHub
@@ -187,7 +187,7 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: "26.5"
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@v2.85.5
         with:
           tool: just
       # Swift formatting gate (mirror of cargo fmt --check). Needs only the
@@ -399,7 +399,7 @@ jobs:
           fetch-depth: 0
       # Pinned: typos dictionary updates can start flagging previously-clean
       # words, failing unrelated PRs. Bump deliberately, with mise.toml.
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@v2.85.5
         with:
           tool: typos@1.48,cargo-shear@1.13
       # ── typos ──────────────────────────────────────────────────────────
