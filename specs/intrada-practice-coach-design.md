@@ -97,9 +97,15 @@ The frame organises the taxonomy along two axes the flat list doesn't show:
   patterns grow the hands circle. Vocabulary is the bridge between them — a
   transcribed phrase (head) becomes a device drilled through the keys (hands).
   The lick pipeline is that bridge, built out.
-- **At the keys vs away from them.** Listening and transcription need no
-  instrument (already the no-instrument session blocks); everything else is
-  keyboard time making music or building the hands.
+- **At the keys vs away from them.** Listening needs no instrument (already
+  the prescribable no-instrument session blocks). Transcription spans both
+  modes, and the modes are a difficulty ladder: listen-and-repeat at the keys
+  is the entry rung; working the phrase out away from the instrument, hearing
+  it fully in the head before playing a note, is the advanced rung — pure
+  audiation, no trial-and-error from the hands. That ladder belongs in the
+  ear-training method pack, the same shape as sparse-click levels within
+  click-always. Everything else is keyboard time making music or building
+  the hands.
 
 This is explicitly a portfolio model, not a session template: proficiency
 comes from accumulated time across both circles over months, not from every
