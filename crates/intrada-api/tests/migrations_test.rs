@@ -3,7 +3,10 @@ use intrada_api::migrations;
 /// Helper: create a fresh local SQLite database and return a connection.
 async fn fresh_db() -> libsql::Connection {
     let tmp_dir = std::env::temp_dir();
-    let db_path = tmp_dir.join(format!("intrada_migration_test_{}.db", ulid::Ulid::gen()));
+    let db_path = tmp_dir.join(format!(
+        "intrada_migration_test_{}.db",
+        ulid::Ulid::generate()
+    ));
 
     let db = libsql::Builder::new_local(&db_path)
         .build()
