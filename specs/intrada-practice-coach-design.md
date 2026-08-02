@@ -13,10 +13,13 @@ A practice companion that acts as your teacher between lessons: it decides what 
 ## Decisions (recorded, overrulable)
 
 1. **Personal tool first, product decision deferred.** Built for user zero; placement, onboarding, content generalisation, and the audio path are deferred until three months of daily personal use argue for a product. Every scoping call below assumes this.
-2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident.
+2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident. Sparse-click modes (2-and-4, click every other bar) are gate levels *within* click-always: they convert the internal-time objection (Galper, Longo) into a difficulty ladder rather than a rebuttal.
 3. **Deploy-gates are self-confirmed in v1.** Detecting a transposed, varied device inside free improvisation is research-grade; v1 asks "did you land it?", with machine suggestion at best later.
 4. **Horizons are self-trend-based, not population-based.** "Most people need ~10 sessions" requires population data that does not exist at launch; the honest version is "your trend suggests roughly N more sessions".
 5. **Content scope for v1 is minimal:** 5 nodes, 2 method packs, 1 phrase, fully specified; the rest of the branch as stubs. The prove-the-loop principle applies to content as much as code.
+6. **Score timing consistency and trend, never absolute deviation** (added 2 Aug 2026 after the measurement-validity review). Skilled jazz timing is systematically off the grid on purpose — a stable ~30ms lay-back reads as swinging *harder* — so only variance and drift are errors. "Late into bar 3" is a finding only when the lateness is inconsistent.
+7. **Transport-tiered scoring** (added 2 Aug 2026). Wired MIDI (±1–3ms) earns fine timing feedback; Bluetooth MIDI (±10–20ms connection-interval jitter) gets note accuracy, swing, and trends only — and the app says why on screen. Never issue a precision verdict the input can't support: the never-bluff principle applied to the input path.
+8. **Swing ratio is reported, never graded** (added 2 Aug 2026). Robustly measurable from beat-aligned MIDI, but the "correct" ratio varies legitimately by tempo (≈3.5:1 slow falling toward 1:1 fast), player, and phrase. Tempo-adjusted display ("3.1:1 — spacious for this tempo"), no pass/fail.
 
 ## The problem
 
@@ -145,12 +148,65 @@ Worked example, 20 minutes on Strasbourg / St. Denis:
 
 Every block carries: a one-line why (citing graph state), a gate, a stuck path, and state written back.
 
-### Feedback cadence
+### Feedback choreography
 
-- **Per rep:** glanceable only. Tick, cross, one fact ("late into bar 3"). Hands stay on keys.
-- **Block boundaries:** the coaching voice. Why this drill, what to listen for, the trend.
-- **Escalation on pattern, not on single failure.** Three fails triggers the ladder unprompted: drop tempo 20%, shrink scope (A section, one hand, one key), change mode (sing it, tap it, listen), swap the drill. No ceremony, no guilt.
-- **Name the wall.** At the quit-point, normalise plus a smaller step: "everyone's enclosures sound mechanical for the first three weeks; here's the smaller version."
+Expanded 2 August 2026 from the earlier cadence sketch, after reviewing the
+augmented-feedback and guidance-hypothesis literature and the shipped-scorer
+failure modes (Melodics' praised early/late labels; Playground Sessions'
+trust collapse from hidden criteria). The organising rule: **never correct in
+real time**. The app is silent while the user plays, gives a one-glance
+verdict after each repetition, and saves sentences for the natural rests.
+Real-time correction fails on every axis: unreadable while playing, breeds
+dependence, and is the naggy failure mode — the backseat driver.
+
+Four layers, organised by *when*, not what:
+
+- **Layer 0 — during play: silence.** The click and a passive beat/bar
+  position indicator. No live wrong-note flashes, no score counting up. A
+  mid-phrase flash pulls the eyes to the screen, which ruins the next phrase,
+  which flashes again: the doom loop. The user's ears own this time.
+- **Layer 1 — after each rep: one glance (~1 second).** Tick or cross plus
+  at most one fact ("clean", "2 wrong notes", "rushing bars 3–4"). Timing
+  facts always say early/late/rushing, never bare "wrong" — actionable
+  without thought. Gate progress ticks visibly (● ● ○, "2 of 3"). The next
+  count-in starts automatically; hands never leave the keys, nothing to tap
+  between reps.
+- **Layer 2 — block boundaries: the coaching voice.** The only place the app
+  speaks in sentences, at the natural rest. Why this drill, the trend, and
+  exactly one thing to listen for next. One thought, not a paragraph.
+- **Layer 3 — session end: the narrative.** Trends, the thread ("Monday's
+  voicing drill is what your left hand just did in bar 5"), what's next,
+  tomorrow's draft. Readable now or in the morning.
+
+Anti-nag rules (where the naggy/useful balance is actually won):
+
+- **A single failure gets a cross and a fact. Nothing else.** No "try
+  again!", no tip. Next count-in. One bad rep is not an event.
+- **Escalation on pattern, not on single failure — and it acts, not
+  narrates.** Three fails triggers the ladder unprompted: drop tempo 20%,
+  shrink scope (A section, one hand, one key), change mode (sing it, tap it,
+  listen), swap the drill. Framed as the plan ("Let's take it to 100"),
+  never as remediation. A teacher doesn't narrate your failure; they quietly
+  make the next attempt winnable.
+- **Name the wall — once.** At the quit-point, normalise plus a smaller
+  step: "everyone's enclosures sound mechanical for the first three weeks;
+  here's the smaller version." Never repeat the same encouragement twice;
+  the second time is when it curdles into nagging.
+- **Uncertainty asks instead of asserting.** Ambiguous attempt, low-fidelity
+  input: "that sounded clean — agree?" One tap. Being asked is respectful;
+  being wrongly failed is a trust-ender.
+
+Feedback fades as mastery grows (the guidance-hypothesis tunable): a new
+drill gets a verdict every rep (calibration); a solid drill shifts to
+summary-every-few-reps; a mature drill goes predict-then-reveal — play,
+self-rate with one tap, *then* see the machine's score. Predict-then-reveal
+is the graduation arc in miniature: comparing self-judgement against
+measurement is the skill a teacher hands over last, and it keeps mature
+practice feeling like practising, not being invigilated.
+
+All thresholds here — the fail-count trigger, the fade-out schedule, the
+verdict cadence — are gate-criteria data, not code, calibrated against the
+Phase 0 logs.
 
 ### Anti-abandonment
 
@@ -187,7 +243,7 @@ No model training required. No AI engineering required. Orchestration and pedago
 | Layer | Where | What |
 |---|---|---|
 | MIDI analysis | On-device, Crux core (Rust) | Deterministic: wrong notes vs target, timing, swing ratio, tempo drift, gate detection. No AI. ~60% of the "listening teacher". |
-| Audio transcription | On-device, CoreML | Basic Pitch (Spotify, open source) converts acoustic audio to note events, feeding the same Rust analysis. Used, not trained. |
+| Audio transcription | On-device, CoreML | A piano-specialist transcription model (ByteDance's open-source high-resolution model or Transkun; 95–98% note F1 on piano, vs ~71% for the originally-pencilled Basic Pitch — below the trust floor for per-note feedback) converts acoustic audio to note events, feeding the same Rust analysis. Used, not trained. Mic mode is a coarser scoring tier by construction (~±20ms onset precision at best; dense mid-register voicings are the weak case). |
 | Coaching voice | Cloud LLM via Axum proxy | Claude/GPT. Input: metrics plus session and graph state. Output: the teacher's voice. Prompt engineering, cached, degrades gracefully offline. Never in the critical path. |
 | Planning and prescription | Backend Rust, state in Turso | Graph traversal, spacing, difficulty setpoint, session weave. Deliberately deterministic: testable, explainable, no hallucinated pedagogy. |
 
@@ -227,13 +283,13 @@ Pattern: almost none of these are engineering problems. They are judgement encod
 
 Plus: write the failure stories and desired app responses; note what the app should have done on the inevitable bad day; write the placement session as a thought experiment and check the criteria aren't jon-shaped.
 
-**Phase 1: the listening gate (3-4 weeks).** Opens with the named spike: attempt segmentation and click alignment (count-in, restart detection, noodling vs attempts, collapse handling) proven against real playing before any scoring UI exists. Then: CoreMIDI capture into the Crux core; deterministic analysis; one screen (drill, live scoring, gate progress). First drill type: lick transposition (target exactly known, scoring unambiguous, exercises the Phrase model, user-zero motivation built in). Shells second, proving generalisation. Alongside: an honest hour surveying current competitors (Yousician-class products have quietly added more adaptivity than "content libraries" suggests). The moment to reach: play, see the tick, feel the gate release you.
+**Phase 1: the listening gate (3-4 weeks).** Opens with the named spike: attempt segmentation and click alignment (count-in, restart detection, noodling vs attempts, collapse handling) proven against real playing before any scoring UI exists. The same capture harness measures BLE-MIDI timestamp fidelity on the real piano (sender-side timestamps vs arrival times, USB as ground truth) — one afternoon that decides how much Bluetooth scoring can honestly claim (decision 7). Prior art to read before building segmentation: the Rach3 rehearsal-MIDI dataset tooling (ISMIR 2025). Then: CoreMIDI capture into the Crux core; deterministic analysis; one screen (drill, live scoring, gate progress). First drill type: lick transposition (target exactly known, scoring unambiguous, exercises the Phrase model, user-zero motivation built in). Shells second, proving generalisation. Alongside: an honest hour surveying current competitors (Yousician-class products have quietly added more adaptivity than "content libraries" suggests). The moment to reach: play, see the tick, feel the gate release you.
 
 **Phase 2: the prescribed session (3-4 weeks).** Planner as a pure function; press-start flow; stuck button with the mechanical ladder; soft-landing exit; listening blocks as prescribable no-instrument items; state into Turso. Exit criterion: two weeks of daily use without reverting to self-directed sessions.
 
 **Phase 3: the voice (2-3 weeks).** LLM behind Axum: summaries, whys, stuck-moment coaching (normalise plus smaller step). Deliberately late: coaching prose over unmeasured practice is a chatbot, not a teacher.
 
-**Phase 4: widen (ongoing).** More drill types, spaced repetition, difficulty auto-adjustment, velocity tracking, ear-training interaction loop, Basic Pitch audio path (preceded by a one-afternoon spike: Basic Pitch vs MIDI ground truth from the same performance, yielding real error rates per drill type), placement diagnostics, second user (the graph needs a second data point before it is a curriculum).
+**Phase 4: widen (ongoing).** More drill types, spaced repetition, difficulty auto-adjustment, velocity tracking, ear-training interaction loop, audio path via a piano-specialist transcription model (preceded by two spikes: model-vs-MIDI ground truth from the same performance, yielding real error rates per drill type; and click-bleed — the metronome is a broadband transient landing exactly on the beats being scored, so headphone-click or click-subtraction must be proven before mic mode ships), placement diagnostics, second user (the graph needs a second data point before it is a curriculum).
 
 **Sequencing calls (overrule as needed):** MIDI before audio; LLM last, not first; no placement until Phase 4.
 
