@@ -407,7 +407,7 @@ fn create_entry(
     position: usize,
 ) -> SetlistEntry {
     SetlistEntry {
-        id: ulid::Ulid::gen().to_string(),
+        id: ulid::Ulid::generate().to_string(),
         item_id: item_id.to_string(),
         item_title: item_title.to_string(),
         item_type,
@@ -508,7 +508,7 @@ fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
 fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     let now = Utc::now();
     Item {
-        id: ulid::Ulid::gen().to_string(),
+        id: ulid::Ulid::generate().to_string(),
         title: title.to_string(),
         kind,
         composer: None,
@@ -863,7 +863,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             let group_id = if related_to_add.is_empty() {
                 None
             } else {
-                Some(ulid::Ulid::gen().to_string())
+                Some(ulid::Ulid::generate().to_string())
             };
 
             // Related first (warm-up order), then the piece.
@@ -1131,7 +1131,7 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             }
 
             let active = ActiveSession {
-                id: ulid::Ulid::gen().to_string(),
+                id: ulid::Ulid::generate().to_string(),
                 entries,
                 current_index: 0,
                 current_item_started_at: now,

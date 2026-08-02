@@ -62,7 +62,7 @@ pub fn reconcile_variants(
                 next.push(v);
             }
             None => next.push(Variant {
-                id: ulid::Ulid::gen().to_string(),
+                id: ulid::Ulid::generate().to_string(),
                 label: label.clone(),
                 position,
                 updated_at: now,

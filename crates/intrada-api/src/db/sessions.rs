@@ -326,7 +326,7 @@ pub async fn insert_session(
     user_id: &str,
     input: &SaveSessionRequest,
 ) -> Result<PracticeSession, ApiError> {
-    let id = ulid::Ulid::gen().to_string();
+    let id = ulid::Ulid::generate().to_string();
 
     let started_at_str = input.started_at.to_rfc3339();
     let completed_at_str = input.completed_at.to_rfc3339();

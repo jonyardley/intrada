@@ -220,7 +220,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
 
             let now = chrono::Utc::now();
             let item = Item {
-                id: ulid::Ulid::gen().to_string(),
+                id: ulid::Ulid::generate().to_string(),
                 title: input.title,
                 kind: input.kind,
                 composer: input.composer,
@@ -566,7 +566,7 @@ pub fn handle_item_event(event: ItemEvent, model: &mut Model) -> Command<Effect,
                     !scaffold_already_linked(&linked_kinds, &linked_titles, s.kind, &s.title)
                 })
                 .map(|s| Item {
-                    id: ulid::Ulid::gen().to_string(),
+                    id: ulid::Ulid::generate().to_string(),
                     title: s.title,
                     kind: ItemKind::Exercise,
                     composer: None,
