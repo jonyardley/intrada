@@ -145,12 +145,65 @@ Worked example, 20 minutes on Strasbourg / St. Denis:
 
 Every block carries: a one-line why (citing graph state), a gate, a stuck path, and state written back.
 
-### Feedback cadence
+### Feedback choreography
 
-- **Per rep:** glanceable only. Tick, cross, one fact ("late into bar 3"). Hands stay on keys.
-- **Block boundaries:** the coaching voice. Why this drill, what to listen for, the trend.
-- **Escalation on pattern, not on single failure.** Three fails triggers the ladder unprompted: drop tempo 20%, shrink scope (A section, one hand, one key), change mode (sing it, tap it, listen), swap the drill. No ceremony, no guilt.
-- **Name the wall.** At the quit-point, normalise plus a smaller step: "everyone's enclosures sound mechanical for the first three weeks; here's the smaller version."
+Expanded 2 August 2026 from the earlier cadence sketch, after reviewing the
+augmented-feedback and guidance-hypothesis literature and the shipped-scorer
+failure modes (Melodics' praised early/late labels; Playground Sessions'
+trust collapse from hidden criteria). The organising rule: **never correct in
+real time**. The app is silent while the user plays, gives a one-glance
+verdict after each repetition, and saves sentences for the natural rests.
+Real-time correction fails on every axis: unreadable while playing, breeds
+dependence, and is the naggy failure mode — the backseat driver.
+
+Four layers, organised by *when*, not what:
+
+- **Layer 0 — during play: silence.** The click and a passive beat/bar
+  position indicator. No live wrong-note flashes, no score counting up. A
+  mid-phrase flash pulls the eyes to the screen, which ruins the next phrase,
+  which flashes again: the doom loop. The user's ears own this time.
+- **Layer 1 — after each rep: one glance (~1 second).** Tick or cross plus
+  at most one fact ("clean", "2 wrong notes", "rushing bars 3–4"). Timing
+  facts always say early/late/rushing, never bare "wrong" — actionable
+  without thought. Gate progress ticks visibly (● ● ○, "2 of 3"). The next
+  count-in starts automatically; hands never leave the keys, nothing to tap
+  between reps.
+- **Layer 2 — block boundaries: the coaching voice.** The only place the app
+  speaks in sentences, at the natural rest. Why this drill, the trend, and
+  exactly one thing to listen for next. One thought, not a paragraph.
+- **Layer 3 — session end: the narrative.** Trends, the thread ("Monday's
+  voicing drill is what your left hand just did in bar 5"), what's next,
+  tomorrow's draft. Readable now or in the morning.
+
+Anti-nag rules (where the naggy/useful balance is actually won):
+
+- **A single failure gets a cross and a fact. Nothing else.** No "try
+  again!", no tip. Next count-in. One bad rep is not an event.
+- **Escalation on pattern, not on single failure — and it acts, not
+  narrates.** Three fails triggers the ladder unprompted: drop tempo 20%,
+  shrink scope (A section, one hand, one key), change mode (sing it, tap it,
+  listen), swap the drill. Framed as the plan ("Let's take it to 100"),
+  never as remediation. A teacher doesn't narrate your failure; they quietly
+  make the next attempt winnable.
+- **Name the wall — once.** At the quit-point, normalise plus a smaller
+  step: "everyone's enclosures sound mechanical for the first three weeks;
+  here's the smaller version." Never repeat the same encouragement twice;
+  the second time is when it curdles into nagging.
+- **Uncertainty asks instead of asserting.** Ambiguous attempt, low-fidelity
+  input: "that sounded clean — agree?" One tap. Being asked is respectful;
+  being wrongly failed is a trust-ender.
+
+Feedback fades as mastery grows (the guidance-hypothesis tunable): a new
+drill gets a verdict every rep (calibration); a solid drill shifts to
+summary-every-few-reps; a mature drill goes predict-then-reveal — play,
+self-rate with one tap, *then* see the machine's score. Predict-then-reveal
+is the graduation arc in miniature: comparing self-judgement against
+measurement is the skill a teacher hands over last, and it keeps mature
+practice feeling like practising, not being invigilated.
+
+All thresholds here — the fail-count trigger, the fade-out schedule, the
+verdict cadence — are gate-criteria data, not code, calibrated against the
+Phase 0 logs.
 
 ### Anti-abandonment
 
