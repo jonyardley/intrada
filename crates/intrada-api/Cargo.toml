@@ -40,7 +40,7 @@ sha2 = "0.11"
 
 # OAuth 2.1: PKCE S256 verification (base64url-no-pad of the SHA-256 of
 # the code_verifier). `URL_SAFE_NO_PAD` matches RFC 7636 Section 4.2.
-base64 = "0.22"
+base64 = "0.23"
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
