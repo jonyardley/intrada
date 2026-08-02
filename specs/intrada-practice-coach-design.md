@@ -82,6 +82,37 @@ The pattern worth noticing: the gamification playbook (points, streak-loss, badg
 
 ## The pedagogy model
 
+### The fluency frame (added 2 Aug 2026)
+
+From a lesson-notes sketch by user zero's teacher. What comes out as **music**
+is the intersection of two circles: the **music in your head** (what you can
+hear and imagine) and **technique** (what your hands can execute on demand).
+Fluency is the growth of the overlap — either circle alone produces exercises
+or frustration.
+
+The frame organises the taxonomy along two axes the flat list doesn't show:
+
+- **Head vs hands.** Listening, transcription, and the front half of the
+  vocabulary pipeline grow the head circle; technique, voicings, and harmonic
+  patterns grow the hands circle. Vocabulary is the bridge between them — a
+  transcribed phrase (head) becomes a device drilled through the keys (hands).
+  The lick pipeline is that bridge, built out.
+- **At the keys vs away from them.** Listening and transcription need no
+  instrument (already the no-instrument session blocks); everything else is
+  keyboard time making music or building the hands.
+
+This is explicitly a portfolio model, not a session template: proficiency
+comes from accumulated time across both circles over months, not from every
+session touching everything. The planner's interleaving already rotates
+categories, but it rotates by node due-ness — nothing detects a starved
+circle. A user could pass gates for months with 90% of their time in the
+hands circle, and v1's measurable-first content leans exactly that way. The
+check this frame adds, once the session data exists: a long-horizon
+time-by-circle view (Track pillar) and a planner bias when one circle
+starves. Cheap, because every block is already tagged with its taxonomy
+category. Phase 4 material; recorded now so the imbalance is a known debt,
+not a surprise.
+
 ### Activity taxonomy (seven categories, engine room only)
 
 1. **Technique and foundations.** Scales, modes, arpeggios, digital patterns (1-2-3-5 cells), finger independence.
