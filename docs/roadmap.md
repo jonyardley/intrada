@@ -24,9 +24,10 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > the pivot plan. Keep-column assets (chord theory in `chart.rs`, the GRDB
 > persistence pattern, the design system, the FFI toolchain) carry forward.
 >
-> Current phase: **Phase 0** (paper teacher — content authoring + practice
-> logs, no code) in parallel with **Phase 1** (MIDI capture harness →
-> attempt-segmentation spike → lick-transposition scoring).
+> Current phase: **Phase 0** (paper teacher — content authored under
+> [`content/`](../content/README.md), practice logs in progress, no code) in
+> parallel with **Phase 1** (MIDI capture harness → attempt-segmentation
+> spike → lick-transposition scoring).
 
 ---
 

@@ -1,0 +1,179 @@
+# Gate criteria as data — the tunable half of the paper teacher.
+# Every number is a day-one guess; the gate-attempt log (logs.md) is what
+# calibrates them. Schema is the point: Phase 2's planner reads this shape.
+#
+# Timing is always consistency/trend, never absolute deviation (decision 6).
+# "clean" = zero wrong notes + timing consistent within the rep.
+
+schema_version = "0.1"
+
+[defaults]
+clean_max_wrong_notes = 0
+clean_timing = "consistent"      # variance-based; a stable lay-back is style, not error
+time_ceiling_min = 6             # no block spirals past this
+transport = "paper"              # Phase 0: user zero is the sensor (self-confirmed)
+
+# Sparse-click ladder — gate levels *within* click-always (decision 2).
+[click_levels]
+l1 = "click on every beat"
+l2 = "click on 2 and 4"
+l3 = "click on beat 1 of each bar"
+l4 = "click on beat 1 of every other bar"
+
+# What each input path may honestly claim (decision 7). Phase 0 uses paper.
+[transport_tiers]
+wired = ["note-accuracy", "timing-consistency", "tempo-drift", "swing-report"]
+bluetooth = ["note-accuracy", "swing-report", "trend"]
+paper = ["self-confirmed"]
+
+# Feedback cadence by drill maturity (feedback choreography; guidance
+# hypothesis). Fade-out is data, not code.
+[feedback]
+new_drill = "verdict every rep"
+solid_drill = "summary every 3 reps"
+mature_drill = "predict-then-reveal"
+single_failure = "cross plus one fact, nothing else"
+
+[escalation]
+fail_trigger = 3                 # consecutive fails of the same thing
+ladder = ["tempo-down-20pct", "shrink-scope", "change-mode", "swap-drill"]
+name_the_wall_max_times = 1      # the second encouragement is a nag
+
+# ── shells-ii-v-i ──
+
+[gates.shells-cycle]
+node = "shells-ii-v-i"
+criterion = "ii–V–I shells through the full cycle of fourths, no stops"
+clean_passes = 1
+tempo_bpm = 100
+click_level = "l2"
+
+[gates.shells-under-melody]
+node = "shells-ii-v-i"
+criterion = "Strasbourg A section, melody over shells, hands together"
+clean_passes = 3
+tempo_bpm = 90
+click_level = "l1"
+
+[gates.shells-random-key]
+node = "shells-ii-v-i"
+criterion = "shuffled key cards: ii–V–I shells cold, within one bar of thinking time"
+keys_required = 12
+max_think_bars = 1
+tempo_bpm = 80
+click_level = "l1"
+
+# ── rootless-a-b ──
+
+[gates.rootless-one-key]
+node = "rootless-a-b"
+criterion = "ii–V–I, A/B forms alternating, LH alone, one bar per chord"
+clean_passes = 3
+tempo_bpm = 60
+click_level = "l1"
+per_key = true                   # passed independently in each key
+
+[gates.rootless-transition]
+node = "rootless-a-b"
+criterion = "looped two-chord change (ii→V, then V→I), no gap at the change"
+clean_passes = 4
+tempo_bpm = 60
+click_level = "l1"
+per_key = true
+
+[gates.rootless-traversal]
+node = "rootless-a-b"
+criterion = "session goal: 2–3 new keys at current rung + maintenance pass on all landed keys"
+new_keys_per_session_min = 2
+new_keys_per_session_max = 3
+
+[gates.rootless-under-melody]
+node = "rootless-a-b"
+criterion = "Strasbourg A section, melody over rootless LH"
+clean_passes = 2
+tempo_bpm = 80
+click_level = "l1"
+
+[gates.rootless-cycle]                     # the node's done-criterion
+node = "rootless-a-b"
+criterion = "full cycle of fourths, A/B alternating, no stops"
+clean_passes = 1
+tempo_bpm = 80
+click_level = "l1"
+
+# ── phrase-transposition (parameterised by the in-flight phrase) ──
+
+[gates.phrase-home-key]
+node = "phrase-transposition"
+criterion = "phrase over its ii–V–I loop in the home key"
+clean_passes = 3
+tempo_bpm = 120                  # p001 target tempo
+click_level = "l2"
+
+[gates.phrase-nearby-keys]
+node = "phrase-transposition"
+criterion = "clean in both whole-step neighbours, resolution lands on beat 1"
+clean_passes = 2                 # per key
+keys_required = 2
+tempo_bpm = 90
+click_level = "l1"
+
+[gates.phrase-cycle]
+node = "phrase-transposition"
+criterion = "phrase chained through 4+ consecutive cycle keys, ii–V links, no stops"
+clean_passes = 1
+keys_chained_min = 4
+tempo_bpm = 90
+click_level = "l1"
+
+[gates.phrase-random-key]
+node = "phrase-transposition"
+criterion = "dealt key, one count-in, clean first attempt"
+keys_required = 12
+first_attempt = true
+tempo_bpm = 100
+click_level = "l2"
+
+# ── chord-tone-targeting ──
+
+[gates.targeting-skeleton]
+node = "chord-tone-targeting"
+criterion = "whole-note guide-tone line, full form, 3rds/7ths connected by step"
+clean_passes = 2
+tempo_bpm = 90
+click_level = "l1"
+
+[gates.targeting-approach]
+node = "chord-tone-targeting"
+criterion = "two-bar cells: free bar, then target chord tone on beat 1 of the change"
+clean_passes = 4                 # consecutive cells landed
+tempo_bpm = 90
+click_level = "l1"
+
+[gates.targeting-full-form]
+node = "chord-tone-targeting"
+criterion = "full form: 3rd or 7th on beat 1 of every change; feel self-rated alongside, not gated"
+clean_passes = 2
+consecutive = true
+tempo_bpm = 100
+click_level = "l2"
+self_rating_logged = true
+
+# ── micro-transcription (paper tier: self-confirmed against the record) ──
+
+[gates.transcription-entry]
+node = "micro-transcription"
+criterion = "1–2 bar phrase matched at the keys within 5 listens"
+max_listens = 5
+self_confirmed = true
+
+[gates.transcription-sing]
+node = "micro-transcription"
+criterion = "phrase sung (contour + rhythm) before touching the keys"
+self_confirmed = true
+
+[gates.transcription-audiation]
+node = "micro-transcription"
+criterion = "phrase worked out fully away from the piano; first attempt at the keys matches"
+first_attempt = true
+self_confirmed = true

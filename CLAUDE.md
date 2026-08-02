@@ -41,6 +41,7 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Reference Swift preserved from the removed Tauri shell (not built)
+content/                 # Practice-coach authored content (Phase 0 paper teacher; no code reads it yet)
 design/                  # Claude Design system (intrada-design-system.dc.html)
 docs/                    # Product roadmap (single source of truth)
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
