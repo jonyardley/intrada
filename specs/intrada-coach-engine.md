@@ -44,6 +44,11 @@ of attempts, and its pass is a derived event triggering a level-up. State is per
 struct Mastery { alpha: f32, beta: f32, prior: (f32, f32), last_attempt_at: Timestamp }
 ```
 
+`alpha`/`beta` are the counts **as of `last_attempt_at`**, never rewritten by the
+passage of time. Decay is a read (`decayed_at(now)`), not a stored mutation —
+which is what keeps elapsed time out of the spacing calculation twice over
+(#1148.2).
+
 **#1148.1 — Beta, confirmed, with three amendments.** Per-attempt pass/fail is
 Bernoulli and Beta is its conjugate, so estimate and confidence fall out of one
 state with no second mechanism to keep in sync. Rejected: Elo/Glicko (needs an
@@ -60,6 +65,14 @@ evidence   = (alpha + beta) - (alpha_0 + beta_0)   // attempts beyond the prior
 confidence = evidence / (evidence + k)             // k = 8
 ```
 
+The cap is enforced **on increment, by proportional scale-down** — on reaching
+`evidence_max` both counts are scaled to hold `alpha + beta` at the cap, which
+preserves `estimate` exactly and discards the oldest evidence implicitly. Two
+consequences worth stating rather than discovering: `confidence` therefore
+saturates below 1 (at `38/(38+8) ≈ 0.83` with these defaults) and a node is never
+certain, which is correct; and a capped node responds to new evidence at a fixed
+rate forever, which is what makes three bad sessions visible (lever 4).
+
 Content's `(estimate, band)` seeds become priors: band strength `low 2 /
 medium 5 / high 10` pseudo-counts, split by the seeded estimate.
 
@@ -67,31 +80,48 @@ medium 5 / high 10` pseudo-counts, split by the seeded estimate.
 counts toward the prior, never toward zero:
 
 ```
-alpha ← alpha_0 + (alpha - alpha_0) · λ^Δdays          (same for beta)
-λ = 0.5 ^ (1 / retention_half_life_days)               (per node family, authored)
-interval_days = base_interval · g(estimate, evidence)  // expanding: both raise it
-overdue = days_since_last_attempt / interval_days      // due at ≥ 1.0
+// read-time decay of the stored counts, for display and success prediction
+decayed(alpha) = alpha_0 + (alpha - alpha_0) · λ^Δdays        (same for beta)
+λ = 0.5 ^ (1 / retention_half_life_days)                     (per node family, authored)
+
+// spacing, computed from the STORED (undecayed) counts
+interval_days = base_interval · (1 + estimate) ^ (evidence / e_scale)   // e_scale = 8
+overdue       = days_since_last_attempt / interval_days                // due at ≥ 1.0
 ```
 
 Decay shrinks evidence and moves the estimate toward "we don't really know",
 never toward failure — journey 7's requirement, and honest: absence of practice
-is absence of evidence. **Decay never manufactures failure evidence.** Spacing is
-derived from that same state rather than a second schedule, so the two cannot
-disagree. Half-lives and `base_interval` are `gates.toml` data (lever 2: SM-2 is
-a heuristic, not gospel).
+is absence of evidence. **Decay never manufactures failure evidence.**
+
+**The interval is computed from the stored counts, not the decayed ones.** Using
+decayed values would put elapsed time on both sides of `overdue` — once
+shrinking evidence, which shortens the interval, and again in the numerator — so
+a long gap would compound into "wildly overdue" rather than "due". One state,
+two readings: the stored counts drive spacing, the decayed read drives display
+and the planner's success prediction. `base_interval`, `e_scale` and the
+half-lives are `gates.toml` data (lever 2: SM-2 is a heuristic, not gospel), and
+the interval form above is the starting shape — expanding in both estimate and
+evidence — to be recalibrated against observed decay rather than trusted.
 
 **#1148.3 — Level-ups shift, never reset.** A new parameter level starts from a
 discounted inheritance of the level below, `transfer ≈ 0.35`:
 
 ```
-prior' = (1 + transfer · evidence_below · estimate_below,
-          1 + transfer · evidence_below · (1 - estimate_below))
+inherited = min(transfer · evidence_below, inherit_max)     // inherit_max = 6
+prior'    = (1 + inherited · estimate_below,
+             1 + inherited · (1 - estimate_below))
 ```
 
 Reset discards real transfer *and* makes every level-up read as a regression —
 "I got better and my score dropped" is a trust-ender (UX principle 8). Full
 carry-over is equally wrong: a new tempo genuinely is less certain. The level
 below is left untouched, so a level-down is a cursor move, not a rewrite.
+
+`inherit_max` matters more than it looks: without it, a capped level below hands
+down `0.35 × 38 ≈ 13` pseudo-counts, so the new level needs a dozen contrary
+attempts before it will admit the tempo is too fast — an inherited prior that
+overrides what the hands are currently saying. Capped at 6, the new level starts
+optimistic and is movable within a session.
 
 **#1148.4 — Attempts-to-pass and time-share feed the circling check only.**
 Attempts-to-pass *is* the attempt-level Bernoulli sequence seen from the other
@@ -150,6 +180,15 @@ because `Running` implies a plan and gates: `Idle` → `Planned(Plan)` →
 | any | ceiling reached | `Boundary` | ceiling shown throughout (decision 15) |
 | `Boundary` | arbitration (§7) | next `CountIn` / `Closing` | the only place an interruption may fire |
 
+Entering and leaving the peer states, which the block table doesn't cover:
+`Planned`/`Running` → `OffPiste` on one tap, and `Idle`/`Planned` → `Unmonitored`
+(never from mid-`Running`: switching to unmonitored part-way through would make
+the already-captured half of the session retrospectively unconsented). Both
+return to `Closing`, so a wander still banks its time and still closes the
+session — abandoning must never be what the app teaches. `OffPiste` → `Closing`
+carries the *keep this as a drill?* prompt; `Unmonitored` → `Closing` carries
+nothing but a duration.
+
 **Recorded from the first build.** Cheap now, impossible to reconstruct from an
 aggregate row later; the circling check, horizons and gate calibration all
 depend on them.
@@ -167,6 +206,20 @@ struct BlockRecord {
     circle: Circle, mode: Mode,        // the Phase 2 time-by-circle tally, free at write time
 }
 ```
+
+**Off-piste needs its own record, not an optional-everything `BlockRecord`.** A
+wander has no node, drill, gate or level, so every id above would have to become
+`Option` — which would then let a *planned* block persist with no gate and lose
+the type's only real guarantee. Separate type instead:
+
+```rust
+struct WanderRecord { id: Ulid, started_at: Timestamp, ended_at: Timestamp,
+                      attempts: Vec<AttemptSummary>,   // still captured, still scored
+                      keep_as_drill: Option<bool> }    // None = not yet asked
+```
+
+`Unmonitored` writes neither — a duration on the session row and nothing else,
+which is the whole point of decision 16. Nothing in the engine may infer from it.
 
 Persistence per the invariants: client-minted ulid (3), append-only with
 `updated_at` + `deleted_at` (2), `BlockRecord`s in GRDB, the in-progress
@@ -269,8 +322,12 @@ fn arbitrate(candidates: &[Candidate], at: Boundary,
   notice never repeats for the same node in a later session; a declined offer
   stands without a second ask.
 - **Cold start** (journey 1) is one predicate here, not per-feature:
-  `baseline_ready(kind)`, an `evidence` minimum, gates everything needing a
-  personal baseline ("above your norm", session horizons, the circling check).
+  `baseline_ready(kind)` gates everything needing a personal baseline ("above
+  your norm", session horizons, the circling check). Note its input is **not**
+  per-node `evidence`: the circling check compares an attempts-to-pass figure
+  against the user's own *cross-node* distribution, and horizons need completed
+  sessions. So the predicate reads corpus-level counts — gates attempted,
+  sessions completed — per `kind`, not the `Mastery` of the node in front of you.
   *Which* mechanism switches on *when* is still open in the journeys doc; this
   predicate is where it gets answered.
 
@@ -292,6 +349,7 @@ struct GateCriteria {
     tempo_bpm: u16, click_level: ClickLevel,
     judge: Judge,                                    // Machine | SelfConfirmed
     transport_min: TransportTier, time_ceiling_min: u8, self_rating_logged: bool,
+    clean: Option<Clean>,                            // None = inherit [defaults]
 }
 enum Requirement {
     CleanPasses   { count: u8, consecutive: bool },
@@ -302,6 +360,12 @@ enum Requirement {
 struct Clean { max_wrong_notes: u8, timing: TimingRule }
 enum TimingRule { Consistent { max_cv: f32, max_drift: f32 } }   // decision 6
 ```
+
+- **`Clean` is what "a pass" means**, resolved per gate: `clean` overrides,
+  otherwise the file's `[defaults]` (`clean_max_wrong_notes`, `clean_timing`)
+  apply. Every requirement variant except `SelfConfirmed` is counting *clean
+  attempts*, so leaving this implicit would let a gate mean different things in
+  two readers.
 
 - **Timing is variance and drift only.** A stable 30ms lay-back passes; mean
   offset is *reported* beside swing ratio and never gated (decisions 6, 8).
