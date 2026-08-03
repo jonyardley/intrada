@@ -14,7 +14,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > pedagogy model, and phased build plan live in
 > [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
 > the codebase assessment and pivot strategy (pivot in place, new engine
-> module, notebook-era machinery deleted at Phase 2) in
+> module, notebook-era machinery deleted at Phase 2a) in
 > [`docs/rebuild-review.md`](rebuild-review.md).
 >
 > **The notebook-era backlog below is superseded.** Issues carrying the
@@ -33,7 +33,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 >
 > | Question | Document |
 > |---|---|
-> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v4) |
+> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v5) |
 > | What does it feel like to use? | [`docs/coach-user-journeys.md`](coach-user-journeys.md) |
 > | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
 > | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
@@ -55,8 +55,8 @@ coach work** — this is.
 |---|---|---|
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
 | **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | Next code. PR 2 needs a MIDI cable to hand |
-| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks, stuck ladder, soft-landing exit, builder deleted | Blocked on the mastery model (below) |
-| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally | After 2a |
+| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks, stuck ladder, soft-landing exit, builder deleted | Needs the mastery function specified first (#1148) |
+| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
 | **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
 
@@ -68,9 +68,13 @@ phase. 2a is the loop working end to end; 2b is everything that makes it kind.
 
 **Known prerequisite, not yet met:** the mastery update function is still
 recorded in the design doc as a "first crude version, to be refined", with a note
-that it must be specified *before* Phase 2. It hasn't been. It is the planner's
-engine and now has more inputs than when that note was written (attempts-to-pass,
-time-share per node). Specify it before 2a starts.
+that it must be specified *before* Phase 2. It hasn't been, and it is the
+planner's engine (#1148). Its **inputs are now settled** by decision 17 —
+measured attempts only. Self-report moves to a separate *judgement track* that
+records completion and a feel trend, may retire a target but may never satisfy a
+prerequisite, and gets designed in 2b against a fortnight of divergence-log
+evidence rather than guessed now. What remains for #1148 is the shape of the
+function itself, not the question of what feeds it.
 
 ---
 
