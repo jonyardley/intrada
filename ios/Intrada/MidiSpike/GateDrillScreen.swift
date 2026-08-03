@@ -28,6 +28,7 @@ final class GateDrillModel {
   private var grid: BeatGrid?
   private var capturedNotes: [NoteEvent] = []
   private var repEndWorkItem: DispatchWorkItem?
+  private var revealWorkItem: DispatchWorkItem?
 
   /// Extra beats of room *after* the phrase's last expected beat before a
   /// rep is scored, so a slightly late final note is scored as "dragging"
@@ -38,8 +39,16 @@ final class GateDrillModel {
   private let repEndGraceBeats: Double = 2
 
   func start() {
+    // Gated to .playing only — otherwise noodling during the count-in (or
+    // during the ~1s reveal before the next rep) leaks notes into the next
+    // rep's candidate pool and can steal a match slot from the real,
+    // on-time note (GatePhrase.evaluate matches by pitch class, not a time
+    // window).
     midi.onNoteEvent = { [weak self] event in
-      Task { @MainActor in self?.capturedNotes.append(event) }
+      Task { @MainActor in
+        guard let self, case .playing = self.phase else { return }
+        self.capturedNotes.append(event)
+      }
     }
     do {
       try midi.start()
@@ -52,6 +61,7 @@ final class GateDrillModel {
 
   func stop() {
     repEndWorkItem?.cancel()
+    revealWorkItem?.cancel()
     click?.stop()
     midi.stop()
   }
@@ -101,8 +111,11 @@ final class GateDrillModel {
     passes = result.isPass ? passes + 1 : 0
 
     // Layer 1 is a ~1s glance, then hands never leave the keys — the next
-    // count-in starts on its own.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+    // count-in starts on its own. Tracked in `revealWorkItem` (like
+    // `repEndWorkItem`) so `stop()` can cancel it — otherwise navigating
+    // away during this window doesn't stop the drill, it just delays a
+    // surprise restart.
+    let workItem = DispatchWorkItem { [weak self] in
       guard let self else { return }
       if self.passes >= GatePhrase.gateTargetPasses {
         self.phase = .cleared
@@ -110,6 +123,8 @@ final class GateDrillModel {
         self.startRep()
       }
     }
+    revealWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
   }
 
   func replay() {

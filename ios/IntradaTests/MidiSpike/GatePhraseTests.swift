@@ -90,6 +90,31 @@ struct GatePhraseTests {
     #expect(result.verdict == .wrongNotes(count: 1))
   }
 
+  @Test func nearestInTimeMatchIsNotFooledByArrayOrder() {
+    // Beats 1 and 3 are both F (see GatePhrase.expected). Swap their array
+    // positions without touching timestamps: a match-by-array-position
+    // matcher (the pre-fix behaviour) would wrongly pair beat 1's target
+    // with beat 3's note — nearly two beats away — reading as a large
+    // spurious offset even though every note is genuinely on time for its
+    // own beat.
+    var eventNotes = notes()
+    eventNotes.swapAt(0, 2)
+    let result = GatePhrase.evaluate(notes: eventNotes, against: grid, transport: .usb)
+    #expect(result.verdict == .pass)
+  }
+
+  @Test func strayNoteOfMatchingPitchClassDoesNotStealTheOnTimeMatch() {
+    // Simulates noodling on the same pitch class before the phrase starts:
+    // a stray, far-early F alongside all 8 correctly-timed notes. Nearest-
+    // time matching should still pair each expected beat with its own
+    // on-time note, leaving only the stray as the one genuine extra.
+    let stray = NoteEvent(
+      hostTime: grid.startHostTime &- HostClock.ticks(fromSeconds: 5), midiNote: 65, velocity: 60,
+      isNoteOn: true)
+    let result = GatePhrase.evaluate(notes: [stray] + notes(), against: grid, transport: .usb)
+    #expect(result.verdict == .wrongNotes(count: 1))
+  }
+
   @Test func noteOffEventsAreIgnored() {
     let noteOffsOnly = notes().map { note -> NoteEvent in
       var copy = note

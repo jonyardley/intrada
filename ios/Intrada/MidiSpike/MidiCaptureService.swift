@@ -9,6 +9,11 @@ final class MidiCaptureService {
   private var client = MIDIClientRef()
   private var inputPort = MIDIPortRef()
 
+  /// CoreMIDI's read callback fires on a CoreMIDI-owned thread, not the main
+  /// actor — set this once before calling `start()` and never reassign it
+  /// while capture is running. Nothing enforces that contract (the C
+  /// callback closure isn't `@Sendable`-checked), so reassigning mid-capture
+  /// is a real, if currently unexercised, data race.
   var onNoteEvent: ((NoteEvent) -> Void)?
 
   func start() throws {

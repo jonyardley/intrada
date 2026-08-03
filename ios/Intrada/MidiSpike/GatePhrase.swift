@@ -59,16 +59,17 @@ enum GatePhrase {
   // The Dm7 and G7 shells (3rd+7th) are arpeggiated one note at a time, not
   // played as two-note chords — each beat below is a single fresh keystroke
   // (re-struck, not sustained from the previous beat), one hand, any octave.
-  // Dm7 shell notes: F(5), C(0). G7 shell notes: B(11), F(5).
+  // Pitch classes: Dm7 shell is F(5)/C(0), G7 shell is B(11)/F(5) — see
+  // `noteNames` for the name mapping.
   static let expected: [ExpectedBeat] = [
-    ExpectedBeat(bar: 1, beat: 1, pitchClasses: [5]),  // F
-    ExpectedBeat(bar: 1, beat: 2, pitchClasses: [0]),  // C
-    ExpectedBeat(bar: 1, beat: 3, pitchClasses: [5]),  // F again
-    ExpectedBeat(bar: 1, beat: 4, pitchClasses: [0]),  // C again
-    ExpectedBeat(bar: 2, beat: 1, pitchClasses: [11]),  // B
-    ExpectedBeat(bar: 2, beat: 2, pitchClasses: [5]),  // F
-    ExpectedBeat(bar: 2, beat: 3, pitchClasses: [11]),  // B again
-    ExpectedBeat(bar: 2, beat: 4, pitchClasses: [5]),  // F again
+    ExpectedBeat(bar: 1, beat: 1, pitchClasses: [5]),
+    ExpectedBeat(bar: 1, beat: 2, pitchClasses: [0]),
+    ExpectedBeat(bar: 1, beat: 3, pitchClasses: [5]),
+    ExpectedBeat(bar: 1, beat: 4, pitchClasses: [0]),
+    ExpectedBeat(bar: 2, beat: 1, pitchClasses: [11]),
+    ExpectedBeat(bar: 2, beat: 2, pitchClasses: [5]),
+    ExpectedBeat(bar: 2, beat: 3, pitchClasses: [11]),
+    ExpectedBeat(bar: 2, beat: 4, pitchClasses: [5]),
   ]
 
   /// "1. F   2. C   3. F   4. C   5. B   6. F   7. B   8. F" — a single
@@ -81,10 +82,12 @@ enum GatePhrase {
   }
 
   /// Classifies one rep's captured note-on events against `expected`.
-  /// Matches each expected beat to the closest note-on of the right pitch
-  /// class within `timingToleranceMs` (using each beat's own scheduled
-  /// host-time, via `grid`); notes with no matching expected beat, or
-  /// expected beats with no matching note, count toward "wrong notes".
+  /// Matches each expected beat to the *nearest-in-time* unmatched note-on
+  /// of the right pitch class (not gated by `timingToleranceMs` at match
+  /// time — the tolerance only decides the early/late verdict afterward, on
+  /// whichever match came closest to any target beat). Notes with no
+  /// matching expected beat, or expected beats with no matching note, count
+  /// toward "wrong notes".
   ///
   /// `transport` gates whether a timing verdict is even possible — spec
   /// decision 7 (transport-tiered scoring): Bluetooth's connection-interval
@@ -104,11 +107,20 @@ enum GatePhrase {
 
     for expectedBeat in expected {
       let targetHostTime = grid.hostTime(bar: expectedBeat.bar, beat: expectedBeat.beat)
-      let candidateIndex = unmatchedNotes.firstIndex { note in
-        expectedBeat.pitchClasses.contains(Int(note.midiNote) % 12)
+
+      var bestIndex: Int?
+      var bestDistanceSeconds = Double.infinity
+      for index in unmatchedNotes.indices {
+        let note = unmatchedNotes[index]
+        guard expectedBeat.pitchClasses.contains(Int(note.midiNote) % 12) else { continue }
+        let distanceSeconds = abs(HostClock.secondsBetween(note.hostTime, targetHostTime))
+        if distanceSeconds < bestDistanceSeconds {
+          bestDistanceSeconds = distanceSeconds
+          bestIndex = index
+        }
       }
 
-      guard let index = candidateIndex else {
+      guard let index = bestIndex else {
         mismatchCount += 1
         continue
       }
