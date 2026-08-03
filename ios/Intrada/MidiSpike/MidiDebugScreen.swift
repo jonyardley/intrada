@@ -105,6 +105,14 @@ struct MidiDebugScreen: View {
       }
       .disabled(model.isRunning)
 
+      VStack(alignment: .leading, spacing: 2) {
+        Text("For fixture takes, play the same phrase as Gate Drill:")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+        Text(GatePhrase.displaySequence)
+          .font(.system(.caption, design: .monospaced))
+      }
+
       Button(model.isRunning ? "Stop" : "Start") {
         model.isRunning ? model.stop() : model.start()
       }
