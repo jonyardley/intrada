@@ -1,0 +1,2081 @@
+<!-- Snapshot, 3 Aug 2026. Regenerated from specs/intrada-practice-coach-design.md,
+     docs/coach-user-journeys.md and docs/roadmap.md. If this and the specs
+     disagree, the specs win. -->
+<title>Intrada: the practice coach — orientation</title>
+
+<style>
+  :root {
+    --paper-top: #F4F1E8;
+    --paper-bottom: #EBE7D9;
+    --card: #FCFAF3;
+    --sunken: #F0E7D6;
+    --hairline: #E5DECD;
+    --ink: #2B2A26;
+    --ink-2: #6E6557;
+    --ink-3: #9A927F;
+    --accent: #4C3FA6;
+    --accent-lift: #6346E5;
+    --accent-wash: #E7E3F4;
+    --teal: #1F8A5B;
+    --teal-wash: #E7F1EB;
+    --gold: #8A6A2E;
+    --gold-wash: #F0E5CC;
+    --danger: #B3261E;
+    --shadow: rgba(0, 0, 0, 0.06);
+
+    --serif: "Source Serif 4", "SourceSerif4Variable-Semibold", ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    --sans: "Inter", "InterVariable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+    --measure: 68ch;
+    --pad: clamp(1rem, 4vw, 2.5rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper-top: #1A1917;
+      --paper-bottom: #131210;
+      --card: #211F1C;
+      --sunken: #191816;
+      --hairline: #322F2A;
+      --ink: #EFEBE0;
+      --ink-2: #AAA294;
+      --ink-3: #7E7668;
+      --accent: #A395F5;
+      --accent-lift: #B6A9FF;
+      --accent-wash: #2A2450;
+      --teal: #57C795;
+      --teal-wash: #16281F;
+      --gold: #D2AE6A;
+      --gold-wash: #2C2417;
+      --danger: #E58278;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper-top: #1A1917;
+    --paper-bottom: #131210;
+    --card: #211F1C;
+    --sunken: #191816;
+    --hairline: #322F2A;
+    --ink: #EFEBE0;
+    --ink-2: #AAA294;
+    --ink-3: #7E7668;
+    --accent: #A395F5;
+    --accent-lift: #B6A9FF;
+    --accent-wash: #2A2450;
+    --teal: #57C795;
+    --teal-wash: #16281F;
+    --gold: #D2AE6A;
+    --gold-wash: #2C2417;
+    --danger: #E58278;
+    --shadow: rgba(0, 0, 0, 0.5);
+  }
+
+  :root[data-theme="light"] {
+    --paper-top: #F4F1E8;
+    --paper-bottom: #EBE7D9;
+    --card: #FCFAF3;
+    --sunken: #F0E7D6;
+    --hairline: #E5DECD;
+    --ink: #2B2A26;
+    --ink-2: #6E6557;
+    --ink-3: #9A927F;
+    --accent: #4C3FA6;
+    --accent-lift: #6346E5;
+    --accent-wash: #E7E3F4;
+    --teal: #1F8A5B;
+    --teal-wash: #E7F1EB;
+    --gold: #8A6A2E;
+    --gold-wash: #F0E5CC;
+    --danger: #B3261E;
+    --shadow: rgba(0, 0, 0, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: linear-gradient(180deg, var(--paper-top), var(--paper-bottom)) fixed;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--pad) 6rem; }
+
+  /* ── masthead ── */
+  .mast { padding: clamp(2.5rem, 8vw, 5rem) 0 1.5rem; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 0.75rem;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(2rem, 6.5vw, 3.4rem); line-height: 1.05;
+    letter-spacing: -0.02em; margin: 0 0 1rem; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: clamp(1rem, 2.4vw, 1.18rem); color: var(--ink-2);
+    max-width: var(--measure); margin: 0 0 1.75rem;
+  }
+  .mast-meta {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem;
+    font-size: 12.5px; color: var(--ink-3);
+    border-top: 1px solid var(--hairline); padding-top: 1rem;
+  }
+
+  /* ── nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--paper-top) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 2.5rem;
+  }
+  .nav-scroll {
+    max-width: 1080px; margin: 0 auto; padding: 0.6rem var(--pad);
+    display: flex; gap: 1.25rem; overflow-x: auto; scrollbar-width: none;
+  }
+  .nav-scroll::-webkit-scrollbar { display: none; }
+  nav a {
+    color: var(--ink-2); text-decoration: none; white-space: nowrap;
+    font-size: 12.5px; font-weight: 500; padding: 0.2rem 0;
+    border-bottom: 1.5px solid transparent;
+  }
+  nav a:hover, nav a:focus-visible { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── sections ── */
+  section { margin: 0 0 4.5rem; scroll-margin-top: 4rem; }
+  h2 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(1.5rem, 4vw, 2.05rem); line-height: 1.15;
+    letter-spacing: -0.015em; margin: 0 0 0.4rem; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--serif); font-weight: 600; font-size: 1.18rem;
+    margin: 2.25rem 0 0.6rem; letter-spacing: -0.01em;
+  }
+  h4 {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--ink-3); margin: 1.5rem 0 0.6rem;
+  }
+  p { margin: 0 0 1rem; max-width: var(--measure); }
+  .lede { color: var(--ink-2); font-size: 1.02rem; max-width: var(--measure); margin-bottom: 1.75rem; }
+  strong { font-weight: 600; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.86em; background: var(--sunken); color: var(--ink);
+    padding: 0.12em 0.36em; border-radius: 4px;
+  }
+  a.inline { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  /* staff-line divider — five hairlines, from the subject */
+  .staff { height: 17px; margin: 0 0 2.5rem; display: block; width: 100%; }
+  .staff line { stroke: var(--hairline); stroke-width: 1; }
+
+  /* ── cards & grids ── */
+  .card {
+    background: var(--card); border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 1.25rem;
+    box-shadow: 0 1px 2px var(--shadow);
+  }
+  .grid { display: grid; gap: 1rem; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .g4 { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; padding: 0.22rem 0.55rem;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .p-done { background: var(--teal-wash); color: var(--teal); }
+  .p-now { background: var(--accent); color: #F2EFE8; }
+  .p-next { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .p-later { background: var(--sunken); color: var(--ink-3); }
+  .p-parked { background: var(--sunken); color: var(--ink-3); text-decoration: line-through; }
+  .p-gold { background: var(--gold-wash); color: var(--gold); }
+
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat .n {
+    font-family: var(--serif); font-size: 1.9rem; font-weight: 600;
+    line-height: 1; letter-spacing: -0.02em;
+  }
+  .stat .l { font-size: 11.5px; color: var(--ink-3); line-height: 1.35; }
+
+  ul.tight, ol.tight { margin: 0 0 1rem; padding-left: 1.15rem; max-width: var(--measure); }
+  ul.tight li, ol.tight li { margin-bottom: 0.4rem; }
+  ul.bare { list-style: none; margin: 0; padding: 0; }
+  ul.bare li {
+    display: flex; gap: 0.6rem; align-items: baseline;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--hairline); font-size: 14.5px;
+  }
+  ul.bare li:last-child { border-bottom: 0; }
+
+  .dots { display: inline-flex; gap: 3px; align-items: center; }
+  .dots i { width: 7px; height: 7px; border-radius: 999px; display: block; background: var(--teal); }
+  .dots i.o { background: transparent; border: 1px solid var(--ink-3); }
+
+  /* ── tables ── */
+  .tw { overflow-x: auto; margin: 0 0 1.25rem; border: 1px solid var(--hairline); border-radius: 12px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 520px; }
+  th, td { text-align: left; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  th {
+    font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 600; background: var(--sunken);
+  }
+  tr:last-child td { border-bottom: 0; }
+  td.num { text-align: right; white-space: nowrap; }
+
+  /* ── before / after ── */
+  .compare { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+  .compare .card h4 { margin-top: 0; }
+  .compare .old { color: var(--ink-2); }
+  .compare .old li::marker { color: var(--ink-3); }
+  .arrowband {
+    display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+    font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-3); margin: 1rem 0;
+  }
+  .arrowband::before, .arrowband::after {
+    content: ""; height: 1px; background: var(--hairline); flex: 1;
+  }
+
+  /* ── venn ── */
+  .venn-wrap { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); align-items: center; }
+  @media (min-width: 760px) { .venn-wrap { grid-template-columns: 340px minmax(0, 1fr); } }
+  svg.venn { width: 100%; height: auto; display: block; }
+
+  /* SVG paint + type — must be CSS declarations: var() does not resolve
+     inside SVG presentation attributes. */
+  .d-accent { fill: var(--accent); }
+  .d-gold { fill: var(--gold); }
+  .d-ink { fill: var(--ink); }
+  .d-ink2 { fill: var(--ink-2); }
+  .d-ink3 { fill: var(--ink-3); }
+  .d-serif { font-family: var(--serif); font-weight: 600; }
+  .d-edge { stroke: var(--hairline); stroke-width: 1.5; }
+  .d-c-accent { fill: var(--accent); fill-opacity: 0.13; stroke: var(--accent); stroke-width: 1.25; }
+  .d-c-gold { fill: var(--gold); fill-opacity: 0.13; stroke: var(--gold); stroke-width: 1.25; }
+  .d-box-sunken { fill: var(--sunken); stroke: var(--hairline); }
+  .d-box-gold { fill: var(--gold-wash); stroke: var(--gold); }
+  .d-box-accent { fill: var(--accent-wash); stroke: var(--accent); }
+  .d-box-card { fill: var(--card); stroke: var(--accent); }
+
+  /* ── timeline band ── */
+  .band { display: flex; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; min-width: 560px; }
+  .band > div { padding: 0.75rem 0.7rem; border-right: 1px solid var(--hairline); flex: 1; background: var(--card); }
+  .band > div:last-child { border-right: 0; }
+  .band .t { font-size: 10.5px; color: var(--ink-3); letter-spacing: 0.06em; }
+  .band .n { font-size: 13px; font-weight: 600; margin-top: 0.15rem; }
+  .band .d { font-size: 11.5px; color: var(--ink-2); margin-top: 0.2rem; line-height: 1.4; }
+  .band .music { background: var(--accent-wash); }
+
+  /* ── layer rows ── */
+  .layer { display: grid; gap: 0.75rem; grid-template-columns: 64px 1fr; align-items: start; padding: 0.9rem 0; border-bottom: 1px solid var(--hairline); }
+  .layer:last-child { border-bottom: 0; }
+  .layer .lz {
+    font-family: var(--serif); font-size: 1.4rem; font-weight: 600;
+    color: var(--accent); line-height: 1;
+  }
+  .layer .lw { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-top: 0.25rem; }
+  .layer h5 { margin: 0 0 0.2rem; font-size: 14.5px; font-weight: 600; }
+  .layer p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+
+  /* ── wireframes ── */
+  .rail {
+    display: flex; gap: 1.1rem; overflow-x: auto; padding: 0.25rem 0 1.25rem;
+    scroll-snap-type: x proximity;
+  }
+  .rail > figure { scroll-snap-align: start; margin: 0; flex: 0 0 auto; width: 244px; }
+  .phone {
+    width: 244px; height: 496px; border-radius: 26px;
+    border: 1px solid var(--hairline); background: linear-gradient(180deg, var(--paper-top), var(--paper-bottom));
+    box-shadow: 0 6px 18px var(--shadow); padding: 12px 11px;
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
+  }
+  .ph-status { display: flex; justify-content: space-between; font-size: 9px; color: var(--ink-3); margin-bottom: 8px; }
+  .ph-title { font-family: var(--serif); font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.15; }
+  .ph-eyebrow { font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+  .ph-card {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 9px 10px; font-size: 11px; color: var(--ink-2); line-height: 1.45;
+  }
+  .ph-hero {
+    background: linear-gradient(160deg, #5648B2, #392F7C); color: #F2EFE8;
+    border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .ph-hero .h1 { font-family: var(--serif); font-size: 19px; font-weight: 600; }
+  .ph-hero .h2 { font-size: 10.5px; opacity: 0.82; line-height: 1.45; }
+  .ph-btn {
+    background: #F2EFE8; color: #392F7C; border-radius: 999px; text-align: center;
+    font-size: 12px; font-weight: 600; padding: 8px; margin-top: 4px;
+  }
+  .ph-btn.ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--hairline); }
+  .ph-btn.wide { background: var(--accent); color: #F2EFE8; }
+  .ph-spacer { flex: 1; }
+  .ph-tabs {
+    display: flex; justify-content: space-around; border-top: 1px solid var(--hairline);
+    padding-top: 7px; margin-top: 7px; font-size: 8.5px; color: var(--ink-3);
+  }
+  .ph-tabs b { color: var(--accent); font-weight: 600; }
+  .ph-verdict { font-size: 54px; line-height: 1; text-align: center; }
+  .ph-verdict.ok { color: var(--teal); }
+  .ph-verdict.no { color: var(--ink-2); }
+  .ph-fact { text-align: center; font-size: 13px; font-weight: 600; margin-top: 6px; }
+  .ph-sub { text-align: center; font-size: 10px; color: var(--ink-3); margin-top: 3px; }
+  .ph-beats { display: flex; gap: 5px; justify-content: center; margin: 10px 0; }
+  .ph-beats i { width: 26px; height: 4px; border-radius: 999px; background: var(--hairline); display: block; }
+  .ph-beats i.on { background: var(--accent); }
+  .ph-stuck {
+    border: 1px dashed var(--ink-3); color: var(--ink-2); border-radius: 999px;
+    text-align: center; font-size: 11px; padding: 9px; font-weight: 500;
+  }
+  .ph-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ph-key {
+    font-size: 9.5px; text-align: center; padding: 5px 0; border-radius: 6px;
+    background: var(--sunken); color: var(--ink-3); border: 1px solid transparent;
+  }
+  .ph-key.solid { background: var(--teal-wash); color: var(--teal); font-weight: 600; }
+  .ph-key.learn { background: var(--gold-wash); color: var(--gold); font-weight: 600; }
+  .ph-bar { height: 7px; border-radius: 999px; background: var(--sunken); overflow: hidden; display: flex; }
+  .ph-bar i { display: block; height: 100%; }
+  figcaption { font-size: 12px; color: var(--ink-2); margin-top: 0.6rem; line-height: 1.4; }
+  figcaption b { color: var(--ink); font-weight: 600; display: block; font-size: 12.5px; }
+  figcaption .pill { margin-top: 0.35rem; }
+
+  .note {
+    border-left: 2px solid var(--accent); background: var(--accent-wash);
+    padding: 0.8rem 1rem; border-radius: 0 10px 10px 0; font-size: 13.5px;
+    color: var(--ink); max-width: var(--measure); margin: 0 0 1.25rem;
+  }
+  .note.warn { border-left-color: var(--gold); background: var(--gold-wash); }
+  .note p { margin: 0; max-width: none; }
+  .note p + p { margin-top: 0.5rem; }
+
+  /* ── arch diagram ── */
+  .arch { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .arch .col { background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  .arch .col > header {
+    background: var(--sunken); padding: 0.55rem 0.85rem;
+    font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--ink-2); font-weight: 600; border-bottom: 1px solid var(--hairline);
+  }
+  .arch ul { list-style: none; margin: 0; padding: 0.5rem 0.85rem 0.85rem; }
+  .arch li {
+    font-size: 12.5px; padding: 0.4rem 0 0.4rem 1.4rem; position: relative; line-height: 1.4;
+  }
+  .arch li::before {
+    content: ""; position: absolute; left: 0; top: 0.72em;
+    width: 8px; height: 8px; border-radius: 2px;
+  }
+  .arch li.new::before { background: var(--accent); }
+  .arch li.keep::before { background: var(--teal); }
+  .arch li.die::before { background: var(--ink-3); }
+  .arch li.later::before { background: var(--ink-3); opacity: 0.4; }
+  .arch li.later { color: var(--ink-2); }
+  .legend { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 12px; color: var(--ink-2); margin: 1rem 0 1.5rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: block; }
+
+  /* ── phase timeline ── */
+  .phase {
+    display: grid; gap: 0.35rem 1.1rem; grid-template-columns: 1fr;
+    border-left: 2px solid var(--hairline); padding: 0 0 1.75rem 1.25rem;
+    position: relative; margin-left: 0.35rem;
+  }
+  .phase::before {
+    content: ""; position: absolute; left: -7px; top: 4px;
+    width: 12px; height: 12px; border-radius: 999px;
+    background: var(--paper-top); border: 2px solid var(--ink-3);
+  }
+  .phase.is-done::before { background: var(--teal); border-color: var(--teal); }
+  .phase.is-now::before { background: var(--accent); border-color: var(--accent); }
+  .phase:last-child { border-left-color: transparent; }
+  .phase-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem; }
+  .phase-head h3 { margin: 0; font-size: 1.12rem; }
+  .phase-when { font-size: 11.5px; color: var(--ink-3); }
+  .phase p { margin: 0.3rem 0 0.6rem; font-size: 14px; }
+  .slice {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 0.7rem 0.85rem; font-size: 13px; margin-bottom: 0.5rem;
+  }
+  .slice b { display: block; font-size: 13px; margin-bottom: 0.15rem; }
+  .slice span { color: var(--ink-2); }
+  .exit { font-size: 12.5px; color: var(--ink-2); border-top: 1px dashed var(--hairline); padding-top: 0.55rem; margin-top: 0.3rem; }
+
+  /* ── prompt block ── */
+  pre.prompt {
+    background: var(--card); border: 1px solid var(--hairline); border-radius: 12px;
+    padding: 1.1rem; overflow-x: auto; font-size: 12.5px; line-height: 1.6;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink);
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .qa { border-top: 1px solid var(--hairline); padding: 1rem 0; }
+  .qa:last-of-type { border-bottom: 1px solid var(--hairline); }
+  .qa h5 { margin: 0 0 0.3rem; font-size: 15px; font-weight: 600; }
+  .qa p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+
+  footer { border-top: 1px solid var(--hairline); padding-top: 1.5rem; font-size: 12.5px; color: var(--ink-3); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<nav>
+  <div class="nav-scroll">
+    <a href="#now">Where we are</a>
+    <a href="#shift">What changed</a>
+    <a href="#intent">Who decides</a>
+    <a href="#guard">Guiding, not nagging</a>
+    <a href="#circles">The two circles</a>
+    <a href="#engine">The engine</a>
+    <a href="#session">A session</a>
+    <a href="#journeys">Ten journeys</a>
+    <a href="#screens">Wireframes</a>
+    <a href="#open">Still open</a>
+    <a href="#tech">Technical work</a>
+    <a href="#roadmap">Roadmap order</a>
+    <a href="#backlog">The old backlog</a>
+    <a href="#next">Your decisions</a>
+    <a href="#design">Claude Design prompt</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">Intrada · orientation · 3 August 2026 · spec v5</p>
+    <h1>The app stops being a notebook and becomes a teacher.</h1>
+    <p class="standfirst">
+      One month of decisions, in one page: what the practice coach is, who decides what you
+      practise, how a session actually plays out, which screens exist, what has to be built in
+      what order — and what is now waiting on you.
+    </p>
+    <div class="mast-meta">
+      <span>Governing spec: <code>specs/intrada-practice-coach-design.md</code></span>
+      <span>Strategy: <code>docs/rebuild-review.md</code></span>
+      <span>Phase 0 content: <code>content/</code></span>
+      <span>Snapshot — if this and the specs disagree, the specs win</span>
+    </div>
+  </header>
+
+  <!-- ─────────────── WHERE WE ARE ─────────────── -->
+  <section id="now">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Where we are, in five numbers</h2>
+    <p class="lede">
+      The pivot was decided on 19 July. Since then: the dead shells are gone, the spec has
+      grown two research-driven revisions, and the first content set landed today.
+      No coach code exists yet — that starts with the next pull request.
+    </p>
+
+    <div class="grid g4" style="margin-bottom:1.25rem">
+      <div class="card stat">
+        <span class="n" style="color:var(--teal)">0</span>
+        <span class="l">Phase 0 (paper teacher) — content authored today, fortnight of practice next</span>
+      </div>
+      <div class="card stat">
+        <span class="n" style="color:var(--accent)">1</span>
+        <span class="l">Phase 1 (the listening gate) — starts at the MIDI capture harness</span>
+      </div>
+      <div class="card stat">
+        <span class="n">20k</span>
+        <span class="l">lines of dead web shell deleted; CI shrank with it</span>
+      </div>
+      <div class="card stat">
+        <span class="n">~60%</span>
+        <span class="l">of the core's domain code is scheduled to die, at Phase 2 — not now</span>
+      </div>
+      <div class="card stat">
+        <span class="n">0</span>
+        <span class="l">lines of audio or MIDI anywhere in the app today. The whole listening layer is new</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <p><strong>The one-sentence version.</strong> You bring the goal ("improvise confidently on
+      jazz standards"); the app decides what you practise today, listens over MIDI while you play,
+      scores each attempt, tells you when you're done, and quietly makes the next attempt winnable
+      when you're stuck.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────── WHAT CHANGED ─────────────── -->
+  <section id="shift">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>What actually changed</h2>
+    <p class="lede">
+      Same app, same piano, opposite direction of information flow. The notebook asked you to
+      tell it what happened. The coach tells you what to do and finds out for itself.
+    </p>
+
+    <div class="compare">
+      <div class="card">
+        <h4>Before — the practice notebook</h4>
+        <ul class="tight old">
+          <li>You built the session: pick pieces, drag blocks into order</li>
+          <li>You ran a stopwatch and counted your own reps</li>
+          <li>You rated yourself 0–10 afterwards and typed a reflection</li>
+          <li>Analytics turned <em>your own opinions</em> into mastery dials</li>
+          <li>Progress meant "I logged 20 minutes"</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4 style="color:var(--accent)">After — the practice coach</h4>
+        <ul class="tight">
+          <li><strong>It builds the session</strong> before you sit down. One screen, one button</li>
+          <li><strong>It listens</strong> over MIDI and scores each attempt against a known target</li>
+          <li><strong>Gates, not minutes:</strong> "3 clean passes at 120" releases the block</li>
+          <li>Mastery is measured evidence, held as an estimate <em>plus a confidence</em></li>
+          <li>Progress means "the gate opened, and here's the trend"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="arrowband">the honest boundary</div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4>What the app is authoritative about</h4>
+        <p style="font-size:13.5px;margin:0;color:var(--ink-2)">
+          Right notes, in time, at tempo, in every key. The measurable prerequisites of good jazz.
+          MIDI hears these precisely and cheaply.
+        </p>
+      </div>
+      <div class="card">
+        <h4>What it structures but never grades</h4>
+        <p style="font-size:13.5px;margin:0;color:var(--ink-2)">
+          Touch, feel, phrasing, swing ratio. It prompts your own judgement, reports what it
+          measured, and asks when unsure. It never issues a verdict its input can't support.
+        </p>
+      </div>
+    </div>
+
+    <h3>Three rulings you should know about</h3>
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>Ruling</th><th>Why it exists</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Never correct in real time</strong></td>
+            <td>A mid-phrase flash pulls your eyes to the screen, which ruins the next phrase, which flashes again. The app is silent while you play; verdicts land between reps.</td>
+          </tr>
+          <tr>
+            <td><strong>Timing is judged on consistency, never on deviation</strong></td>
+            <td>Skilled jazz timing sits off the grid on purpose — a stable 30ms lay-back reads as swinging harder. Only wobble and drift are errors.</td>
+          </tr>
+          <tr>
+            <td><strong>The input path decides what may be claimed</strong></td>
+            <td>Wired MIDI earns fine timing feedback. Bluetooth (±10–20ms jitter) gets notes, swing and trends only — and the screen says why. Swing ratio is always reported, never graded.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─────────────── INTENT ─────────────── -->
+  <section id="intent">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Who decides what you practise</h2>
+    <p class="lede">
+      Added to the spec today (v3), because the earlier draft couldn't answer an obvious
+      question: if the app kills the choice, how does it know what you want to work on
+      <em>now</em>? The answer had been "you bring the goal", which left the altitude people
+      actually plan at — the week or fortnight — with nowhere to live.
+    </p>
+
+    <div class="note">
+      <p><strong>The rule.</strong> You steer the planner's <em>inputs</em>; you don't hand-edit
+      its <em>output</em>. Prescription isn't choice denied — it's choice relocated to the moment
+      you had the information to make it well, instead of at the piano, tired, with the whole
+      taxonomy in view.</p>
+    </div>
+
+    <h3>Three altitudes, all optional</h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>You say</th><th>Horizon</th><th>Example</th><th>If you say nothing</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>The goal</strong></td>
+            <td>Months</td>
+            <td>"Improvise confidently over standards"</td>
+            <td>The graph's own frontier</td>
+          </tr>
+          <tr>
+            <td><strong>A campaign</strong></td>
+            <td>1–3 weeks</td>
+            <td>"Restricted improv over Strasbourg" — or a whole lesson's worth of targets</td>
+            <td>Back-chained from the goal</td>
+          </tr>
+          <tr>
+            <td><strong>Today's steer</strong></td>
+            <td>This session</td>
+            <td>"More transcription"; "hands only, I'm tired"</td>
+            <td>Whatever the campaign makes due</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">Naming a target isn't writing a plan</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Say "learn the tune, transcribe, then improvise over it" and you haven't authored a
+          sequence — you've described what the app already knows. The tune pipeline orders form →
+          melody → shells → rootless. The graph knows chord-tone targeting needs shells first,
+          because you can't aim at the 3rds and 7ths until you know where they live.
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          <strong>You choose the what; the graph supplies the order.</strong> That's the whole
+          reason a granular session builder can be dropped without dropping control.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">It back-chains, and it argues</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Declare restricted improv when your shells are weak and it neither obeys nor refuses.
+          It works backwards to the prerequisite and tells you the distance in your own trend:
+          "then we start with shells — roughly five sessions from here."
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Honour the destination, own the route, be honest about the gap. A planner that just
+          does as it's told is a worse teacher than one that pushes back.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">A lesson is a set, not a single target</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          The real case is a handful of things at once: work the voicings, transcribe this
+          phrase, get the bridge from memory. So a campaign holds several targets. Each is
+          matched to a skill node or pipeline stage where it can be — and where it can't, it's
+          kept as-is rather than forced into an ill-fitting node.
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          "Make the last A sing" isn't a node. It gets practised and self-confirmed, not scored.
+          And when targets like it keep recurring, that's the queue telling you which node to
+          author next — content driven by demand, not by filling in a taxonomy.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">The gap read — two tiers, never blurred</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Once you've named targets, "what's missing?" becomes arithmetic rather than a feeling.
+        </p>
+        <ul class="tight" style="font-size:13.5px;color:var(--ink-2);margin-bottom:0.6rem">
+          <li><strong>Structural</strong> — unmet prerequisites, pipeline stages you're behind.
+          Pure graph maths, trustworthy on day one.</li>
+          <li><strong>Statistical</strong> — confidence that's decayed, drills gone flat, a
+          starved circle. Needs weeks of history first.</li>
+        </ul>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Show the first immediately, withhold the second until the data earns it, and present
+          either as a route rather than a verdict.
+        </p>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <p><strong>And one thing the design forbids.</strong> No "guided vs my own way" switch.
+      Asking which mode you're in at the door reintroduces exactly the decision the app exists to
+      remove. It always opens prescribed, and yields in one tap.</p>
+    </div>
+
+    <h3>Where AI belongs in this — and where it doesn't</h3>
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">Destination: good fit</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          "I want to sound like Bill Evans on ballads" → candidate nodes, tunes and phrases.
+          Fuzzy, linguistic, cheap to check, and you can edit the answer. An LLM is the right
+          tool.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Today's route: deliberately not</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Every block owes you a why that cites real state. A generated plan can't be tested,
+          and one arbitrary-feeling prescription sends you back to noodling. The planner stays
+          arithmetic.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── GUARD RAILS ─────────────── -->
+  <section id="guard">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Guiding without nagging</h2>
+    <p class="lede">
+      Added today (v4) after a critical review of the whole design. It found one root fault:
+      the app managed <em>failure</em> thoroughly and everything else barely. Three fixes,
+      all aimed at the states that aren't failure.
+    </p>
+
+    <div class="grid g3">
+      <div class="card">
+        <span class="pill p-gold">was missing</span>
+        <h4>Fixation</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Every intervention fired on failure — three fails shrinks the task, three flat
+          sessions forces a change. Nothing noticed someone <em>succeeding</em> and unable to
+          leave. Grinding one voicing for a month is failure-free and expensive.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-gold">was missing</span>
+        <h4>Knowing where you are</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          "Gates, not minutes" is right pedagogically and rough on anyone whose time sense is
+          unreliable. An open-ended "until 3 clean passes" with no visible bound is how twenty
+          minutes becomes fifty.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-gold">was too thin</span>
+        <h4>The pull of grind</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          "Honest about the grind" is respect, not a mechanism. A plan that needs willpower to
+          get through twelve keys loses to any brain that runs on interest rather than
+          importance.
+        </p>
+      </div>
+    </div>
+
+    <h3>The circling check — the mirror of the stuck ladder</h3>
+    <p>
+      The stuck ladder makes the task smaller when you're failing. This makes you stop when
+      you're burrowing. Both fire on their own; a teacher does both without being asked.
+    </p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>What it notices</th><th>From data the session already has</th></tr></thead>
+        <tbody>
+          <tr><td>You can't leave a drill that's already passed</td><td>Reps after the gate opened</td></tr>
+          <tr><td>A perfectionism loop</td><td>Attempts-to-pass far above your own norm</td></tr>
+          <tr><td>One thing eating the fortnight</td><td>Share of session time per skill</td></tr>
+          <tr><td>A campaign that never lands</td><td>Sessions elapsed vs the horizon you declared</td></tr>
+          <tr><td>Always wandering to the same place</td><td>Repeat frequency in the wander log</td></tr>
+          <tr><td>Novelty churn — the opposite problem</td><td>Campaigns declared and dropped inside a week</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <p><strong>Framing matters more than detection.</strong> Once per session at most, at a
+      block boundary or the end — <em>never</em> mid-rep, because that's both a verdict and an
+      interruption. Phrased as an observation plus permission, offering the exit rather than
+      demanding it: <em>"You've run this fourteen times and passed on the fourth. It's in. Bank
+      it and move?"</em></p>
+      <p>Never "you're stuck on this", and never a tally of wasted minutes. Fixation usually
+      arrives with shame already attached — an app that adds to it gets closed.</p>
+    </div>
+
+    <h3>Orientation is not feedback</h3>
+    <p>
+      The fix for hidden time isn't a dashboard, it's a distinction. <strong>Verdicts stay
+      rationed; where you are never is.</strong> Elapsed, blocks left, and this block's ceiling
+      sit ambient on the drill screen carrying no judgement. The one thing that never appears
+      there is a score.
+    </p>
+
+    <h3>Three structural moves on grind</h3>
+    <ul class="tight">
+      <li><strong>Capped shorter</strong> than a conventional plan would set it — two brief
+      exposures beat one long one, and the planner already interleaves.</li>
+      <li><strong>Never in the abstract.</strong> Always over the tune's real changes. The same
+      voicings over music you love are a different experience, and the engine already supports
+      it — now it's a hard constraint, not a preference.</li>
+      <li><strong>Explicitly tradeable.</strong> "Skip the grind today, two blocks tomorrow" as
+      a logged deal. Far better than the silent skip that becomes three weeks off.</li>
+    </ul>
+
+    <h3>And four smaller corrections</h3>
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">The voice talks less</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Five blocks meant five coaching moments per session. Now one, where it lands hardest,
+          plus on demand. Silence at a boundary is the common case.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Off-piano work gets its own queue</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Listening and audiation were modelled as session blocks, so they'd be done at the
+          piano — wasting the one thing they don't need — or not at all. Separate queue, own cue,
+          commute-sized.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Sometimes nothing is watching</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Off-piste still listens and logs. Below it now: unmonitored play — time logged, nothing
+          scored, nothing inferred. A tool you can't play without being measured isn't a practice
+          room.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Rhythm needs to be a real subject</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          It existed only as a modifier inside other skills — odd for a design whose foundation is
+          time. Time gets measured thoroughly and taught nowhere. Now first in the authoring
+          queue.
+        </p>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <p><strong>One thing the review got wrong, worth recording.</strong> I argued the design
+      couldn't express rubato and needed an unscored feel category. That was overstated: playing
+      against a steady pulse <em>is</em> swing — lay-back, the ratio, playing ahead are all
+      defined relative to a grid — and the app already scores consistency rather than deviation
+      precisely so you can play against the beat without being marked wrong. Rubato belongs after
+      time is internalised. What survived was a much smaller fix: click-always governs
+      <em>scored attempts</em>, not the learning rungs beneath a gate, which the method packs were
+      already prescribing without a click.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────── TWO CIRCLES ─────────────── -->
+  <section id="circles">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>The two circles — your teacher's frame, now in the model</h2>
+    <p class="lede">
+      Music is the overlap of what you can <em>hear</em> and what your hands can <em>execute</em>.
+      Fluency is that overlap growing. Either circle alone gives you exercises or frustration.
+      Every piece of content is now tagged with which circle it feeds.
+    </p>
+
+    <div class="venn-wrap">
+      <svg class="venn" viewBox="0 0 340 260" role="img" aria-label="Two overlapping circles: music in your head, and technique. The overlap is music.">
+        <circle class="d-c-accent" cx="128" cy="120" r="94" />
+        <circle class="d-c-gold" cx="212" cy="120" r="94" />
+        <g text-anchor="middle">
+          <text class="d-serif d-accent" x="72" y="48" font-size="14">head</text>
+          <text class="d-serif d-gold" x="268" y="48" font-size="14">hands</text>
+          <text class="d-ink2" x="72" y="112" font-size="10">what you can</text>
+          <text class="d-ink2" x="72" y="126" font-size="10">hear + imagine</text>
+          <text class="d-ink2" x="268" y="112" font-size="10">what you can</text>
+          <text class="d-ink2" x="268" y="126" font-size="10">play on demand</text>
+          <text class="d-serif d-ink" x="170" y="116" font-size="17">music</text>
+          <text class="d-ink2" x="170" y="134" font-size="9.5">the bridge:</text>
+          <text class="d-ink2" x="170" y="147" font-size="9.5">vocabulary</text>
+          <text class="d-ink3" x="170" y="240" font-size="10">a portfolio built over months — not a session template</text>
+        </g>
+      </svg>
+
+      <div>
+        <h4 style="margin-top:0">Where the first five skills sit</h4>
+        <ul class="bare">
+          <li><span class="pill p-gold">hands</span> <span>Shell voicings through ii–V–I</span></li>
+          <li><span class="pill p-gold">hands</span> <span>Rootless voicings, A and B positions</span></li>
+          <li><span class="pill p-now">bridge</span> <span>Phrase transposition — a lifted lick through 12 keys</span></li>
+          <li><span class="pill p-now">bridge</span> <span>Chord-tone targeting — land the 3rd or 7th on every change</span></li>
+          <li><span class="pill p-next">head</span> <span>Micro-transcription — lifting 1–2 bars by ear</span></li>
+        </ul>
+        <div class="note warn" style="margin-top:1.25rem">
+          <p><strong>The risk this frame exposes.</strong> The planner rotates work by what's
+          <em>due</em>, so nothing notices a starved circle. You could pass gates for months with
+          90% of your time in the hands circle — and measurable-first content leans exactly that
+          way. The fix (a time-by-circle view plus a planner bias) is cheap once session data
+          exists, and is booked for Phase 4.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── ENGINE ─────────────── -->
+  <section id="engine">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>The engine: four moving parts</h2>
+    <p class="lede">
+      None of this appears in the interface. The app thinks about all of it so you think about
+      none of it — you see one drill and one reason. Intent (above) is the fifth part: the graph
+      says what exists and in what order, the pipelines say what's in flight, and intent says
+      where you're pointing.
+    </p>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">1 · The skill graph</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Jazz as a dependency graph, not a list. Each node knows what it is, why it matters,
+          what must come first, its 2–4 drills, and the criteria that mean "done". Mastery is
+          never a tick-box — it's an estimate with a confidence, and the confidence decays while
+          you don't practise.
+        </p>
+        <svg viewBox="0 0 300 150" style="width:100%;height:auto;margin-top:0.5rem" role="img" aria-label="Skill graph: diatonic sevenths leads to shells, which leads to rootless voicings and chord-tone targeting; micro-transcription leads to phrase transposition.">
+          <line class="d-edge" x1="34" y1="30" x2="96" y2="30" />
+          <line class="d-edge" x1="152" y1="30" x2="214" y2="22" />
+          <line class="d-edge" x1="152" y1="34" x2="214" y2="74" />
+          <line class="d-edge" x1="34" y1="112" x2="214" y2="118" />
+          <g font-size="8.5" text-anchor="middle">
+            <rect class="d-box-sunken" x="4" y="20" width="60" height="20" rx="5" />
+            <text class="d-ink2" x="34" y="33.5">7th chords</text>
+            <rect class="d-box-gold" x="96" y="20" width="56" height="20" rx="5" />
+            <text class="d-gold" x="124" y="33.5">shells</text>
+            <rect class="d-box-gold" x="214" y="12" width="80" height="20" rx="5" />
+            <text class="d-gold" x="254" y="25.5">rootless A / B</text>
+            <rect class="d-box-accent" x="214" y="64" width="80" height="20" rx="5" />
+            <text class="d-accent" x="254" y="77.5">chord tones</text>
+            <rect class="d-box-card" x="4" y="102" width="60" height="20" rx="5" />
+            <text class="d-accent" x="34" y="115.5">by ear</text>
+            <rect class="d-box-accent" x="214" y="108" width="80" height="20" rx="5" />
+            <text class="d-accent" x="254" y="121.5">phrase → 12 keys</text>
+            <text class="d-ink3" x="150" y="146" font-size="8">5 nodes specified · 9 stubs named · the rest sketched only</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">2 · Pipelines</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Tunes and phrases are <em>instances moving through stages</em>, with a gate at each
+          stage. One phrase in flight at a time, one or two tunes — the caps are the
+          anti-overwhelm feature.
+        </p>
+        <h4>the current phrase, stage 2 of 7</h4>
+        <div class="ph-bar" style="margin-bottom:0.6rem">
+          <i style="width:14%;background:var(--teal)"></i>
+          <i style="width:14%;background:var(--gold)"></i>
+        </div>
+        <ul class="bare" style="font-size:12.5px">
+          <li><span class="pill p-done">done</span><span>Learn it in the home key</span></li>
+          <li><span class="pill p-gold">now</span><span>Nearby keys — a whole step either side</span></li>
+          <li><span class="pill p-later">then</span><span>Full cycle → analyse → extract the device</span></li>
+          <li><span class="pill p-later">then</span><span>Generate your own → deploy it over the tune</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">3 · Gates as data, not code</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Every threshold lives in a file you can tune: how many clean passes, at what tempo,
+          on which click level, how many fails trigger help. They ship as guesses and get
+          calibrated from your own logs.
+        </p>
+        <pre class="prompt" style="font-size:11.5px;margin-top:0.5rem">[gates.phrase-nearby-keys]
+criterion  = "clean in both
+  whole-step neighbours,
+  resolution lands on beat 1"
+clean_passes  = 2
+per_key       = true
+tempo_bpm     = 90
+click_level   = "l1"</pre>
+      </div>
+
+      <div class="card">
+        <h4 style="margin-top:0">4 · Method packs — the teacher's craft</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          Not <em>what</em> to practise but <em>how to attack it</em>: the ladder up (hands
+          separate, one key slow, then the change, then tempo), the key order (whole steps to
+          learn, cycle of fourths for fluency, random to prove it), one thinking cue per stage,
+          and the schedule that says 2–3 new keys a session — never "all twelve".
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          <strong>The stuck ladder is this recipe read backwards.</strong> Anyone can list
+          drills; the packs are the moat.
+        </p>
+      </div>
+    </div>
+
+    <h3>How a drill gets made</h3>
+    <p>
+      This is the bit that makes it feel like a teacher rather than a content library: the skill
+      is the cargo, the tune is the vehicle.
+    </p>
+    <div class="tw">
+      <div class="band" style="min-width:600px">
+        <div><span class="t">A skill node</span><div class="n">Rootless voicings</div><div class="d">frontier, mastery 0.3, low confidence</div></div>
+        <div><span class="t">× your tune</span><div class="n">Strasbourg / St. Denis</div><div class="d">its actual changes, A section</div></div>
+        <div><span class="t">× parameters</span><div class="n">Key of F, 80 bpm</div><div class="d">next in the whole-step order</div></div>
+        <div class="music"><span class="t">= today's drill</span><div class="n">+ its method pack</div><div class="d">ladder, cue, gate, stuck path</div></div>
+      </div>
+    </div>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      And every block carries a one-line <em>why</em> citing the graph — "frontier node, low
+      confidence, F is next in the order, and the transition rung is where it broke yesterday".
+      A why that can't be written means a missing node.
+    </p>
+  </section>
+
+  <!-- ─────────────── SESSION ─────────────── -->
+  <section id="session">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>A session, minute by minute</h2>
+    <p class="lede">
+      Something comfortable, then something hard, then something new, then something musical.
+      Effort in the middle, music at both ends — that shape is a hard rule, not a preference.
+    </p>
+
+    <div class="tw">
+      <div class="band">
+        <div class="music"><span class="t">0–3 min</span><div class="n">Warm-up</div><div class="d">something you own, over the tune's changes. Scored silently. A 90%-success win before anything hard.</div></div>
+        <div><span class="t">3–9</span><div class="n">Frontier drill</div><div class="d">whichever node is due. Gate: 3 clean passes. Tick after each rep, help armed.</div></div>
+        <div><span class="t">9–14</span><div class="n">Phrase advance</div><div class="d">the current lick into its next key over the turnaround. Gate: 2 clean in both.</div></div>
+        <div><span class="t">14–19</span><div class="n">Integration</div><div class="d">restricted improvising over the form using that lick. Softer gate; you rate the feel.</div></div>
+        <div class="music"><span class="t">19–20</span><div class="n">Close</div><div class="d">play the head, sound good, stop. Tomorrow's session drafted before the lid shuts.</div></div>
+      </div>
+    </div>
+
+    <h3>When the app is allowed to speak</h3>
+    <p class="lede" style="margin-bottom:0.5rem">
+      Organised by <em>when</em>, not by what. This is the difference between a coach and a
+      backseat driver.
+    </p>
+    <div class="card">
+      <div class="layer">
+        <div><div class="lz">0</div><div class="lw">while playing</div></div>
+        <div>
+          <h5>Silence.</h5>
+          <p>The click, and a passive bar-position indicator. No wrong-note flashes, no score
+          counting up. Your ears own this time.</p>
+        </div>
+      </div>
+      <div class="layer">
+        <div><div class="lz">1</div><div class="lw">after each rep</div></div>
+        <div>
+          <h5>One glance, about a second.</h5>
+          <p>Tick or cross, plus at most one fact — "clean", "2 wrong notes", "rushing bars 3–4".
+          Gate progress ticks up <span class="dots"><i></i><i></i><i class="o"></i></span>. The
+          next count-in starts on its own; your hands never leave the keys.</p>
+        </div>
+      </div>
+      <div class="layer">
+        <div><div class="lz">2</div><div class="lw">block boundary</div></div>
+        <div>
+          <h5>The coaching voice — and it earns its slot.</h5>
+          <p>The only place it speaks in sentences: why this drill, the trend, and exactly one
+          thing to listen for next. <strong>Not every boundary</strong> — one per session, where
+          it lands hardest, plus on demand. Five coaching moments in twenty minutes is a lot of
+          talking from something designed not to nag.</p>
+        </div>
+      </div>
+      <div class="layer">
+        <div><div class="lz">3</div><div class="lw">session end</div></div>
+        <div>
+          <h5>The narrative.</h5>
+          <p>Trends, and the thread — "Monday's voicing drill is what your left hand just did in
+          bar 5" — then tomorrow's draft. Readable now or in the morning.</p>
+        </div>
+      </div>
+    </div>
+
+    <h4>Three anti-nag rules</h4>
+    <ul class="tight">
+      <li><strong>One bad rep is not an event.</strong> A cross and a fact. No "try again!", no tip. Next count-in.</li>
+      <li><strong>Help acts, it doesn't narrate.</strong> Three fails and the app quietly drops the tempo or shrinks the scope, framed as the plan — "let's take it to 100" — never as remediation.</li>
+      <li><strong>Name a wall once.</strong> "Everyone's enclosures sound mechanical for three weeks; here's the smaller version." The second time the same encouragement appears, it has curdled into nagging.</li>
+    </ul>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      And feedback thins out as a drill matures: every rep while it's new, every few reps once
+      it's solid, then <em>predict-then-reveal</em> — you play, self-rate with one tap, and only
+      then see the machine's score. That's the graduation arc in miniature.
+    </p>
+  </section>
+
+  <!-- ─────────────── JOURNEYS ─────────────── -->
+  <section id="journeys">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Ten journeys the app has to handle</h2>
+    <p class="lede">
+      Every scenario, with the mechanism that serves it and — the part that makes it
+      testable — the failure it exists to prevent. Journeys 1, 5, 6 and 7 are the
+      retention-critical ones. An app that only handles journey 2 is a scorer, not a coach.
+    </p>
+
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>Journey</th><th>What the user needs</th><th>The mechanism</th><th>Without it</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1 · First ever session</strong></td>
+            <td>To play within a minute, and not be interviewed</td>
+            <td>Authored priors, low confidence, no placement test; adaptive features held back until they have a baseline</td>
+            <td>It interrogates you before you've played a note, or invents comparisons it has no data for</td>
+          </tr>
+          <tr>
+            <td><strong>2 · The ordinary day</strong></td>
+            <td>To decide nothing and finish feeling capable</td>
+            <td>Planner as a pure function; four-layer feedback; music at both ends</td>
+            <td>The session becomes admin — the friction it was meant to remove</td>
+          </tr>
+          <tr>
+            <td><strong>3 · Lesson day</strong></td>
+            <td>To hand over a list of targets and get a fortnight</td>
+            <td>Multi-target campaign, opaque targets, back-chaining, gap read</td>
+            <td>Your teacher's actual instructions live outside the app</td>
+          </tr>
+          <tr>
+            <td><strong>4 · Hitting a wall</strong></td>
+            <td>The next attempt to be winnable, without a lecture</td>
+            <td>Escalation ladder; name the wall once</td>
+            <td>A wall becomes an exit — the most common way self-directed practice ends</td>
+          </tr>
+          <tr>
+            <td><strong>5 · Circling</strong></td>
+            <td>Permission to stop, without being told off</td>
+            <td>The circling check, framed as leave granted</td>
+            <td>A month disappears into one voicing, and nothing complains because nothing failed</td>
+          </tr>
+          <tr>
+            <td><strong>6 · The bad day</strong></td>
+            <td>The app to be lighter than usual, not heavier</td>
+            <td>Shorter session by default; grind trade; banked exit</td>
+            <td>The bad day becomes the last day</td>
+          </tr>
+          <tr>
+            <td><strong>7 · Coming back</strong></td>
+            <td>No scolding, and an honest read of what slipped</td>
+            <td>Confidence decay pulling maintenance forward; campaign re-scoped, not failed</td>
+            <td>A broken streak and a stale plan greet you at the exact moment you might quit for good</td>
+          </tr>
+          <tr>
+            <td><strong>8 · No instrument</strong></td>
+            <td>Useful practice offered where you actually are</td>
+            <td>The off-piano queue, its own cue, commute-sized</td>
+            <td>Ear work competes for piano minutes and always loses</td>
+          </tr>
+          <tr>
+            <td><strong>9 · Just playing</strong></td>
+            <td>To play, not be assessed</td>
+            <td>Off-piste (listening, logged) and unmonitored (neither)</td>
+            <td>Every session is an exam and the practice room stops being one</td>
+          </tr>
+          <tr>
+            <td><strong>10 · Something lands</strong></td>
+            <td>To feel it, and see the thread back to the work</td>
+            <td>Plain marking, the narrated thread, pipeline advance, next thing in flight</td>
+            <td>Progress happens and is never felt — the exact failure the motivation model exists to prevent</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      Full versions, with the step-by-step of each, live in
+      <code>docs/coach-user-journeys.md</code> — written to be argued with. If a journey needs a
+      mechanism the spec doesn't have, that's a spec gap, not something to solve in the UI.
+    </p>
+  </section>
+
+  <!-- ─────────────── WIREFRAMES ─────────────── -->
+  <section id="screens">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>What it looks like on the music stand</h2>
+    <div class="note">
+      <p><strong>These are comprehension wireframes, not design.</strong> They use the real tokens
+      so they feel right, but they exist to show the <em>flow and the hierarchy</em> — one screen,
+      one action. Actual design happens in Claude Design against the shipped system; there's a
+      prompt for that at the bottom of this page.</p>
+    </div>
+
+    <h3>Journey one — the daily twenty minutes</h3>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      Swipe each row sideways. Thirteen screens across four journeys; in this first one, only two
+      take a tap.
+    </p>
+
+    <div class="rail">
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="ph-eyebrow">Tuesday · 20 minutes</div>
+          <div class="ph-title" style="margin-bottom:10px">Ready when you are</div>
+          <div class="ph-hero">
+            <div class="h1">Start</div>
+            <div class="h2">Warm-up · rootless in F · the ♭9 lick into D · close on the head</div>
+            <div class="ph-btn">Begin — 20 min</div>
+          </div>
+          <div style="height:9px"></div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">Why this today</strong><br>
+            Rootless voicings are your frontier, and F is next in the order.
+          </div>
+          <div style="height:7px"></div>
+          <div class="ph-btn ghost">I've only got 10 minutes</div>
+          <div class="ph-spacer"></div>
+          <div class="ph-tabs"><b>Today</b><span>Library</span><span>Track</span></div>
+        </div>
+        <figcaption>
+          <b>1 · Home</b>
+          The whole home screen is a start button. The plan was made before you sat down; the
+          reason is one line, and the shorter session is offered, never buried.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-eyebrow">Rootless voicings · key of F</div>
+          <div class="ph-title">ii–V–I, hands together</div>
+          <div style="height:14px"></div>
+          <div style="text-align:center;font-family:var(--serif);font-size:44px;font-weight:600;line-height:1">80</div>
+          <div style="text-align:center;font-size:9.5px;color:var(--ink-3);letter-spacing:0.1em;text-transform:uppercase">bpm · click on every beat</div>
+          <div class="ph-beats" style="margin-top:18px"><i class="on"></i><i></i><i></i><i></i></div>
+          <div style="text-align:center;font-size:10px;color:var(--ink-3)">bar 1 of 4</div>
+          <div class="ph-spacer"></div>
+          <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--ink-3);margin-bottom:7px">
+            <span>4:10 elapsed</span><span>6:00 ceiling</span><span>3 blocks left</span>
+          </div>
+          <div class="ph-card" style="text-align:center;border-style:dashed">
+            Listening. Nothing on screen will change until you finish.
+          </div>
+          <div style="height:8px"></div>
+          <div class="ph-stuck">I'm stuck</div>
+        </div>
+        <figcaption>
+          <b>2 · During play — deliberately empty</b>
+          Bar position, the click, and where you are in the session. No live scoring. The one big
+          target is the stuck button, hittable without looking. The clock is orientation, not
+          judgement — that distinction is what keeps a gate from feeling open-ended.
+          <span class="pill p-next">Phase 1</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-eyebrow">Rootless voicings · key of F</div>
+          <div style="height:36px"></div>
+          <div class="ph-verdict ok">✓</div>
+          <div class="ph-fact">Clean</div>
+          <div class="ph-sub">80 bpm · timing steady</div>
+          <div style="height:26px"></div>
+          <div style="display:flex;justify-content:center;gap:8px;align-items:center">
+            <span class="dots"><i></i><i></i><i class="o"></i></span>
+            <span style="font-size:11px;color:var(--ink-2)">2 of 3</span>
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-card" style="text-align:center">
+            Next count-in in 3…
+          </div>
+          <div style="height:8px"></div>
+          <div class="ph-stuck">I'm stuck</div>
+        </div>
+        <figcaption>
+          <b>3 · After the rep — one glance</b>
+          Tick, one fact, gate progress. Legible at arm's length in bad practice-room light.
+          Then it counts you in again by itself.
+          <span class="pill p-next">Phase 1</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Block 2 done</span><span>USB MIDI</span></div>
+          <div class="ph-eyebrow">gate passed</div>
+          <div class="ph-title" style="margin-bottom:12px">F is in.</div>
+          <div class="ph-card" style="border-color:var(--accent)">
+            <strong style="color:var(--ink)">That's four keys clean this week.</strong><br><br>
+            The left hand is finding the shapes without looking now — the transition loop did
+            that.<br><br>
+            <strong style="color:var(--accent)">Next: listen for the inner voice.</strong>
+            In the ii–V, one note doesn't move. Aim to not hear it move.
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-btn wide">Next — the ♭9 lick into D</div>
+          <div style="height:7px"></div>
+          <div class="ph-btn ghost">Bank it and stop here</div>
+        </div>
+        <figcaption>
+          <b>4 · Block boundary — the only sentences</b>
+          Why, the trend, and exactly one thing to listen for. Stopping is offered here as
+          "bank it", with no guilt dialogue.
+          <span class="pill p-later">Phase 3 for the prose</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>19 min</span><span>done</span></div>
+          <div class="ph-eyebrow">Tuesday</div>
+          <div class="ph-title" style="margin-bottom:10px">You closed on the head, and it sounded good.</div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">The thread</strong><br>
+            Monday's voicing drill is what your left hand just did in bar 5 of the head.
+          </div>
+          <div style="height:7px"></div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">Rootless voicings</strong>
+            <div class="ph-bar" style="margin:6px 0"><i style="width:42%;background:var(--accent)"></i></div>
+            5 of 12 keys · 60 → 80 bpm this fortnight
+          </div>
+          <div style="height:7px"></div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">In flight</strong><br>
+            The ♭9 lick, 3 keys down. Your trend suggests about 5 more sessions to the full cycle.
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-card" style="background:var(--sunken)">
+            <strong style="color:var(--ink)">Tomorrow, drafted:</strong> B♭ rootless, the lick into B♭, guide tones over the bridge.
+          </div>
+        </div>
+        <figcaption>
+          <b>5 · Session end — the narrative</b>
+          Trends and the thread from drill to real music, then tomorrow's plan written while
+          you're still at the piano. Horizons come from your own trend, never invented averages.
+          <span class="pill p-later">Phase 3</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <h3>Journey two — when it goes wrong, or too well</h3>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      The three screens that decide whether you come back tomorrow. Note the middle one is the
+      mirror of the first: help when you're failing, permission when you can't stop.
+    </p>
+
+    <div class="rail">
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-eyebrow">Rootless voicings · key of F</div>
+          <div style="height:20px"></div>
+          <div class="ph-verdict no">✗</div>
+          <div class="ph-fact">Late into bar 3</div>
+          <div class="ph-sub">third time — changing the plan</div>
+          <div style="height:18px"></div>
+          <div class="ph-card" style="border-color:var(--accent);background:var(--accent-wash)">
+            <strong style="color:var(--ink)">Let's take it to 64, and just the ii→V.</strong><br><br>
+            Find the fingers that don't move first.
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-btn wide">Count me in</div>
+        </div>
+        <figcaption>
+          <b>6 · Help fires by itself</b>
+          Three fails of the same thing and the ladder acts: tempo down, scope shrunk, one cue.
+          Framed as the plan. A teacher doesn't narrate your failure — they make the next
+          attempt winnable.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Block 2 done</span><span>USB MIDI</span></div>
+          <div class="ph-eyebrow">noticing something</div>
+          <div class="ph-title" style="margin-bottom:12px">It's in. You can stop.</div>
+          <div class="ph-card" style="border-color:var(--gold);background:var(--gold-wash)">
+            <strong style="color:var(--ink)">You've run this fourteen times and passed on the
+            fourth.</strong><br><br>
+            F is solid. Nothing left to win here today.
+          </div>
+          <div style="height:9px"></div>
+          <div class="ph-btn wide">Bank it and move on</div>
+          <div style="height:6px"></div>
+          <div class="ph-btn ghost">I want to keep going</div>
+          <div class="ph-spacer"></div>
+          <div style="font-size:9.5px;color:var(--ink-3);text-align:center">
+            Said once. Not mentioned again this session.
+          </div>
+        </div>
+        <figcaption>
+          <b>7 · The circling check</b>
+          The mirror of the stuck ladder: it fires when you're <em>succeeding</em> and can't
+          leave. Permission, not correction — no tally of wasted minutes, no "you're stuck on
+          this", and "keep going" is a real option.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="ph-eyebrow">Thursday · you missed two days</div>
+          <div class="ph-title" style="margin-bottom:10px">Ten minutes, and we'll keep it kind.</div>
+          <div class="ph-hero">
+            <div class="h1">Start</div>
+            <div class="h2">Something you own · one key of the lick · the head</div>
+            <div class="ph-btn">Begin — 10 min</div>
+          </div>
+          <div style="height:9px"></div>
+          <div class="ph-card">
+            No frontier work today. Two days off doesn't undo a fortnight — the streak counts
+            any engagement, including a listening block on the commute.
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-btn ghost">Just let me play (off-piste)</div>
+          <div class="ph-tabs"><b>Today</b><span>Library</span><span>Track</span></div>
+        </div>
+        <figcaption>
+          <b>8 · The bad day</b>
+          Tired and low-motivation: the app gets <em>lighter</em>, not heavier. Wins front-loaded,
+          grind dropped, wandering honoured — and still listened to, so a wander can reveal a gap
+          in the graph.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <h3>Journey three — saying what you want</h3>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      Not a session builder. You name targets — a lesson's list is the ideal source — and the
+      app works out the order and the distance.
+    </p>
+
+    <div class="rail">
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>New campaign</span><span>next 2 weeks</span></div>
+          <div class="ph-eyebrow">what do you want to work on?</div>
+          <div class="ph-title" style="margin-bottom:9px">Straight from your lesson</div>
+          <div class="ph-card" style="border-style:dashed;font-style:italic">
+            Rootless voicings under the melody. The Rollins phrase in more keys. Bridge changes
+            from memory. Make the last A sing.
+          </div>
+          <div style="height:9px"></div>
+          <div class="ph-eyebrow" style="margin-bottom:5px">what it matched</div>
+          <div class="ph-card" style="padding:7px 9px">
+            <div style="display:flex;justify-content:space-between;gap:6px"><span>Rootless voicings</span><span style="color:var(--teal)">skill</span></div>
+          </div>
+          <div style="height:4px"></div>
+          <div class="ph-card" style="padding:7px 9px">
+            <div style="display:flex;justify-content:space-between;gap:6px"><span>Phrase → more keys</span><span style="color:var(--teal)">in flight</span></div>
+          </div>
+          <div style="height:4px"></div>
+          <div class="ph-card" style="padding:7px 9px">
+            <div style="display:flex;justify-content:space-between;gap:6px"><span>Bridge from memory</span><span style="color:var(--gold)">new</span></div>
+          </div>
+          <div style="height:4px"></div>
+          <div class="ph-card" style="padding:7px 9px">
+            <div style="display:flex;justify-content:space-between;gap:6px"><span>Make the last A sing</span><span style="color:var(--ink-3)">your call</span></div>
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-btn wide">Show me the route</div>
+        </div>
+        <figcaption>
+          <b>9 · Declaring a campaign</b>
+          Four targets, three matched to the graph, one kept as-is because "make it sing" isn't
+          a measurable node — it gets practised and self-confirmed, never scored.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>The route</span><span>~9 sessions</span></div>
+          <div class="ph-eyebrow">here to there</div>
+          <div class="ph-title" style="margin-bottom:10px">Shells come first.</div>
+          <div class="ph-card">
+            You can't aim at the 3rds and 7ths until you know where they live — so the voicings
+            you asked for sit behind one week of shells you've already nearly got.
+          </div>
+          <div style="height:8px"></div>
+          <div class="ph-eyebrow" style="margin-bottom:5px">what's missing</div>
+          <ul class="bare" style="font-size:11px">
+            <li><span class="dots"><i class="o"></i></span><span>Chord-tone targeting — never attempted</span></li>
+            <li><span class="dots"><i class="o"></i></span><span>Bridge from memory — no drill written yet</span></li>
+            <li><span class="dots"><i class="o"></i></span><span>Nothing here trains your ear</span></li>
+          </ul>
+          <div class="ph-spacer"></div>
+          <div class="ph-card" style="background:var(--sunken)">
+            Roughly 9 sessions on your recent pace. That's an estimate from your trend, not an
+            average of other people.
+          </div>
+          <div style="height:7px"></div>
+          <div class="ph-btn wide">Start this campaign</div>
+        </div>
+        <figcaption>
+          <b>10 · The gap read</b>
+          The structural half only — pure prerequisite arithmetic, trustworthy on day one.
+          Decayed-confidence and flat-velocity gaps wait until there's history to justify them.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>9:41</span><span>▮▮▮</span></div>
+          <div class="ph-eyebrow">today, instead</div>
+          <div class="ph-title" style="margin-bottom:10px">What do you fancy?</div>
+          <div class="ph-card" style="border-color:var(--accent)">
+            <strong style="color:var(--ink)">More transcription</strong><br>
+            Due anyway, and your ear is the thin side right now.
+          </div>
+          <div style="height:6px"></div>
+          <div class="ph-card">Push the voicings — new keys</div>
+          <div style="height:6px"></div>
+          <div class="ph-card">Hands only, I'm tired</div>
+          <div style="height:6px"></div>
+          <div class="ph-card">Just the tune, no drills</div>
+          <div class="ph-spacer"></div>
+          <div class="ph-card" style="background:var(--sunken);font-size:10px">
+            Whatever you pick, the session keeps its shape: a warm-up, real music at the end,
+            and gates that still mean something.
+          </div>
+          <div style="height:7px"></div>
+          <div class="ph-btn ghost">Actually, just follow the plan</div>
+        </div>
+        <figcaption>
+          <b>11 · Today's steer</b>
+          One tap from the home screen. Not a blank canvas — the planner's own next candidates,
+          so choosing is quick and the session still re-weaves properly around it.
+          <span class="pill p-next">Phase 2</span>
+        </figcaption>
+      </figure>
+    </div>
+
+    <h3>Journey four — the long game</h3>
+
+    <div class="rail">
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>In flight</span><span>stage 2 of 7</span></div>
+          <div class="ph-eyebrow">the phrase you're learning</div>
+          <div class="ph-title" style="margin-bottom:4px">The ♭9 turnaround</div>
+          <div style="font-size:10px;color:var(--ink-3);margin-bottom:10px">Nearby keys · 2 new keys a session</div>
+          <div class="ph-card" style="font-family:ui-monospace,Menlo,monospace;font-size:10px;text-align:center;letter-spacing:0.04em">
+            F E D C · B D F A♭ | G
+          </div>
+          <div style="height:9px"></div>
+          <div class="ph-eyebrow" style="margin-bottom:5px">the keys</div>
+          <div class="ph-keys">
+            <span class="ph-key solid">C</span><span class="ph-key learn">D</span><span class="ph-key learn">B♭</span><span class="ph-key">E♭</span>
+            <span class="ph-key">E</span><span class="ph-key">F</span><span class="ph-key">F♯</span><span class="ph-key">G</span>
+            <span class="ph-key">A♭</span><span class="ph-key">A</span><span class="ph-key">B</span><span class="ph-key">D♭</span>
+          </div>
+          <div style="height:10px"></div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">Why it sounds like that</strong><br>
+            The ♭9 over the V is maximum tension, resolving by the smallest possible move onto
+            the 5th. That crunch-then-release is the bit you like.
+          </div>
+          <div class="ph-spacer"></div>
+          <div style="font-size:10px;color:var(--ink-3);text-align:center">One phrase in flight at a time.</div>
+        </div>
+        <figcaption>
+          <b>12 · The phrase, over a fortnight</b>
+          Theory arrives only at the point of use, explaining a sound you already want. The
+          device you extract from this lick — not the lick itself — becomes your vocabulary.
+          <span class="pill p-next">Phase 1–2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <div class="phone">
+          <div class="ph-status"><span>Track</span><span>last 8 weeks</span></div>
+          <div class="ph-eyebrow">the balance</div>
+          <div class="ph-title" style="margin-bottom:12px">Your hands are ahead of your ears.</div>
+          <div class="ph-card">
+            <strong style="color:var(--ink)">Where the time went</strong>
+            <div class="ph-bar" style="margin:8px 0 6px">
+              <i style="width:24%;background:var(--accent)"></i>
+              <i style="width:18%;background:var(--gold)"></i>
+              <i style="width:52%;background:var(--gold);opacity:0.45"></i>
+            </div>
+            <div style="display:flex;gap:8px;font-size:9px;color:var(--ink-3)">
+              <span>■ head 24%</span><span>■ bridge 18%</span><span>■ hands 58%</span>
+            </div>
+          </div>
+          <div style="height:8px"></div>
+          <div class="ph-card" style="border-color:var(--gold)">
+            <strong style="color:var(--ink)">Suggestion</strong><br>
+            Two transcription blocks next week. You can play more than you can hear right now —
+            the overlap is what makes music.
+          </div>
+          <div class="ph-spacer"></div>
+          <div class="ph-tabs"><span>Today</span><span>Library</span><b>Track</b></div>
+        </div>
+        <figcaption>
+          <b>13 · Time by circle</b>
+          The check the two-circle frame demands: a long-horizon view that catches a starved
+          circle, plus a planner nudge. Cheap to add, because every block is already tagged.
+          <span class="pill p-later">Phase 4</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ─────────────── STILL OPEN ─────────────── -->
+  <section id="open">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>What a second review found still open</h2>
+    <p class="lede">
+      The first review fixed how the app behaves. This one looked at whether the pieces hang together — and found the problems were structural rather than behavioural. One is now resolved; three are tracked as issues.
+    </p>
+
+    <div class="grid g2">
+      <div class="card">
+        <span class="pill p-now">important</span>
+        <h4>Five polite features are still five interruptions</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          The stuck ladder, the circling check, the grind trade, the coach voice and the gap
+          read each own a "once per session" moment. Nothing arbitrates between them. This is
+          exactly how a careful design becomes naggy anyway — and no single feature's tests
+          would ever catch it. Needs <strong>one budget and a priority order</strong>, decided
+          in one place.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-done">resolved</span>
+        <h4>What counts as mastery — settled</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          The blocking question was whether your own verdict counts toward how good the app
+          thinks you are. Answer: <strong>no — only what it can hear.</strong> Self-report moves
+          to a separate judgement track that records completion and a feel trend, and its power
+          is asymmetric on purpose: it can <em>retire</em> a target ("the last A sings now") but
+          never <em>unlock</em> a prerequisite. If your own verdict could open the next door,
+          generosity gets quietly rewarded and the gate stops meaning anything.
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0.6rem 0 0">
+          Still open: the shape of the mastery function itself. Its <em>inputs</em> are now
+          fixed, which was the part that needed a human decision.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-next">worth settling</span>
+        <h4>Week one has no baseline</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Every adaptive mechanism needs history. In your first fortnight there's no
+          attempts-to-pass norm, so the circling check can't say "above your norm"; no trend, so
+          horizons in sessions aren't available. Needs an explicit list of what's suppressed and
+          when each switches on.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-next">worth settling</span>
+        <h4>Two questions about endings</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          A campaign has a horizon but no definition of <em>done</em>, so "improvise confidently
+          over Strasbourg" can run forever. And the session narrative — the most motivating
+          content in the app — lands after twenty minutes of focus, when attention is spent.
+          End on the feeling; leave the report for the morning.
+        </p>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <p><strong>And the honest scheduling finding: Phase 2 had quietly become undeliverable.</strong>
+      It accumulated twelve deliverables under a three-to-four week estimate — planner, three
+      declaration surfaces, back-chaining, gap read, circling check, grind trade, off-piano queue,
+      unmonitored mode, circle tally, soft-landing exit, <em>and</em> deleting the session builder.
+      Now split: <strong>2a</strong> is the loop working end to end, <strong>2b</strong> is
+      everything that makes it kind. A phase that can't land is worse than a phase that admits
+      its size.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────── TECH ─────────────── -->
+  <section id="tech">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>The technical work</h2>
+    <p class="lede">
+      The verdict from the codebase review: <strong>pivot in place, with a hard edge.</strong>
+      The expensive parts of this repo — the Rust↔Swift bridge toolchain, the on-device
+      database, the design system, CI, TestFlight — are exactly the parts the new direction
+      keeps. The notebook parts are inert: they don't block Phase 1, and they get deleted at
+      Phase 2 rather than extended.
+    </p>
+
+    <div class="legend">
+      <span><i style="background:var(--teal)"></i> keeps its job</span>
+      <span><i style="background:var(--accent)"></i> new, to build</span>
+      <span><i style="background:var(--ink-3)"></i> dies at Phase 2</span>
+    </div>
+
+    <div class="arch">
+      <div class="col">
+        <header>Swift shell — a dumb pipe</header>
+        <ul>
+          <li class="new">CoreMIDI capture + ring buffer</li>
+          <li class="new">The click clock and count-in</li>
+          <li class="new">Audio session handling <span style="color:var(--ink-3)">(mined from the deleted Tauri plugin)</span></li>
+          <li class="new">One drill screen with the tick</li>
+          <li class="keep">Store / bridge pump, error discipline</li>
+          <li class="keep">On-device database (already sync-ready)</li>
+          <li class="keep">Design system + 71 snapshot tests</li>
+          <li class="die">Session builder screen (765 lines)</li>
+        </ul>
+      </div>
+      <div class="col">
+        <header>Rust core — all the thinking</header>
+        <ul>
+          <li class="new">Attempt segmentation <span style="color:var(--danger)">← the named risk</span></li>
+          <li class="new">Deterministic scoring, gate detection</li>
+          <li class="new">Skill graph, phrases, devices, method packs</li>
+          <li class="new">Gate criteria loaded as data</li>
+          <li class="new">The planner — a pure function, on device</li>
+          <li class="keep">Chord + chart theory (1,163 lines, 30 tests)</li>
+          <li class="keep">Persistence pattern, session lifecycle</li>
+          <li class="die">Block-reorder machinery (~3,000 lines)</li>
+          <li class="die">Self-rated scores → analytics dials</li>
+        </ul>
+      </div>
+      <div class="col">
+        <header>Cloud — deliberately almost nothing</header>
+        <ul>
+          <li class="new">One route proxying the coaching voice to an LLM</li>
+          <li class="keep">Auth, deploy, error reporting (already built)</li>
+          <li class="later" style="color:var(--ink-2)">Sync + backup, if a paid tier ever happens</li>
+          <li class="die">Notebook-era database schema</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Three decisions inside that diagram worth understanding</h3>
+    <div class="qa">
+      <h5>MIDI crosses the bridge in batches, never note by note</h5>
+      <p>Every event through the Rust core rebuilds the whole view model. Piping note-ons through
+      that at playing speed would be architecture abuse. So the Swift side owns the buffer and
+      timestamps against the click; the core scores <em>batches</em>. Few, small, stable types
+      cross the bridge — that wire has bitten us before, silently.</p>
+    </div>
+    <div class="qa">
+      <h5>The planner runs on your phone, not on a server</h5>
+      <p>The design doc originally put planning behind the API. The review overruled it: the
+      practice room is the worst place to need a server round-trip, and the device database is
+      already the source of truth. The cloud keeps only the LLM voice.</p>
+    </div>
+    <div class="qa">
+      <h5>The real risk is gravity, not architecture</h5>
+      <p>The old abstractions are <em>right there</em>, so the temptation is to hang attempt
+      scores off the old self-rating fields and extend the builder instead of replacing it. Six
+      months of that and the old model is wearing the new one as a costume. The guard: the
+      engine gets its own state, never touches the self-report fields, and the pull request that
+      lands the planner deletes the builder in the same series.</p>
+    </div>
+
+    <h3>What's genuinely unknown</h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Open question</th><th>How it gets answered</th><th>When</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Can we tell where an attempt starts and stops?</strong> Count-ins, restarts, noodling between takes, a collapse halfway through</td>
+            <td>A pure-Rust spike against recordings of your real playing. Fails cheaply in Rust if it fails</td>
+            <td>Phase 1, week 2</td>
+          </tr>
+          <tr>
+            <td><strong>How honest can Bluetooth MIDI be?</strong></td>
+            <td>One afternoon measuring your actual piano, wired as ground truth</td>
+            <td>Phase 1, week 1</td>
+          </tr>
+          <tr>
+            <td><strong>Do the gate numbers work on a human?</strong></td>
+            <td>Your fortnight of logs. Too strict means grind and quit; too loose means mastery is fiction</td>
+            <td>Phase 0 — now</td>
+          </tr>
+          <tr>
+            <td><strong>Can a microphone ever replace the cable?</strong></td>
+            <td>Two spikes: model accuracy against MIDI from the same performance, and whether the click bleeds into the scoring</td>
+            <td>Phase 4</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─────────────── ROADMAP ─────────────── -->
+  <section id="roadmap">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>The order of work</h2>
+    <p class="lede">
+      Five phases. The sequencing rules that hold them together: <strong>MIDI before audio,
+      the coaching voice last not first, no placement session until Phase 4</strong> — and
+      segmentation gets proven before a single scoring screen is drawn.
+      Capacity is evenings and weekends alongside COAST's September push.
+    </p>
+
+    <div class="phase is-done">
+      <div class="phase-head">
+        <h3>Phase 0 — the paper teacher</h3>
+        <span class="pill p-done">content done today</span>
+        <span class="phase-when">no code · runs in parallel with Phase 1</span>
+      </div>
+      <p>You are the app for a fortnight. Practise from the written content, keep four logs, and
+      the logs become the specification for everything the machine later automates.</p>
+      <div class="slice"><b>Authored today</b><span>5 skill nodes, 2 method packs, 1 phrase with per-key state, 18 gates as data, the tune's pipeline position, 9 stubs, 4 log templates.</span></div>
+      <div class="slice"><b>Remaining — yours, at the piano</b><span>Correct the guessed starting levels, then two weeks of practice with the divergence / gate-attempt / why / wander logs.</span></div>
+      <p class="exit">Done when: the gate numbers have been argued with by a real human, and every block's <em>why</em> could be written from the graph.</p>
+    </div>
+
+    <div class="phase is-now">
+      <div class="phase-head">
+        <h3>Phase 1 — the listening gate</h3>
+        <span class="pill p-now">next code</span>
+        <span class="phase-when">3–4 weeks</span>
+      </div>
+      <p>The moment to reach: you play, you see the tick, and the gate releases you.</p>
+      <div class="slice"><b>Capture harness + click</b><span>Swift only, debug-gated. Record a take at the piano, write the note events to a file. Also measures how honest Bluetooth can be. <em>Needs a MIDI keyboard and cable to hand.</em></span></div>
+      <div class="slice"><b>The segmentation spike</b><span>Pure Rust, no interface. Count-in detection, attempt start and end, restarts, noodling, collapses — tested against those recordings. The named risk of the whole project.</span></div>
+      <div class="slice"><b>First scored drill</b><span>Lick transposition: the target is known exactly, so scoring is unambiguous. Then the first bridge crossing and the one drill screen.</span></div>
+      <p class="exit">Done when: a real attempt at your piano produces a trustworthy tick or cross.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-head">
+        <h3>Phase 2a — prescribe and run</h3>
+        <span class="pill p-next">then</span>
+        <span class="phase-when">3–4 weeks · blocked on the mastery model</span>
+      </div>
+      <p>The loop working end to end. The app starts deciding, and this is where the notebook
+      gets deleted.</p>
+      <div class="slice"><b>The planner</b><span>A pure function of graph state, pipeline states, <em>declared intent</em> and available minutes. Press-start flow, the stuck ladder wired to real failure patterns, soft-landing exit, listening blocks as no-instrument items.</span></div>
+      <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped, opaque targets allowed) and today's steer — each with a default, so the app works having declared nothing. Plus back-chaining and the structural gap read.</span></div>
+      <div class="slice"><b>The deletion</b><span>Session builder, self-rated scoring, the old analytics — removed in the same series, not "later".</span></div>
+      <p class="exit">Done when: the prescribed loop runs a real session end to end, gates and all.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-head">
+        <h3>Phase 2b — steer and guard</h3>
+        <span class="pill p-later">after 2a</span>
+        <span class="phase-when">3–4 weeks</span>
+      </div>
+      <p>Everything that makes the loop kind rather than merely correct.</p>
+      <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped, opaque targets allowed) and today's steer — each with a default, so the app works having declared nothing. Plus back-chaining and the structural gap read.</span></div>
+      <div class="slice"><b>The guard rails</b><span>The circling check, the grind trade, the off-piano queue with its own cue, unmonitored play alongside off-piste, the time-by-circle tally — pulled forward from Phase 4 so the app can see its own imbalance early — and the judgement track, designed against a fortnight of real divergence data rather than guessed.</span></div>
+      <p class="exit">Done when: two weeks of daily use without you reverting to self-directed sessions.</p>
+    </div>
+
+    <div class="phase">
+      <div class="phase-head">
+        <h3>Phase 3 — the voice</h3>
+        <span class="pill p-later">after</span>
+        <span class="phase-when">2–3 weeks</span>
+      </div>
+      <p>Summaries, whys, and the stuck-moment coaching. Late on purpose: coaching prose over
+      unmeasured practice is a chatbot, not a teacher.</p>
+      <div class="slice"><b>One cloud route</b><span>Metrics plus graph state in, the teacher's voice out. Cached, degrades gracefully offline, never in the critical path. Pennies a month.</span></div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-head">
+        <h3>Phase 4 — widen</h3>
+        <span class="pill p-later">ongoing</span>
+      </div>
+      <p>More drill types, spaced review recalibrated against observed decay, difficulty
+      auto-adjusting to hold your success rate in the right band, velocity tracking, the
+      time-by-circle balance check, the microphone path, a placement session — and a second
+      user, because the graph needs a second data point before it's a curriculum.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────── BACKLOG ─────────────── -->
+  <section id="backlog">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>The old backlog — triaged</h2>
+    <p class="lede">
+      Done today. The board was pointing at the old product: 40 open issues, only three labelled
+      as superseded. Twenty more are now parked, so what's left is a list that survives the pivot.
+    </p>
+
+    <div class="grid g3">
+      <div class="card">
+        <span class="pill p-parked">parked · 23</span>
+        <p style="font-size:13px;color:var(--ink-2);margin:0.6rem 0 0">
+          Notebook-era features: session-builder polish, focus-player transport, related
+          exercises, mastery meters fed by self-ratings, "add a lesson" capture, the up-next card,
+          the API setlist sync. Labelled, not closed — searchable and revivable.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-now">active · 17</span>
+        <p style="font-size:13px;color:var(--ink-2);margin:0.6rem 0 0">
+          Two real data-loss bugs and a sync-readiness gap, dependency alerts, crash-symbol
+          upload, accessibility coverage, worktree tooling, three design re-export chores — plus
+          your Phase 0 fortnight and the ear-training pack.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-later">your call · 4</span>
+        <p style="font-size:13px;color:var(--ink-2);margin:0.6rem 0 0">
+          Genuinely ambiguous, so left alone: chart-to-scaffold Phase B (the chord theory it
+          builds on is a keep-column asset), the library star filter, and two chores that name
+          notebook surfaces.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── NEXT ─────────────── -->
+  <section id="next">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>What's waiting on you</h2>
+
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">Today — 2 minutes</h4>
+        <p style="font-size:13.5px;margin:0">
+          Merge the content pull request. All checks passed; it's docs only, no code.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">This week — 15 minutes at the piano</h4>
+        <p style="font-size:13.5px;margin:0">
+          Correct my guesses: the starting mastery levels for the five skills, which keys you can
+          already play the lick in, and how far along the tune actually is. Then start the
+          fortnight.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Also this week — rewrite one file</h4>
+        <p style="font-size:13.5px;margin:0">
+          <code>content/intent.md</code> now holds a goal and a campaign, written as a worked
+          example. Replace it with yours — ideally straight from a lesson's list of targets — then
+          check the back-chained route still follows. That's the paper test of the whole intent
+          mechanism, and it's cheaper to fail here than in Rust.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Before Phase 1 code — a shopping question</h4>
+        <p style="font-size:13.5px;margin:0">
+          The capture harness needs a MIDI cable from your piano to the phone or iPad. Wired
+          earns fine timing feedback; Bluetooth caps what the app may honestly claim. Worth
+          settling before that week starts.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Nothing — the last ruling is made</h4>
+        <p style="font-size:13.5px;margin:0">
+          Mastery is measured-only, with self-report as a separate judgement track that closes
+          targets but never unlocks prerequisites. Recorded as decision 17. Phase 1 has no
+          remaining design dependency.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">And a technical spec to write</h4>
+        <p style="font-size:13.5px;margin:0">
+          Narrow, not architectural — the mastery model, the session state machine and what it
+          records, the planner's resolution order, the FFI batching contract, and where the
+          interruption budget is arbitrated. Rides with Phase 1's first code PR.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── DESIGN PROMPT ─────────────── -->
+  <section id="design">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Taking this into Claude Design</h2>
+    <p class="lede">
+      Worth doing for the seven screens that ship in Phases 1–2b, because they're where the whole
+      product is felt: the home screen, the two in-drill states, the block boundary, the two that let you say what you want, and the one that gives you permission to stop. Split across two sessions — see below. The wireframes above are for understanding; these need real
+      design against the shipped system.
+    </p>
+    <div class="note">
+      <p><strong>The brief now lives in the repo:</strong>
+      <code>design/briefs/2026-08-coach-drill-loop.md</code>. That is the canonical,
+      editable copy — it follows the house brief convention (the moment each screen serves,
+      its current state, its failure mode, the T-decisions it must respect) which is better
+      than the generic prompt that used to sit here. Paste it into the <strong>Intrada</strong>
+      project in Claude Design.</p>
+      <p><strong>Run it as two sessions, not one.</strong> Seven screens in a single prompt
+      produces seven mediocre screens.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="card">
+        <span class="pill p-now">session A · start here</span>
+        <h4>The drill loop — four screens</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Home (plus its first-run state), during play, after a repetition (plus the cross
+          state and the uncertain "that sounded clean — agree?" variant), and the block
+          boundary (plus the silent boundary). These are seen every day and must be right.
+        </p>
+      </div>
+      <div class="card">
+        <span class="pill p-next">session B · after A</span>
+        <h4>Declaration and guard rails — three screens</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Declaring a campaign from a lesson list, the route-and-gap answer, and the circling
+          check. These inherit the voice Session A establishes, which is why they wait.
+        </p>
+      </div>
+    </div>
+
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      The brief carries what the old prompt here was missing: the user's moment for each
+      screen, the failure mode to avoid, the required states (first run, empty, uncertain,
+      failure), Dynamic Type at the largest accessibility size for the drill screen, the
+      light-theme-only ruling, and an explicit list of what <em>not</em> to design.
+    </p>
+
+    <p style="font-size:13.5px;color:var(--ink-2);margin-top:1.25rem">
+      Then the normal route for each session: Claude Design → plan mode → implement, with any new token landing in
+      <code>Theme.swift</code> and the design reference together.
+    </p>
+  </section>
+
+  <footer>
+    Assembled from <code>specs/intrada-practice-coach-design.md</code> (v5, revised 3 August — intent as a first-class mechanism, the non-failure states, and mastery settled as measured-only), <code>docs/rebuild-review.md</code> (19 July),
+    <code>docs/roadmap.md</code>, and the <code>content/</code> set authored 3 August.
+    Wireframes are for comprehension, not design — the four Phase 1–2 screens get real design
+    via the prompt above. Backlog counts are post-triage.
+  </footer>
+
+</div>

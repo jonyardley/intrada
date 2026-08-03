@@ -38,6 +38,8 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
 > | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
 > | What order does the work happen in? | The phase plan below |
+> | Can I see it all at a glance? | [`docs/coach-orientation.html`](coach-orientation.html) — visual snapshot, open in a browser |
+> | What do I hand to Claude Design? | [`design/briefs/2026-08-coach-drill-loop.md`](../design/briefs/2026-08-coach-drill-loop.md) |
 >
 > Pre-pivot specs now carry a superseded banner, and
 > [`docs/journeys.md`](journeys.md) — the notebook-era "ideal journey" that
