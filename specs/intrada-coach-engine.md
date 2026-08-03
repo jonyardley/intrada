@@ -1,8 +1,14 @@
 # The coach engine
 
-Technical design spec, Tier 3, 3 August 2026. Rides with Phase 1's first
-implementation PR, not its own. Resolves [#1148](https://github.com/jonyardley/intrada/issues/1148)
-and [#1147](https://github.com/jonyardley/intrada/issues/1147).
+Technical design spec, Tier 3, 3 August 2026. Resolves
+[#1148](https://github.com/jonyardley/intrada/issues/1148) and
+[#1147](https://github.com/jonyardley/intrada/issues/1147).
+
+CLAUDE.md's Tier 3 rule has a spec ride with its first implementation PR. This
+one shipped alone (#1155), ahead of any Phase 1 code, because it unblocks two
+issues Phase 2a waits on and because 400 lines of design argument review better
+as a file than as the opening commit of a segmentation PR. A deliberate
+exception, recorded rather than inherited.
 
 **Scope:** the seven mechanisms Phase 1 and 2a cannot be built without — mastery
 update, judgement track, session state machine, planner resolution order, FFI
@@ -85,9 +91,20 @@ decayed(alpha) = alpha_0 + (alpha - alpha_0) · λ^Δdays        (same for beta)
 λ = 0.5 ^ (1 / retention_half_life_days)                     (per node family, authored)
 
 // spacing, computed from the STORED (undecayed) counts
-interval_days = base_interval · (1 + estimate) ^ (evidence / e_scale)   // e_scale = 8
-overdue       = days_since_last_attempt / interval_days                // due at ≥ 1.0
+interval_days = base_interval · (1 + estimate) ^ (evidence / e_scale)
+overdue       = days_since_last_attempt / interval_days     // due at ≥ 1.0
+// base_interval = 2 days, e_scale = 8   (both gates.toml data)
 ```
+
+What those defaults produce, at four points taken from `content/nodes.md` — the
+table is the calibration target, not the formula:
+
+| Node state | estimate | evidence | Comes back every |
+|---|---|---|---|
+| Brand new, no attempts | seed | 0 | 2 days |
+| `rootless-a-b`, current frontier | 0.3 | 8 | ~3 days |
+| `shells-ii-v-i`, solid | 0.7 | 16 | ~6 days |
+| Fully mastered, at the evidence cap | 0.9 | 38 | ~6 weeks |
 
 Decay shrinks evidence and moves the estimate toward "we don't really know",
 never toward failure — journey 7's requirement, and honest: absence of practice
