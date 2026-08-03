@@ -190,6 +190,7 @@ visible.
 |---|---|---|
 | `diatonic-7ths` | hands | Name and play the seven 7th chords of any major key |
 | `swing-click-time` | hands | Swing eighths held against the sparse-click ladder |
+| `rhythm-vocabulary` | bridge | **First in the authoring queue.** Subdivision, displacement, and rhythmic phrasing as a node family in their own right — see the spec's content-burden challenge. Rhythm currently exists only as a modifier inside other nodes, which is a real hole in a design whose foundation is time |
 | `interval-recognition` | head | Hear and name intervals, then 3rds-and-7ths inside voicings |
 | `guide-tone-lines` | bridge | Compose/play continuous guide-tone lines through full forms |
 | `device-generate-ladder` | bridge | The back half of the lick pipeline: vary, transplant, compose, deploy |
