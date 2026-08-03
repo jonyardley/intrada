@@ -10,9 +10,13 @@
 > **Note on `docs/journeys.md`:** earlier briefs cite its numbered steps. It is
 > retired — the notebook-era journey. Cite `docs/coach-user-journeys.md` instead.
 >
+> **Eight screens across two sessions**, and that is not the whole app — see "What
+> this brief deliberately does not cover" before assuming a surface is missing by
+> accident.
+>
 > **Run this as two sessions.** Session A is the drill loop: four screens seen
 > every single day, and the ones that must be right. Session B depends on A's
-> decisions about how the app speaks. Seven screens in one pass produces seven
+> decisions about how the app speaks. Eight screens in one pass produces eight
 > mediocre screens.
 >
 > **Within Session A, only two screens are being built now.** Phase 1 ships the
@@ -139,7 +143,25 @@ of other people.
 
 - *Failure mode to avoid:* reading as a rejection or a report card. It is a route.
 
-### B3. The circling check — permission to stop
+### B3. The stuck ladder — help that acts
+
+*The moment:* third failed rep on the same thing. They are close to giving up.
+
+The app has already acted rather than asked: tempo dropped, or scope shrunk to one
+hand / one change / one key. Show the new plan and one cue, framed as the plan —
+*"Let's take it to 100"* — never as remediation. Primary action: count me in.
+
+- **Design this and B4 as siblings.** They are mirrors — one fires on failure, the
+  other on success-you-can't-leave — and they must feel like the same voice being
+  kind in two directions. Designing them apart is how one ends up reading as an
+  error and the other as a nag.
+- If this is a quit-point, the wall is named **once**: normalisation plus a smaller
+  step ("everyone's enclosures sound mechanical for three weeks; here's the smaller
+  version"). Never the same encouragement twice.
+- *Failure mode to avoid:* anything that reads as a failure report. The user knows
+  they failed; the screen's job is to make the next attempt look winnable.
+
+### B4. The circling check — permission to stop
 
 *The moment:* the gate opened nine reps ago and they are still going. Nothing has
 failed.
@@ -153,15 +175,40 @@ must be a real, undiminished option.**
 - *Failure mode to avoid:* an alert. Design it as the calm sibling of the stuck
   screen, not an interruption.
 
-## Do not design here
+## What this brief deliberately does not cover
 
-Navigation and tabs, settings, onboarding, placement (Phase 4), the Track pillar,
-or anything requiring a mastery number on screen. The word "mastery" does not
-appear in the UI.
+Eight surfaces exist in the design and are **out of scope here**, so nobody
+mistakes this for the whole app. Each waits for the phase that builds it, because
+a mockup made months early is a mockup that gets redrawn:
+
+| Surface | Journey | Phase |
+|---|---|---|
+| Session-end narrative (trends, the thread, tomorrow's draft) | 2, 10 | 3 — the prose needs the voice |
+| The bad day / shorter-session offer | 6 | 2b |
+| Coming back after a gap | 7 | 2b |
+| Off-piano queue | 8 | 2b |
+| Off-piste and unmonitored play | 9 | 2b |
+| Something lands — milestone and pipeline advance | 10 | 2b |
+| The phrase's per-key pipeline view | — | 2b |
+| Time-by-circle (Track) | — | 2b |
+
+**Never design here:** navigation and tabs, settings, onboarding, placement
+(Phase 4), or anything putting a mastery number on screen. The word "mastery"
+does not appear in the UI at all.
+
+## The durable output is components, not screens
+
+Per `design/design-process.md`, what survives is the component catalogue. These
+screens need primitives that don't exist yet — a gate-progress dot row, a
+one-glance verdict, the ambient orientation strip, target-match rows, a route
+list. **Those go into `design/intrada-design-system.dc.html` and `Theme.swift`
+together**, and they are what makes the eight deferred surfaces above cheap to
+design later. Eight screens is the visible deliverable; the primitives are the
+valuable one.
 
 ## Deliver
 
-Mobile screens first, then the iPad variant of A2 and A3 (the two being built) plus B2. A1, A4 and Session B do not need iPad passes yet. For each screen note
+Mobile screens first, then the iPad variant of A2 and A3 (the two being built). A1, A4 and Session B do not need iPad passes yet. For each screen note
 the **states** covered (first run, empty, uncertain, failure) and **any component
 or token you had to extend, and why** — those go back into `Theme.swift` and the
 design system together, per `design/design-process.md`.
