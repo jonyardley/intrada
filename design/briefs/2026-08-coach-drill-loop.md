@@ -14,6 +14,16 @@
 > every single day, and the ones that must be right. Session B depends on A's
 > decisions about how the app speaks. Seven screens in one pass produces seven
 > mediocre screens.
+>
+> **Within Session A, only two screens are being built now.** Phase 1 ships the
+> drill screen and nothing else: **A2 (during play) and A3 (after a repetition)
+> get the full treatment.** A1 (Home) and A4 (block boundary) arrive in Phase 2a,
+> so give them **rough passes only** — enough to establish the voice and prove the
+> visual language holds across the loop, not polished comps. Same pattern as the
+> 2026-07 reflection brief, which rough-passed two look-ahead surfaces because
+> they shaped the surrounding tab. Polishing a screen months before it is built is
+> how mockups go stale, and A1/A4 will be better designed once you have used A2 and
+> A3 at a real piano.
 
 ## The product in three sentences
 
@@ -48,7 +58,7 @@ mid-flow. It is a quiet colleague, not a cheerleader or an invigilator.
 
 ## Session A — the drill loop
 
-### A1. Home — "ready when you are"
+### A1. Home — "ready when you are"  · *rough pass (Phase 2a)*
 
 *The moment:* the user has sat down with twenty minutes and does not want to make
 a single decision.
@@ -62,7 +72,7 @@ today" must exist without shouting.
   says *early days, still learning your level* and asks only how long today.
 - *Failure mode to avoid:* a dashboard. Any stat that isn't today's plan is noise.
 
-### A2. During play — deliberately empty
+### A2. During play — deliberately empty  · **full treatment (Phase 1)**
 
 *The moment:* hands on the keys, four bars into an attempt, eyes mostly on the
 keyboard.
@@ -75,7 +85,7 @@ easy target: **I'm stuck** — hittable without looking.
 - *Failure mode to avoid:* anything that rewards looking at the screen. If it
   pulls the eyes, it ruins the next phrase.
 
-### A3. After a repetition — one glance, about a second
+### A3. After a repetition — one glance, about a second  · **full treatment (Phase 1)**
 
 *The moment:* the attempt just ended; the next count-in starts on its own.
 
@@ -88,7 +98,7 @@ Tick or cross, at most **one** fact ("clean", "2 wrong notes", "rushing bars
   being wrongly failed is a trust-ender.
 - *Failure mode to avoid:* a scoreboard. This is a glance, not a result screen.
 
-### A4. Block boundary — the only place it speaks in sentences
+### A4. Block boundary — the only place it speaks in sentences  · *rough pass (Phase 2a)*
 
 *The moment:* a natural rest. The gate just opened, or the block just ended.
 
@@ -151,7 +161,7 @@ appear in the UI.
 
 ## Deliver
 
-Mobile screens first, then the iPad variant of A2, A3 and B2. For each screen note
+Mobile screens first, then the iPad variant of A2 and A3 (the two being built) plus B2. A1, A4 and Session B do not need iPad passes yet. For each screen note
 the **states** covered (first run, empty, uncertain, failure) and **any component
 or token you had to extend, and why** — those go back into `Theme.swift` and the
 design system together, per `design/design-process.md`.
