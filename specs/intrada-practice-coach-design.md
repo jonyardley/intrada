@@ -151,7 +151,7 @@ that reads all three.
 - **Pipelines.** Tunes and phrases are instances moving through stages.
   - Tune pipeline: form, melody, shells, rootless, arpeggiate changes, guide tones. Clear "done" gate per stage.
   - Lick pipeline: learn, nearby keys, full cycle, analyse, extract, generate, integrate over the tune. One phrase in flight at a time, a few minutes per session over a fortnight.
-  - Caps on in-flight items (one phrase, one or two tunes) are the anti-overwhelm feature.
+  - Caps on in-flight items (one phrase, one or two tunes) are the anti-overwhelm feature, and they **outrank declared intent**: a campaign naming three tunes and two phrases is accepted in full and then *sequenced* against the caps, not run in parallel. The user is told which targets are in flight now and which are queued behind them. Silently dropping the excess would break the promise that a declared target is honoured; silently admitting it all would break the one feature that stops the taxonomy swamping the learner.
 - **The intersection is the magic.** Skill drills are parameterised by the current tune: "enclosure drill over Strasbourg's changes". The tune is the vehicle; the skill is the cargo.
 
 ### Intent: goals, campaigns and steering (added 3 Aug 2026)

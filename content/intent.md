@@ -63,8 +63,9 @@ the sequencing:
 What the graph says is missing between here and the destination — reliable on
 day one because it is pure prerequisite arithmetic, no history needed:
 
-- **`chord-tone-targeting` has never been attempted.** All three of its gates
-  are unopened; C1 hasn't been run once.
+- **`chord-tone-targeting` has no evidence behind it yet.** All three of its
+  gates are unopened and C1 hasn't been run once; the 0.35 mastery figure in
+  [`nodes.md`](nodes.md) is a seeded prior, not a measurement.
 - **`tune-form-memory` is a stub**, so "the bridge from memory" has no gate to
   pass. Either author the node or keep the target opaque for now.
 - **`micro-transcription` is untouched this campaign** — the only head-circle
