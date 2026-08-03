@@ -1,10 +1,16 @@
 # Intrada: The Practice Coach
 
-Design document, v2. Captured 18 July 2026. Revised same day after critical review.
+Design document, v3. Captured 18 July 2026; revised same day after critical
+review. v2 (2 Aug 2026): the measurement-validity decisions, the feedback
+choreography, the fluency frame. v3 (3 Aug 2026): intent promoted to a
+first-class mechanism alongside the graph and the pipelines, after the
+question the earlier drafts couldn't answer — *if the app kills the choice,
+how does it know what I want to work on right now?* See "Intent: goals,
+campaigns and steering".
 
 ## Vision
 
-A practice companion that acts as your teacher between lessons: it decides what you practise, listens while you play, tells you when you are done, gets you unstuck, and adjusts your plan based on what it actually hears. You bring the goal ("improvise confidently on jazz standards"); it handles everything between the goal and today's 20 minutes.
+A practice companion that acts as your teacher between lessons: it decides what you practise, listens while you play, tells you when you are done, gets you unstuck, and adjusts your plan based on what it actually hears. You say where you're going — at whatever altitude you happen to know it, from "improvise confidently on jazz standards" down to "more transcription this week" — and it turns that into today's 20 minutes. **You own the destination; it owns the route.**
 
 **One-line pitch:** sit down, press start, and practise like someone who knows exactly what they're doing is standing behind you, because functionally, one is.
 
@@ -20,6 +26,11 @@ A practice companion that acts as your teacher between lessons: it decides what 
 6. **Score timing consistency and trend, never absolute deviation** (added 2 Aug 2026 after the measurement-validity review). Skilled jazz timing is systematically off the grid on purpose — a stable ~30ms lay-back reads as swinging *harder* — so only variance and drift are errors. "Late into bar 3" is a finding only when the lateness is inconsistent.
 7. **Transport-tiered scoring** (added 2 Aug 2026). Wired MIDI (±1–3ms) earns fine timing feedback; Bluetooth MIDI (±10–20ms connection-interval jitter) gets note accuracy, swing, and trends only — and the app says why on screen. Never issue a precision verdict the input can't support: the never-bluff principle applied to the input path.
 8. **Swing ratio is reported, never graded** (added 2 Aug 2026). Robustly measurable from beat-aligned MIDI, but the "correct" ratio varies legitimately by tempo (≈3.5:1 slow falling toward 1:1 fast), player, and phrase. Tempo-adjusted display ("3.1:1 — spacious for this tempo"), no pass/fail.
+9. **Intent is declared at three altitudes, and every altitude is optional** (added 3 Aug 2026). Goal (months), campaign (a fortnight-ish destination — "restricted improv over Strasbourg"), today's steer ("more transcription", "hands only, I'm tired"). Each carries a working default, so a user who declares nothing still gets a session, and each is overrulable without ceremony. The rejected alternative was inferring intent from behaviour alone: it makes the app guess at the one thing the user reliably knows.
+10. **Declared intent sets the destination; the planner owns the route** (added 3 Aug 2026). Intent resolves by back-chaining through prerequisites, never by literal obedience. Declare restricted improv on weak shells and the answer is "then we start with shells — roughly five sessions from here", honouring the destination while stating the distance (decision 4). A planner that simply does as it is told is a worse teacher than one that argues.
+11. **No mode switch** (added 3 Aug 2026). There is no "guided vs my own way" toggle. Asking which mode reintroduces precisely the choose-at-the-piano problem the design exists to remove (see The problem, 3). The app always opens prescribed and yields in one tap: the deviation is available, never solicited.
+12. **The LLM may interpret intent; it may never plan the session** (added 3 Aug 2026). Turning "I want to sound like Bill Evans on ballads" into candidate nodes, tunes and phrases is fuzzy linguistic work, cheap to check and visibly editable — good LLM territory. Choosing today's blocks stays deterministic: every block owes a testable why (challenge 5), and prescription trust cannot survive a hallucinated route.
+13. **Targets the graph cannot express are accepted, not forced** (added 3 Aug 2026). A declared campaign may contain items that map to no node — a teacher's "make the bridge sing", "sort out your time in the last A". These are kept as opaque targets: prescribable, self-confirmed rather than scored (the deploy-gate stance, decision 3), and never crammed into an ill-fitting node to preserve the appearance of coverage. Recurring unmatched targets are the authoring queue — they say which node to write next on evidence of real demand rather than taxonomy completionism (challenge 3).
 
 ## The problem
 
@@ -27,33 +38,33 @@ Self-directed learners, especially in jazz, face four compounding failures:
 
 1. **Slow feedback loop.** "Am I doing this right?" goes unanswered for weeks, so effort feels wasted and confidence erodes.
 2. **Prescription overwhelm.** The full taxonomy of what to practise (technique, harmony, vocabulary, ear, repertoire, application, listening) is so daunting that most learners default to a narrow comfort zone. The documented failure mode: it's so overwhelming that "young improvisers just run blues scales over everything".
-3. **Choosing at the piano.** Deciding what to do next, mid-session, is itself the mental block. Sessions stall, drift into playing what's already known, or die.
+3. **Choosing at the piano.** Deciding what to do next, mid-session, is itself the mental block. Sessions stall, drift into playing what's already known, or die. The precise fault is *when* the choosing happens, not that it happens at all: seated at the instrument, tired, with the whole taxonomy in view, is the worst available moment to make a decision a calmer moment last week could have made well. This distinction is what makes prescription compatible with control (see Intent, below).
 4. **Getting stuck means giving up.** Without a teacher's intervention (make it smaller, slower, different), a wall becomes an exit.
 
 The insight that makes this buildable: the feedback loop does not need to be real-time. Feedback within seconds of finishing an attempt solves the actual problem. Post-exercise, not mid-phrase.
 
 ## Product principles
 
-1. **Kill the choice.** The plan is made before the user sits down. Open app, one screen, press start. An escape hatch exists; the default is prescribed.
+1. **Kill the choice at the piano; keep it at the right altitude.** The plan is made before the user sits down: open app, one screen, press start. This is not choice denied but choice *relocated* — to the altitude and the moment where the user has the information to choose well (a goal set once, a campaign named for the fortnight, a steer given at the door). Prescription is the rendering of intent already declared, which is why the default can be followed blindly and still be the user's own.
 2. **Measure the prerequisites, coach the judgement.** Deterministic scoring of every attempt for what MIDI can hear; structured self-assessment for what it cannot. "Am I doing this right" gets an answer in seconds, honestly scoped.
 3. **Make it smaller before they give up.** The stuck ladder is the teacher's core intervention, and it fires automatically on failure patterns.
 4. **Honest about the grind.** Grind blocks are labelled as grind, with the payoff, the horizon, and the trend attached. The app never pretends drudge is delight. Trust in its honesty is the retention mechanic.
 5. **Every session touches real music.** Hard planner constraint: at least one block per session is new or applied. Effort in the middle, music at both ends.
 6. **The taxonomy lives in the data model, never in the UI.** The app thinks about everything so the user thinks about nothing.
 7. **Ends on competence, logs everything.** Sessions close with something the user can play. Early exits bank what was done. Quitting doesn't compound.
-8. **Prescribe now, graduate later.** A good teacher transfers judgement; the endpoint of lessons is not needing them. The app surfaces its reasoning progressively so the user internalises the planning model, and off-piste grows from exception to peer mode as mastery climbs. Prescribed-forever is a failure state.
+8. **Prescribe now, graduate later.** A good teacher transfers judgement; the endpoint of lessons is not needing them. The app surfaces its reasoning progressively so the user internalises the planning model, and off-piste grows from exception to peer mode as mastery climbs. Prescribed-forever is a failure state. The graduation ladder is concrete rather than atmospheric: the user declares at progressively finer altitudes over time (goal → campaign → today's steer → the block itself), and the planner's reasoning moves from trusted to visible to jointly authored.
 
 ## UX design principles
 
 The context dictates everything: the user is seated at a piano, hands on keys, phone or iPad on the music stand, often mid-flow. Every interface decision follows from that.
 
-1. **One screen, one action.** At any moment the app shows exactly what to do now and nothing else. No dashboards mid-session, no navigation. The home screen is a start button.
+1. **One screen, one action.** At any moment the app shows exactly what to do now and nothing else. No dashboards mid-session, no navigation. The home screen is a start button. It never asks which mode the user is in (decision 11): it opens prescribed and yields when pushed.
 2. **Glanceable over readable.** Mid-drill feedback must land in under a second of eye contact: tick, cross, one fact, big type. If it needs reading, it waits for a block boundary.
 3. **Hands stay on the keys.** Minimal touch interaction during play: auto-advance on gate pass, auto-listen on count-in. The stuck button is the one big target. Voice or pedal-press interaction is a later win worth designing toward.
 4. **Plain language, musician's language.** "3 clean passes at 120" not "criterion threshold met". Say "swing feel" and "left hand late", never "temporal deviation metric". Theory terms appear only at the point of use, with the sound attached. No gamification vocabulary (XP, gems, lives): this is a practice room, not an arcade.
-5. **Frictionless start, frictionless stop.** Open to press-start in one tap, zero configuration per session. Ending early is one tap and celebrated as banked, never guarded by "are you sure?" guilt dialogues.
+5. **Frictionless start, frictionless stop, frictionless override.** Open to press-start in one tap, zero configuration per session. Ending early is one tap and celebrated as banked, never guarded by "are you sure?" guilt dialogues. Steering the session is the same cost: one tap to say "something else today", offered as the planner's own next candidates rather than a blank canvas, and never accompanied by a warning about breaking the plan.
 6. **Calm, not gamified.** Warm manuscript-and-concert-hall aesthetic (the established Intrada identity), generous type, no badges raining down. The reward is the trend line and the sound of your own playing; the app's tone is a quiet colleague, not a cheerleader.
-7. **The why is always one tap away.** Every prescription shows its one-line reason inline; deeper reasoning (graph state, trend) is a tap deeper, never forced. Progressive disclosure carries the graduation arc.
+7. **The why is always one tap away, and quotes the user where it can.** Every prescription shows its one-line reason inline; deeper reasoning (graph state, trend) is a tap deeper, never forced. Progressive disclosure carries the graduation arc. Where a declared destination exists, the why cites it before it cites the graph: "shells, because you said you want to be improvising over Strasbourg by the 17th, and this is what's between here and there" outperforms any statement about node state.
 8. **Never bluff, visibly.** Confidence is part of the interface: certain feedback is stated, uncertain feedback asks. Trust is the product; the UI must never spend it.
 9. **Design for the bad day.** Tired, low-motivation, ten minutes: the interface must feel lighter on those days, not heavier. Shorter session offered by default, wins front-loaded, zero admin.
 10. **Music-stand ergonomics.** Readable at arm's length in practice-room lighting, works in both orientations, count-ins audible over the piano, no interactions that require precision tapping while seated at an instrument.
@@ -129,14 +140,93 @@ not a surprise.
 6. **Application and integration.** Restricted improv, guide-tone lines, applying the current lick over the current tune, rhythmic constraints.
 7. **Listening.** Structured assignments (album per week, targeted listens). Needs no instrument: the commute slot, and the streak-saver.
 
-### Two mechanisms underneath
+### Three mechanisms underneath
+
+The graph says what exists and in what order; the pipelines say what is in
+flight; intent says where the user is pointing. The planner is the function
+that reads all three.
 
 - **Skill graph.** Jazz improvisation as a dependency graph, not a list. Each node: what it is, why it matters, prerequisites, 2-4 drills, machine-checkable done-criteria. Mastery is (estimate, confidence), never a boolean.
+- **Intent.** Declared destinations at three altitudes — goal, campaign, today's steer — each optional, each defaulted, none of them a route. Detailed below; the short version is that the graph and the pipelines already encode *ordering*, so the user only ever has to name a target.
 - **Pipelines.** Tunes and phrases are instances moving through stages.
   - Tune pipeline: form, melody, shells, rootless, arpeggiate changes, guide tones. Clear "done" gate per stage.
   - Lick pipeline: learn, nearby keys, full cycle, analyse, extract, generate, integrate over the tune. One phrase in flight at a time, a few minutes per session over a fortnight.
   - Caps on in-flight items (one phrase, one or two tunes) are the anti-overwhelm feature.
 - **The intersection is the magic.** Skill drills are parameterised by the current tune: "enclosure drill over Strasbourg's changes". The tune is the vehicle; the skill is the cargo.
+
+### Intent: goals, campaigns and steering (added 3 Aug 2026)
+
+v2 left the obvious question unanswered: if the app kills the choice, how does
+it know what the user wants to work on *now*? Its answer was thin — "you bring
+the goal", plus off-piste for everything else. That leaves the altitude people
+actually plan at (the week or fortnight: "learn this tune and get to restricted
+improv over it") with nowhere to live, and frames every deviation as an escape
+hatch rather than a designed path. Both are fixed by treating intent as a
+mechanism instead of a precondition.
+
+One mechanism, read at three altitudes. Each is a *destination*, never a route.
+
+| Altitude | Horizon | Example | Default when unset |
+|---|---|---|---|
+| **Goal** | Months | "Improvise confidently on jazz standards" | The graph's own frontier |
+| **Campaign** | 1–3 weeks | "Restricted improv over Strasbourg" — or a whole lesson's worth of targets at once | Back-chained from the goal |
+| **Steer** | Today | "More transcription"; "hands only, I'm tired" | Whatever the campaign makes due |
+
+Six properties make this a mechanism rather than a settings screen:
+
+1. **Declaring a destination is not authoring a plan.** The ordering inside a
+   campaign is knowledge the app already holds: the tune pipeline sequences
+   form → melody → shells → rootless, and the graph knows chord-tone targeting
+   needs shells first because you cannot aim at the 3rds and 7ths until you know
+   where they live. So "learn the tune, transcribe, then restricted improv over
+   it" requires no authoring — it is what back-chaining from that destination
+   produces. The user names the target; prerequisites supply the route. This is
+   the single most important consequence: it means granular session-building can
+   be dropped without dropping control.
+2. **Resolution back-chains, and it argues** (decision 10). Ambition that
+   outruns the hands is met with the prerequisite and an honest distance drawn
+   from the user's own trend, not with obedience and not with refusal.
+3. **Campaigns expire and get reviewed; they do not linger.** A campaign
+   carries a horizon, and the weekly re-derivation already in the design is its
+   review point. The velocity trigger from the learning-science levers (three
+   flat sessions forces a change) applies to a campaign as much as to a node: a
+   stalled campaign is surfaced and re-scoped, never silently ground out.
+4. **Off-piste is the lowest-commitment declaration, not the absence of one.**
+   Wandering is intent expressed behaviourally rather than verbally — which is
+   why it is still listened to and logged, and why "keep this as a drill?"
+   exists. Some wanders are the graph revealing a gap; some are a campaign the
+   user has not yet said out loud.
+5. **A campaign holds a *set* of targets, and the canonical source is a
+   lesson.** The common real case is not one destination but a handful handed
+   over at once: work the rootless voicings, transcribe this Rollins phrase, get
+   the bridge from memory. So a campaign accepts several targets, matches each to
+   a node or pipeline stage where it can, keeps the rest as opaque targets
+   (decision 13), then back-chains and interleaves across the whole set. Nothing
+   here requires the teacher to exist in the system — the user writes the list
+   and the app translates it. Same mechanism, several endpoints. This is also how
+   a user "builds their own path" without hand-assembling blocks: they choose the
+   *what*, the graph supplies the order, and the planner spreads it across the
+   days they actually have.
+6. **The gap read: a diff between the declared set and the current state.** Once
+   a target set exists, "what's missing" becomes computable rather than
+   rhetorical — in two tiers of confidence that must not be conflated.
+   *Structural gaps* are reliable from day one and come straight from the graph:
+   unmet prerequisites, and pipeline stages the targets sit behind. *Statistical
+   gaps* need history and arrive later: nodes whose confidence has decayed under
+   the declared targets, drills whose velocity has gone flat, and the
+   starved-circle check from the fluency frame. Show the structural read
+   immediately; withhold the statistical read until the data can carry it
+   (decision 4 — never invent the numbers). Present either as a route, never a
+   verdict: this many sessions, in this order, from here to what you asked for.
+
+What this earns beyond flexibility is a better *why*. A prescription justified
+by graph state is defensible; one justified in the user's own words is
+persuasive (UX principle 7). Since prescription trust is the retention risk
+(challenge 5), citing declared intent is the cheapest mitigation available.
+
+Content implication: the goal and the current campaign are authored data like
+everything else, so Phase 0 carries them, and the paper fortnight tests by hand
+whether a declared destination actually produces a sane route.
 
 ### Method packs (how to attack, not just what)
 
@@ -183,7 +273,7 @@ Worked example, 20 minutes on Strasbourg / St. Denis:
 - 14-19: integration. Restricted improv over the form using the current lick, chord-tone targets. Softer gate, self-rated feel alongside metrics.
 - 19-20: close. Play the head, sound good, stop. Summary and tomorrow's draft written before the lid goes down.
 
-Every block carries: a one-line why (citing graph state), a gate, a stuck path, and state written back.
+Every block carries: a one-line why (citing the campaign it serves where one is declared, and graph state otherwise), a gate, a stuck path, and state written back.
 
 ### Feedback choreography
 
@@ -260,7 +350,7 @@ A note on epistemic honesty: these mechanisms are directionally well-supported b
 2. **Spacing.** Expanding-interval review per node; reviews are quick gated checks, not full blocks. Keys, tunes, and drills all decay. SM-2 is a declarative-memory algorithm and motor-skill decay behaves differently, so intervals are a starting heuristic to be recalibrated against observed decay, not gospel.
 3. **Desirable difficulty.** Target roughly 80-85% success per drill as the initial setpoint. The oft-cited 85% figure comes from perceptual and machine-learning tasks; its transfer to complex motor skill is plausible, not established. What is solid: with scored attempts the success rate is measurable, so tempo, key count, and constraints auto-adjust to hold whatever band proves right. The closed loop is the feature; the number is a parameter.
 4. **Velocity, not just position.** Rate of improvement per node. Three flat sessions triggers a change (level down, different drill, attack a prerequisite). Also the honest progress view: "enclosures 90 to 140bpm this month."
-5. **Horizon planning.** Goal back-propagates through the graph into a weekly rhythm, then daily sessions. Plans re-derive weekly from current state; a bad fortnight adjusts the forecast, never breaks the plan.
+5. **Horizon planning.** Declared intent back-propagates through the graph: the goal into a weekly rhythm, a campaign into the next handful of sessions, both by back-chaining through prerequisites rather than by literal obedience. Plans re-derive weekly from current state *plus* current intent; a bad fortnight adjusts the forecast and may re-scope the campaign, never breaks the plan.
 6. **Consistency beats intensity.** Twenty minutes daily beats two hours on Sunday. The planner optimises for streak-friendliness: sessions that fit the time actually available.
 
 ## Motivation model
@@ -281,12 +371,12 @@ No model training required. No AI engineering required. Orchestration and pedago
 |---|---|---|
 | MIDI analysis | On-device, Crux core (Rust) | Deterministic: wrong notes vs target, timing, swing ratio, tempo drift, gate detection. No AI. ~60% of the "listening teacher". |
 | Audio transcription | On-device, CoreML | A piano-specialist transcription model (ByteDance's open-source high-resolution model or Transkun; 95–98% note F1 on piano, vs ~71% for the originally-pencilled Basic Pitch — below the trust floor for per-note feedback) converts acoustic audio to note events, feeding the same Rust analysis. Used, not trained. Mic mode is a coarser scoring tier by construction (~±20ms onset precision at best; dense mid-register voicings are the weak case). |
-| Coaching voice | Cloud LLM via Axum proxy | Claude/GPT. Input: metrics plus session and graph state. Output: the teacher's voice. Prompt engineering, cached, degrades gracefully offline. Never in the critical path. |
-| Planning and prescription | Backend Rust, state in Turso | Graph traversal, spacing, difficulty setpoint, session weave. Deliberately deterministic: testable, explainable, no hallucinated pedagogy. |
+| Coaching voice | Cloud LLM via Axum proxy | Claude/GPT. Input: metrics plus session, graph and intent state. Output: the teacher's voice. May also translate a stated goal into candidate graph targets — a suggestion the user edits, never a plan it executes (decision 12). Prompt engineering, cached, degrades gracefully offline. Never in the critical path. |
+| Planning and prescription | On-device, Crux core (Rust) | Intent resolution (back-chaining from declared destinations), graph traversal, spacing, difficulty setpoint, session weave. Deliberately deterministic: testable, explainable, no hallucinated pedagogy. **Corrected from "backend Rust, state in Turso"** after the codebase review (`docs/rebuild-review.md` §5): the practice room is the worst place to need a server round-trip, and the device store is already the source of truth. |
 
-Stack fit: Crux core holds the session state machine, MIDI event stream, and analysis functions. Swift shell handles CoreMIDI capture and AVAudioEngine plus Basic Pitch. Axum proxies the LLM and serves planner endpoints. Turso holds graph state and session history. MIDI events are just events; the event-sourced model extends naturally.
+Stack fit: Crux core holds the session state machine, MIDI event stream, analysis functions, and the planner. Swift shell handles CoreMIDI capture and AVAudioEngine plus the transcription model. Axum proxies the LLM only. The device store holds graph state, declared intent, and session history; Turso becomes sync and backup later, never the live read path. MIDI events are just events at the data-model level — but not at the wire level: note events cross the FFI bridge in batches, not individually (see the review's §3, which also corrects this doc's earlier "the event-sourced model extends naturally" — the core is command-pattern, not event-sourced).
 
-Data model sketch: `Tune` (pipeline stage), `Skill` (graph node, mastery as estimate plus confidence), `Phrase` (per-key mastery, pipeline stage), `Device` (reusable musical device, referenced by many phrases, with theory annotation and its own mastery via the generate ladder), `Drill` = (skill x tune x parameters) referencing a `MethodPack` (decomposition stages, traversal orderings, cues by stage, escalation overrides), `Gate` criteria as tunable data (JSON/TOML), session planner as a pure function of (tune stages, skill mastery, pipeline states, available minutes).
+Data model sketch: `Tune` (pipeline stage), `Skill` (graph node, mastery as estimate plus confidence), `Phrase` (per-key mastery, pipeline stage), `Device` (reusable musical device, referenced by many phrases, with theory annotation and its own mastery via the generate ladder), `Drill` = (skill x tune x parameters) referencing a `MethodPack` (decomposition stages, traversal orderings, cues by stage, escalation overrides), `Gate` criteria as tunable data (JSON/TOML), `Goal` and `Campaign` (declared destinations — a campaign names graph nodes and/or a pipeline stage as its target, plus a horizon derived from the user's own trend), session planner as a pure function of (tune stages, skill mastery, pipeline states, declared intent, available minutes).
 
 Mastery update function (first crude version, to be refined): per (node, parameter level), attempt outcomes update a Beta distribution (pass/fail as evidence), giving estimate and confidence for free; confidence decays with time-since-practice to drive spacing; level-ups shift the distribution rather than resetting it. Whatever the final form, this function is the planner's engine and must be specified before Phase 2, not discovered inside it.
 
@@ -298,10 +388,10 @@ Cost: a few LLM calls per session is pence per user per month.
 
 1. **Attempt segmentation and time alignment (the hardest technical problem).** "Late into bar 3" requires a shared clock and knowing which notes constituted the attempt: count-in handling, restart detection, separating noodling from attempts, mid-attempt collapses. This, not MIDI capture, is the real Phase 1 risk, and it is why click-always is a recorded decision. Mitigation: a named spike before any scoring UI is built.
 2. **Pedagogical authority without a teacher's judgement.** MIDI hears notes and milliseconds, not touch, feel, or phrasing, and for jazz the unmeasurable half matters at least as much. Risk: gating on the measurable trains mechanical playing, while the app hands the more important half back to the user who was the unreliable judge to begin with. Mitigation: the measured-prerequisites framing throughout; gates check the measurable, the voice structures self-assessment for the rest ("did that sound like the record? Rate the feel"). Self-report is a legitimate signal.
-3. **The content burden.** Nodes x drills x criteria x method packs x cues x micro-lessons is a textbook's worth of authored material, validated against one learner. "The moat" is also a euphemism for hundreds of authoring hours. Mitigation: the minimal-content decision (5 nodes, 2 packs, 1 phrase for v1); author breadth only after the loop is proven.
+3. **The content burden.** Nodes x drills x criteria x method packs x cues x micro-lessons is a textbook's worth of authored material, validated against one learner. "The moat" is also a euphemism for hundreds of authoring hours. Mitigation: the minimal-content decision (5 nodes, 2 packs, 1 phrase for v1); author breadth only after the loop is proven — and let the unmatched-target queue (decision 13) choose the authoring order, so content follows demonstrated demand instead of filling in the taxonomy.
 4. **Done-criteria that don't lie.** Too strict: grind and quit. Too loose: mastery is fiction. Mitigation: criteria as tunable data, failure-to-pass rates instrumented from day one, permanent calibration expected.
-5. **Prescription trust.** One arbitrary-feeling prescription and users revert to noodling. Mitigation: every block carries its why, citing node state. Explainability is a feature requirement and the argument for deterministic planning.
-6. **Rigidity vs the texture of practice.** Mitigation: off-piste mode, and the graduation arc (principle 8). Structure as default, never as cage.
+5. **Prescription trust.** One arbitrary-feeling prescription and users revert to noodling. Mitigation: every block carries its why, citing the declared destination it serves and the node state behind it — a reason in the user's own words is the strongest form available. Explainability is a feature requirement, the argument for deterministic planning, and the reason the LLM is kept out of the route (decision 12).
+6. **Rigidity vs the texture of practice.** Practice has moods, and a plan that cannot bend gets abandoned rather than adjusted. Mitigation, in ascending order of commitment: today's steer (one tap, re-weaves the session around your choice), re-scoping the campaign, off-piste (no plan, still logged), and the graduation arc (principle 8). Structure as default, never as cage — and never as a mode switch (decision 11).
 7. **Cold start for user two.** Mitigation: placement session, aggressive early re-planning, surfaced humility ("early days, still learning your level"), uncertainty in the mastery model from the start. Parked behind the personal-tool-first decision.
 8. **The audio measurement gap.** A wrong "wrong note" is instant trust damage. Mitigation: confidence-weighted feedback; when uncertain, ask ("that sounded clean, agree?"). Never bluff.
 9. **Motivation mechanics that curdle.** Mitigation: design from failure stories; streaks count any engagement; soft landings; horizons framed from the user's own trend, never invented population statistics.
@@ -311,22 +401,22 @@ Pattern: almost none of these are engineering problems. They are judgement encod
 
 ## Build plan
 
-**Phase 0: paper teacher (1-2 weeks, no code).** Fully specify the minimal content set: 5 nodes, 2 method packs, 1 phrase (with stage and per-key state), Strasbourg's tune-pipeline position, and gate criteria as data. Sketch the rest of the improvisation branch as stubs only. Run own practice from it for a fortnight. Deliverables are the content set plus four logs:
+**Phase 0: paper teacher (1-2 weeks, no code).** Fully specify the minimal content set: 5 nodes, 2 method packs, 1 phrase (with stage and per-key state), Strasbourg's tune-pipeline position, gate criteria as data, and one declared goal plus one declared campaign (destination and horizon) so the fortnight tests intent resolution by hand — back-chaining a route from a named target is the planner's core move, and doing it on paper first is the cheapest possible test of whether the graph supports it. Sketch the rest of the improvisation branch as stubs only. Run own practice from it for a fortnight. Deliverables are the content set plus four logs:
 
 - Divergence log: machine-score vs felt-score per drill, one line where they differ (specs the self-assessment boundary).
 - Gate-attempt log: pass/fail plus felt difficulty (first tolerance numbers, criteria schema shape).
-- Why log: every block's one-line why citing node state (validates the graph; a why that can't be written is a missing node).
+- Why log: every block's one-line why citing node state and the campaign it serves (validates the graph and the back-chaining; a why that can't be written is a missing node, and a why that can't name the destination it serves is a missing campaign).
 - Wander log: off-plan time, triggers, "keep as drill?" (sizes off-piste mode).
 
-Plus: write the failure stories and desired app responses; note what the app should have done on the inevitable bad day; write the placement session as a thought experiment and check the criteria aren't jon-shaped.
+Plus: write the failure stories and desired app responses; note what the app should have done on the inevitable bad day; write the placement session as a thought experiment and check the criteria aren't jon-shaped. And one cheap, high-value test of the intent mechanism: take a real lesson's worth of targets, resolve it by hand into a week of blocks, and record which items matched a node, which stayed opaque (decision 13), and what the structural gap read produced. If that resolution is hard to do on paper, it will not be easier in Rust.
 
 **Phase 1: the listening gate (3-4 weeks).** Opens with the named spike: attempt segmentation and click alignment (count-in, restart detection, noodling vs attempts, collapse handling) proven against real playing before any scoring UI exists. The same capture harness measures BLE-MIDI timestamp fidelity on the real piano (sender-side timestamps vs arrival times, USB as ground truth) — one afternoon that decides how much Bluetooth scoring can honestly claim (decision 7). Prior art to read before building segmentation: the Rach3 rehearsal-MIDI dataset tooling (ISMIR 2025). Then: CoreMIDI capture into the Crux core; deterministic analysis; one screen (drill, live scoring, gate progress). First drill type: lick transposition (target exactly known, scoring unambiguous, exercises the Phrase model, user-zero motivation built in). Shells second, proving generalisation. Alongside: an honest hour surveying current competitors (Yousician-class products have quietly added more adaptivity than "content libraries" suggests). The moment to reach: play, see the tick, feel the gate release you.
 
-**Phase 2: the prescribed session (3-4 weeks).** Planner as a pure function; press-start flow; stuck button with the mechanical ladder; soft-landing exit; listening blocks as prescribable no-instrument items; state into Turso. Exit criterion: two weeks of daily use without reverting to self-directed sessions.
+**Phase 2: the prescribed session (3-4 weeks).** Planner as a pure function of state plus declared intent; the three declaration surfaces (goal, campaign, today's steer) with their defaults, so the app is usable having declared nothing; multi-target campaigns with opaque targets accepted (decision 13); back-chaining with honest horizons and the structural gap read; press-start flow; stuck button with the mechanical ladder; soft-landing exit; listening blocks as prescribable no-instrument items; state on device (sync deferred). This is also the phase that deletes the notebook's session builder — the granular builder is not ported, because declaring a destination replaces it (see Intent, property 1). Exit criterion: two weeks of daily use without reverting to self-directed sessions.
 
-**Phase 3: the voice (2-3 weeks).** LLM behind Axum: summaries, whys, stuck-moment coaching (normalise plus smaller step). Deliberately late: coaching prose over unmeasured practice is a chatbot, not a teacher.
+**Phase 3: the voice (2-3 weeks).** LLM behind Axum: summaries, whys, stuck-moment coaching (normalise plus smaller step), and goal interpretation — turning a sentence about how the user wants to sound into candidate graph targets they then edit (decision 12; the deterministic planner still owns the route). Deliberately late: coaching prose over unmeasured practice is a chatbot, not a teacher.
 
-**Phase 4: widen (ongoing).** More drill types, spaced repetition, difficulty auto-adjustment, velocity tracking, ear-training interaction loop, audio path via a piano-specialist transcription model (preceded by two spikes: model-vs-MIDI ground truth from the same performance, yielding real error rates per drill type; and click-bleed — the metronome is a broadband transient landing exactly on the beats being scored, so headphone-click or click-subtraction must be proven before mic mode ships), placement diagnostics, second user (the graph needs a second data point before it is a curriculum).
+**Phase 4: widen (ongoing).** More drill types, spaced repetition, difficulty auto-adjustment, velocity tracking, the statistical gap read (decayed confidence and flat velocity under the declared targets, plus the time-by-circle balance check), ear-training interaction loop, audio path via a piano-specialist transcription model (preceded by two spikes: model-vs-MIDI ground truth from the same performance, yielding real error rates per drill type; and click-bleed — the metronome is a broadband transient landing exactly on the beats being scored, so headphone-click or click-subtraction must be proven before mic mode ships), placement diagnostics, second user (the graph needs a second data point before it is a curriculum).
 
 **Sequencing calls (overrule as needed):** MIDI before audio; LLM last, not first; no placement until Phase 4.
 
@@ -334,8 +424,14 @@ Plus: write the failure stories and desired app responses; note what the app sho
 
 ## Competitive position
 
-Content libraries with linear courses (Tonebase, Piano Marvel, iReal) are not mastery-based graph traversal (Duolingo, Math Academy). Nobody has done the latter properly for jazz piano. Yousician can hear notes; nobody has built the thing that gets you through minute eleven when you want to walk away. The moat is the pedagogy structure (graph, criteria, method packs), authored from inside the exact problem.
+Content libraries with linear courses (Tonebase, Piano Marvel, iReal) are not mastery-based graph traversal (Duolingo, Math Academy). Nobody has done the latter properly for jazz piano. Yousician can hear notes; nobody has built the thing that gets you through minute eleven when you want to walk away. The moat is the pedagogy structure (graph, criteria, method packs), authored from inside the exact problem. One further gap worth naming: the graph-traversal products prescribe a fixed destination — you may progress through their tree but not aim it. Letting the learner declare a destination and having the system back-chain to it is a differentiator against both camps, and it costs almost nothing once the graph exists.
 
 ## Next step
 
-One action starts everything: open a Markdown file, write the first 5 nodes and the gate criteria for the current phrase, and practise from it tomorrow. Phase 0 needs no code, no design, and no further revisions to this document. The doc is done; the fortnight is the work.
+The content set is authored (`content/`), so the remaining Phase 0 action is
+the fortnight itself: declare the goal and the current campaign, correct the
+seeded mastery values at the piano, and practise from the content for two weeks
+while keeping the four logs. No code and no design are required to do that.
+The doc is not "done" — v3 added the intent mechanism because using the design
+in anger exposed the hole — but it is ahead of the practice, which is the right
+order.

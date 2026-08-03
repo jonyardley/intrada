@@ -28,9 +28,12 @@ difficulty band). This log is what recalibrates `gates.toml`.
 Written before the block, citing node state. A why that can't be written is
 a missing node — flag it.
 
-| Date | Block | The why |
-|---|---|---|
-| *2026-08-03* | *rootless R2 in F* | *frontier node at 0.3/low; F is next in whole-step order; transition rung is where it broke yesterday* |
+| Date | Block | The why | Destination it serves |
+|---|---|---|---|
+| *2026-08-03* | *rootless R2 in F* | *frontier node at 0.3/low; F is next in whole-step order; transition rung is where it broke yesterday* | *restricted improv over Strasbourg* |
+
+A why that can't be written is a missing node. A why whose destination column
+is blank is a missing campaign — see [`intent.md`](intent.md).
 
 ## 4. Wander log — off-plan time
 
