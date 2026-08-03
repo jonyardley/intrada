@@ -1,5 +1,11 @@
 # Handoff — Reflection & narrative, Phase 1 (brief: design/briefs/2026-07-reflection-and-narrative.md)
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product. The live design is
+> [`specs/intrada-practice-coach-design.md`](../../../specs/intrada-practice-coach-design.md)
+> with the scenarios in [`docs/coach-user-journeys.md`](../../../docs/coach-user-journeys.md).
+> Kept for archaeology; **do not implement from this document.**
+
 ## Commit
 - Copy `Reflection Narrative.dc.html` into `design/` (siblings `support.js` and
   `Focus Player.dc.html` already live there — the file imports the Focus Player

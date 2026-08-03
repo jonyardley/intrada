@@ -1,5 +1,12 @@
 # Native Active-Session Player (#932)
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product — hand-built sessions, self-rated scores,
+> written reflection. The live design is
+> [`specs/intrada-practice-coach-design.md`](intrada-practice-coach-design.md) with the scenarios in
+> [`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md). Kept for archaeology; **do not
+> implement from this document.** The focus player is replaced by the drill screen (silent during play, verdict between reps).
+
 > Design pass for the native SwiftUI player — the build→practise→reflect loop.
 > Tier 2 (SwiftUI + navigation over an **already-complete** core; no FFI, no
 > schema, no new domain events). Resolves the long-parked **focus-vs-reflection

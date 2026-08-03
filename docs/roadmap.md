@@ -14,7 +14,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > pedagogy model, and phased build plan live in
 > [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
 > the codebase assessment and pivot strategy (pivot in place, new engine
-> module, notebook-era machinery deleted at Phase 2) in
+> module, notebook-era machinery deleted at Phase 2a) in
 > [`docs/rebuild-review.md`](rebuild-review.md).
 >
 > **The notebook-era backlog below is superseded.** Issues carrying the
@@ -28,6 +28,55 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > [`content/`](../content/README.md), practice logs in progress, no code) in
 > parallel with **Phase 1** (MIDI capture harness → attempt-segmentation
 > spike → lick-transposition scoring).
+>
+> **The document map**, so there is one answer per question:
+>
+> | Question | Document |
+> |---|---|
+> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v5) |
+> | What does it feel like to use? | [`docs/coach-user-journeys.md`](coach-user-journeys.md) |
+> | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
+> | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
+> | What order does the work happen in? | The phase plan below |
+> | Can I see it all at a glance? | [`docs/coach-orientation.html`](coach-orientation.html) — visual snapshot, open in a browser |
+> | What do I hand to Claude Design? | [`design/briefs/2026-08-coach-drill-loop.md`](../design/briefs/2026-08-coach-drill-loop.md) |
+>
+> Pre-pivot specs now carry a superseded banner, and
+> [`docs/journeys.md`](journeys.md) — the notebook-era "ideal journey" that
+> claimed authority over prioritisation — is explicitly retired.
+
+---
+
+## The phase plan (the live sequence)
+
+Coach work follows these phases in order. The layer/pillar framing further down
+still describes the surviving library surfaces, but **it is not the sequence for
+coach work** — this is.
+
+| Phase | What lands | State |
+|---|---|---|
+| **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
+| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | Next code. PR 2 needs a MIDI cable to hand |
+| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks, stuck ladder, soft-landing exit, builder deleted | Needs the mastery function specified first (#1148) |
+| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
+| **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
+| **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
+
+**Phase 2 was split (3 Aug 2026).** It had accumulated twelve deliverables under
+a "3–4 weeks" estimate — planner, three declaration surfaces, back-chaining, gap
+read, circling check, grind trade, off-piano queue, unmonitored mode, circle
+tally, soft-landing exit, *and* deleting the session builder. That is not one
+phase. 2a is the loop working end to end; 2b is everything that makes it kind.
+
+**Known prerequisite, not yet met:** the mastery update function is still
+recorded in the design doc as a "first crude version, to be refined", with a note
+that it must be specified *before* Phase 2. It hasn't been, and it is the
+planner's engine (#1148). Its **inputs are now settled** by decision 17 —
+measured attempts only. Self-report moves to a separate *judgement track* that
+records completion and a feel trend, may retire a target but may never satisfy a
+prerequisite, and gets designed in 2b against a fortnight of divergence-log
+evidence rather than guessed now. What remains for #1148 is the shape of the
+function itself, not the question of what feeds it.
 
 ---
 
@@ -55,8 +104,8 @@ Capture, Plan, Space (manual), and Show (analytics) all have working
 surfaces. Auth, library, sessions, routines, scoring, focus mode, tempo
 tracking, design system, multi-device shell, E2E tests — all done. The
 native SwiftUI iOS app (on the Crux core — see
-[`specs/native-ios.md`](../specs/native-ios.md)) is the active iOS path;
-the Tauri/Leptos shells are paused.
+[`specs/native-ios.md`](../specs/native-ios.md)) is the only shell; the
+Leptos web app and the Tauri iOS host were **deleted** in #1133, not paused.
 
 The active gaps are deeper Layer-1 capture (multi-key, sections, archive),
 the Space layer (mastery decay, spaced repetition), and parts of Show
@@ -126,25 +175,23 @@ ships and as we learn.
 
 ---
 
-## Mobile shell
+## Mobile shell — settled
 
-**Pivoting to a native SwiftUI app (2026-05-31).** iOS is moving off the
-Tauri 2 + Leptos WKWebView to a **fully native SwiftUI app on the shared
-Crux (Rust) core** — finally using Crux as designed (pure core + thin
-native shell over FFI/typegen). This is app-first (native iOS now, native
-Android later) and **local-first** (on-device SQLite is the source of
-truth; the Axum+Turso backend becomes a sync target). The web app stays on
-Leptos, untouched.
+The native SwiftUI app on the shared Crux core **is** the shell, and has been
+since the 2026-05-31 decision completed: app-first, **local-first** (on-device
+SQLite is the source of truth; Axum + Turso is a future sync target, not the live
+read path). The Tauri 2 + Leptos WKWebView host and the Leptos web app were
+deleted in #1133; two pieces of Swift worth reusing were mined into
+`ios/Reference/` first — the background-audio session handling (**a Phase 1
+input** for the click track) and a Live Activity implementation.
 
-This resurrects-and-modernizes the SwiftUI shell that was removed in #382,
-rather than starting from scratch. The Tauri shell stays shipping until the
-native app reaches parity, then retires.
+See [`specs/native-ios.md`](../specs/native-ios.md) for the shell spec. Work
+tracks under [`ios`](https://github.com/jonyardley/intrada/labels/ios).
 
-See [`specs/native-ios.md`](../specs/native-ios.md) for the phased plan
-(Phase A bridge spike → B local-first persistence → C screen parity → D
-sync + retire Tauri). Active work tracks under the
-[`ios`](https://github.com/jonyardley/intrada/labels/ios) label and the
-native-iOS [`epic`](https://github.com/jonyardley/intrada/labels/epic).
+Historical note: the sentences that used to live here ("the web app stays on
+Leptos, untouched", "the Tauri shell stays shipping until parity") were true in
+May and false by July. Statements about what is *currently* shipping belong in
+one place — the banner at the top of this doc.
 
 ---
 

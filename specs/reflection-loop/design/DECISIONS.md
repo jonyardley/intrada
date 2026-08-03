@@ -1,5 +1,11 @@
 # Reflection & narrative — Phase 1 · direction explorations & decisions
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product. The live design is
+> [`specs/intrada-practice-coach-design.md`](../../../specs/intrada-practice-coach-design.md)
+> with the scenarios in [`docs/coach-user-journeys.md`](../../../docs/coach-user-journeys.md).
+> Kept for archaeology; **do not implement from this document.**
+
 Brief: `design/briefs/2026-07-reflection-and-narrative.md`.
 Mockups: this folder, one `.dc.html` per surface. The annotated journey view
 (all four frames + designer notes) is `design/Reflection Narrative.dc.html`.

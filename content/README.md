@@ -12,6 +12,7 @@ the deliverable; the content is the instrument.
 
 | File | What it is |
 |---|---|
+| [`intent.md`](intent.md) | The declared goal + the campaign in flight (its target set, the hand-back-chained route, the structural gap read) |
 | [`nodes.md`](nodes.md) | The 5 fully-specified skill-graph nodes + stubs for the rest of the improvisation branch |
 | [`method-packs/voicing-traversal.md`](method-packs/voicing-traversal.md) | How to attack shell + rootless voicing work |
 | [`method-packs/phrase-transposition.md`](method-packs/phrase-transposition.md) | How to take a phrase through the keys |
@@ -41,11 +42,15 @@ recorded Phase 4 debt.
 1. Correct the **seed mastery values** in `nodes.md` and the per-key table in
    `phrases/p001-flat9-turnaround.md` — they are plausible guesses, not
    measurements. Ten minutes at the piano settles each one.
-2. If the phrase you're actually working on isn't the ♭9 turnaround, replace
+2. Rewrite [`intent.md`](intent.md) in your own words — the goal, and the
+   campaign's target set as you'd actually state it (a lesson's list is the
+   ideal source). Mine is a worked example, not your intent. Then check the
+   back-chained route still follows from your version.
+3. If the phrase you're actually working on isn't the ♭9 turnaround, replace
    the notation in `p001` and keep the file's structure — the structure is
    the schema.
-3. Fill the `TODO(jon)` rows in `tunes.md` from where Strasbourg actually is.
-4. Print or open `logs.md` where you practise. A log you can't reach doesn't
+4. Fill the `TODO(jon)` rows in `tunes.md` from where Strasbourg actually is.
+5. Print or open `logs.md` where you practise. A log you can't reach doesn't
    get written.
 
 ## The fortnight's writing tasks (besides the logs)

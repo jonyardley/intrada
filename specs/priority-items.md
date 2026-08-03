@@ -1,5 +1,12 @@
 # Priority Items — replacing Goals in the Plan layer
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product — hand-built sessions, self-rated scores,
+> written reflection. The live design is
+> [`specs/intrada-practice-coach-design.md`](intrada-practice-coach-design.md) with the scenarios in
+> [`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md). Kept for archaeology; **do not
+> implement from this document.** Prioritisation is now the planner's job, driven by declared intent and graph state.
+
 > Tier 3 (rips out a core entity + DB schema). Spec rides with the Phase A
 > branch per CLAUDE.md. Supersedes `specs/goals.md` and resolves roadmap
 > open question #5 ("Goals redesign").

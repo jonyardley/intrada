@@ -1,5 +1,12 @@
 # Native iOS practice player
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product — hand-built sessions, self-rated scores,
+> written reflection. The live design is
+> [`specs/intrada-practice-coach-design.md`](intrada-practice-coach-design.md) with the scenarios in
+> [`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md). Kept for archaeology; **do not
+> implement from this document.** The focus player is replaced by the drill screen (silent during play, verdict between reps).
+
 > Status: Phase A in progress. Last updated 2026-06-04.
 
 ## Problem

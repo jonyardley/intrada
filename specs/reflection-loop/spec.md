@@ -1,5 +1,11 @@
 # Reflection loop — Phase 1 core model
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product. The live design is
+> [`specs/intrada-practice-coach-design.md`](../../specs/intrada-practice-coach-design.md)
+> with the scenarios in [`docs/coach-user-journeys.md`](../../docs/coach-user-journeys.md).
+> Kept for archaeology; **do not implement from this document.** Self-report survives only as the structured judgement half (feel ratings), never as the progress signal.
+
 > Tier 3 spec, riding with the first implementation PR per the workflow.
 > Design inputs: `design/BRIEF` (design/briefs/2026-07-reflection-and-narrative.md),
 > `design/DECISIONS.md`, `design/HANDOFF.md` in this folder, and
