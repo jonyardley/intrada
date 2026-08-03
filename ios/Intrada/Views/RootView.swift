@@ -6,6 +6,9 @@ struct RootView: View {
 
   private enum AppTab {
     case library, practice, routines, progress
+    #if DEBUG
+      case midiSpike
+    #endif
   }
 
   @State private var selectedTab: AppTab = .library
@@ -33,6 +36,13 @@ struct RootView: View {
       AnalyticsScreen().screenTransaction("Progress")
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
         .tag(AppTab.progress)
+      #if DEBUG
+        NavigationStack {
+          MidiSpikeScreen()
+        }
+        .tabItem { Label("MIDI Spike", systemImage: "pianokeys") }
+        .tag(AppTab.midiSpike)
+      #endif
     }
     .tint(IntradaColor.accent)
     // State-driven: building can now start outside the Practice tab (the

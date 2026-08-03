@@ -31,3 +31,6 @@ extend-exclude = [
 udid = "udid"
 # Domain term in intrada-core: the related-items list on a session entry
 relateds = "relateds"
+# Apple's mach_timebase_info_data_t field really is `numer` (not `number`) —
+# ios/Intrada/MidiSpike/HostClock.swift and friends mirror it directly
+numer = "numer"
