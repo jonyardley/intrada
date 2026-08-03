@@ -56,7 +56,7 @@ coach work** — this is.
 | Phase | What lands | State |
 |---|---|---|
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
-| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | Next code. PR 2 needs a MIDI cable to hand |
+| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | PR 2 (capture harness + click + gate drill) up: jonyardley/intrada#1157. USB-vs-Bluetooth timing numbers pending a USB cable (#1156). Next: PR 3, attempt segmentation |
 | **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks, stuck ladder, soft-landing exit, builder deleted | Needs the mastery function specified first (#1148) |
 | **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
