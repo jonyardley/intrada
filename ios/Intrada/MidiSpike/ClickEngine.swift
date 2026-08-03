@@ -1,10 +1,9 @@
 import AVFoundation
 
 /// AVAudioEngine metronome scheduled via AVAudioTime(hostTime:) — the same
-/// mach_absolute_time clock CoreMIDI stamps with. `start` returns a
-/// `BeatGrid` whose `startHostTime` is the *audible* instant of bar 1 beat 1
-/// (scheduled time + AVAudioSession.outputLatency), since that's what the
-/// player actually reacts to.
+/// mach_absolute_time clock CoreMIDI stamps with. `start`'s `BeatGrid.startHostTime`
+/// is the *audible* instant of bar 1 beat 1 (scheduled time +
+/// AVAudioSession.outputLatency), since that's what the player reacts to.
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
@@ -13,39 +12,27 @@ final class ClickEngine {
   private let clickBuffer: AVAudioPCMBuffer
   private let accentBuffer: AVAudioPCMBuffer
 
-  /// Lead time before the count-in starts, to give the engine time to spin
-  /// up before the first scheduled buffer's host time arrives.
   private let leadInSeconds: Double = 0.5
 
-  /// Fires once per count-in beat, with beats remaining (counting down to
-  /// 1) — the count-in is otherwise indistinguishable from the click that
-  /// follows it, both audibly (same instrument) and on screen.
+  /// Beats remaining, counting down to 1 — distinct from `onBeat` since the
+  /// count-in needs its own audible tone and on-screen countdown.
   var onCountIn: ((_ remaining: Int) -> Void)?
 
-  /// Fires just after each *body* beat's audible host time (count-in beats
-  /// are reported via `onCountIn`, not this), for the passive UI beat
-  /// indicator (Layer 0 — no information beyond "here is the beat").
+  /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
   var onBeat: ((_ bar: Int, _ beat: Int, _ hostTime: UInt64) -> Void)?
 
-  /// Pending (hostTime, action) pairs, earliest first — consumed by
-  /// `pollTask`. A queue polled on a short interval, rather than one
-  /// independently-scheduled `Task.sleep` per beat: iOS coalesces long timer
-  /// wakeups to save power, so a several-second sleep can fire tens to
-  /// hundreds of ms late. The audio clicks themselves are scheduled via
-  /// `AVAudioTime(hostTime:)` and rendered sample-accurately by the audio
-  /// engine, immune to that coalescing — which is exactly why the UI could
-  /// visibly drift out of sync with the audio despite matching host-time
-  /// math: the click and the UI were being kept on time by two different
-  /// mechanisms with two different precision guarantees.
+  /// Pending (hostTime, action) pairs, polled on a short interval rather
+  /// than one `Task.sleep` per beat — iOS coalesces long timer wakeups to
+  /// save power, so a several-second sleep can fire tens to hundreds of ms
+  /// late, while the audio itself (scheduled via `AVAudioTime(hostTime:)`)
+  /// renders sample-accurately and is immune to that.
   private var pendingBeats: [(hostTime: UInt64, fire: () -> Void)] = []
   private var pollTask: Task<Void, Never>?
   private let pollIntervalNanoseconds: UInt64 = 10_000_000  // 10ms
 
   init() throws {
     let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
-    // A distinct, lower-pitched tone for the count-in so it's audibly
-    // different from the click that follows — otherwise a count-in reads
-    // as "no count-in", just a run of identical clicks.
+    // Lower-pitched so the count-in is audibly distinct from the click.
     countInBuffer = try Self.synthesizeClick(format: format, frequency: 600)
     clickBuffer = try Self.synthesizeClick(format: format, frequency: 1000)
     accentBuffer = try Self.synthesizeClick(format: format, frequency: 1500)
@@ -53,10 +40,8 @@ final class ClickEngine {
     engine.connect(playerNode, to: engine.mainMixerNode, format: format)
   }
 
-  /// Schedules a count-in of `countInBeats` clicks followed by `bodyBeats`
-  /// phrase beats (beat 1 of each bar accented), then returns the resulting
-  /// `BeatGrid`. Safe to call repeatedly — each call tears down and
-  /// reschedules (used by the gate drill's auto count-in per rep).
+  /// Schedules `countInBeats` clicks then `bodyBeats` phrase beats (bar
+  /// downbeats accented). Safe to call repeatedly — each call reschedules.
   func start(bpm: Double, beatsPerBar: Int, countInBeats: Int, bodyBeats: Int) throws -> BeatGrid {
     playerNode.stop()
 
@@ -128,9 +113,6 @@ final class ClickEngine {
     }
   }
 
-  /// Consumes `pendingBeats` as their host times pass, polling on a short
-  /// fixed interval rather than sleeping until each one individually — see
-  /// the comment on `pendingBeats` for why that matters here.
   private func startPolling() {
     pollTask?.cancel()
     pollTask = Task { @MainActor [weak self] in
@@ -145,9 +127,8 @@ final class ClickEngine {
     }
   }
 
-  /// A short sine-burst click, synthesized inline rather than shipped as a
-  /// bundled asset — mirrors the inline-WAV trick in
-  /// ios/Reference/BackgroundAudioPlugin.swift, adapted to an audible tone.
+  /// Synthesized inline (mirrors ios/Reference/BackgroundAudioPlugin.swift's
+  /// silent-WAV trick) rather than bundled, to avoid a resource dependency.
   private static func synthesizeClick(format: AVAudioFormat, frequency: Double) throws
     -> AVAudioPCMBuffer
   {
@@ -161,8 +142,7 @@ final class ClickEngine {
     let channel = buffer.floatChannelData![0]
     for frame in 0..<Int(frameCount) {
       let t = Double(frame) / sampleRate
-      // Linear decay envelope so the click doesn't pop.
-      let envelope = 1.0 - t / durationSeconds
+      let envelope = 1.0 - t / durationSeconds  // linear decay, avoids a pop
       channel[frame] = Float(sin(2 * Double.pi * frequency * t) * envelope * 0.5)
     }
     return buffer

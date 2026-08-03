@@ -11,8 +11,7 @@ struct ExpectedBeat {
     "C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B",
   ]
 
-  /// Any octave matches — this is display text for "what to play", not a
-  /// scoring detail.
+  /// Display text ("what to play") — any octave matches for scoring.
   var noteNames: String {
     pitchClasses.sorted().map { Self.pitchClassNames[$0] }.joined(separator: "/")
   }
@@ -45,10 +44,8 @@ struct RepResult: Equatable {
   }
 }
 
-/// A hard-coded 8-note single-line phrase (drawn from the Dm7 and G7 shells
-/// in C, but played as a melody, not a chord): F C F C, then B F B F,
-/// crotchets, 80 bpm. Trivially edited constants — this is deliberately
-/// crude, not a scoring engine.
+/// Hard-coded 8-note phrase: F C F C, then B F B F, crotchets, 80 bpm.
+/// Trivially edited constants — deliberately crude, not a scoring engine.
 enum GatePhrase {
   static let bpm: Double = 80
   static let beatsPerBar = 4
@@ -56,11 +53,8 @@ enum GatePhrase {
   static let gateTargetPasses = 3
   static let timingToleranceMs: Double = 80
 
-  // The Dm7 and G7 shells (3rd+7th) are arpeggiated one note at a time, not
-  // played as two-note chords — each beat below is a single fresh keystroke
-  // (re-struck, not sustained from the previous beat), one hand, any octave.
-  // Pitch classes: Dm7 shell is F(5)/C(0), G7 shell is B(11)/F(5) — see
-  // `noteNames` for the name mapping.
+  // Dm7 shell (F=5/C=0) then G7 shell (B=11/F=5), arpeggiated one fresh
+  // keystroke per beat — a melody, not a chord.
   static let expected: [ExpectedBeat] = [
     ExpectedBeat(bar: 1, beat: 1, pitchClasses: [5]),
     ExpectedBeat(bar: 1, beat: 2, pitchClasses: [0]),
@@ -72,31 +66,18 @@ enum GatePhrase {
     ExpectedBeat(bar: 2, beat: 4, pitchClasses: [5]),
   ]
 
-  /// "1. F   2. C   3. F   4. C   5. B   6. F   7. B   8. F" — a single
-  /// ordered sequence, one note at a time, any octave, each struck fresh on
-  /// its beat (never a chord, never held). The numbering is deliberate: it's
-  /// the clearest way to say "in this order, one after another."
+  /// "1. F   2. C   3. F   4. C   5. B   6. F   7. B   8. F" — numbered to
+  /// make "one at a time, in this order" unambiguous on screen.
   static var displaySequence: String {
     expected.enumerated().map { index, beat in "\(index + 1). \(beat.noteNames)" }
       .joined(separator: "   ")
   }
 
-  /// Classifies one rep's captured note-on events against `expected`.
-  /// Matches each expected beat to the *nearest-in-time* unmatched note-on
-  /// of the right pitch class (not gated by `timingToleranceMs` at match
-  /// time — the tolerance only decides the early/late verdict afterward, on
-  /// whichever match came closest to any target beat). Notes with no
-  /// matching expected beat, or expected beats with no matching note, count
-  /// toward "wrong notes".
-  ///
-  /// `transport` gates whether a timing verdict is even possible — spec
-  /// decision 7 (transport-tiered scoring): Bluetooth's connection-interval
-  /// jitter (±10-20ms) doesn't support a fine early/late verdict, so a
-  /// Bluetooth rep only ever resolves to pass or wrong-notes, never early/late.
-  /// This is a per-rep simplification for the spike, not the final scoring
-  /// model — spec decision 6 wants *consistency across reps*, not one rep's
-  /// absolute deviation, graded; that needs a rep-history model this spike
-  /// doesn't have.
+  /// Matches each expected beat to its nearest-in-time unmatched note-on of
+  /// the right pitch class; unmatched beats/notes count as "wrong notes".
+  /// `transport` == .bluetooth suppresses early/late (spec decision 7: BLE
+  /// jitter can't support a fine verdict) — note this is per-rep, not
+  /// decision 6's cross-rep consistency, which needs history this spike lacks.
   static func evaluate(notes: [NoteEvent], against grid: BeatGrid, transport: TransportType)
     -> RepResult
   {
@@ -138,8 +119,6 @@ enum GatePhrase {
       return RepResult(verdict: .wrongNotes(count: mismatchCount))
     }
     guard transport == .usb else {
-      // Bluetooth: note accuracy only, no fine timing verdict — see the
-      // doc comment above.
       return RepResult(verdict: .pass)
     }
     if worstOffsetMs > timingToleranceMs {
