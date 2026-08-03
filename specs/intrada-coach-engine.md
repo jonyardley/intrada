@@ -318,33 +318,44 @@ enum TimingRule { Consistent { max_cv: f32, max_drift: f32 } }   // decision 6
   the interruption budget are all data in the same file. Nothing here hard-codes
   a threshold.
 
-## 9. What this contradicts in the source docs
+## 9. Divergence from the source docs
 
-Fix at the source rather than letting the documents diverge.
+### Fixed at the source, in the same commit series
 
-1. **The mastery-function paragraph** (design doc, Technical architecture) should
-   become a pointer here. Its three claims survive; the *how* changed — decay
-   applies to the pseudo-counts toward the prior rather than as a separate
-   confidence term, and spacing derives from that same state.
-2. **Node-level mastery.** "Three mechanisms" reads as a node-level `(estimate,
-   confidence)`; the mastery-function line says per `(node, parameter level)`.
-   This spec holds **no node-level scalar** — a node figure is derived, for
-   display. So `content/nodes.md`'s seeds are *frontier-level* priors and
-   `content/README.md`'s checklist should say so.
-3. **The escalation ladder is not an interruption.** The design doc says it
-   "acts, not narrates", yet the journeys doc and #1147 both give the stuck
-   ladder a once-per-session slot. Under §7 only name-the-wall spends budget —
-   amend the feedback-choreography section and #1147's list.
-4. **The circling check has no free slot.** Layer 2 grants the coaching voice one
-   slot "plus whenever the circling check has something to say" — an unbudgeted
-   exemption contradicting the journeys doc's "every journey obeys the
-   one-interruption budget". Under §7 it competes at its own priority.
+1. **The mastery-function paragraph** (design doc, Technical architecture) now
+   points here and says what this spec settled. Its three original claims
+   survive; the *how* changed — decay applies to the pseudo-counts toward the
+   prior rather than as a separate confidence term, and spacing derives from
+   that same state.
+2. **Node-level mastery.** "Three mechanisms" read as a node-level `(estimate,
+   confidence)`; the mastery-function line said per `(node, parameter level)`.
+   Both now state per-level, with any node-wide figure marked display-only.
+   `content/README.md`'s day-one checklist says to rate the current rung, since
+   the seeds are read as frontier-level priors.
+3. **The circling check's free slot is withdrawn.** Layer 2 granted the coaching
+   voice one slot "plus whenever the circling check has something to say" — an
+   unbudgeted exemption contradicting the journeys doc's "every journey obeys
+   the one-interruption budget". It now competes at its own priority (§7). A cap
+   with one exception is how five polite features become four interruptions.
+4. **The escalation ladder spends no allowance.** The design doc's own rule is
+   that it acts rather than narrates, so a silent tempo drop or scope shrink is
+   the plan changing, not the app talking. Only the spoken name-the-wall moment
+   costs a slot. Stated explicitly in the anti-nag rules; **#1147's list still
+   counts the stuck ladder as an interruption and needs the same correction.**
+
+### Still outstanding
+
 5. **`rootless-traversal` is not a gate.** No pass/fail: it is a per-session
    scheduling quota (`new_keys_per_session_min/_max`), unrepresentable as a
-   `Requirement`. Move it out of `[gates.*]` into a planner constraint.
+   `Requirement`. It belongs outside `[gates.*]`, as a planner constraint.
 6. **`transport = "paper"` conflates two axes** — paper is the absence of a
    transport plus a change of judge. §8 splits them: `transport: Wired |
    Bluetooth | Mic | None` and `judge: Machine | SelfConfirmed`, Phase 0 being
-   `(None, SelfConfirmed)`. `[transport_tiers]` should follow.
+   `(None, SelfConfirmed)`.
+
+   Both are restructures of `content/gates.toml`, deliberately **deferred to
+   Phase 2a**, when the parser that reads the file actually lands. No code reads
+   it today, and it is the file being practised from during the Phase 0
+   fortnight — churning its structure now costs the reader and buys nothing.
 7. **#1148's fourth question is stale** — decision 17 closed it before the issue
-   was read.
+   was read. Close as answered rather than answering twice.
