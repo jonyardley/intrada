@@ -8,7 +8,8 @@ answer to "can I implement from this document?"**
 
 | Spec | Scope |
 |---|---|
-| [`intrada-practice-coach-design.md`](intrada-practice-coach-design.md) | **The governing design.** Vision, decisions 1–16, pedagogy model, intent, session design, architecture, build plan. v4. |
+| [`intrada-practice-coach-design.md`](intrada-practice-coach-design.md) | **The governing design.** Vision, decisions 1–17, pedagogy model, intent, session design, architecture, build plan. v5. |
+| [`intrada-coach-engine.md`](intrada-coach-engine.md) | **The engine's technical design.** Mastery update, judgement track, session state machine, planner order, FFI contract, interruption arbitration, gate schema. Rides with Phase 1's first PR |
 | [`native-ios.md`](native-ios.md) | The SwiftUI shell on the Crux core — the only shell |
 | [`design-system.md`](design-system.md) · [`design-refresh-2026.md`](design-refresh-2026.md) | The Paper & Score system; `Theme.swift` is canonical |
 | [`ios-testflight-cicd.md`](ios-testflight-cicd.md) | Signing, match, the release lane |

@@ -41,7 +41,11 @@ recorded Phase 4 debt.
 
 1. Correct the **seed mastery values** in `nodes.md` and the per-key table in
    `phrases/p001-flat9-turnaround.md` — they are plausible guesses, not
-   measurements. Ten minutes at the piano settles each one.
+   measurements. Ten minutes at the piano settles each one. Rate the rung
+   you're actually on, not the node as a whole: the engine reads each seed as
+   the prior for the *current parameter level*, so "0.3 / low" means the F
+   voicings you're working now, not an average across twelve keys
+   ([`intrada-coach-engine.md`](../specs/intrada-coach-engine.md) §2).
 2. Rewrite [`intent.md`](intent.md) in your own words — the goal, and the
    campaign's target set as you'd actually state it (a lesson's list is the
    ideal source). Mine is a worked example, not your intent. Then check the

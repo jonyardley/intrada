@@ -157,7 +157,7 @@ The graph says what exists and in what order; the pipelines say what is in
 flight; intent says where the user is pointing. The planner is the function
 that reads all three.
 
-- **Skill graph.** Jazz improvisation as a dependency graph, not a list. Each node: what it is, why it matters, prerequisites, 2-4 drills, machine-checkable done-criteria. Mastery is (estimate, confidence), never a boolean.
+- **Skill graph.** Jazz improvisation as a dependency graph, not a list. Each node: what it is, why it matters, prerequisites, 2-4 drills, machine-checkable done-criteria. Mastery is (estimate, confidence), never a boolean — and it is held per (node, parameter level), not per node: a single node-wide figure is derived for display only, never an input to the planner (see [`intrada-coach-engine.md`](intrada-coach-engine.md) §2).
 - **Intent.** Declared destinations at three altitudes — goal, campaign, today's steer — each optional, each defaulted, none of them a route. Detailed below; the short version is that the graph and the pipelines already encode *ordering*, so the user only ever has to name a target.
 - **Pipelines.** Tunes and phrases are instances moving through stages.
   - Tune pipeline: form, melody, shells, rootless, arpeggiate changes, guide tones. Clear "done" gate per stage.
@@ -364,9 +364,16 @@ Four layers, organised by *when*, not what:
   paragraph. **Not every boundary** (revised 3 Aug 2026): five blocks in twenty
   minutes would mean five coaching moments, which is a lot of talking from
   something designed not to nag. Default to one per session — where it will land
-  hardest, usually the frontier block — plus on demand, plus whenever the
-  circling check has something to say. Silence at a boundary is a valid choice
-  and should be the common one.
+  hardest, usually the frontier block — plus on demand. **The voice holds no
+  reserved slot, and neither does anything else** (settled 3 Aug 2026, closing
+  the interruption-budget question): it competes for the session's single
+  spoken-moment allowance against the stuck wall, the circling check, the grind
+  trade and the gap read, and whatever loses is written into the session summary
+  rather than fired late. An earlier draft of this bullet exempted the circling
+  check; that exemption is withdrawn, because a cap with one exception is how
+  five polite features become four interruptions. Arbitration lives in one place
+  in the core — see [`intrada-coach-engine.md`](intrada-coach-engine.md) §7.
+  Silence at a boundary is a valid choice and should be the common one.
 - **Layer 3 — session end: the narrative.** Trends, the thread ("Monday's
   voicing drill is what your left hand just did in bar 5"), what's next,
   tomorrow's draft. Readable now or in the morning.
@@ -380,7 +387,9 @@ Anti-nag rules (where the naggy/useful balance is actually won):
   shrink scope (A section, one hand, one key), change mode (sing it, tap it,
   listen), swap the drill. Framed as the plan ("Let's take it to 100"),
   never as remediation. A teacher doesn't narrate your failure; they quietly
-  make the next attempt winnable.
+  make the next attempt winnable. Because it acts rather than speaks, the
+  ladder **spends no part of the interruption allowance** — only the spoken
+  name-the-wall moment does.
 - **Name the wall — once.** At the quit-point, normalise plus a smaller
   step: "everyone's enclosures sound mechanical for the first three weeks;
   here's the smaller version." Never repeat the same encouragement twice;
@@ -450,7 +459,7 @@ Stack fit: Crux core holds the session state machine, MIDI event stream, analysi
 
 Data model sketch: `Tune` (pipeline stage), `Skill` (graph node, mastery as estimate plus confidence), `Phrase` (per-key mastery, pipeline stage), `Device` (reusable musical device, referenced by many phrases, with theory annotation and its own mastery via the generate ladder), `Drill` = (skill x tune x parameters) referencing a `MethodPack` (decomposition stages, traversal orderings, cues by stage, escalation overrides), `Gate` criteria as tunable data (JSON/TOML), `Judgement` (per target: completion state, spaced-return interval, feel-rating series — never a level, never a prerequisite satisfier), `Goal` and `Campaign` (declared destinations — a campaign names graph nodes and/or a pipeline stage as its target, plus a horizon derived from the user's own trend), session planner as a pure function of (tune stages, skill mastery, pipeline states, declared intent, available minutes).
 
-Mastery update function (first crude version, to be refined): per (node, parameter level), **measured** attempt outcomes update a Beta distribution (pass/fail as evidence), giving estimate and confidence for free; confidence decays with time-since-practice to drive spacing; level-ups shift the distribution rather than resetting it. Whatever the final form, this function is the planner's engine and must be specified before Phase 2a, not discovered inside it.
+Mastery update function — **now specified in [`intrada-coach-engine.md`](intrada-coach-engine.md) §2**, which is the one answer; this paragraph is the summary. Per (node, parameter level), **measured** attempt outcomes update a Beta distribution (pass/fail as evidence), giving estimate and confidence for free; confidence decays with time-since-practice to drive spacing; level-ups shift the distribution rather than resetting it. The engine spec settles the three things this sentence left open: decay pulls the pseudo-counts back toward the prior (never toward failure), the review interval derives from that same state rather than a second schedule, and a level-up inherits a discounted share of the level below. Attempts-to-pass and time-share are recorded but feed the circling check only, never mastery.
 
 Its inputs are now settled (decision 17): measured attempts only. Self-report does not enter this function at all. The **judgement track** sits beside it as a deliberately simpler structure — per target, a completion state (open / retired-by-you, with a spaced return interval) plus a time series of feel ratings for trend display. No distribution, no level, no contribution to prerequisite satisfaction. Keeping it structurally smaller is the point: a parallel mastery model would create two numbers competing to answer one question, and the planner would have to arbitrate between them on every block.
 
