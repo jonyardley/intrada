@@ -1,12 +1,36 @@
-# The Ideal Journey
+# The Ideal Journey (superseded — the notebook-era yardstick)
 
-> Canonical walkthrough of what Intrada is for, written from the musician's
-> side of the screen. Every feature is judged against this document: if a
-> change doesn't move one of these steps forward, ask why it's being built.
-> Status column last audited 2026-07-14 (vision/journey audit). Use this as
-> the walking-skeleton checklist: before starting new feature work, walk the
-> ten steps on a device; the first place the journey breaks is the next
-> priority.
+> **⚠️ No longer the yardstick.** This document was the canonical journey for the
+> practice-*notebook* product and explicitly claimed authority over feature
+> prioritisation. The 2026-07 practice-coach pivot replaced it. The live design
+> is [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
+> the live scenarios are [`docs/coach-user-journeys.md`](coach-user-journeys.md).
+> **Do not prioritise work from the ten steps or the status column below.** The
+> two `user-journey*.drawio` diagrams in this folder belong to this document and
+> are equally historical.
+>
+> Kept because the instinct was right and the archaeology is useful: the coach is
+> this journey with measurement substituted for self-report. How each step fared:
+>
+> | Step | Fate under the coach design |
+> |---|---|
+> | 1 Library of pieces | **Carried forward** — tunes still live in the library, and `chord_chart` hangs off them |
+> | 2 Exercises scaffold a piece | **Replaced by something stronger** — skill-graph nodes × tune parameterisation, with prerequisites the app understands |
+> | 3 Track each exercise separately | **Replaced** — measured attempts against gates, mastery as (estimate, confidence) rather than a self-rated score |
+> | 4 Goals drive planning | **Carried forward and deepened** — intent declared at three altitudes, back-chained through the graph (spec v3) |
+> | 5 Recommended sessions | **Now the core of the product**, not a back-half feature — the planner as a pure function |
+> | 6 Guided focus mode | **Replaced by the drill screen** — silent during play, one-glance verdict between reps |
+> | 7 Reflection in the moment | **Dropped as a mechanism** — the app measures instead of asking, and mid-play interaction is now explicitly forbidden |
+> | 8 End-of-session reflection | **Narrowed** — feel self-ratings alongside metrics, never as the progress signal |
+> | 9 Narrative progress | **Carried forward** — the Layer 3 narrative and the narrated thread |
+> | 10 Suggest alternative exercises | **Replaced** — the stuck ladder and the planner do this without being asked |
+>
+> Original preamble follows.
+
+Canonical walkthrough of what Intrada is for, written from the musician's
+side of the screen. Every feature is judged against this document: if a
+change doesn't move one of these steps forward, ask why it's being built.
+Status column last audited 2026-07-14 (vision/journey audit).
 
 ## The journey, told as one story
 

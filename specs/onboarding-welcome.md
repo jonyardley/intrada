@@ -1,5 +1,12 @@
 # Onboarding welcome (first-run intro cards)
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product — hand-built sessions, self-rated scores,
+> written reflection. The live design is
+> [`specs/intrada-practice-coach-design.md`](intrada-practice-coach-design.md) with the scenarios in
+> [`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md). Kept for archaeology; **do not
+> implement from this document.** Onboarding and placement are deferred to Phase 4 behind the personal-tool-first decision.
+
 > Spec for the first-time-user welcome experience.
 > Tier 3 per CLAUDE.md (brand-defining first impression — earns a written
 > spec even though the implementation surface is web-shell-only).

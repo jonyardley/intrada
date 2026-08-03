@@ -1,5 +1,12 @@
 # Exercise steps (variants)
 
+> **⚠️ Superseded by the 2026-07 practice-coach pivot.** This document describes
+> the practice-*notebook* product — hand-built sessions, self-rated scores,
+> written reflection. The live design is
+> [`specs/intrada-practice-coach-design.md`](intrada-practice-coach-design.md) with the scenarios in
+> [`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md). Kept for archaeology; **do not
+> implement from this document.** Partial carry-forward: the per-step ladder *shape* informs per-parameter-level mastery, but its self-rated data source is replaced by measured attempts.
+
 > Tier 3 spec. Issue [#1083] (epic [#1087], workstream C). Landed in two
 > passes: PR #1112 (schema slice: `Variant` type, `Item.variants`,
 > `SetlistEntry.variant_id`, GRDB `v9_variant` child table + codecs) and
