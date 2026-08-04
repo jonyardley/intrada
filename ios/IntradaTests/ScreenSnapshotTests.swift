@@ -699,6 +699,78 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  // ── The coach drill loop (A2 / A3) ──
+
+  private func drill(_ state: DrillLoopState) -> some View {
+    DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
+  }
+
+  func testDrillScreenDuringPlay() {
+    assertSnapshot(of: host(drill(.preview())), as: config)
+  }
+
+  /// Roughly what the screen looks like from two metres: the chip and tune line
+  /// give way, the drill, tempo, position and target never do.
+  func testDrillScreenDuringPlayAccessibilitySize() {
+    assertSnapshot(of: host(drill(.preview())), as: axConfig)
+  }
+
+  func testDrillScreenTapVerdict() {
+    assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
+  }
+
+  /// Identical composition to a pass — a miss is the user's own report.
+  func testDrillScreenMissAcknowledged() {
+    let state = DrillLoopState.preview(
+      phase: .acknowledged(clean: false, countInRemaining: 2), elapsedSeconds: 798)
+    assertSnapshot(of: host(drill(state)), as: config)
+  }
+
+  func testDrillScreenGateOpen() {
+    let state = DrillLoopState.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
+    assertSnapshot(of: host(drill(state)), as: config)
+  }
+
+  /// The two verdict-pair layouts no screen snapshot reaches: iPad regular
+  /// width, and the accessibility-size stack.
+  func testTapVerdictLayouts() {
+    let pairs = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: 20) {
+        TapVerdict(onClean: {}, onMissed: {})
+        TapVerdict(onClean: {}, onMissed: {})
+          .environment(\.coachScale, .regular)
+        TapVerdict(onClean: {}, onMissed: {})
+          .dynamicTypeSize(.accessibility3)
+      }
+      .padding(16)
+    }
+    assertSnapshot(
+      of: host(pairs),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 760, height: 520),
+        traits: .init(displayScale: 2)))
+  }
+
+  /// Sized to the component, so three gate states cost one small reference.
+  func testGateDotsStates() {
+    let dots = ZStack {
+      RadialGradient.playerPaper
+      VStack(alignment: .leading, spacing: 14) {
+        GateDots(filled: 0, target: 3)
+        GateDots(filled: 2, target: 3)
+        GateDots(filled: 3, target: 3, caption: "gate open")
+        GateDots(filled: 3, target: 3, caption: "3 clean at 120")
+      }
+      .padding(16)
+    }
+    assertSnapshot(
+      of: host(dots),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 260, height: 140),
+        traits: .init(displayScale: 2)))
+  }
+
   func testLibraryItemCards() {
     var manyTags = LibraryItemView.previewDetail
     manyTags.tags = ["jazz", "improv", "bebop", "ii-V-I", "comping"]
