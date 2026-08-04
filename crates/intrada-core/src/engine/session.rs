@@ -10,6 +10,11 @@ use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
 /// taps and seconds, and decides none of them.
+// `RecoverSession` carries a whole session and the rest carry a timestamp, so
+// the variants differ wildly in size. Boxing it is the usual fix and not one
+// available here: this crosses the FFI bridge, where `Box` is not a shape the
+// typegen and the bincode wire agree on (same reason as app.rs's allow).
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
