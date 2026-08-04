@@ -303,9 +303,14 @@ working detail.
   the campaign the user hasn't declared yet, surfaced the same way repeated
   wanders are (intent property 4).
 
-What this deliberately does not add: user-authored method packs (the ladder,
-cues and traversal orders stay teacher-craft content), user-defined
-prerequisites (graph structure stays authored), or any obligation to
+What this defers rather than forbids: user-authored method packs (the ladder,
+cues and traversal orders) and user-defined prerequisites. Both are desirable
+eventually — a user who can write their own decomposition ladder is the
+graduation arc (principle 8) taken to its natural end — but both shape *how the
+planner reasons*, so they wait until the loop has proven itself on authored
+structure and there is real usage to design against. Revisit once user nodes
+have weeks of use behind them; the promotion path (user node → authored node,
+challenge 3) is the likely door. What is genuinely not added: any obligation to
 categorise — an uncategorised user node is fine, it just doesn't show in the
 circle tally.
 
