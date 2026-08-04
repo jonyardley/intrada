@@ -1,23 +1,40 @@
 # Design brief — the practice-coach drill loop
 
-> Handover to Claude Design, 2026-08-03, from the practice-coach design phase.
-> Work against `design/intrada-design-system.dc.html` (tokens canonical in
+> Handover to Claude Design, updated 2026-08-04 for spec v7 (#1170; supersedes
+> the 2026-08-03 v5 handover, #1169's orientation refresh). Work against
+> `design/intrada-design-system.dc.html` (tokens canonical in
 > `ios/Intrada/DesignSystem/Theme.swift`). Mockups land under
 > `specs/<feature>/design/<screen>.dc.html` per `docs/design-workflow.md`.
-> Design context: `specs/intrada-practice-coach-design.md` (v5) and the ten
-> scenarios in `docs/coach-user-journeys.md`.
+> Design context: `specs/intrada-practice-coach-design.md` (v7) and the eleven
+> scenarios in `docs/coach-user-journeys.md`. Cross-check screen states against
+> the wireframes in `docs/coach-orientation.html` (rail 1, "the loop") — if this
+> brief and those wireframes disagree, the wireframes are the more recent
+> snapshot; flag the conflict rather than silently picking one.
 >
 > **Note on `docs/journeys.md`:** earlier briefs cite its numbered steps. It is
 > retired — the notebook-era journey. Cite `docs/coach-user-journeys.md` instead.
 >
-> **Eight screens across two sessions**, and that is not the whole app — see "What
+> **What changed for v7 (decisions 18–19, both 4 Aug 2026):**
+> - **Decision 18 — machine listening deferred.** There is no microphone, no
+>   MIDI, no per-note fact, and no "the app isn't sure" state. A2 and A3 below
+>   are rewritten around the **tap-verdict**: the user hears their own attempt
+>   and taps pass or fail against a countable criterion ("Clean at 80?"). This
+>   is not a placeholder for a future machine verdict — it is the shipped
+>   mechanism, and it must read as a real, permanent way of working, not a
+>   degraded one.
+> - **Decision 19 — user-created items and the built session.** Two new
+>   surfaces join Session B: creating a user item when a teacher's exercise
+>   matches nothing in the graph, and building today's session by hand from
+>   pipelines, nodes and the user's own items. See B5 and B6.
+>
+> **Ten screens across two sessions**, and that is not the whole app — see "What
 > this brief deliberately does not cover" before assuming a surface is missing by
 > accident.
 >
 > **Run this as two sessions.** Session A is the drill loop: four screens seen
-> every single day, and the ones that must be right. Session B depends on A's
-> decisions about how the app speaks. Eight screens in one pass produces eight
-> mediocre screens.
+> every single day, and the ones that must be right. Session B (now six
+> screens: B1–B4 plus decision 19's B5–B6) depends on A's decisions about how
+> the app speaks. Ten screens in one pass produces ten mediocre screens.
 >
 > **Within Session A, only two screens are being built now.** Phase 1 ships the
 > drill screen and nothing else: **A2 (during play) and A3 (after a repetition)
@@ -85,22 +102,47 @@ Drill name, tempo, which click level is running, a passive bar/beat position
 indicator, and ambient orientation (elapsed / ceiling / blocks left). One large,
 easy target: **I'm stuck** — hittable without looking.
 
+- **No microphone yet, and say so once, plainly** (decision 18): a quiet,
+  dashed-border note — *"No microphone yet — play it, then tell it how it
+  went"* — sits between the orientation strip and the stuck button, per
+  `docs/coach-orientation.html` wireframe 2. It is context, shown once per
+  block boundary or first-run, not a persistent apology — don't let it read as
+  a bug report or a missing-feature nag.
 - The orientation must read as information, never as a countdown or a verdict.
 - *Failure mode to avoid:* anything that rewards looking at the screen. If it
   pulls the eyes, it ruins the next phrase.
 
-### A3. After a repetition — one glance, about a second  · **full treatment (Phase 1)**
+### A3. After a repetition — one glance, one tap  · **full treatment (Phase 1)**
 
-*The moment:* the attempt just ended; the next count-in starts on its own.
+*The moment:* the attempt just ended. The gate criterion is countable and
+already on screen ("clean at 80, both hands"); the user's own ears are the
+instrument, and their tap is the verdict — not a fact the app detected.
 
-Tick or cross, at most **one** fact ("clean", "2 wrong notes", "rushing bars
-3–4"), and gate progress as filled/empty dots with "2 of 3". Nothing to tap.
-
-- **Design the cross state with equal care** — factual, calm, never shaming.
-- **Design the uncertain variant**: when the app isn't sure, it asks rather than
-  asserts — *"that sounded clean — agree?"*, one tap. Being asked is respectful;
-  being wrongly failed is a trust-ender.
-- *Failure mode to avoid:* a scoreboard. This is a glance, not a result screen.
+**The tap-verdict pattern (decision 18), per `docs/coach-orientation.html`
+wireframe 3:**
+- The gate criterion as the question, restated plainly: **"Clean at 80?"**
+  — never "temporal deviation metric", always the musician's own words for
+  the thing they just tried to do.
+- Two big targets, asymmetric weight: **"Yes — clean"** as the wide primary,
+  **"No — missed it"** as a calm ghost secondary directly beneath. Both must
+  be equally easy to hit without looking down for long — this is still a
+  glance, not a decision screen.
+- Gate progress as filled/empty dots plus a count ("2 of 3"), updating on tap.
+- **"I'm stuck"** stays present, same place as A2 — the tap-verdict doesn't
+  replace the stuck path.
+- The next count-in follows the tap automatically. No per-note facts, no
+  "2 wrong notes", no "rushing bars 3–4" — there is nothing listening to
+  produce those, and inventing plausible-sounding detail the app doesn't
+  actually know is worse than the plain binary ask.
+- **Design the "No — missed it" state with equal care** — factual, calm,
+  never shaming; it is the user's own honest report, not a failure the app
+  caught them in.
+- *Drop, don't design:* the "uncertain / app isn't sure — agree?" variant from
+  the earlier v5 pass. There is no machine confidence to be uncertain about
+  (decision 18) — the tap *is* the ground truth, full stop.
+- *Failure mode to avoid:* a scoreboard, or the tap-verdict reading as a
+  downgrade from some imagined "real" scored version. This is the shipped
+  mechanism, not a stopgap.
 
 ### A4. Block boundary — the only place it speaks in sentences  · *rough pass (Phase 2a)*
 
@@ -175,6 +217,48 @@ must be a real, undiminished option.**
 - *Failure mode to avoid:* an alert. Design it as the calm sibling of the stuck
   screen, not an interruption.
 
+### B5. Creating a user item — "your teacher gave you something new"
+
+*The moment:* a lesson handed over an exercise that matches nothing in the
+graph (decision 19, journey 11). The user types, pastes or dictates it.
+
+- **Three-way resolution, shown as one clear question, never three form
+  fields.** The app proposes a match first — *"this looks like a shells
+  exercise — track it under shells?"* — and only falls back to a **user
+  node** when nothing plausibly fits. Confirm / decline is one tap either way;
+  nothing is silently filed.
+- **A declined or no-match item still gets a real home**: gate criteria in the
+  same schema as an authored gate ("clean at 80, both hands, 4 keys"), written
+  at creation via one short form or one dictated sentence, LLM-parsed and
+  **shown back for confirmation** before it saves (decision 12 — interpretation,
+  never silent).
+- An optional ***serves* tag** (which circle it feeds) — explicitly optional,
+  never a required field; an untagged user node is a fine, complete state.
+- **This must read as ordinary, not as a fallback tier.** A user node is
+  "your own material, now tracked" — due, spaced, cold-tested like anything
+  authored — not a second-class shelf for things the graph couldn't place.
+- *Failure mode to avoid:* a data-entry form. This is a teacher's exercise
+  being handed over, same register as B1's target list, not a settings screen.
+
+### B6. Building today's session — composing from your own material
+
+*The moment:* the user wants to assemble today's blocks themselves — some
+pipeline work, one of their own items, one thing from the plan (decision 19,
+journey 11) — from the steer surface.
+
+- **Composition, not a mode.** Blocks are chosen from pipelines, nodes and the
+  user's own items in one list; each keeps its ordinary gate, and evidence
+  lands exactly as if the app had prescribed it. Entering this screen must not
+  feel like leaving the app's tracking behind.
+- **The session-shape template is advice, shown once, declinable in one tap**
+  — a warm-up first, music at the end — and declining it is not remarked on
+  anywhere later. Never a nag to accept the recommended order.
+- **Tomorrow resumes unoffended**: no reconciliation step, no "catching up"
+  language. The built session's evidence is just folded into the plan.
+- *Failure mode to avoid:* anything that reads as "going off-script" or asks
+  the user to justify the built session. It is a legitimate, equal-dignity way
+  to spend the day, not an escape hatch that needs explaining.
+
 ## What this brief deliberately does not cover
 
 Eight surfaces exist in the design and are **out of scope here**, so nobody
@@ -199,16 +283,20 @@ does not appear in the UI at all.
 ## The durable output is components, not screens
 
 Per `design/design-process.md`, what survives is the component catalogue. These
-screens need primitives that don't exist yet — a gate-progress dot row, a
-one-glance verdict, the ambient orientation strip, target-match rows, a route
-list. **Those go into `design/intrada-design-system.dc.html` and `Theme.swift`
-together**, and they are what makes the eight deferred surfaces above cheap to
-design later. Eight screens is the visible deliverable; the primitives are the
-valuable one.
+screens need primitives that don't exist yet — a gate-progress dot row, the
+tap-verdict pair (wide primary / ghost secondary), the ambient orientation
+strip, target-match rows, a match-proposal row (B5's "track it under shells?"),
+a session-builder block list (B6), a route list. **Those go into
+`design/intrada-design-system.dc.html` and `Theme.swift` together**, and they
+are what makes the eight deferred surfaces above cheap to design later. Ten
+screens is the visible deliverable; the primitives are the valuable one.
 
 ## Deliver
 
-Mobile screens first, then the iPad variant of A2 and A3 (the two being built). A1, A4 and Session B do not need iPad passes yet. For each screen note
-the **states** covered (first run, empty, uncertain, failure) and **any component
-or token you had to extend, and why** — those go back into `Theme.swift` and the
-design system together, per `design/design-process.md`.
+Mobile screens first, then the iPad variant of A2 and A3 (the two being
+built). A1, A4 and Session B do not need iPad passes yet. For each screen note
+the **states** covered — for A3 that's first run, empty (no gate progress
+yet), pass tap, fail tap; there is no "uncertain" state to design (decision 18
+removed it) — and **any component or token you had to extend, and why**; those
+go back into `Theme.swift` and the design system together, per
+`design/design-process.md`.
