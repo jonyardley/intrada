@@ -17,7 +17,11 @@ final class Store {
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
   static let sessionInProgressKey = "intrada.session-in-progress"
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress"
+  /// Versioned because the blob is positional bincode: a future `EngineSession`
+  /// field change could misdecode an old blob into a structurally valid but
+  /// wrong session, which `guarded` cannot catch. Bump the suffix with any such
+  /// change and the upgrade ignores the stale blob instead of misreading it.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v1"
 
   private let bridge: CoreBridge
   private let session: URLSession

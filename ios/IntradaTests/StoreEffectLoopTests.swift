@@ -171,10 +171,13 @@ final class StoreEffectLoopTests: XCTestCase {
   /// The session the core just snapshotted for crash recovery — also the only
   /// route to its `EngineConfig`, which `CoachView` does not carry.
   private func coachSession(in requests: [Request]) throws -> EngineSession {
-    for request in requests {
-      if case .app(.saveCoachSessionInProgress(let session)) = request.effect { return session }
-    }
-    throw TestError()
+    let session = requests.lazy.compactMap { request -> EngineSession? in
+      guard case .app(.saveCoachSessionInProgress(let session)) = request.effect else { return nil }
+      return session
+    }.first
+    return try XCTUnwrap(
+      session,
+      "no SaveCoachSessionInProgress effect: the core stopped snapshotting the session")
   }
 
   /// The in-progress session as the engine actually builds it, rather than a
