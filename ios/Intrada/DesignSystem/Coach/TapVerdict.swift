@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// The tap-verdict pair (spec decision 18). There is no microphone and no
-/// per-note fact: the user hears their own attempt and taps pass or fail
-/// against a countable criterion. This is the shipped mechanism, not a stopgap,
-/// so "No — missed it" is a calm, equally hittable target rather than a
-/// punishment — asymmetric only in width.
+/// The tap-verdict pair (spec decision 18): the user hears their own attempt
+/// and taps pass or fail against a countable criterion. The two are asymmetric
+/// in width only — a miss is equally hittable, and calm.
 struct TapVerdict: View {
   let onClean: () -> Void
   let onMissed: () -> Void
@@ -14,15 +12,14 @@ struct TapVerdict: View {
   @ScaledMetric(relativeTo: .subheadline) private var typeScale: CGFloat = 1
 
   private var height: CGFloat { scale.target * min(max(typeScale, 1), 1.25) }
-  /// At accessibility sizes the pair stacks, which is also where the fuller
-  /// "No — missed it" fits — the brief's phrasing, kept wherever there's room.
+  /// Stacked at accessibility sizes, which is also where the fuller
+  /// "No — missed it" fits.
   private var stacked: Bool { typeSize.isAccessibilitySize }
 
   private var gap: CGFloat { IntradaSpacing.controlGap + 2 }
   /// Clean is half again wider — asymmetric weight without shouting.
   private let cleanShare: CGFloat = 0.6
-  /// On a stand the pair sits at hand's reach, not stand's width (430 + 280
-  /// from the iPad comp).
+  /// Hand's reach, not stand's width (430 + 280 from the iPad comp).
   private var maxPairWidth: CGFloat { scale == .compact ? .infinity : 726 }
 
   var body: some View {
@@ -32,9 +29,8 @@ struct TapVerdict: View {
         missed(title: "No — missed it")
       }
     } else {
-      // Explicit shares rather than two flexible frames: `maxWidth: .infinity`
-      // splits 50/50, and squeezing one side instead collapses its label to the
-      // glyph.
+      // Explicit shares: `maxWidth: .infinity` splits 50/50, and squeezing one
+      // side instead collapses its label to the glyph.
       GeometryReader { proxy in
         let usable = min(proxy.size.width, maxPairWidth) - gap
         HStack(spacing: gap) {
@@ -80,7 +76,7 @@ struct TapVerdict: View {
           .lineLimit(1)
           .minimumScaleFactor(0.8)
       }
-      .font(IntradaFont.ambient(size).weight(.semibold))
+      .font(IntradaFont.ambientStrong(size))
       .foregroundStyle(fg)
       .frame(maxWidth: .infinity)
       .frame(height: height)

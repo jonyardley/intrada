@@ -1,22 +1,14 @@
 import SharedTypes
 import SwiftUI
 
-/// Everything the drill screen draws, in one value.
-///
-/// Phase 1 renders A2 and A3 from a value the caller supplies; from Phase 2a
-/// the coach engine's `CoachView` supplies it (`specs/intrada-coach-engine.md`
-/// §4, §6) and the shape here is what it has to fill. No counting, gating or
-/// sequencing happens in Swift — a tap reports intent and the next state
-/// arrives from outside.
+/// Everything the drill screen draws, in one value. The coach engine's
+/// `CoachView` fills it from Phase 2a (`specs/intrada-coach-engine.md` §4, §6);
+/// no counting, gating or sequencing happens in Swift.
 struct DrillLoopState: Equatable {
   enum Phase: Equatable {
-    /// A2 — hands on the keys. Silence: no score exists yet.
     case playing
-    /// A3 — the attempt just ended and the gate criterion is the question.
     case awaitingVerdict
-    /// A3 — the ~1s acknowledgement, then the next count-in runs itself.
     case acknowledged(clean: Bool, countInRemaining: Int)
-    /// A3 — the gate just opened; hands over to the block boundary.
     case gateOpen
   }
 
@@ -24,9 +16,9 @@ struct DrillLoopState: Equatable {
 
   // Identity
   var drillTitle: String
-  /// Where in the material this drill sits — "A section", "key of F".
+  /// Where in the material it sits — "A section", "key of F".
   var section: String?
-  /// What it serves: the in-flight tune or campaign — "Strasbourg / St. Denis".
+  /// The in-flight tune or campaign — "Strasbourg / St. Denis".
   var destination: String?
   var kind: ItemKind = .exercise
 
@@ -49,21 +41,17 @@ struct DrillLoopState: Equatable {
   // The gate
   /// The criterion restated as the question: "Clean at 120?".
   var gateQuestion: String
-  /// The criterion stated in the past tense, at the moment it is met:
-  /// "3 clean at 120".
+  /// The criterion in the past tense, at the moment it is met: "3 clean at 120".
   var gateSummary: String
   var gateFilled: Int
   var gateTarget: Int
 }
 
 /// A2 (during play) and A3 (after a repetition) — one shell, so the eye lands
-/// in the same place between reps. Every rule the loop is built on lives in
-/// `design/Drill Loop.dc.html`: nothing animates while you play, no score
-/// exists before the rep ends, and orientation never reads as a verdict.
+/// in the same place between reps. Rules in `design/Drill Loop.dc.html`.
 struct DrillScreen: View {
   let state: DrillLoopState
-  /// `true` = "Yes — clean", `false` = "No — missed it". The user's own report,
-  /// never a fact the app detected.
+  /// `true` = "Yes — clean", `false` = "No — missed it".
   var onVerdict: (Bool) -> Void
   var onStuck: () -> Void
   var onDismiss: () -> Void
@@ -75,9 +63,8 @@ struct DrillScreen: View {
   private var gutter: CGFloat {
     scale == .compact ? IntradaSpacing.card : IntradaSpacing.stage
   }
-  /// The chip and the tune line are the first things to give way — at the
-  /// largest sizes only the drill, the tempo, the position and the target
-  /// survive.
+  /// The chip and tune line give way first; drill, tempo, position and target
+  /// survive at any size.
   private var showsIdentityDetail: Bool { !typeSize.isAccessibilitySize }
 
   var body: some View {
@@ -118,6 +105,7 @@ struct DrillScreen: View {
           Label(serves, systemImage: "arrow.turn.down.right")
             .font(IntradaFont.ambient(scale == .compact ? 12 : 17))
             .foregroundStyle(IntradaColor.exerciseBadgeFg)
+            .accessibilityLabel(spoken(serves))
         }
       }
       .padding(.top, IntradaSpacing.section)
@@ -130,24 +118,27 @@ struct DrillScreen: View {
           .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
+          .accessibilityLabel(spoken(subtitleLine))
       }
       .padding(.top, IntradaSpacing.section)
     case .acknowledged, .gateOpen:
-      // The acknowledgement is a single object on paper — the identity is
-      // still true, and putting it back would make a one-second glance into
-      // something to read.
+      // Deliberately bare: a one-second glance shouldn't carry anything to read.
       EmptyView()
     }
   }
 
-  /// A2 — what this drill serves, under its title.
+  /// Most voices read "·" aloud as "middle dot".
+  private func spoken(_ line: String) -> String {
+    line.replacingOccurrences(of: " · ", with: ", ")
+  }
+
   private var serves: String? {
     let parts = [state.section, state.destination].compactMap { $0 }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
   }
 
-  /// A3 — the criterion is the headline, so the drill's identity drops to one
-  /// quiet line and the tune drops off it.
+  /// On A3 the criterion is the headline, so the identity drops to one quiet
+  /// line and the tune drops off it.
   private var subtitleLine: String {
     [state.drillTitle, state.section].compactMap { $0 }.joined(separator: " · ")
   }
@@ -182,7 +173,7 @@ struct DrillScreen: View {
       VStack(spacing: IntradaSpacing.section) {
         RepVerdict(outcome: .clean, fact: "Gate open")
         GateDots(
-          filled: state.gateTarget, target: state.gateTarget, caption: state.gateSummary)
+          filled: state.gateFilled, target: state.gateTarget, caption: state.gateSummary)
       }
     }
   }
@@ -203,11 +194,11 @@ struct DrillScreen: View {
   private var clickPill: some View {
     HStack(spacing: IntradaSpacing.controlGap) {
       Text("CLICK")
-        .font(IntradaFont.ambient(scale == .compact ? 10 : 13).weight(.semibold))
+        .font(IntradaFont.ambientStrong(scale == .compact ? 10 : 13))
         .tracking(0.8)
         .foregroundStyle(IntradaColor.exerciseBadgeFg)
       Text(state.clickLevel)
-        .font(IntradaFont.ambient(scale == .compact ? 13 : 19).weight(.semibold))
+        .font(IntradaFont.ambientStrong(scale == .compact ? 13 : 19))
         .foregroundStyle(IntradaColor.ink)
     }
     .padding(.vertical, scale == .compact ? 6 : 10)
@@ -242,9 +233,8 @@ struct DrillScreen: View {
   }
 }
 
-/// The beats between the tap and the next attempt. Drawn, not counted down in
-/// numerals: it is the click that carries the count, and a big digit would pull
-/// the eyes back to the screen just as they should be leaving it.
+/// The beats between the tap and the next attempt — drawn, not counted down in
+/// numerals, which would pull the eyes back as they should be leaving.
 private struct CountIn: View {
   let remaining: Int
   let total: Int
@@ -272,8 +262,7 @@ private struct CountIn: View {
 
 #if DEBUG
   extension DrillLoopState {
-    /// The worked example from the design: *Strasbourg / St. Denis*, campaign
-    /// "restricted improv over Strasbourg by the 17th".
+    /// The design's worked example: *Strasbourg / St. Denis*.
     static func preview(
       phase: Phase = .playing, gateFilled: Int = 2, elapsedSeconds: Int = 724
     ) -> DrillLoopState {

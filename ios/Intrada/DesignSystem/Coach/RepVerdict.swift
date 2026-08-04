@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// The one-glance result after a tap — glyph plus at most one fact, held for
-/// about a second before the next count-in. A miss is taupe, never red: this is
-/// the user's own honest report, not a failure the app caught them in, so the
-/// pass and miss frames are the same composition at the same size.
+/// The one-glance acknowledgement of a tap-verdict — glyph plus at most one
+/// fact. A miss is taupe, never red, and draws at the same size as a pass: it
+/// is the user's own honest report, not a failure the app caught them in.
 struct RepVerdict: View {
   enum Outcome {
     case clean
@@ -45,6 +44,7 @@ struct RepVerdict: View {
             outcome == .clean ? IntradaColor.repCleanFg : IntradaColor.repMissedFg)
       )
       .frame(width: scale.verdictDisc, height: scale.verdictDisc)
+      .popOnAppear()
   }
 
   private var label: String {

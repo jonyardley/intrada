@@ -1,9 +1,7 @@
 import SwiftUI
 
 /// Passive position against the click: which beat of the bar, which bar of the
-/// phrase. It is orientation, not feedback — so the pip swaps with **no**
-/// transition and explicitly no `pop`. Motion during play is banned; anything
-/// that moves invites a look, and a look ruins the next phrase.
+/// phrase.
 struct BeatPosition: View {
   /// One-based beat within the bar.
   let beat: Int

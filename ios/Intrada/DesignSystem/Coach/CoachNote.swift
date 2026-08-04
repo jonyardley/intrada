@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// The only place the app speaks in sentences: a block boundary, at most once a
-/// session. Exactly three parts — why (citing the declared campaign before graph
-/// state), the trend, one thing to listen for. Serif carries the thought, Inter
-/// carries the evidence. If there is nothing worth saying, the boundary ships
-/// without it; this view is never the "empty" state of anything.
+/// The block-boundary note — the only place the app speaks in sentences. Three
+/// parts, hard-capped: why, the trend, one thing to listen for. Callers show it
+/// at most once a session; a boundary with nothing to say omits it entirely
+/// rather than rendering this empty.
 struct CoachNote: View {
   let thought: String
   var trend: String?

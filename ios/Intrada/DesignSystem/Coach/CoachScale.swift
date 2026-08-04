@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// The drill loop is read at two distances: a phone propped on the music desk,
-/// and an iPad on a stand roughly a metre away. Every coach primitive takes one
-/// of these rather than its own size arguments, so the whole loop grows together
-/// — "the extra width buys size and air, not content" (`Drill Loop.dc.html`).
+/// The two distances the loop is read at: a phone on the music desk, an iPad on
+/// a stand about a metre away. Every coach primitive sizes off this rather than
+/// its own arguments, so the whole loop grows together.
 enum CoachScale {
   case compact
   case regular
@@ -22,6 +21,9 @@ enum CoachScale {
   var target: CGFloat { self == .compact ? 66 : 96 }
   var targetRadius: CGFloat { self == .compact ? IntradaRadius.panel : IntradaRadius.hero }
   var targetLabel: CGFloat { self == .compact ? 16 : 24 }
+  /// A3's demoted stuck row.
+  var quietTarget: CGFloat { self == .compact ? 46 : 64 }
+  var quietLabel: CGFloat { self == .compact ? 14 : 18 }
 
   // ── Type ──
   var drillTitle: CGFloat { self == .compact ? 30 : 74 }
@@ -37,8 +39,7 @@ private struct CoachScaleKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-  /// Set once by the drill screen from the horizontal size class, so a primitive
-  /// nested anywhere in the loop scales without being handed the value.
+  /// Set once by the drill screen from the horizontal size class.
   var coachScale: CoachScale {
     get { self[CoachScaleKey.self] }
     set { self[CoachScaleKey.self] = newValue }

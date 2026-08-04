@@ -2,14 +2,12 @@
   import SwiftUI
 
   /// Runs `DrillScreen` against the real click so the loop can be felt at a
-  /// piano before the coach engine exists — the brief's own reason for shipping
-  /// A2/A3 first ("A1 and A4 will be better designed once you have used A2 and
-  /// A3 at a real piano").
+  /// piano before the coach engine exists — the brief's reason for building
+  /// A2/A3 first.
   ///
-  /// DEBUG-only scaffolding, and the sequencing below is exactly the part that
-  /// does **not** ship: from Phase 2a the core's session state machine
-  /// (`specs/intrada-coach-engine.md` §4) owns counting, gating and what comes
-  /// next, and this file goes away.
+  /// FIXME(#1176): DEBUG-only scaffolding. The sequencing below is exactly the
+  /// part that does **not** ship — from Phase 2a the core's session state
+  /// machine owns counting, gating and what comes next, and this file goes away.
   @Observable
   @MainActor
   final class DrillLoopHarnessModel {
@@ -65,8 +63,7 @@
       }
     }
 
-    /// The stuck ladder is Phase 2b; here it just drops the tempo, which is the
-    /// first rung and enough to prove the target is reachable without looking.
+    /// The stuck ladder is Phase 2b; this just drops the tempo, its first rung.
     func stuck() {
       state.tempoBpm = max(60, state.tempoBpm - 20)
       state.gateQuestion = "Clean at \(state.tempoBpm)?"

@@ -709,9 +709,8 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview())), as: config)
   }
 
-  /// The honest test of the layout, and roughly what the default screen looks
-  /// like from two metres: the chip and tune line give way, the drill, tempo,
-  /// bar position and stuck target never do.
+  /// Roughly what the screen looks like from two metres: the chip and tune line
+  /// give way, the drill, tempo, position and target never do.
   func testDrillScreenDuringPlayAccessibilitySize() {
     assertSnapshot(of: host(drill(.preview())), as: axConfig)
   }
@@ -720,8 +719,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
   }
 
-  /// Equal care, identical composition: a miss is the user's own honest report,
-  /// not a failure the app caught them in.
+  /// Identical composition to a pass — a miss is the user's own report.
   func testDrillScreenMissAcknowledged() {
     let state = DrillLoopState.preview(
       phase: .acknowledged(clean: false, countInRemaining: 2), elapsedSeconds: 798)
@@ -733,8 +731,28 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(state)), as: config)
   }
 
-  /// Component-level and sized to the component, so the empty / partial / open
-  /// gate states cost one small reference instead of three full screens.
+  /// The two verdict-pair layouts no screen snapshot reaches: iPad regular
+  /// width, and the accessibility-size stack.
+  func testTapVerdictLayouts() {
+    let pairs = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: 20) {
+        TapVerdict(onClean: {}, onMissed: {})
+        TapVerdict(onClean: {}, onMissed: {})
+          .environment(\.coachScale, .regular)
+        TapVerdict(onClean: {}, onMissed: {})
+          .dynamicTypeSize(.accessibility3)
+      }
+      .padding(16)
+    }
+    assertSnapshot(
+      of: host(pairs),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 760, height: 520),
+        traits: .init(displayScale: 2)))
+  }
+
+  /// Sized to the component, so three gate states cost one small reference.
   func testGateDotsStates() {
     let dots = ZStack {
       RadialGradient.playerPaper

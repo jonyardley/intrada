@@ -1,10 +1,9 @@
 import SwiftUI
 
 /// Read-only gate progress, shown *between* reps only — the dots are derived
-/// from tap-verdicts, so mid-drill they would be a live score (`Drill Loop`,
-/// A2). Filled dots are `masteryFill` indigo, not teal: this is progress, and
-/// teal is reserved for the verdict itself. Distinct from `RepCounter`, the
-/// manual ± counter in the legacy player.
+/// from tap-verdicts, so mid-drill they would be a live score. Indigo, not
+/// teal: teal is reserved for the verdict itself. Distinct from `RepCounter`,
+/// the manual ± counter in the legacy player.
 struct GateDots: View {
   let filled: Int
   let target: Int
@@ -20,8 +19,12 @@ struct GateDots: View {
     HStack(spacing: 10) {
       HStack(spacing: scale.dotGap) {
         ForEach(0..<max(target, 0), id: \.self) { index in
+          // Keyed on this dot's own filled-ness: `clamped == index + 1` also
+          // flips the dot below it, popping two. The appear-pop lands one
+          // stagger after the verdict glyph, per the design's motion.
           dot(done: index < clamped)
-            .popOnChange(clamped == index + 1)
+            .popOnChange(index < clamped)
+            .popOnAppear(index == clamped - 1, delay: IntradaMotion.fadeUpStagger)
         }
       }
       Text(text)

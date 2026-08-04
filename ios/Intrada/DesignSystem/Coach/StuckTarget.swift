@@ -1,15 +1,12 @@
 import SwiftUI
 
-/// "I'm stuck" — the one large target on the drill screen, hittable without
-/// looking down. A surface, not a gradient: it must be findable, not
-/// attractive. It grows with Dynamic Type rather than staying fixed, because at
-/// the largest sizes the user is likelier to need it.
+/// "I'm stuck" — the one large target on the drill screen. A surface, not a
+/// gradient: it must be findable without looking down, not attractive.
 struct StuckTarget: View {
   enum Emphasis {
-    /// A2: the sole resident control, full-width at the shared 66pt height.
+    /// A2 — the sole resident control, at the loop's shared target height.
     case target
-    /// A3: still present, same place, demoted beneath a rule — the tap-verdict
-    /// is the primary ask between reps.
+    /// A3 — same place, demoted beneath a rule; the tap-verdict is the ask.
     case quiet
   }
 
@@ -21,20 +18,18 @@ struct StuckTarget: View {
   @ScaledMetric(relativeTo: .subheadline) private var typeScale: CGFloat = 1
 
   private var height: CGFloat {
-    let base = emphasis == .target ? scale.target : 46
-    // Cap the growth: past ~1.25× the row stops being a target and starts
-    // being the screen.
+    let base = emphasis == .target ? scale.target : scale.quietTarget
+    // Past ~1.25× the row stops being a target and starts being the screen.
     return base * min(max(typeScale, 1), 1.25)
   }
 
   var body: some View {
     Button(action: action) {
       Text(title)
-        .font(IntradaFont.ambient(emphasis == .target ? scale.targetLabel : 14).weight(.semibold))
-        .foregroundStyle(emphasis == .target ? IntradaColor.ink : IntradaColor.repMissedFg)
-        // On iPad it matches the Clean button's width rather than spanning the
-        // stand: a target the width of the screen is further from either hand,
-        // not nearer.
+        .font(IntradaFont.ambientStrong(emphasis == .target ? scale.targetLabel : scale.quietLabel))
+        .foregroundStyle(emphasis == .target ? IntradaColor.ink : IntradaColor.inkSecondary)
+        // Matches the Clean button on iPad: a stand-width target is further
+        // from either hand, not nearer.
         .frame(maxWidth: scale == .compact ? .infinity : 430)
         .frame(height: height)
         .background(background)
@@ -54,8 +49,7 @@ struct StuckTarget: View {
         RoundedRectangle(cornerRadius: scale.targetRadius, style: .continuous)
           .strokeBorder(IntradaColor.slotOutline, lineWidth: 1)
       }
-      // The 2pt seated edge from the mock — the target reads as a physical key
-      // rather than a floating card.
+      // The 2pt seated edge: reads as a key, not a floating card.
       .background(
         RoundedRectangle(cornerRadius: scale.targetRadius, style: .continuous)
           .fill(IntradaColor.divider)

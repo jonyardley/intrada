@@ -34,6 +34,12 @@ extension View {
   func popOnChange<V: Equatable>(_ value: V) -> some View {
     modifier(PopModifier(trigger: value))
   }
+
+  /// The same `pop`, fired once on insertion — the coach loop swaps whole phase
+  /// arms, so its verdict glyph is a *new* view and `onChange` never fires.
+  func popOnAppear(_ active: Bool = true, delay: Double = 0) -> some View {
+    modifier(PopOnAppearModifier(active: active, delay: delay))
+  }
 }
 
 struct FadeUpModifier: ViewModifier {
@@ -71,6 +77,25 @@ private struct PopModifier<V: Equatable>: ViewModifier {
         guard !reduceMotion, !motionDisabled, !UITestFlags.animationsDisabled else { return }
         scale = 0.82
         withAnimation(IntradaMotion.pop) { scale = 1 }
+      }
+  }
+}
+
+private struct PopOnAppearModifier: ViewModifier {
+  let active: Bool
+  let delay: Double
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.intradaMotionDisabled) private var motionDisabled
+  @State private var scale: CGFloat = 1
+
+  func body(content: Content) -> some View {
+    content
+      .scaleEffect(scale)
+      .onAppear {
+        guard active, !reduceMotion, !motionDisabled, !UITestFlags.animationsDisabled
+        else { return }
+        scale = 0.82
+        withAnimation(IntradaMotion.pop.delay(delay)) { scale = 1 }
       }
   }
 }

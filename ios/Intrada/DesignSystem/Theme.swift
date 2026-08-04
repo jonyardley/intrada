@@ -151,6 +151,11 @@ enum IntradaFont {
   static func ambient(_ size: CGFloat = 14) -> Font {
     .custom(Inter.medium, size: size, relativeTo: .subheadline)
   }
+  /// `ambient`'s emphasis weight — a real named instance, since `.weight()`
+  /// over the variable axis is synthetic.
+  static func ambientStrong(_ size: CGFloat = 14) -> Font {
+    .custom(Inter.semibold, size: size, relativeTo: .subheadline)
+  }
 
   static let body = Font.custom(Inter.regular, size: 14, relativeTo: .subheadline)
   static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)

@@ -1,15 +1,13 @@
 import SharedTypes
 import SwiftUI
 
-/// Where you are, never how you did (spec decision 15). Time elapsed, this
-/// block's ceiling and which block is running are always visible and carry no
-/// judgement — so it is made quiet by being *small and static*, not by being
-/// low-contrast. No ring or countdown: a filling track reads as a deadline.
+/// Where you are, never how you did (spec decision 15). Quiet by being small
+/// and static, not low-contrast; no ring or countdown, since a filling track
+/// reads as a deadline.
 struct OrientationStrip: View {
   let elapsedSeconds: Int
   var ceilingSeconds: Int?
-  /// One entry per block in today's session, in order — the segment strip is
-  /// tinted by each block's kind, so it doubles as the shape of the session.
+  /// One entry per block in today's session, in order.
   let blockKinds: [ItemKind]
   /// Zero-based index of the running block.
   let blockIndex: Int
@@ -35,8 +33,8 @@ struct OrientationStrip: View {
           .accessibilityLabel("Stop the drill")
         }
         Spacer(minLength: 0)
-        Text("BLOCK \(blockIndex + 1) OF \(blockCount)")
-          .font(IntradaFont.ambient(scale.eyebrow).weight(.semibold))
+        Text(blockCount > 0 ? "BLOCK \(blockIndex + 1) OF \(blockCount)" : "")
+          .font(IntradaFont.ambientStrong(scale.eyebrow))
           .tracking(1.5)
           .foregroundStyle(IntradaColor.inkSecondary)
           .lineLimit(1)
@@ -44,25 +42,25 @@ struct OrientationStrip: View {
         Spacer(minLength: 0)
         clock
       }
-      // Orientation grows with type, but only so far: past this it wraps, and a
-      // wrapped clock reads as an alarm rather than the quiet fact it is.
+      // Past this it wraps, and a wrapped clock reads as an alarm.
       .dynamicTypeSize(...(.accessibility1))
       SegmentedProgress(
         types: blockKinds, filled: min(blockIndex + 1, blockCount),
-        height: scale == .compact ? 4 : 5)
+        height: scale == .compact ? 4 : 5
+      )
+      // The eyebrow already says it, and "Item" is the wrong noun for a block.
+      .accessibilityHidden(true)
     }
     .accessibilityElement(children: .contain)
   }
 
   private var clock: some View {
     HStack(spacing: 0) {
-      Text(SessionClock.clockDisplay(elapsedSeconds))
-        .fontWeight(.semibold)
+      Text(Self.duration(elapsedSeconds))
+        .font(IntradaFont.ambientStrong(scale.clock))
       if let ceilingSeconds {
-        // The ceiling sits back on weight, not contrast: `inkFaint` (2.9:1) is
-        // banned everywhere in the loop, which is read at arm's length in a dim
-        // practice room. Unpadded too — it's a duration ("6:00"), and "06:00"
-        // beside a running "12:04" reads as a second clock.
+        // Back on weight, not contrast: `inkFaint` (2.9:1) is banned in the
+        // loop, read at arm's length in a dim room.
         Text(" / \(Self.duration(ceilingSeconds))")
       }
     }
@@ -80,7 +78,7 @@ struct OrientationStrip: View {
   }
 
   private var accessibilityClock: String {
-    let elapsed = "\(SessionClock.clockDisplay(elapsedSeconds)) elapsed"
+    let elapsed = "\(Self.duration(elapsedSeconds)) elapsed"
     guard let ceilingSeconds else { return elapsed }
     return "\(elapsed) of \(Self.duration(ceilingSeconds))"
   }

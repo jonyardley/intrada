@@ -4,15 +4,22 @@ import SwiftUI
 /// screens. Deliberately plain — no ScreenScaffold/design tokens, since this
 /// is throwaway debug tooling, not a shipped screen.
 struct MidiSpikeScreen: View {
+  // The file itself builds in Release (only its call site in RootView is
+  // DEBUG-gated), so anything reaching into DEBUG-only code has to be guarded
+  // here too — the per-PR CI job builds Debug and won't catch it.
   private enum Mode: String, CaseIterable, Identifiable {
     case capture = "Capture"
     case drill = "Gate Drill"
-    case loop = "Drill Loop"
+    #if DEBUG
+      case loop = "Drill Loop"
+    #endif
     var id: String { rawValue }
   }
 
   @State private var mode: Mode = .capture
-  @State private var runningLoop = false
+  #if DEBUG
+    @State private var runningLoop = false
+  #endif
 
   var body: some View {
     VStack(spacing: 0) {
@@ -29,22 +36,26 @@ struct MidiSpikeScreen: View {
         MidiDebugScreen()
       case .drill:
         GateDrillScreen()
-      case .loop:
-        VStack(spacing: 12) {
-          Text("A2 / A3 full-screen, driven by the real click.")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-          Button("Run the drill loop") { runningLoop = true }
-            .buttonStyle(.borderedProminent)
-          Spacer()
-        }
-        .padding()
+      #if DEBUG
+        case .loop:
+          VStack(spacing: 12) {
+            Text("A2 / A3 full-screen, driven by the real click.")
+              .font(.footnote)
+              .foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+            Button("Run the drill loop") { runningLoop = true }
+              .buttonStyle(.borderedProminent)
+            Spacer()
+          }
+          .padding()
+      #endif
       }
     }
-    .fullScreenCover(isPresented: $runningLoop) {
-      DrillLoopHarness(onClose: { runningLoop = false })
-    }
+    #if DEBUG
+      .fullScreenCover(isPresented: $runningLoop) {
+        DrillLoopHarness(onClose: { runningLoop = false })
+      }
+    #endif
   }
 }
 
