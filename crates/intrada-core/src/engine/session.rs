@@ -1,11 +1,11 @@
 //! The coach session state machine. `specs/intrada-coach-engine.md` §4 carries
 //! the transition table and records where this scoping of it departs from it.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::gate::{EvidenceSource, GateProgress, Verdict};
-use super::plan::{BlockSpec, ParameterLevel, Plan};
+use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
@@ -67,9 +67,52 @@ pub enum CoachEvent {
     CloseSession {
         now: DateTime<Utc>,
     },
+    /// The crash-recovery blob, handed back by the shell at launch (#1181).
+    /// The engine re-anchors its clock: the outage is never practice time, and
+    /// the minutes already spent are not refunded either.
+    RecoverSession {
+        session: EngineSession,
+        now: DateTime<Utc>,
+    },
+}
+
+/// What one applied event leaves for the store. The session machine decides
+/// what is worth writing; `app.rs` turns this into effects (spec §4).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct CoachWrites {
+    /// Records to append. Append-only: a record only leaves once, as it closes,
+    /// so a crash costs at most the block in flight.
+    pub blocks: Vec<BlockRecord>,
+    pub wanders: Vec<WanderRecord>,
+    pub snapshot: SnapshotAction,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SnapshotAction {
+    #[default]
+    Unchanged,
+    /// Rewrite the crash-recovery blob: something a recovered session needs
+    /// changed.
+    Save,
+    /// The session is over, so the blob would recover nothing.
+    Clear,
+}
+
+/// What a recovered session would have to get right. Beats and ticks move the
+/// clock and the beat cursor, which recovery restarts anyway, so they must not
+/// cost a write per second.
+#[derive(PartialEq)]
+struct RecoveryKey {
+    state: std::mem::Discriminant<SessionState>,
+    block: Option<(String, usize, u16, u16)>,
+    closed_blocks: usize,
+    wanders: usize,
+    keep_as_drill: Option<Option<bool>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Phase {
     CountIn {
         beats_remaining: u8,
@@ -88,6 +131,8 @@ pub enum Phase {
 /// The escalation ladder (`content/gates.toml` `[escalation]`). It acts rather
 /// than narrates, so firing a rung spends no interruption budget (spec §7).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Rung {
     TempoDown,
     ShrinkScope,
@@ -96,6 +141,8 @@ pub enum Rung {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Exit {
     GatePassed,
     CeilingHit,
@@ -108,6 +155,7 @@ pub enum Exit {
 /// unused until the scoring path returns; a pre-play prediction against a
 /// tap-verdict was considered and cut (§3).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct AttemptSummary {
     pub at: DateTime<Utc>,
     pub verdict: Verdict,
@@ -118,12 +166,15 @@ pub struct AttemptSummary {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BlockRecord {
     pub id: String,
     pub node: String,
     pub drill: String,
     pub gate: String,
     pub level: ParameterLevel,
+    pub circle: Circle,
+    pub mode: Mode,
     pub started_at: DateTime<Utc>,
     pub ended_at: DateTime<Utc>,
     pub attempts: Vec<AttemptSummary>,
@@ -138,6 +189,7 @@ pub struct BlockRecord {
 /// A wander has no node, drill, gate or level, so it gets its own type rather
 /// than turning every id on `BlockRecord` into an `Option` (spec §4).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct WanderRecord {
     pub id: String,
     pub started_at: DateTime<Utc>,
@@ -150,6 +202,7 @@ pub struct WanderRecord {
 /// Thresholds the engine must not hard-code. `content/gates.toml` becomes their
 /// source when its parser lands (§8); these are the values in the file today.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EngineConfig {
     pub consecutive_fail_trigger: u8,
     pub ladder: Vec<Rung>,
@@ -176,6 +229,7 @@ impl Default for EngineConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BlockState {
     pub id: String,
     pub spec_index: usize,
@@ -263,6 +317,8 @@ impl BlockState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum SessionState {
     #[default]
     Idle,
@@ -286,6 +342,7 @@ pub enum SessionState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EngineSession {
     pub state: SessionState,
     pub config: EngineConfig,
@@ -314,7 +371,54 @@ impl EngineSession {
         }
     }
 
-    pub fn apply(&mut self, event: &CoachEvent) {
+    fn recovery_key(&self) -> RecoveryKey {
+        RecoveryKey {
+            state: std::mem::discriminant(&self.state),
+            block: self.block().map(|block| {
+                (
+                    block.id.clone(),
+                    block.attempts.len(),
+                    block.level.tempo_bpm,
+                    block.bars,
+                )
+            }),
+            closed_blocks: self.closed_blocks.len(),
+            wanders: self.wanders.len(),
+            keep_as_drill: self.wanders.last().map(|wander| wander.keep_as_drill),
+        }
+    }
+
+    pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        let before = self.recovery_key();
+        let was_closing = matches!(self.state, SessionState::Closing);
+        let blocks_written = self.closed_blocks.len();
+        let wanders_written = self.wanders.len();
+
+        self.handle(event);
+
+        let mut writes = CoachWrites {
+            blocks: self.closed_blocks[blocks_written..].to_vec(),
+            wanders: self.wanders[wanders_written..].to_vec(),
+            snapshot: if matches!(self.state, SessionState::Closing) {
+                if was_closing {
+                    SnapshotAction::Unchanged
+                } else {
+                    SnapshotAction::Clear
+                }
+            } else if self.recovery_key() == before {
+                SnapshotAction::Unchanged
+            } else {
+                SnapshotAction::Save
+            },
+        };
+        // The keep prompt answers a row the store already holds.
+        if matches!(event, CoachEvent::KeepWanderAsDrill { .. }) {
+            writes.wanders.extend(self.wanders.last().cloned());
+        }
+        writes
+    }
+
+    fn handle(&mut self, event: &CoachEvent) {
         match event {
             CoachEvent::StartDrillLoop { now } => self.start(Plan::seed_drill_loop(), *now),
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
@@ -332,7 +436,39 @@ impl EngineSession {
                 }
             }
             CoachEvent::CloseSession { now } => self.close_session(*now),
+            CoachEvent::RecoverSession { session, now } => self.recover(session.clone(), *now),
         }
+    }
+
+    /// The clock stopped when the app died. A running block keeps the time it
+    /// had already spent against its ceiling and comes back at a count-in; a
+    /// wander banks none of the outage, because nothing knows what happened
+    /// while the app was gone.
+    fn recover(&mut self, mut session: EngineSession, now: DateTime<Utc>) {
+        match &mut session.state {
+            SessionState::Running { block, .. } => {
+                let spent = (block.now - block.started_at).num_milliseconds().max(0);
+                block.started_at = now - TimeDelta::milliseconds(spent);
+                block.now = now;
+                block.beat_index = 0;
+                block.last_verdict = None;
+                block.rep_seq = block.rep_seq.saturating_add(1);
+                if block.gate_progress.satisfied() && block.gate_opened_at_attempt.is_some() {
+                    block.gate_open_since = Some(now);
+                    block.phase = Phase::GateOpen;
+                } else {
+                    block.gate_open_since = None;
+                    block.phase = Phase::CountIn {
+                        beats_remaining: block.count_in_beats,
+                    };
+                }
+            }
+            SessionState::OffPiste { started_at } | SessionState::Unmonitored { started_at } => {
+                *started_at = now;
+            }
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing => {}
+        }
+        *self = session;
     }
 
     fn start(&mut self, plan: Plan, now: DateTime<Utc>) {
@@ -611,6 +747,8 @@ impl EngineSession {
             drill: spec.drill.clone(),
             gate: spec.gate.id.clone(),
             level: block.level,
+            circle: spec.circle,
+            mode: spec.mode,
             started_at: block.started_at,
             ended_at: block.now,
             attempts: block.attempts.clone(),
@@ -1126,6 +1264,169 @@ mod tests {
         assert_eq!(record.reps_after_gate, 0);
         assert!(record.active_ms > 0);
         assert!(!record.id.is_empty(), "client-minted ulid (invariant 3)");
+    }
+
+    #[test]
+    fn the_record_carries_the_fluency_frame_tags_of_what_was_practised() {
+        let mut session = listening();
+        session.apply(&CoachEvent::LeaveSession { now: at(20) });
+
+        let record = &session.closed_blocks[0];
+        assert_eq!(
+            (record.circle, record.mode),
+            (Circle::Hands, Mode::Keys),
+            "rootless voicings are hands-circle work at the keys (content/nodes.md)"
+        );
+    }
+
+    // ── What leaves for the store (spec §4's persistence paragraph, #1181) ──
+
+    #[test]
+    fn a_closed_block_is_handed_over_for_persistence() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        rep(&mut session, true, 27);
+
+        let writes = session.apply(&CoachEvent::Tick { now: at(30) });
+        assert_eq!(writes.blocks.len(), 1, "the record leaves as it closes");
+        assert_eq!(writes.blocks[0].exit, Exit::GatePassed);
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Clear,
+            "the session is over, so the crash-recovery blob would recover nothing"
+        );
+    }
+
+    #[test]
+    fn a_tap_is_worth_a_snapshot_and_a_beat_is_not() {
+        let mut session = listening();
+        play_to_the_end(&mut session);
+
+        let writes = session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(9),
+        });
+        assert_eq!(writes.snapshot, SnapshotAction::Save);
+        assert!(writes.blocks.is_empty(), "the block is still running");
+
+        assert_eq!(
+            session.apply(&CoachEvent::Beat { beat_index: 0 }).snapshot,
+            SnapshotAction::Unchanged,
+            "the click reports several beats a second; recovery restarts the rep anyway"
+        );
+        assert_eq!(
+            session.apply(&CoachEvent::Tick { now: at(10) }).snapshot,
+            SnapshotAction::Unchanged
+        );
+    }
+
+    #[test]
+    fn the_ladder_acting_is_worth_a_snapshot() {
+        let mut session = listening();
+        assert_eq!(
+            session.apply(&CoachEvent::Stuck { now: at(5) }).snapshot,
+            SnapshotAction::Save,
+            "a recovered session must come back at the tempo the ladder dropped it to"
+        );
+    }
+
+    #[test]
+    fn recovery_keeps_the_evidence_and_the_time_already_spent() {
+        let mut crashed = listening();
+        rep(&mut crashed, true, 9);
+        rep(&mut crashed, false, 18);
+        let spent = crashed.block().unwrap().elapsed_seconds();
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+
+        let block = restored.block().expect("the block came back");
+        assert_eq!(block.attempts.len(), 2, "the taps already banked survive");
+        assert_eq!(
+            block.elapsed_seconds(),
+            spent,
+            "the outage is not practice time, and the minutes already spent are not refunded"
+        );
+        assert_eq!(
+            restored.phase(),
+            Some(&Phase::CountIn { beats_remaining: 4 }),
+            "the hands come back to a count-in, not mid-phrase"
+        );
+    }
+
+    #[test]
+    fn a_gate_that_opened_before_the_crash_still_closes_its_block() {
+        let mut crashed = listening();
+        rep(&mut crashed, true, 9);
+        rep(&mut crashed, true, 18);
+        rep(&mut crashed, true, 27);
+        assert_eq!(crashed.phase(), Some(&Phase::GateOpen));
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+        assert_eq!(restored.phase(), Some(&Phase::GateOpen));
+
+        restored.apply(&CoachEvent::Tick { now: at(3603) });
+        assert_eq!(
+            restored.closed_blocks[0].exit,
+            Exit::GatePassed,
+            "a pass earned before the crash is still a pass"
+        );
+    }
+
+    #[test]
+    fn a_recovered_wander_never_counts_the_outage_as_practice() {
+        let mut crashed = EngineSession::default();
+        crashed.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        crashed.apply(&CoachEvent::GoOffPiste { now: at(30) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(4000),
+        });
+        restored.apply(&CoachEvent::CloseSession { now: at(4100) });
+
+        let wander = &restored.wanders[0];
+        assert_eq!(
+            (wander.ended_at - wander.started_at).num_seconds(),
+            100,
+            "the app cannot know what happened while it was dead, so it banks none of it"
+        );
+    }
+
+    #[test]
+    fn a_closed_wander_is_handed_over_for_persistence() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.apply(&CoachEvent::GoOffPiste { now: at(0) });
+
+        let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
+        assert_eq!(writes.wanders.len(), 1);
+        assert_eq!(writes.snapshot, SnapshotAction::Clear);
+    }
+
+    #[test]
+    fn answering_the_keep_prompt_rewrites_the_record() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.apply(&CoachEvent::GoOffPiste { now: at(0) });
+        session.apply(&CoachEvent::CloseSession { now: at(600) });
+
+        let writes = session.apply(&CoachEvent::KeepWanderAsDrill { keep: true });
+        assert_eq!(
+            writes.wanders.len(),
+            1,
+            "the answer changes a row already written, so it goes back to the store"
+        );
+        assert_eq!(writes.wanders[0].keep_as_drill, Some(true));
     }
 
     // ── The peer states (spec §4: peers of Running, not sub-states) ──

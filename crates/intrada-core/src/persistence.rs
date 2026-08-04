@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::app::{Effect, Event};
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
+use crate::engine::{BlockRecord, WanderRecord};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
@@ -29,6 +30,15 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
+    /// Append coach evidence as it closes (spec §4, #1181). One transaction:
+    /// blocks, wanders and their attempts land together or not at all, so the
+    /// evidence is never half-written. `updated_at` is core-stamped for the
+    /// whole batch — the shell formats no timestamp of its own.
+    SaveCoachRecords {
+        blocks: Vec<BlockRecord>,
+        wanders: Vec<WanderRecord>,
+        updated_at: DateTime<Utc>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -62,6 +72,19 @@ pub fn save_items(items: Vec<Item>) -> Command<Effect, Event> {
 pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::DeleteItem { id, deleted_at })
         .then_send(Event::StoreWritten)
+}
+
+pub fn save_coach_records(
+    blocks: Vec<BlockRecord>,
+    wanders: Vec<WanderRecord>,
+    updated_at: DateTime<Utc>,
+) -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::SaveCoachRecords {
+        blocks,
+        wanders,
+        updated_at,
+    })
+    .then_send(Event::CoachStoreWritten)
 }
 
 pub fn load_sessions() -> Command<Effect, Event> {
@@ -554,6 +577,251 @@ mod tests {
         assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
             if req.operation == PersistenceOperation::LoadSessions)));
         assert!(!has_http(&mut cmd), "local-first launch makes no HTTP");
+    }
+
+    // ── Coach evidence (#1181) ──────────────────────────────────────────
+
+    mod coach {
+        use super::*;
+        use crate::app::{AppEffect, Intrada};
+        use crate::engine::{BlockRecord, CoachEvent};
+        use chrono::TimeZone;
+
+        fn at(second: i64) -> DateTime<Utc> {
+            Utc.timestamp_opt(1_754_300_000 + second, 0).unwrap()
+        }
+
+        fn local_first() -> (Intrada, Model) {
+            let mut model = Model::test_default();
+            model.local_first = true;
+            (Intrada, model)
+        }
+
+        fn send(app: &Intrada, model: &mut Model, event: CoachEvent) -> Command<Effect, Event> {
+            app.update(Event::Coach(event), model)
+        }
+
+        /// One whole repetition through the app, so the wiring is what is under
+        /// test rather than the state machine on its own.
+        fn rep(app: &Intrada, model: &mut Model, clean: bool, second: i64) {
+            let body = model
+                .coach
+                .session
+                .block()
+                .expect("a running block")
+                .body_beats();
+            let _ = send(app, model, CoachEvent::Beat { beat_index: body });
+            let _ = send(
+                app,
+                model,
+                CoachEvent::Tap {
+                    clean,
+                    now: at(second),
+                },
+            );
+            let _ = send(app, model, CoachEvent::Beat { beat_index: 0 });
+        }
+
+        fn coach_records(cmd: &mut Command<Effect, Event>) -> Option<Vec<BlockRecord>> {
+            cmd.effects().find_map(|e| match e {
+                Effect::Persistence(req) => match req.operation {
+                    PersistenceOperation::SaveCoachRecords { blocks, .. } => Some(blocks),
+                    _ => None,
+                },
+                _ => None,
+            })
+        }
+
+        fn app_effects(cmd: &mut Command<Effect, Event>) -> Vec<AppEffect> {
+            cmd.effects()
+                .filter_map(|e| match e {
+                    Effect::App(req) => Some(req.operation.clone()),
+                    _ => None,
+                })
+                .collect()
+        }
+
+        #[test]
+        fn a_closed_block_is_appended_to_the_store_without_touching_the_network() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            for second in [9, 18, 27] {
+                rep(&app, &mut model, true, second);
+            }
+
+            let mut cmd = send(&app, &mut model, CoachEvent::Tick { now: at(30) });
+            let blocks = coach_records(&mut cmd).expect("a SaveCoachRecords op");
+            assert_eq!(blocks.len(), 1);
+            assert_eq!(blocks[0].node, "rootless-a-b");
+            assert_eq!(blocks[0].attempts.len(), 3);
+            assert!(!has_http(&mut cmd), "evidence never goes over HTTP");
+        }
+
+        #[test]
+        fn a_tap_rewrites_the_crash_recovery_blob_and_a_beat_does_not() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let body = model.coach.session.block().unwrap().body_beats();
+            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+
+            let mut cmd = send(
+                &app,
+                &mut model,
+                CoachEvent::Tap {
+                    clean: true,
+                    now: at(9),
+                },
+            );
+            assert!(app_effects(&mut cmd)
+                .iter()
+                .any(|effect| matches!(effect, AppEffect::SaveCoachSessionInProgress(_))));
+
+            let mut cmd = send(&app, &mut model, CoachEvent::Beat { beat_index: 1 });
+            assert!(
+                app_effects(&mut cmd).is_empty(),
+                "the click reports several beats a second — no write per beat"
+            );
+        }
+
+        #[test]
+        fn the_saved_blob_is_the_session_as_it_stands() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let body = model.coach.session.block().unwrap().body_beats();
+            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            let mut cmd = send(
+                &app,
+                &mut model,
+                CoachEvent::Tap {
+                    clean: false,
+                    now: at(9),
+                },
+            );
+
+            let saved = app_effects(&mut cmd)
+                .into_iter()
+                .find_map(|effect| match effect {
+                    AppEffect::SaveCoachSessionInProgress(session) => Some(session),
+                    _ => None,
+                })
+                .expect("a snapshot effect");
+            assert_eq!(saved, model.coach.session);
+        }
+
+        #[test]
+        fn closing_the_session_clears_the_blob() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let mut cmd = send(&app, &mut model, CoachEvent::LeaveSession { now: at(20) });
+
+            // `effects()` drains, so read the write before the clear.
+            assert!(
+                coach_records(&mut cmd).is_some(),
+                "the block it ended is still written down first"
+            );
+            assert!(app_effects(&mut cmd)
+                .iter()
+                .any(|effect| matches!(effect, AppEffect::ClearCoachSessionInProgress)));
+        }
+
+        #[test]
+        fn a_failed_evidence_write_surfaces_rather_than_vanishing() {
+            let (app, mut model) = local_first();
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+            assert!(
+                model.last_error.is_some(),
+                "a failed local write is never a silent success (invariant 5)"
+            );
+            assert!(
+                !cmd.effects().any(|e| matches!(e, Effect::Http(_))),
+                "a local failure never falls back to the network"
+            );
+        }
+
+        #[test]
+        fn an_acked_evidence_write_says_nothing() {
+            let (app, mut model) = local_first();
+            let mut cmd = app.update(Event::CoachStoreWritten(PersistenceOutput::Ack), &mut model);
+            assert!(model.last_error.is_none());
+            assert!(!cmd.effects().any(|_| true));
+        }
+
+        #[test]
+        fn the_recovered_session_comes_back_through_the_bridge() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let body = model.coach.session.block().unwrap().body_beats();
+            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::Tap {
+                    clean: true,
+                    now: at(9),
+                },
+            );
+            let crashed = model.coach.session.clone();
+
+            let (app, mut fresh) = local_first();
+            let _ = send(
+                &app,
+                &mut fresh,
+                CoachEvent::RecoverSession {
+                    session: crashed,
+                    now: at(3600),
+                },
+            );
+            let block = fresh.coach.session.block().expect("the block came back");
+            assert_eq!(block.attempts.len(), 1);
+            assert_eq!(block.gate_progress.filled(), 1);
+        }
+
+        // ── The #846 hazard: the new payloads on the real wire ──
+
+        #[test]
+        fn the_evidence_op_survives_the_ffi_wire() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            for second in [9, 18, 27] {
+                rep(&app, &mut model, true, second);
+            }
+            let mut cmd = send(&app, &mut model, CoachEvent::Tick { now: at(30) });
+            let blocks = coach_records(&mut cmd).expect("a SaveCoachRecords op");
+
+            crate::domain::types::assert_round_trips(PersistenceOperation::SaveCoachRecords {
+                blocks,
+                wanders: vec![],
+                updated_at: at(30),
+            });
+        }
+
+        #[test]
+        fn the_crash_recovery_blob_survives_the_ffi_wire() {
+            let (app, mut model) = local_first();
+            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let body = model.coach.session.block().unwrap().body_beats();
+            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::Tap {
+                    clean: true,
+                    now: at(9),
+                },
+            );
+
+            let session = model.coach.session.clone();
+            crate::domain::types::assert_round_trips(AppEffect::SaveCoachSessionInProgress(
+                session.clone(),
+            ));
+            crate::domain::types::assert_round_trips(Event::Coach(CoachEvent::RecoverSession {
+                session,
+                now: at(3600),
+            }));
+        }
     }
 
     #[test]

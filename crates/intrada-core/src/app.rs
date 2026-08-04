@@ -21,7 +21,7 @@ use crate::domain::session::{
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
-use crate::engine::CoachEvent;
+use crate::engine::{CoachEvent, EngineSession, SnapshotAction};
 use crate::http;
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
@@ -118,6 +118,10 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
+    /// Coach evidence write result. Nothing reads these rows back yet, so a
+    /// failure surfaces rather than reloading — the records stay in the session
+    /// until it closes, so the next write is a real retry (#1181).
+    CoachStoreWritten(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -146,6 +150,10 @@ pub enum AppEffect {
     /// Persist the chosen library sort order (small singleton — UserDefaults
     /// on iOS / localStorage on web). Fire-and-forget; output is `()`.
     SaveLibrarySort(LibrarySort),
+    /// Persist the in-progress coach session for crash recovery (#1181). A
+    /// small singleton beside `SaveSessionInProgress`, not relational data.
+    SaveCoachSessionInProgress(EngineSession),
+    ClearCoachSessionInProgress,
 }
 
 impl Operation for AppEffect {
@@ -243,12 +251,40 @@ impl Intrada {
                     model.surface_error("The click couldn't start, so the drill was stopped.");
                 }
                 let before = model.coach.view();
-                model.coach.apply(&coach_event);
-                if model.coach.view() == before && model.last_error.is_none() {
-                    Command::done()
-                } else {
-                    crux_core::render::render()
+                let writes = model.coach.apply(&coach_event);
+                let mut commands = Vec::new();
+                // Append-only rows, so `updated_at` is the instant the record
+                // closed on the engine's own clock — the shell never formats a
+                // timestamp of its own (the `saveSession` convention).
+                let recorded_at = writes
+                    .blocks
+                    .last()
+                    .map(|record| record.ended_at)
+                    .or_else(|| writes.wanders.last().map(|record| record.ended_at));
+                if let Some(recorded_at) = recorded_at {
+                    commands.push(persistence::save_coach_records(
+                        writes.blocks,
+                        writes.wanders,
+                        recorded_at,
+                    ));
                 }
+                match writes.snapshot {
+                    SnapshotAction::Save => commands.push(
+                        Command::notify_shell(AppEffect::SaveCoachSessionInProgress(
+                            model.coach.session.clone(),
+                        ))
+                        .into(),
+                    ),
+                    SnapshotAction::Clear => commands
+                        .push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into()),
+                    SnapshotAction::Unchanged => {}
+                }
+                // Render coalescing (engine spec §6) again: an event the machine
+                // ignored changes nothing, but a write it asked for still goes.
+                if model.coach.view() != before || model.last_error.is_some() {
+                    commands.push(crux_core::render::render());
+                }
+                Command::all(commands)
             }
 
             // ── Data loaded callbacks ────────────────────────────────
@@ -369,6 +405,17 @@ impl Intrada {
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     persistence::load_sessions()
+                }
+            },
+            Event::CoachStoreWritten(output) => match output {
+                PersistenceOutput::Ack
+                | PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_) => Command::done(),
+                // Nothing reads these rows back, so there is nothing to reload
+                // to. Surfacing it is what stops a lost block being silent.
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't save what you just practised.");
+                    crux_core::render::render()
                 }
             },
         }

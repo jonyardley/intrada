@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::gate::{Requirement, Verdict};
-use super::session::{CoachEvent, EngineSession, Phase, SessionState};
+use super::session::{CoachEvent, CoachWrites, EngineSession, Phase, SessionState};
 use crate::domain::item::ItemKind;
 
 /// Spec §1 gives this five fields; the mastery, judgement, ledger and content
@@ -20,8 +20,8 @@ pub struct CoachState {
 }
 
 impl CoachState {
-    pub fn apply(&mut self, event: &CoachEvent) {
-        self.session.apply(event);
+    pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        self.session.apply(event)
     }
 
     pub fn view(&self) -> CoachView {

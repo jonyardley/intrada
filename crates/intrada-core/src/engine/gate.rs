@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 /// One tap against a countable criterion (decision 18). The measured verdicts
 /// of the deferred scoring path land in the same shape.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Verdict {
     Clean,
     Missed,
@@ -18,6 +20,8 @@ pub enum Verdict {
 /// Where a verdict came from. Machine scoring returns as a higher-weight
 /// evidence class rather than a migration (spec §2, amended 4 Aug 2026).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum EvidenceSource {
     TapVerdict,
     Midi,
@@ -27,6 +31,8 @@ pub enum EvidenceSource {
 /// Who decides a pass. `TapVerdict` is v1's default: user-judged like
 /// `SelfConfirmed`, mastery-feeding like `Machine`.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Judge {
     Machine,
     TapVerdict,
@@ -35,6 +41,8 @@ pub enum Judge {
 
 /// The sparse-click ladder — gate levels *within* click-always (decision 2).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ClickLevel {
     EveryBeat,
     TwoAndFour,
@@ -54,6 +62,8 @@ impl ClickLevel {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum Requirement {
     CleanPasses { count: u8, consecutive: bool },
 }
@@ -61,6 +71,7 @@ pub enum Requirement {
 /// A gate's tunable half. `time_ceiling_s` is the block ceiling shown
 /// throughout (decision 15), not a pass condition.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct GateCriteria {
     pub id: String,
     pub node: String,
@@ -74,6 +85,7 @@ pub struct GateCriteria {
 /// How far through a gate this block has got. `consecutive` is carried so a
 /// miss knows whether to empty the dots or leave them.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct GateProgress {
     filled: u8,
     target: u8,
