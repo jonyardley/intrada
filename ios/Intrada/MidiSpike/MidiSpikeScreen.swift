@@ -7,10 +7,12 @@ struct MidiSpikeScreen: View {
   private enum Mode: String, CaseIterable, Identifiable {
     case capture = "Capture"
     case drill = "Gate Drill"
+    case loop = "Drill Loop"
     var id: String { rawValue }
   }
 
   @State private var mode: Mode = .capture
+  @State private var runningLoop = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -27,7 +29,21 @@ struct MidiSpikeScreen: View {
         MidiDebugScreen()
       case .drill:
         GateDrillScreen()
+      case .loop:
+        VStack(spacing: 12) {
+          Text("A2 / A3 full-screen, driven by the real click.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+          Button("Run the drill loop") { runningLoop = true }
+            .buttonStyle(.borderedProminent)
+          Spacer()
+        }
+        .padding()
       }
+    }
+    .fullScreenCover(isPresented: $runningLoop) {
+      DrillLoopHarness(onClose: { runningLoop = false })
     }
   }
 }

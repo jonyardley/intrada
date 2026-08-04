@@ -17,7 +17,9 @@ struct ExpectedBeat {
   }
 }
 
-enum RepVerdict: Equatable {
+/// The *machine* verdict from the deferred scoring path (decision 18) — not the
+/// shipped `RepVerdict` primitive, which draws the user's own tap-verdict.
+enum CapturedVerdict: Equatable {
   case pass
   case early
   case late
@@ -25,7 +27,7 @@ enum RepVerdict: Equatable {
 }
 
 struct RepResult: Equatable {
-  let verdict: RepVerdict
+  let verdict: CapturedVerdict
 
   var isPass: Bool {
     if case .pass = verdict { return true }
