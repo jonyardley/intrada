@@ -1,6 +1,6 @@
 # Intrada: The Practice Coach
 
-Design document, v5. Captured 18 July 2026; revised same day after critical
+Design document, v6. Captured 18 July 2026; revised same day after critical
 review. v2 (2 Aug 2026): the measurement-validity decisions, the feedback
 choreography, the fluency frame. v3 (3 Aug 2026): intent promoted to a
 first-class mechanism alongside the graph and the pipelines, after the
@@ -12,7 +12,11 @@ so fixation, time-orientation and the pull of grind are now designed rather
 than assumed, and the click-always constraint is scoped to what it actually
 governs. v5 (3 Aug 2026): mastery settled — measured-only, with self-report
 moved to a separate judgement track that closes targets but never unlocks
-prerequisites (decision 17), which unblocks the planner's engine.
+prerequisites (decision 17), which unblocks the planner's engine. v6 (4 Aug
+2026): machine listening deferred (decision 18) — the MIDI/audio scoring path
+moves from Phase 1 to a later evidence upgrade, v1 mastery evidence becomes
+the tap-verdict (decision 17 as amended), and the measures the loop runs on
+meanwhile are specified in "Measures without machine listening".
 
 ## Vision
 
@@ -21,6 +25,12 @@ A practice companion that acts as your teacher between lessons: it decides what 
 **One-line pitch:** sit down, press start, and practise like someone who knows exactly what they're doing is standing behind you, because functionally, one is.
 
 **The honest scope of the claim:** the app measures the prerequisites of good jazz (right notes, in time, at tempo, in every key) and coaches the user's own judgement of the rest (touch, feel, phrasing). For jazz, the unmeasurable half matters at least as much as the measurable half; the app is authoritative about the former and a structured prompt for the latter. Gates and marketing both reflect this.
+
+**Scoped by decision 18 (4 Aug 2026):** "listens while you play" is the
+destination, not the v1 mechanism. The coach ships first on the evidence model
+in "Measures without machine listening" below — the app keeps the click, the
+key, the calendar and quiet recordings, but interprets no sound; the scoring
+path returns later as an evidence upgrade.
 
 ## Decisions (recorded, overrulable)
 
@@ -40,7 +50,8 @@ A practice companion that acts as your teacher between lessons: it decides what 
 14. **Fixation is a first-class signal, met with permission rather than correction** (added 3 Aug 2026). The design managed failure thoroughly and the non-failure states not at all: the escalation ladder fires on three fails, the velocity trigger on three flat sessions, and neither notices a learner who is succeeding and cannot leave. Circling is detected from data the session already holds, surfaced at most once per session, and phrased as leave granted rather than a fault. Fixation usually arrives with shame attached; an app that adds to it gets closed.
 15. **Orientation is never withheld; only judgement is rationed** (added 3 Aug 2026). "Done-criteria, not minutes" is right pedagogically and hostile to poor time perception when the clock is hidden too. Scores and verdicts are rationed by the feedback choreography. *Where you are* — time elapsed, blocks remaining, this block's ceiling — is never rationed, because withholding it turns a gate into an open-ended demand. This resolves the apparent conflict with UX principle 1's ban on mid-session dashboards: a bound is not a dashboard.
 16. **Not everything is data** (added 3 Aug 2026). Off-piste is listened to and logged, which is right for diagnosis and wrong as the only option. A genuinely unmonitored mode exists — time logged, nothing scored, nothing inferred — because a practice tool that cannot be played without being measured has stopped being a practice room.
-17. **Measured mastery is the only mastery; the judgement track closes but never unlocks** (added 3 Aug 2026, settling the question of whether self-report counts toward mastery). Both halves of musicianship matter — execution, and everything MIDI cannot hear — but they must not share one number, because two numbers competing to answer "how good am I at this?" is how the model becomes incoherent and which one the planner obeys becomes arbitrary. So: **mastery is measured-only**, and self-report lives in a separate **judgement track** recording completion and trend, never a level, named differently everywhere so the word stays unambiguous. Its power is deliberately asymmetric — a self-confirmed verdict may *retire* a target ("the last A sings now": stop prescribing it, bring it back on a spaced interval) but may never *satisfy a prerequisite*. If your own verdict could unlock the next thing, generosity would be quietly incentivised and the gate would stop meaning anything. Two consequences: the judgement track needs **no statistical model** to begin with (completion plus a trend line is the entire requirement), and self-judgement is already in the loop early via predict-then-reveal — so what is deferred is the model, not the practice. How much weight the track eventually earns is answered with evidence by the Phase 0 divergence log, not guessed now.
+17. **Measured mastery is the only mastery; the judgement track closes but never unlocks** (added 3 Aug 2026, settling the question of whether self-report counts toward mastery). Both halves of musicianship matter — execution, and everything MIDI cannot hear — but they must not share one number, because two numbers competing to answer "how good am I at this?" is how the model becomes incoherent and which one the planner obeys becomes arbitrary. So: **mastery is measured-only**, and self-report lives in a separate **judgement track** recording completion and trend, never a level, named differently everywhere so the word stays unambiguous. Its power is deliberately asymmetric — a self-confirmed verdict may *retire* a target ("the last A sings now": stop prescribing it, bring it back on a spaced interval) but may never *satisfy a prerequisite*. If your own verdict could unlock the next thing, generosity would be quietly incentivised and the gate would stop meaning anything. Two consequences: the judgement track needs **no statistical model** to begin with (completion plus a trend line is the entire requirement), and self-judgement is already in the loop early via predict-then-reveal — so what is deferred is the model, not the practice. How much weight the track eventually earns is answered with evidence by the Phase 0 divergence log, not guessed now. **Amended 4 Aug 2026 (with decision 18):** "measured" means the objective record of an attempt, not necessarily a machine verdict. With machine listening deferred, the v1 evidence unit is the **tap-verdict** — pass/fail reported by the user against an objective, countable criterion ("3 clean at 120" is a tally, not an opinion) — feeding the same Beta update, with every evidence record tagged by source (`TapVerdict` now; `Midi`/`Audio` later at higher weight) so machine scoring arrives as an upgrade, never a migration. The asymmetry stands unchanged: the judgement track still may retire a target and may never satisfy a prerequisite — what moves is only who counts the passes, and counting is self-correcting in a single-player app (a generous pass buys a prescription that is too hard tomorrow, and the Beta counts come back down). Stated costs: nothing measures verdict honesty until machine listening returns, and the divergence log cannot run — the judgement-track weighting question defers with it rather than being answered by a weaker instrument.
+18. **Machine listening is deferred; the loop ships on tap-verdicts** (added 4 Aug 2026). The scoring path — MIDI capture, attempt segmentation, per-bar verdicts — needs machine-readable, note-level, per-key targets for everything scorable: content that must be sourced (licensing and authoring hours) or typed in (exactly the admin friction this design exists to remove). The segmentation spike sharpened the problem rather than solving it: an attempt is defined by what it was an attempt *at* ([`docs/segmentation-findings.md`](../docs/segmentation-findings.md), PR #1161), so the scorable universe is click-locked, pre-declared short phrases — and since an app optimises what it can see (challenge 2), a scoring-first build pulls the product toward a drill machine for that narrow slice. The retention-critical journeys (1, 5, 6, 7) need none of it. So the coaching loop ships first on the evidence model in "Measures without machine listening"; the spike's engine module stays merged and inert. **Re-entry trigger, recorded now:** when the loop retains and users ask "did I actually nail it?", MIDI returns — **play-to-input first** (play the lick in once, the capture becomes the target, `chart.rs` transposes it to twelve keys: thirty seconds of playing replaces the note-entry admin), verification second. Decisions 2, 6, 7 and 8 and challenge 1 stand as decisions but now govern that later path.
 
 ## The problem
 
@@ -357,7 +368,11 @@ Four layers, organised by *when*, not what:
   facts always say early/late/rushing, never bare "wrong" — actionable
   without thought. Gate progress ticks visibly (● ● ○, "2 of 3"). The next
   count-in starts automatically; hands never leave the keys, nothing to tap
-  between reps.
+  between reps. **Scoped 4 Aug 2026 (decision 18):** until the scoring path
+  returns, the tick *is* your tap — one per rep, count-in follows it — and
+  the one fact is a fact the app owns (gate progress, attempts against your
+  own norm), never a claim about notes it cannot hear. Per-note facts and the
+  nothing-to-tap rep loop return with machine listening.
 - **Layer 2 — block boundaries: the coaching voice, and it earns its slot.** The
   only place the app speaks in sentences, at the natural rest. Why this drill,
   the trend, and exactly one thing to listen for next. One thought, not a
@@ -409,7 +424,9 @@ practice feeling like practising, not being invigilated. It is also the
 a free measurement of how well this user's own verdict tracks the machine's, so
 self-judgement stays exercised and evidenced from early on even though the
 judgement track's model is deferred. What is postponed is the model, never the
-practice.
+practice. **Deferred with machine listening (4 Aug 2026):** there is no reveal
+without a machine verdict, so the fade schedule and the calibration instrument
+both wait for the scoring path; the tap-verdict loop has nothing to fade to.
 
 All thresholds here — the fail-count trigger, the fade-out schedule, the
 verdict cadence — are gate-criteria data, not code, calibrated against the
@@ -422,6 +439,100 @@ Phase 0 logs.
 - "End early" banks what was done and keeps the streak. A shortened session recorded beats an abandoned one; abandoning must never be what the app teaches.
 - Off-piste mode: wandering is honoured, still listened to and logged, feeding diagnosis without a plan. End-of-wander prompt: "keep this as a drill?" Some wanders are the graph revealing a gap.
 - Unmonitored play, one level below off-piste (decision 16): time logged, nothing scored, nothing inferred, no end-of-wander prompt. The distinction is consent — off-piste is "no plan, still listening"; this is "not today". A tool that can only be played while being measured is not a practice room, and on the bad day the difference decides whether the lid opens at all.
+
+## Measures without machine listening (added 4 Aug 2026, decision 18)
+
+What the loop measures, and says, while the scoring path is deferred. Two
+insights make this work without a microphone's judgement:
+
+**The parameter axes are machine-facts even when the verdict is human.** The
+app sets the click and prescribes the key, scope and schedule, so "passed at
+96 in D♭, hands together" contains exactly one subjective bit — the pass.
+Getting better *is* the levels climbing, and the levels are objective.
+
+**Measure what survived, not what happened today.** Motor consolidation makes
+in-session judgement lie in both directions (research foundation §8; Duke,
+Simmons & Cash 2009: next-day retention, not in-session polish, separates
+effective practisers). The headline instrument is therefore the **cold test**:
+the first rep of the day on returning material, flagged as such, scheduled by
+the app — no questions first, count-in, play, one tap. A pass after a gap is
+the strongest evidence available without listening, and it drops into the same
+Beta update with a higher-information tag.
+
+### The evidence tiers
+
+| Tier | What | Feeds |
+|---|---|---|
+| **Machine-fact** | Tempo at pass, keys covered, scope, intervals survived, time-by-circle, rep counts | Mastery parameters, circling check, tally |
+| **Tap-verdict** | Pass/fail on a countable criterion; attempts-to-pass; cold-test result; where-it-stopped (a tap on a bar map, when asked) | Mastery (decision 17 as amended); circling check |
+| **Judgement** | One-tap feel rating; voice/text reflections; opaque-target retirement | Judgement track only — trends, retirement, never unlocks |
+| **Completion** | Off-piano queue items: did it or didn't | Streak-equivalent, off-piano tally |
+
+Every activity type declares its position on the countable→judged slider via
+its gate criteria: technique and phrase work are pure tap-verdict; repertoire
+gates at *section* level (no note-level target ever needed — "bridge, from
+memory, cold" is a tap-verdict with three machine-fact parameters); deploy
+gates and opaque targets are judgement by design (decisions 3 and 13);
+listening and analysis are completion-only. The cold test generalises across
+all of them. One boundary note: ear training, if built, is fully
+machine-scorable *without* listening (the app plays the question, the answer
+is a screen tap) — "no machine verdicts" is a v1 consequence of deferring the
+input path, not a dogma.
+
+### The measurement budget
+
+The interruption budget's sibling: every rating tap is admin friction, so asks
+are capped — **one tap per rep** (the verdict; auto count-in follows it), **at
+most one feel rating per block**, reflections always optional, and the budget
+*shrinks* on the bad day (journey 6). A pre-play prediction was considered and
+cut: without a machine verdict it compares one self-report with another, and it
+puts a question between the player and the keys at the moment friction hurts
+most. The per-rep tap is a real ergonomic cost against "hands stay on the keys"
+(UX principle 3) — a big single target mitigates now; voice or pedal input is
+the designed-toward win.
+
+### The recording archive
+
+No MIDI does not mean no microphone. Gated blocks quietly keep short audio
+(opt-in, on-device, never interpreted, never a scoring input) and surface it
+*rarely* — at journey-10 moments, as an A/B pair weeks apart. The user's ears
+are the assessor; the app supplies the time machine. This attacks the
+consolidation-invisibility problem directly: progress you cannot feel, you can
+hear. Capture is silent because nobody does listening-back homework; playback
+is offered, not assigned.
+
+### Voice in, both paths always
+
+Text moments (the lesson list, reflections, today's steer, opaque targets)
+happen around playing, so speech is first-class: a mic button in our UI via
+the system Speech framework (on-device recognition — keyboard dictation
+requires field focus, which defeats music-stand ergonomics), with keyboard
+entry always available. Speech recognisers mangle music vocabulary; the LLM
+intent-parsing edge (decision 12) is the normaliser — dictation and intent
+interpretation are one feature seen twice. Reflections keep the audio and
+transcribe opportunistically, so a bad transcription loses nothing.
+Engineering note: the recording archive and the dictation mic share one
+`AVAudioSession`; design the arbitration, don't discover it.
+
+### AI stays at the edges
+
+Restating decision 12 for the measures: the LLM may parse language in (targets,
+reflections) and narrate numbers out (the weekly thread, over app-computed
+figures only, degrading to templated copy offline per the offline-first
+invariants). It never produces a number, a verdict, or a plan. Trend detection
+is arithmetic, not inference.
+
+### Deliberately not measured
+
+- **Minutes as a headline.** Quantity explains ~a quarter of outcome variance
+  (Macnamara); time appears in small print, never celebrated.
+- **Honesty.** No lie detector exists here; the blind spot is accepted,
+  recorded, and is the door machine listening re-enters through.
+- **Tempo as a target.** Gates say *clean at* X, cold tests confirm it stuck,
+  and the feel track can veto the number — "hit 96, felt terrible" must be a
+  representable state (the Goodhart guard).
+- **Anything mid-play.** Unchanged from the choreography: the click is the
+  only voice while the lid is up.
 
 ## Learning science (the optimisation levers)
 
@@ -448,6 +559,10 @@ Streak mechanics, defanged: any engagement counts (a listening block, five minut
 
 No model training required. No AI engineering required. Orchestration and pedagogy are the work.
 
+> **Layer status (4 Aug 2026, decision 18):** the first two rows — MIDI
+> analysis and audio transcription — are the deferred scoring path. The
+> coaching voice and the planner rows are unchanged and carry v1.
+
 | Layer | Where | What |
 |---|---|---|
 | MIDI analysis | On-device, Crux core (Rust) | Deterministic: wrong notes vs target, timing, swing ratio, tempo drift, gate detection. No AI. ~60% of the "listening teacher". |
@@ -469,7 +584,7 @@ Cost: a few LLM calls per session is pence per user per month.
 
 ## Design challenges and mitigations
 
-1. **Attempt segmentation and time alignment (the hardest technical problem).** "Late into bar 3" requires a shared clock and knowing which notes constituted the attempt: count-in handling, restart detection, separating noodling from attempts, mid-attempt collapses. This, not MIDI capture, is the real Phase 1 risk, and it is why click-always is a recorded decision. Mitigation: a named spike before any scoring UI is built.
+1. **Attempt segmentation and time alignment (the hardest technical problem).** "Late into bar 3" requires a shared clock and knowing which notes constituted the attempt: count-in handling, restart detection, separating noodling from attempts, mid-attempt collapses. This, not MIDI capture, is the real Phase 1 risk, and it is why click-always is a recorded decision. Mitigation: a named spike before any scoring UI is built. *(Spike complete, 4 Aug 2026 — findings in [`docs/segmentation-findings.md`](../docs/segmentation-findings.md); the challenge now belongs to the deferred scoring path, decision 18.)*
 2. **Pedagogical authority without a teacher's judgement.** MIDI hears notes and milliseconds, not touch, feel, or phrasing, and for jazz the unmeasurable half matters at least as much. Risk: gating on the measurable trains mechanical playing, while the app hands the more important half back to the user who was the unreliable judge to begin with. Mitigation: the measured-prerequisites framing throughout; gates check the measurable, the voice structures self-assessment for the rest ("did that sound like the record? Rate the feel"). Self-report is a legitimate signal — with a deliberately asymmetric power (decision 17): it may close a target but never unlock a prerequisite, so the half the app cannot hear still gets practised, tracked and trended without the gates quietly becoming self-graded. What the framing does *not* fix is **proportion** (added 3 Aug 2026): the goal is confident improvising, the deploy gate that actually tests it is self-confirmed by decision 3, and everything rigorously scored is a prerequisite. An app optimises what it can see, so if nine-tenths of scored effort is mechanics, its gravity pulls there regardless of the stated destination. The time-by-circle tally is the cheap instrument that makes the imbalance visible, which is why it moves forward to Phase 2 rather than waiting for Phase 4 analytics.
 3. **The content burden.** Nodes x drills x criteria x method packs x cues x micro-lessons is a textbook's worth of authored material, validated against one learner. "The moat" is also a euphemism for hundreds of authoring hours. Mitigation: the minimal-content decision (5 nodes, 2 packs, 1 phrase for v1); author breadth only after the loop is proven — and let the unmatched-target queue (decision 13) choose the authoring order, so content follows demonstrated demand instead of filling in the taxonomy. One known hole jumps that queue on merit: **rhythm has no node.** It appears only as a modifier inside other things — "rhythmic constraints", "rhythmic displacement" — which is a strange omission for a design whose foundational claim is that time is the foundation. Time and feel are measured thoroughly and taught nowhere. A subdivision / displacement / rhythmic-vocabulary family is first in the authoring queue, ahead of a fifth voicing variant.
 4. **Done-criteria that don't lie.** Too strict: grind and quit. Too loose: mastery is fiction. Mitigation: criteria as tunable data, failure-to-pass rates instrumented from day one, permanent calibration expected.
@@ -493,11 +608,11 @@ Pattern: almost none of these are engineering problems. They are judgement encod
 
 Plus: write the failure stories and desired app responses; note what the app should have done on the inevitable bad day; write the placement session as a thought experiment and check the criteria aren't jon-shaped. And one cheap, high-value test of the intent mechanism: take a real lesson's worth of targets, resolve it by hand into a week of blocks, and record which items matched a node, which stayed opaque (decision 13), and what the structural gap read produced. If that resolution is hard to do on paper, it will not be easier in Rust.
 
-**Phase 1: the listening gate (3-4 weeks).** Opens with the named spike: attempt segmentation and click alignment (count-in, restart detection, noodling vs attempts, collapse handling) proven against real playing before any scoring UI exists. The same capture harness measures BLE-MIDI timestamp fidelity on the real piano (sender-side timestamps vs arrival times, USB as ground truth) — one afternoon that decides how much Bluetooth scoring can honestly claim (decision 7). Prior art to read before building segmentation: the Rach3 rehearsal-MIDI dataset tooling (ISMIR 2025). Then: CoreMIDI capture into the Crux core; deterministic analysis; one screen (drill, live scoring, gate progress, and the ambient elapsed/ceiling per decision 15). The session state machine records what the circling check will need from the start — reps after the gate opened, attempts-to-pass, time per node — because these are cheap to capture now and impossible to reconstruct later. First drill type: lick transposition (target exactly known, scoring unambiguous, exercises the Phrase model, user-zero motivation built in). Shells second, proving generalisation. Alongside: an honest hour surveying current competitors (Yousician-class products have quietly added more adaptivity than "content libraries" suggests). The moment to reach: play, see the tick, feel the gate release you.
+**Phase 1: the listening gate (3-4 weeks). Closed early, 4 Aug 2026 (decision 18):** the capture harness, click and gate drill landed (#1157) and the segmentation spike completed with findings (#1161); everything from lick-transposition scoring onward defers with the scoring path. Phase 2a is next, its gated blocks running on tap-verdicts. The original phase text stands below as the plan for the path's return. Opens with the named spike: attempt segmentation and click alignment (count-in, restart detection, noodling vs attempts, collapse handling) proven against real playing before any scoring UI exists. The same capture harness measures BLE-MIDI timestamp fidelity on the real piano (sender-side timestamps vs arrival times, USB as ground truth) — one afternoon that decides how much Bluetooth scoring can honestly claim (decision 7). Prior art to read before building segmentation: the Rach3 rehearsal-MIDI dataset tooling (ISMIR 2025). Then: CoreMIDI capture into the Crux core; deterministic analysis; one screen (drill, live scoring, gate progress, and the ambient elapsed/ceiling per decision 15). The session state machine records what the circling check will need from the start — reps after the gate opened, attempts-to-pass, time per node — because these are cheap to capture now and impossible to reconstruct later. First drill type: lick transposition (target exactly known, scoring unambiguous, exercises the Phrase model, user-zero motivation built in). Shells second, proving generalisation. Alongside: an honest hour surveying current competitors (Yousician-class products have quietly added more adaptivity than "content libraries" suggests). The moment to reach: play, see the tick, feel the gate release you.
 
 **Phase 2 was split in two (3 Aug 2026)** after it accumulated twelve deliverables under a single three-to-four week estimate. A phase that cannot land is worse than a phase that admits its size, and 2a is independently useful.
 
-**Phase 2a: prescribe and run (3-4 weeks).** The loop working end to end. Planner as a pure function of state plus declared intent; press-start flow; gated blocks with the visible ceiling; stuck button with the mechanical ladder; soft-landing exit; state on device (sync deferred). Prerequisite, not optional: the mastery update function specified first, with its inputs settled by decision 17 (measured attempts only). This is also the phase that deletes the notebook's session builder — the granular builder is not ported, because declaring a destination replaces it (see Intent, property 1). Exit criterion: a real session runs end to end, gates and all.
+**Phase 2a: prescribe and run (3-4 weeks).** The loop working end to end. Planner as a pure function of state plus declared intent; press-start flow; gated blocks with the visible ceiling; stuck button with the mechanical ladder; soft-landing exit; state on device (sync deferred). Prerequisite, not optional: the mastery update function specified first, with its inputs settled by decision 17 (as amended: tap-verdicts, source-tagged). This is also the phase that deletes the notebook's session builder — the granular builder is not ported, because declaring a destination replaces it (see Intent, property 1). Exit criterion: a real session runs end to end, gates and all.
 
 **Phase 2b: steer and guard (3-4 weeks).** Everything that makes the loop kind rather than merely correct. The three declaration surfaces (goal, campaign, today's steer) with their defaults, so the app is usable having declared nothing; multi-target campaigns with opaque targets accepted (decision 13); back-chaining with honest horizons and the structural gap read; **the circling check** and the grind trade; the off-piano queue with its own cue (not blocks inside a piano session); unmonitored play alongside off-piste; the time-by-circle tally (arithmetic over already-tagged blocks, pulled forward from Phase 4); the judgement track, now designed against a fortnight of divergence-log evidence rather than guessed (decision 17). Exit criterion: two weeks of daily use without reverting to self-directed sessions.
 

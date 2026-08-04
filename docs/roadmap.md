@@ -9,9 +9,13 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > ## ⚠️ THE 2026-07 PIVOT: THE PRACTICE COACH
 >
 > As of July 2026 the product direction is the **practice coach** — the app
-> decides what you practise, listens over MIDI while you play, scores every
-> attempt deterministically, and tells you when you're done. The vision,
-> pedagogy model, and phased build plan live in
+> decides what you practise, gates every block on evidence, and tells you
+> when you're done. **Revised 4 Aug 2026: machine listening is deferred**
+> (design doc v6, decision 18) — v1 evidence is the tap-verdict against
+> countable criteria the app controls (tempo, key, scope, cold-test
+> intervals); the MIDI scoring path returns later as an evidence upgrade,
+> play-to-input first. The vision, pedagogy model, and phased build plan live
+> in
 > [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md);
 > the codebase assessment and pivot strategy (pivot in place, new engine
 > module, notebook-era machinery deleted at Phase 2a) in
@@ -25,9 +29,10 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > persistence pattern, the design system, the FFI toolchain) carry forward.
 >
 > Current phase: **Phase 0** (paper teacher — content authored under
-> [`content/`](../content/README.md), practice logs in progress, no code) in
-> parallel with **Phase 1** (MIDI capture harness → attempt-segmentation
-> spike → lick-transposition scoring).
+> [`content/`](../content/README.md), practice logs in progress, no code),
+> then **Phase 2a**. Phase 1 closed early under decision 18: the capture
+> harness, click and segmentation spike are merged and inert; scoring
+> deferred.
 >
 > **The document map**, so there is one answer per question:
 >
@@ -56,8 +61,8 @@ coach work** — this is.
 | Phase | What lands | State |
 |---|---|---|
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
-| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | PR 2 merged (jonyardley/intrada#1157) — capture harness, click, gate drill. USB-vs-Bluetooth timing numbers held open-ended pending a USB cable (#1156, not a blocker). PR 3 done — the `engine` module segments all five real takes; findings in [`segmentation-findings.md`](segmentation-findings.md), which is the spec input for the scoring gate. Next: lick-transposition scoring |
-| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks, stuck ladder, soft-landing exit, builder deleted | Needs the mastery function specified first (#1148) |
+| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the `engine` module segments all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Lick-transposition scoring and the machine-verdict drill screen defer to the scoring path's return (trigger: play-to-input). USB comparison stays open-ended (#1156) |
+| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **Next.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended) |
 | **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
 | **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
@@ -68,15 +73,14 @@ read, circling check, grind trade, off-piano queue, unmonitored mode, circle
 tally, soft-landing exit, *and* deleting the session builder. That is not one
 phase. 2a is the loop working end to end; 2b is everything that makes it kind.
 
-**Known prerequisite, not yet met:** the mastery update function is still
-recorded in the design doc as a "first crude version, to be refined", with a note
-that it must be specified *before* Phase 2. It hasn't been, and it is the
-planner's engine (#1148). Its **inputs are now settled** by decision 17 —
-measured attempts only. Self-report moves to a separate *judgement track* that
-records completion and a feel trend, may retire a target but may never satisfy a
-prerequisite, and gets designed in 2b against a fortnight of divergence-log
-evidence rather than guessed now. What remains for #1148 is the shape of the
-function itself, not the question of what feeds it.
+**Prerequisite met (updated 4 Aug 2026):** the mastery update function is
+specified in [`specs/intrada-coach-engine.md`](../specs/intrada-coach-engine.md)
+§2 (#1155). Its inputs are settled by decision 17 **as amended**: tap-verdicts
+against countable criteria feed the Beta update, source-tagged so machine
+scoring arrives later as a higher-weight evidence class. Self-report *judgement*
+(feel, opaque targets) stays in the separate judgement track — may retire a
+target, may never satisfy a prerequisite. The divergence log (and with it the
+judgement-track weighting question) defers until machine listening returns.
 
 ---
 
@@ -118,11 +122,11 @@ Filter `is:open is:issue` on the board to see what's currently in flight.
 
 The practice-coach pivot (see the banner at the top). The lesson-to-mastery
 loop that was the previous focus (epic #1087; workstreams B and C largely
-landed, A reverted) is parked under `superseded-by-pivot`. Active work is
-the Phase 1 opening from
-[`docs/rebuild-review.md`](rebuild-review.md) §6: clear the decks (#1133),
-then a MIDI capture harness + click, then the attempt-segmentation spike.
-Check the [project board](https://github.com/users/jonyardley/projects/2)
+landed, A reverted) is parked under `superseded-by-pivot`. Phase 1's harness,
+click and segmentation spike are merged (#1157, #1161) and the phase closed
+early under decision 18. Active work: the Phase 0 fortnight (#1143), then
+Phase 2a — the coaching loop on tap-verdict evidence. Check the
+[project board](https://github.com/users/jonyardley/projects/2)
 for what's actually in flight.
 
 ---

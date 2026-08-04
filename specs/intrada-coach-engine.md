@@ -46,6 +46,15 @@ Inputs settled by decision 17: **measured attempts only**. Evidence unit is one
 of attempts, and its pass is a derived event triggering a level-up. State is per
 `(node, parameter_level)`; there is no node-level scalar (§9.2).
 
+> **Amended 4 Aug 2026 (decision 18, design doc v6):** with machine listening
+> deferred, a scored attempt's verdict is the user's tap against a countable
+> criterion. Every evidence record carries a source tag —
+> `enum EvidenceSource { TapVerdict, Midi, Audio }` — so machine scoring
+> arrives later as a higher-weight evidence class, not a migration. Cold-test
+> attempts (first rep of the day on returning material, app-flagged) are the
+> highest-information tap-verdicts and are tagged as such. Nothing else in
+> this section changes: the Beta update is source-agnostic.
+
 ```rust
 struct Mastery { alpha: f32, beta: f32, prior: (f32, f32), last_attempt_at: Timestamp }
 ```
@@ -175,7 +184,10 @@ data rather than memory.
 **Predict-then-reveal writes to neither track.** A mature-drill attempt carries
 `self_predicted: Option<Verdict>` beside its measured verdict; the pair is the
 divergence log automated and the evidence base for how much weight the track
-eventually earns. It never updates a distribution.
+eventually earns. It never updates a distribution. *(Deferred with machine
+listening, 4 Aug 2026: no reveal exists without a machine verdict. Keep the
+field optional and unused until the scoring path returns; do not substitute a
+pre-play prediction against a tap-verdict — considered and cut, design doc v6.)*
 
 ## 4. The session state machine
 
@@ -282,12 +294,20 @@ non-empty why citing the destination whenever one is declared (principle 7).
 
 ## 6. The FFI contract
 
+> **Scoped 4 Aug 2026 (decision 18):** the capture types below belong to the
+> deferred scoring path — Phase 2a's bridge surface is the tap-verdict event
+> and the session/gate state, not `NoteBatch`. Retained as the contract for
+> the path's return, carrying the spike's two signature corrections (the
+> paragraph after the block) plus one note for typegen: `Range<usize>` does
+> not survive facet typegen — anything crossing carries plain start/len
+> integers.
+
 Note events cross **in batches, never per-note** (review §3.1): every event
 rebuilds the whole `ViewModel`, so per-note crossing is architecture abuse at
 playing speed. The entire engine bridge surface, and it does not grow:
 
 ```rust
-struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: i64 }  // from the click anchor
+struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: i64 }  // signed; from the click anchor
 struct NoteBatch { session: Ulid, seq: u32, anchor_us: u64,
                    events: Vec<NoteEvent>, transport: TransportTier }
 struct ClickGrid { bpm_milli: u32, beats_per_bar: u8, count_in_beats: u8,
