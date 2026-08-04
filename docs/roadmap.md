@@ -38,7 +38,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 >
 > | Question | Document |
 > |---|---|
-> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v5) |
+> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v6) |
 > | What does it feel like to use? | [`docs/coach-user-journeys.md`](coach-user-journeys.md) |
 > | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
 > | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
