@@ -1,0 +1,13 @@
+{"recordedAt":"2026-08-04T01:56:14Z","countInBeats":4,"hostTimebaseNumer":125,"beatsPerBar":4,"transport":"bluetooth","bpm":92,"hostTimebaseDenom":3,"startHostTime":7518441974370,"type":"take_header"}
+{"type":"note","beat":1,"hostTime":7518442479379,"velocity":22,"midiNote":53,"offsetMs":21.042041666666666,"isNoteOn":true,"bar":1}
+{"type":"note","beat":2,"hostTime":7518450038611,"velocity":95,"midiNote":53,"offsetMs":-316.1638713768116,"isNoteOn":false,"bar":1}
+{"type":"note","beat":2,"hostTime":7518456878962,"velocity":25,"midiNote":60,"offsetMs":-31.1492463768116,"isNoteOn":true,"bar":1}
+{"type":"note","beat":2,"hostTime":7518464077714,"velocity":91,"midiNote":60,"offsetMs":268.7987536231884,"isNoteOn":false,"bar":1}
+{"type":"note","beat":3,"hostTime":7518472542081,"velocity":25,"midiNote":53,"offsetMs":-30.6932010869565,"isNoteOn":true,"bar":1}
+{"type":"note","beat":3,"hostTime":7518479020186,"velocity":50,"midiNote":53,"offsetMs":239.22784057971015,"isNoteOn":false,"bar":1}
+{"type":"note","beat":4,"hostTime":7518488018413,"velocity":24,"midiNote":60,"offsetMs":-38.01994746376813,"isNoteOn":true,"bar":1}
+{"type":"note","beat":4,"hostTime":7518495048452,"velocity":96,"midiNote":60,"offsetMs":254.8983442028987,"isNoteOn":false,"bar":1}
+{"type":"note","beat":1,"hostTime":7518503139171,"velocity":31,"midiNote":59,"offsetMs":-60.1622771739132,"isNoteOn":true,"bar":2}
+{"type":"note","beat":1,"hostTime":7518511234849,"velocity":70,"midiNote":59,"offsetMs":277.1576394927533,"isNoteOn":false,"bar":2}
+{"type":"note","beat":2,"hostTime":7518519535390,"velocity":38,"midiNote":64,"offsetMs":-29.160398550724942,"isNoteOn":true,"bar":2}
+{"type":"note","beat":2,"hostTime":7518525639508,"velocity":103,"midiNote":64,"offsetMs":225.17785144927504,"isNoteOn":false,"bar":2}

@@ -1,0 +1,17 @@
+{"beatsPerBar":4,"type":"take_header","startHostTime":7505258784042,"bpm":92,"countInBeats":4,"transport":"bluetooth","recordedAt":"2026-08-04T01:47:05Z","hostTimebaseNumer":125,"hostTimebaseDenom":3}
+{"hostTime":7505258934139,"type":"note","velocity":23,"isNoteOn":true,"bar":1,"beat":1,"offsetMs":6.254041666666668,"midiNote":53}
+{"hostTime":7505268453615,"type":"note","velocity":92,"isNoteOn":false,"bar":1,"beat":2,"offsetMs":-249.27503804347828,"midiNote":53}
+{"hostTime":7505274040769,"type":"note","velocity":30,"isNoteOn":true,"bar":1,"beat":2,"offsetMs":-16.476954710144874,"midiNote":60}
+{"hostTime":7505283218362,"type":"note","velocity":101,"isNoteOn":false,"bar":1,"beat":3,"offsetMs":-286.25115942028987,"midiNote":60}
+{"hostTime":7505289873526,"type":"note","velocity":24,"isNoteOn":true,"bar":1,"beat":3,"offsetMs":-8.952659420289777,"midiNote":53}
+{"hostTime":7505297796024,"type":"note","velocity":50,"isNoteOn":false,"bar":1,"beat":3,"offsetMs":321.1514239130435,"midiNote":53}
+{"hostTime":7505306814027,"type":"note","velocity":25,"isNoteOn":true,"bar":1,"beat":4,"offsetMs":44.727635869565184,"midiNote":60}
+{"hostTime":7505312917403,"type":"note","velocity":89,"isNoteOn":false,"bar":1,"beat":4,"offsetMs":299.0349692028988,"midiNote":60}
+{"hostTime":7505321196138,"type":"note","velocity":29,"isNoteOn":true,"bar":2,"beat":1,"offsetMs":-8.191652173913155,"midiNote":59}
+{"hostTime":7505328216839,"type":"note","velocity":71,"isNoteOn":false,"bar":2,"beat":1,"offsetMs":284.33755615942056,"midiNote":59}
+{"hostTime":7505337037140,"type":"note","velocity":39,"isNoteOn":true,"bar":2,"beat":2,"offsetMs":-0.3238152173916653,"midiNote":65}
+{"hostTime":7505340307149,"type":"note","velocity":78,"isNoteOn":false,"bar":2,"beat":2,"offsetMs":135.92655978260825,"midiNote":65}
+{"hostTime":7505383350656,"type":"note","velocity":37,"isNoteOn":true,"bar":3,"beat":1,"offsetMs":-27.115721014492777,"midiNote":59}
+{"hostTime":7505390142229,"type":"note","velocity":98,"isNoteOn":false,"bar":3,"beat":1,"offsetMs":255.86648731884054,"midiNote":59}
+{"hostTime":7505399498749,"type":"note","velocity":39,"isNoteOn":true,"bar":3,"beat":2,"offsetMs":-6.452425724638111,"midiNote":65}
+{"hostTime":7505404179277,"type":"note","velocity":104,"isNoteOn":false,"bar":3,"beat":2,"offsetMs":188.56957427536258,"midiNote":65}
