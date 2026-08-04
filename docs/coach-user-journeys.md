@@ -2,9 +2,14 @@
 
 Ten scenarios the app must handle well, derived from
 [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md)
-(v4). Written to inform design work and to be argued with: if a journey needs a
+(v6). Written to inform design work and to be argued with: if a journey needs a
 mechanism the spec doesn't have, that's a spec gap, not a design problem to
 solve in the UI.
+
+> Revised 4 Aug 2026 for decision 18 (machine listening deferred): "scored"
+> throughout means a tap-verdict against a countable criterion — the app
+> supplies the facts (tempo, key, counts, intervals), the user supplies the
+> pass. See the design doc's "Measures without machine listening".
 
 Each carries a **without this** line — the failure mode it exists to prevent —
 because that is what makes it testable. Journeys 1, 5, 6 and 7 are the
@@ -32,7 +37,8 @@ interviewed.
 3. States its own ignorance in one line: *early days, still learning your
    level* — and means it, because for the first fortnight every adaptive
    mechanism is running on priors.
-4. Scores attempts as normal, but withholds anything that requires a baseline:
+4. Records attempts as normal (the tap is the verdict), but withholds anything
+   that requires a baseline:
    no "above your norm", no horizon in sessions, no circling check.
 
 **Mechanisms.** Seeded mastery as (estimate, confidence) with confidence *low*;
@@ -52,9 +58,9 @@ confident statement is the one that costs trust permanently.
 
 **What the app does.**
 1. Opens on the plan and its one-line why, citing the declared campaign.
-2. Warm-up on something owned — 90%+ success, scored silently.
-3. Frontier block, gated. Silent during play; a tick or cross and one fact per
-   rep; gate progress visible; auto count-in between reps.
+2. Warm-up on something owned — 90%+ success, no verdict asked.
+3. Frontier block, gated. Silent during play; one landed-it tap per rep and
+   one fact the app owns; gate progress visible; count-in follows the tap.
 4. Phrase advance, two keys, a few minutes.
 5. Integration: restricted improv, softer gate, feel self-rated.
 6. Close on the head. Summary one line at the piano; the full narrative waits.
@@ -102,7 +108,10 @@ guides them somewhere else.
 **What the user needs.** The next attempt to be winnable, without a lecture.
 
 **What the app does.**
-1. Cross and one actionable fact — "late into bar 3", never bare "wrong".
+1. The cross is your own tap; the app adds the one actionable fact it owns —
+   "that's 9 tries, your norm is 4" — never bare "wrong". ("Late into bar 3"
+   returns with machine listening; until then the app may ask, one tap on a
+   bar map: "where did it stop?")
 2. On the third, acts rather than narrates: drops tempo 20%, or shrinks scope to
    one hand / one change / one key, or changes mode (sing it, tap it).
 3. Frames it as the plan: *let's take it to 100* — not as remediation.
@@ -213,8 +222,10 @@ which is exactly the starvation the fluency frame predicts.
 **Trigger.** The user wants to play, not practise.
 
 **What the app does.** Two distinct offers, and the difference is consent:
-- **Off-piste** — no plan, still listening and logging. Ends with *keep this as
-  a drill?* because some wanders reveal a gap in the graph.
+- **Off-piste** — no plan, still logged: time, and a voice note if you offer
+  one ("found something? say it"). Ends with *keep this as a drill?* because
+  some wanders reveal a gap in the graph. (Machine listening would log the
+  notes themselves; deferred, decision 18.)
 - **Unmonitored** — time logged, nothing scored, nothing inferred, no prompt.
 
 **Mechanisms.** Off-piste mode; unmonitored play (decision 16); the wander log.
@@ -256,8 +267,10 @@ whole motivation model exists to prevent.
 2. **Cold start for user zero** (journey 1). Every adaptive mechanism needs a
    baseline the first fortnight doesn't have. What is suppressed, and when does
    each switch on?
-3. **Self-confirmed vs measured in one mastery model.** Journeys 3 and 9 produce
-   self-report; journey 2 produces measurement. Storage is separate by design —
-   whether they feed one mastery estimate is unspecified.
+3. **Self-confirmed vs measured in one mastery model.** *Answered by decision
+   17 as amended (4 Aug 2026):* tap-verdicts on countable criteria feed
+   mastery, source-tagged; feel and opaque-target judgements stay in the
+   judgement track and never unlock. The two-numbers separation survives the
+   deferral of machine listening.
 4. **Campaign completion.** Journey 10 assumes a destination gate. "Improvise
    confidently over Strasbourg" needs a definition of done or it runs forever.

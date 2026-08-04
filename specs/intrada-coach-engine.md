@@ -10,11 +10,12 @@ issues Phase 2a waits on and because 400 lines of design argument review better
 as a file than as the opening commit of a segmentation PR. A deliberate
 exception, recorded rather than inherited.
 
-**Scope:** the seven mechanisms Phase 1 and 2a cannot be built without — mastery
+**Scope:** the seven mechanisms Phase 2a (and, later, the scoring path's
+return) cannot be built without — mastery
 update, judgement track, session state machine, planner resolution order, FFI
 contract, interruption arbitration, gate schema. **Not here:** architecture
 ([`docs/rebuild-review.md`](../docs/rebuild-review.md)), pedagogy and decisions
-1–17 ([the design doc](intrada-practice-coach-design.md), v5), scenarios
+1–18 ([the design doc](intrada-practice-coach-design.md), v6), scenarios
 ([`docs/coach-user-journeys.md`](../docs/coach-user-journeys.md)), UI. §9 lists
 what this spec contradicts in those sources — fix them there.
 
@@ -45,6 +46,17 @@ Inputs settled by decision 17: **measured attempts only**. Evidence unit is one
 **scored attempt**, not one gate — a gate ("3 clean passes at 120") is composed
 of attempts, and its pass is a derived event triggering a level-up. State is per
 `(node, parameter_level)`; there is no node-level scalar (§9.2).
+
+> **Amended 4 Aug 2026 (decision 18, design doc v6):** with machine listening
+> deferred, a scored attempt's verdict is the user's tap against a countable
+> criterion. Every evidence record carries a source tag —
+> `enum EvidenceSource { TapVerdict, Midi, Audio }` — so machine scoring
+> arrives later as a higher-weight evidence class, not a migration. Cold-test
+> attempts (first rep of the day on returning material, app-flagged) are the
+> highest-information tap-verdicts and carry a `cold: bool` beside the source
+> tag — a flag on the attempt, not an `EvidenceSource` variant, since a cold
+> MIDI-scored attempt must be expressible later. Nothing else in
+> this section changes: the Beta update is source-agnostic.
 
 ```rust
 struct Mastery { alpha: f32, beta: f32, prior: (f32, f32), last_attempt_at: Timestamp }
@@ -175,9 +187,22 @@ data rather than memory.
 **Predict-then-reveal writes to neither track.** A mature-drill attempt carries
 `self_predicted: Option<Verdict>` beside its measured verdict; the pair is the
 divergence log automated and the evidence base for how much weight the track
-eventually earns. It never updates a distribution.
+eventually earns. It never updates a distribution. *(Deferred with machine
+listening, 4 Aug 2026: no reveal exists without a machine verdict. Keep the
+field optional and unused until the scoring path returns; do not substitute a
+pre-play prediction against a tap-verdict — considered and cut, design doc v6.)*
 
 ## 4. The session state machine
+
+> **Scoped 4 Aug 2026 (decision 18):** the machine below is Phase 2a's build
+> target and survives the deferral with its transitions intact — what changes
+> is what fires them. In v1 the `Listening` → `Verdict` transition is the
+> user's tap (there is no "attempt segmented" until the scoring path returns),
+> `AttemptSummary` carries no timing facts and an unused `self_predicted`,
+> `OffPiste` captures time plus an optional voice note rather than notes
+> (journeys doc, decision 16 as scoped), and `WanderRecord.attempts` stays
+> empty. "Hands never leave the keys" on the `Verdict` → `CountIn` row reads
+> as "one tap, then the count-in" until then.
 
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,
@@ -282,12 +307,20 @@ non-empty why citing the destination whenever one is declared (principle 7).
 
 ## 6. The FFI contract
 
+> **Scoped 4 Aug 2026 (decision 18):** the capture types below belong to the
+> deferred scoring path — Phase 2a's bridge surface is the tap-verdict event
+> and the session/gate state, not `NoteBatch`. Retained as the contract for
+> the path's return, carrying the spike's two signature corrections (the
+> paragraph after the block) plus one note for typegen: `Range<usize>` does
+> not survive facet typegen — anything crossing carries plain start/len
+> integers.
+
 Note events cross **in batches, never per-note** (review §3.1): every event
 rebuilds the whole `ViewModel`, so per-note crossing is architecture abuse at
 playing speed. The entire engine bridge surface, and it does not grow:
 
 ```rust
-struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: i64 }  // from the click anchor
+struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: i64 }  // signed; from the click anchor
 struct NoteBatch { session: Ulid, seq: u32, anchor_us: u64,
                    events: Vec<NoteEvent>, transport: TransportTier }
 struct ClickGrid { bpm_milli: u32, beats_per_bar: u8, count_in_beats: u8,
@@ -363,6 +396,14 @@ narrates, so it is the plan changing. Only the spoken name-the-wall competes
 Formalised from [`content/gates.toml`](../content/gates.toml). The gain over its
 flat bag of recognised-optional fields: the requirement becomes a closed enum, so
 an unrepresentable gate fails to parse instead of silently losing a field.
+
+> **Scoped 4 Aug 2026 (decision 18):** `judge` needs a third value —
+> `TapVerdict`, the v1 default: user-judged like `SelfConfirmed` but
+> mastery-feeding like `Machine`, which neither existing value can represent
+> (`SelfConfirmed` is the decision-3/13 kind that must never unlock). `Clean`
+> and `TimingRule` apply only to machine-judged gates; a tap-verdict gate's
+> "pass" is the tap, and its `clean` field is `None` by construction. The
+> restructure lands with the 2a implementation, as §9.6 already planned.
 
 ```rust
 struct GateCriteria {

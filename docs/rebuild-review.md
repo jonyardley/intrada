@@ -352,6 +352,12 @@ note / timing per bar against the `ClickGrid`, using `chart.rs` for chord
 context), then the first bridge crossing (batched capture in, gate progress
 out) and the one drill screen with the tick.
 
+> **Revised 4 Aug 2026:** Week 3+ is deferred with machine listening (design
+> doc v6, decision 18). PRs 1–3 stand — harness, click, gate drill,
+> segmentation spike and findings all merged and inert. The coach loop
+> proceeds on tap-verdict evidence (Phase 2a); this paragraph becomes the
+> plan for the scoring path's return, whose first feature is play-to-input.
+
 Suggested tiering: PR 1 is Tier 1 by content but ships via `ship` anyway
 given its breadth; PR 2-3 are Tier 2 with the design doc standing in as the
 Tier 3 spec for the phase.
