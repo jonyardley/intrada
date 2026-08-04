@@ -31,8 +31,9 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > Current phase: **Phase 0** (paper teacher — content authored under
 > [`content/`](../content/README.md), practice logs in progress, no code),
 > then **Phase 2a**. Phase 1 closed early under decision 18: the capture
-> harness, click and segmentation spike are merged and inert; scoring
-> deferred.
+> harness and segmentation spike are **removed from the tree** and recoverable
+> from history (#1176); the click ships, since click-always governs the loop.
+> Their findings stay in [`segmentation-findings.md`](segmentation-findings.md).
 >
 > **The document map**, so there is one answer per question:
 >
@@ -61,8 +62,8 @@ coach work** — this is.
 | Phase | What lands | State |
 |---|---|---|
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
-| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the `engine` module segments all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Lick-transposition scoring and the machine-verdict drill screen defer to the scoring path's return (trigger: play-to-input). USB comparison stays open-ended (#1156) |
-| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **In flight.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended). The drill screen (A2 during play + A3 tap-verdict) and the seven coach primitives are **built** — pure presentation, driven by a `DrillLoopState` the engine fills once the session state machine exists |
+| **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the segmentation module handled all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Both the iOS capture harness and that module are **deleted** (#1176) rather than left inert, recoverable from history when the path returns; the click ships. Lick-transposition scoring and the machine-verdict drill screen defer with it (trigger: play-to-input). USB comparison stays open-ended (#1156) |
+| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **In flight.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended). The drill screen (A2 during play + A3 tap-verdict) and the seven coach primitives are **built** (#1178). The **session state machine and the tap-verdict bridge surface are built** (#1176, spec §4/§6): `engine/session.rs` owns counting, gating, the stuck ladder and the ceiling; `DrillScreen` renders the core's `CoachView` and the Swift harness is deleted. Still open in 2a: the planner (§5), press-start (#1182), the `gates.toml` parser (#1180), persisting block records (#1181) |
 | **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), three-way target resolution + user-created items + the built session (decision 19), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
 | **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |

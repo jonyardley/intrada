@@ -1,56 +1,10 @@
 import SharedTypes
 import SwiftUI
 
-/// Everything the drill screen draws, in one value. The coach engine's
-/// `CoachView` fills it from Phase 2a (`specs/intrada-coach-engine.md` §4, §6);
-/// no counting, gating or sequencing happens in Swift.
-struct DrillLoopState: Equatable {
-  enum Phase: Equatable {
-    case playing
-    case awaitingVerdict
-    case acknowledged(clean: Bool, countInRemaining: Int)
-    case gateOpen
-  }
-
-  var phase: Phase = .playing
-
-  // Identity
-  var drillTitle: String
-  /// Where in the material it sits — "A section", "key of F".
-  var section: String?
-  /// The in-flight tune or campaign — "Strasbourg / St. Denis".
-  var destination: String?
-  var kind: ItemKind = .exercise
-
-  // The click
-  var tempoBpm: Int
-  /// The running click level, in the musician's words: "beats 2 & 4".
-  var clickLevel: String
-  var beat: Int = 1
-  var beatsPerBar: Int = 4
-  var bar: Int = 1
-  var bars: Int = 8
-  var countInBeats: Int = 4
-
-  // Orientation
-  var elapsedSeconds: Int
-  var ceilingSeconds: Int?
-  var blockKinds: [ItemKind]
-  var blockIndex: Int
-
-  // The gate
-  /// The criterion restated as the question: "Clean at 120?".
-  var gateQuestion: String
-  /// The criterion in the past tense, at the moment it is met: "3 clean at 120".
-  var gateSummary: String
-  var gateFilled: Int
-  var gateTarget: Int
-}
-
 /// A2 (during play) and A3 (after a repetition) — one shell, so the eye lands
 /// in the same place between reps. Rules in `design/Drill Loop.dc.html`.
 struct DrillScreen: View {
-  let state: DrillLoopState
+  let state: DrillView
   /// `true` = "Yes — clean", `false` = "No — missed it".
   var onVerdict: (Bool) -> Void
   var onStuck: () -> Void
@@ -72,8 +26,9 @@ struct DrillScreen: View {
       RadialGradient.playerPaper.ignoresSafeArea()
       VStack(spacing: 0) {
         OrientationStrip(
-          elapsedSeconds: state.elapsedSeconds, ceilingSeconds: state.ceilingSeconds,
-          blockKinds: state.blockKinds, blockIndex: state.blockIndex,
+          elapsedSeconds: Int(state.elapsedSeconds),
+          ceilingSeconds: state.ceilingSeconds.map(Int.init),
+          blockKinds: state.blockKinds, blockIndex: Int(state.blockIndex),
           onDismiss: onDismiss)
         identity
         Spacer(minLength: IntradaSpacing.card)
@@ -152,7 +107,8 @@ struct DrillScreen: View {
         tempo
         clickPill
         BeatPosition(
-          beat: state.beat, beatsPerBar: state.beatsPerBar, bar: state.bar, bars: state.bars
+          beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
+          bars: Int(state.bars)
         )
         .padding(.top, IntradaSpacing.cardCompact)
       }
@@ -162,18 +118,19 @@ struct DrillScreen: View {
           .font(IntradaFont.verdict(scale.question))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
-        GateDots(filled: state.gateFilled, target: state.gateTarget)
+        GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
     case .acknowledged(let clean, _):
       VStack(spacing: IntradaSpacing.section + 2) {
         RepVerdict(outcome: clean ? .clean : .missed)
-        GateDots(filled: state.gateFilled, target: state.gateTarget)
+        GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
     case .gateOpen:
       VStack(spacing: IntradaSpacing.section) {
         RepVerdict(outcome: .clean, fact: "Gate open")
         GateDots(
-          filled: state.gateFilled, target: state.gateTarget, caption: state.gateSummary)
+          filled: Int(state.gateFilled), target: Int(state.gateTarget),
+          caption: state.gateSummary)
       }
     }
   }
@@ -224,7 +181,7 @@ struct DrillScreen: View {
         StuckTarget(emphasis: .quiet, action: onStuck)
       }
     case .acknowledged(_, let remaining):
-      CountIn(remaining: remaining, total: state.countInBeats)
+      CountIn(remaining: Int(remaining), total: Int(state.countInBeats))
     case .gateOpen:
       Text("moving on")
         .font(IntradaFont.ambient())
@@ -261,29 +218,34 @@ private struct CountIn: View {
 }
 
 #if DEBUG
-  extension DrillLoopState {
-    /// The design's worked example: *Strasbourg / St. Denis*.
+  extension DrillView {
+    /// The design's worked example: *Strasbourg / St. Denis*. A fixture for
+    /// previews and snapshots only — at runtime every field comes from the
+    /// core's `CoachView`.
     static func preview(
-      phase: Phase = .playing, gateFilled: Int = 2, elapsedSeconds: Int = 724
-    ) -> DrillLoopState {
-      DrillLoopState(
+      phase: DrillPhase = .playing, gateFilled: UInt8 = 2, elapsedSeconds: UInt32 = 724
+    ) -> DrillView {
+      DrillView(
         phase: phase,
         drillTitle: "Rootless voicings",
         section: "A section",
         destination: "Strasbourg / St. Denis",
+        kind: .exercise,
         tempoBpm: 120,
         clickLevel: "beats 2 & 4",
-        beat: 2, bar: 3, bars: 8,
+        beat: 2, beatsPerBar: 4, bar: 3, bars: 8,
+        countInBeats: 4, clickBeats: 33,
         elapsedSeconds: elapsedSeconds, ceilingSeconds: 360,
         blockKinds: [.piece, .exercise, .exercise, .piece, .piece], blockIndex: 1,
         gateQuestion: "Clean at 120?",
         gateSummary: "3 clean at 120",
-        gateFilled: gateFilled, gateTarget: 3)
+        gateFilled: gateFilled, gateTarget: 3,
+        repSeq: 1)
     }
   }
 
   private struct DrillPreview: View {
-    let state: DrillLoopState
+    let state: DrillView
     var body: some View {
       DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
     }

@@ -57,10 +57,6 @@ targets:
         # (90474); iPad multitasking requires all four. iPhone stays portrait.
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # Required the moment CoreMIDI's Bluetooth MIDI central is touched (the
-        # debug-only MIDI capture spike, ios/Intrada/MidiSpike/) — without this,
-        # iOS crashes on first BLE MIDI access rather than prompting.
-        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "Used to connect to Bluetooth MIDI keyboards for the practice-coach MIDI capture spike."
         # App icon = the Icon Composer AppIcon.icon bundle (no asset catalog).
         # actool rasterises back-compat PNG icons for iOS 17/18; iOS 26 gets the
         # layered Liquid Glass rendering.

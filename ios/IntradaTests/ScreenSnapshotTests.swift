@@ -701,7 +701,7 @@ final class ScreenSnapshotTests: XCTestCase {
 
   // ── The coach drill loop (A2 / A3) ──
 
-  private func drill(_ state: DrillLoopState) -> some View {
+  private func drill(_ state: DrillView) -> some View {
     DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
   }
 
@@ -721,13 +721,13 @@ final class ScreenSnapshotTests: XCTestCase {
 
   /// Identical composition to a pass — a miss is the user's own report.
   func testDrillScreenMissAcknowledged() {
-    let state = DrillLoopState.preview(
+    let state = DrillView.preview(
       phase: .acknowledged(clean: false, countInRemaining: 2), elapsedSeconds: 798)
     assertSnapshot(of: host(drill(state)), as: config)
   }
 
   func testDrillScreenGateOpen() {
-    let state = DrillLoopState.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
+    let state = DrillView.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
     assertSnapshot(of: host(drill(state)), as: config)
   }
 

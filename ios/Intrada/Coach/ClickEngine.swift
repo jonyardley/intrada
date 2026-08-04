@@ -1,9 +1,8 @@
 import AVFoundation
 
-/// AVAudioEngine metronome scheduled via AVAudioTime(hostTime:) — the same
-/// mach_absolute_time clock CoreMIDI stamps with. `start`'s `BeatGrid.startHostTime`
-/// is the *audible* instant of bar 1 beat 1 (scheduled time +
-/// AVAudioSession.outputLatency), since that's what the player reacts to.
+/// AVAudioEngine metronome scheduled via AVAudioTime(hostTime:). Beat callbacks
+/// fire at the *audible* instant (scheduled time + AVAudioSession.outputLatency),
+/// since that is what the player reacts to.
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
@@ -19,7 +18,8 @@ final class ClickEngine {
   var onCountIn: ((_ remaining: Int) -> Void)?
 
   /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
-  var onBeat: ((_ bar: Int, _ beat: Int, _ hostTime: UInt64) -> Void)?
+  /// `index` is 0-based from bar 1 beat 1; the core turns it into a bar and beat.
+  var onBeat: ((_ index: Int, _ hostTime: UInt64) -> Void)?
 
   /// Pending (hostTime, action) pairs, polled on a short interval rather
   /// than one `Task.sleep` per beat — iOS coalesces long timer wakeups to
@@ -42,7 +42,7 @@ final class ClickEngine {
 
   /// Schedules `countInBeats` clicks then `bodyBeats` phrase beats (bar
   /// downbeats accented). Safe to call repeatedly — each call reschedules.
-  func start(bpm: Double, beatsPerBar: Int, countInBeats: Int, bodyBeats: Int) throws -> BeatGrid {
+  func start(bpm: Double, beatsPerBar: Int, countInBeats: Int, bodyBeats: Int) throws {
     playerNode.stop()
 
     let session = AVAudioSession.sharedInstance()
@@ -72,18 +72,10 @@ final class ClickEngine {
       playerNode.scheduleBuffer(buffer, at: AVAudioTime(hostTime: scheduledHostTime), options: [])
     }
 
-    let audibleStart = scheduledStart &+ outputLatencyTicks
-    let gridStart =
-      audibleStart &+ HostClock.ticks(fromSeconds: Double(countInBeats) * secondsPerBeat)
-    let grid = BeatGrid(
-      bpm: bpm, beatsPerBar: beatsPerBar, countInBeats: countInBeats, startHostTime: gridStart)
-
     pendingBeats = buildSchedule(
-      totalBeats: totalBeats, audibleStart: audibleStart, secondsPerBeat: secondsPerBeat, grid: grid
-    )
+      totalBeats: totalBeats, countInBeats: countInBeats,
+      audibleStart: scheduledStart &+ outputLatencyTicks, secondsPerBeat: secondsPerBeat)
     startPolling()
-
-    return grid
   }
 
   func stop() {
@@ -97,19 +89,17 @@ final class ClickEngine {
   }
 
   private func buildSchedule(
-    totalBeats: Int, audibleStart: UInt64, secondsPerBeat: Double, grid: BeatGrid
+    totalBeats: Int, countInBeats: Int, audibleStart: UInt64, secondsPerBeat: Double
   ) -> [(hostTime: UInt64, fire: () -> Void)] {
-    let countInBeats = grid.countInBeats
-    return (0..<totalBeats).map { beatIndex in
+    (0..<totalBeats).map { beatIndex in
       let beatHostTime =
         audibleStart &+ HostClock.ticks(fromSeconds: Double(beatIndex) * secondsPerBeat)
       if beatIndex < countInBeats {
         let remaining = countInBeats - beatIndex
         return (beatHostTime, { [weak self] in self?.onCountIn?(remaining) })
-      } else {
-        let (bar, beat, _) = grid.nearestBeat(for: beatHostTime)
-        return (beatHostTime, { [weak self] in self?.onBeat?(bar, beat, beatHostTime) })
       }
+      let index = beatIndex - countInBeats
+      return (beatHostTime, { [weak self] in self?.onBeat?(index, beatHostTime) })
     }
   }
 

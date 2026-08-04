@@ -14,6 +14,7 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
+use crate::engine::{CoachState, CoachView};
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -78,6 +79,9 @@ pub struct Model {
     /// Bumped by every update that concludes with `last_error` present, so
     /// shells can tell a repeated identical failure from a success (#1056).
     pub error_seq: u64,
+    /// The practice coach's own state, quarantined in `engine/`
+    /// (`specs/intrada-coach-engine.md` §1).
+    pub coach: CoachState,
 }
 
 impl Model {
@@ -203,6 +207,7 @@ pub struct ViewModel {
     pub oauth_in_flight: bool,
     pub oauth_redirect_url: Option<String>,
     pub last_set_save_request_id: Option<String>,
+    pub coach: CoachView,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

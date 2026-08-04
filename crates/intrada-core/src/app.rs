@@ -21,6 +21,7 @@ use crate::domain::session::{
 use crate::domain::session::{CompletionStatus, EntryStatus, SetlistEntry};
 use crate::domain::set::{handle_set_event, Set, SetEvent};
 use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
+use crate::engine::CoachEvent;
 use crate::http;
 use crate::model::{
     build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
@@ -67,6 +68,7 @@ pub enum Event {
     McpToken(McpTokenEvent),
     McpAudit(McpAuditEvent),
     OAuth(OAuthEvent),
+    Coach(CoachEvent),
 
     // ── Data loaded callbacks ───────────────────────────────────────
     DataLoaded {
@@ -233,6 +235,21 @@ impl Intrada {
             Event::McpToken(token_event) => handle_mcp_token_event(token_event, model),
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
             Event::OAuth(oauth_event) => handle_oauth_event(oauth_event, model),
+            Event::Coach(coach_event) => {
+                // Render coalescing (engine spec §6): the click reports several
+                // beats a second, and every render rebuilds the whole
+                // ViewModel. An event the machine ignored changes nothing.
+                if matches!(coach_event, CoachEvent::ClickUnavailable { .. }) {
+                    model.surface_error("The click couldn't start, so the drill was stopped.");
+                }
+                let before = model.coach.view();
+                model.coach.apply(&coach_event);
+                if model.coach.view() == before && model.last_error.is_none() {
+                    Command::done()
+                } else {
+                    crux_core::render::render()
+                }
+            }
 
             // ── Data loaded callbacks ────────────────────────────────
             Event::DataLoaded { items } => {
@@ -747,6 +764,7 @@ impl Intrada {
             oauth_in_flight: model.oauth_in_flight,
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
+            coach: model.coach.view(),
         }
     }
 }
