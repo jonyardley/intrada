@@ -231,6 +231,16 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.pendingCoachSession())
   }
 
+  /// An `EngineSession` field change makes every blob written by the previous
+  /// build undecodable. That must lose the recovery, not the launch: bincode is
+  /// positional, so there is no forward compatibility to lean on here.
+  func testPendingCoachSessionIsNilForAnUndecodableBlob() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    defaults.set(Data([0xff, 0x00, 0x2a]), forKey: Store.coachSessionInProgressKey)
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(store.pendingCoachSession(), "a stale blob degrades to a fresh start")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -555,9 +565,13 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(opening.drillTitle, "Rootless voicings")
-    XCTAssertEqual(opening.gateQuestion, "Clean at 120?")
-    XCTAssertEqual(opening.gateTarget, 3)
+    // Which drill opens the session is the planner's call on authored content
+    // (#1180), so this asserts the block arrived whole, not what it contains.
+    XCTAssertFalse(opening.drillTitle.isEmpty, "the block crossed the wire with its title")
+    XCTAssertEqual(
+      opening.gateQuestion, "Clean at \(opening.tempoBpm)?",
+      "the criterion names the tempo it is asked at")
+    XCTAssertGreaterThanOrEqual(opening.gateTarget, 1, "a gate needs at least one clean pass")
     XCTAssertEqual(opening.gateFilled, 0)
 
     XCTAssertEqual(
@@ -576,9 +590,15 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
     let acknowledged = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true))
     XCTAssertEqual(acknowledged.gateFilled, 1, "the core filled the dot, not the shell")
-    XCTAssertEqual(acknowledged.repSeq, 2, "the shell restarts the click off this")
+    if opening.gateTarget == 1 {
+      // That tap satisfied a one-pass gate, so the block is done rather than
+      // looping. Which of the two it is depends on the authored gate.
+      XCTAssertEqual(acknowledged.phase, .gateOpen)
+    } else {
+      XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true))
+      XCTAssertEqual(acknowledged.repSeq, 2, "the shell restarts the click off this")
+    }
     XCTAssertNil(try bridge.view().error, "a whole rep must decode on the wire (#846)")
   }
 
@@ -589,12 +609,16 @@ final class StoreEffectLoopTests: XCTestCase {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))
 
     _ = try bridge.update(.coach(.stuck(now: SessionClock.nowRFC3339())))
     let after = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(after.tempoBpm, 96)
-    XCTAssertEqual(after.gateQuestion, "Clean at 96?")
+    XCTAssertLessThan(
+      after.tempoBpm, opening.tempoBpm, "the ladder's first rung drops the tempo")
+    XCTAssertEqual(
+      after.gateQuestion, "Clean at \(after.tempoBpm)?",
+      "the criterion follows the tempo down")
     XCTAssertEqual(after.phase, .playing, "escalation acts rather than narrates")
   }
 
