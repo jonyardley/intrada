@@ -88,6 +88,7 @@
             <li><strong style="color:#2B2A26;font-weight:600;">No gate dots here.</strong> They are derived from tap-verdicts, so on the drill screen they would be a live score. They appear only between reps (A3).</li>
             <li>The beat pip swaps with no transition. The only element that changes during play must not attract the eye.</li>
             <li>Stuck is the sole resident control — full-width at the same 66pt height as the verdict pair, so every tappable thing in the loop is one consistent size.</li>
+            <li>During the count-in this page holds, with the count-in dots in the stuck target's place (T10, #1184): the count-in prepares the next rep, so it belongs with these facts, not on the verdict glance.</li>
           </ul><div style="font-size:13px;line-height:1.6;color:#2B2A26;background:#FCFAF3;border:1px solid #E5DECD;border-radius:10px;padding:11px 13px;margin-top:12px;">VoiceOver: “Rootless voicings, A section, Strasbourg. 120 beats per minute, click on beats 2 and 4. Bar 3 of 8. 12 minutes 4 seconds elapsed of 6, block 2 of 5.” · Button: “I'm stuck. Makes the next attempt easier.”</div>
         </div>
         </sc-if>
@@ -243,9 +244,7 @@
                 <div style="width:118px;height:118px;border-radius:50%;background:#E7F1EB;border:1px solid #C9E2D3;display:flex;align-items:center;justify-content:center;"><i data-lucide="check" width="56" height="56" style="color:#1F8A5B;"></i></div>
                 
                 <div style="display:flex;align-items:center;gap:10px;"><div style="display:flex;gap:8px;"><span style="width:17px;height:17px;border-radius:50%;background:#4C3FA6;"></span><span style="width:17px;height:17px;border-radius:50%;background:#4C3FA6;"></span><span style="width:17px;height:17px;border-radius:50%;background:#4C3FA6;"></span></div><span style="font-size:15px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">3 of 3</span></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:center;gap:9px;font-size:13px;font-weight:500;color:#6E6557;">count-in<span style="width:10px;height:10px;border-radius:50%;background:#8A8170;"></span><span style="width:10px;height:10px;border-radius:50%;background:#8A8170;"></span><span style="width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #DCD4C1;"></span><span style="width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #DCD4C1;"></span></div>
-            </div>
+              </div>            </div>
             <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
           </div>
         </div>
@@ -255,7 +254,7 @@
           <ul style="margin:10px 0 0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#6E6557;">
             <li>The question and buttons are gone, replaced by the acknowledgement — about a second of eye contact.</li>
             <li>Glyph enters with <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">pop</span>; the newly-filled gate dot follows 60ms later. Nothing else animates.</li>
-            <li>Auto count-in starts on its own — no per-note facts, no “rushing bars 3–4”. There is nothing listening to produce those.</li>
+            <li>Auto count-in starts on its own, and its first click turns the page back to A2: the dots draw with the tempo, click and position the next rep is played against, in place of the stuck target (T10, #1184). The glance itself is the verdict alone.</li>
           </ul>
         </div>
         </sc-if>
@@ -273,9 +272,7 @@
                 <div style="width:118px;height:118px;border-radius:50%;background:#EFEADC;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;"><i data-lucide="x" width="56" height="56" style="color:#8A8170;"></i></div>
                 
                 <div style="display:flex;align-items:center;gap:10px;"><div style="display:flex;gap:8px;"><span style="width:17px;height:17px;border-radius:50%;background:#4C3FA6;"></span><span style="width:17px;height:17px;border-radius:50%;background:#4C3FA6;"></span><span style="width:17px;height:17px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span></div><span style="font-size:15px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">2 of 3</span></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:center;gap:9px;font-size:13px;font-weight:500;color:#6E6557;">count-in<span style="width:10px;height:10px;border-radius:50%;background:#8A8170;"></span><span style="width:10px;height:10px;border-radius:50%;background:#8A8170;"></span><span style="width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #DCD4C1;"></span><span style="width:10px;height:10px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #DCD4C1;"></span></div>
-            </div>
+              </div>            </div>
             <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:#2B2A26;opacity:0.8;z-index:60;"></div>
           </div>
         </div>

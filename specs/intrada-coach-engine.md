@@ -219,8 +219,10 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 > - **`Verdict` is the tap, not a state.** With nothing to wait for, a `Verdict`
 >   phase could never rest, and a phase no event rests in is a phase the shell
 >   cannot render. Its three outgoing rows are three branches of one
->   `resolve_tap` function, and the one-second glance is what `CountIn` draws
->   while the last verdict is still set.
+>   `resolve_tap` function, and the glance is what `CountIn` draws while the
+>   last verdict is still set — which is only until the first count-in click,
+>   since that clears it and turns the page back to the during-play facts
+>   (T10, #1184). About half a second at 120bpm.
 >
 > The `Boundary` row is deferred with §7's arbitration: with one seeded block
 > there is no interruption to fire and nothing to arbitrate, so a closed block

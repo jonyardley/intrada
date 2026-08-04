@@ -721,8 +721,14 @@ final class ScreenSnapshotTests: XCTestCase {
 
   /// Identical composition to a pass — a miss is the user's own report.
   func testDrillScreenMissAcknowledged() {
-    let state = DrillView.preview(
-      phase: .acknowledged(clean: false, countInRemaining: 2), elapsedSeconds: 798)
+    let state = DrillView.preview(phase: .acknowledged(clean: false), elapsedSeconds: 798)
+    assertSnapshot(of: host(drill(state)), as: config)
+  }
+
+  /// The during-play page during the count-in: dots in the stuck target's
+  /// place (#1184).
+  func testDrillScreenCountIn() {
+    let state = DrillView.preview(phase: .countIn(remaining: 2), elapsedSeconds: 803)
     assertSnapshot(of: host(drill(state)), as: config)
   }
 

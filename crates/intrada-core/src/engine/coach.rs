@@ -44,9 +44,10 @@ impl CoachState {
                 Phase::CountIn { beats_remaining } => match block.last_verdict {
                     Some(verdict) => DrillPhase::Acknowledged {
                         clean: verdict == Verdict::Clean,
-                        count_in_remaining: beats_remaining,
                     },
-                    None => DrillPhase::Playing,
+                    None => DrillPhase::CountIn {
+                        remaining: beats_remaining,
+                    },
                 },
                 Phase::Listening | Phase::Escalating { .. } => DrillPhase::Playing,
             },
@@ -94,15 +95,24 @@ pub struct CoachView {
     pub drill: Option<DrillView>,
 }
 
-/// What the drill screen shows. Deliberately presentational: the shell never
-/// sees `CountIn` versus `Escalating`, only that the hands should be playing.
+/// What the drill screen shows. Deliberately presentational: `Escalating`
+/// reads as `Playing`, and the tap's glance holds only until the first
+/// count-in click turns the page (#1184, T10).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum DrillPhase {
     Playing,
+    /// The during-play page, count-in dots in the stuck target's place.
+    /// `remaining` is beats left after the sounding click, down to 0; the
+    /// full count before the first click, so no dot filled.
+    CountIn {
+        remaining: u8,
+    },
     AwaitingVerdict,
-    Acknowledged { clean: bool, count_in_remaining: u8 },
+    Acknowledged {
+        clean: bool,
+    },
     GateOpen,
 }
 
@@ -202,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn the_glance_after_a_tap_carries_the_count_in() {
+    fn the_glance_after_a_tap_yields_to_the_count_in() {
         let mut coach = playing();
         coach.apply(&CoachEvent::Beat { beat_index: 32 });
         coach.apply(&CoachEvent::Tap {
@@ -213,20 +223,16 @@ mod tests {
         let before = coach.view().drill.unwrap();
         assert_eq!(
             before.phase,
-            DrillPhase::Acknowledged {
-                clean: false,
-                count_in_remaining: 4
-            }
+            DrillPhase::Acknowledged { clean: false },
+            "the glance carries the verdict and nothing to read (#1184)"
         );
         assert_eq!(before.rep_seq, 2);
 
-        coach.apply(&CoachEvent::CountInBeat { remaining: 2 });
+        coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
         assert_eq!(
             coach.view().drill.unwrap().phase,
-            DrillPhase::Acknowledged {
-                clean: false,
-                count_in_remaining: 2
-            }
+            DrillPhase::CountIn { remaining: 3 },
+            "the first count-in click turns the page to the next rep's facts"
         );
 
         coach.apply(&CoachEvent::Beat { beat_index: 0 });
@@ -234,6 +240,18 @@ mod tests {
             coach.view().drill.unwrap().phase,
             DrillPhase::Playing,
             "the glance goes when the hands are back"
+        );
+    }
+
+    #[test]
+    fn the_first_count_in_of_a_block_has_no_glance_to_show() {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+
+        assert_eq!(
+            coach.view().drill.unwrap().phase,
+            DrillPhase::CountIn { remaining: 4 },
+            "a fresh block counts in on the during-play page"
         );
     }
 
@@ -299,6 +317,9 @@ mod tests {
             clean: false,
             now: at(9),
         });
+        assert_round_trips(coach.view());
+
+        coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
         assert_round_trips(coach.view());
     }
 }

@@ -18,7 +18,8 @@ pub enum CoachEvent {
     StartDrillLoop {
         now: DateTime<Utc>,
     },
-    /// One count-in click; `remaining` counts down to 1.
+    /// One count-in click, reported as it sounds; `remaining` is beats left
+    /// *after* this one, counting down to 0 on the last click (#1184).
     CountInBeat {
         remaining: u8,
     },
@@ -192,7 +193,8 @@ pub struct BlockState {
     pub consecutive_fails: u8,
     pub gate_progress: GateProgress,
     pub escalation_fired: Vec<Rung>,
-    /// What the last tap said, so `CountIn` can draw the glance.
+    /// What the last tap said, so the glance can draw until the first
+    /// count-in click.
     pub last_verdict: Option<Verdict>,
     /// Bumped whenever the shell should restart the click.
     pub rep_seq: u32,
@@ -350,6 +352,8 @@ impl EngineSession {
             block.phase,
             Phase::CountIn { .. } | Phase::Escalating { .. }
         ) {
+            // The first count-in click ends the tap's glance (#1184).
+            block.last_verdict = None;
             block.phase = Phase::CountIn {
                 beats_remaining: remaining,
             };
@@ -714,6 +718,31 @@ mod tests {
 
         session.apply(&CoachEvent::Beat { beat_index: body });
         assert_eq!(session.phase(), Some(&Phase::AwaitingVerdict));
+    }
+
+    #[test]
+    fn the_first_count_in_beat_ends_the_glance() {
+        let mut session = listening();
+        play_to_the_end(&mut session);
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(9),
+        });
+        assert_eq!(session.block().unwrap().last_verdict, Some(Verdict::Clean));
+
+        session.apply(&CoachEvent::CountInBeat { remaining: 3 });
+        assert_eq!(
+            session.block().unwrap().last_verdict,
+            None,
+            "the glance belongs to the tap; the count-in belongs to the next rep (#1184)"
+        );
+
+        session.apply(&CoachEvent::CountInBeat { remaining: 0 });
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::CountIn { beats_remaining: 0 }),
+            "the last count-in click leaves a brief zero-remaining rest"
+        );
     }
 
     #[test]

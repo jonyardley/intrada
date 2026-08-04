@@ -47,7 +47,7 @@ struct DrillScreen: View {
 
   @ViewBuilder private var identity: some View {
     switch state.phase {
-    case .playing:
+    case .playing, .countIn:
       VStack(spacing: IntradaSpacing.cardCompact) {
         if showsIdentityDetail {
           TypeBadge(kind: state.kind, label: "Drill")
@@ -102,7 +102,7 @@ struct DrillScreen: View {
 
   @ViewBuilder private var centre: some View {
     switch state.phase {
-    case .playing:
+    case .playing, .countIn:
       VStack(spacing: IntradaSpacing.row + 2) {
         tempo
         clickPill
@@ -120,7 +120,7 @@ struct DrillScreen: View {
           .multilineTextAlignment(.center)
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
-    case .acknowledged(let clean, _):
+    case .acknowledged(let clean):
       VStack(spacing: IntradaSpacing.section + 2) {
         RepVerdict(outcome: clean ? .clean : .missed)
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
@@ -172,6 +172,8 @@ struct DrillScreen: View {
     switch state.phase {
     case .playing:
       StuckTarget(action: onStuck)
+    case .countIn(let remaining):
+      CountIn(remaining: Int(remaining), total: Int(state.countInBeats))
     case .awaitingVerdict:
       VStack(spacing: 0) {
         TapVerdict(onClean: { onVerdict(true) }, onMissed: { onVerdict(false) })
@@ -180,8 +182,9 @@ struct DrillScreen: View {
           .padding(.bottom, IntradaSpacing.controlGap + 2)
         StuckTarget(emphasis: .quiet, action: onStuck)
       }
-    case .acknowledged(_, let remaining):
-      CountIn(remaining: Int(remaining), total: Int(state.countInBeats))
+    case .acknowledged:
+      // Deliberately empty: the glance carries the verdict alone (#1184).
+      EmptyView()
     case .gateOpen:
       Text("moving on")
         .font(IntradaFont.ambient())
@@ -213,7 +216,15 @@ private struct CountIn: View {
     }
     .animation(nil, value: remaining)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Count-in, \(remaining) beats to go")
+    .accessibilityLabel(spokenCountIn)
+  }
+
+  private var spokenCountIn: String {
+    switch remaining {
+    case 0: "Count-in, last beat"
+    case 1: "Count-in, 1 beat to go"
+    default: "Count-in, \(remaining) beats to go"
+    }
   }
 }
 
@@ -265,15 +276,15 @@ private struct CountIn: View {
 
   #Preview("A3 pass tap") {
     DrillPreview(
-      state: .preview(
-        phase: .acknowledged(clean: true, countInRemaining: 2), gateFilled: 3,
-        elapsedSeconds: 761))
+      state: .preview(phase: .acknowledged(clean: true), gateFilled: 3, elapsedSeconds: 761))
   }
 
   #Preview("A3 fail tap") {
-    DrillPreview(
-      state: .preview(
-        phase: .acknowledged(clean: false, countInRemaining: 2), elapsedSeconds: 798))
+    DrillPreview(state: .preview(phase: .acknowledged(clean: false), elapsedSeconds: 798))
+  }
+
+  #Preview("A2 count-in") {
+    DrillPreview(state: .preview(phase: .countIn(remaining: 2), elapsedSeconds: 803))
   }
 
   #Preview("A3 gate open") {

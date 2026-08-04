@@ -214,3 +214,18 @@ follow on drop. A custom in-card drag that preserved the unit visual lost a
 touch-delivery race against the List's own lift (holding a nested grip lifted
 the whole block), so consistency won: the same gesture means the same thing on
 every row.
+
+### T10 — The count-in draws on the during-play page, not the verdict glance
+**Status:** DECIDED 2026-08-04 (jonyardley/intrada#1184, from playing #1183 at
+the piano).
+The A3 glance after a tap is deliberate (one fact, nothing to read), but the
+count-in is preparation for the *next* rep, so parking it on the page that
+judged the previous one read as jarring. Ruling: the glance is the verdict and
+gate dots alone, no count-in dots; the first count-in click turns the page to
+A2 (tempo, click level, beat position), where the dots draw in place of the
+stuck target. The first click is the boundary because it needs no new timer,
+and the shortened glance (about half a second at 120bpm) is fine because the
+verdict is the user's own tap, an acknowledgement rather than news. Options
+considered: turning immediately on the tap lost the glance; keeping A3 for the
+whole count-in kept the next rep's facts off screen until the hands were
+already moving.
