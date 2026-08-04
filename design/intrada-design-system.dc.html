@@ -491,6 +491,76 @@
         <div style="font-size:12.5px;color:#6E6557;line-height:1.6;">RepCounter — net progress toward a target. <strong style="font-weight:600;color:#2B2A26;">Clean +1, Missed −1</strong>, clamped 0…target; buttons disable at each end. Clean is success teal; a miss is a calm taupe, never a shaming red. This is the in-the-moment "good friction" the player exists for.</div>
       </div>
 
+      <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Coach primitives · the drill loop</div>
+      <p style="font-size:13.5px;line-height:1.62;color:#6E6557;max-width:660px;margin:11px 0 0;">Six parts the practice-coach drill loop is assembled from — added 3 Aug 2026 with the Session A drill screens (<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">Drill Loop.dc.html</span>). All six are read at arm's length in a dim practice room, so none of them uses <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">inkFaint</span>, and none of them animates while the user is playing.</p>
+      <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:34px 30px;">
+
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:6px;font-variant-numeric:tabular-nums;">2 of 3</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;background:#4C3FA6;"></span>
+            <span style="font-size:15px;font-weight:500;color:#2B2A26;margin-left:6px;">gate open</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="width:15px;height:15px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:6px;font-variant-numeric:tabular-nums;">0 of 3</span>
+          </div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">GateDots</strong> — read-only gate progress after a rep. Filled dots are <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">masteryFill</span> indigo, not teal: this is progress, and teal is reserved for the verdict itself. Never shown during play — the dots are derived from verdicts, so mid-drill they would be a score. Distinct from <strong style="font-weight:600;">RepCounter</strong>, which is the manual ± counter in the legacy player.</div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="width:70px;height:70px;border-radius:50%;background:#E7F1EB;border:1px solid #C9E2D3;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="check" width="36" height="36" style="color:#1F8A5B;"></i></div>
+            <div style="width:70px;height:70px;border-radius:50%;background:#EFEADC;border:1px solid #DCD4C1;display:flex;align-items:center;justify-content:center;flex:none;"><i data-lucide="x" width="36" height="36" style="color:#8A8170;"></i></div>
+            <div style="width:70px;height:70px;border-radius:50%;background:#FCFAF3;border:1px solid #E0D9C8;display:flex;align-items:center;justify-content:center;flex:none;font-size:34px;font-weight:600;color:#2B2A26;line-height:1;">?</div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:9px;font-size:11px;color:#6E6557;"><span style="width:70px;text-align:center;">pass</span><span style="width:70px;text-align:center;">miss</span><span style="width:70px;text-align:center;">unsure</span></div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:12px;"><strong style="color:#2B2A26;font-weight:600;">RepVerdict</strong> — the one-glance result, glyph plus at most one fact. A miss is taupe, never red. The <em>unsure</em> state carries no tint at all: it is a question, not a verdict, so it renders on <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span> at full ink contrast and is the only one that asks for a tap.</div>
+        </div>
+
+        <div style="grid-column:span 2;">
+          <div style="display:flex;align-items:center;gap:9px;white-space:nowrap;font-size:14px;font-weight:500;color:#6E6557;font-variant-numeric:tabular-nums;">
+            <span>12:04 elapsed</span><span style="color:#C9C0AC;">·</span><span>block 2 of 5</span><span style="color:#C9C0AC;">·</span><span>ceiling 6 min</span>
+          </div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">OrientationStrip</strong> — where you are, never how you did (decision 15). Made quiet by being <em>small and static</em>, not by being low-contrast: <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">inkSecondary</span> at 14pt medium, tabular figures. No bar, ring or countdown — a filling track reads as a deadline.</div>
+        </div>
+
+        <div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="width:16px;height:16px;border-radius:50%;background:#2B2A26;"></span>
+            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="width:16px;height:16px;border-radius:50%;box-shadow:inset 0 0 0 2px #DCD4C1;"></span>
+            <span style="font-size:15px;font-weight:500;color:#6E6557;margin-left:8px;font-variant-numeric:tabular-nums;">bar 3 of 8</span>
+          </div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">BeatPosition</strong> — passive position against the click. Ink, monochrome, no accent: it is not feedback. The pip swaps on the beat with <em>no</em> transition and no <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">pop</span> — motion during play is banned, because anything that moves invites a look.</div>
+        </div>
+
+        <div>
+          <div style="height:96px;border-radius:22px;background:#FCFAF3;border:1.5px solid #E0D9C8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#2B2A26;">I'm stuck</div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">StuckTarget</strong> — the one large target on the drill screen, ≥96pt tall and full-bleed to the safe area so it is hittable without looking. Surface, not gradient: it must be findable, not attractive. <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">radius.hero</span>.</div>
+        </div>
+
+        <div>
+          <div style="background:#FCFAF3;border:1px solid #E5DECD;border-radius:12px;padding:16px 18px;">
+            <div style="font-family:'Source Serif 4',serif;font-weight:600;font-size:17px;line-height:1.35;color:#2B2A26;">Shells and rootless are what sit between you and improvising over Strasbourg.</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:13px;color:#6E6557;margin-top:10px;"><i data-lucide="trending-up" width="14" height="14" style="color:#1F8A5B;"></i>100 → 120 bpm this fortnight</div>
+            <div style="font-size:13px;color:#2B2A26;margin-top:7px;">Next time: keep the left hand off the beat.</div>
+          </div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">CoachNote</strong> — the only place the app speaks in sentences, at a block boundary, at most once a session. Exactly three parts: why (citing the declared campaign before graph state), the trend, one thing to listen for. Serif for the thought, Inter for the evidence. If there is nothing worth saying, the boundary ships without it.</div>
+        </div>
+
+      </div>
+
       <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Week picker</div>
       <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1.1fr 1fr;gap:34px;align-items:center;">
         <div style="display:flex;gap:5px;">
@@ -990,7 +1060,7 @@
     <footer style="margin-top:110px;padding-top:34px;border-top:1px solid #E0D9C8;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
       <div style="display:flex;align-items:center;gap:11px;">
         <img src="assets/app-icon-default.png" width="28" height="28" alt="Intrada" style="border-radius:7px;flex:none;display:block;box-shadow:0 2px 5px -2px rgba(43,42,38,0.35);">
-        <div style="font-size:12.5px;color:#9A927F;line-height:1.5;">Intrada · Paper &amp; Score design system<br>Foundations for design-led development</div>
+        <div style="font-size:12.5px;color:#9A927F;line-height:1.5;">Intrada · Paper &amp; Score design system<br>Foundations for design-led development </div>
       </div>
       <div style="font-size:12px;color:#B0A892;font-family:ui-monospace,Menlo,monospace;">v1.0 · derived from ios/Intrada/DesignSystem/Theme.swift</div>
     </footer>
