@@ -844,6 +844,43 @@ the `Intrada*` tokens, never raw hex.
 (Pencil — `design/intrada.pen` — is retired. `design/light-mode-exploration.md`
 remains as provenance.)
 
+## Parallel work streams (agentic sessions)
+
+Rules for running more than one Claude Code session against this repo at once.
+Evidence base: coupling analysis of the last 400 commits (2026-08).
+
+### Conventions
+
+- British English in all UI copy, comments, commit messages and PR bodies.
+- No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
+
+### Stream rules
+
+- **Exactly one core+iOS vertical stream at a time.** 31% of core commits also
+  touch `ios/`; two concurrent vertical features will collide.
+- A **second stream** may run only in the decoupled set: `crates/intrada-api`,
+  `docs/`, `specs/`, `design/`, `content/`, or CI/tooling (`justfile`,
+  `.github/workflows/`). An API task that needs a new domain field is a core
+  change: it joins the vertical stream, it does not run beside it.
+- **Serialisation points.** If your task and another live branch both touch one
+  of these files, serialise rather than parallelise:
+  `crates/intrada-core/src/app.rs`, `crates/intrada-core/src/domain/session.rs`,
+  `ios/IntradaTests/ScreenSnapshotTests.swift`,
+  `ios/Intrada/DesignSystem/PreviewSupport.swift`, `ios/project.yml`, and
+  `Cargo.lock` (never pair anything with a dependency bump).
+- One git worktree per stream, branched from fresh `origin/main`. Follow the
+  shared-simulator rule under Commands. Close the second session when its task
+  ships; do not keep it warm.
+
+### Definition of done (every stream, before requesting review)
+
+- [ ] `just check` green locally; `just ios-fmt-check` too if `ios/` touched
+- [ ] Tests shipped with the new code (see Testing)
+- [ ] PR opened via the `ship` skill; self-review comment posted
+- [ ] Codecov compared against the PR's Coverage line (Tier 2+)
+- [ ] Roadmap updated; deferred items tracked as issues
+- [ ] A human reviews and merges. Agents never merge.
+
 ## Known Tech Debt
 
 - `Set` creates still bump `set_saves_committed` + refetch instead of using

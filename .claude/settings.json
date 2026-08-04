@@ -1,5 +1,41 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(just check)",
+      "Bash(just check-fast)",
+      "Bash(just check-all)",
+      "Bash(just test)",
+      "Bash(just lint)",
+      "Bash(just fmt)",
+      "Bash(just fmt-check)",
+      "Bash(just hygiene)",
+      "Bash(just ios-fmt)",
+      "Bash(just ios-fmt-check)",
+      "Bash(just ios-test)",
+      "Bash(just ios-snapshots-check)",
+      "Bash(cargo test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo check:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [
+      "Bash(just testflight)",
+      "Bash(just testflight:*)",
+      "Bash(just ios-test-sim-clean)",
+      "Bash(just ios-test-sim-clean:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main:*)",
+      "Bash(fly:*)",
+      "Bash(flyctl:*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
