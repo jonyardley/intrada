@@ -571,6 +571,27 @@ single view.
 - No `unwrap()` without justification.
 - Prefer well-established libraries over custom implementations.
 
+### Nothing unread stays in the tree
+
+**Code with no reader gets deleted, not parked.** Not `#[allow(dead_code)]`, not
+"inert until the feature returns", not a `pub` export nobody calls — those go
+stale silently, they carry weight into the app, and they mislead the next reader
+into thinking something is load-bearing. `git` is the parking space: delete it,
+say in the PR (and in whatever doc described it) which PR to recover it from, and
+keep the *findings* rather than the code that produced them. Prose about what a
+spike established stays valuable; the spike's unread code does not.
+
+This applies to deliberately-deferred work too — the MIDI capture spike and its
+Rust segmentation module were deleted on exactly this rule (#1176) even though
+the scoring path is expected back, with
+[`docs/segmentation-findings.md`](docs/segmentation-findings.md) left as the
+record. A "we'll need it later" exemption is how a codebase accumulates a
+museum. Deferring a feature means deferring its code to history.
+
+Distinguish this from a stub that a *test* reads, or an API a shell genuinely
+calls: those have readers. The test is "who reads this today?", not "might
+someone read this eventually?".
+
 ### Comments
 
 Default to **no comments**. Self-explanatory code with well-named identifiers

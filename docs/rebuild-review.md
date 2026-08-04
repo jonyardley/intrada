@@ -353,10 +353,13 @@ context), then the first bridge crossing (batched capture in, gate progress
 out) and the one drill screen with the tick.
 
 > **Revised 4 Aug 2026:** Week 3+ is deferred with machine listening (design
-> doc v6, decision 18). PRs 1–3 stand — harness, click, gate drill,
-> segmentation spike and findings all merged and inert. The coach loop
-> proceeds on tap-verdict evidence (Phase 2a); this paragraph becomes the
-> plan for the scoring path's return, whose first feature is play-to-input.
+> doc v6, decision 18). PRs 1–3 delivered, then **had their code removed**
+> (#1176): unread code goes stale and ships weight, so the harness, gate drill
+> and segmentation module live in history and their findings live in
+> `segmentation-findings.md`. The click stayed, being what click-always needs.
+> The coach loop proceeds on tap-verdict evidence (Phase 2a); this paragraph
+> becomes the plan for the scoring path's return, whose first feature is
+> play-to-input.
 
 Suggested tiering: PR 1 is Tier 1 by content but ships via `ship` anyway
 given its breadth; PR 2-3 are Tier 2 with the design doc standing in as the

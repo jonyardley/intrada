@@ -3,30 +3,21 @@
 //! `tests/engine_boundary.rs` asserts it. Local-first only — no `local_first`
 //! branch lives here.
 //!
-//! Two halves so far: attempt segmentation over a captured note stream (pure
-//! functions on plain data, `docs/segmentation-findings.md`), and the session
-//! state machine the tap-verdict drill loop runs on (§4, §6).
+//! Scoped to the tap-verdict loop (decision 18): the session state machine (§4)
+//! and the bridge surface the drill screen renders (§6). The attempt
+//! segmentation this module started as returns with the scoring path — what it
+//! established is in `docs/segmentation-findings.md`.
 
 mod coach;
 mod gate;
-mod grid;
-mod note;
-mod phrase;
 mod plan;
-mod segment;
 mod session;
 
 pub use coach::{CoachState, CoachView, DrillPhase, DrillView};
 pub use gate::{
     ClickLevel, EvidenceSource, GateCriteria, GateProgress, Judge, Requirement, Verdict,
 };
-pub use grid::{BeatRef, ClickGrid};
-pub use note::{cluster_onsets, NoteEvent, Onset};
-pub use phrase::{PhraseStep, TargetPhrase};
 pub use plan::{BlockSpec, ParameterLevel, Plan};
-pub use segment::{
-    rest_spans, segment, Attempt, AttemptOutcome, Pause, SegmentConfig, Segmentation, TimingStats,
-};
 pub use session::{
     AttemptSummary, BlockRecord, BlockState, CoachEvent, EngineConfig, EngineSession, Exit, Phase,
     Rung, SessionState, WanderRecord,

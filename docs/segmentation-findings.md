@@ -1,9 +1,16 @@
 # Attempt segmentation: what timing can and cannot decide
 
-> Findings from the PR 3 spike (`docs/rebuild-review.md` §6). Code:
-> `crates/intrada-core/src/engine/`. Evidence: the five real MIDI takes in
-> `crates/intrada-core/tests/fixtures/midi_takes/`, recorded on a Roland LX-706
-> over Bluetooth MIDI at 92 bpm. Tests: `tests/engine_segmentation.rs`.
+> Findings from the PR 3 spike (`docs/rebuild-review.md` §6). Evidence: five
+> real MIDI takes recorded on a Roland LX-706 over Bluetooth MIDI at 92 bpm.
+>
+> **The code, the takes and the tests are in git history, not the tree**
+> (removed 4 Aug 2026, #1176): machine listening is deferred by decision 18, and
+> nothing in the shipping app read them. Recover from PR #1161 —
+> `crates/intrada-core/src/engine/{note,grid,phrase,segment}.rs`,
+> `tests/engine_segmentation.rs`, `tests/fixtures/midi_takes/` — when the
+> scoring path returns. This document is what survives, and it is the part
+> worth keeping: what the spike *established* outlives the code that
+> established it.
 > Written 4 Aug 2026. This note is the spec input for the scoring gate.
 
 ## Verdict
