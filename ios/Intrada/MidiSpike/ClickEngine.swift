@@ -19,7 +19,8 @@ final class ClickEngine {
   var onCountIn: ((_ remaining: Int) -> Void)?
 
   /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
-  var onBeat: ((_ bar: Int, _ beat: Int, _ hostTime: UInt64) -> Void)?
+  /// `index` is 0-based from bar 1 beat 1, which is what the core counts in.
+  var onBeat: ((_ index: Int, _ bar: Int, _ beat: Int, _ hostTime: UInt64) -> Void)?
 
   /// Pending (hostTime, action) pairs, polled on a short interval rather
   /// than one `Task.sleep` per beat — iOS coalesces long timer wakeups to
@@ -108,7 +109,8 @@ final class ClickEngine {
         return (beatHostTime, { [weak self] in self?.onCountIn?(remaining) })
       } else {
         let (bar, beat, _) = grid.nearestBeat(for: beatHostTime)
-        return (beatHostTime, { [weak self] in self?.onBeat?(bar, beat, beatHostTime) })
+        let index = beatIndex - countInBeats
+        return (beatHostTime, { [weak self] in self?.onBeat?(index, bar, beat, beatHostTime) })
       }
     }
   }

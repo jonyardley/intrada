@@ -207,6 +207,24 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 > (journeys doc, decision 16 as scoped), and `WanderRecord.attempts` stays
 > empty. "Hands never leave the keys" on the `Verdict` → `CountIn` row reads
 > as "one tap, then the count-in" until then.
+>
+> **Built 4 Aug 2026 (#1176), with two departures from the table below** — both
+> forced by there being no machine verdict, both reversed when the scoring path
+> returns:
+>
+> - **`Listening` splits in two.** The one `Listening | attempt segmented |
+>   Verdict` row becomes the grid finishing the phrase body
+>   (`AwaitingVerdict`), then the user's tap. `AwaitingVerdict` collapses back
+>   out once attempts segment themselves.
+> - **`Verdict` is the tap, not a state.** With nothing to wait for, a `Verdict`
+>   phase could never rest, and a phase no event rests in is a phase the shell
+>   cannot render. Its three outgoing rows are three branches of one
+>   `resolve_tap` function, and the one-second glance is what `CountIn` draws
+>   while the last verdict is still set.
+>
+> The `Boundary` row is deferred with §7's arbitration: with one seeded block
+> there is no interruption to fire and nothing to arbitrate, so a closed block
+> goes straight to the next block or `Closing`.
 
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,

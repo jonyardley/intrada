@@ -1,25 +1,21 @@
 import SwiftUI
 
-/// Debug-only tab (#if DEBUG in RootView) switching between the two spike
-/// screens. Deliberately plain — no ScreenScaffold/design tokens, since this
-/// is throwaway debug tooling, not a shipped screen.
+/// Debug-only tab (#if DEBUG in RootView) switching between the spike screens.
+/// Deliberately plain — no ScreenScaffold/design tokens, since this is throwaway
+/// debug tooling, not a shipped screen.
+///
+/// The Drill Loop entry stays until the coach loop is reachable from Practice
+/// (#1182); the sequencing it used to do in Swift now lives in the core.
 struct MidiSpikeScreen: View {
-  // The file itself builds in Release (only its call site in RootView is
-  // DEBUG-gated), so anything reaching into DEBUG-only code has to be guarded
-  // here too — the per-PR CI job builds Debug and won't catch it.
   private enum Mode: String, CaseIterable, Identifiable {
     case capture = "Capture"
     case drill = "Gate Drill"
-    #if DEBUG
-      case loop = "Drill Loop"
-    #endif
+    case loop = "Drill Loop"
     var id: String { rawValue }
   }
 
   @State private var mode: Mode = .capture
-  #if DEBUG
-    @State private var runningLoop = false
-  #endif
+  @State private var runningLoop = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -36,26 +32,22 @@ struct MidiSpikeScreen: View {
         MidiDebugScreen()
       case .drill:
         GateDrillScreen()
-      #if DEBUG
-        case .loop:
-          VStack(spacing: 12) {
-            Text("A2 / A3 full-screen, driven by the real click.")
-              .font(.footnote)
-              .foregroundStyle(.secondary)
-              .multilineTextAlignment(.center)
-            Button("Run the drill loop") { runningLoop = true }
-              .buttonStyle(.borderedProminent)
-            Spacer()
-          }
-          .padding()
-      #endif
+      case .loop:
+        VStack(spacing: 12) {
+          Text("A2 / A3 full-screen, driven by the core's session state machine.")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+          Button("Run the drill loop") { runningLoop = true }
+            .buttonStyle(.borderedProminent)
+          Spacer()
+        }
+        .padding()
       }
     }
-    #if DEBUG
-      .fullScreenCover(isPresented: $runningLoop) {
-        DrillLoopHarness(onClose: { runningLoop = false })
-      }
-    #endif
+    .fullScreenCover(isPresented: $runningLoop) {
+      DrillLoopHost(onClose: { runningLoop = false })
+    }
   }
 }
 

@@ -23,6 +23,7 @@ pub use domain::types::{
     CreateItem, LibraryData, LibrarySort, ListQuery, SessionsData, SortDirection, SortField, Tempo,
     UpdateItem,
 };
+pub use engine::{CoachEvent, CoachState, CoachView, DrillPhase, DrillView};
 pub use error::LibraryError;
 pub use persistence::{PersistenceOperation, PersistenceOutput};
 

@@ -76,7 +76,7 @@ final class GateDrillModel {
       engine.onCountIn = { [weak self] remaining in
         Task { @MainActor in self?.phase = .countIn(remaining: remaining) }
       }
-      engine.onBeat = { [weak self] _, _, _ in
+      engine.onBeat = { [weak self] _, _, _, _ in
         Task { @MainActor in
           self?.phase = .playing
           self?.beatFlashID += 1

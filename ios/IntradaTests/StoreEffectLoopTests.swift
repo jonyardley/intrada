@@ -435,6 +435,56 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
+  /// Real-bridge drill loop (#846, #1176): drives a whole repetition — start,
+  /// count-in, body beats, tap — through the actual Swift↔Rust bincode wire and
+  /// asserts the core's own counting comes back in `CoachView`. A stub bridge
+  /// can't catch a wire break here; the symptom would be a drill screen that
+  /// never advances (`specs/intrada-coach-engine.md` §6).
+  func testRealBridgeDrillLoopCountsRepsInTheCore() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    XCTAssertNil(try bridge.view().coach.drill, "no drill until one is started")
+
+    _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(opening.drillTitle, "Rootless voicings")
+    XCTAssertEqual(opening.gateQuestion, "Clean at 120?")
+    XCTAssertEqual(opening.gateTarget, 3)
+    XCTAssertEqual(opening.gateFilled, 0)
+
+    _ = try bridge.update(.coach(.countInBeat(remaining: 1)))
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing)
+
+    _ = try bridge.update(.coach(.beat(beatIndex: opening.clickBeats - 1)))
+    XCTAssertEqual(
+      try bridge.view().coach.drill?.phase, .awaitingVerdict,
+      "the phrase ended, so the core asks the question")
+
+    _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
+    let acknowledged = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true, countInRemaining: 4))
+    XCTAssertEqual(acknowledged.gateFilled, 1, "the core filled the dot, not the shell")
+    XCTAssertEqual(acknowledged.repSeq, 2, "the shell restarts the click off this")
+    XCTAssertNil(try bridge.view().error, "a whole rep must decode on the wire (#846)")
+  }
+
+  /// Real-bridge escalation (#846, #1176): "I'm stuck" is the core's decision —
+  /// the ladder drops the tempo and the criterion follows it. The old Swift
+  /// harness did this arithmetic itself.
+  func testRealBridgeStuckDropsTheTempoInTheCore() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+
+    _ = try bridge.update(.coach(.stuck(now: SessionClock.nowRFC3339())))
+    let after = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(after.tempoBpm, 96)
+    XCTAssertEqual(after.gateQuestion, "Clean at 96?")
+    XCTAssertEqual(after.phase, .playing, "escalation acts rather than narrates")
+  }
+
   /// Real-bridge chord-chart round-trip (#846): `SetChordChart` carries a String
   /// but returns a nested `ChordChart` + `ScaffoldPreviewView` across the bincode
   /// wire — a shape a stub bridge can't exercise. A bad chart must surface an
