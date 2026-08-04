@@ -904,6 +904,26 @@ Evidence base: coupling analysis of the last 400 commits (2026-08).
   shared-simulator rule under Commands. Close the second session when its task
   ships; do not keep it warm.
 
+### Agent teams (in-session teammates)
+
+An agent team (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, terminal sessions only)
+counts as **one** stream: the whole team shares a single checkout and one
+feature branch, so a core+iOS team satisfies the one-vertical-stream rule by
+itself. Never run a second vertical session beside it. Start one with
+`/team-vertical <issues>` (`.claude/commands/team-vertical.md`).
+
+- **Shared checkout, no file locking.** Teams lock task claiming, not file
+  edits. Every file gets exactly one writing teammate, fixed in the brief;
+  the serialisation-point files above are single-owner by definition.
+- **Contract before code.** The core teammate publishes the
+  Event/Effect/ViewModel contract for the slice before either side wires it.
+  A bridge-type change is messaged to the team, never landed silently.
+- **Per-teammate gates.** Each teammate runs its gates (`just check` for
+  core; `just ios-fmt-check` + `just ios-test` for `ios/`) before marking a
+  task done.
+- **One PR, via `ship`, human merges** — the definition of done below applies
+  to the team as a whole, not per teammate.
+
 ### Definition of done (every stream, before requesting review)
 
 - [ ] `just check` green locally; `just ios-fmt-check` too if `ios/` touched
