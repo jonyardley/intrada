@@ -287,15 +287,20 @@ rebuilds the whole `ViewModel`, so per-note crossing is architecture abuse at
 playing speed. The entire engine bridge surface, and it does not grow:
 
 ```rust
-struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: u64 }  // from the click anchor
+struct NoteEvent { pitch: u8, velocity: u8, on: bool, t_us: i64 }  // from the click anchor
 struct NoteBatch { session: Ulid, seq: u32, anchor_us: u64,
                    events: Vec<NoteEvent>, transport: TransportTier }
-struct ClickGrid { bpm_milli: u32, beats_per_bar: u8, count_in_bars: u8,
+struct ClickGrid { bpm_milli: u32, beats_per_bar: u8, count_in_beats: u8,
                    click_level: ClickLevel, anchor_us: u64 }
 enum  CoachOperation { ScheduleClick(ClickGrid), StopClick, StartCapture, StopCapture }
 enum  EngineEvent    { NotesCaptured(NoteBatch), … }   // one ingest event
 struct CoachView     { … }                             // one ViewModel field
 ```
+
+Two of those signatures were corrected by the PR 3 segmentation spike
+(`docs/segmentation-findings.md`): `t_us` is **signed**, because two of five
+real takes open with a note before the click anchor, and the count-in is
+counted in **beats**, which is what the capture harness records.
 
 Rules, from the #846 bincode hazard and review §3.2:
 

@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod app;
 pub mod domain;
+pub mod engine;
 pub mod error;
 pub mod http;
 pub mod model;
