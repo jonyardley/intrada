@@ -26,8 +26,8 @@ is_large() {
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \
-      testDrillScreenTapVerdict | testDrillScreenMissAcknowledged | \
-      testDrillScreenGateOpen) return 0 ;;
+      testDrillScreenCountIn | testDrillScreenTapVerdict | \
+      testDrillScreenMissAcknowledged | testDrillScreenGateOpen) return 0 ;;
     *) return 1 ;;
   esac
 }

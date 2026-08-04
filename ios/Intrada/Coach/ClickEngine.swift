@@ -13,8 +13,8 @@ final class ClickEngine {
 
   private let leadInSeconds: Double = 0.5
 
-  /// Beats remaining, counting down to 1 — distinct from `onBeat` since the
-  /// count-in needs its own audible tone and on-screen countdown.
+  /// Fires as each count-in click sounds; `remaining` is beats left *after*
+  /// this one, counting down to 0 on the last click (#1184).
   var onCountIn: ((_ remaining: Int) -> Void)?
 
   /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
@@ -88,14 +88,14 @@ final class ClickEngine {
     }
   }
 
-  private func buildSchedule(
+  func buildSchedule(
     totalBeats: Int, countInBeats: Int, audibleStart: UInt64, secondsPerBeat: Double
   ) -> [(hostTime: UInt64, fire: () -> Void)] {
     (0..<totalBeats).map { beatIndex in
       let beatHostTime =
         audibleStart &+ HostClock.ticks(fromSeconds: Double(beatIndex) * secondsPerBeat)
       if beatIndex < countInBeats {
-        let remaining = countInBeats - beatIndex
+        let remaining = countInBeats - beatIndex - 1
         return (beatHostTime, { [weak self] in self?.onCountIn?(remaining) })
       }
       let index = beatIndex - countInBeats

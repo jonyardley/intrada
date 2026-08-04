@@ -452,7 +452,12 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(opening.gateTarget, 3)
     XCTAssertEqual(opening.gateFilled, 0)
 
+    XCTAssertEqual(
+      opening.phase, .countIn(remaining: 4),
+      "a fresh block counts in on the during-play page (#1184)")
+
     _ = try bridge.update(.coach(.countInBeat(remaining: 1)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .countIn(remaining: 1))
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))
     XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing)
 
@@ -463,7 +468,7 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
     let acknowledged = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true, countInRemaining: 4))
+    XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true))
     XCTAssertEqual(acknowledged.gateFilled, 1, "the core filled the dot, not the shell")
     XCTAssertEqual(acknowledged.repSeq, 2, "the shell restarts the click off this")
     XCTAssertNil(try bridge.view().error, "a whole rep must decode on the wire (#846)")
