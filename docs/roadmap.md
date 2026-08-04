@@ -38,7 +38,7 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 >
 > | Question | Document |
 > |---|---|
-> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v6) |
+> | What are we building, and why? | [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md) (v7) |
 > | What does it feel like to use? | [`docs/coach-user-journeys.md`](coach-user-journeys.md) |
 > | What survives the pivot, what dies when? | [`docs/rebuild-review.md`](rebuild-review.md) |
 > | Can I implement from this old spec? | [`specs/README.md`](../specs/README.md) |
@@ -63,7 +63,7 @@ coach work** — this is.
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
 | **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the `engine` module segments all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Lick-transposition scoring and the machine-verdict drill screen defer to the scoring path's return (trigger: play-to-input). USB comparison stays open-ended (#1156) |
 | **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **Next.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended) |
-| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
+| **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), three-way target resolution + user-created items + the built session (decision 19), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
 | **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
 

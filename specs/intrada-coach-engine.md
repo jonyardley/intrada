@@ -92,7 +92,11 @@ certain, which is correct; and a capped node responds to new evidence at a fixed
 rate forever, which is what makes three bad sessions visible (lever 4).
 
 Content's `(estimate, band)` seeds become priors: band strength `low 2 /
-medium 5 / high 10` pseudo-counts, split by the seeded estimate.
+medium 5 / high 10` pseudo-counts, split by the seeded estimate. User-created
+nodes (decision 19, design doc v7) reuse this state unchanged with a `low`-band
+prior; their attempts are ordinary tap-verdict evidence, and a confirmed user
+drill's attempts feed its host node's mastery at full weight — the
+`EvidenceSource` tag is the only distinction recorded.
 
 **#1148.2 — Decay and spacing are one mechanism read twice.** Elapsed time pulls
 counts toward the prior, never toward zero:
@@ -281,7 +285,16 @@ never add** — that monotonicity is what makes the why generable by constructio
 
 1. **Resolve declared intent.** Goal → campaign target set → today's steer, each
    defaulted so a user who declared nothing still gets a session (decision 9).
-   Opaque targets pass through carrying `scored: false`.
+   Targets resolve three ways (decision 19, design doc v7): matched targets
+   arrive as user drills on their host node, countable-unmatched as user nodes —
+   both ordinary candidates from here on — and only the genuinely unmeasurable
+   passes through as an opaque target carrying `scored: false`.
+
+   A **built session** (decision 19) short-circuits the stages: `ctx` gains
+   `built: Option<Vec<BlockSpec>>`, and when present, stages 1–4 are skipped and
+   stage 5 runs advisory-only — the template shape is *reported* as a suggestion
+   on the `Plan`, never applied. Blocks keep their gates; evidence lands
+   identically to a prescribed session.
 2. **Back-chain.** Through graph prerequisites and pipeline stage order to a
    frontier of `(node, level)` candidates. Ambition beyond the hands returns the
    prerequisite plus an honest distance from the user's own trend (decision 10)
