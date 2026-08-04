@@ -1,4 +1,4 @@
-<!-- Snapshot, 3 Aug 2026. Regenerated from specs/intrada-practice-coach-design.md,
+<!-- Snapshot, 4 Aug 2026 (v6). Regenerated from specs/intrada-practice-coach-design.md,
      docs/coach-user-journeys.md and docs/roadmap.md. If this and the specs
      disagree, the specs win. -->
 <title>Intrada: the practice coach — orientation</title>
@@ -431,6 +431,7 @@
   <div class="nav-scroll">
     <a href="#now">Where we are</a>
     <a href="#shift">What changed</a>
+    <a href="#measures">No ears yet</a>
     <a href="#intent">Who decides</a>
     <a href="#guard">Guiding, not nagging</a>
     <a href="#circles">The two circles</a>
@@ -450,16 +451,19 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">Intrada · orientation · 3 August 2026 · spec v5</p>
+    <p class="eyebrow">Intrada · orientation · 4 August 2026 · spec v6</p>
     <h1>The app stops being a notebook and becomes a teacher.</h1>
     <p class="standfirst">
-      One month of decisions, in one page: what the practice coach is, who decides what you
-      practise, how a session actually plays out, which screens exist, what has to be built in
-      what order — and what is now waiting on you.
+      Six weeks of decisions, in one page: what the practice coach is, who decides what you
+      practise, how a session actually plays out without a microphone yet, which screens exist,
+      what has to be built in what order — and what is now waiting on you. The newest decision
+      changes the build order more than the vision: <strong>machine listening is deferred</strong>
+      (decision 18) — the loop ships first on tap-verdicts, not MIDI scoring.
     </p>
     <div class="mast-meta">
-      <span>Governing spec: <code>specs/intrada-practice-coach-design.md</code></span>
+      <span>Governing spec: <code>specs/intrada-practice-coach-design.md</code> (v6)</span>
       <span>Strategy: <code>docs/rebuild-review.md</code></span>
+      <span>Segmentation spike: <code>docs/segmentation-findings.md</code></span>
       <span>Phase 0 content: <code>content/</code></span>
       <span>Snapshot — if this and the specs disagree, the specs win</span>
     </div>
@@ -474,39 +478,41 @@
     </svg>
     <h2>Where we are, in five numbers</h2>
     <p class="lede">
-      The pivot was decided on 19 July. Since then: the dead shells are gone, the spec has
-      grown two research-driven revisions, and the first content set landed today.
-      No coach code exists yet — that starts with the next pull request.
+      The pivot was decided on 19 July. Since then: the dead shells are gone, the capture harness
+      and segmentation spike landed and closed Phase 1 early, and the newest ruling — 4 August —
+      is that machine listening waits. The coaching loop ships first on tap-verdicts.
     </p>
 
     <div class="grid g4" style="margin-bottom:1.25rem">
       <div class="card stat">
-        <span class="n" style="color:var(--teal)">0</span>
-        <span class="l">Phase 0 (paper teacher) — content authored today, fortnight of practice next</span>
+        <span class="n" style="color:var(--accent)">0</span>
+        <span class="l">Phase 0 (paper teacher) — content authored, the fortnight of practice is running now</span>
       </div>
       <div class="card stat">
-        <span class="n" style="color:var(--accent)">1</span>
-        <span class="l">Phase 1 (the listening gate) — starts at the MIDI capture harness</span>
+        <span class="n" style="color:var(--teal)">1</span>
+        <span class="l">Phase 1 (the listening gate) — closed early, decision 18. Harness and segmentation spike merged; scoring waits</span>
       </div>
       <div class="card stat">
-        <span class="n">20k</span>
-        <span class="l">lines of dead web shell deleted; CI shrank with it</span>
+        <span class="n">18</span>
+        <span class="l">decisions recorded so far; the newest defers the microphone, not the vision</span>
       </div>
       <div class="card stat">
-        <span class="n">~60%</span>
-        <span class="l">of the core's domain code is scheduled to die, at Phase 2 — not now</span>
+        <span class="n">2a</span>
+        <span class="l">next phase — the loop running end to end on tap-verdict evidence, no MIDI required</span>
       </div>
       <div class="card stat">
-        <span class="n">0</span>
-        <span class="l">lines of audio or MIDI anywhere in the app today. The whole listening layer is new</span>
+        <span class="n">1</span>
+        <span class="l">subjective bit per attempt once decision 18 lands: the pass. Tempo, key and scope stay machine-facts</span>
       </div>
     </div>
 
     <div class="note">
-      <p><strong>The one-sentence version.</strong> You bring the goal ("improvise confidently on
-      jazz standards"); the app decides what you practise today, listens over MIDI while you play,
-      scores each attempt, tells you when you're done, and quietly makes the next attempt winnable
-      when you're stuck.</p>
+      <p><strong>The one-sentence version, updated.</strong> You bring the goal ("improvise
+      confidently on jazz standards"); the app decides what you practise today, sets the click,
+      the key and the schedule, and — for now — asks you to confirm the pass against a countable
+      criterion rather than listening itself. It still tells you when you're done and quietly
+      makes the next attempt winnable when you're stuck. The microphone returns later, playing a
+      lick in rather than typing it, once the loop has proven it retains.</p>
     </div>
   </section>
 
@@ -538,7 +544,8 @@
         <h4 style="color:var(--accent)">After — the practice coach</h4>
         <ul class="tight">
           <li><strong>It builds the session</strong> before you sit down. One screen, one button</li>
-          <li><strong>It listens</strong> over MIDI and scores each attempt against a known target</li>
+          <li><strong>It sets the terms</strong> — click, key, scope, schedule — and asks you to
+          confirm the pass against a countable criterion (a tap-verdict, until the mic returns)</li>
           <li><strong>Gates, not minutes:</strong> "3 clean passes at 120" releases the block</li>
           <li>Mastery is measured evidence, held as an estimate <em>plus a confidence</em></li>
           <li>Progress means "the gate opened, and here's the trend"</li>
@@ -546,26 +553,27 @@
       </div>
     </div>
 
-    <div class="arrowband">the honest boundary</div>
+    <div class="arrowband">the honest boundary — narrower than it was</div>
 
     <div class="grid g2">
       <div class="card">
-        <h4>What the app is authoritative about</h4>
+        <h4>What the app is authoritative about, today</h4>
         <p style="font-size:13.5px;margin:0;color:var(--ink-2)">
-          Right notes, in time, at tempo, in every key. The measurable prerequisites of good jazz.
-          MIDI hears these precisely and cheaply.
+          Tempo, key, scope and schedule — the parameters it sets and you can't fudge. Getting
+          better <em>is</em> the levels climbing, and the levels are machine-facts even though no
+          microphone is listening yet. See <a class="inline" href="#measures">"No ears yet"</a>.
         </p>
       </div>
       <div class="card">
-        <h4>What it structures but never grades</h4>
+        <h4>What still waits for the microphone</h4>
         <p style="font-size:13.5px;margin:0;color:var(--ink-2)">
-          Touch, feel, phrasing, swing ratio. It prompts your own judgement, reports what it
-          measured, and asks when unsure. It never issues a verdict its input can't support.
+          Right notes, per-bar timing, swing ratio — the vision's "listens while you play" is real
+          but deferred (decision 18). Touch, feel and phrasing were always self-judged and stay so.
         </p>
       </div>
     </div>
 
-    <h3>Three rulings you should know about</h3>
+    <h3>Three rulings you should know about — now scoped to the path they'll govern</h3>
     <div class="tw">
       <table>
         <thead>
@@ -574,19 +582,133 @@
         <tbody>
           <tr>
             <td><strong>Never correct in real time</strong></td>
-            <td>A mid-phrase flash pulls your eyes to the screen, which ruins the next phrase, which flashes again. The app is silent while you play; verdicts land between reps.</td>
+            <td>A mid-phrase flash pulls your eyes to the screen, which ruins the next phrase, which flashes again. Holds today too — the app is silent while you play; the tap-verdict lands between reps, same as a machine verdict would.</td>
           </tr>
           <tr>
             <td><strong>Timing is judged on consistency, never on deviation</strong></td>
-            <td>Skilled jazz timing sits off the grid on purpose — a stable 30ms lay-back reads as swinging harder. Only wobble and drift are errors.</td>
+            <td>Skilled jazz timing sits off the grid on purpose — a stable 30ms lay-back reads as swinging harder. Only wobble and drift are errors. <span style="color:var(--ink-3)">Waits for MIDI: nothing measures timing deviation without it.</span></td>
           </tr>
           <tr>
             <td><strong>The input path decides what may be claimed</strong></td>
-            <td>Wired MIDI earns fine timing feedback. Bluetooth (±10–20ms jitter) gets notes, swing and trends only — and the screen says why. Swing ratio is always reported, never graded.</td>
+            <td>Wired MIDI earns fine timing feedback; Bluetooth (±10–20ms jitter) gets notes, swing and trends only, and the screen says why. <span style="color:var(--ink-3)">Waits for MIDI: v1 has one input path — you, tapping.</span></td>
           </tr>
         </tbody>
       </table>
     </div>
+  </section>
+
+  <!-- ─────────────── NO EARS YET ─────────────── -->
+  <section id="measures">
+    <svg class="staff" viewBox="0 0 1000 17" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="1" x2="1000" y2="1" /><line x1="0" y1="5" x2="1000" y2="5" />
+      <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
+      <line x1="0" y1="17" x2="1000" y2="17" />
+    </svg>
+    <h2>Decision 18 — no ears yet, and the loop ships anyway</h2>
+    <p class="lede">
+      Recorded 4 August, after the segmentation spike came back with findings rather than a green
+      light. The scoring path — MIDI capture, attempt segmentation, per-bar verdicts — needs
+      machine-readable, note-level, per-key targets for everything scorable. That's content that
+      has to be sourced or typed in: exactly the admin friction this whole design exists to
+      remove. And an app optimises what it can see — a scoring-first build pulls the product
+      toward a drill machine for the narrow slice of material that can be scored, which is the
+      opposite of the vision.
+    </p>
+
+    <div class="note">
+      <p><strong>What actually changes.</strong> Not the vision — "listens while you play" is
+      still the destination. What moves is the <em>order</em>: the retention-critical journeys
+      (1, 5, 6, 7 — first session, circling, the bad day, coming back) need none of the microphone.
+      So the coaching loop ships first on the evidence model below, and the segmentation spike's
+      engine module stays merged and inert, ready for when scoring returns.</p>
+    </div>
+
+    <h3>Two insights that make coaching work without a verdict from a microphone</h3>
+    <div class="grid g2">
+      <div class="card">
+        <h4 style="margin-top:0">The parameters are machine-facts even when the pass is human</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          The app still sets the click, prescribes the key, the scope and the schedule. "Passed at
+          96 in D♭, hands together" contains exactly one subjective bit — the pass. Getting better
+          <em>is</em> the levels climbing, and the levels are objective whether or not anything is
+          listening.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Measure what survived, not what happened today</h4>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          Motor consolidation makes in-session judgement lie in both directions — next-day
+          retention, not in-session polish, is what separates effective practisers (Duke, Simmons
+          &amp; Cash 2009). So the headline instrument is the <strong>cold test</strong>: the
+          first rep of the day on returning material, flagged as such, no questions first — count-in,
+          play, one tap. A pass after a gap is the strongest evidence available without listening.
+        </p>
+      </div>
+    </div>
+
+    <h3>The evidence tiers</h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Tier</th><th>What</th><th>Feeds</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Machine-fact</strong></td>
+            <td>Tempo at pass, keys covered, scope, intervals survived, time-by-circle, rep counts</td>
+            <td>Mastery parameters, the circling check, the tally</td>
+          </tr>
+          <tr>
+            <td><strong>Tap-verdict</strong></td>
+            <td>Pass/fail on a countable criterion; attempts-to-pass; the cold-test result; where-it-stopped (a tap on a bar map, when asked)</td>
+            <td>Mastery (decision 17 as amended); the circling check</td>
+          </tr>
+          <tr>
+            <td><strong>Judgement</strong></td>
+            <td>One-tap feel rating; voice or text reflections; opaque-target retirement</td>
+            <td>The judgement track only — trends, retirement, never a prerequisite</td>
+          </tr>
+          <tr>
+            <td><strong>Completion</strong></td>
+            <td>Off-piano queue items: did it happen or didn't</td>
+            <td>Streak-equivalent, the off-piano tally</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      Every evidence record carries a source tag — <code>TapVerdict</code> now,
+      <code>Midi</code> / <code>Audio</code> later at higher weight — so machine scoring arrives
+      as an upgrade to the same Beta update, never a migration. The asymmetry from decision 17
+      stands unchanged: the judgement track may retire a target and may never satisfy a
+      prerequisite. What moves is only who counts the passes — and counting is self-correcting in
+      a single-player app, because a generous pass just buys a prescription that's too hard
+      tomorrow.
+    </p>
+
+    <div class="note warn">
+      <p><strong>The re-entry trigger, recorded now so it isn't forgotten.</strong> When the loop
+      retains and users start asking "did I actually nail it?", MIDI returns — <strong>play-to-input
+      first</strong>: play the lick in once, the capture becomes the target, and the existing
+      chart-transposition code turns it into all twelve keys automatically. Thirty seconds of
+      playing replaces the note-entry admin that made scoring content expensive in the first
+      place. Verification against a machine-scored target is the second step, not the first.</p>
+    </div>
+
+    <h3>What's deliberately still not measured</h3>
+    <ul class="tight">
+      <li><strong>Minutes as a headline.</strong> Quantity explains roughly a quarter of outcome
+      variance. Small print, never celebrated.</li>
+      <li><strong>Honesty.</strong> No lie detector exists here. The blind spot is accepted,
+      recorded, and is the door machine listening re-enters through.</li>
+      <li><strong>Tempo as a target in itself.</strong> Gates say <em>clean at</em> a tempo, the
+      cold test confirms it stuck, and the feel track can veto the number — "hit 96, felt
+      terrible" has to be a state the app can represent.</li>
+    </ul>
+    <p style="font-size:13.5px;color:var(--ink-2)">
+      One boundary worth being precise about: ear training, if built, is fully machine-scorable
+      <em>without</em> listening — the app plays the question, the answer is a screen tap. "No
+      machine verdicts in v1" is a consequence of deferring the input path, not a dogma about
+      what the app can check.
+    </p>
   </section>
 
   <!-- ─────────────── INTENT ─────────────── -->
@@ -1074,9 +1196,11 @@ click_level   = "l1"</pre>
         <div><div class="lz">1</div><div class="lw">after each rep</div></div>
         <div>
           <h5>One glance, about a second.</h5>
-          <p>Tick or cross, plus at most one fact — "clean", "2 wrong notes", "rushing bars 3–4".
-          Gate progress ticks up <span class="dots"><i></i><i></i><i class="o"></i></span>. The
-          next count-in starts on its own; your hands never leave the keys.</p>
+          <p><strong>Scoped by decision 18:</strong> until the microphone returns, the tick <em>is</em>
+          your tap — one per rep, and the count-in follows it. The one fact is a fact the app owns
+          (gate progress, attempts against your own norm), never a claim about notes it can't hear.
+          Gate progress ticks up <span class="dots"><i></i><i></i><i class="o"></i></span>. Per-note
+          facts like "2 wrong notes" or "rushing bars 3–4" come back with machine listening.</p>
         </div>
       </div>
       <div class="layer">
@@ -1106,9 +1230,10 @@ click_level   = "l1"</pre>
       <li><strong>Name a wall once.</strong> "Everyone's enclosures sound mechanical for three weeks; here's the smaller version." The second time the same encouragement appears, it has curdled into nagging.</li>
     </ul>
     <p style="font-size:13.5px;color:var(--ink-2)">
-      And feedback thins out as a drill matures: every rep while it's new, every few reps once
-      it's solid, then <em>predict-then-reveal</em> — you play, self-rate with one tap, and only
-      then see the machine's score. That's the graduation arc in miniature.
+      Feedback still thins out as a drill matures — every rep while it's new, every few reps once
+      it's solid — but the top of the ladder, <em>predict-then-reveal</em> (self-rate, then see
+      the machine's score), has nothing to reveal until the microphone is back. It's deferred with
+      decision 18, not cut: the tap-verdict loop just has no fade schedule to graduate into yet.
     </p>
   </section>
 
@@ -1248,13 +1373,13 @@ click_level   = "l1"</pre>
           <b>1 · Home</b>
           The whole home screen is a start button. The plan was made before you sat down; the
           reason is one line, and the shorter session is offered, never buried.
-          <span class="pill p-next">Phase 2</span>
+          <span class="pill p-now">Phase 2a</span>
         </figcaption>
       </figure>
 
       <figure>
         <div class="phone">
-          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-status"><span>Block 2 of 5</span><span>tap to confirm</span></div>
           <div class="ph-eyebrow">Rootless voicings · key of F</div>
           <div class="ph-title">ii–V–I, hands together</div>
           <div style="height:14px"></div>
@@ -1267,51 +1392,51 @@ click_level   = "l1"</pre>
             <span>4:10 elapsed</span><span>6:00 ceiling</span><span>3 blocks left</span>
           </div>
           <div class="ph-card" style="text-align:center;border-style:dashed">
-            Listening. Nothing on screen will change until you finish.
+            No microphone yet — play it, then tell it how it went.
           </div>
           <div style="height:8px"></div>
           <div class="ph-stuck">I'm stuck</div>
         </div>
         <figcaption>
           <b>2 · During play — deliberately empty</b>
-          Bar position, the click, and where you are in the session. No live scoring. The one big
-          target is the stuck button, hittable without looking. The clock is orientation, not
-          judgement — that distinction is what keeps a gate from feeling open-ended.
-          <span class="pill p-next">Phase 1</span>
+          Bar position, the click, and where you are in the session. Nothing is listening
+          (decision 18) — the one big target is still the stuck button, hittable without looking.
+          The clock is orientation, not judgement — that distinction is what keeps a gate from
+          feeling open-ended.
+          <span class="pill p-now">Phase 2a</span>
         </figcaption>
       </figure>
 
       <figure>
         <div class="phone">
-          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-status"><span>Block 2 of 5</span><span>tap to confirm</span></div>
           <div class="ph-eyebrow">Rootless voicings · key of F</div>
-          <div style="height:36px"></div>
-          <div class="ph-verdict ok">✓</div>
-          <div class="ph-fact">Clean</div>
-          <div class="ph-sub">80 bpm · timing steady</div>
-          <div style="height:26px"></div>
+          <div style="height:16px"></div>
+          <div class="ph-title" style="text-align:center;margin-bottom:14px">Clean at 80?</div>
+          <div class="ph-btn wide">Yes — clean</div>
+          <div style="height:7px"></div>
+          <div class="ph-btn ghost">No — missed it</div>
+          <div style="height:22px"></div>
           <div style="display:flex;justify-content:center;gap:8px;align-items:center">
             <span class="dots"><i></i><i></i><i class="o"></i></span>
             <span style="font-size:11px;color:var(--ink-2)">2 of 3</span>
           </div>
           <div class="ph-spacer"></div>
-          <div class="ph-card" style="text-align:center">
-            Next count-in in 3…
-          </div>
-          <div style="height:8px"></div>
           <div class="ph-stuck">I'm stuck</div>
         </div>
         <figcaption>
-          <b>3 · After the rep — one glance</b>
-          Tick, one fact, gate progress. Legible at arm's length in bad practice-room light.
-          Then it counts you in again by itself.
-          <span class="pill p-next">Phase 1</span>
+          <b>3 · After the rep — one tap, standing in for the tick</b>
+          The verdict against a countable criterion ("3 clean at 80") is yours to give, not the
+          app's to detect — decision 18's tap-verdict. One tap, gate progress moves, the next
+          count-in follows automatically. The tick returns when MIDI does; the rhythm of the
+          screen doesn't change.
+          <span class="pill p-now">Phase 2a</span>
         </figcaption>
       </figure>
 
       <figure>
         <div class="phone">
-          <div class="ph-status"><span>Block 2 done</span><span>USB MIDI</span></div>
+          <div class="ph-status"><span>Block 2 done</span><span>tap to confirm</span></div>
           <div class="ph-eyebrow">gate passed</div>
           <div class="ph-title" style="margin-bottom:12px">F is in.</div>
           <div class="ph-card" style="border-color:var(--accent)">
@@ -1377,12 +1502,12 @@ click_level   = "l1"</pre>
     <div class="rail">
       <figure>
         <div class="phone">
-          <div class="ph-status"><span>Block 2 of 5</span><span>USB MIDI</span></div>
+          <div class="ph-status"><span>Block 2 of 5</span><span>tap to confirm</span></div>
           <div class="ph-eyebrow">Rootless voicings · key of F</div>
           <div style="height:20px"></div>
           <div class="ph-verdict no">✗</div>
-          <div class="ph-fact">Late into bar 3</div>
-          <div class="ph-sub">third time — changing the plan</div>
+          <div class="ph-fact">Missed it</div>
+          <div class="ph-sub">third "no" — changing the plan</div>
           <div style="height:18px"></div>
           <div class="ph-card" style="border-color:var(--accent);background:var(--accent-wash)">
             <strong style="color:var(--ink)">Let's take it to 64, and just the ii→V.</strong><br><br>
@@ -1393,16 +1518,16 @@ click_level   = "l1"</pre>
         </div>
         <figcaption>
           <b>6 · Help fires by itself</b>
-          Three fails of the same thing and the ladder acts: tempo down, scope shrunk, one cue.
-          Framed as the plan. A teacher doesn't narrate your failure — they make the next
-          attempt winnable.
-          <span class="pill p-next">Phase 2</span>
+          Three of your own "missed it" taps on the same drill and the ladder acts: tempo down,
+          scope shrunk, one cue. Framed as the plan — the escalation trigger doesn't need MIDI, it
+          needs a pattern of pass/fail, which the tap-verdict already gives it.
+          <span class="pill p-now">Phase 2a</span>
         </figcaption>
       </figure>
 
       <figure>
         <div class="phone">
-          <div class="ph-status"><span>Block 2 done</span><span>USB MIDI</span></div>
+          <div class="ph-status"><span>Block 2 done</span><span>tap to confirm</span></div>
           <div class="ph-eyebrow">noticing something</div>
           <div class="ph-title" style="margin-bottom:12px">It's in. You can stop.</div>
           <div class="ph-card" style="border-color:var(--gold);background:var(--gold-wash)">
@@ -1424,7 +1549,7 @@ click_level   = "l1"</pre>
           The mirror of the stuck ladder: it fires when you're <em>succeeding</em> and can't
           leave. Permission, not correction — no tally of wasted minutes, no "you're stuck on
           this", and "keep going" is a real option.
-          <span class="pill p-next">Phase 2</span>
+          <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
 
@@ -1450,9 +1575,9 @@ click_level   = "l1"</pre>
         <figcaption>
           <b>8 · The bad day</b>
           Tired and low-motivation: the app gets <em>lighter</em>, not heavier. Wins front-loaded,
-          grind dropped, wandering honoured — and still listened to, so a wander can reveal a gap
-          in the graph.
-          <span class="pill p-next">Phase 2</span>
+          grind dropped, wandering honoured — logged as time plus an optional voice note under
+          decision 18, not captured notes, until the microphone returns.
+          <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
     </div>
@@ -1497,7 +1622,7 @@ click_level   = "l1"</pre>
           <b>9 · Declaring a campaign</b>
           Four targets, three matched to the graph, one kept as-is because "make it sing" isn't
           a measurable node — it gets practised and self-confirmed, never scored.
-          <span class="pill p-next">Phase 2</span>
+          <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
 
@@ -1529,7 +1654,7 @@ click_level   = "l1"</pre>
           <b>10 · The gap read</b>
           The structural half only — pure prerequisite arithmetic, trustworthy on day one.
           Decayed-confidence and flat-velocity gaps wait until there's history to justify them.
-          <span class="pill p-next">Phase 2</span>
+          <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
 
@@ -1560,7 +1685,7 @@ click_level   = "l1"</pre>
           <b>11 · Today's steer</b>
           One tap from the home screen. Not a blank canvas — the planner's own next candidates,
           so choosing is quick and the session still re-weaves properly around it.
-          <span class="pill p-next">Phase 2</span>
+          <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
     </div>
@@ -1597,7 +1722,8 @@ click_level   = "l1"</pre>
           <b>12 · The phrase, over a fortnight</b>
           Theory arrives only at the point of use, explaining a sound you already want. The
           device you extract from this lick — not the lick itself — becomes your vocabulary.
-          <span class="pill p-next">Phase 1–2</span>
+          Stage gates run on tap-verdicts until the microphone returns.
+          <span class="pill p-now">Phase 2a–2b</span>
         </figcaption>
       </figure>
 
@@ -1735,10 +1861,10 @@ click_level   = "l1"</pre>
       <div class="col">
         <header>Swift shell — a dumb pipe</header>
         <ul>
-          <li class="new">CoreMIDI capture + ring buffer</li>
-          <li class="new">The click clock and count-in</li>
-          <li class="new">Audio session handling <span style="color:var(--ink-3)">(mined from the deleted Tauri plugin)</span></li>
-          <li class="new">One drill screen with the tick</li>
+          <li class="keep">CoreMIDI capture + ring buffer <span style="color:var(--ink-3)">— done (#1157)</span></li>
+          <li class="keep">The click clock and count-in <span style="color:var(--ink-3)">— done (#1157)</span></li>
+          <li class="keep">Audio session handling <span style="color:var(--ink-3)">(mined from the deleted Tauri plugin)</span></li>
+          <li class="new">One drill screen with the tap-verdict, not the tick</li>
           <li class="keep">Store / bridge pump, error discipline</li>
           <li class="keep">On-device database (already sync-ready)</li>
           <li class="keep">Design system + 71 snapshot tests</li>
@@ -1748,11 +1874,11 @@ click_level   = "l1"</pre>
       <div class="col">
         <header>Rust core — all the thinking</header>
         <ul>
-          <li class="new">Attempt segmentation <span style="color:var(--danger)">← the named risk</span></li>
-          <li class="new">Deterministic scoring, gate detection</li>
+          <li class="keep">Attempt segmentation <span style="color:var(--ink-3)">← spike done, merged and inert (#1161)</span></li>
+          <li class="later">Deterministic MIDI scoring, gate detection <span style="color:var(--ink-3)">— deferred, decision 18</span></li>
           <li class="new">Skill graph, phrases, devices, method packs</li>
           <li class="new">Gate criteria loaded as data</li>
-          <li class="new">The planner — a pure function, on device</li>
+          <li class="new">The planner — a pure function, on device, running on tap-verdicts</li>
           <li class="keep">Chord + chart theory (1,163 lines, 30 tests)</li>
           <li class="keep">Persistence pattern, session lifecycle</li>
           <li class="die">Block-reorder machinery (~3,000 lines)</li>
@@ -1800,23 +1926,23 @@ click_level   = "l1"</pre>
         <tbody>
           <tr>
             <td><strong>Can we tell where an attempt starts and stops?</strong> Count-ins, restarts, noodling between takes, a collapse halfway through</td>
-            <td>A pure-Rust spike against recordings of your real playing. Fails cheaply in Rust if it fails</td>
-            <td>Phase 1, week 2</td>
+            <td><span class="pill p-done" style="margin-right:0.4rem">answered</span>Yes, but expensively — segmentation needs click-locked, pre-declared phrases (<code>docs/segmentation-findings.md</code>). That cost is <em>why</em> decision 18 defers the scoring path rather than building on top of it now.</td>
+            <td>Phase 1, done (#1161)</td>
           </tr>
           <tr>
             <td><strong>How honest can Bluetooth MIDI be?</strong></td>
-            <td>One afternoon measuring your actual piano, wired as ground truth</td>
-            <td>Phase 1, week 1</td>
+            <td>Stays open-ended (#1156) — parked with the rest of the scoring path, not urgent while the loop runs on tap-verdicts.</td>
+            <td>Deferred with Phase 1's scoring half</td>
           </tr>
           <tr>
             <td><strong>Do the gate numbers work on a human?</strong></td>
-            <td>Your fortnight of logs. Too strict means grind and quit; too loose means mastery is fiction</td>
-            <td>Phase 0 — now</td>
+            <td>Your fortnight of logs. Too strict means grind and quit; too loose means mastery is fiction — unaffected by decision 18, since the gate is a tap-verdict either way</td>
+            <td>Phase 0 — running now</td>
           </tr>
           <tr>
             <td><strong>Can a microphone ever replace the cable?</strong></td>
-            <td>Two spikes: model accuracy against MIDI from the same performance, and whether the click bleeds into the scoring</td>
-            <td>Phase 4</td>
+            <td>Two spikes: model accuracy against MIDI from the same performance, and whether the click bleeds into the scoring. Now gated behind the loop proving it retains on tap-verdicts first</td>
+            <td>Phase 4, after the re-entry trigger fires</td>
           </tr>
         </tbody>
       </table>
@@ -1832,50 +1958,53 @@ click_level   = "l1"</pre>
     </svg>
     <h2>The order of work</h2>
     <p class="lede">
-      Five phases. The sequencing rules that hold them together: <strong>MIDI before audio,
-      the coaching voice last not first, no placement session until Phase 4</strong> — and
-      segmentation gets proven before a single scoring screen is drawn.
+      Five phases, resequenced 4 August by decision 18. The sequencing rules that hold them
+      together: <strong>tap-verdicts before MIDI, MIDI before audio, the coaching voice last not
+      first, no placement session until Phase 4</strong> — and the microphone doesn't return
+      until the loop has proven it retains without it.
       Capacity is evenings and weekends alongside COAST's September push.
     </p>
 
-    <div class="phase is-done">
+    <div class="phase is-now">
       <div class="phase-head">
         <h3>Phase 0 — the paper teacher</h3>
-        <span class="pill p-done">content done today</span>
-        <span class="phase-when">no code · runs in parallel with Phase 1</span>
+        <span class="pill p-now">fortnight running now</span>
+        <span class="phase-when">no code · content authored, practice logs in progress (#1143)</span>
       </div>
-      <p>You are the app for a fortnight. Practise from the written content, keep four logs, and
-      the logs become the specification for everything the machine later automates.</p>
-      <div class="slice"><b>Authored today</b><span>5 skill nodes, 2 method packs, 1 phrase with per-key state, 18 gates as data, the tune's pipeline position, 9 stubs, 4 log templates.</span></div>
-      <div class="slice"><b>Remaining — yours, at the piano</b><span>Correct the guessed starting levels, then two weeks of practice with the divergence / gate-attempt / why / wander logs.</span></div>
+      <p>You are the app for a fortnight. Practise from the written content, keep the logs, and
+      they become the specification for everything the machine later automates.</p>
+      <div class="slice"><b>Authored</b><span>5 skill nodes, 2 method packs, 1 phrase with per-key state, 18 gates as data, the tune's pipeline position, 9 stubs, log templates.</span></div>
+      <div class="slice"><b>In progress — yours, at the piano</b><span>Two weeks of practice with the gate-attempt / why / wander logs. The divergence log defers with decision 18 — there's no machine score yet to compare a felt one against.</span></div>
       <p class="exit">Done when: the gate numbers have been argued with by a real human, and every block's <em>why</em> could be written from the graph.</p>
+    </div>
+
+    <div class="phase is-done">
+      <div class="phase-head">
+        <h3>Phase 1 — the listening gate</h3>
+        <span class="pill p-done">closed early — decision 18, 4 Aug</span>
+        <span class="phase-when">capture harness + segmentation spike merged; scoring deferred</span>
+      </div>
+      <p>Opened as "play, see the tick, feel the gate release you." Closes with the harness proven
+      and the scoring UI deliberately not built — the spike sharpened the problem rather than
+      solving it cheaply enough to justify building the drill screen around it now.</p>
+      <div class="slice"><b>Capture harness + click — done</b><span>Merged (<a class="inline" href="https://github.com/jonyardley/intrada/issues/1157">#1157</a>). CoreMIDI capture, the click clock, count-in. USB comparison against Bluetooth stays open-ended (#1156).</span></div>
+      <div class="slice"><b>The segmentation spike — done</b><span>Pure-Rust <code>engine</code> module segments all five real takes (<a class="inline" href="https://github.com/jonyardley/intrada/issues/1161">#1161</a>). Findings in <code>docs/segmentation-findings.md</code>: an attempt is defined by what it was an attempt <em>at</em>, so the scorable universe is click-locked, pre-declared short phrases — content that has to be authored or typed in.</span></div>
+      <div class="slice"><b>Deferred, not dropped</b><span>Lick-transposition scoring and the machine-verdict drill screen wait for the scoring path's return, triggered by play-to-input. The <code>engine</code> module stays merged and inert.</span></div>
+      <p class="exit">Closed when: the spike answered the segmentation question honestly, even though the answer was "expensive, not impossible."</p>
     </div>
 
     <div class="phase is-now">
       <div class="phase-head">
-        <h3>Phase 1 — the listening gate</h3>
-        <span class="pill p-now">next code</span>
-        <span class="phase-when">3–4 weeks</span>
-      </div>
-      <p>The moment to reach: you play, you see the tick, and the gate releases you.</p>
-      <div class="slice"><b>Capture harness + click</b><span>Swift only, debug-gated. Record a take at the piano, write the note events to a file. Also measures how honest Bluetooth can be. <em>Needs a MIDI keyboard and cable to hand.</em></span></div>
-      <div class="slice"><b>The segmentation spike</b><span>Pure Rust, no interface. Count-in detection, attempt start and end, restarts, noodling, collapses — tested against those recordings. The named risk of the whole project.</span></div>
-      <div class="slice"><b>First scored drill</b><span>Lick transposition: the target is known exactly, so scoring is unambiguous. Then the first bridge crossing and the one drill screen.</span></div>
-      <p class="exit">Done when: a real attempt at your piano produces a trustworthy tick or cross.</p>
-    </div>
-
-    <div class="phase">
-      <div class="phase-head">
         <h3>Phase 2a — prescribe and run</h3>
-        <span class="pill p-next">then</span>
-        <span class="phase-when">3–4 weeks · blocked on the mastery model</span>
+        <span class="pill p-now">next</span>
+        <span class="phase-when">3–4 weeks · mastery model specified (#1155)</span>
       </div>
-      <p>The loop working end to end. The app starts deciding, and this is where the notebook
-      gets deleted.</p>
-      <div class="slice"><b>The planner</b><span>A pure function of graph state, pipeline states, <em>declared intent</em> and available minutes. Press-start flow, the stuck ladder wired to real failure patterns, soft-landing exit, listening blocks as no-instrument items.</span></div>
-      <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped, opaque targets allowed) and today's steer — each with a default, so the app works having declared nothing. Plus back-chaining and the structural gap read.</span></div>
+      <p>The loop working end to end, on tap-verdicts. The app starts deciding, and this is where
+      the notebook gets deleted — no MIDI required to reach either milestone.</p>
+      <div class="slice"><b>The planner</b><span>A pure function of graph state, pipeline states, <em>declared intent</em> and available minutes. Press-start flow, the stuck ladder wired to your own "missed it" pattern, soft-landing exit, listening blocks as no-instrument items.</span></div>
+      <div class="slice"><b>Gated blocks on tap-verdicts</b><span>Evidence = pass/fail against a countable criterion, source-tagged (decision 17 as amended) so machine scoring slots in later without a migration.</span></div>
       <div class="slice"><b>The deletion</b><span>Session builder, self-rated scoring, the old analytics — removed in the same series, not "later".</span></div>
-      <p class="exit">Done when: the prescribed loop runs a real session end to end, gates and all.</p>
+      <p class="exit">Done when: the prescribed loop runs a real session end to end, gates and all, entirely on tap-verdicts.</p>
     </div>
 
     <div class="phase">
@@ -1886,7 +2015,7 @@ click_level   = "l1"</pre>
       </div>
       <p>Everything that makes the loop kind rather than merely correct.</p>
       <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped, opaque targets allowed) and today's steer — each with a default, so the app works having declared nothing. Plus back-chaining and the structural gap read.</span></div>
-      <div class="slice"><b>The guard rails</b><span>The circling check, the grind trade, the off-piano queue with its own cue, unmonitored play alongside off-piste, the time-by-circle tally — pulled forward from Phase 4 so the app can see its own imbalance early — and the judgement track, designed against a fortnight of real divergence data rather than guessed.</span></div>
+      <div class="slice"><b>The guard rails</b><span>The circling check, the grind trade, the off-piano queue with its own cue, unmonitored play alongside off-piste (now: time plus an optional voice note, not captured notes — decision 18), the time-by-circle tally pulled forward from Phase 4 — and the judgement track: completion, retirement and feel trends, its eventual weighting deferred alongside the divergence log until machine listening returns.</span></div>
       <p class="exit">Done when: two weeks of daily use without you reverting to self-directed sessions.</p>
     </div>
 
@@ -1908,8 +2037,9 @@ click_level   = "l1"</pre>
       </div>
       <p>More drill types, spaced review recalibrated against observed decay, difficulty
       auto-adjusting to hold your success rate in the right band, velocity tracking, the
-      time-by-circle balance check, the microphone path, a placement session — and a second
-      user, because the graph needs a second data point before it's a curriculum.</p>
+      time-by-circle balance check, the microphone path back — <strong>play-to-input first,
+      verification second</strong> — a placement session, and a second user, because the graph
+      needs a second data point before it's a curriculum.</p>
     </div>
   </section>
 
@@ -1965,50 +2095,53 @@ click_level   = "l1"</pre>
 
     <div class="grid g2">
       <div class="card">
-        <h4 style="margin-top:0">Today — 2 minutes</h4>
+        <h4 style="margin-top:0">Now — keep the fortnight running</h4>
         <p style="font-size:13.5px;margin:0">
-          Merge the content pull request. All checks passed; it's docs only, no code.
+          The content is authored; the outstanding Phase 0 action is the practice itself
+          (<a class="inline" href="https://github.com/jonyardley/intrada/issues/1143">#1143</a>):
+          declare a goal and a campaign, correct the seeded mastery values at the piano, and
+          practise from the content for two weeks keeping the gate-attempt / why / wander logs
+          — three of the four; the divergence log defers with decision 18.
         </p>
       </div>
       <div class="card">
-        <h4 style="margin-top:0">This week — 15 minutes at the piano</h4>
+        <h4 style="margin-top:0">No shopping question, for now</h4>
         <p style="font-size:13.5px;margin:0">
-          Correct my guesses: the starting mastery levels for the five skills, which keys you can
-          already play the lick in, and how far along the tune actually is. Then start the
-          fortnight.
+          Decision 18 pushed the MIDI-cable-vs-Bluetooth question out to Phase 4, alongside the
+          rest of the scoring path. Nothing to buy or settle before Phase 2a starts.
         </p>
       </div>
       <div class="card">
-        <h4 style="margin-top:0">Also this week — rewrite one file</h4>
+        <h4 style="margin-top:0">Nothing — the last rulings are made</h4>
         <p style="font-size:13.5px;margin:0">
-          <code>content/intent.md</code> now holds a goal and a campaign, written as a worked
-          example. Replace it with yours — ideally straight from a lesson's list of targets — then
-          check the back-chained route still follows. That's the paper test of the whole intent
-          mechanism, and it's cheaper to fail here than in Rust.
+          Mastery is measured-only via decision 17 (as amended: tap-verdicts, source-tagged), and
+          machine listening is deferred via decision 18. Phase 2a has no remaining design
+          dependency — the mastery function is specified
+          (<a class="inline" href="https://github.com/jonyardley/intrada/issues/1155">#1155</a>).
         </p>
       </div>
       <div class="card">
-        <h4 style="margin-top:0">Before Phase 1 code — a shopping question</h4>
+        <h4 style="margin-top:0">Worth a look — the segmentation findings</h4>
         <p style="font-size:13.5px;margin:0">
-          The capture harness needs a MIDI cable from your piano to the phone or iPad. Wired
-          earns fine timing feedback; Bluetooth caps what the app may honestly claim. Worth
-          settling before that week starts.
+          <code>docs/segmentation-findings.md</code> is the evidence behind decision 18: read it
+          if you want to sanity-check "defer the microphone" against what the spike actually
+          found, rather than taking the design doc's summary on trust.
         </p>
       </div>
       <div class="card">
-        <h4 style="margin-top:0">Nothing — the last ruling is made</h4>
+        <h4 style="margin-top:0">When Phase 2a code starts</h4>
         <p style="font-size:13.5px;margin:0">
-          Mastery is measured-only, with self-report as a separate judgement track that closes
-          targets but never unlocks prerequisites. Recorded as decision 17. Phase 1 has no
-          remaining design dependency.
+          No MIDI cable needed to begin. The planner, the tap-verdict drill screen, and the
+          session-builder deletion can all land without touching CoreMIDI — that capture code
+          sits merged and inert until the re-entry trigger fires.
         </p>
       </div>
       <div class="card">
-        <h4 style="margin-top:0">And a technical spec to write</h4>
+        <h4 style="margin-top:0">And a technical spec to keep current</h4>
         <p style="font-size:13.5px;margin:0">
-          Narrow, not architectural — the mastery model, the session state machine and what it
-          records, the planner's resolution order, the FFI batching contract, and where the
-          interruption budget is arbitrated. Rides with Phase 1's first code PR.
+          <code>specs/intrada-coach-engine.md</code> already carries the mastery model with its
+          <code>EvidenceSource</code> tag; keep it in step as Phase 2a's planner and session state
+          machine land, same discipline as the design doc's decision log.
         </p>
       </div>
     </div>
@@ -2023,9 +2156,11 @@ click_level   = "l1"</pre>
     </svg>
     <h2>Taking this into Claude Design</h2>
     <p class="lede">
-      Worth doing for the seven screens that ship in Phases 1–2b, because they're where the whole
-      product is felt: the home screen, the two in-drill states, the block boundary, the two that let you say what you want, and the one that gives you permission to stop. Split across two sessions — see below. The wireframes above are for understanding; these need real
-      design against the shipped system.
+      Worth doing for the seven screens that ship in Phases 2a–2b, because they're where the
+      whole product is felt: the home screen, the two in-drill states (now tap-verdict, not a
+      machine tick), the block boundary, the two that let you say what you want, and the one that
+      gives you permission to stop. Split across two sessions — see below. The wireframes above
+      are for understanding; these need real design against the shipped system.
     </p>
     <div class="note">
       <p><strong>The brief now lives in the repo:</strong>
@@ -2072,10 +2207,12 @@ click_level   = "l1"</pre>
   </section>
 
   <footer>
-    Assembled from <code>specs/intrada-practice-coach-design.md</code> (v5, revised 3 August — intent as a first-class mechanism, the non-failure states, and mastery settled as measured-only), <code>docs/rebuild-review.md</code> (19 July),
-    <code>docs/roadmap.md</code>, and the <code>content/</code> set authored 3 August.
-    Wireframes are for comprehension, not design — the four Phase 1–2 screens get real design
-    via the prompt above. Backlog counts are post-triage.
+    Assembled from <code>specs/intrada-practice-coach-design.md</code> (v6, revised 4 August —
+    decision 18: machine listening deferred, Phase 1 closed early, the loop ships on tap-verdicts
+    with the cold test as the headline instrument), <code>docs/segmentation-findings.md</code>,
+    <code>docs/rebuild-review.md</code> (19 July), and <code>docs/roadmap.md</code>.
+    Wireframes are for comprehension, not design — the seven Phase 2a–2b screens get real design
+    via the prompt below. Backlog counts are post-triage, dated 3 August.
   </footer>
 
 </div>
