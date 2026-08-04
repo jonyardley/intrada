@@ -17,7 +17,7 @@ pub struct SegmentConfig {
     pub max_consecutive_deviations: u32,
     /// How many steps must match before a start is believed. One matching note
     /// is not an attempt — in take 03 the scale run crosses the phrase's first
-    /// note four times, and each crossing opened a spurious attempt at 1.
+    /// note five times, and each crossing opened a spurious one-step attempt.
     pub min_start_run_steps: usize,
 }
 
@@ -55,11 +55,12 @@ pub enum AttemptOutcome {
     Completed,
     /// The player went back to step 0 before finishing.
     Restarted { at_step: u32 },
-    /// Diverged and stopped playing.
+    /// Played a wrong note and stopped there.
     Collapsed { at_step: u32 },
-    /// Diverged and kept playing something else.
+    /// Left the phrase and kept playing something else.
     Diverged { at_step: u32 },
-    /// Fell silent past the abandon threshold and never resumed.
+    /// Stopped or fell silent mid-phrase while still playing it correctly.
+    /// Not evidence of failure — see the findings note.
     Abandoned { at_step: u32 },
 }
 
@@ -109,6 +110,7 @@ struct InProgress {
     last_onset: usize,
     last_t_us: i64,
     consecutive_deviations: u32,
+    ended_on_deviation: bool,
     deviation_onsets: Vec<usize>,
     pauses: Vec<Pause>,
     offsets_us: Vec<i64>,
@@ -147,19 +149,21 @@ pub fn segment(
 
     for index in body_start..onsets.len() {
         let onset = &onsets[index];
+        let tail = contiguous_tail(&onsets[index..], abandon_us);
 
-        if let Some(active) = current.as_ref() {
+        if let Some(active) = current.take() {
             if onset.t_us - active.last_t_us > abandon_us {
-                let active = current.take().expect("checked above");
-                attempts.push(close(active, target, AttemptKind::Abandoned));
+                attempts.push(close(active, AttemptKind::Abandoned));
+            } else {
+                current = Some(active);
             }
         }
 
         let Some(active) = current.as_mut() else {
-            if starts_here(&onsets[index..], target, config) {
+            if starts_here(tail, target, config) {
                 current = Some(open(index, onset, grid, target));
                 if let Some(start) = noodle_start.take() {
-                    unattributed.push(start..index);
+                    unattributed.extend(span_if_nonempty(start..index));
                 }
             } else if noodle_start.is_none() {
                 noodle_start = Some(index);
@@ -170,12 +174,12 @@ pub fn segment(
         let gap_us = onset.t_us - active.last_t_us;
         let continues = target.matches(active.step, onset);
         let restarts = active.step > 0
-            && starts_here(&onsets[index..], target, config)
-            && (!continues || prefers_restart(&onsets[index..], target, active.step));
+            && starts_here(tail, target, config)
+            && (!continues || prefers_restart(tail, target, active.step));
 
         if restarts {
-            let active = current.take().expect("checked above");
-            attempts.push(close(active, target, AttemptKind::Restarted));
+            let active = current.take().expect("matched as_mut above");
+            attempts.push(close(active, AttemptKind::Restarted));
             current = Some(open(index, onset, grid, target));
             continue;
         }
@@ -194,10 +198,11 @@ pub fn segment(
             active.consecutive_deviations = 0;
             active.last_onset = index;
             active.last_t_us = onset.t_us;
+            active.ended_on_deviation = false;
 
             if active.step == target.len() {
-                let active = current.take().expect("checked above");
-                attempts.push(close(active, target, AttemptKind::Completed));
+                let active = current.take().expect("matched as_mut above");
+                attempts.push(close(active, AttemptKind::Completed));
             }
             continue;
         }
@@ -206,20 +211,31 @@ pub fn segment(
         active.deviation_onsets.push(index);
         active.last_onset = index;
         active.last_t_us = onset.t_us;
+        active.ended_on_deviation = true;
         if active.consecutive_deviations >= config.max_consecutive_deviations {
-            let active = current.take().expect("checked above");
-            attempts.push(close(active, target, AttemptKind::Diverged));
+            let active = current.take().expect("matched as_mut above");
+            // Whether a divergence is noodling or a collapse is decided by what
+            // follows it, not by the wrong notes themselves.
+            let kept_playing = onsets
+                .get(index + 1)
+                .is_some_and(|next| next.t_us - onset.t_us <= abandon_us);
+            let kind = if kept_playing {
+                AttemptKind::Diverged
+            } else {
+                AttemptKind::Collapsed
+            };
+            attempts.push(close(active, kind));
             noodle_start = Some(index + 1);
         }
     }
 
     if let Some(active) = current.take() {
-        let kind = if active.deviation_onsets.is_empty() {
-            AttemptKind::Abandoned
-        } else {
+        let kind = if active.ended_on_deviation {
             AttemptKind::Collapsed
+        } else {
+            AttemptKind::Abandoned
         };
-        attempts.push(close(active, target, kind));
+        attempts.push(close(active, kind));
     }
     if let Some(start) = noodle_start {
         unattributed.extend(span_if_nonempty(start..onsets.len()));
@@ -258,9 +274,11 @@ enum AttemptKind {
 }
 
 fn open(index: usize, onset: &Onset, grid: &ClickGrid, target: &TargetPhrase) -> InProgress {
-    let anchor_beat = grid.nearest_beat(onset.t_us).beat_index;
-    let expected_us =
-        grid.beat_time_us(anchor_beat) + grid.beats_milli_to_us(target.steps[0].beat_offset_milli);
+    // The anchor is where step 0 *should* have fallen, so an upbeat phrase
+    // (non-zero first offset) doesn't skew every offset in the attempt.
+    let step_zero_us = grid.beats_milli_to_us(target.steps[0].beat_offset_milli);
+    let anchor_beat = grid.nearest_beat(onset.t_us - step_zero_us).beat_index;
+    let expected_us = grid.beat_time_us(anchor_beat) + step_zero_us;
     InProgress {
         first_onset: index,
         first_t_us: onset.t_us,
@@ -269,13 +287,14 @@ fn open(index: usize, onset: &Onset, grid: &ClickGrid, target: &TargetPhrase) ->
         last_onset: index,
         last_t_us: onset.t_us,
         consecutive_deviations: 0,
+        ended_on_deviation: false,
         deviation_onsets: Vec::new(),
         pauses: Vec::new(),
         offsets_us: vec![onset.t_us - expected_us],
     }
 }
 
-fn close(active: InProgress, target: &TargetPhrase, kind: AttemptKind) -> Attempt {
+fn close(active: InProgress, kind: AttemptKind) -> Attempt {
     let at_step = active.step as u32;
     let outcome = match kind {
         AttemptKind::Completed => AttemptOutcome::Completed,
@@ -284,7 +303,6 @@ fn close(active: InProgress, target: &TargetPhrase, kind: AttemptKind) -> Attemp
         AttemptKind::Diverged => AttemptOutcome::Diverged { at_step },
         AttemptKind::Abandoned => AttemptOutcome::Abandoned { at_step },
     };
-    debug_assert!(active.step <= target.len());
     Attempt {
         span: active.first_onset..active.last_onset + 1,
         start_us: active.first_t_us,
@@ -297,15 +315,31 @@ fn close(active: InProgress, target: &TargetPhrase, kind: AttemptKind) -> Attemp
     }
 }
 
+/// The tail up to the first silence long enough to end an attempt, so a
+/// confirming run can't be assembled from notes a minute apart.
+fn contiguous_tail(tail: &[Onset], abandon_us: i64) -> &[Onset] {
+    let end = tail
+        .windows(2)
+        .position(|pair| pair[1].t_us - pair[0].t_us > abandon_us)
+        .map_or(tail.len(), |index| index + 1);
+    &tail[..end]
+}
+
 fn starts_here(tail: &[Onset], target: &TargetPhrase, config: &SegmentConfig) -> bool {
     let required = config.min_start_run_steps.clamp(1, target.len());
     target.consecutive_match_run(tail, 0) >= required
 }
 
 /// True when the tail matches the phrase better read as a fresh start than as a
-/// continuation. Both readings are timing-identical, so only content decides.
+/// continuation. Both readings are timing-identical, so only content decides —
+/// and a continuation that explains everything available is never overruled,
+/// since its run is capped by the steps remaining while a restart's is not.
 fn prefers_restart(tail: &[Onset], target: &TargetPhrase, step: usize) -> bool {
-    target.consecutive_match_run(tail, 0) > target.consecutive_match_run(tail, step)
+    let continuing = target.consecutive_match_run(tail, step);
+    if step + continuing >= target.len() || continuing >= tail.len() {
+        return false;
+    }
+    target.consecutive_match_run(tail, 0) > continuing
 }
 
 fn timing_stats(offsets_us: &[i64]) -> TimingStats {
@@ -314,14 +348,15 @@ fn timing_stats(offsets_us: &[i64]) -> TimingStats {
     }
     let count = offsets_us.len() as i64;
     let mean = offsets_us.iter().sum::<i64>() / count;
+    // i128: squaring a whole-beat offset overflows i64 at slow tempi.
     let variance = offsets_us
         .iter()
         .map(|offset| {
-            let delta = offset - mean;
+            let delta = i128::from(offset - mean);
             delta * delta
         })
-        .sum::<i64>()
-        / count;
+        .sum::<i128>()
+        / i128::from(count);
     TimingStats {
         count: count as u32,
         mean_offset_us: mean,

@@ -1,23 +1,20 @@
-use serde::{Deserialize, Serialize};
-
 use super::note::Onset;
 
 /// One step of a target phrase. Matched by pitch class, so any octave counts —
 /// the spike's crude-on-purpose stance, inherited from the Swift gate drill.
 /// `beat_offset_milli` is thousandths of a beat from the phrase start.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PhraseStep {
     pub pitch_classes: Vec<u8>,
     pub beat_offset_milli: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetPhrase {
     pub steps: Vec<PhraseStep>,
 }
 
 impl TargetPhrase {
-    /// One pitch class per beat — the shape of every v1 drill phrase.
     pub fn crotchets(pitch_classes: &[u8]) -> Self {
         Self {
             steps: pitch_classes

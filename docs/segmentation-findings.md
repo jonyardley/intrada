@@ -28,21 +28,24 @@ boundaries.
 | Bar/beat of a note | grid arithmetic from the click anchor | all takes |
 | Chord vs melody | onsets within a 50ms window are one event | take 01: 5-note voicings spread ≤34ms |
 | Silence long enough to matter | gap > 1.75× the phrase's step spacing | takes 02, 04: ~1.93s gaps against a 652ms step |
-| Consistent feel vs erratic time | mean offset vs spread over an attempt | take 04's clean rep: mean −24ms, spread 17ms |
+| Consistent feel vs erratic time | mean offset vs spread over an attempt | take 04's clean rep: mean −24ms (ahead of the click), spread 17ms |
 | Phrase-ish grouping with no target | rest-separated spans | take 01 splits into 4 spans |
 
 The feel-vs-error split is the one that matters most for scoring, and it holds
 on real Bluetooth data: take 04's clean repetition sits at a mean −24ms with a
-17ms spread. Design decision 6 is measurable — a stable lay-back reads as
-stable, not as eight late notes.
+17ms spread. Offsets are signed `onset − expected`, so that rep is consistently
+**ahead** of the click, not laying back. Design decision 6 is measurable either
+way — a stable displacement reads as stable, not as eight badly-timed notes —
+but the sign has to reach the user's screen the right way round: reporting a
+push as a lay-back is precisely the never-bluff failure.
 
 ## What timing alone cannot decide
 
 **1. Resume versus restart. Undecidable.** Takes 02 and 04 open with the same
 six correct notes and pause for the same length (1.930s and 1.980s — 50ms
-apart, less than one BLE jitter window). Take 02 then plays notes 7–8; take 04
-goes back to note 1. No gap threshold, at any tolerance, separates them. Only
-the pitch content after the silence does.
+apart, under a tenth of the 652ms crotchet the silence interrupts). Take 02
+then plays notes 7–8; take 04 goes back to note 1. No gap threshold, at any
+tolerance, separates them. Only the pitch content after the silence does.
 
 Worse, content sometimes does not either. The gate phrase is F C F C **B F** B
 F: pause after note 5 (B) and the next expected note is F — which is also note
@@ -55,7 +58,7 @@ rep length, the Swift gate drill's approach) or the verdict lags until enough
 following content arrives.
 
 **2. Where an attempt starts.** One matching note is not an attempt. Take 03's
-scale run crosses the phrase's first note four times, and each crossing opened
+scale run crosses the phrase's first note five times, and each crossing opened
 a spurious one-step attempt until starts required a confirming run of 2 matched
 steps. **Consequence:** an attempt that fails on its second note is
 indistinguishable from noodling and will not be recorded as an attempt at all.
@@ -66,11 +69,12 @@ attempts-to-pass instrumentation (design challenge 4) is measuring a filtered
 population.
 
 **3. Collapse versus walking away.** Take 05 plays five notes, hits E instead
-of F, and stops. The engine calls it `Collapsed` only because the wrong note
-came first; an attempt that simply stops mid-phrase is `Abandoned`. Neither
-distinguishes "gave up" from "the doorbell rang". Timing cannot supply intent,
-and the app should not guess: an abandoned attempt is not evidence of failure
-and must not feed the mastery update.
+of F, and stops. `Collapsed` versus `Diverged` is decided by whether playing
+*continued* after the wrong note, and `Abandoned` covers stopping while still
+on track — so the outcomes describe what followed, which is the only thing
+observable. None of them distinguishes "gave up" from "the doorbell rang".
+Timing cannot supply intent, and the app should not guess: an abandoned attempt
+is not evidence of failure and must not feed the mastery update.
 
 **4. Whether noodling was an attempt.** Take 01 is 101 notes of unstructured
 playing. Against no target it yields no attempts, correctly. Against the gate
@@ -83,8 +87,8 @@ self-confirmed) arriving early, at the segmentation layer.
 **5. Timing of a paused attempt.** Take 02 completes all eight notes, so it is
 `Completed` — and its phrase timing is arithmetic about a phrase that was never
 played continuously (mean +324ms, spread 557ms). The two post-pause notes are
-in fact dead on the click, three beats late relative to the phrase. Both facts
-are true; neither is a score. `Attempt::timing_is_scorable()` gates on
+in fact dead on the click, two beats late relative to the phrase (the silence
+itself runs to 2.96 beats). Both facts are true; neither is a score. `Attempt::timing_is_scorable()` gates on
 `Completed && pauses.is_empty()` for exactly this reason. **A pause is a
 fluency failure, and it must be detected before any timing verdict is
 computed, not after.**
@@ -96,11 +100,15 @@ attempted — the case with no expected answer, which is why it is the most
 useful fixture in the set.
 
 - **Pitch-class matching is too permissive with chords.** Octave tolerance was
-  implemented as "the onset contains this pitch class", and a five-note
-  freeplay voicing satisfied **7 of the 8** gate-phrase steps. Fixed by
-  matching pitch-class *width* exactly: a one-note step needs a one-class
-  onset, so octave doublings still pass and voicings do not.
-- **Single-note attempt starts.** As above: four spurious attempts inside one
+  implemented as "the onset contains this pitch class", which a wide voicing
+  satisfies almost by accident: the gate phrase asks only for F, C or B, and
+  each of take 01's five-note voicings contains enough of them to satisfy
+  between 4 and all 8 of its steps. A run of **seven consecutive** unrelated
+  voicings therefore carried an attempt to seven matched steps before it
+  abandoned. Fixed by matching pitch-class *width* exactly: a one-note step
+  needs a one-class onset, so octave doublings still pass and voicings do
+  not.
+- **Single-note attempt starts.** As above: five spurious attempts inside one
   scale run.
 
 Both would have shipped as "gate passes on noodling" bugs in a UI, and neither
@@ -120,7 +128,7 @@ misread a quaver phrase, and one in milliseconds would misread every tempo but
 |---|---|---|
 | `chord_window_us` | 50ms | measured 34ms max spread on real rolled voicings |
 | `pause_ratio_milli` | 1.75× step spacing | separates 1.93s pauses from 652ms crotchets |
-| `abandon_ratio_milli` | 4× step spacing | untested by the fixtures — provisional |
+| `abandon_ratio_milli` | 4× step spacing | no fixture reaches it — synthetic test only, provisional |
 | `max_consecutive_deviations` | 2 | take 03 diverges for good after 2 |
 | `min_start_run_steps` | 2 | minimum that kills take 03's false starts |
 
@@ -143,6 +151,11 @@ yet.
    `countInBeats`; a 2-beat count-in is ordinary. `ClickGrid.count_in_bars: u8`
    should be `count_in_beats: u8`.
 
+A third point is forward-looking rather than a correction: `Attempt.span` and
+`Segmentation.count_in` are `Range<usize>`, which will not survive facet
+typegen. Whatever crosses the bridge carries plain start/len integers, and the
+`Range` stays core-side.
+
 Also worth stating in the spec: **count-in playing is untested against real
 data.** All five takes have Jon waiting through the count-in, so the count-in
 exclusion path is covered by a synthetic stream only. It needs one real take of
@@ -164,5 +177,7 @@ someone playing over their own count-in.
    the calibration instrument in design challenge 4 knows it.
 6. Timing consistency (mean and spread) is reportable on Bluetooth; per-note
    verdicts are not, which is design decision 7 already established and now
-   confirmed against 17–27ms measured spreads on clean repetitions — the same
-   order as BLE's own jitter.
+   confirmed against a 17ms spread on the one clean repetition in the set (23ms
+   and 27ms on the diverged and collapsed attempts) — the same order as BLE's
+   own ±10–20ms jitter, which is exactly why the spread is reportable and a
+   single note's offset is not.

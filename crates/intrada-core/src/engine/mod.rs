@@ -9,7 +9,7 @@ mod phrase;
 mod segment;
 
 pub use grid::{BeatRef, ClickGrid};
-pub use note::{cluster_onsets, NoteEvent, Onset, TransportTier};
+pub use note::{cluster_onsets, NoteEvent, Onset};
 pub use phrase::{PhraseStep, TargetPhrase};
 pub use segment::{
     rest_spans, segment, Attempt, AttemptOutcome, Pause, SegmentConfig, Segmentation, TimingStats,

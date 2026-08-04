@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
-
 const US_PER_MINUTE_MILLI: i64 = 60_000_000_000;
 
-/// The click grid, in microseconds from the anchor. `anchor_us` is bar 1 beat 1
-/// — the first beat *after* the count-in, not engine start.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// The click grid. Every time in the engine is microseconds from the anchor,
+/// which is bar 1 beat 1 — the first beat *after* the count-in, not engine
+/// start — so the anchor itself is always 0 and is not carried here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ClickGrid {
     pub bpm_milli: u32,
     pub beats_per_bar: u8,
@@ -48,7 +47,7 @@ impl ClickGrid {
 
     pub fn nearest_beat(&self, t_us: i64) -> BeatRef {
         let per_beat = self.us_per_beat();
-        let beat_index = (t_us * 2 + per_beat.signum() * per_beat).div_euclid(per_beat * 2);
+        let beat_index = (t_us * 2 + per_beat).div_euclid(per_beat * 2);
         let bpb = i64::from(self.beats_per_bar.max(1));
         BeatRef {
             beat_index,
@@ -58,13 +57,8 @@ impl ClickGrid {
         }
     }
 
-    /// Start of the count-in region. Anything at or after
-    /// `count_in_cutoff_us` is body playing, including a note that anticipates
-    /// beat 1 (two of the five real takes do this by 20-50ms).
-    pub fn count_in_start_us(&self) -> i64 {
-        -self.beat_time_us(i64::from(self.count_in_beats))
-    }
-
+    /// Anything at or after this is body playing, including a note that
+    /// anticipates beat 1 — two of the five real takes do that by 20-50ms.
     pub fn count_in_cutoff_us(&self) -> i64 {
         -self.us_per_beat() / 2
     }

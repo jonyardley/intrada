@@ -6,8 +6,8 @@
 mod midi_take;
 
 use intrada_core::engine::{
-    cluster_onsets, rest_spans, segment, AttemptOutcome, ClickGrid, NoteEvent, SegmentConfig,
-    TargetPhrase,
+    cluster_onsets, rest_spans, segment, AttemptOutcome, ClickGrid, NoteEvent, PhraseStep,
+    SegmentConfig, TargetPhrase,
 };
 use midi_take::MidiTake;
 
@@ -42,7 +42,7 @@ fn take_02_pause_mid_phrase_is_one_completed_attempt_with_a_pause() {
 }
 
 #[test]
-fn take_04_restart_is_an_abandoned_attempt_then_a_clean_one() {
+fn take_04_restart_is_a_closed_attempt_then_a_clean_one() {
     let take = MidiTake::load("take-04-restart-bluetooth.jsonl");
     let result = segment(
         &take.events,
@@ -145,10 +145,12 @@ fn take_01_freeplay_yields_no_attempts_without_a_target() {
     assert_eq!(result.unattributed[0].len(), result.onsets.len());
 
     let spans = rest_spans(&result.onsets, take.grid.beats_milli_to_us(1_750));
-    assert!(
-        spans.len() > 1,
-        "freeplay should still split into rest-separated spans for off-piste logging"
+    assert_eq!(
+        spans.len(),
+        4,
+        "freeplay still splits into rest-separated spans for off-piste logging"
     );
+    assert_eq!(spans.last().expect("four spans").end, result.onsets.len());
 }
 
 /// The same freeplay take against a phrase the player never attempted.
@@ -248,32 +250,253 @@ fn a_note_anticipating_beat_one_belongs_to_the_attempt() {
     }
 }
 
-/// Design decision 6: a stable offset is feel, spread is the error. The steady
-/// on-the-beat passage in take 01 lays back consistently.
+/// Design decision 6: the mean offset is feel, the spread is the error. This
+/// pins the one clean repetition in the fixture set — the figures the findings
+/// note quotes as the evidence that decision 6 is measurable over Bluetooth.
+/// Negative is ahead of the click, so this rep pushes; it does not lay back.
 #[test]
-fn steady_playing_reads_as_consistent_lay_back_not_error() {
-    let take = MidiTake::load("take-01-freeplay-mixed-bluetooth.jsonl");
-    let phrase = TargetPhrase::crotchets(&[9, 9, 9, 9, 9, 9, 9, 9]);
+fn the_clean_repetition_pushes_consistently() {
+    let take = MidiTake::load("take-04-restart-bluetooth.jsonl");
     let result = segment(
         &take.events,
         &take.grid,
-        Some(&phrase),
+        Some(&gate_phrase()),
         &SegmentConfig::default(),
     );
+
+    let attempt = result.completed().next().expect("take 04's second rep");
+    assert_eq!(attempt.timing.count, 8);
+    assert!(
+        (-30_000..-18_000).contains(&attempt.timing.mean_offset_us),
+        "expected a consistent push around -24ms, got {}us",
+        attempt.timing.mean_offset_us
+    );
+    assert!(
+        attempt.timing.stddev_offset_us < 20_000,
+        "expected a spread under 20ms, got {}us",
+        attempt.timing.stddev_offset_us
+    );
+    assert!(
+        attempt.timing.stddev_offset_us < attempt.timing.mean_offset_us.abs(),
+        "the spread should be smaller than the offset it sits around"
+    );
+}
+
+/// A repeated pitch class makes every continuation also look like a fresh
+/// start. Two clean back-to-back reps of a one-note phrase must read as two
+/// attempts, not as a restart on every note.
+#[test]
+fn a_phrase_of_one_repeated_pitch_class_does_not_restart_on_every_note() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let phrase = TargetPhrase::crotchets(&[0, 0, 0, 0]);
+    let events: Vec<NoteEvent> = (0..8).map(|beat| note_on(60, beat * per_beat)).collect();
+
+    let result = segment(&events, &grid, Some(&phrase), &SegmentConfig::default());
+
+    assert_eq!(result.attempts.len(), 2, "{:?}", result.attempts);
+    assert!(result
+        .attempts
+        .iter()
+        .all(|a| a.outcome == AttemptOutcome::Completed));
+}
+
+/// The outcome says what the player did next, so a divergence that stops is a
+/// collapse and one that keeps going is noodling — the wrong notes alone don't
+/// tell them apart.
+#[test]
+fn stopping_and_carrying_on_are_different_outcomes() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let phrase = TargetPhrase::crotchets(&[0, 2, 4, 5]);
+    let opening = [note_on(60, 0), note_on(62, per_beat)];
+
+    let stopped: Vec<NoteEvent> = opening
+        .iter()
+        .copied()
+        .chain([note_on(66, 2 * per_beat), note_on(68, 3 * per_beat)])
+        .collect();
+    let carried_on: Vec<NoteEvent> = stopped
+        .iter()
+        .copied()
+        .chain((4..8).map(|beat| note_on(70, beat * per_beat)))
+        .collect();
+
+    let config = SegmentConfig::default();
+    let stopped = segment(&stopped, &grid, Some(&phrase), &config);
+    let carried_on = segment(&carried_on, &grid, Some(&phrase), &config);
+
+    assert_eq!(
+        stopped.attempts[0].outcome,
+        AttemptOutcome::Collapsed { at_step: 2 }
+    );
+    assert_eq!(
+        carried_on.attempts[0].outcome,
+        AttemptOutcome::Diverged { at_step: 2 }
+    );
+}
+
+/// Silence past the abandon threshold closes the attempt where it stood, and
+/// what follows is judged on its own.
+#[test]
+fn silence_abandons_an_attempt_that_was_going_correctly() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let phrase = TargetPhrase::crotchets(&[0, 2, 4, 5, 7]);
+    let events = vec![
+        note_on(60, 0),
+        note_on(62, per_beat),
+        note_on(64, 2 * per_beat),
+        note_on(60, 12 * per_beat),
+        note_on(62, 13 * per_beat),
+    ];
+
+    let result = segment(&events, &grid, Some(&phrase), &SegmentConfig::default());
+
+    assert_eq!(result.attempts.len(), 2, "{:?}", result.attempts);
+    assert_eq!(
+        result.attempts[0].outcome,
+        AttemptOutcome::Abandoned { at_step: 3 }
+    );
+    assert_eq!(
+        result.attempts[1].outcome,
+        AttemptOutcome::Abandoned { at_step: 2 }
+    );
+    assert!(!result.attempts[0].timing_is_scorable());
+}
+
+/// Two notes an age apart are not a confirming run, however well they match.
+#[test]
+fn a_start_is_not_confirmed_across_a_long_silence() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let phrase = TargetPhrase::crotchets(&[0, 2, 4, 5]);
+    let events = vec![note_on(60, 0), note_on(62, 120 * per_beat)];
+
+    let result = segment(&events, &grid, Some(&phrase), &SegmentConfig::default());
+
+    assert!(result.attempts.is_empty(), "{:?}", result.attempts);
+    assert_eq!(
+        result
+            .unattributed
+            .iter()
+            .map(|span| span.len())
+            .sum::<usize>(),
+        2
+    );
+}
+
+/// The thresholds are ratios of the phrase's own step spacing, so a quaver
+/// phrase tolerates half the silence a crotchet phrase does. Nothing else in
+/// the suite exercises a non-crotchet spacing.
+#[test]
+fn thresholds_scale_with_the_phrases_own_note_density() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let quavers = TargetPhrase {
+        steps: [0u8, 2, 4, 5]
+            .iter()
+            .enumerate()
+            .map(|(index, class)| PhraseStep {
+                pitch_classes: vec![*class],
+                beat_offset_milli: index as i64 * 500,
+            })
+            .collect(),
+    };
+    assert_eq!(quavers.step_spacing_milli(), 500);
+
+    let gap_us = per_beat; // one beat: fine for crotchets, a pause for quavers
+    let events = vec![
+        note_on(60, 0),
+        note_on(62, per_beat / 2),
+        note_on(64, per_beat / 2 + gap_us),
+        note_on(65, per_beat + gap_us),
+    ];
+
+    let quaver_result = segment(&events, &grid, Some(&quavers), &SegmentConfig::default());
+    assert_eq!(quaver_result.attempts[0].pauses.len(), 1);
+
+    let crotchet_events: Vec<NoteEvent> = [0u8, 2, 4, 5]
+        .iter()
+        .enumerate()
+        .map(|(index, class)| note_on(60 + class, index as i64 * per_beat))
+        .collect();
+    let crotchet_result = segment(
+        &crotchet_events,
+        &grid,
+        Some(&TargetPhrase::crotchets(&[0, 2, 4, 5])),
+        &SegmentConfig::default(),
+    );
+    assert!(crotchet_result.attempts[0].pauses.is_empty());
+}
+
+/// An upbeat phrase is anchored by where its first note *should* have fallen,
+/// not by the note itself, or every offset in the attempt inherits the skew.
+#[test]
+fn an_upbeat_phrase_is_not_offset_by_its_own_first_step() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let per_beat = grid.us_per_beat();
+    let phrase = TargetPhrase {
+        steps: [0u8, 2, 4, 5]
+            .iter()
+            .enumerate()
+            .map(|(index, class)| PhraseStep {
+                pitch_classes: vec![*class],
+                beat_offset_milli: 500 + index as i64 * 1000,
+            })
+            .collect(),
+    };
+    let events: Vec<NoteEvent> = [0u8, 2, 4, 5]
+        .iter()
+        .enumerate()
+        .map(|(index, class)| note_on(60 + class, per_beat / 2 + index as i64 * per_beat))
+        .collect();
+
+    let result = segment(&events, &grid, Some(&phrase), &SegmentConfig::default());
 
     let attempt = result
         .completed()
         .next()
-        .expect("the repeated-A passage completes an eight-crotchet target");
-    assert!(
-        attempt.timing.mean_offset_us < -5_000,
-        "expected a lay-back, got mean {}us",
-        attempt.timing.mean_offset_us
+        .expect("played exactly as written");
+    assert_eq!(attempt.timing.mean_offset_us, 0);
+    assert_eq!(attempt.timing.stddev_offset_us, 0);
+}
+
+#[test]
+fn degenerate_input_segments_without_panicking() {
+    let grid = ClickGrid::new(120_000, 4, 4);
+    let config = SegmentConfig::default();
+    let phrase = gate_phrase();
+    let empty_phrase = TargetPhrase { steps: Vec::new() };
+    let note_offs = vec![NoteEvent {
+        pitch: 53,
+        velocity: 0,
+        on: false,
+        t_us: 0,
+    }];
+    let unsorted = vec![note_on(60, 2_000_000), note_on(53, 0)];
+
+    assert!(segment(&[], &grid, Some(&phrase), &config)
+        .attempts
+        .is_empty());
+    assert!(segment(&note_offs, &grid, Some(&phrase), &config)
+        .onsets
+        .is_empty());
+    assert!(segment(&unsorted, &grid, Some(&empty_phrase), &config)
+        .attempts
+        .is_empty());
+    assert_eq!(
+        segment(&unsorted, &grid, Some(&phrase), &config).onsets[0].t_us,
+        0,
+        "clustering sorts by time"
     );
-    assert!(
-        attempt.timing.stddev_offset_us < attempt.timing.mean_offset_us.abs(),
-        "spread {}us should be smaller than the offset it sits around",
-        attempt.timing.stddev_offset_us
+    let stopped_clock = ClickGrid::new(0, 0, 0);
+    assert_eq!(
+        segment(&unsorted, &stopped_clock, Some(&phrase), &config)
+            .onsets
+            .len(),
+        2,
+        "a zero bpm grid must not overflow or panic"
     );
 }
 
