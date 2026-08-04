@@ -123,6 +123,114 @@ final class StoreEffectLoopTests: XCTestCase {
       "a failing local store must resolve .failed, not a phantom .ack")
   }
 
+  private static let coachBlock = BlockRecord(
+    id: "b1", node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
+    level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour), circle: .hands, mode: .keys,
+    startedAt: "2026-08-04T10:00:00Z", endedAt: "2026-08-04T10:00:30Z",
+    attempts: [
+      AttemptSummary(
+        at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
+        selfPredicted: nil)
+    ],
+    attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
+    escalationFired: [], exit: .gatePassed)
+
+  private static func saveCoachRecords(id: UInt32) -> Request {
+    Request(
+      id: id,
+      effect: .persistence(
+        .saveCoachRecords(
+          blocks: [coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")))
+  }
+
+  func testCoachRecordsWriteResolvesAck() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Self.saveCoachRecords(id: 20)] }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(bridge.persistenceResolved.first?.id, 20)
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .ack,
+      "a successful evidence write resolves .ack")
+  }
+
+  func testCoachRecordsWriteFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Self.saveCoachRecords(id: 21)] }
+    let store = Store(bridge: bridge, session: mockSession(), store: FailingStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a lost block must surface as .failed, never a phantom .ack (#816)")
+  }
+
+  /// The in-progress session as the engine actually builds it, rather than a
+  /// hand-made one: recovery depends on this exact shape surviving the wire.
+  private func runningCoachSession() throws -> EngineSession {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let requests = try bridge.update(.coach(.startDrillLoop(now: "2026-08-04T10:00:00Z")))
+    for request in requests {
+      if case .app(.saveCoachSessionInProgress(let session)) = request.effect { return session }
+    }
+    throw TestError()
+  }
+
+  func testSaveCoachSessionEffectWritesBlobAndClearRemovesIt() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let session = try runningCoachSession()
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveCoachSessionInProgress(session)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.send(.setQuery(nil))
+
+    let pending = try XCTUnwrap(
+      store.pendingCoachSession(), "the save effect must persist a recoverable blob")
+    XCTAssertEqual(
+      pending, session,
+      "the blob must round-trip the whole session, plan and block state included")
+
+    bridge.updateHandler = { _ in [Request(id: 2, effect: .app(.clearCoachSessionInProgress))] }
+    store.send(.setQuery(nil))
+    XCTAssertNil(store.pendingCoachSession(), "a closed session's blob would recover nothing")
+  }
+
+  /// Real-bridge recovery round trip (#846 class, #1181): the blob leaves the
+  /// core as bincode, sits in UserDefaults, and goes back in as a `CoachEvent`
+  /// payload. A stub bridge cannot catch a mismatch on that wire — the symptom
+  /// would be a recovery that silently no-ops and discards the evidence.
+  func testRealBridgeRecoversAnInProgressCoachSessionFromItsStoredBlob() throws {
+    let crashed = try runningCoachSession()
+    let blob = Data(try crashed.bincodeSerialize())
+    let restored = try EngineSession.bincodeDeserialize(input: [UInt8](blob))
+
+    // A fresh core, as after a relaunch: it knows nothing until the blob lands.
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    XCTAssertNil(try bridge.view().coach.drill, "a fresh core has no drill running")
+
+    _ = try bridge.update(
+      .coach(.recoverSession(session: restored, now: "2026-08-04T11:00:00Z")))
+
+    let drill = try XCTUnwrap(
+      try bridge.view().coach.drill, "the recovered session must put the drill back on screen")
+    XCTAssertEqual(drill.blockIndex, 0)
+    XCTAssertFalse(drill.drillTitle.isEmpty, "the recovered block keeps its identity")
+  }
+
+  func testPendingCoachSessionIsNilWithNoStoredBlob() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(store.pendingCoachSession())
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -921,6 +1029,9 @@ private struct FailingStore: ItemStore {
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
+  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
+    throw TestError()
+  }
 }
 
 final class MockURLProtocol: URLProtocol {

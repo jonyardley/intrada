@@ -17,6 +17,7 @@ final class Store {
   /// AppEffect path rather than wiring crux_kv for one value).
   static let sortDefaultsKey = "intrada.library-sort"
   static let sessionInProgressKey = "intrada.session-in-progress"
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress"
 
   private let bridge: CoreBridge
   private let session: URLSession
@@ -81,7 +82,21 @@ final class Store {
     case .clearSessionInProgress:
       sortDefaults.removeObject(forKey: Self.sessionInProgressKey)
       recoverableSession = nil
+    case .saveCoachSessionInProgress(let session):
+      if let bytes = guarded({ try session.bincodeSerialize() }) {
+        sortDefaults.set(Data(bytes), forKey: Self.coachSessionInProgressKey)
+      }
+    case .clearCoachSessionInProgress:
+      sortDefaults.removeObject(forKey: Self.coachSessionInProgressKey)
     }
+  }
+
+  /// The drill loop's crash-recovery blob, if a session was cut off mid-block.
+  /// `DrillLoopHost` hands it back to the core rather than starting fresh, so
+  /// the evidence already banked survives (#1181).
+  func pendingCoachSession() -> EngineSession? {
+    guard let data = sortDefaults.data(forKey: Self.coachSessionInProgressKey) else { return nil }
+    return guarded { try EngineSession.bincodeDeserialize(input: [UInt8](data)) }
   }
 
   /// Crash-recovery blob found at launch; non-nil drives the Practice tab's
@@ -143,6 +158,9 @@ final class Store {
       case .loadSessions: return .sessions(try store.loadSessions())
       case .saveSession(let session):
         try store.saveSession(session)
+        return .ack
+      case .saveCoachRecords(let blocks, let wanders, let updatedAt):
+        try store.saveCoachRecords(blocks: blocks, wanders: wanders, updatedAt: updatedAt)
         return .ack
       }
     } catch {

@@ -50,7 +50,14 @@ struct DrillLoopHost: View {
   }
 
   private func run() async {
-    store.send(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    // A blob means the last session was cut off mid-block: hand it back rather
+    // than starting fresh, or the evidence already banked is discarded (#1181).
+    let now = SessionClock.nowRFC3339()
+    if let crashed = store.pendingCoachSession() {
+      store.send(.coach(.recoverSession(session: crashed, now: now)))
+    } else {
+      store.send(.coach(.startDrillLoop(now: now)))
+    }
     startClickIfNeeded()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
