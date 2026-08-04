@@ -1,4 +1,4 @@
-<!-- Snapshot, 4 Aug 2026 (v6). Regenerated from specs/intrada-practice-coach-design.md,
+<!-- Snapshot, 4 Aug 2026 (v7). Regenerated from specs/intrada-practice-coach-design.md,
      docs/coach-user-journeys.md and docs/roadmap.md. If this and the specs
      disagree, the specs win. -->
 <title>Intrada: the practice coach — orientation</title>
@@ -437,7 +437,7 @@
     <a href="#circles">The two circles</a>
     <a href="#engine">The engine</a>
     <a href="#session">A session</a>
-    <a href="#journeys">Ten journeys</a>
+    <a href="#journeys">Eleven journeys</a>
     <a href="#screens">Wireframes</a>
     <a href="#open">Still open</a>
     <a href="#tech">Technical work</a>
@@ -451,17 +451,19 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">Intrada · orientation · 4 August 2026 · spec v6</p>
+    <p class="eyebrow">Intrada · orientation · 4 August 2026 · spec v7</p>
     <h1>The app stops being a notebook and becomes a teacher.</h1>
     <p class="standfirst">
       Six weeks of decisions, in one page: what the practice coach is, who decides what you
       practise, how a session actually plays out without a microphone yet, which screens exist,
-      what has to be built in what order — and what is now waiting on you. The newest decision
-      changes the build order more than the vision: <strong>machine listening is deferred</strong>
-      (decision 18) — the loop ships first on tap-verdicts, not MIDI scoring.
+      what has to be built in what order — and what is now waiting on you. The two newest
+      decisions: <strong>machine listening is deferred</strong> (decision 18) — the loop ships
+      first on tap-verdicts, not MIDI scoring — and <strong>your own exercises became
+      first-class</strong> (decision 19): countable teacher-set work carries gates and mastery,
+      and you can build today's session yourself without losing tracking.
     </p>
     <div class="mast-meta">
-      <span>Governing spec: <code>specs/intrada-practice-coach-design.md</code> (v6)</span>
+      <span>Governing spec: <code>specs/intrada-practice-coach-design.md</code> (v7)</span>
       <span>Strategy: <code>docs/rebuild-review.md</code></span>
       <span>Segmentation spike: <code>docs/segmentation-findings.md</code></span>
       <span>Phase 0 content: <code>content/</code></span>
@@ -790,14 +792,35 @@
         <h4 style="margin-top:0">A lesson is a set, not a single target</h4>
         <p style="font-size:13.5px;color:var(--ink-2)">
           The real case is a handful of things at once: work the voicings, transcribe this
-          phrase, get the bridge from memory. So a campaign holds several targets. Each is
-          matched to a skill node or pipeline stage where it can be — and where it can't, it's
+          phrase, get the bridge from memory. So a campaign holds several targets, and each
+          resolves one of three ways (decision 19): matched to a skill node or pipeline stage;
+          countable but unmatched — a teacher's exercise with a tempo and a key count — so it
+          becomes <strong>your own gated, tracked item</strong>; or genuinely unmeasurable,
           kept as-is rather than forced into an ill-fitting node.
         </p>
         <p style="font-size:13.5px;color:var(--ink-2);margin:0">
           "Make the last A sing" isn't a node. It gets practised and self-confirmed, not scored.
-          And when targets like it keep recurring, that's the queue telling you which node to
-          author next — content driven by demand, not by filling in a taxonomy.
+          And when unmatched targets keep recurring — or one of your own items earns weeks of
+          use — that's the queue telling you which node to author next: content driven by
+          demand, not by filling in a taxonomy.
+        </p>
+      </div>
+      <div class="card">
+        <h4 style="margin-top:0">Your own exercises count — and so does your own sequencing</h4>
+        <p style="font-size:13.5px;color:var(--ink-2)">
+          New in v7 (decision 19). An exercise the app can't match still gets gate criteria in
+          the normal schema ("clean at 80, both hands, 4 keys"), its own mastery, spacing and
+          cold tests — because once every verdict is a tap against a countable criterion
+          (decision 18), there's no principled reason typed-in material can't carry a gate.
+          Where it plausibly serves an existing skill, the app proposes the match and you
+          confirm; confirmed work feeds that skill's mastery at full weight, source-tagged.
+        </p>
+        <p style="font-size:13.5px;color:var(--ink-2);margin:0">
+          And on the days you want to compose the session yourself — pipeline work, your own
+          exercise, one thing from the plan — <strong>the built session</strong> does it from
+          the steer surface: every block keeps its gate, evidence lands exactly as if
+          prescribed, and the shape (warm-up first, music at the end) is offered, never
+          enforced.
         </p>
       </div>
       <div class="card">
@@ -821,7 +844,10 @@
     <div class="note warn">
       <p><strong>And one thing the design forbids.</strong> No "guided vs my own way" switch.
       Asking which mode you're in at the door reintroduces exactly the decision the app exists to
-      remove. It always opens prescribed, and yields in one tap.</p>
+      remove. It always opens prescribed, and yields in one tap — and yielding now scales all the
+      way up: compose the whole session yourself and every block still gates and counts
+      (decision 19). Composition is something you reach for, never something you're asked to
+      choose.</p>
     </div>
 
     <h3>Where AI belongs in this — and where it doesn't</h3>
@@ -1244,7 +1270,7 @@ click_level   = "l1"</pre>
       <line x1="0" y1="9" x2="1000" y2="9" /><line x1="0" y1="13" x2="1000" y2="13" />
       <line x1="0" y1="17" x2="1000" y2="17" />
     </svg>
-    <h2>Ten journeys the app has to handle</h2>
+    <h2>Eleven journeys the app has to handle</h2>
     <p class="lede">
       Every scenario, with the mechanism that serves it and — the part that makes it
       testable — the failure it exists to prevent. Journeys 1, 5, 6 and 7 are the
@@ -1316,6 +1342,12 @@ click_level   = "l1"</pre>
             <td>To feel it, and see the thread back to the work</td>
             <td>Plain marking, the narrated thread, pipeline advance, next thing in flight</td>
             <td>Progress happens and is never felt — the exact failure the motivation model exists to prevent</td>
+          </tr>
+          <tr>
+            <td><strong>11 · Doing it your own way</strong></td>
+            <td>Their own exercises to count, and their own sequencing to cost nothing</td>
+            <td>Three-way target resolution, user nodes with gates-as-data, the built session (decision 19)</td>
+            <td>The teacher's exercises live outside the app, and the moment the user trusts their own judgement is the moment tracking dies</td>
           </tr>
         </tbody>
       </table>
@@ -1621,7 +1653,9 @@ click_level   = "l1"</pre>
         <figcaption>
           <b>9 · Declaring a campaign</b>
           Four targets, three matched to the graph, one kept as-is because "make it sing" isn't
-          a measurable node — it gets practised and self-confirmed, never scored.
+          measurable — it gets practised and self-confirmed, never scored. A countable target
+          the graph couldn't match would instead become the user's own gated item
+          (decision 19).
           <span class="pill p-next">Phase 2b</span>
         </figcaption>
       </figure>
@@ -2014,7 +2048,7 @@ click_level   = "l1"</pre>
         <span class="phase-when">3–4 weeks</span>
       </div>
       <p>Everything that makes the loop kind rather than merely correct.</p>
-      <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped, opaque targets allowed) and today's steer — each with a default, so the app works having declared nothing. Plus back-chaining and the structural gap read.</span></div>
+      <div class="slice"><b>The declaration surfaces</b><span>Goal, campaign (multi-target, lesson-shaped) and today's steer — each with a default, so the app works having declared nothing. Targets resolve three ways (decision 19): matched to a node, your own gated item where countable, opaque where genuinely unmeasurable. Plus the built session — compose today yourself, everything still gates and counts — back-chaining, and the structural gap read.</span></div>
       <div class="slice"><b>The guard rails</b><span>The circling check, the grind trade, the off-piano queue with its own cue, unmonitored play alongside off-piste (now: time plus an optional voice note, not captured notes — decision 18), the time-by-circle tally pulled forward from Phase 4 — and the judgement track: completion, retirement and feel trends, its eventual weighting deferred alongside the divergence log until machine listening returns.</span></div>
       <p class="exit">Done when: two weeks of daily use without you reverting to self-directed sessions.</p>
     </div>
@@ -2188,7 +2222,9 @@ click_level   = "l1"</pre>
         <h4>Declaration and guard rails — three screens</h4>
         <p style="font-size:13.5px;color:var(--ink-2);margin:0">
           Declaring a campaign from a lesson list, the route-and-gap answer, and the circling
-          check. These inherit the voice Session A establishes, which is why they wait.
+          check. These inherit the voice Session A establishes, which is why they wait. The
+          decision-19 surfaces — creating your own item, the built session — join this session's
+          scope once the brief is updated for v7.
         </p>
       </div>
     </div>
@@ -2207,9 +2243,11 @@ click_level   = "l1"</pre>
   </section>
 
   <footer>
-    Assembled from <code>specs/intrada-practice-coach-design.md</code> (v6, revised 4 August —
+    Assembled from <code>specs/intrada-practice-coach-design.md</code> (v7, revised 4 August —
     decision 18: machine listening deferred, Phase 1 closed early, the loop ships on tap-verdicts
-    with the cold test as the headline instrument), <code>docs/segmentation-findings.md</code>,
+    with the cold test as the headline instrument; decision 19: user-created items are
+    first-class where countable, and the built session composes them without losing tracking),
+    <code>docs/segmentation-findings.md</code>,
     <code>docs/rebuild-review.md</code> (19 July), and <code>docs/roadmap.md</code>.
     Wireframes are for comprehension, not design — the seven Phase 2a–2b screens get real design
     via the prompt below. Backlog counts are post-triage, dated 3 August.

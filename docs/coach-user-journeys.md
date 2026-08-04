@@ -1,8 +1,8 @@
 # Practice coach — user journeys
 
-Ten scenarios the app must handle well, derived from
+Eleven scenarios the app must handle well, derived from
 [`specs/intrada-practice-coach-design.md`](../specs/intrada-practice-coach-design.md)
-(v6). Written to inform design work and to be argued with: if a journey needs a
+(v7). Written to inform design work and to be argued with: if a journey needs a
 mechanism the spec doesn't have, that's a spec gap, not a design problem to
 solve in the UI.
 
@@ -85,15 +85,20 @@ without typing a curriculum.
 1. Accepts the list as written — typed, pasted or dictated.
 2. Matches each target: two to skill nodes, one to a pipeline stage, one to
    nothing.
-3. Keeps the unmatched one as an **opaque target** — prescribable, self-confirmed,
-   never scored, never crammed into an ill-fitting node.
+3. Resolves the unmatched one by what it is (decision 19): countable — say, a
+   finger-independence exercise with a tempo and a key count — becomes a **user
+   node**, gated and mastery-tracked like authored content (journey 11); genuinely
+   unmeasurable, like "make the last A sing", stays an **opaque target** —
+   prescribable, self-confirmed, never scored, never crammed into an ill-fitting
+   node.
 4. Back-chains: shells first, because the voicings sit behind them.
 5. Shows the structural gap read and an honest horizon from the user's own pace.
 6. Sequences against the in-flight caps, saying what's queued rather than
    dropping it.
 
-**Mechanisms.** Multi-target campaigns; opaque targets; back-chaining;
-structural gap read; caps outranking intent.
+**Mechanisms.** Multi-target campaigns; three-way target resolution
+(decision 19); opaque targets; back-chaining; structural gap read; caps
+outranking intent.
 
 **Without this.** Either the user hand-builds sessions (the thing being
 deleted), or the teacher's actual instructions live outside the app and it
@@ -255,6 +260,43 @@ freeing a slot; Zeigarnik.
 
 **Without this.** Progress happens and is never felt — which is the failure the
 whole motivation model exists to prevent.
+
+---
+
+## 11. Doing it your own way — custom items and the built session
+
+**Trigger.** A teacher's exercise that matches nothing in the graph. Or a day
+the user wants to compose the session themselves: some pipeline work, one of
+their own exercises, one thing from the plan.
+
+**What the user needs.** Their own material to count, and their own sequencing
+to cost nothing — no tracking lost, no mode entered.
+
+**What the app does.**
+1. Accepts the exercise as written and proposes a resolution (decision 19): a
+   drill on an existing node where one plausibly fits ("this looks like a shells
+   exercise — track it under shells?"), a **user node** where nothing does,
+   opaque only when it's genuinely unmeasurable. The user confirms; nothing is
+   silently filed.
+2. A user node gets gate criteria in the normal schema ("clean at 80, both
+   hands, 4 keys"), a low-confidence prior, and an optional *serves* tag for the
+   circle tally. From then on it is ordinary material: due, spaced, cold-tested.
+3. **Build today's session**: compose blocks from pipelines, nodes and your own
+   items, from the steer surface. Each block keeps its gate; evidence lands
+   exactly as if prescribed.
+4. Offers — never enforces — the session shape: a warm-up first, music at the
+   end. Declining it is one tap and not remarked on.
+5. Tomorrow the plan resumes, unoffended, with the built session's evidence
+   already folded in. Repeated built sessions with a stable shape get surfaced
+   the way repeated wanders do: as a campaign not yet declared.
+
+**Mechanisms.** Three-way target resolution; user nodes with gates-as-data;
+full-weight source-tagged evidence from confirmed user drills; the built
+session as the strongest steer; template-as-advice.
+
+**Without this.** The user's own judgement has no home: the teacher's exercises
+live outside the app, self-built days earn no evidence, and the moment the user
+trusts themselves more than the planner is the moment tracking dies.
 
 ---
 
