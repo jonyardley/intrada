@@ -9,7 +9,9 @@ In Phase 0 "machine-checkable" means *a machine could check it*: the
 criterion is stated in notes, beats, tempos, and counts, with no judgement
 words. Until the listening gate exists, you check it yourself — honestly.
 
-Mastery seeds are day-one guesses. Correct them at the piano (README
+Mastery seeds are day-one guesses, and they live in
+[`gates.toml`](gates.toml) rather than here, because the engine reads them and
+a seed it cannot read is a seed that drifts. Correct them at the piano (README
 checklist), then let the gate-attempt log move them.
 
 ---
@@ -42,7 +44,7 @@ designated warm-up material: comfortable, scoreable, low-stakes.
 week: full cycle clean at 100 bpm on click level L2, tune application clean,
 and 12/12 random-key retrieval within one bar of thinking time.
 
-**Mastery seed:** estimate 0.7, confidence medium.
+**Mastery seed:** 0.7 / medium (`[nodes.shells-ii-v-i]` in `gates.toml`).
 
 ---
 
@@ -67,14 +69,14 @@ hour here pays out in every tune. Honest label: the middle keys are grind.
 |---|---|---|
 | R1 | One key, LH alone, slow loop: ii–V–I with a full bar on each chord | `rootless-one-key` |
 | R2 | The change, not the chords: loop just ii→V, then just V→I, minimal motion | `rootless-transition` |
-| R3 | Key traversal per the method pack: 2–3 new keys per session, whole-step order | `rootless-traversal` |
+| R3 | Key traversal per the method pack: 2–3 new keys per session, whole-step order | none: a session quota, `[traversal]` in `gates.toml` |
 | R4 | Application: rootless LH under the melody, Strasbourg A section | `rootless-under-melody` |
 
 **Done-criteria.** `rootless-cycle` gate: full cycle of fourths, both forms
 alternating, clean at 80 bpm, click L1 — reached over weeks via the
 traversal schedule, never in one session.
 
-**Mastery seed:** estimate 0.3, confidence low.
+**Mastery seed:** 0.3 / low (`[nodes.rootless-a-b]` in `gates.toml`).
 
 ---
 
@@ -109,7 +111,8 @@ between the circles, built out — and Phase 1's first scored drill type.
 analyse/extract stages of its pipeline.
 
 **Mastery seed** (node-level — running the pipeline as a skill; per-key
-state lives in the phrase file): estimate 0.4, confidence low.
+state lives in the phrase file): 0.4 / low
+(`[nodes.phrase-transposition]` in `gates.toml`).
 
 ---
 
@@ -142,7 +145,7 @@ spec prescribes for integration work: the landing rule is machine-checkable
 (target chord tone on beat 1, every change, 2 consecutive passes), the feel
 self-rating is logged alongside, not gated on.
 
-**Mastery seed:** estimate 0.35, confidence low.
+**Mastery seed:** 0.35 / low (`[nodes.chord-tone-targeting]` in `gates.toml`).
 
 ---
 
@@ -172,11 +175,12 @@ doesn't gate it.)
 | M3 | Audiation rung: work the phrase out entirely away from the piano (commute slot); first attempt at the keys is the test | `transcription-audiation` |
 
 **Done-criteria.** Paper-tier honesty: these gates are self-confirmed
-against the record in Phase 0 (`transport = paper` in `gates.toml`), the
+against the record in Phase 0 (`judge = "self-confirmed"`, with no transport
+at all, in `gates.toml`), the
 same stance the spec takes on deploy-gates. They become machine-suggestable
 only once capture exists.
 
-**Mastery seed:** estimate 0.4, confidence low.
+**Mastery seed:** 0.4 / low (`[nodes.micro-transcription]` in `gates.toml`).
 
 ---
 

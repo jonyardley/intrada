@@ -17,7 +17,7 @@ the deliverable; the content is the instrument.
 | [`method-packs/voicing-traversal.md`](method-packs/voicing-traversal.md) | How to attack shell + rootless voicing work |
 | [`method-packs/phrase-transposition.md`](method-packs/phrase-transposition.md) | How to take a phrase through the keys |
 | [`phrases/p001-flat9-turnaround.md`](phrases/p001-flat9-turnaround.md) | The one in-flight phrase: notation, devices, pipeline stage, per-key state |
-| [`gates.toml`](gates.toml) | Every gate criterion as tunable data — day-one guesses, calibrated from the gate-attempt log |
+| [`gates.toml`](gates.toml) | **The file the engine reads.** The graph (nodes, prerequisites, mastery seeds, ladders of drills), every gate criterion, the escalation ladder, the session quotas and the declared intent, all as tunable data. Day-one guesses, calibrated from the gate-attempt log |
 | [`tunes.md`](tunes.md) | Strasbourg / St. Denis tune-pipeline position |
 | [`logs.md`](logs.md) | Templates for the four Phase 0 logs (divergence, gate-attempt, why, wander) |
 
@@ -25,6 +25,10 @@ the deliverable; the content is the instrument.
 
 Every node carries two tags from the spec's fluency-frame subsection
 (drills inherit their node's tags unless marked otherwise):
+
+Both tags are authored twice on purpose: in prose per node in `nodes.md`, and
+machine-readably in `[nodes.*]` in `gates.toml`, which is what the engine
+reads. Move them together.
 
 - **Circle**: `head` (music you can hear/imagine), `hands` (what you can
   execute), or `bridge` (grows the overlap — the point of the whole thing).
@@ -39,7 +43,8 @@ recorded Phase 4 debt.
 
 ## Day-one checklist
 
-1. Correct the **seed mastery values** in `nodes.md` and the per-key table in
+1. Correct the **seed mastery values** in `gates.toml` (`[nodes.*]`, and
+   `nodes.md` quotes them) and the per-key table in
    `phrases/p001-flat9-turnaround.md` — they are plausible guesses, not
    measurements. Ten minutes at the piano settles each one. Rate the rung
    you're actually on, not the node as a whole: the engine reads each seed as

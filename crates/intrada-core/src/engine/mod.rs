@@ -9,6 +9,7 @@
 //! established is in `docs/segmentation-findings.md`.
 
 mod coach;
+mod content;
 mod gate;
 mod plan;
 mod session;

@@ -4,6 +4,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::content::ContentIndex;
 use super::gate::{EvidenceSource, GateProgress, Verdict};
 use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 
@@ -19,7 +20,9 @@ use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum CoachEvent {
-    /// Run the seeded drill loop. Becomes "run this plan" when §5's planner lands.
+    /// Plan today's session from the authored content and run it. Becomes
+    /// "run this plan" when the session-start screen can say how long the user
+    /// has (#1182); until then the length comes from `[defaults]`.
     StartDrillLoop {
         now: DateTime<Utc>,
     },
@@ -204,8 +207,9 @@ pub struct WanderRecord {
     pub keep_as_drill: Option<bool>,
 }
 
-/// Thresholds the engine must not hard-code. `content/gates.toml` becomes their
-/// source when its parser lands (§8); these are the values in the file today.
+/// Thresholds the engine must not hard-code: `[escalation]` in
+/// `content/gates.toml` is where they live (spec §8's closing rule). Carried on
+/// the session so a recovered one keeps the thresholds it ran with.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EngineConfig {
@@ -218,17 +222,13 @@ pub struct EngineConfig {
 
 impl Default for EngineConfig {
     fn default() -> Self {
+        let escalation = &ContentIndex::shipped().escalation;
         Self {
-            consecutive_fail_trigger: 3,
-            ladder: vec![
-                Rung::TempoDown,
-                Rung::ShrinkScope,
-                Rung::ChangeMode,
-                Rung::SwapDrill,
-            ],
-            gate_open_hold_s: 2,
-            tempo_down_pct: 20,
-            tempo_floor_bpm: 40,
+            consecutive_fail_trigger: escalation.consecutive_fail_trigger,
+            ladder: escalation.ladder.clone(),
+            gate_open_hold_s: escalation.gate_open_hold_s,
+            tempo_down_pct: escalation.tempo_down_pct,
+            tempo_floor_bpm: escalation.tempo_floor_bpm,
         }
     }
 }
@@ -425,7 +425,10 @@ impl EngineSession {
 
     fn handle(&mut self, event: &CoachEvent) {
         match event {
-            CoachEvent::StartDrillLoop { now } => self.start(Plan::seed_drill_loop(), *now),
+            CoachEvent::StartDrillLoop { now } => {
+                let content = ContentIndex::shipped();
+                self.start(Plan::for_today(content, content.session_minutes, 0), *now)
+            }
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
             CoachEvent::Tap { clean, now } => self.tap(*clean, *now),
@@ -663,7 +666,7 @@ impl EngineSession {
     }
 
     fn tick(&mut self, now: DateTime<Utc>) {
-        let ceiling = self.spec().and_then(|spec| spec.gate.time_ceiling_s);
+        let ceiling = self.spec().map(|spec| u32::from(spec.minutes) * 60);
         let hold = self.config.gate_open_hold_s;
         let Some(block) = self.block_mut() else {
             return;
@@ -773,6 +776,13 @@ impl EngineSession {
         }
     }
 
+    /// The state-machine tests run a fixed plan rather than today's, so what
+    /// they assert is the machine and not whatever the content now says.
+    #[cfg(test)]
+    pub(crate) fn start_fixture(&mut self, now: DateTime<Utc>) {
+        self.start(Plan::fixture(), now);
+    }
+
     fn block_mut(&mut self) -> Option<&mut BlockState> {
         match &mut self.state {
             SessionState::Running { block, .. } => Some(block),
@@ -794,7 +804,7 @@ mod tests {
     /// Started, count-in done, one body beat played — the state every rep runs in.
     fn listening() -> EngineSession {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         session.apply(&CoachEvent::Beat { beat_index: 0 });
         session
     }
@@ -818,11 +828,45 @@ mod tests {
     // ── Entering the loop ──
 
     #[test]
+    fn starting_a_session_runs_todays_plan_from_the_content() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+
+        let SessionState::Running { plan, .. } = &session.state else {
+            panic!("a session should be running");
+        };
+        assert!(
+            plan.blocks.len() > 1,
+            "a session has a shape, not one seeded block (#1180)"
+        );
+        assert_eq!(
+            session.spec().expect("a first block").drill,
+            "shells-cycle",
+            "planned from content/gates.toml, not from a Rust constant"
+        );
+    }
+
+    #[test]
+    fn the_thresholds_are_the_files_and_not_rust_constants() {
+        let config = EngineConfig::default();
+        let authored = &ContentIndex::shipped().escalation;
+
+        assert_eq!(
+            config.consecutive_fail_trigger,
+            authored.consecutive_fail_trigger
+        );
+        assert_eq!(config.ladder, authored.ladder);
+        assert_eq!(config.tempo_down_pct, authored.tempo_down_pct);
+        assert_eq!(config.tempo_floor_bpm, authored.tempo_floor_bpm);
+        assert_eq!(config.gate_open_hold_s, authored.gate_open_hold_s);
+    }
+
+    #[test]
     fn a_block_opens_on_the_count_in() {
         let mut session = EngineSession::default();
         assert_eq!(session.phase(), None, "nothing runs before it is started");
 
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         assert_eq!(
             session.phase(),
             Some(&Phase::CountIn { beats_remaining: 4 })
@@ -833,7 +877,7 @@ mod tests {
     #[test]
     fn the_count_in_ticks_down_and_the_first_body_beat_opens_the_window() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
 
         session.apply(&CoachEvent::CountInBeat { remaining: 2 });
         assert_eq!(
@@ -997,7 +1041,7 @@ mod tests {
             },
             ..EngineSession::default()
         };
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         session.apply(&CoachEvent::Beat { beat_index: 0 });
 
         session.apply(&CoachEvent::Stuck { now: at(5) });
@@ -1023,7 +1067,7 @@ mod tests {
     #[test]
     fn a_consecutive_gate_empties_its_dots_and_still_escalates() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         if let SessionState::Running { plan, block } = &mut session.state {
             plan.blocks[0].gate.requirement = Requirement::CleanPasses {
                 count: 3,
@@ -1059,7 +1103,7 @@ mod tests {
     #[test]
     fn a_second_block_opens_where_the_first_left_off() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         if let SessionState::Running { plan, .. } = &mut session.state {
             let mut second = plan.blocks[0].clone();
             second.drill_title = "Shells".to_string();
@@ -1389,7 +1433,7 @@ mod tests {
     #[test]
     fn a_recovered_wander_never_counts_the_outage_as_practice() {
         let mut crashed = EngineSession::default();
-        crashed.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        crashed.start_fixture(at(0));
         crashed.apply(&CoachEvent::GoOffPiste { now: at(30) });
 
         let mut restored = EngineSession::default();
@@ -1410,7 +1454,7 @@ mod tests {
     #[test]
     fn a_closed_wander_is_handed_over_for_persistence() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         session.apply(&CoachEvent::GoOffPiste { now: at(0) });
 
         let writes = session.apply(&CoachEvent::CloseSession { now: at(600) });
@@ -1421,7 +1465,7 @@ mod tests {
     #[test]
     fn answering_the_keep_prompt_rewrites_the_record() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         session.apply(&CoachEvent::GoOffPiste { now: at(0) });
         session.apply(&CoachEvent::CloseSession { now: at(600) });
 
@@ -1439,7 +1483,7 @@ mod tests {
     #[test]
     fn off_piste_banks_its_time_and_asks_about_keeping_it() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.start_fixture(at(0));
         session.apply(&CoachEvent::GoOffPiste { now: at(30) });
         assert!(matches!(session.state, SessionState::OffPiste { .. }));
 

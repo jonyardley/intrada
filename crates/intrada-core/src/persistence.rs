@@ -652,8 +652,15 @@ mod tests {
             let mut cmd = send(&app, &mut model, CoachEvent::Tick { now: at(30) });
             let blocks = coach_records(&mut cmd).expect("a SaveCoachRecords op");
             assert_eq!(blocks.len(), 1);
-            assert_eq!(blocks[0].node, "rootless-a-b");
-            assert_eq!(blocks[0].attempts.len(), 3);
+            assert_eq!(
+                blocks[0].node, "shells-ii-v-i",
+                "today's plan warms up on the material already owned"
+            );
+            assert_eq!(
+                blocks[0].attempts.len(),
+                1,
+                "shells-cycle asks for one clean pass, so the first tap opens the gate"
+            );
             assert!(!has_http(&mut cmd), "evidence never goes over HTTP");
         }
 

@@ -229,9 +229,20 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 > goes straight to the next block or `Closing`. `GateOpen`'s **"user continues"**
 > exit is deferred too — only auto-advance is built, so `reps_after_gate` is
 > recorded on `BlockRecord` and structurally always 0 until there is an
-> affordance to continue past an open gate. `circle` and `mode` are not
-> implemented at all: neither taxonomy is defined here or in the design doc, and
-> a guessed enum would be a data-model change to un-ship (#1181).
+> affordance to continue past an open gate. `circle` and `mode` **are** built
+> (#1181): the taxonomy is the fluency frame, defined in `content/README.md`
+> "Circle tags" and tagged per node in the content, so nothing had to be
+> guessed. They are carried from the parsed node onto the record.
+>
+> **Persisted 4 Aug 2026 (#1181).** Records leave as they close rather than in
+> one batch at session end, so a crash costs at most the block in flight:
+> `PersistenceOperation::SaveCoachRecords` appends blocks, wanders and their
+> attempts in one transaction with a core-stamped `updated_at`, and
+> `AppEffect::SaveCoachSessionInProgress` keeps the in-progress session for
+> recovery, rewritten once a rep rather than once a beat.
+> `CoachEvent::RecoverSession` re-anchors the clock, so a recovered block keeps
+> the minutes already spent against its ceiling and a wander banks none of the
+> outage.
 
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,
@@ -342,6 +353,19 @@ never add** — that monotonicity is what makes the why generable by constructio
 Each `PlannedBlock` carries `why { destination: Option<TargetRef>, node_state,
 placed_by: Stage }`, written by the stage that placed it. Test: every block has a
 non-empty why citing the destination whenever one is declared (principle 7).
+
+> **Built 4 Aug 2026 (#1180): stages 1, 2, 3 and 5.** `Plan::for_today` reads
+> the parsed content: the campaign's targets in declared order (a target may
+> name the rung it wants), each preceded by its prerequisites, sized by node
+> maturity, then cut to the session length and reordered to close on music.
+> What it does not do yet, and why: stage 3 reads the **seeded** estimate, since
+> the live mastery store is #1148, and with it waits the `overdue` pull that puts
+> maintenance ahead of new keys; stage 4's grind cap has nothing to bite on while
+> a node contributes at most one block; and of `why`, only `destination` is
+> carried, because `node_state` is a mastery read and `placed_by` has no reader
+> until the session-end narrative. A stub target and a rung with no click both
+> land in `Plan::deferred` rather than vanishing, and the session length comes
+> from `[defaults]` until press-start (#1182) can ask for it.
 
 ## 6. The FFI contract
 
@@ -454,6 +478,14 @@ an unrepresentable gate fails to parse instead of silently losing a field.
 > but not consulted — the rule it exists for ("self-confirmation may never
 > unlock") bites at the mastery update (#1148), which is where it must be
 > enforced rather than merely stated.
+>
+> **Completed 4 Aug 2026 (#1180).** `Requirement` now carries all four variants,
+> each with the evaluation that makes it a gate rather than a label:
+> `KeyCoverage` banks a key at a time (which key is in front of you is the
+> dealer's business, so it needs no key identity), `Chained` wants the run
+> unbroken, and `SelfConfirmed` takes one honest tap. One resolution order turns
+> the file's fields into a variant, so a gate matching none of them fails to
+> parse, which was the whole gain over a flat bag of optional fields.
 
 ```rust
 struct GateCriteria {
@@ -520,19 +552,24 @@ enum TimingRule { Consistent { max_cv: f32, max_drift: f32 } }   // decision 6
    costs a slot. Stated explicitly in the anti-nag rules; **#1147's list still
    counts the stuck ladder as an interruption and needs the same correction.**
 
+5. **`rootless-traversal` is not a gate**, and no longer sits among them.
+   Done with the parser (#1180): it has no pass or fail, so it is
+   unrepresentable as a `Requirement`, and it now lives in `[traversal.<node>]`
+   as the per-session scheduling quota it always was.
+6. **`transport = "paper"` conflated two axes**, and the file now splits them.
+   `[defaults]` carries `transport` (`wired | bluetooth | mic | none`) and
+   `judge` (`machine | tap-verdict | self-confirmed`) separately, Phase 0 being
+   `(none, tap-verdict)` for a counted gate and `(none, self-confirmed)` for the
+   micro-transcription rungs. Both restructures waited for the parser rather
+   than churning the file the fortnight was practised from.
+
 ### Still outstanding
 
-5. **`rootless-traversal` is not a gate.** No pass/fail: it is a per-session
-   scheduling quota (`new_keys_per_session_min/_max`), unrepresentable as a
-   `Requirement`. It belongs outside `[gates.*]`, as a planner constraint.
-6. **`transport = "paper"` conflates two axes** — paper is the absence of a
-   transport plus a change of judge. §8 splits them: `transport: Wired |
-   Bluetooth | Mic | None` and `judge: Machine | SelfConfirmed`, Phase 0 being
-   `(None, SelfConfirmed)`.
-
-   Both are restructures of `content/gates.toml`, deliberately **deferred to
-   Phase 2a**, when the parser that reads the file actually lands. No code reads
-   it today, and it is the file being practised from during the Phase 0
-   fortnight — churning its structure now costs the reader and buys nothing.
 7. **#1148's fourth question is stale** — decision 17 closed it before the issue
    was read. Close as answered rather than answering twice.
+8. **The capability check is stated but not enforced.** §8's
+   `requirement.capabilities_needed() ⊆ transport.capabilities()`, and its `Ask`
+   verdict, have no code: with one transport (`none`) and one judge in play,
+   every counted gate is a tap-verdict, so a check that cannot fail is a check
+   no test could reach. It lands with the scoring path, alongside the `Clean` /
+   `TimingRule` half of the schema.
