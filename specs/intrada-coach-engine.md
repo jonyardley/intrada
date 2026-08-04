@@ -224,7 +224,12 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 >
 > The `Boundary` row is deferred with §7's arbitration: with one seeded block
 > there is no interruption to fire and nothing to arbitrate, so a closed block
-> goes straight to the next block or `Closing`.
+> goes straight to the next block or `Closing`. `GateOpen`'s **"user continues"**
+> exit is deferred too — only auto-advance is built, so `reps_after_gate` is
+> recorded on `BlockRecord` and structurally always 0 until there is an
+> affordance to continue past an open gate. `circle` and `mode` are not
+> implemented at all: neither taxonomy is defined here or in the design doc, and
+> a guessed enum would be a data-model change to un-ship (#1181).
 
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,
@@ -435,6 +440,18 @@ an unrepresentable gate fails to parse instead of silently losing a field.
 > and `TimingRule` apply only to machine-judged gates; a tap-verdict gate's
 > "pass" is the tap, and its `clean` field is `None` by construction. The
 > restructure lands with the 2a implementation, as §9.6 already planned.
+>
+> **Built 4 Aug 2026 (#1176), partially.** `Judge` gained `TapVerdict`;
+> `Requirement` carries only `CleanPasses`, because a variant no reader can
+> evaluate is a gate that silently never passes. The rest of the struct is
+> **not** as written below and lands with the parser (#1180): `tempo_bpm` and
+> `click_level` moved to a `ParameterLevel` on the block, since the escalation
+> ladder mutates them per block and the gate must not; `time_ceiling_min: u8`
+> is `time_ceiling_s: Option<u32>`; and `transport_min`, `self_rating_logged`
+> and `clean` are absent, having no reader yet. `Judge` is likewise recorded
+> but not consulted — the rule it exists for ("self-confirmation may never
+> unlock") bites at the mastery update (#1148), which is where it must be
+> enforced rather than merely stated.
 
 ```rust
 struct GateCriteria {

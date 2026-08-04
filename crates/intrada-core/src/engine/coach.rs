@@ -4,12 +4,11 @@
 //! here yet.
 //!
 //! Everything the drill screen draws comes from this module, so counting,
-//! gating and what-comes-next stay in Rust (#1176).
+//! gating and what-comes-next stay in Rust.
 
 use serde::{Deserialize, Serialize};
 
 use super::gate::{Requirement, Verdict};
-use super::plan::Plan;
 use super::session::{CoachEvent, EngineSession, Phase, SessionState};
 use crate::domain::item::ItemKind;
 
@@ -32,7 +31,7 @@ impl CoachState {
     }
 
     fn drill_view(&self) -> Option<DrillView> {
-        let SessionState::Running { plan, cursor, .. } = &self.session.state else {
+        let SessionState::Running { plan, .. } = &self.session.state else {
             return None;
         };
         let block = self.session.block()?;
@@ -56,7 +55,7 @@ impl CoachState {
             destination: spec.destination.clone(),
             kind: spec.kind.clone(),
             tempo_bpm: block.level.tempo_bpm,
-            click_level: spec.level.click_level.spoken().to_string(),
+            click_level: block.level.click_level.spoken().to_string(),
             beat: block.beat(),
             beats_per_bar: block.beats_per_bar,
             bar: block.bar(),
@@ -66,7 +65,7 @@ impl CoachState {
             elapsed_seconds: block.elapsed_seconds(),
             ceiling_seconds: spec.gate.time_ceiling_s,
             block_kinds: plan.blocks.iter().map(|block| block.kind.clone()).collect(),
-            block_index: *cursor,
+            block_index: block.spec_index,
             gate_question: gate_question(&spec.gate.requirement, block.level.tempo_bpm),
             gate_summary: gate_summary(&spec.gate.requirement, block.level.tempo_bpm),
             gate_filled: block.gate_progress.filled(),
@@ -76,14 +75,12 @@ impl CoachState {
     }
 }
 
-/// The criterion restated as the question the tap answers.
 fn gate_question(requirement: &Requirement, tempo_bpm: u16) -> String {
     match requirement {
         Requirement::CleanPasses { .. } => format!("Clean at {tempo_bpm}?"),
     }
 }
 
-/// The criterion in the past tense, for the moment it is met.
 fn gate_summary(requirement: &Requirement, tempo_bpm: u16) -> String {
     match requirement {
         Requirement::CleanPasses { count, .. } => format!("{count} clean at {tempo_bpm}"),
@@ -141,11 +138,6 @@ pub struct DrillView {
     pub rep_seq: u32,
 }
 
-/// Seeded plans are the engine's own data, so the shell can't invent one.
-pub fn seed_plan() -> Plan {
-    Plan::seed_drill_loop()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -184,8 +176,8 @@ mod tests {
             "beat 5 of 4/4 is bar 2 beat 2"
         );
         assert_eq!(
-            drill.click_beats, 17,
-            "16 beats of phrase plus the landing beat"
+            drill.click_beats, 33,
+            "32 beats of phrase plus the landing beat"
         );
         assert_eq!(drill.gate_question, "Clean at 120?");
         assert_eq!(drill.gate_summary, "3 clean at 120");
@@ -212,7 +204,7 @@ mod tests {
     #[test]
     fn the_glance_after_a_tap_carries_the_count_in() {
         let mut coach = playing();
-        coach.apply(&CoachEvent::Beat { beat_index: 16 });
+        coach.apply(&CoachEvent::Beat { beat_index: 32 });
         coach.apply(&CoachEvent::Tap {
             clean: false,
             now: at(9),
@@ -249,7 +241,7 @@ mod tests {
     fn the_gate_open_moment_shows_the_criterion_met() {
         let mut coach = playing();
         for second in [9, 18, 27] {
-            coach.apply(&CoachEvent::Beat { beat_index: 16 });
+            coach.apply(&CoachEvent::Beat { beat_index: 32 });
             coach.apply(&CoachEvent::Tap {
                 clean: true,
                 now: at(second),
@@ -286,7 +278,8 @@ mod tests {
             },
             CoachEvent::Stuck { now: at(2) },
             CoachEvent::Tick { now: at(3) },
-            CoachEvent::EndBlock { now: at(4) },
+            CoachEvent::LeaveSession { now: at(4) },
+            CoachEvent::ClickUnavailable { now: at(8) },
             CoachEvent::GoOffPiste { now: at(5) },
             CoachEvent::GoUnmonitored { now: at(6) },
             CoachEvent::KeepWanderAsDrill { keep: true },
@@ -301,7 +294,7 @@ mod tests {
         assert_round_trips(CoachState::default().view());
 
         let mut coach = playing();
-        coach.apply(&CoachEvent::Beat { beat_index: 16 });
+        coach.apply(&CoachEvent::Beat { beat_index: 32 });
         coach.apply(&CoachEvent::Tap {
             clean: false,
             now: at(9),

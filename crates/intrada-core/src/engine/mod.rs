@@ -16,7 +16,7 @@ mod plan;
 mod segment;
 mod session;
 
-pub use coach::{seed_plan, CoachState, CoachView, DrillPhase, DrillView};
+pub use coach::{CoachState, CoachView, DrillPhase, DrillView};
 pub use gate::{
     ClickLevel, EvidenceSource, GateCriteria, GateProgress, Judge, Requirement, Verdict,
 };

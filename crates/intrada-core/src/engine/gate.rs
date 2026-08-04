@@ -33,12 +33,6 @@ pub enum Judge {
     SelfConfirmed,
 }
 
-impl Judge {
-    pub fn feeds_mastery(&self) -> bool {
-        !matches!(self, Judge::SelfConfirmed)
-    }
-}
-
 /// The sparse-click ladder — gate levels *within* click-always (decision 2).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClickLevel {
@@ -116,10 +110,6 @@ impl GateProgress {
     pub fn satisfied(&self) -> bool {
         self.filled >= self.target
     }
-
-    pub fn reset(&mut self) {
-        self.filled = 0;
-    }
 }
 
 #[cfg(test)]
@@ -179,16 +169,6 @@ mod tests {
             progress.filled(),
             2,
             "the dots have nowhere further to fill"
-        );
-    }
-
-    #[test]
-    fn a_tap_verdict_gate_may_unlock_and_a_self_confirmed_one_may_not() {
-        assert!(Judge::TapVerdict.feeds_mastery());
-        assert!(Judge::Machine.feeds_mastery());
-        assert!(
-            !Judge::SelfConfirmed.feeds_mastery(),
-            "decisions 3 and 13: self-confirmation must never unlock a prerequisite"
         );
     }
 

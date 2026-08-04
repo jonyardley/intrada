@@ -1,8 +1,8 @@
 //! What a session was asked to run. Spec §5's five-stage planner is a later
 //! slice; until it lands the engine carries one seeded block so the drill loop
-//! has something to run — the design's worked example, moved out of the Swift
-//! harness it used to live in (#1176). Its gate values come from the design
-//! brief rather than `content/gates.toml`, which no parser reads yet (§9.6).
+//! has something to run — the design brief's worked example. Its gate values
+//! come from that brief rather than from `content/gates.toml`, which no parser
+//! reads yet (#1180).
 
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,6 @@ pub struct ParameterLevel {
     pub click_level: ClickLevel,
 }
 
-/// One block of a plan: which drill, at which rung, against which gate.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BlockSpec {
     pub node: String,
@@ -68,7 +67,7 @@ impl Plan {
                     tempo_bpm: 120,
                     click_level: ClickLevel::TwoAndFour,
                 },
-                bars: 4,
+                bars: 8,
                 beats_per_bar: 4,
                 count_in_beats: 4,
             }],

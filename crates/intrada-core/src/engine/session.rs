@@ -1,18 +1,5 @@
-//! The coach session state machine (engine spec §4), scoped by decision 18 to
-//! tap-verdicts: the transitions are the spec's, what fires them is a tap
-//! rather than a segmented attempt.
-//!
-//! Two departures from the table, both forced by there being no machine
-//! verdict yet:
-//!
-//! - `Listening` splits. The spec's one `Listening | attempt segmented |
-//!   Verdict` row becomes two steps — the grid finishing the phrase body
-//!   (`AwaitingVerdict`), then the user's tap. When the scoring path returns,
-//!   `AwaitingVerdict` collapses back out.
-//! - `Verdict` is the tap, not a state. With nothing to wait for, the three
-//!   `Verdict | … |` rows are three branches of [`EngineSession::resolve_tap`],
-//!   and the one-second glance is what `CountIn` draws while `last_verdict` is
-//!   set. A phase no event can rest in would be a phase the shell can't render.
+//! The coach session state machine. `specs/intrada-coach-engine.md` §4 carries
+//! the transition table and records where this scoping of it departs from it.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -35,8 +22,8 @@ pub enum CoachEvent {
     CountInBeat {
         remaining: u8,
     },
-    /// One click on or after bar 1 beat 1, 0-based. `body_beats` is the
-    /// landing beat that ends the phrase.
+    /// One click on or after bar 1 beat 1, 0-based. The phrase ends on the
+    /// beat at index `DrillView::click_beats - 1`.
     Beat {
         beat_index: u32,
     },
@@ -55,7 +42,15 @@ pub enum CoachEvent {
     Tick {
         now: DateTime<Utc>,
     },
-    EndBlock {
+    /// The user left the drill screen. Ends the session, not just the block —
+    /// the soft-landing exit is what replaces it (2a, #1182).
+    LeaveSession {
+        now: DateTime<Utc>,
+    },
+    /// The shell could not start the click, so the drill cannot run. Reported
+    /// rather than swallowed, because a silent freeze is the #846 class one
+    /// layer up.
+    ClickUnavailable {
         now: DateTime<Utc>,
     },
     GoOffPiste {
@@ -73,7 +68,6 @@ pub enum CoachEvent {
     },
 }
 
-/// Where a block is within one repetition.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
     CountIn {
@@ -100,7 +94,6 @@ pub enum Rung {
     SwapDrill,
 }
 
-/// How a block ended.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Exit {
     GatePassed,
@@ -159,7 +152,7 @@ pub struct WanderRecord {
 pub struct EngineConfig {
     pub consecutive_fail_trigger: u8,
     pub ladder: Vec<Rung>,
-    pub gate_open_hold_s: i64,
+    pub gate_open_hold_s: u32,
     pub tempo_down_pct: u16,
     pub tempo_floor_bpm: u16,
 }
@@ -178,15 +171,6 @@ impl Default for EngineConfig {
             tempo_down_pct: 20,
             tempo_floor_bpm: 40,
         }
-    }
-}
-
-impl Rung {
-    /// Changing mode or swapping the drill needs alternatives only §5's planner
-    /// can supply, so a block that reaches those rungs ends rather than
-    /// pretending to escalate.
-    fn acts(&self) -> bool {
-        matches!(self, Rung::TempoDown | Rung::ShrinkScope)
     }
 }
 
@@ -244,8 +228,16 @@ impl BlockState {
         }
     }
 
-    /// Beats of phrase. `body_beats` itself is the landing beat that ends it —
-    /// the click the player aims at, so the shell schedules one more than this.
+    /// A new repetition: back to bar 1, and a `rep_seq` the shell restarts the
+    /// click on.
+    fn start_rep(&mut self) {
+        self.beat_index = 0;
+        self.last_verdict = None;
+        self.rep_seq = self.rep_seq.saturating_add(1);
+    }
+
+    /// Beats of phrase. The click the player aims at lands one beyond them, so
+    /// [`Self::click_beats`] is what the shell schedules.
     pub fn body_beats(&self) -> u32 {
         u32::from(self.bars.max(1)) * u32::from(self.beats_per_bar.max(1))
     }
@@ -277,7 +269,6 @@ pub enum SessionState {
     },
     Running {
         plan: Plan,
-        cursor: usize,
         block: BlockState,
     },
     /// A peer of `Running`, not a sub-state: no plan and no gates, still capturing.
@@ -329,7 +320,8 @@ impl EngineSession {
             CoachEvent::Tap { clean, now } => self.tap(*clean, *now),
             CoachEvent::Stuck { now } => self.stuck(*now),
             CoachEvent::Tick { now } => self.tick(*now),
-            CoachEvent::EndBlock { now } => self.end_block(*now),
+            CoachEvent::LeaveSession { now } => self.leave_session(*now),
+            CoachEvent::ClickUnavailable { now } => self.leave_session(*now),
             CoachEvent::GoOffPiste { now } => self.go_off_piste(*now),
             CoachEvent::GoUnmonitored { now } => self.go_unmonitored(*now),
             CoachEvent::KeepWanderAsDrill { keep } => {
@@ -347,11 +339,7 @@ impl EngineSession {
             return;
         };
         let block = BlockState::open(spec, 0, now);
-        self.state = SessionState::Running {
-            plan,
-            cursor: 0,
-            block,
-        };
+        self.state = SessionState::Running { plan, block };
     }
 
     fn count_in(&mut self, remaining: u8) {
@@ -416,7 +404,7 @@ impl EngineSession {
         block.consecutive_fails = if clean {
             0
         } else {
-            block.consecutive_fails + 1
+            block.consecutive_fails.saturating_add(1)
         };
         block.last_verdict = Some(verdict);
 
@@ -437,63 +425,81 @@ impl EngineSession {
             return;
         }
 
-        if block.consecutive_fails >= trigger {
+        if trigger > 0 && block.consecutive_fails >= trigger {
             if !self.escalate() {
                 self.close_block(Exit::Escalated, true);
             }
             return;
         }
 
-        let count_in_beats = block.count_in_beats;
-        block.rep_seq += 1;
+        let verdict = block.last_verdict;
+        block.start_rep();
+        block.last_verdict = verdict;
         block.phase = Phase::CountIn {
-            beats_remaining: count_in_beats,
+            beats_remaining: block.count_in_beats,
         };
     }
 
-    /// `false` = the ladder has no rung left the engine can act on.
+    /// `false` = the ladder has no rung left the engine can act on, so the
+    /// caller ends the block instead of pretending to escalate.
     fn escalate(&mut self) -> bool {
-        let (pct, floor, rung) = {
-            let Some(block) = self.block() else {
+        loop {
+            let (pct, floor, rung) = {
+                let Some(block) = self.block() else {
+                    return false;
+                };
+                let Some(rung) = self
+                    .config
+                    .ladder
+                    .get(block.escalation_fired.len())
+                    .copied()
+                else {
+                    return false;
+                };
+                (
+                    self.config.tempo_down_pct.min(100),
+                    self.config.tempo_floor_bpm,
+                    rung,
+                )
+            };
+            let Some(block) = self.block_mut() else {
                 return false;
             };
-            let Some(rung) = self
-                .config
-                .ladder
-                .get(block.escalation_fired.len())
-                .copied()
-            else {
-                return false;
-            };
-            (
-                self.config.tempo_down_pct,
-                self.config.tempo_floor_bpm,
-                rung,
-            )
-        };
-        if !rung.acts() {
-            return false;
-        }
 
-        let Some(block) = self.block_mut() else {
-            return false;
-        };
-        match rung {
-            Rung::TempoDown => {
-                let dropped = block.level.tempo_bpm.saturating_sub(
-                    (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
-                );
-                block.level.tempo_bpm = dropped.max(floor);
+            let acted = match rung {
+                Rung::TempoDown => {
+                    let dropped = block
+                        .level
+                        .tempo_bpm
+                        .saturating_sub(
+                            (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
+                        )
+                        .max(floor);
+                    let moved = dropped < block.level.tempo_bpm;
+                    block.level.tempo_bpm = dropped;
+                    moved
+                }
+                Rung::ShrinkScope => {
+                    let shrunk = (block.bars / 2).max(1);
+                    let moved = shrunk < block.bars;
+                    block.bars = shrunk;
+                    moved
+                }
+                // Changing mode or swapping the drill needs alternatives only
+                // §5's planner can supply (#1182).
+                Rung::ChangeMode | Rung::SwapDrill => return false,
+            };
+            block.escalation_fired.push(rung);
+            if !acted {
+                // Already at the floor or down to one bar: record the rung as
+                // spent and try the next, rather than restart an identical rep.
+                continue;
             }
-            Rung::ShrinkScope => block.bars = (block.bars / 2).max(1),
-            Rung::ChangeMode | Rung::SwapDrill => return false,
+            block.consecutive_fails = 0;
+            block.start_rep();
+            block.phase = Phase::Escalating { rung };
+            return true;
         }
-        block.escalation_fired.push(rung);
-        block.consecutive_fails = 0;
-        block.last_verdict = None;
-        block.rep_seq += 1;
-        block.phase = Phase::Escalating { rung };
-        true
     }
 
     fn stuck(&mut self, now: DateTime<Utc>) {
@@ -519,20 +525,20 @@ impl EngineSession {
         };
         block.now = now;
 
-        if ceiling.is_some_and(|ceiling| block.elapsed_seconds() >= ceiling) {
-            self.close_block(Exit::CeilingHit, true);
-            return;
-        }
-        if block.phase == Phase::GateOpen
+        let held = block.phase == Phase::GateOpen
             && block
                 .gate_open_since
-                .is_some_and(|since| (now - since).num_seconds() >= hold)
-        {
+                .is_some_and(|since| (now - since).num_seconds() >= i64::from(hold));
+        let over = ceiling.is_some_and(|ceiling| block.elapsed_seconds() >= ceiling);
+
+        if held {
             self.close_block(Exit::GatePassed, true);
+        } else if over {
+            self.close_block(Exit::CeilingHit, true);
         }
     }
 
-    fn end_block(&mut self, now: DateTime<Utc>) {
+    fn leave_session(&mut self, now: DateTime<Utc>) {
         if let Some(block) = self.block_mut() {
             block.now = now;
         }
@@ -580,20 +586,15 @@ impl EngineSession {
                 self.unmonitored_seconds = (now - started_at).num_seconds().max(0) as u32;
                 self.state = SessionState::Closing;
             }
-            SessionState::Running { .. } => self.end_block(now),
+            SessionState::Running { .. } => self.leave_session(now),
             _ => self.state = SessionState::Closing,
         }
     }
 
-    /// Bank the block, then either open the next one or close. Abandoning must
-    /// never be what the app teaches (spec §4).
+    /// Abandoning must never be what the app teaches, so a closed block either
+    /// hands on to the next or closes the session (spec §4).
     fn close_block(&mut self, exit: Exit, advance: bool) {
-        let SessionState::Running {
-            plan,
-            cursor,
-            block,
-        } = &self.state
-        else {
+        let SessionState::Running { plan, block } = &mut self.state else {
             return;
         };
         let Some(spec) = plan.blocks.get(block.spec_index) else {
@@ -617,20 +618,10 @@ impl EngineSession {
             exit,
         });
 
-        let next = cursor + 1;
+        let next = block.spec_index + 1;
         let now = block.now;
         match plan.blocks.get(next).filter(|_| advance) {
-            Some(spec) => {
-                let block = BlockState::open(spec, next, now);
-                let SessionState::Running { plan, .. } = std::mem::take(&mut self.state) else {
-                    return;
-                };
-                self.state = SessionState::Running {
-                    plan,
-                    cursor: next,
-                    block,
-                };
-            }
+            Some(spec) => *block = BlockState::open(spec, next, now),
             None => self.state = SessionState::Closing,
         }
     }
@@ -646,6 +637,7 @@ impl EngineSession {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::gate::Requirement;
     use chrono::TimeZone;
 
     fn at(second: i64) -> DateTime<Utc> {
@@ -665,15 +657,15 @@ mod tests {
         session.apply(&CoachEvent::Beat { beat_index: last });
     }
 
+    /// One whole repetition: play it out, answer, and let the count-in run into
+    /// the next. Unconditional, so a broken transition fails where it broke.
     fn rep(session: &mut EngineSession, clean: bool, second: i64) {
         play_to_the_end(session);
         session.apply(&CoachEvent::Tap {
             clean,
             now: at(second),
         });
-        if session.phase() == Some(&Phase::CountIn { beats_remaining: 4 }) {
-            session.apply(&CoachEvent::Beat { beat_index: 0 });
-        }
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
     }
 
     // ── Entering the loop ──
@@ -785,7 +777,11 @@ mod tests {
             "two misses is a bad patch, not a wall — straight back to playing"
         );
 
-        rep(&mut session, false, 27);
+        play_to_the_end(&mut session);
+        session.apply(&CoachEvent::Tap {
+            clean: false,
+            now: at(27),
+        });
         assert_eq!(
             session.phase(),
             Some(&Phase::Escalating {
@@ -798,6 +794,172 @@ mod tests {
         assert_eq!(
             block.consecutive_fails, 0,
             "the ladder acted, so the run starts again from the new tempo"
+        );
+    }
+
+    #[test]
+    fn escalating_puts_the_hands_back_at_bar_one() {
+        let mut session = listening();
+        session.apply(&CoachEvent::Beat { beat_index: 19 });
+        assert_eq!(session.block().unwrap().bar(), 5);
+
+        session.apply(&CoachEvent::Stuck { now: at(5) });
+        let block = session.block().unwrap();
+        assert_eq!(
+            (block.bar(), block.beat()),
+            (1, 1),
+            "the position must never read past the phrase it just shrank"
+        );
+        assert_eq!(
+            block.last_verdict, None,
+            "the ladder acted; the glance is stale"
+        );
+    }
+
+    #[test]
+    fn a_rung_that_would_change_nothing_spends_itself_and_moves_on() {
+        let mut session = EngineSession {
+            config: EngineConfig {
+                tempo_floor_bpm: 120,
+                ..EngineConfig::default()
+            },
+            ..EngineSession::default()
+        };
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+
+        session.apply(&CoachEvent::Stuck { now: at(5) });
+        let block = session.block().unwrap();
+        assert_eq!(
+            block.level.tempo_bpm, 120,
+            "already at the floor, so the tempo cannot drop"
+        );
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Escalating {
+                rung: Rung::ShrinkScope
+            }),
+            "an identical rep is not an escalation — fall through to the next rung"
+        );
+        assert_eq!(
+            block.escalation_fired,
+            vec![Rung::TempoDown, Rung::ShrinkScope],
+            "the unusable rung is still spent"
+        );
+    }
+
+    #[test]
+    fn a_consecutive_gate_empties_its_dots_and_still_escalates() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        if let SessionState::Running { plan, block } = &mut session.state {
+            plan.blocks[0].gate.requirement = Requirement::CleanPasses {
+                count: 3,
+                consecutive: true,
+            };
+            block.gate_progress = GateProgress::new(&plan.blocks[0].gate.requirement);
+        }
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        assert_eq!(session.block().unwrap().gate_progress.filled(), 2);
+
+        rep(&mut session, false, 27);
+        assert_eq!(session.block().unwrap().gate_progress.filled(), 0);
+        rep(&mut session, false, 36);
+        session.apply(&CoachEvent::Beat {
+            beat_index: session.block().unwrap().body_beats(),
+        });
+        session.apply(&CoachEvent::Tap {
+            clean: false,
+            now: at(45),
+        });
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::Escalating {
+                rung: Rung::TempoDown
+            }),
+            "three misses is three misses, whatever the dots did"
+        );
+    }
+
+    #[test]
+    fn a_second_block_opens_where_the_first_left_off() {
+        let mut session = EngineSession::default();
+        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        if let SessionState::Running { plan, .. } = &mut session.state {
+            let mut second = plan.blocks[0].clone();
+            second.drill_title = "Shells".to_string();
+            second.node = "shells-ii-v-i".to_string();
+            plan.blocks.push(second);
+        }
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        rep(&mut session, true, 27);
+        session.apply(&CoachEvent::Tick { now: at(30) });
+
+        assert_eq!(session.closed_blocks.len(), 1);
+        assert_eq!(session.closed_blocks[0].node, "rootless-a-b");
+        let block = session.block().expect("the next block opened");
+        assert_eq!(block.spec_index, 1);
+        assert_eq!(
+            block.gate_progress.filled(),
+            0,
+            "a fresh gate, not the old one"
+        );
+        assert_eq!(block.attempts.len(), 0);
+        assert_eq!(session.spec().unwrap().node, "shells-ii-v-i");
+    }
+
+    #[test]
+    fn events_arriving_out_of_order_are_ignored_rather_than_obeyed() {
+        let mut session = listening();
+        play_to_the_end(&mut session);
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(9),
+        });
+        let after_first = session.block().unwrap().attempts.len();
+
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(10),
+        });
+        assert_eq!(
+            session.block().unwrap().attempts.len(),
+            after_first,
+            "a second tap on one rep is not a second attempt"
+        );
+
+        let body = session.block().unwrap().body_beats();
+        session.apply(&CoachEvent::Beat { beat_index: body });
+        session.apply(&CoachEvent::Beat { beat_index: body });
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::AwaitingVerdict),
+            "a late beat cannot reopen a rep that already ended"
+        );
+    }
+
+    #[test]
+    fn the_gate_wins_over_a_ceiling_landing_in_the_same_second() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        play_to_the_end(&mut session);
+        session.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(359),
+        });
+
+        session.apply(&CoachEvent::Tick { now: at(362) });
+        assert_eq!(
+            session.closed_blocks[0].exit,
+            Exit::GatePassed,
+            "the criterion was met; the clock running out doesn't undo it"
         );
     }
 
@@ -885,7 +1047,7 @@ mod tests {
     fn ending_early_still_closes_the_block() {
         let mut session = listening();
         rep(&mut session, true, 9);
-        session.apply(&CoachEvent::EndBlock { now: at(20) });
+        session.apply(&CoachEvent::LeaveSession { now: at(20) });
 
         assert_eq!(session.closed_blocks[0].exit, Exit::SessionEnded);
         assert_eq!(session.closed_blocks[0].attempts_to_pass, None);

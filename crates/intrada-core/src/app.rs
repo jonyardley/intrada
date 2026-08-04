@@ -236,8 +236,19 @@ impl Intrada {
             Event::McpAudit(audit_event) => handle_mcp_audit_event(audit_event, model),
             Event::OAuth(oauth_event) => handle_oauth_event(oauth_event, model),
             Event::Coach(coach_event) => {
+                // Render coalescing (engine spec §6): the click reports several
+                // beats a second, and every render rebuilds the whole
+                // ViewModel. An event the machine ignored changes nothing.
+                if matches!(coach_event, CoachEvent::ClickUnavailable { .. }) {
+                    model.surface_error("The click couldn't start, so the drill was stopped.");
+                }
+                let before = model.coach.view();
                 model.coach.apply(&coach_event);
-                crux_core::render::render()
+                if model.coach.view() == before && model.last_error.is_none() {
+                    Command::done()
+                } else {
+                    crux_core::render::render()
+                }
             }
 
             // ── Data loaded callbacks ────────────────────────────────

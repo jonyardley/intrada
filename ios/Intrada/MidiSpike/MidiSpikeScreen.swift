@@ -7,6 +7,9 @@ import SwiftUI
 /// The Drill Loop entry stays until the coach loop is reachable from Practice
 /// (#1182); the sequencing it used to do in Swift now lives in the core.
 struct MidiSpikeScreen: View {
+  // This file builds in Release (only its RootView call site is DEBUG-gated),
+  // so anything reaching into DEBUG-only code needs its own guard here — the
+  // per-PR CI job builds Debug and won't catch it.
   private enum Mode: String, CaseIterable, Identifiable {
     case capture = "Capture"
     case drill = "Gate Drill"
