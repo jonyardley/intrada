@@ -7,9 +7,21 @@
 #
 # Timing is always consistency/trend, never absolute deviation (decision 6).
 # "clean" = zero wrong notes + timing consistent within the rep.
-# Recognised optional gate fields: per_key, consecutive, keys_required,
-# keys_chained_min, first_attempt, max_think_bars, max_listens,
-# self_confirmed, self_rating_logged.
+#
+# A gate takes `node` and `criterion`, and optionally `tempo_bpm`,
+# `click_level`, `judge`, `time_ceiling_min`, plus the fields that state what
+# passing means: `clean_passes`, `consecutive`, `keys_required`,
+# `keys_chained_min`, `first_attempt`, `max_listens`. Any other field is an
+# error rather than a field quietly lost, so this list is the whole list.
+# The engine reads them in one order, and the first that matches decides:
+#   judge = "self-confirmed"  the user's own call (`max_listens`,
+#                             `first_attempt` are shown, never counted)
+#   keys_chained_min          one unbroken run through that many keys
+#   keys_required             that many keys, each needing `clean_passes`
+#                             (default 1), the key restarting on a miss when
+#                             `first_attempt`
+#   clean_passes              that many clean passes, in a row if `consecutive`
+# A gate matching none of them states nothing countable, and fails the parse.
 
 schema_version = "0.2"
 

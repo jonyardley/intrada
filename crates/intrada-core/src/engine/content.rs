@@ -1,8 +1,10 @@
 //! The authored content (`content/gates.toml`), parsed once at startup so the
 //! engine does no I/O and the planner stays pure (spec §1). Validation is the
-//! `validation.rs` idiom pointed at a file: unknown fields are errors, the
-//! schema version must match, and every reference must resolve, because an
-//! unreachable gate is otherwise invisible (spec §8).
+//! `validation.rs` idiom pointed at a file: the schema version must match, every
+//! reference must resolve because an unreachable gate is otherwise invisible
+//! (spec §8), and an unknown field is an error on every table that carries a
+//! reference. The three config bags are the stated exception, for the reason
+//! given above `RawDefaults`.
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
@@ -196,6 +198,12 @@ struct RawContent {
     transport_tiers: BTreeMap<String, Vec<String>>,
 }
 
+// The three config bags below deliberately allow unknown fields, unlike every
+// table that carries a reference. They hold authored values the engine has no
+// reader for yet (what "clean" means, the name-the-wall cap, the grind caps),
+// and dropping them from the file to satisfy strictness would lose content the
+// human practises from. Every field the engine does read here is required, so a
+// typo is still a parse failure, and `SECTIONS` still catches a mistyped table.
 #[derive(Deserialize, Debug)]
 struct RawDefaults {
     time_ceiling_min: u32,

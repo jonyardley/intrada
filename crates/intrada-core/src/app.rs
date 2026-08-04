@@ -118,9 +118,9 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
-    /// Coach evidence write result. Nothing reads these rows back yet, so a
-    /// failure surfaces rather than reloading — the records stay in the session
-    /// until it closes, so the next write is a real retry (#1181).
+    /// Coach evidence write result. Nothing reads these rows back, so a failure
+    /// has nothing to reload to: the batch is offered again once instead, and
+    /// only a second failure surfaces (#1181).
     CoachStoreWritten(PersistenceOutput),
 }
 
@@ -262,11 +262,13 @@ impl Intrada {
                     .map(|record| record.ended_at)
                     .or_else(|| writes.wanders.last().map(|record| record.ended_at));
                 if let Some(recorded_at) = recorded_at {
-                    commands.push(persistence::save_coach_records(
-                        writes.blocks,
-                        writes.wanders,
-                        recorded_at,
-                    ));
+                    let batch = PersistenceOperation::SaveCoachRecords {
+                        blocks: writes.blocks,
+                        wanders: writes.wanders,
+                        updated_at: recorded_at,
+                    };
+                    model.coach_write_in_flight = Some(batch.clone());
+                    commands.push(persistence::save_coach_records(batch));
                 }
                 match writes.snapshot {
                     SnapshotAction::Save => commands.push(
@@ -410,13 +412,21 @@ impl Intrada {
             Event::CoachStoreWritten(output) => match output {
                 PersistenceOutput::Ack
                 | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_) => Command::done(),
-                // Nothing reads these rows back, so there is nothing to reload
-                // to. Surfacing it is what stops a lost block being silent.
-                PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't save what you just practised.");
-                    crux_core::render::render()
+                | PersistenceOutput::Sessions(_) => {
+                    model.coach_write_in_flight = None;
+                    Command::done()
                 }
+                // Nothing reads these rows back, so a failure has nothing to
+                // reload to and the block would simply be gone. Offer the batch
+                // again first (the store upserts by id, so a repeat is safe) and
+                // surface only if that fails too.
+                PersistenceOutput::Failed => match model.coach_write_in_flight.take() {
+                    Some(batch) => persistence::save_coach_records(batch),
+                    None => {
+                        model.surface_error("Couldn't save what you just practised.");
+                        crux_core::render::render()
+                    }
+                },
             },
         }
     }

@@ -401,9 +401,23 @@ impl EngineSession {
 
         self.handle(event);
 
+        // Recovery replaces the session wholesale, so it can hand back fewer
+        // records than the live one had (a swallowed snapshot write leaves an
+        // older blob on disk). It also offers every recovered record again: the
+        // blob surviving the crash is no evidence that its records reached the
+        // store, and the store upserts by id, so a repeat costs nothing.
+        let (blocks_from, wanders_from) = if matches!(event, CoachEvent::RecoverSession { .. }) {
+            (0, 0)
+        } else {
+            (
+                blocks_written.min(self.closed_blocks.len()),
+                wanders_written.min(self.wanders.len()),
+            )
+        };
+
         let mut writes = CoachWrites {
-            blocks: self.closed_blocks[blocks_written..].to_vec(),
-            wanders: self.wanders[wanders_written..].to_vec(),
+            blocks: self.closed_blocks[blocks_from..].to_vec(),
+            wanders: self.wanders[wanders_from..].to_vec(),
             snapshot: if matches!(self.state, SessionState::Closing) {
                 if was_closing {
                     SnapshotAction::Unchanged
@@ -687,10 +701,16 @@ impl EngineSession {
     }
 
     fn leave_session(&mut self, now: DateTime<Utc>) {
-        if let Some(block) = self.block_mut() {
-            block.now = now;
+        match self.block_mut() {
+            Some(block) => {
+                block.now = now;
+                self.close_block(Exit::SessionEnded, false);
+            }
+            // Nothing was running, so there is no record to write, but the
+            // session still has to close: an open one leaves a blob that would
+            // recover a session the user has already left.
+            None => self.state = SessionState::Closing,
         }
-        self.close_block(Exit::SessionEnded, false);
     }
 
     fn go_off_piste(&mut self, now: DateTime<Utc>) {
@@ -1448,6 +1468,59 @@ mod tests {
             (wander.ended_at - wander.started_at).num_seconds(),
             100,
             "the app cannot know what happened while it was dead, so it banks none of it"
+        );
+    }
+
+    #[test]
+    fn recovering_a_blob_older_than_the_session_does_not_slice_past_its_records() {
+        // A snapshot write the shell swallowed leaves an older blob on disk, so
+        // recovery can hand back a session with fewer records than the live one.
+        let mut live = EngineSession::default();
+        live.start_fixture(at(0));
+        live.apply(&CoachEvent::LeaveSession { now: at(20) });
+        assert_eq!(live.closed_blocks.len(), 1);
+
+        let writes = live.apply(&CoachEvent::RecoverSession {
+            session: EngineSession::default(),
+            now: at(3600),
+        });
+        assert!(writes.blocks.is_empty(), "an empty blob closed nothing");
+    }
+
+    #[test]
+    fn a_recovered_session_offers_its_records_again() {
+        let mut crashed = EngineSession::default();
+        crashed.start_fixture(at(0));
+        crashed.apply(&CoachEvent::LeaveSession { now: at(20) });
+
+        let mut restored = EngineSession::default();
+        let writes = restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+        assert_eq!(
+            writes.blocks.len(),
+            1,
+            "the snapshot survived the crash, so its records may never have \
+             landed; the store upserts, so offering them again is free"
+        );
+    }
+
+    #[test]
+    fn leaving_a_planned_session_closes_it_rather_than_leaving_it_open() {
+        let mut session = EngineSession {
+            state: SessionState::Planned {
+                plan: Plan::fixture(),
+            },
+            ..EngineSession::default()
+        };
+
+        let writes = session.apply(&CoachEvent::LeaveSession { now: at(20) });
+        assert_eq!(session.state, SessionState::Closing);
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Clear,
+            "a session nobody is in must not leave a blob to recover"
         );
     }
 

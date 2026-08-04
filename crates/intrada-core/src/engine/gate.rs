@@ -1,9 +1,11 @@
-//! Gate criteria as data (engine spec §8), scoped to what a tap-verdict gate
-//! needs: a countable requirement, the judge allowed to unlock it, and the
-//! progress the dots draw. `KeyCoverage` / `Chained` / `SelfConfirmed`
-//! requirements arrive with the `content/gates.toml` parser and §9.6's
-//! restructure of that file — an enum variant no reader can evaluate yet would
-//! be a gate that silently never passes.
+//! Gate criteria as data (engine spec §8): a countable requirement, the judge
+//! allowed to unlock it, and the progress the dots draw. Every requirement here
+//! is evaluatable by `GateProgress`, which is the rule the enum is held to — a
+//! variant no reader can evaluate is a gate that silently never passes.
+//!
+//! What the loop cannot yet judge lives in the transport half of §8 rather than
+//! here: the capability check and its `Ask` verdict wait for the scoring path,
+//! since with no sensor every counted gate is the user's tap.
 
 use serde::{Deserialize, Serialize};
 

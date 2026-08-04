@@ -74,17 +74,10 @@ pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Eve
         .then_send(Event::StoreWritten)
 }
 
-pub fn save_coach_records(
-    blocks: Vec<BlockRecord>,
-    wanders: Vec<WanderRecord>,
-    updated_at: DateTime<Utc>,
-) -> Command<Effect, Event> {
-    Command::request_from_shell(PersistenceOperation::SaveCoachRecords {
-        blocks,
-        wanders,
-        updated_at,
-    })
-    .then_send(Event::CoachStoreWritten)
+/// Takes the whole operation rather than its parts, so the caller can keep the
+/// same batch to offer again if the write fails (#1181).
+pub fn save_coach_records(batch: PersistenceOperation) -> Command<Effect, Event> {
+    Command::request_from_shell(batch).then_send(Event::CoachStoreWritten)
 }
 
 pub fn load_sessions() -> Command<Effect, Event> {
@@ -729,6 +722,73 @@ mod tests {
             assert!(app_effects(&mut cmd)
                 .iter()
                 .any(|effect| matches!(effect, AppEffect::ClearCoachSessionInProgress)));
+        }
+
+        /// Runs the first block to its gate and past the hold, so a record has
+        /// been offered to the store and the retry has something to hold.
+        fn close_a_block(app: &Intrada, model: &mut Model) {
+            let _ = send(app, model, CoachEvent::StartDrillLoop { now: at(0) });
+            rep(app, model, true, 9);
+            let _ = send(app, model, CoachEvent::Tick { now: at(30) });
+        }
+
+        #[test]
+        fn a_failed_evidence_write_is_offered_again_before_it_bothers_anyone() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+            let retried = coach_records(&mut cmd).expect("the same batch goes back to the store");
+            assert_eq!(retried.len(), 1);
+            assert_eq!(retried[0].node, "shells-ii-v-i");
+            assert!(
+                model.last_error.is_none(),
+                "a failure the app can have another go at is not the user's problem yet"
+            );
+        }
+
+        #[test]
+        fn a_second_failure_surfaces_instead_of_retrying_forever() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+
+            let _ = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+
+            assert!(
+                coach_records(&mut cmd).is_none(),
+                "one retry, not a loop against a store that is not having it"
+            );
+            assert!(
+                model.last_error.is_some(),
+                "the second failure is the user's"
+            );
+        }
+
+        #[test]
+        fn an_acked_write_leaves_nothing_to_offer_again() {
+            let (app, mut model) = local_first();
+            close_a_block(&app, &mut model);
+            let _ = app.update(Event::CoachStoreWritten(PersistenceOutput::Ack), &mut model);
+
+            let mut cmd = app.update(
+                Event::CoachStoreWritten(PersistenceOutput::Failed),
+                &mut model,
+            );
+            assert!(
+                coach_records(&mut cmd).is_none(),
+                "a batch already acked must never be rewritten by a later failure"
+            );
+            assert!(model.last_error.is_some());
         }
 
         #[test]
