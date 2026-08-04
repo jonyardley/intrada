@@ -1,8 +1,14 @@
 # MIDI take fixtures
 
-Real captures from the MIDI capture spike (`ios/Intrada/MidiSpike/`, PR 2 —
-see `docs/rebuild-review.md` §6), recorded on a Roland LX-706 over
-Bluetooth MIDI. Test fixtures for PR 3's attempt-segmentation spike.
+Real captures from the MIDI capture spike (PR 2 — see
+`docs/rebuild-review.md` §6), recorded on a Roland LX-706 over Bluetooth MIDI.
+Test fixtures for PR 3's attempt-segmentation spike, which they still drive.
+
+**The iOS capture harness that produced them is deleted** (#1176): machine
+listening is deferred by decision 18, and the shipping app kept only the click.
+These takes are therefore not currently reproducible — recover the harness from
+git history (`ios/Intrada/MidiSpike/`, up to and including 94537fc) when the
+scoring path returns.
 
 - **`take-01-freeplay-mixed-bluetooth.jsonl`** — the first exploratory
   capture: a long, unstructured session mixing a scale run, ad hoc chords,

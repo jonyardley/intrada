@@ -7,7 +7,7 @@ struct RootView: View {
   private enum AppTab {
     case library, practice, routines, progress
     #if DEBUG
-      case midiSpike
+      case drillLoop
     #endif
   }
 
@@ -37,11 +37,11 @@ struct RootView: View {
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
         .tag(AppTab.progress)
       #if DEBUG
-        NavigationStack {
-          MidiSpikeScreen()
-        }
-        .tabItem { Label("MIDI Spike", systemImage: "pianokeys") }
-        .tag(AppTab.midiSpike)
+        // Until press-start reaches the drill loop from Practice (#1182), this
+        // is the only way to run it at a piano.
+        DrillLoopEntry()
+          .tabItem { Label("Drill Loop", systemImage: "metronome") }
+          .tag(AppTab.drillLoop)
       #endif
     }
     .tint(IntradaColor.accent)

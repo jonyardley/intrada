@@ -123,11 +123,11 @@ private final class Click {
     engine.onCountIn = { remaining in
       store.send(.coach(.countInBeat(remaining: UInt8(max(0, remaining)))))
     }
-    engine.onBeat = { index, _, _, _ in
+    engine.onBeat = { index, _ in
       store.send(.coach(.beat(beatIndex: UInt32(max(0, index)))))
     }
     do {
-      _ = try engine.start(
+      try engine.start(
         bpm: Double(drill.tempoBpm), beatsPerBar: Int(drill.beatsPerBar),
         countInBeats: Int(drill.countInBeats), bodyBeats: Int(drill.clickBeats))
       return true

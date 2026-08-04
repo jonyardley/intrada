@@ -1,8 +1,7 @@
 import Foundation
 
-/// mach_absolute_time helpers. This is the same host-time domain
-/// AVAudioTime(hostTime:) schedules against and CoreMIDI's MIDITimeStamp
-/// stamps with — the shared clock the whole spike depends on.
+/// mach_absolute_time helpers — the host-time domain AVAudioTime(hostTime:)
+/// schedules against, so the click can be placed sample-accurately.
 enum HostClock {
   static let timebase: mach_timebase_info_data_t = {
     var info = mach_timebase_info_data_t()
