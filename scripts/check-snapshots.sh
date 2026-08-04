@@ -15,16 +15,19 @@ ROOT="ios/IntradaTests"
 SNAP_DIR="$ROOT/__Snapshots__"
 MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # Full-screen references that stay large as lossless PNG even after
-# `oxipng -o max -Z`: smooth gradients (Practice one-tap hero, Focus radial
-# player) and dense-control screens (Session summary's per-item score-pill rows
-# over the gold gradient toast). They get a higher bound. Keep this list TIGHT —
-# add only a reference proven irreducible, with the reason.
+# `oxipng -o max -Z`: smooth gradients (Practice one-tap hero, Focus and coach
+# drill radial player) and dense-control screens (Session summary's per-item
+# score-pill rows over the gold gradient toast). They get a higher bound. Keep
+# this list TIGHT — add only a reference proven irreducible, with the reason.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
-      testSessionSummaryCompleted | testSessionSummaryWithReflection) return 0 ;;
+      testSessionSummaryCompleted | testSessionSummaryWithReflection | \
+      testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \
+      testDrillScreenTapVerdict | testDrillScreenMissAcknowledged | \
+      testDrillScreenGateOpen) return 0 ;;
     *) return 1 ;;
   esac
 }

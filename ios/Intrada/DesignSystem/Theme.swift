@@ -135,6 +135,28 @@ enum IntradaFont {
     .custom(Inter.semibold, size: size, relativeTo: .title3)
   }
 
+  // ── Coach primitives · the drill loop ──
+  /// The drill screen read from a metre away: a music-stand title, not a screen
+  /// title, so it starts well above `pageTitle`'s 32.
+  static func drillTitle(_ size: CGFloat = 42) -> Font {
+    .custom(Serif.semibold, size: size, relativeTo: .largeTitle)
+  }
+  /// The one-glance fact between reps — the gate question, "Gate open".
+  static func verdict(_ size: CGFloat = 40) -> Font {
+    .custom(Serif.semibold, size: size, relativeTo: .title)
+  }
+  /// Ambient orientation (elapsed / block / ceiling, bar position). Quiet by
+  /// being small and static, never by being low-contrast — `meta` at 12 is
+  /// unreadable at arm's length in a dim practice room.
+  static func ambient(_ size: CGFloat = 14) -> Font {
+    .custom(Inter.medium, size: size, relativeTo: .subheadline)
+  }
+  /// `ambient`'s emphasis weight — a real named instance, since `.weight()`
+  /// over the variable axis is synthetic.
+  static func ambientStrong(_ size: CGFloat = 14) -> Font {
+    .custom(Inter.semibold, size: size, relativeTo: .subheadline)
+  }
+
   static let body = Font.custom(Inter.regular, size: 14, relativeTo: .subheadline)
   static let bodyMedium = Font.custom(Inter.medium, size: 15, relativeTo: .subheadline)
   static let subtitle = Font.custom(Inter.regular, size: 13, relativeTo: .footnote)
@@ -171,6 +193,9 @@ enum IntradaSpacing {
   static let row: CGFloat = 16
   static let card: CGFloat = 16
   static let section: CGFloat = 24
+  /// The drill-screen rhythm. `section` (24) packs the five facts tight enough
+  /// that the eye scans them as one group; 40 separates them into five glances.
+  static let stage: CGFloat = 40
 }
 
 /// Corner-radius tokens. `card` is the rounding every card / inset surface uses.

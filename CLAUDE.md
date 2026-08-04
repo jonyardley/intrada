@@ -286,8 +286,9 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 - **Spacing & radius are tokens, not literals** — same discipline as colour
   (`IntradaColor`) and type (`IntradaFont`). Padding / inset / list-gap values
   come from `IntradaSpacing` (`controlGap` 8, `cardCompact` 12, `row` 14,
-  `card` 16 — names mirror the web `p-card` scale; one step serves several
-  roles) and
+  `card` 16, `section` 24, `stage` 40 — the first four mirror the web `p-card`
+  scale, one step serves several roles; `stage` is the drill-screen rhythm that
+  separates five facts into five glances) and
   corner radii from `IntradaRadius` (`card` 12); all in `Theme.swift`. Don't
   hard-code `.padding(16)` / `cornerRadius: 12` etc. — a raw value is how two
   screens silently drift. Genuine one-offs (a fixed component height, a 2pt
@@ -495,7 +496,16 @@ made, append to that log rather than deciding silently.
 3. **Known primitives to reach for**: `TagChip`, `TypeBadge`, `ScoreRing`,
    `BottomSheet`, `SegmentedPills`, `CardSurface`/`CardShadow`, `GlobalBanner`,
    `FormErrorBanner`, `PlaceholderContent` (empty state), `ScreenScaffold`
-   (shared screen shell), `SectionHeader`, `HairlineDivider`.
+   (shared screen shell), `SectionHeader`, `HairlineDivider`,
+   `SegmentedProgress` (session/block position).
+   **Coach primitives** (`ios/Intrada/DesignSystem/Coach/`, canonical in the
+   design system under *Components · Coach primitives*): `GateDots`,
+   `RepVerdict`, `TapVerdict`, `OrientationStrip`, `BeatPosition`,
+   `StuckTarget`, `CoachNote`. They size off `CoachScale` (phone vs
+   iPad-on-a-stand) taken from the environment, not per-call sizes — the whole
+   drill loop grows together. The deferred coach surfaces (B3/B4, the
+   session-end narrative, the pipeline view) are assembled from these; reach for
+   them before drawing a new one.
 4. **Every top-level screen** is built from `ScreenScaffold`
    (`ios/Intrada/DesignSystem/ScreenScaffold.swift`) so navigation chrome,
    safe areas, and background stay consistent.
@@ -529,7 +539,8 @@ visual drift in this codebase. Before writing UI code:
   way `SegmentedPills` and `LibraryItemCard` already take variant params) to
   the shared component. Don't ship a parallel one-off.
 - **Typography**: use the `IntradaFont` tokens (e.g. `.pageTitle`,
-  `.cardTitle`, `.sectionTitle`, `.fieldLabel`), never a raw `.font(.system(...))`.
+  `.cardTitle`, `.sectionTitle`, `.fieldLabel`, and for the coach loop
+  `.drillTitle` / `.verdict` / `.ambient`), never a raw `.font(.system(...))`.
 - **Spacing**: use `IntradaSpacing` tokens (`controlGap`, `cardCompact`, `row`,
   `card`), never a literal `.padding(16)`.
 

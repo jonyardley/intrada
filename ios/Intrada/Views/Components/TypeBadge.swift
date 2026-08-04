@@ -5,12 +5,15 @@ import SwiftUI
 /// isn't present (e.g. the detail header). Piece = indigo, Exercise = gold.
 struct TypeBadge: View {
   let kind: ItemKind
+  /// Overrides the kind's own label where the surface has a narrower word for
+  /// it — the coach loop calls an exercise a "Drill".
+  var label: String?
 
   var body: some View {
     HStack(spacing: 5) {
       Image(systemName: kind.iconName)
         .imageScale(.small)
-      Text(kind.label)
+      Text(label ?? kind.label)
     }
     .font(IntradaFont.badge)
     .foregroundStyle(foreground)
