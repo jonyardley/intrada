@@ -571,9 +571,11 @@ final class StoreEffectLoopTests: XCTestCase {
   /// #846 class, and the two earlier press-start tests could not see it because
   /// neither had a blob in play.
   ///
-  /// Deliberately indifferent to how the core keeps the promise — whether
-  /// planning stops snapshotting, or recovering a planned session starts it —
-  /// because the invariant is that press-start reaches a drill either way.
+  /// The drill assertion is indifferent to how the core keeps the promise —
+  /// whether planning stops snapshotting, or recovering a planned session starts
+  /// it — because press-start has to reach a drill either way. The two blob
+  /// assertions are not indifferent: what a blob *means* is settled (#1219), so
+  /// they pin it from both sides rather than leaving the branch above to chance.
   func testRealBridgePressStartReachesADrillWithABlobOnDisk() throws {
     let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
     let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
@@ -581,6 +583,9 @@ final class StoreEffectLoopTests: XCTestCase {
 
     store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
     XCTAssertNotNil(store.viewModel?.coach.plan, "the hero needs a plan to press start on")
+    XCTAssertNil(
+      store.pendingCoachSession(),
+      "a blob means a block was cut off mid-flight, so merely planning must not write one (#1219)")
 
     // Verbatim the branch in DrillLoopHost.run().
     let now = SessionClock.nowRFC3339()
@@ -593,6 +598,9 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNotNil(
       store.viewModel?.coach.drill,
       "press start must open a block; with no drill the host closes and the tap does nothing")
+    XCTAssertNotNil(
+      store.pendingCoachSession(),
+      "a running block is worth recovering, or an interruption loses its evidence (#1181)")
   }
 
   /// Real-bridge press-start (#1182): `PlanView` is what the Practice hero
