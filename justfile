@@ -46,8 +46,23 @@ hygiene:
     typos
     cargo-shear
 
-# Check everything (fmt → clippy → test → hygiene, cheapest first)
-check: fmt-check lint test hygiene
+# Check everything (fmt → clippy → test → hygiene, cheapest first). Skips
+# entirely when HEAD is clean and already stamped green — mirrors the iOS
+# test-tier stamp (#1200) — so a lead re-running a gate a teammate already
+# ran green on the same commit costs nothing (#1204). Delete
+# `target/.check-stamp` to force a re-run.
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    stamp=target/.check-stamp
+    sha="$(git rev-parse HEAD)"
+    if [ -z "$(git status --porcelain)" ] && [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$sha" ]; then
+        echo "✓ HEAD $sha already green — skipping. Delete $stamp to force a re-run."
+        exit 0
+    fi
+    just fmt-check lint test hygiene
+    mkdir -p target
+    echo "$sha" > "$stamp"
 
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check
@@ -88,17 +103,21 @@ ports:
 # the Swift bindings ONLY when the core changed, so they stay in sync without
 # slowing pure-Swift edits. ios/generated is a build precondition (gitignored,
 # regenerated) — never hand-edit it; fix the Rust type and regenerate.
+# `xcodegen generate --use-cache` (#1202) skips the project rewrite when
+# project.yml is unchanged; verified it also invalidates on a changed
+# SENTRY_DSN_NATIVE (xcodegen hashes the spec post env-substitution), so it's
+# safe on every call site here, not just the test path.
 
 # Open the app in Xcode (regenerates bindings first if the core changed).
 [group('iOS')]
 ios: _ios-sync
-    cd ios && xcodegen generate
+    cd ios && xcodegen generate --use-cache
     xed ios/Intrada.xcodeproj
 
 # Build + launch on a simulator and screenshot (regen if the core changed).
 [group('iOS')]
 ios-run: _ios-sync
-    cd ios && xcodegen generate
+    cd ios && xcodegen generate --use-cache
     bash scripts/ios-run-sim.sh
 
 # Stream the app's logs from the booted simulator, filtered to our subsystem —
@@ -124,7 +143,7 @@ ios-gen: ios-typegen (ios-package "debug")
 # (never link a release core into a routine debug run).
 [group('iOS')]
 ios-release: ios-typegen (ios-package "release")
-    cd ios && xcodegen generate
+    cd ios && xcodegen generate --use-cache
     rm -f ios/generated/.gen-stamp
     @echo "✓ release core ready — opening Xcode. Select your device, then Product → Profile (⌘I). Next 'just ios' rebuilds the debug core."
     xed ios/Intrada.xcodeproj
@@ -135,7 +154,7 @@ ios-release: ios-typegen (ios-package "release")
 # one-time `fastlane match appstore` bootstrap. See specs/ios-testflight-cicd.md.
 [group('iOS')]
 testflight: ios-typegen (ios-package "release")
-    cd ios && xcodegen generate
+    cd ios && xcodegen generate --use-cache
     rm -f ios/generated/.gen-stamp
     bundle exec fastlane ios beta
 
@@ -201,12 +220,23 @@ _ios-test-run tier:
     fi
     just _ios-test-guard
     cd ios
-    xcodegen generate
+    xcodegen generate --use-cache
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
     only=""
-    if [ "{{tier}}" = "fast" ]; then only="-only-testing:IntradaTests"; fi
+    retry=""
+    if [ "{{tier}}" = "fast" ]; then
+        only="-only-testing:IntradaTests"
+    else
+        # Retries relaunch in a new process (not in-process): the observed
+        # XCUITest flake ("crashed with signal kill") kills the runner
+        # process, so an in-process retry wouldn't recover it. Fast tier
+        # stays strict — unit/snapshot tests are deterministic, so a flake
+        # there is signal, not noise. If a specific test starts passing
+        # only-on-retry regularly, that's a bug to fix, not a retry to keep.
+        retry="-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES"
+    fi
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
@@ -214,7 +244,7 @@ _ios-test-run tier:
     xcodebuild test-without-building -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
-        $only \
+        $only $retry \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     cd ..
     printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"

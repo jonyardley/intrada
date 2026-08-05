@@ -34,9 +34,9 @@ follow CLAUDE.md, Parallel work streams, Agent teams. Team shape:
   `just ios-test`/`ios-test-full` again after another teammate already ran
   one green at the current HEAD on a clean tree (#1199) — their green-stamp
   (#1192) already skips a same-HEAD rerun automatically, so doing it by hand
-  only wastes a build. `just check` has no such stamp; re-running it is
-  cheap (Rust-only) but still redundant once another teammate has run it
-  green at the same HEAD.
+  only wastes a build. `just check` has the same green-stamp (#1204): a
+  same-HEAD rerun on a clean tree skips automatically too, so don't hand-run
+  it again once another teammate has already run it green.
 - **Idle teammate drafts ship work.** Whoever finishes their task list first
   doesn't sit idle waiting for the other — it drafts the PR body, any
   deferred-issue text, and the roadmap edit as task notes for the lead
