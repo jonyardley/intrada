@@ -1,33 +1,59 @@
-# Gate criteria as data — the tunable half of the paper teacher.
+# The paper teacher as data: the graph the planner walks, the drills it
+# prescribes, and the gate criteria that say when a drill is done.
 # Every number is a day-one guess; the gate-attempt log (logs.md) is what
-# calibrates them. Schema is the point: Phase 2's planner reads this shape.
+# calibrates them. Read by `intrada-core`'s engine at startup (#1180), so a
+# dangling node or gate reference here fails the parse rather than going
+# quietly missing.
 #
 # Timing is always consistency/trend, never absolute deviation (decision 6).
 # "clean" = zero wrong notes + timing consistent within the rep.
-# Recognised optional gate fields: per_key, consecutive, keys_required,
-# keys_chained_min, first_attempt, max_think_bars, max_listens,
-# self_confirmed, self_rating_logged, new_keys_per_session_min/_max.
+#
+# A gate takes `node` and `criterion`, and optionally `tempo_bpm`,
+# `click_level`, `judge`, `time_ceiling_min`, plus the fields that state what
+# passing means: `clean_passes`, `consecutive`, `keys_required`,
+# `keys_chained_min`, `first_attempt`, `max_listens`. Any other field is an
+# error rather than a field quietly lost, so this list is the whole list.
+# The engine reads them in one order, and the first that matches decides:
+#   judge = "self-confirmed"  the user's own call (`max_listens`,
+#                             `first_attempt` are shown, never counted)
+#   keys_chained_min          one unbroken run through that many keys
+#   keys_required             that many keys, each needing `clean_passes`
+#                             (default 1), the key restarting on a miss when
+#                             `first_attempt`
+#   clean_passes              that many clean passes, in a row if `consecutive`
+# A gate matching none of them states nothing countable, and fails the parse.
 
-schema_version = "0.1"
+schema_version = "0.2"
 
 [defaults]
 clean_max_wrong_notes = 0
 clean_timing = "consistent"      # variance-based; a stable lay-back is style, not error
 time_ceiling_min = 6             # no block spirals past this
-transport = "paper"              # Phase 0: user zero is the sensor (self-confirmed)
+# The two axes "paper" used to conflate (spec §9.6). Phase 0 has no sensor at
+# all, and the user judges the rep: (none, tap-verdict).
+transport = "none"
+judge = "tap-verdict"
+session_minutes = 20             # the session length a plan is cut to fit
+# The phrase a rep runs, where nobody has stated one. A guess like the mastery
+# seeds, corrected from the log rather than trusted.
+bars = 8
+beats_per_bar = 4
+count_in_beats = 4
 
-# Sparse-click ladder — gate levels *within* click-always (decision 2).
+# Sparse-click ladder: gate levels *within* click-always (decision 2).
 [click_levels]
 l1 = "click on every beat"
 l2 = "click on 2 and 4"
 l3 = "click on beat 1 of each bar"
 l4 = "click on beat 1 of every other bar"
 
-# What each input path may honestly claim (decision 7). Phase 0 uses paper.
+# What each input path may honestly claim (decision 7). Phase 0 has none of
+# them, which is why its judge is the user's tap.
 [transport_tiers]
 wired = ["note-accuracy", "timing-consistency", "tempo-drift", "swing-report"]
 bluetooth = ["note-accuracy", "swing-report", "trend"]
-paper = ["self-confirmed"]
+mic = ["timing-consistency", "trend"]
+none = []
 
 # Feedback cadence by drill maturity (feedback choreography; guidance
 # hypothesis). Fade-out is data, not code.
@@ -39,14 +65,274 @@ single_failure = "cross plus one fact, nothing else"
 
 [escalation]
 consecutive_fail_trigger = 3
-ladder = ["tempo-down-20pct", "shrink-scope", "change-mode", "swap-drill"]
+ladder = ["tempo-down", "shrink-scope", "change-mode", "swap-drill"]
 name_the_wall_max_times = 1      # the second encouragement is a nag
+tempo_down_pct = 20              # what the first rung drops the tempo by
+tempo_floor_bpm = 40             # below this a drop is not practice
+gate_open_hold_s = 2             # how long the open gate is left on screen
 
-# ── shells-ii-v-i ──
+[planner]
+# A node at or above this seeded estimate is maintenance rather than
+# acquisition: shorter passes, and the material a session warms up on
+# (spec §5 stage 3). Live mastery replaces the seed at #1148.
+maintenance_estimate = 0.6
+acquisition_minutes = 6          # low evidence wants one longer uninterrupted block,
+                                 # and time_ceiling_min is the hard stop above it
+maintenance_minutes = 4          # matured material wants a shorter pass
+grind_max_minutes_per_session = 10
+grind_max_blocks = 1
+
+# The declared destination and its target set (content/intent.md). The planner
+# back-chains a route from these; it never reads a route.
+[intent]
+goal = "Improvise confidently over jazz standards"
+campaign = "Restricted improv over Strasbourg / St. Denis"
+destination = "Strasbourg / St. Denis"
+targets = [
+  "chord-tone-targeting",
+  "rootless-under-melody",         # the target names the rung it wants
+  "phrase-transposition",
+  "tune-form-memory",
+]
+# Countable-unmatched targets become user nodes and matched ones user drills
+# (decision 19); only the genuinely unmeasurable stays here, unscored.
+opaque_targets = ["Make the last A section sing"]
+
+# Per-session scheduling quotas. Not gates: there is no pass or fail in a
+# traversal, so it cannot be a `Requirement` (spec §9.5).
+[traversal.rootless-a-b]
+goal = "2-3 new keys at the current rung, plus a maintenance pass on all landed keys"
+new_keys_per_session_min = 2
+new_keys_per_session_max = 3
+
+# ── The graph (content/nodes.md is the prose; the mastery seeds live here,
+#    because a seed the engine cannot read is a seed that drifts) ──
+
+[nodes.shells-ii-v-i]
+title = "Shell voicings"
+circle = "hands"
+mode = "keys"
+prerequisites = ["diatonic-7ths"]
+drills = [
+  "shells-cycle",
+  "shells-under-melody",
+  "shells-random-key",
+]
+mastery_estimate = 0.7
+mastery_band = "medium"
+
+[nodes.rootless-a-b]
+title = "Rootless voicings"
+circle = "hands"
+mode = "keys"
+prerequisites = ["shells-ii-v-i"]
+drills = [
+  "rootless-one-key",
+  "rootless-transition",
+  "rootless-under-melody",
+  "rootless-cycle",
+]
+mastery_estimate = 0.3
+mastery_band = "low"
+grind = true                     # honest label: the middle keys are grind
+
+[nodes.phrase-transposition]
+title = "Phrase transposition"
+circle = "bridge"
+mode = "keys-to-away"
+prerequisites = ["micro-transcription", "swing-click-time"]
+drills = [
+  "phrase-home-key",
+  "phrase-nearby-keys",
+  "phrase-cycle",
+  "phrase-random-key",
+]
+mastery_estimate = 0.4
+mastery_band = "low"
+
+[nodes.chord-tone-targeting]
+title = "Chord-tone targeting"
+circle = "bridge"
+mode = "keys"
+prerequisites = ["shells-ii-v-i", "swing-click-time"]
+drills = [
+  "targeting-skeleton",
+  "targeting-approach",
+  "targeting-full-form",
+]
+mastery_estimate = 0.35
+mastery_band = "low"
+
+[nodes.micro-transcription]
+title = "Micro-transcription"
+circle = "head"
+mode = "keys-to-away"
+prerequisites = []
+drills = [
+  "transcription-entry",
+  "transcription-sing",
+  "transcription-audiation",
+]
+mastery_estimate = 0.4
+mastery_band = "low"
+
+# Stubs. Named so gates, whys and prerequisites can reference them; a stub has
+# no drills, so back-chaining through one yields no block rather than a
+# guessed one.
+[nodes.diatonic-7ths]
+title = "Diatonic 7ths"
+circle = "hands"
+mode = "keys"
+stub = true
+
+[nodes.swing-click-time]
+title = "Swing and click time"
+circle = "hands"
+mode = "keys"
+stub = true
+
+[nodes.rhythm-vocabulary]
+title = "Rhythm vocabulary"
+circle = "bridge"
+mode = "keys"
+stub = true
+
+[nodes.interval-recognition]
+title = "Interval recognition"
+circle = "head"
+mode = "away"
+stub = true
+
+[nodes.guide-tone-lines]
+title = "Guide-tone lines"
+circle = "bridge"
+mode = "keys"
+stub = true
+
+[nodes.device-generate-ladder]
+title = "Device generation"
+circle = "bridge"
+mode = "keys"
+stub = true
+
+[nodes.comping-rhythms]
+title = "Comping rhythms"
+circle = "hands"
+mode = "keys"
+stub = true
+
+[nodes.upper-structures]
+title = "Upper structures"
+circle = "hands"
+mode = "keys"
+stub = true
+
+[nodes.listening-assignments]
+title = "Listening assignments"
+circle = "head"
+mode = "away"
+stub = true
+
+[nodes.tune-form-memory]
+title = "Tune form from memory"
+circle = "head"
+mode = "away"
+stub = true
+
+# ── The drills (nodes.md's tables, in the order the ladder runs). `applied`
+#    marks a drill parameterised by real music: the template needs at least
+#    one, and closes on one (spec §5 stage 5) ──
+
+[drills.shells-cycle]
+gate = "shells-cycle"
+
+[drills.shells-under-melody]
+gate = "shells-under-melody"
+section = "A section"
+destination = "Strasbourg / St. Denis"
+applied = true
+
+[drills.shells-random-key]
+gate = "shells-random-key"
+
+[drills.rootless-one-key]
+gate = "rootless-one-key"
+section = "one key, LH alone"
+bars = 3                         # a bar on each chord of the ii-V-I
+
+[drills.rootless-transition]
+gate = "rootless-transition"
+section = "the change, not the chords"
+bars = 2                         # the looped two-chord change
+
+[drills.rootless-under-melody]
+gate = "rootless-under-melody"
+section = "A section"
+destination = "Strasbourg / St. Denis"
+applied = true
+
+[drills.rootless-cycle]
+gate = "rootless-cycle"
+
+[drills.phrase-home-key]
+gate = "phrase-home-key"
+section = "home key"
+minutes = 4                      # p001 advances a couple of keys a session,
+                                 # not a block's worth (content/intent.md)
+
+[drills.phrase-nearby-keys]
+gate = "phrase-nearby-keys"
+section = "whole-step neighbours"
+minutes = 4
+
+[drills.phrase-cycle]
+gate = "phrase-cycle"
+section = "cycle chain"
+minutes = 4
+
+[drills.phrase-random-key]
+gate = "phrase-random-key"
+section = "dealt key"
+minutes = 4
+
+[drills.targeting-skeleton]
+gate = "targeting-skeleton"
+section = "guide-tone skeleton"
+destination = "Strasbourg / St. Denis"
+
+[drills.targeting-approach]
+gate = "targeting-approach"
+section = "approach and land"
+bars = 2                         # two-bar cells
+
+[drills.targeting-full-form]
+gate = "targeting-full-form"
+section = "full form"
+destination = "Strasbourg / St. Denis"
+applied = true
+
+[drills.transcription-entry]
+gate = "transcription-entry"
+section = "entry rung"
+
+[drills.transcription-sing]
+gate = "transcription-sing"
+section = "sing first"
+
+[drills.transcription-audiation]
+gate = "transcription-audiation"
+section = "audiation rung"
+
+# ── The gates. The requirement is a closed enum on the Rust side, resolved
+#    from these fields in one order: judge "self-confirmed" gives a
+#    self-confirmed requirement, then keys_chained_min a chained one, then
+#    keys_required a key-coverage one, then clean_passes a counted one. A gate
+#    that matches none of them fails to parse, which is the whole gain over a
+#    flat bag of optional fields (spec §8) ──
 
 [gates.shells-cycle]
 node = "shells-ii-v-i"
-criterion = "ii–V–I shells through the full cycle of fourths, no stops"
+criterion = "ii-V-I shells through the full cycle of fourths, no stops"
 clean_passes = 1
 tempo_bpm = 100
 click_level = "l2"
@@ -60,35 +346,28 @@ click_level = "l1"
 
 [gates.shells-random-key]
 node = "shells-ii-v-i"
-criterion = "shuffled key cards: ii–V–I shells cold, within one bar of thinking time"
+criterion = "shuffled key cards: ii-V-I shells cold, within one bar of thinking time"
 keys_required = 12
-max_think_bars = 1
 tempo_bpm = 80
 click_level = "l1"
 
-# ── rootless-a-b ──
-
 [gates.rootless-one-key]
 node = "rootless-a-b"
-criterion = "ii–V–I, A/B forms alternating, LH alone, one bar per chord"
+criterion = "ii-V-I, A/B forms alternating, LH alone, one bar per chord"
+# keys_required with clean_passes is the per-key reading: 3 clean in each key,
+# and the traversal quota decides how many of them a session touches.
+keys_required = 12
 clean_passes = 3
 tempo_bpm = 60
 click_level = "l1"
-per_key = true                   # passed independently in each key
 
 [gates.rootless-transition]
 node = "rootless-a-b"
-criterion = "looped two-chord change (ii→V, then V→I), no gap at the change"
+criterion = "looped two-chord change (ii to V, then V to I), no gap at the change"
+keys_required = 12
 clean_passes = 4
 tempo_bpm = 60
 click_level = "l1"
-per_key = true
-
-[gates.rootless-traversal]
-node = "rootless-a-b"
-criterion = "session goal: 2–3 new keys at current rung + maintenance pass on all landed keys"
-new_keys_per_session_min = 2
-new_keys_per_session_max = 3
 
 [gates.rootless-under-melody]
 node = "rootless-a-b"
@@ -108,7 +387,7 @@ click_level = "l1"
 
 [gates.phrase-home-key]
 node = "phrase-transposition"
-criterion = "phrase over its ii–V–I loop in the home key"
+criterion = "phrase over its ii-V-I loop in the home key"
 clean_passes = 3
 tempo_bpm = 120                  # p001 target tempo
 click_level = "l2"
@@ -116,16 +395,14 @@ click_level = "l2"
 [gates.phrase-nearby-keys]
 node = "phrase-transposition"
 criterion = "clean in both whole-step neighbours, resolution lands on beat 1"
-clean_passes = 2
-per_key = true
 keys_required = 2
+clean_passes = 2
 tempo_bpm = 90
 click_level = "l1"
 
 [gates.phrase-cycle]
 node = "phrase-transposition"
-criterion = "phrase chained through 4+ consecutive cycle keys, ii–V links, no stops"
-clean_passes = 1
+criterion = "phrase chained through 4+ consecutive cycle keys, ii-V links, no stops"
 keys_chained_min = 4
 tempo_bpm = 90
 click_level = "l1"
@@ -162,23 +439,23 @@ clean_passes = 2
 consecutive = true
 tempo_bpm = 100
 click_level = "l2"
-self_rating_logged = true
 
-# ── micro-transcription (paper tier: self-confirmed against the record) ──
+# ── micro-transcription (no sensor can judge these, so the user does, and a
+#    self-confirmed pass may never unlock a prerequisite: decisions 3 and 13) ──
 
 [gates.transcription-entry]
 node = "micro-transcription"
-criterion = "1–2 bar phrase matched at the keys within 5 listens"
+criterion = "1-2 bar phrase matched at the keys within 5 listens"
+judge = "self-confirmed"
 max_listens = 5
-self_confirmed = true
 
 [gates.transcription-sing]
 node = "micro-transcription"
 criterion = "phrase sung (contour + rhythm) before touching the keys"
-self_confirmed = true
+judge = "self-confirmed"
 
 [gates.transcription-audiation]
 node = "micro-transcription"
 criterion = "phrase worked out fully away from the piano; first attempt at the keys matches"
+judge = "self-confirmed"
 first_attempt = true
-self_confirmed = true

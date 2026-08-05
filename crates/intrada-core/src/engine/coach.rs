@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::gate::{Requirement, Verdict};
-use super::session::{CoachEvent, EngineSession, Phase, SessionState};
+use super::session::{CoachEvent, CoachWrites, EngineSession, Phase, SessionState};
 use crate::domain::item::ItemKind;
 
 /// Spec §1 gives this five fields; the mastery, judgement, ledger and content
@@ -20,8 +20,8 @@ pub struct CoachState {
 }
 
 impl CoachState {
-    pub fn apply(&mut self, event: &CoachEvent) {
-        self.session.apply(event);
+    pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        self.session.apply(event)
     }
 
     pub fn view(&self) -> CoachView {
@@ -64,7 +64,7 @@ impl CoachState {
             count_in_beats: block.count_in_beats,
             click_beats: block.click_beats(),
             elapsed_seconds: block.elapsed_seconds(),
-            ceiling_seconds: spec.gate.time_ceiling_s,
+            ceiling_seconds: Some(u32::from(spec.minutes) * 60),
             block_kinds: plan.blocks.iter().map(|block| block.kind.clone()).collect(),
             block_index: block.spec_index,
             gate_question: gate_question(&spec.gate.requirement, block.level.tempo_bpm),
@@ -78,13 +78,33 @@ impl CoachState {
 
 fn gate_question(requirement: &Requirement, tempo_bpm: u16) -> String {
     match requirement {
-        Requirement::CleanPasses { .. } => format!("Clean at {tempo_bpm}?"),
+        Requirement::CleanPasses { .. } | Requirement::KeyCoverage { .. } => {
+            format!("Clean at {tempo_bpm}?")
+        }
+        Requirement::Chained { .. } => format!("Clean at {tempo_bpm}, no stops?"),
+        Requirement::SelfConfirmed { .. } => "Did that match?".to_string(),
     }
 }
 
 fn gate_summary(requirement: &Requirement, tempo_bpm: u16) -> String {
     match requirement {
         Requirement::CleanPasses { count, .. } => format!("{count} clean at {tempo_bpm}"),
+        Requirement::KeyCoverage {
+            keys_required,
+            per_key_passes,
+            first_attempt,
+        } => {
+            if *first_attempt {
+                format!("clean first time, in {keys_required} keys")
+            } else {
+                format!("{per_key_passes} clean at {tempo_bpm}, in {keys_required} keys")
+            }
+        }
+        Requirement::Chained { min_keys } => format!("{min_keys} keys chained, no stops"),
+        Requirement::SelfConfirmed { max_listens, .. } => match max_listens {
+            Some(listens) => format!("matched within {listens} listens"),
+            None => "your call".to_string(),
+        },
     }
 }
 
@@ -160,7 +180,7 @@ mod tests {
 
     fn playing() -> CoachState {
         let mut coach = CoachState::default();
-        coach.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        coach.session.start_fixture(at(0));
         coach.apply(&CoachEvent::Beat { beat_index: 5 });
         coach
     }
@@ -246,7 +266,7 @@ mod tests {
     #[test]
     fn the_first_count_in_of_a_block_has_no_glance_to_show() {
         let mut coach = CoachState::default();
-        coach.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        coach.session.start_fixture(at(0));
 
         assert_eq!(
             coach.view().drill.unwrap().phase,

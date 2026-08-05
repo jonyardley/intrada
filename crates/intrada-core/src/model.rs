@@ -15,6 +15,7 @@ use crate::domain::session::{
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
 use crate::engine::{CoachState, CoachView};
+use crate::persistence::PersistenceOperation;
 
 /// Internal application state — not exposed to shells.
 #[derive(Debug, Default)]
@@ -82,6 +83,11 @@ pub struct Model {
     /// The practice coach's own state, quarantined in `engine/`
     /// (`specs/intrada-coach-engine.md` §1).
     pub coach: CoachState,
+    /// The coach evidence a store write is outstanding for, kept so a failure
+    /// can be offered again once before it becomes the user's problem (#1181).
+    /// One slot, because the shell resolves persistence synchronously
+    /// (`Store.process`), so only one coach write is ever in flight.
+    pub coach_write_in_flight: Option<PersistenceOperation>,
 }
 
 impl Model {

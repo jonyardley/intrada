@@ -11,6 +11,9 @@ protocol ItemStore {
   func delete(id: String, deletedAt: String) throws
   func loadSessions() throws -> [PracticeSession]
   func saveSession(_ session: PracticeSession) throws
+  /// Append coach evidence in one transaction — blocks, wanders and their
+  /// attempts land together or not at all (#1181).
+  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -171,6 +174,21 @@ final class LibraryStore: ItemStore {
     }
   }
 
+  /// One transaction for the whole batch, so a block and the wander beside it
+  /// never half-land (#1181). Upsert by id: a retry after a failed write is
+  /// idempotent, and the off-piste *keep this as a drill?* answer updates the
+  /// wander row already written rather than duplicating it.
+  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
+    try dbQueue.write { db in
+      for block in blocks {
+        try Self.upsert(block, updatedAt: updatedAt, in: db)
+      }
+      for wander in wanders {
+        try Self.upsert(wander, updatedAt: updatedAt, in: db)
+      }
+    }
+  }
+
   /// Column names of a table (for the schema-invariant test). `[String]` not
   /// `Set` — `SharedTypes`' domain `Set` shadows `Swift.Set` here.
   func columnNames(ofTable table: String) throws -> [String] {
@@ -271,6 +289,46 @@ final class LibraryStore: ItemStore {
           )
           """)
       try db.execute(sql: "CREATE INDEX index_variant_on_item_id ON variant(item_id)")
+    }
+    migrator.registerMigration("v10_coach_records") { db in
+      // Drill-loop evidence (#1181, spec §4), written as each record closes.
+      // `attempts` is a JSON blob for the same reason `session.entries` is.
+      try db.execute(
+        sql: """
+          CREATE TABLE block_record (
+            id TEXT PRIMARY KEY NOT NULL,
+            node TEXT NOT NULL,
+            drill TEXT NOT NULL,
+            gate TEXT NOT NULL,
+            level_tempo_bpm INTEGER NOT NULL,
+            level_click_level TEXT NOT NULL,
+            circle TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            attempts TEXT NOT NULL DEFAULT '[]',
+            attempts_to_pass INTEGER,
+            gate_opened_at_attempt INTEGER,
+            reps_after_gate INTEGER NOT NULL,
+            active_ms INTEGER NOT NULL,
+            escalation_fired TEXT NOT NULL DEFAULT '[]',
+            exit TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE wander_record (
+            id TEXT PRIMARY KEY NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            attempts TEXT NOT NULL DEFAULT '[]',
+            keep_as_drill INTEGER,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
     }
     return migrator
   }()
@@ -634,6 +692,147 @@ final class LibraryStore: ItemStore {
     default:
       report(UnknownStoredEnum(kind: "RepAction", raw: raw), decodeContext)
       return .missed  // conservative: an unknown rep must not inflate achievement (#949)
+    }
+  }
+
+  // ── BlockRecord / WanderRecord → row codec (#1181) ────────────────────
+  // Write-only: nothing reads coach evidence back yet, so there is no decoder
+  // here to go stale. The stored enum spellings are the format contract a
+  // future reader must match.
+
+  private struct StoredAttempt: Codable {
+    var at: String
+    var verdict: String
+    var source: String
+    var cold: Bool
+    var selfPredicted: String?
+  }
+
+  private struct CoachCodecError: Error, CustomStringConvertible {
+    let field: String
+    var description: String { "coach \(field) failed to encode" }
+  }
+
+  private static func upsert(_ record: BlockRecord, updatedAt: String, in db: Database) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO block_record
+          (id, node, drill, gate, level_tempo_bpm, level_click_level, circle, mode,
+           started_at, ended_at, attempts, attempts_to_pass, gate_opened_at_attempt,
+           reps_after_gate, active_ms, escalation_fired, exit, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+          ended_at = excluded.ended_at, attempts = excluded.attempts,
+          attempts_to_pass = excluded.attempts_to_pass,
+          gate_opened_at_attempt = excluded.gate_opened_at_attempt,
+          reps_after_gate = excluded.reps_after_gate, active_ms = excluded.active_ms,
+          escalation_fired = excluded.escalation_fired, exit = excluded.exit,
+          updated_at = excluded.updated_at
+        """,
+      arguments: [
+        record.id, record.node, record.drill, record.gate,
+        Int(record.level.tempoBpm), clickLevelString(record.level.clickLevel),
+        circleString(record.circle), modeString(record.mode),
+        record.startedAt, record.endedAt, try encodeAttempts(record.attempts),
+        record.attemptsToPass.map { Int($0) }, record.gateOpenedAtAttempt.map { Int($0) },
+        Int(record.repsAfterGate), Int(clamping: record.activeMs),
+        try encodeJSON(record.escalationFired.map(rungString), field: "escalation_fired"),
+        exitString(record.exit), updatedAt,
+      ])
+  }
+
+  private static func upsert(_ record: WanderRecord, updatedAt: String, in db: Database) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO wander_record
+          (id, started_at, ended_at, attempts, keep_as_drill, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET
+          ended_at = excluded.ended_at, attempts = excluded.attempts,
+          keep_as_drill = excluded.keep_as_drill, updated_at = excluded.updated_at
+        """,
+      arguments: [
+        record.id, record.startedAt, record.endedAt, try encodeAttempts(record.attempts),
+        record.keepAsDrill, updatedAt,
+      ])
+  }
+
+  /// Throws rather than substituting `[]`: losing the attempts would make a
+  /// failed write look like a block nobody played (invariant 5).
+  private static func encodeAttempts(_ attempts: [AttemptSummary]) throws -> String {
+    try encodeJSON(
+      attempts.map { attempt in
+        StoredAttempt(
+          at: attempt.at, verdict: verdictString(attempt.verdict),
+          source: evidenceSourceString(attempt.source), cold: attempt.cold,
+          selfPredicted: attempt.selfPredicted.map(verdictString))
+      }, field: "attempts")
+  }
+
+  private static func encodeJSON<T: Encodable>(_ value: T, field: String) throws -> String {
+    let data = try JSONEncoder().encode(value)
+    guard let json = String(data: data, encoding: .utf8) else {
+      throw CoachCodecError(field: field)
+    }
+    return json
+  }
+
+  private static func verdictString(_ verdict: Verdict) -> String {
+    switch verdict {
+    case .clean: "clean"
+    case .missed: "missed"
+    }
+  }
+
+  private static func evidenceSourceString(_ source: EvidenceSource) -> String {
+    switch source {
+    case .tapVerdict: "tap_verdict"
+    case .midi: "midi"
+    case .audio: "audio"
+    }
+  }
+
+  private static func clickLevelString(_ level: ClickLevel) -> String {
+    switch level {
+    case .everyBeat: "every_beat"
+    case .twoAndFour: "two_and_four"
+    case .barDownbeat: "bar_downbeat"
+    case .everyOtherBar: "every_other_bar"
+    }
+  }
+
+  private static func circleString(_ circle: Circle) -> String {
+    switch circle {
+    case .head: "head"
+    case .hands: "hands"
+    case .bridge: "bridge"
+    }
+  }
+
+  private static func modeString(_ mode: Mode) -> String {
+    switch mode {
+    case .keys: "keys"
+    case .away: "away"
+    case .keysToAway: "keys_to_away"
+    }
+  }
+
+  private static func exitString(_ exit: Exit) -> String {
+    switch exit {
+    case .gatePassed: "gate_passed"
+    case .ceilingHit: "ceiling_hit"
+    case .skipped: "skipped"
+    case .escalated: "escalated"
+    case .sessionEnded: "session_ended"
+    }
+  }
+
+  private static func rungString(_ rung: Rung) -> String {
+    switch rung {
+    case .tempoDown: "tempo_down"
+    case .shrinkScope: "shrink_scope"
+    case .changeMode: "change_mode"
+    case .swapDrill: "swap_drill"
     }
   }
 

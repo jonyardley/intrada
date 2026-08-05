@@ -123,6 +123,133 @@ final class StoreEffectLoopTests: XCTestCase {
       "a failing local store must resolve .failed, not a phantom .ack")
   }
 
+  private static let coachBlock = BlockRecord(
+    id: "b1", node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
+    level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour), circle: .hands, mode: .keys,
+    startedAt: "2026-08-04T10:00:00Z", endedAt: "2026-08-04T10:00:30Z",
+    attempts: [
+      AttemptSummary(
+        at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
+        selfPredicted: nil)
+    ],
+    attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
+    escalationFired: [], exit: .gatePassed)
+
+  private static func saveCoachRecords(id: UInt32) -> Request {
+    Request(
+      id: id,
+      effect: .persistence(
+        .saveCoachRecords(
+          blocks: [coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")))
+  }
+
+  func testCoachRecordsWriteResolvesAck() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Self.saveCoachRecords(id: 20)] }
+    let store = Store(bridge: bridge, session: mockSession())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(bridge.persistenceResolved.first?.id, 20)
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .ack,
+      "a successful evidence write resolves .ack")
+  }
+
+  func testCoachRecordsWriteFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Self.saveCoachRecords(id: 21)] }
+    let store = Store(bridge: bridge, session: mockSession(), store: FailingStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a lost block must surface as .failed, never a phantom .ack (#816)")
+  }
+
+  /// The session the core just snapshotted for crash recovery — also the only
+  /// route to its `EngineConfig`, which `CoachView` does not carry.
+  private func coachSession(in requests: [Request]) throws -> EngineSession {
+    let session = requests.lazy.compactMap { request -> EngineSession? in
+      guard case .app(.saveCoachSessionInProgress(let session)) = request.effect else { return nil }
+      return session
+    }.first
+    return try XCTUnwrap(
+      session,
+      "no SaveCoachSessionInProgress effect: the core stopped snapshotting the session")
+  }
+
+  /// The in-progress session as the engine actually builds it, rather than a
+  /// hand-made one: recovery depends on this exact shape surviving the wire.
+  private func runningCoachSession() throws -> EngineSession {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    return try coachSession(
+      in: try bridge.update(.coach(.startDrillLoop(now: "2026-08-04T10:00:00Z"))))
+  }
+
+  func testSaveCoachSessionEffectWritesBlobAndClearRemovesIt() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let session = try runningCoachSession()
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveCoachSessionInProgress(session)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+
+    store.send(.setQuery(nil))
+
+    let pending = try XCTUnwrap(
+      store.pendingCoachSession(), "the save effect must persist a recoverable blob")
+    XCTAssertEqual(
+      pending, session,
+      "the blob must round-trip the whole session, plan and block state included")
+
+    bridge.updateHandler = { _ in [Request(id: 2, effect: .app(.clearCoachSessionInProgress))] }
+    store.send(.setQuery(nil))
+    XCTAssertNil(store.pendingCoachSession(), "a closed session's blob would recover nothing")
+  }
+
+  /// Real-bridge recovery round trip (#846 class, #1181): the blob leaves the
+  /// core as bincode, sits in UserDefaults, and goes back in as a `CoachEvent`
+  /// payload. A stub bridge cannot catch a mismatch on that wire — the symptom
+  /// would be a recovery that silently no-ops and discards the evidence.
+  func testRealBridgeRecoversAnInProgressCoachSessionFromItsStoredBlob() throws {
+    let crashed = try runningCoachSession()
+    let blob = Data(try crashed.bincodeSerialize())
+    let restored = try EngineSession.bincodeDeserialize(input: [UInt8](blob))
+
+    // A fresh core, as after a relaunch: it knows nothing until the blob lands.
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    XCTAssertNil(try bridge.view().coach.drill, "a fresh core has no drill running")
+
+    _ = try bridge.update(
+      .coach(.recoverSession(session: restored, now: "2026-08-04T11:00:00Z")))
+
+    let drill = try XCTUnwrap(
+      try bridge.view().coach.drill, "the recovered session must put the drill back on screen")
+    XCTAssertEqual(drill.blockIndex, 0)
+    XCTAssertFalse(drill.drillTitle.isEmpty, "the recovered block keeps its identity")
+  }
+
+  func testPendingCoachSessionIsNilWithNoStoredBlob() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(store.pendingCoachSession())
+  }
+
+  /// An `EngineSession` field change makes every blob written by the previous
+  /// build undecodable. That must lose the recovery, not the launch: bincode is
+  /// positional, so there is no forward compatibility to lean on here.
+  func testPendingCoachSessionIsNilForAnUndecodableBlob() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    defaults.set(Data([0xff, 0x00, 0x2a]), forKey: Store.coachSessionInProgressKey)
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(store.pendingCoachSession(), "a stale blob degrades to a fresh start")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -435,11 +562,16 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
-  /// Real-bridge drill loop (#846, #1176): drives a whole repetition — start,
-  /// count-in, body beats, tap — through the actual Swift↔Rust bincode wire and
-  /// asserts the core's own counting comes back in `CoachView`. A stub bridge
-  /// can't catch a wire break here; the symptom would be a drill screen that
-  /// never advances (`specs/intrada-coach-engine.md` §6).
+  /// Real-bridge drill loop (#846, #1176): drives a gate to completion — start,
+  /// count-in, body beats, a clean tap per required pass — through the actual
+  /// Swift↔Rust bincode wire, and asserts the core's own counting comes back in
+  /// `CoachView`. A stub bridge can't catch a wire break here; the symptom would
+  /// be a drill screen that never advances (`specs/intrada-coach-engine.md` §6).
+  ///
+  /// How many passes the gate wants is authored content (#1180) that Jon
+  /// recalibrates, so the target is read from the view and the assertion is the
+  /// invariant: the dots fill one per clean pass, and the last one opens the
+  /// gate. A literal here would redden on a content tweak that broke nothing.
   func testRealBridgeDrillLoopCountsRepsInTheCore() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
@@ -447,46 +579,71 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(opening.drillTitle, "Rootless voicings")
-    XCTAssertEqual(opening.gateQuestion, "Clean at 120?")
-    XCTAssertEqual(opening.gateTarget, 3)
+    XCTAssertFalse(opening.drillTitle.isEmpty, "the block crossed the wire with its title")
+    XCTAssertEqual(
+      opening.gateQuestion, "Clean at \(opening.tempoBpm)?",
+      "the criterion names the tempo it is asked at")
+    XCTAssertGreaterThanOrEqual(opening.gateTarget, 1, "a gate needs at least one clean pass")
     XCTAssertEqual(opening.gateFilled, 0)
-
     XCTAssertEqual(
       opening.phase, .countIn(remaining: 4),
       "a fresh block counts in on the during-play page (#1184)")
 
     _ = try bridge.update(.coach(.countInBeat(remaining: 1)))
     XCTAssertEqual(try bridge.view().coach.drill?.phase, .countIn(remaining: 1))
-    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
-    XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing)
 
-    _ = try bridge.update(.coach(.beat(beatIndex: opening.clickBeats - 1)))
-    XCTAssertEqual(
-      try bridge.view().coach.drill?.phase, .awaitingVerdict,
-      "the phrase ended, so the core asks the question")
+    for pass in 1...opening.gateTarget {
+      _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+      XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing, "pass \(pass) is under way")
 
-    _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
-    let acknowledged = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(acknowledged.phase, .acknowledged(clean: true))
-    XCTAssertEqual(acknowledged.gateFilled, 1, "the core filled the dot, not the shell")
-    XCTAssertEqual(acknowledged.repSeq, 2, "the shell restarts the click off this")
-    XCTAssertNil(try bridge.view().error, "a whole rep must decode on the wire (#846)")
+      _ = try bridge.update(.coach(.beat(beatIndex: opening.clickBeats - 1)))
+      XCTAssertEqual(
+        try bridge.view().coach.drill?.phase, .awaitingVerdict,
+        "the phrase ended on pass \(pass), so the core asks the question")
+
+      _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
+      let after = try XCTUnwrap(try bridge.view().coach.drill)
+      XCTAssertEqual(after.gateFilled, pass, "the core fills the dots, not the shell")
+
+      if pass == opening.gateTarget {
+        XCTAssertEqual(after.phase, .gateOpen, "the last clean pass opens the gate")
+      } else {
+        XCTAssertEqual(after.phase, .acknowledged(clean: true))
+        XCTAssertEqual(
+          after.repSeq, UInt32(pass) + 1, "the shell restarts the click off this")
+      }
+    }
+    XCTAssertNil(try bridge.view().error, "a whole gate must decode on the wire (#846)")
   }
 
   /// Real-bridge escalation (#846, #1176): "I'm stuck" is the core's decision —
   /// the ladder drops the tempo and the criterion follows it. The old Swift
   /// harness did this arithmetic itself.
+  ///
+  /// The drop is the configured percentage, read off the core's own
+  /// `EngineConfig` rather than written as a literal, so retuning
+  /// `escalation.tempo_down_pct` in the content moves the expectation with it.
   func testRealBridgeStuckDropsTheTempoInTheCore() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    let started = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    let config = try coachSession(in: started).config
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))
 
     _ = try bridge.update(.coach(.stuck(now: SessionClock.nowRFC3339())))
     let after = try XCTUnwrap(try bridge.view().coach.drill)
-    XCTAssertEqual(after.tempoBpm, 96)
-    XCTAssertEqual(after.gateQuestion, "Clean at 96?")
+
+    let opened = UInt32(opening.tempoBpm)
+    let dropped = opened - opened * UInt32(min(config.tempoDownPct, 100)) / 100
+    XCTAssertEqual(
+      after.tempoBpm, UInt16(max(dropped, UInt32(config.tempoFloorBpm))),
+      "the first rung takes the configured percentage off, floored")
+    XCTAssertLessThan(
+      after.tempoBpm, opening.tempoBpm, "a rung that moves nothing is not an escalation")
+    XCTAssertEqual(
+      after.gateQuestion, "Clean at \(after.tempoBpm)?",
+      "the criterion follows the tempo down")
     XCTAssertEqual(after.phase, .playing, "escalation acts rather than narrates")
   }
 
@@ -921,6 +1078,9 @@ private struct FailingStore: ItemStore {
   func delete(id: String, deletedAt: String) throws { throw TestError() }
   func loadSessions() throws -> [PracticeSession] { throw TestError() }
   func saveSession(_ session: PracticeSession) throws { throw TestError() }
+  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
+    throw TestError()
+  }
 }
 
 final class MockURLProtocol: URLProtocol {

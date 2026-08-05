@@ -37,6 +37,16 @@ struct DrillLoopHost: View {
         Color.clear
       }
     }
+    // The loop is a fullScreenCover, so RootView's banner is occluded while it's
+    // up. Re-surface viewModel.error here — otherwise "Couldn't save what you
+    // just practised." renders nowhere and a lost block is a silent no-op
+    // (#846, #1181). On the host rather than the entry point, so the real
+    // press-start route into the loop (#1182) inherits it.
+    .safeAreaInset(edge: .top, spacing: 0) {
+      if let error = store.viewModel?.error {
+        GlobalBanner(message: error) { store.send(.clearError) }
+      }
+    }
     .task { await run() }
     .onDisappear(perform: teardown)
     .onChange(of: drill.map { Rep(block: $0.blockIndex, seq: $0.repSeq) }) { _, _ in
@@ -50,7 +60,14 @@ struct DrillLoopHost: View {
   }
 
   private func run() async {
-    store.send(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    // A blob means the last session was cut off mid-block: hand it back rather
+    // than starting fresh, or the evidence already banked is discarded (#1181).
+    let now = SessionClock.nowRFC3339()
+    if let crashed = store.pendingCoachSession() {
+      store.send(.coach(.recoverSession(session: crashed, now: now)))
+    } else {
+      store.send(.coach(.startDrillLoop(now: now)))
+    }
     startClickIfNeeded()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
