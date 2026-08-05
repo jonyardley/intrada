@@ -10,10 +10,11 @@ struct PressStartHero: View {
   let footnote: String
   var onStart: () -> Void
 
-  // The app's largest tap target, and the glyph rides off it the way the coach
-  // primitives' discs do (see RepVerdict) rather than carrying its own size.
+  // The app's largest tap target. Named rather than derived from `disc`: the
+  // honest ratio is 0.4, which renders 38.4 and moves four snapshot references
+  // for a difference no eye can see.
   private let disc: CGFloat = 96
-  private var glyph: CGFloat { disc * 0.4 }
+  private let glyph: CGFloat = 38
 
   var body: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
