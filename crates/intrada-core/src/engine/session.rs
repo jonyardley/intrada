@@ -92,7 +92,19 @@ pub struct CoachWrites {
     /// so a crash costs at most the block in flight.
     pub blocks: Vec<BlockRecord>,
     pub wanders: Vec<WanderRecord>,
+    /// Attempts the mastery track has yet to hear about (spec §2).
+    pub evidence: Vec<ScoredAttempt>,
     pub snapshot: SnapshotAction,
+}
+
+/// One attempt, told to the mastery store in the terms it holds state in:
+/// `(node, parameter_level)`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScoredAttempt {
+    pub node: String,
+    pub level: ParameterLevel,
+    pub verdict: Verdict,
+    pub at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -259,6 +271,10 @@ pub struct BlockState {
     pub rep_seq: u32,
     pub gate_opened_at_attempt: Option<u16>,
     pub reps_after_gate: u16,
+    /// Whether this block's first rep is a cold test: decided by the mastery
+    /// store, which is the only thing that knows when the material was last
+    /// played (spec §2).
+    pub cold: bool,
     gate_open_since: Option<DateTime<Utc>>,
 }
 
@@ -285,6 +301,7 @@ impl BlockState {
             rep_seq: 1,
             gate_opened_at_attempt: None,
             reps_after_gate: 0,
+            cold: false,
             gate_open_since: None,
         }
     }
@@ -393,13 +410,24 @@ impl EngineSession {
         }
     }
 
+    /// The mastery store owns the cold decision, because it is the only thing
+    /// holding `last_attempt_at` (spec §2). The session carries the answer onto
+    /// the attempts of the block that has not started scoring yet.
+    pub(crate) fn mark_cold(&mut self, cold: bool) {
+        if let Some(block) = self.block_mut() {
+            if block.attempts.is_empty() {
+                block.cold = cold;
+            }
+        }
+    }
+
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
         let before = self.recovery_key();
         let was_closing = matches!(self.state, SessionState::Closing);
         let blocks_written = self.closed_blocks.len();
         let wanders_written = self.wanders.len();
 
-        self.handle(event);
+        let evidence = self.handle(event);
 
         // Recovery replaces the session wholesale, so it can hand back fewer
         // records than the live one had (a swallowed snapshot write leaves an
@@ -418,6 +446,7 @@ impl EngineSession {
         let mut writes = CoachWrites {
             blocks: self.closed_blocks[blocks_from..].to_vec(),
             wanders: self.wanders[wanders_from..].to_vec(),
+            evidence: evidence.into_iter().collect(),
             snapshot: if matches!(self.state, SessionState::Closing) {
                 if was_closing {
                     SnapshotAction::Unchanged
@@ -437,7 +466,7 @@ impl EngineSession {
         writes
     }
 
-    fn handle(&mut self, event: &CoachEvent) {
+    fn handle(&mut self, event: &CoachEvent) -> Option<ScoredAttempt> {
         match event {
             CoachEvent::StartDrillLoop { now } => {
                 let content = ContentIndex::shipped();
@@ -445,7 +474,7 @@ impl EngineSession {
             }
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
-            CoachEvent::Tap { clean, now } => self.tap(*clean, *now),
+            CoachEvent::Tap { clean, now } => return self.tap(*clean, *now),
             CoachEvent::Stuck { now } => self.stuck(*now),
             CoachEvent::Tick { now } => self.tick(*now),
             CoachEvent::LeaveSession { now } => self.leave_session(*now),
@@ -459,6 +488,27 @@ impl EngineSession {
             }
             CoachEvent::CloseSession { now } => self.close_session(*now),
             CoachEvent::RecoverSession { session, now } => self.recover(session.clone(), *now),
+        }
+        None
+    }
+
+    /// When the mastery store's cold read applies: the events that carry a
+    /// clock. A tap carries its own, which is the one that matters.
+    pub fn now_of(event: &CoachEvent) -> Option<DateTime<Utc>> {
+        match event {
+            CoachEvent::StartDrillLoop { now }
+            | CoachEvent::Tap { now, .. }
+            | CoachEvent::Stuck { now }
+            | CoachEvent::Tick { now }
+            | CoachEvent::LeaveSession { now }
+            | CoachEvent::ClickUnavailable { now }
+            | CoachEvent::GoOffPiste { now }
+            | CoachEvent::GoUnmonitored { now }
+            | CoachEvent::CloseSession { now }
+            | CoachEvent::RecoverSession { now, .. } => Some(*now),
+            CoachEvent::CountInBeat { .. }
+            | CoachEvent::Beat { .. }
+            | CoachEvent::KeepWanderAsDrill { .. } => None,
         }
     }
 
@@ -537,13 +587,12 @@ impl EngineSession {
         };
     }
 
-    fn tap(&mut self, clean: bool, now: DateTime<Utc>) {
+    fn tap(&mut self, clean: bool, now: DateTime<Utc>) -> Option<ScoredAttempt> {
         let trigger = self.config.consecutive_fail_trigger;
-        let Some(block) = self.block_mut() else {
-            return;
-        };
+        let node = self.spec()?.node.clone();
+        let block = self.block_mut()?;
         if block.phase != Phase::AwaitingVerdict {
-            return;
+            return None;
         }
 
         let verdict = if clean {
@@ -556,9 +605,15 @@ impl EngineSession {
             at: now,
             verdict,
             source: EvidenceSource::TapVerdict,
-            cold: block.attempts.is_empty(),
+            cold: block.cold && block.attempts.is_empty(),
             self_predicted: None,
         });
+        let scored = ScoredAttempt {
+            node,
+            level: block.level,
+            verdict,
+            at: now,
+        };
         if block.gate_opened_at_attempt.is_some() {
             block.reps_after_gate += 1;
         }
@@ -571,6 +626,7 @@ impl EngineSession {
         block.last_verdict = Some(verdict);
 
         self.resolve_tap(trigger);
+        Some(scored)
     }
 
     /// The spec's three `Verdict | … |` rows, in one place.
@@ -1306,10 +1362,10 @@ mod tests {
             .iter()
             .all(|a| a.source == EvidenceSource::TapVerdict));
         assert!(
-            attempts[0].cold,
-            "the first rep of the block on returning material is the cold test"
+            attempts.iter().all(|a| !a.cold),
+            "the session does not decide cold: whether this is returning material \
+             is the mastery store's read (#1188), and nothing set it here"
         );
-        assert!(!attempts[1].cold);
         assert!(
             attempts.iter().all(|a| a.self_predicted.is_none()),
             "predict-then-reveal is deferred with machine listening (§3)"

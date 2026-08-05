@@ -8,20 +8,62 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::content::ContentIndex;
 use super::gate::{Requirement, Verdict};
-use super::session::{CoachEvent, CoachWrites, EngineSession, Phase, SessionState};
+use super::mastery::MasteryStore;
+use super::plan::ParameterLevel;
+use super::session::{
+    BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase, SessionState,
+};
 use crate::domain::item::ItemKind;
 
-/// Spec §1 gives this five fields; the mastery, judgement, ledger and content
-/// stores arrive with #1148 and the `gates.toml` parser.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+/// Spec §1 gives this five fields; the judgement track and the interruption
+/// ledger arrive with Phase 2b.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct CoachState {
     pub session: EngineSession,
+    pub mastery: MasteryStore,
+}
+
+impl Default for CoachState {
+    fn default() -> Self {
+        Self {
+            session: EngineSession::default(),
+            mastery: MasteryStore::seeded_from(ContentIndex::shipped()),
+        }
+    }
 }
 
 impl CoachState {
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
-        self.session.apply(event)
+        self.mark_cold(event);
+        let writes = self.session.apply(event);
+        for attempt in &writes.evidence {
+            self.mastery
+                .record(&attempt.node, attempt.level, attempt.verdict, attempt.at);
+        }
+        for record in writes.blocks.iter().filter(|r| r.exit == Exit::GatePassed) {
+            if let Some(next) = next_rung(record) {
+                self.mastery.level_up(&record.node, record.level, next);
+            }
+        }
+        writes
+    }
+
+    fn mark_cold(&mut self, event: &CoachEvent) {
+        let Some(now) = EngineSession::now_of(event) else {
+            return;
+        };
+        let Some((node, level)) = self
+            .session
+            .spec()
+            .map(|spec| spec.node.clone())
+            .zip(self.session.block().map(|block| block.level))
+        else {
+            return;
+        };
+        let cold = self.mastery.is_cold(&node, level, now);
+        self.session.mark_cold(cold);
     }
 
     pub fn view(&self) -> CoachView {
@@ -74,6 +116,18 @@ impl CoachState {
             rep_seq: block.rep_seq,
         })
     }
+}
+
+/// A gate pass moves the cursor to the next rung of the node's ladder the loop
+/// can run. The top rung has nowhere to go.
+fn next_rung(record: &BlockRecord) -> Option<ParameterLevel> {
+    let content = ContentIndex::shipped();
+    let node = content.node(&record.node)?;
+    let passed = node.drills.iter().position(|id| *id == record.drill)?;
+    node.drills[passed + 1..]
+        .iter()
+        .filter_map(|id| content.drill(id))
+        .find_map(|drill| drill.level)
 }
 
 fn gate_question(requirement: &Requirement, tempo_bpm: u16) -> String {
@@ -172,7 +226,9 @@ pub struct DrillView {
 mod tests {
     use super::*;
     use crate::domain::types::assert_round_trips;
-    use chrono::{DateTime, TimeZone, Utc};
+    use crate::engine::gate::ClickLevel;
+    use crate::engine::plan::ParameterLevel;
+    use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 
     fn at(second: i64) -> DateTime<Utc> {
         Utc.timestamp_opt(1_754_300_000 + second, 0).unwrap()
@@ -300,6 +356,131 @@ mod tests {
 
         coach.apply(&CoachEvent::Tick { now: at(97) });
         assert_eq!(coach.view().drill.unwrap().elapsed_seconds, 97);
+    }
+
+    // ── The mastery track, fed by the loop (#1188) ──
+
+    fn fixture_level() -> ParameterLevel {
+        ParameterLevel {
+            tempo_bpm: 120,
+            click_level: ClickLevel::TwoAndFour,
+        }
+    }
+
+    fn tap(coach: &mut CoachState, clean: bool, second: i64) {
+        coach.apply(&CoachEvent::Beat { beat_index: 32 });
+        coach.apply(&CoachEvent::Tap {
+            clean,
+            now: at(second),
+        });
+        coach.apply(&CoachEvent::Beat { beat_index: 0 });
+    }
+
+    #[test]
+    fn a_tap_is_evidence_against_the_rung_it_was_played_at() {
+        let mut coach = playing();
+        tap(&mut coach, true, 9);
+
+        let mastery = coach
+            .mastery
+            .get("rootless-a-b", fixture_level())
+            .expect("evidence at the rung the block ran");
+        assert!((mastery.evidence() - 1.0).abs() < 0.01);
+        assert_eq!(mastery.last_attempt_at, Some(at(9)));
+        assert!(
+            mastery.estimate() > 0.5,
+            "a clean tap moves the estimate up: {}",
+            mastery.estimate()
+        );
+    }
+
+    #[test]
+    fn a_missed_tap_is_evidence_too() {
+        let mut coach = playing();
+        tap(&mut coach, false, 9);
+
+        let mastery = coach.mastery.get("rootless-a-b", fixture_level()).unwrap();
+        assert!(
+            mastery.estimate() < 0.5,
+            "{} should have fallen",
+            mastery.estimate()
+        );
+    }
+
+    #[test]
+    fn a_gate_pass_moves_the_cursor_up_the_ladder_without_resetting_it() {
+        let mut coach = playing();
+        let seed = *coach
+            .mastery
+            .get("rootless-a-b", next_rung())
+            .expect("the content seeds every runnable rung");
+
+        for second in [9, 18, 27] {
+            tap(&mut coach, true, second);
+        }
+        coach.apply(&CoachEvent::Tick { now: at(40) });
+
+        let above = coach
+            .mastery
+            .get("rootless-a-b", next_rung())
+            .expect("the rung above");
+        assert_ne!(
+            above.prior, seed.prior,
+            "passing the gate re-seeds the rung above from what the hands just said"
+        );
+        assert!(
+            above.estimate() > seed.estimate(),
+            "and it inherits optimism rather than starting from the content seed: \
+             {} against {}",
+            above.estimate(),
+            seed.estimate()
+        );
+        assert_eq!(above.evidence(), 0.0, "inheritance is prior, not evidence");
+    }
+
+    #[test]
+    fn the_first_rep_of_the_day_on_returning_material_is_the_cold_test() {
+        let mut coach = CoachState::default();
+        coach.mastery.record(
+            "rootless-a-b",
+            fixture_level(),
+            Verdict::Clean,
+            at(0) - TimeDelta::days(3),
+        );
+        coach.session.start_fixture(at(0));
+
+        tap(&mut coach, true, 9);
+        tap(&mut coach, true, 18);
+
+        let attempts = &coach.session.block().unwrap().attempts;
+        assert!(
+            attempts[0].cold,
+            "played cold, three days after the last go"
+        );
+        assert!(!attempts[1].cold, "the second rep is warm");
+    }
+
+    #[test]
+    fn material_practised_earlier_the_same_day_is_not_a_cold_test() {
+        let mut coach = CoachState::default();
+        coach.mastery.record(
+            "rootless-a-b",
+            fixture_level(),
+            Verdict::Clean,
+            at(0) - TimeDelta::hours(1),
+        );
+        coach.session.start_fixture(at(0));
+
+        tap(&mut coach, true, 9);
+
+        assert!(!coach.session.block().unwrap().attempts[0].cold);
+    }
+
+    fn next_rung() -> ParameterLevel {
+        ParameterLevel {
+            tempo_bpm: 80,
+            click_level: ClickLevel::EveryBeat,
+        }
     }
 
     // ── The #846 hazard: every bridge type on the real wire ──

@@ -11,6 +11,7 @@
 mod coach;
 mod content;
 mod gate;
+mod mastery;
 mod plan;
 mod session;
 

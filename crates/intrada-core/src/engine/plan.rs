@@ -47,7 +47,7 @@ pub enum Mode {
 
 /// The rung of a parameter ladder a block is being practised at. Mastery is
 /// held per `(node, parameter_level)` (spec §2), so this is state, not display.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct ParameterLevel {
     pub tempo_bpm: u16,
