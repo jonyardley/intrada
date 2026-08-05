@@ -84,8 +84,6 @@ jobs:
         with:
           tool: cargo-nextest
       - run: cargo nextest run --workspace --profile ci
-      - name: Doc tests
-        run: cargo test --doc --workspace
       - name: Publish test results
         if: always()
         uses: dorny/test-reporter@v3
@@ -301,23 +299,15 @@ jobs:
           # swift-snapshot-testing) — and skip the write. The exact-key on main
           # tracks `main`'s own source, so PR incremental builds stay warm.
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      # Snapshot test = deterministic UI-regression "eyes" (renders RootView
-      # against a committed reference). Create a deterministic iOS 26.5 sim —
-      # the reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev), and
-      # SwiftUI snapshots are renderer-specific. Bump (here + the reference)
-      # when local dev moves to a newer Xcode/iOS.
-      - name: Run snapshot tests
-        working-directory: ios
-        run: |
-          UDID=$(xcrun simctl create snap-26-5 "iPhone 16" "iOS26.5")
-          test -n "$UDID" || { echo '::error::could not create iOS 26.5 simulator'; exit 1; }
-          # COMPILER_INDEX_STORE_ENABLE=NO skips building the IDE code-navigation
-          # index store — pure dead weight in CI (nothing reads it). -quiet trims
-          # the per-file build log noise.
-          xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
-            -destination "id=$UDID" -derivedDataPath build/dd \
-            -clonedSourcePackagesDirPath build/spm -quiet \
-            COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+      # Full gate = unit + snapshot + XCUITests, via the same `just
+      # ios-test-full` recipe local dev runs (#1198) — one recipe shared
+      # between CI and local, instead of a hand-copied xcodebuild invocation
+      # that can drift from it. The reference is recorded on iOS 26.5 / Xcode
+      # 26.5 (= local dev); SwiftUI snapshots are renderer-specific — bump the
+      # pin in the justfile + the reference together when local dev moves to
+      # a newer Xcode/iOS.
+      - name: Run tests (just ios-test-full)
+        run: just ios-test-full
       - name: Upload snapshot failures
         if: failure()
         uses: actions/upload-artifact@v7

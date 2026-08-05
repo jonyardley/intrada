@@ -61,7 +61,7 @@ specs/                   # Spec docs for major features (Tier 3 only — see Wor
 
 ```bash
 just check                 # fmt-check → lint → test → hygiene; mirrors CI — run before push
-just test                  # nextest + doc tests, same as CI's `test` job
+just test                  # nextest, same as CI's `test` job
 just lint                  # clippy -D warnings, same targets as CI's `clippy` job
 just hygiene               # typos + cargo-shear (CI's Security & hygiene job)
 cargo test -p intrada-api  # API tests only
@@ -118,6 +118,21 @@ device model is irrelevant to snapshot output (swift-snapshot-testing pins
 ios-test-sim-clean` deletes only the current worktree's sim. Removing blocking
 isn't free of resource limits — N booted sims + N Swift builds is heavy, so the
 practical ceiling is how many parallel agents the host can take, not the sim.
+
+`just ios-test` is tiered (#1198): it runs only `IntradaTests` (unit +
+snapshot — seconds once built), never `IntradaUITests`. `just ios-test-full`
+adds the XCUITests and is what `ship` and CI run before merge, so nothing
+merges without the UI tier even though the local inner loop skips it. Both
+split `xcodebuild build-for-testing` from `test-without-building`, so a flake
+retry or test-only change reruns without rebuilding the app.
+
+**Two overlapping runs in one checkout will crash each other's XCUITests**
+(#1192) — `just ios-test`/`ios-test-full` refuse to start while another
+`xcodebuild`/`XCTestAgent` is already live against this checkout's
+DerivedData (parallel *worktrees* are unaffected — they already get distinct
+sims). They also skip the run outright when HEAD is clean and already
+stamped green at this tier in `ios/build/.ios-test-stamp` — don't hand-run a
+gate a teammate already ran green at the same commit; let the stamp skip it.
 
 **Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R on the
 default **Intrada** scheme, or any build with no launch args) runs

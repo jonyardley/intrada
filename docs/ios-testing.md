@@ -47,7 +47,8 @@ SEED=0 just ios-run # …against your real on-device data, not the demo seed
 just ios-gen        # force-regenerate the Swift bindings (after a core change)
 just ios-snapshots-optimize   # oxipng -o max every reference (run before commit)
 just ios-snapshots-check      # orphan + 200 KB-ceiling guard (same as CI)
-just ios-test                 # full IntradaTests suite on a per-worktree sim (CI parity)
+just ios-test                 # fast tier: IntradaTests only (unit + snapshot) on a per-worktree sim
+just ios-test-full            # full gate: + IntradaUITests — what ship/CI run before merge (CI parity)
 just ios-test-sim-clean       # delete this worktree's ios-test sim
 ```
 
@@ -121,16 +122,23 @@ checkout is using**.
 
 Rules to keep two checkouts from colliding:
 
-- **`just ios-test` is safe to run in parallel across worktrees.** It names its
-  sim per worktree (`intrada-test-26-5-<worktree-basename>`), so each checkout
-  with a distinct basename gets its own device — no serialization. (Two
-  worktree dirs that sanitise to the same name — e.g. `foo.1` and `foo-1` —
-  would share a sim; slug-like worktree names avoid this.) The device model is irrelevant to
+- **`just ios-test`/`ios-test-full` are safe to run in parallel across
+  worktrees.** They name their sim per worktree
+  (`intrada-test-26-5-<worktree-basename>`), so each checkout with a distinct
+  basename gets its own device — no serialization. (Two worktree dirs that
+  sanitise to the same name — e.g. `foo.1` and `foo-1` — would share a sim;
+  slug-like worktree names avoid this.) The device model is irrelevant to
   snapshot output (swift-snapshot-testing pins `.iPhone13`; only the iOS 26.5
   runtime affects the pixels), so per-worktree devices change nothing about
   pass/fail. `just ios-test-sim-clean` deletes only the current worktree's sim.
   This removes *blocking*, not resource load — N booted sims + N Swift builds is
   heavy, so the practical ceiling is how many parallel agents the host can take.
+- **Two overlapping runs in the *same* checkout are not safe** (#1192) — they'd
+  share that checkout's simulator and DerivedData and crash each other's
+  XCUITests. The recipes refuse to start when another `xcodebuild`/
+  `XCTestAgent` is already live against this checkout, and they also warn (not
+  block) if `crates/` has uncommitted changes, since a concurrent core edit
+  can red the gate with a compile error unrelated to the diff under test.
 - **Ad-hoc `xcodebuild` / `simctl` sessions that share one device still
   serialize.** If you run the raw `xcodebuild test` snippets above (not via
   `just ios-test`), give each session a **worktree-scoped sim** targeted by
@@ -156,7 +164,8 @@ Rules to keep two checkouts from colliding:
 
 ## CI
 
-`.github/workflows/ci.yml` → **Native iOS (build + test)** runs the same
-`xcodebuild test` on a pinned `macos-26` / Xcode 26.5 runner (clean host, no
-pty contention), plus **Snapshot Hygiene**. If snapshots/UI tests are green
-there, the local pty errors above were host-only.
+`.github/workflows/ci.yml` → **Native iOS (build + test)** runs `just
+ios-test-full` (the same recipe as local dev's full gate — #1198) on a pinned
+`macos-26` / Xcode 26.5 runner (clean host, no pty contention), plus
+**Snapshot Hygiene**. If snapshots/UI tests are green there, the local pty
+errors above were host-only.
