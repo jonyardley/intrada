@@ -855,6 +855,10 @@ itself. Never run a second vertical session beside it. Start one with
 - **Shared checkout, no file locking.** Teams lock task claiming, not file
   edits. Every file gets exactly one writing teammate, fixed in the brief;
   the serialisation-point files above are single-owner by definition.
+- **Commit with an explicit pathspec**: `git commit -F <msg-file> -- <paths>`
+  (implies `--only`). In a shared checkout a bare `git commit` sweeps the
+  other writer's staged files into your commit; a scoped `git add` does not
+  protect against it (#1219 misfiled a deletion exactly this way).
 - **Contract before code.** The core teammate publishes the
   Event/Effect/ViewModel contract for the slice before either side wires it.
   A bridge-type change is messaged to the team, never landed silently.
