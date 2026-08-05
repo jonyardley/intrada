@@ -1,0 +1,26 @@
+{
+  "languages": {
+    "Rust": {
+      "format_on_save": "on"
+    },
+    "Swift": {
+      "tab_size": 2,
+      "format_on_save": "on",
+      "formatter": {
+        "external": {
+          "command": "swift",
+          "arguments": ["format"]
+        }
+      }
+    }
+  },
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "check": {
+          "command": "clippy"
+        }
+      }
+    }
+  }
+}
