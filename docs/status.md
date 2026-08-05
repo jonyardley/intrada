@@ -27,6 +27,8 @@ countable criteria.
 - #1189 — the five-stage planner as a pure function, retiring the seeded block
 - #1182 — the drill loop reached from Practice: press-start, and the ladder's
   last two rungs
+- #1122 — re-exported `design/intrada-design-system.html` (the Step ladder
+  gallery entry, via Claude Design's Playwright-driven export)
 - #1194 — the engine reads its authored content (`gates.toml` parser, planner
   + persistence groundwork); tap-verdict evidence survives a crash
 - #1183 — the session state machine and the tap-verdict bridge

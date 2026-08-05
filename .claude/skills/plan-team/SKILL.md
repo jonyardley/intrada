@@ -33,18 +33,39 @@ session and starts the team; this skill only plans and hands over.
 
 ## Output (exactly this shape)
 
-1. One line of rationale per chosen issue; one line per rejected near-miss.
-2. The split-ratio call from step 5: team or solo, one line why.
-3. The command, as a runnable block:
+Rationale first, then a step list. The commands ARE the deliverable — never
+bury one mid-paragraph (Jon's feedback, 2026-08-05).
 
-   ```bash
-   cd ~/Dev/intrada && git pull && claude "/team-vertical <issue numbers>"
-   ```
+1. **Orientation** (3-5 lines, prose): phase, what just landed, one line of
+   rationale per chosen issue, one line per rejected near-miss, and the
+   split-ratio call from step 5 (team or solo, one line why).
+2. **Step list** — one numbered step per session to start. Each step
+   carries, in this order:
+   - Bold title: what it ships, with issue numbers.
+   - A `Model:` line — model + effort (lead and teammates for a team), and
+     **where**: plain terminal vs Zed (agent teams are terminal-only), new
+     vs existing session, which checkout/worktree.
+   - TWO fenced blocks, never one combined command (Jon manages workspaces
+     with his own tooling, and `claude "/team-vertical <n>"` drops the
+     arguments — he launches Claude bare and pastes the prompt inside):
 
-   Substitute a fresh worktree for `~/Dev/intrada` if another session is
-   live in the main checkout, and say which path you chose. If step 5 called
-   for solo instead, give the equivalent single-session opener with
-   test-runner subagents rather than this command.
-4. Close with the model line: lead on Opus/Fable high; teammates come from
-   the terminal session's `/config` default (Sonnet). For a solo call, this
-   is just the one session's model.
+     *Shell* — workspace setup ending in a bare `claude`:
+
+     ```bash
+     cd ~/Dev/intrada && git pull
+     claude
+     ```
+
+     *Inside Claude, paste* — the slash command or opener prompt only:
+
+     ```text
+     /team-vertical <issue numbers>
+     ```
+
+     Substitute a fresh worktree for `~/Dev/intrada` if another session is
+     live in the main checkout, and say which path you chose. If step 5
+     called for solo, the second block is the opener prompt for a solo
+     session with test-runner subagents instead.
+   - Steps that are Jon's own (hardware, practising) go last, no command.
+3. Nothing between or after the command blocks except the next step —
+   explanation lives in the orientation, above.
