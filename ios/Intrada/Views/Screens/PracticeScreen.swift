@@ -11,6 +11,9 @@ struct PracticeScreen: View {
   private let referenceDate: Date
   @State private var selectedDay: Date?
   @State private var weekIndexOverride: Int?
+  // Presentation only: the core owns the session itself, and closes the loop by
+  // clearing `coach.drill`, which `DrillLoopHost` reports back through onClose.
+  @State private var drillLoopRunning = false
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -60,12 +63,14 @@ struct PracticeScreen: View {
           }
           hero
             .fadeUp(0)
-          thisWeek
+          deferredFromPlan
             .fadeUp(1)
-          selectedDaySection
+          thisWeek
             .fadeUp(2)
-          footerLink
+          selectedDaySection
             .fadeUp(3)
+          footerLink
+            .fadeUp(4)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -83,6 +88,22 @@ struct PracticeScreen: View {
     .navigationDestination(isPresented: buildingBinding) {
       SessionBuilderScreen()
     }
+    .fullScreenCover(isPresented: $drillLoopRunning) {
+      DrillLoopHost(onClose: {
+        drillLoopRunning = false
+        planToday()
+      })
+    }
+    .task { planToday() }
+  }
+
+  /// The core clears `plan` when the first block opens, so this asks for one
+  /// only when there isn't one — on arrival, and again after a session ends.
+  /// `availableMinutes: nil` takes the authored `[defaults]` length; the
+  /// declaration surfaces that would ask are Phase 2b.
+  private func planToday() {
+    guard store.viewModel?.coach.plan == nil else { return }
+    store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
   }
 
   private var buildingBinding: Binding<Bool> {
@@ -95,40 +116,43 @@ struct PracticeScreen: View {
 
   // MARK: - (0) One-tap hero
 
+  private var plan: PlanView? { store.viewModel?.coach.plan }
+  private var firstBlock: PlannedBlockView? { plan?.blocks.first }
+
+  // No haptic on the tap: the loop is only really started once the core hands
+  // back a block, and DrillLoopHost closes straight away if it can't.
   private var hero: some View {
-    VStack(spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
+    PressStartHero(
+      headline: firstBlock?.drillTitle ?? "A focused session",
+      section: firstBlock?.section,
+      why: firstBlock?.why,
+      footnote: planShape ?? "Tap to begin — one decision",
+      onStart: { drillLoopRunning = true })
+  }
 
-      Text("A focused session")
-        .font(IntradaFont.pageTitle(25))
-        .foregroundStyle(IntradaColor.paperTop)
-        .multilineTextAlignment(.center)
+  private var planShape: String? {
+    guard let plan, !plan.blocks.isEmpty else { return nil }
+    let count = plan.blocks.count
+    return "\(count) block\(count == 1 ? "" : "s") · about \(plan.totalMinutes) minutes"
+  }
 
-      Button {
-        store.send(.session(.startBuilding))
-      } label: {
-        Image(systemName: "play.fill")
-          .font(.system(size: 38))
-          .foregroundStyle(IntradaColor.accent)
-          .frame(width: 96, height: 96)
-          .background(IntradaColor.playerBgTop)
-          .clipShape(Circle())
-          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+  // What the plan could not take. Rendered because silent dropping is a defect
+  // (spec §5 stage 5) — the wording is the core's, never composed here.
+  @ViewBuilder private var deferredFromPlan: some View {
+    if let deferred = plan?.deferred, !deferred.isEmpty {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        Eyebrow("Queued for another day")
+        ForEach(deferred, id: \.self) { line in
+          Text(line)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
-      .buttonStyle(PressRebound())
-      .accessibilityLabel("Start practising")
-      .padding(.vertical, IntradaSpacing.controlGap)
-
-      Text("Tap to begin — one decision")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
-        .multilineTextAlignment(.center)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(IntradaSpacing.card)
+      .cardSurface()
     }
-    .frame(maxWidth: .infinity)
-    .padding(IntradaSpacing.section)
-    .background(LinearGradient.practiceHero)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
   }
 
   // MARK: - (1) This week

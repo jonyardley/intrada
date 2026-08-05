@@ -19,10 +19,14 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # drill radial player) and dense-control screens (Session summary's per-item
 # score-pill rows over the gold gradient toast). They get a higher bound. Keep
 # this list TIGHT — add only a reference proven irreducible, with the reason.
+# Cropping does not help these: flat paper costs almost nothing and the gradient
+# is the whole bill, so testPressStartHeroPlanned is no smaller than the full
+# screen despite being a third of the pixels.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
     testPracticeScreen | testPracticeScreenPopulated | testPracticeScreenQuietDay | \
+      testPressStartHeroPlanned | \
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \

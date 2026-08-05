@@ -121,6 +121,8 @@ pub struct PlannerLimits {
     pub maintenance_estimate: f32,
     pub acquisition_minutes: u16,
     pub maintenance_minutes: u16,
+    pub grind_max_minutes_per_session: u16,
+    pub grind_max_blocks: u8,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -158,6 +160,13 @@ impl ContentIndex {
 
     pub fn gate(&self, id: &str) -> Option<&GateCriteria> {
         self.gates.get(id)
+    }
+
+    /// The embedded file, so a test elsewhere in `engine/` can plan against an
+    /// edited copy of the real content rather than a hand-built fixture.
+    #[cfg(test)]
+    pub(crate) fn shipped_source() -> &'static str {
+        SHIPPED
     }
 
     pub fn parse(source: &str) -> Result<ContentIndex, ContentError> {
@@ -229,6 +238,8 @@ struct RawPlanner {
     maintenance_estimate: f32,
     acquisition_minutes: u16,
     maintenance_minutes: u16,
+    grind_max_minutes_per_session: u16,
+    grind_max_blocks: u8,
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
@@ -610,6 +621,8 @@ impl RawContent {
                 maintenance_estimate: self.planner.maintenance_estimate,
                 acquisition_minutes: self.planner.acquisition_minutes,
                 maintenance_minutes: self.planner.maintenance_minutes,
+                grind_max_minutes_per_session: self.planner.grind_max_minutes_per_session,
+                grind_max_blocks: self.planner.grind_max_blocks,
             },
             intent: self.intent,
             traversal,

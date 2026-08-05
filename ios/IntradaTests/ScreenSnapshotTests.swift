@@ -699,6 +699,30 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(sheet), as: config)
   }
 
+  // ── Press start: the way in to the drill loop ──
+
+  /// Cropped to the hero rather than framed on the device: the paper below it
+  /// adds nothing to the assertion and the gradient makes a full-screen
+  /// reference too large for the hygiene ceiling.
+  func testPressStartHeroPlanned() {
+    let hero = ZStack {
+      PaperBackground()
+      PressStartHero(
+        headline: "Rootless voicings",
+        section: "A section",
+        why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
+        footnote: "5 blocks · about 30 minutes",
+        onStart: {}
+      )
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(
+      of: host(hero),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 440),
+        traits: .init(displayScale: 2)))
+  }
+
   // ── The coach drill loop (A2 / A3) ──
 
   private func drill(_ state: DrillView) -> some View {

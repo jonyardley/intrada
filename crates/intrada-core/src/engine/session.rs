@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::content::ContentIndex;
 use super::gate::{EvidenceSource, GateProgress, Verdict};
-use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
+use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
 
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
@@ -20,10 +20,17 @@ use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum CoachEvent {
-    /// Plan today's session from the authored content and run it. Becomes
-    /// "run this plan" when the session-start screen can say how long the user
-    /// has (#1182); until then the length comes from `[defaults]`.
-    StartDrillLoop {
+    /// Plan today's session without running it: the press-start surface reads
+    /// the result from `CoachView::plan`. `available_minutes` is `None` until a
+    /// surface can ask how long the user has, and falls back to the authored
+    /// `[defaults]` length.
+    PlanSession {
+        now: DateTime<Utc>,
+        available_minutes: Option<u16>,
+    },
+    /// Run the plan already made. From `Idle` this plans today's session first,
+    /// so a shell that wants no preview can send this alone.
+    StartPlannedSession {
         now: DateTime<Utc>,
     },
     /// One count-in click, reported as it sounds; `remaining` is beats left
@@ -92,7 +99,19 @@ pub struct CoachWrites {
     /// so a crash costs at most the block in flight.
     pub blocks: Vec<BlockRecord>,
     pub wanders: Vec<WanderRecord>,
+    /// Attempts the mastery track has yet to hear about (spec §2).
+    pub evidence: Vec<ScoredAttempt>,
     pub snapshot: SnapshotAction,
+}
+
+/// One attempt, told to the mastery store in the terms it holds state in:
+/// `(node, parameter_level)`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScoredAttempt {
+    pub node: String,
+    pub level: ParameterLevel,
+    pub verdict: Verdict,
+    pub at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -259,6 +278,10 @@ pub struct BlockState {
     pub rep_seq: u32,
     pub gate_opened_at_attempt: Option<u16>,
     pub reps_after_gate: u16,
+    /// Whether this block's first rep is a cold test: decided by the mastery
+    /// store, which is the only thing that knows when the material was last
+    /// played (spec §2).
+    pub cold: bool,
     gate_open_since: Option<DateTime<Utc>>,
 }
 
@@ -285,6 +308,7 @@ impl BlockState {
             rep_seq: 1,
             gate_opened_at_attempt: None,
             reps_after_gate: 0,
+            cold: false,
             gate_open_since: None,
         }
     }
@@ -346,6 +370,23 @@ pub enum SessionState {
     Closing,
 }
 
+impl SessionState {
+    /// Whether a crash here would lose something the engine cannot rebuild.
+    /// Only these states earn a blob: a plan is remade from the content and the
+    /// clock, and remade is better, since a plan carries the hour it was made
+    /// at. Saving a `Planned` session dead-ended press-start, because the shell
+    /// reads a blob as "recover" and recovering a plan hands back no drill
+    /// (#1219).
+    fn worth_recovering(&self) -> bool {
+        matches!(
+            self,
+            SessionState::Running { .. }
+                | SessionState::OffPiste { .. }
+                | SessionState::Unmonitored { .. }
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EngineSession {
@@ -371,7 +412,10 @@ impl EngineSession {
 
     pub fn spec(&self) -> Option<&BlockSpec> {
         match &self.state {
-            SessionState::Running { plan, block, .. } => plan.blocks.get(block.spec_index),
+            SessionState::Running { plan, block, .. } => plan
+                .blocks
+                .get(block.spec_index)
+                .map(|planned| &planned.spec),
             _ => None,
         }
     }
@@ -393,13 +437,30 @@ impl EngineSession {
         }
     }
 
+    /// The mastery store owns the cold decision, because it is the only thing
+    /// holding `last_attempt_at` (spec §2). The session carries the answer onto
+    /// the attempts of the block that has not started scoring yet.
+    pub(crate) fn mark_cold(&mut self, cold: bool) {
+        if let Some(block) = self.block_mut() {
+            if block.attempts.is_empty() {
+                block.cold = cold;
+            }
+        }
+    }
+
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        self.apply_with_plan(event, None)
+    }
+
+    /// `plan` is today's session, which only `CoachState` can work out: the
+    /// planner reads the mastery track, and the session is inside it.
+    pub fn apply_with_plan(&mut self, event: &CoachEvent, plan: Option<Plan>) -> CoachWrites {
         let before = self.recovery_key();
         let was_closing = matches!(self.state, SessionState::Closing);
         let blocks_written = self.closed_blocks.len();
         let wanders_written = self.wanders.len();
 
-        self.handle(event);
+        let evidence = self.handle(event, plan);
 
         // Recovery replaces the session wholesale, so it can hand back fewer
         // records than the live one had (a swallowed snapshot write leaves an
@@ -418,13 +479,14 @@ impl EngineSession {
         let mut writes = CoachWrites {
             blocks: self.closed_blocks[blocks_from..].to_vec(),
             wanders: self.wanders[wanders_from..].to_vec(),
+            evidence: evidence.into_iter().collect(),
             snapshot: if matches!(self.state, SessionState::Closing) {
                 if was_closing {
                     SnapshotAction::Unchanged
                 } else {
                     SnapshotAction::Clear
                 }
-            } else if self.recovery_key() == before {
+            } else if !self.state.worth_recovering() || self.recovery_key() == before {
                 SnapshotAction::Unchanged
             } else {
                 SnapshotAction::Save
@@ -437,15 +499,27 @@ impl EngineSession {
         writes
     }
 
-    fn handle(&mut self, event: &CoachEvent) {
+    fn handle(&mut self, event: &CoachEvent, planned: Option<Plan>) -> Option<ScoredAttempt> {
         match event {
-            CoachEvent::StartDrillLoop { now } => {
-                let content = ContentIndex::shipped();
-                self.start(Plan::for_today(content, content.session_minutes, 0), *now)
+            CoachEvent::PlanSession { .. } => {
+                if self.accepts_plan(event) {
+                    if let Some(plan) = planned {
+                        self.state = SessionState::Planned { plan };
+                    }
+                }
             }
+            CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
+                SessionState::Planned { plan } => self.start(plan, *now),
+                SessionState::Idle => {
+                    if let Some(plan) = planned {
+                        self.start(plan, *now);
+                    }
+                }
+                running_or_closing => self.state = running_or_closing,
+            },
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
-            CoachEvent::Tap { clean, now } => self.tap(*clean, *now),
+            CoachEvent::Tap { clean, now } => return self.tap(*clean, *now),
             CoachEvent::Stuck { now } => self.stuck(*now),
             CoachEvent::Tick { now } => self.tick(*now),
             CoachEvent::LeaveSession { now } => self.leave_session(*now),
@@ -459,6 +533,28 @@ impl EngineSession {
             }
             CoachEvent::CloseSession { now } => self.close_session(*now),
             CoachEvent::RecoverSession { session, now } => self.recover(session.clone(), *now),
+        }
+        None
+    }
+
+    /// When the mastery store's cold read applies: the events that carry a
+    /// clock. A tap carries its own, which is the one that matters.
+    pub fn now_of(event: &CoachEvent) -> Option<DateTime<Utc>> {
+        match event {
+            CoachEvent::PlanSession { now, .. }
+            | CoachEvent::StartPlannedSession { now }
+            | CoachEvent::Tap { now, .. }
+            | CoachEvent::Stuck { now }
+            | CoachEvent::Tick { now }
+            | CoachEvent::LeaveSession { now }
+            | CoachEvent::ClickUnavailable { now }
+            | CoachEvent::GoOffPiste { now }
+            | CoachEvent::GoUnmonitored { now }
+            | CoachEvent::CloseSession { now }
+            | CoachEvent::RecoverSession { now, .. } => Some(*now),
+            CoachEvent::CountInBeat { .. }
+            | CoachEvent::Beat { .. }
+            | CoachEvent::KeepWanderAsDrill { .. } => None,
         }
     }
 
@@ -493,12 +589,12 @@ impl EngineSession {
         *self = session;
     }
 
-    fn start(&mut self, plan: Plan, now: DateTime<Utc>) {
-        let Some(spec) = plan.blocks.first() else {
+    pub(crate) fn start(&mut self, plan: Plan, now: DateTime<Utc>) {
+        let Some(planned) = plan.blocks.first() else {
             self.state = SessionState::Planned { plan };
             return;
         };
-        let block = BlockState::open(spec, 0, now);
+        let block = BlockState::open(&planned.spec, 0, now);
         self.state = SessionState::Running { plan, block };
     }
 
@@ -537,13 +633,12 @@ impl EngineSession {
         };
     }
 
-    fn tap(&mut self, clean: bool, now: DateTime<Utc>) {
+    fn tap(&mut self, clean: bool, now: DateTime<Utc>) -> Option<ScoredAttempt> {
         let trigger = self.config.consecutive_fail_trigger;
-        let Some(block) = self.block_mut() else {
-            return;
-        };
+        let node = self.spec()?.node.clone();
+        let block = self.block_mut()?;
         if block.phase != Phase::AwaitingVerdict {
-            return;
+            return None;
         }
 
         let verdict = if clean {
@@ -556,9 +651,15 @@ impl EngineSession {
             at: now,
             verdict,
             source: EvidenceSource::TapVerdict,
-            cold: block.attempts.is_empty(),
+            cold: block.cold && block.attempts.is_empty(),
             self_predicted: None,
         });
+        let scored = ScoredAttempt {
+            node,
+            level: block.level,
+            verdict,
+            at: now,
+        };
         if block.gate_opened_at_attempt.is_some() {
             block.reps_after_gate += 1;
         }
@@ -571,6 +672,7 @@ impl EngineSession {
         block.last_verdict = Some(verdict);
 
         self.resolve_tap(trigger);
+        Some(scored)
     }
 
     /// The spec's three `Verdict | … |` rows, in one place.
@@ -606,62 +708,129 @@ impl EngineSession {
     /// caller ends the block instead of pretending to escalate.
     fn escalate(&mut self) -> bool {
         loop {
-            let (pct, floor, rung) = {
-                let Some(block) = self.block() else {
-                    return false;
-                };
-                let Some(rung) = self
-                    .config
-                    .ladder
-                    .get(block.escalation_fired.len())
-                    .copied()
-                else {
-                    return false;
-                };
-                (
-                    self.config.tempo_down_pct.min(100),
-                    self.config.tempo_floor_bpm,
-                    rung,
-                )
-            };
-            let Some(block) = self.block_mut() else {
+            let Some(rung) = self.next_rung() else {
                 return false;
             };
-
-            let acted = match rung {
-                Rung::TempoDown => {
-                    let dropped = block
-                        .level
-                        .tempo_bpm
-                        .saturating_sub(
-                            (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
-                        )
-                        .max(floor);
-                    let moved = dropped < block.level.tempo_bpm;
-                    block.level.tempo_bpm = dropped;
-                    moved
+            // A rung is spent whether or not it could act: restarting an
+            // identical rep is not an escalation, so the ladder moves on.
+            match rung {
+                // These two change the material rather than the parameters, so
+                // they close this block and open the alternative the plan
+                // carried (#1182).
+                Rung::ChangeMode | Rung::SwapDrill => {
+                    self.spend_rung(rung);
+                    if self.draw_alternative(rung) {
+                        self.close_block(Exit::Escalated, true);
+                        return true;
+                    }
                 }
-                Rung::ShrinkScope => {
-                    let shrunk = (block.bars / 2).max(1);
-                    let moved = shrunk < block.bars;
-                    block.bars = shrunk;
-                    moved
+                Rung::TempoDown | Rung::ShrinkScope => {
+                    let acted = self.change_parameter(rung);
+                    self.spend_rung(rung);
+                    if acted {
+                        let Some(block) = self.block_mut() else {
+                            return false;
+                        };
+                        block.consecutive_fails = 0;
+                        block.start_rep();
+                        block.phase = Phase::Escalating { rung };
+                        return true;
+                    }
                 }
-                // Changing mode or swapping the drill needs alternatives only
-                // §5's planner can supply (#1182).
-                Rung::ChangeMode | Rung::SwapDrill => return false,
-            };
-            block.escalation_fired.push(rung);
-            if !acted {
-                // Already at the floor or down to one bar: record the rung as
-                // spent and try the next, rather than restart an identical rep.
-                continue;
             }
-            block.consecutive_fails = 0;
-            block.start_rep();
-            block.phase = Phase::Escalating { rung };
-            return true;
         }
+    }
+
+    /// Whether a fresh plan would be used if one were handed over. The shell
+    /// plans on every arrival at Practice, so planning has to be inert
+    /// mid-session: replacing the state would drop the block in flight with no
+    /// `BlockRecord` behind it (#1219). `CoachState` reads this too, so it does
+    /// not run the planner for an answer that would be discarded.
+    pub(crate) fn accepts_plan(&self, event: &CoachEvent) -> bool {
+        match event {
+            CoachEvent::PlanSession { .. } => matches!(
+                self.state,
+                SessionState::Idle | SessionState::Planned { .. }
+            ),
+            // A plan already made wins; from anywhere else the event is ignored.
+            CoachEvent::StartPlannedSession { .. } => matches!(self.state, SessionState::Idle),
+            _ => false,
+        }
+    }
+
+    fn next_rung(&self) -> Option<Rung> {
+        let block = self.block()?;
+        self.config
+            .ladder
+            .get(block.escalation_fired.len())
+            .copied()
+    }
+
+    fn spend_rung(&mut self, rung: Rung) {
+        if let Some(block) = self.block_mut() {
+            block.escalation_fired.push(rung);
+        }
+    }
+
+    /// `false` = already at the tempo floor or down to a single bar, so this
+    /// rung would change nothing.
+    fn change_parameter(&mut self, rung: Rung) -> bool {
+        let pct = self.config.tempo_down_pct.min(100);
+        let floor = self.config.tempo_floor_bpm;
+        let Some(block) = self.block_mut() else {
+            return false;
+        };
+        match rung {
+            Rung::TempoDown => {
+                let dropped = block
+                    .level
+                    .tempo_bpm
+                    .saturating_sub(
+                        (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
+                    )
+                    .max(floor);
+                let moved = dropped < block.level.tempo_bpm;
+                block.level.tempo_bpm = dropped;
+                moved
+            }
+            Rung::ShrinkScope => {
+                let shrunk = (block.bars / 2).max(1);
+                let moved = shrunk < block.bars;
+                block.bars = shrunk;
+                moved
+            }
+            Rung::ChangeMode | Rung::SwapDrill => false,
+        }
+    }
+
+    /// The plan supplies the alternative; this only moves the cursor onto it, by
+    /// putting it next in the plan so the closing block hands straight over.
+    fn draw_alternative(&mut self, rung: Rung) -> bool {
+        let SessionState::Running { plan, block } = &mut self.state else {
+            return false;
+        };
+        let index = block.spec_index;
+        let Some(planned) = plan.blocks.get_mut(index) else {
+            return false;
+        };
+        let Some(offer) = planned
+            .alternatives
+            .iter()
+            .position(|alternative| alternative.rung == rung)
+        else {
+            return false;
+        };
+        let drawn = planned.alternatives.remove(offer);
+        plan.blocks.insert(
+            index + 1,
+            PlannedBlock {
+                spec: drawn.spec,
+                why: drawn.why,
+                alternatives: Vec::new(),
+                new_keys: None,
+            },
+        );
+        true
     }
 
     fn stuck(&mut self, now: DateTime<Utc>) {
@@ -765,7 +934,11 @@ impl EngineSession {
         let SessionState::Running { plan, block } = &mut self.state else {
             return;
         };
-        let Some(spec) = plan.blocks.get(block.spec_index) else {
+        let Some(spec) = plan
+            .blocks
+            .get(block.spec_index)
+            .map(|planned| &planned.spec)
+        else {
             return;
         };
 
@@ -791,7 +964,7 @@ impl EngineSession {
         let next = block.spec_index + 1;
         let now = block.now;
         match plan.blocks.get(next).filter(|_| advance) {
-            Some(spec) => *block = BlockState::open(spec, next, now),
+            Some(planned) => *block = BlockState::open(&planned.spec, next, now),
             None => self.state = SessionState::Closing,
         }
     }
@@ -848,9 +1021,20 @@ mod tests {
     // ── Entering the loop ──
 
     #[test]
-    fn starting_a_session_runs_todays_plan_from_the_content() {
+    fn starting_a_session_runs_the_plan_it_was_handed() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        let content = ContentIndex::shipped();
+        session.apply_with_plan(
+            &CoachEvent::StartPlannedSession { now: at(0) },
+            Some(crate::engine::plan::plan(
+                &crate::engine::coach::CoachState::default(),
+                crate::engine::plan::PlanContext {
+                    now: at(0),
+                    available_minutes: content.session_minutes,
+                    rng_seed: 0,
+                },
+            )),
+        );
 
         let SessionState::Running { plan, .. } = &session.state else {
             panic!("a session should be running");
@@ -1085,15 +1269,159 @@ mod tests {
     }
 
     #[test]
+    fn a_plan_handed_over_mid_block_is_refused_by_the_machine_itself() {
+        let mut session = listening();
+        let running = session.spec().expect("a running block").drill.clone();
+
+        let writes = session.apply_with_plan(
+            &CoachEvent::PlanSession {
+                now: at(5),
+                available_minutes: Some(20),
+            },
+            Some(Plan::fixture()),
+        );
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.clone()),
+            Some(running),
+            "the state owner refuses it too, not only the caller that declines to \
+             plan: a dropped block leaves no record behind it (#1219)"
+        );
+        assert!(writes.blocks.is_empty());
+        assert_eq!(writes.snapshot, SnapshotAction::Unchanged);
+    }
+
+    /// A fixture plan whose one block has somewhere to go when the ladder gets
+    /// past dropping the tempo and shrinking the phrase.
+    fn with_alternative(rung: Rung) -> EngineSession {
+        let mut plan = Plan::fixture();
+        let mut spec = plan.blocks[0].spec.clone();
+        spec.drill = "rootless-one-key".to_string();
+        spec.section = Some("one key, LH alone".to_string());
+        let why = plan.blocks[0].why.clone();
+        plan.blocks[0]
+            .alternatives
+            .push(crate::engine::plan::Alternative { rung, spec, why });
+
+        let mut session = EngineSession::default();
+        session.start(plan, at(0));
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+        session
+    }
+
+    /// Every rung of the ladder, fired by asking rather than by missing.
+    fn get_stuck(session: &mut EngineSession, times: usize) {
+        for time in 0..times {
+            session.apply(&CoachEvent::Stuck {
+                now: at(5 + time as i64),
+            });
+            session.apply(&CoachEvent::Beat { beat_index: 0 });
+        }
+    }
+
+    #[test]
+    fn swapping_the_drill_draws_the_alternative_the_plan_supplied() {
+        let mut session = with_alternative(Rung::SwapDrill);
+
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.as_str()),
+            Some("rootless-one-key"),
+            "the fourth rung swaps the drill for one the plan carried"
+        );
+        let closed = session
+            .closed_blocks
+            .last()
+            .expect("the block it gave up on");
+        assert_eq!(closed.exit, Exit::Escalated);
+        assert_eq!(
+            closed.escalation_fired,
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ],
+            "every rung it went through is on the record, including the one that \
+             had nothing to draw"
+        );
+        assert!(
+            matches!(session.state, SessionState::Running { .. }),
+            "and the session carries on: abandoning is not what the app teaches"
+        );
+    }
+
+    #[test]
+    fn changing_mode_draws_its_own_alternative_before_the_drill_is_swapped() {
+        let mut session = with_alternative(Rung::ChangeMode);
+
+        get_stuck(&mut session, 3);
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.as_str()),
+            Some("rootless-one-key"),
+            "the third rung acts when the plan can supply a different way in"
+        );
+        assert_eq!(
+            session
+                .closed_blocks
+                .last()
+                .map(|closed| closed.escalation_fired.clone()),
+            Some(vec![Rung::TempoDown, Rung::ShrinkScope, Rung::ChangeMode]),
+            "and the ladder stops there rather than swapping the drill too"
+        );
+    }
+
+    #[test]
+    fn a_block_that_escalates_past_what_the_plan_can_supply_still_ends_escalated() {
+        let mut session = listening();
+
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.state,
+            SessionState::Closing,
+            "one block, no alternatives, so the session closes rather than pretending"
+        );
+        let closed = session.closed_blocks.last().expect("the block");
+        assert_eq!(closed.exit, Exit::Escalated);
+        assert_eq!(
+            closed.escalation_fired,
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ]
+        );
+    }
+
+    #[test]
+    fn an_alternative_is_drawn_once_and_not_dealt_twice() {
+        let mut session = with_alternative(Rung::SwapDrill);
+
+        get_stuck(&mut session, 4);
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.closed_blocks.len(),
+            2,
+            "the swapped-in block escalates too, and has nothing left to draw"
+        );
+        assert_eq!(session.state, SessionState::Closing);
+    }
+
+    #[test]
     fn a_consecutive_gate_empties_its_dots_and_still_escalates() {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
         if let SessionState::Running { plan, block } = &mut session.state {
-            plan.blocks[0].gate.requirement = Requirement::CleanPasses {
+            plan.blocks[0].spec.gate.requirement = Requirement::CleanPasses {
                 count: 3,
                 consecutive: true,
             };
-            block.gate_progress = GateProgress::new(&plan.blocks[0].gate.requirement);
+            block.gate_progress = GateProgress::new(&plan.blocks[0].spec.gate.requirement);
         }
         session.apply(&CoachEvent::Beat { beat_index: 0 });
 
@@ -1126,8 +1454,8 @@ mod tests {
         session.start_fixture(at(0));
         if let SessionState::Running { plan, .. } = &mut session.state {
             let mut second = plan.blocks[0].clone();
-            second.drill_title = "Shells".to_string();
-            second.node = "shells-ii-v-i".to_string();
+            second.spec.drill_title = "Shells".to_string();
+            second.spec.node = "shells-ii-v-i".to_string();
             plan.blocks.push(second);
         }
         session.apply(&CoachEvent::Beat { beat_index: 0 });
@@ -1245,8 +1573,13 @@ mod tests {
         assert_eq!(session.closed_blocks[0].exit, Exit::Escalated);
         assert_eq!(
             session.closed_blocks[0].escalation_fired,
-            vec![Rung::TempoDown, Rung::ShrinkScope],
-            "only the rungs that actually changed the plan are recorded"
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ],
+            "a rung with nothing to draw on is still spent, the same way a rung              that would change nothing is (#1182)"
         );
     }
 
@@ -1306,10 +1639,10 @@ mod tests {
             .iter()
             .all(|a| a.source == EvidenceSource::TapVerdict));
         assert!(
-            attempts[0].cold,
-            "the first rep of the block on returning material is the cold test"
+            attempts.iter().all(|a| !a.cold),
+            "the session does not decide cold: whether this is returning material \
+             is the mastery store's read (#1188), and nothing set it here"
         );
-        assert!(!attempts[1].cold);
         assert!(
             attempts.iter().all(|a| a.self_predicted.is_none()),
             "predict-then-reveal is deferred with machine listening (§3)"
