@@ -370,6 +370,23 @@ pub enum SessionState {
     Closing,
 }
 
+impl SessionState {
+    /// Whether a crash here would lose something the engine cannot rebuild.
+    /// Only these states earn a blob: a plan is remade from the content and the
+    /// clock, and remade is better, since a plan carries the hour it was made
+    /// at. Saving a `Planned` session dead-ended press-start, because the shell
+    /// reads a blob as "recover" and recovering a plan hands back no drill
+    /// (#1219).
+    fn worth_recovering(&self) -> bool {
+        matches!(
+            self,
+            SessionState::Running { .. }
+                | SessionState::OffPiste { .. }
+                | SessionState::Unmonitored { .. }
+        )
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct EngineSession {
@@ -469,7 +486,7 @@ impl EngineSession {
                 } else {
                     SnapshotAction::Clear
                 }
-            } else if self.recovery_key() == before {
+            } else if !self.state.worth_recovering() || self.recovery_key() == before {
                 SnapshotAction::Unchanged
             } else {
                 SnapshotAction::Save
@@ -485,8 +502,10 @@ impl EngineSession {
     fn handle(&mut self, event: &CoachEvent, planned: Option<Plan>) -> Option<ScoredAttempt> {
         match event {
             CoachEvent::PlanSession { .. } => {
-                if let Some(plan) = planned {
-                    self.state = SessionState::Planned { plan };
+                if self.accepts_plan(event) {
+                    if let Some(plan) = planned {
+                        self.state = SessionState::Planned { plan };
+                    }
                 }
             }
             CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
@@ -719,6 +738,23 @@ impl EngineSession {
                     }
                 }
             }
+        }
+    }
+
+    /// Whether a fresh plan would be used if one were handed over. The shell
+    /// plans on every arrival at Practice, so planning has to be inert
+    /// mid-session: replacing the state would drop the block in flight with no
+    /// `BlockRecord` behind it (#1219). `CoachState` reads this too, so it does
+    /// not run the planner for an answer that would be discarded.
+    pub(crate) fn accepts_plan(&self, event: &CoachEvent) -> bool {
+        match event {
+            CoachEvent::PlanSession { .. } => matches!(
+                self.state,
+                SessionState::Idle | SessionState::Planned { .. }
+            ),
+            // A plan already made wins; from anywhere else the event is ignored.
+            CoachEvent::StartPlannedSession { .. } => matches!(self.state, SessionState::Idle),
+            _ => false,
         }
     }
 
@@ -1230,6 +1266,29 @@ mod tests {
             vec![Rung::TempoDown, Rung::ShrinkScope],
             "the unusable rung is still spent"
         );
+    }
+
+    #[test]
+    fn a_plan_handed_over_mid_block_is_refused_by_the_machine_itself() {
+        let mut session = listening();
+        let running = session.spec().expect("a running block").drill.clone();
+
+        let writes = session.apply_with_plan(
+            &CoachEvent::PlanSession {
+                now: at(5),
+                available_minutes: Some(20),
+            },
+            Some(Plan::fixture()),
+        );
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.clone()),
+            Some(running),
+            "the state owner refuses it too, not only the caller that declines to \
+             plan: a dropped block leaves no record behind it (#1219)"
+        );
+        assert!(writes.blocks.is_empty());
+        assert_eq!(writes.snapshot, SnapshotAction::Unchanged);
     }
 
     /// A fixture plan whose one block has somewhere to go when the ladder gets

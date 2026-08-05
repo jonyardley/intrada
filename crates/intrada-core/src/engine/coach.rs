@@ -56,6 +56,9 @@ impl CoachState {
     /// hold. The clock seeds the dealer and is stored on the `Plan`, so the
     /// session still replays.
     fn plan_for(&self, event: &CoachEvent) -> Option<Plan> {
+        if !self.session.accepts_plan(event) {
+            return None;
+        }
         let (now, minutes) = match event {
             CoachEvent::PlanSession {
                 now,
@@ -306,6 +309,7 @@ mod tests {
     use crate::domain::types::assert_round_trips;
     use crate::engine::gate::ClickLevel;
     use crate::engine::plan::ParameterLevel;
+    use crate::engine::session::SnapshotAction;
     use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 
     fn at(second: i64) -> DateTime<Utc> {
@@ -486,6 +490,87 @@ mod tests {
             coach.view().plan,
             None,
             "and the press-start surface gives way to the drill"
+        );
+    }
+
+    #[test]
+    fn planning_a_session_leaves_no_recovery_blob_behind() {
+        let mut coach = CoachState::default();
+
+        let writes = coach.apply(&CoachEvent::PlanSession {
+            now: at(0),
+            available_minutes: Some(20),
+        });
+
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Unchanged,
+            "the blob means a block was cut off mid-flight. A planned session is \
+             remade from the content and the clock, and a blob holding one sends \
+             the shell into recovery, which hands back a session with no drill \
+             and dead-ends press-start (#1219)"
+        );
+    }
+
+    #[test]
+    fn press_start_reaches_a_drill_on_the_path_the_shell_actually_takes() {
+        let mut coach = CoachState::default();
+        let planning = coach.apply(&CoachEvent::PlanSession {
+            now: at(0),
+            available_minutes: Some(20),
+        });
+
+        // The shell's rule (DrillLoopHost.run): a blob means recover, no blob
+        // means start. Follow whichever branch the core just asked for.
+        if planning.snapshot == SnapshotAction::Save {
+            let blob = coach.session.clone();
+            coach.apply(&CoachEvent::RecoverSession {
+                session: blob,
+                now: at(1),
+            });
+        } else {
+            coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+        }
+
+        assert!(
+            coach.view().drill.is_some(),
+            "whichever branch the snapshot sends the shell down has to end at a \
+             drill, or the headline feature never runs on a device (#1219)"
+        );
+    }
+
+    #[test]
+    fn a_block_in_flight_is_still_saved_for_crash_recovery() {
+        let mut coach = CoachState::default();
+        let writes = coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+
+        assert_eq!(
+            writes.snapshot,
+            SnapshotAction::Save,
+            "a running block is exactly what the blob is for (#1181)"
+        );
+    }
+
+    #[test]
+    fn arriving_back_on_practice_leaves_the_block_in_flight_alone() {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+        let running = coach.view().drill.expect("a running drill").drill_title;
+
+        let writes = coach.apply(&CoachEvent::PlanSession {
+            now: at(5),
+            available_minutes: Some(20),
+        });
+
+        assert_eq!(
+            coach.view().drill.map(|drill| drill.drill_title),
+            Some(running),
+            "the shell plans on every arrival at Practice, so planning must never \
+             drop the block in flight (#1219)"
+        );
+        assert!(
+            writes.blocks.is_empty(),
+            "and nothing was recorded, because nothing ended"
         );
     }
 
