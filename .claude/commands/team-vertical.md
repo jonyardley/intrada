@@ -30,10 +30,13 @@ follow CLAUDE.md, Parallel work streams, Agent teams. Team shape:
 - Gates before a teammate marks a task done: `just check` for core;
   `just ios-fmt-check` and `just ios-test` (the fast unit/snapshot tier —
   `ship` runs the full `ios-test-full` gate once, at the end) for ios. Use
-  the test-runner subagent to keep the logs out of context. Never re-run a
-  gate another teammate already ran green at the current HEAD on a clean
-  tree (#1199) — the recipes' own green-stamp (#1192) already skips that
-  automatically, so a hand-run only wastes a build.
+  the test-runner subagent to keep the logs out of context. Never hand-run
+  `just ios-test`/`ios-test-full` again after another teammate already ran
+  one green at the current HEAD on a clean tree (#1199) — their green-stamp
+  (#1192) already skips a same-HEAD rerun automatically, so doing it by hand
+  only wastes a build. `just check` has no such stamp; re-running it is
+  cheap (Rust-only) but still redundant once another teammate has run it
+  green at the same HEAD.
 - **Idle teammate drafts ship work.** Whoever finishes their task list first
   doesn't sit idle waiting for the other — it drafts the PR body, any
   deferred-issue text, and the roadmap edit as task notes for the lead

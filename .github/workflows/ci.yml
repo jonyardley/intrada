@@ -78,8 +78,7 @@ jobs:
           prefix-key: "native"
           cache-on-failure: true
       # nextest runs the same assertions as `cargo test` but with a smarter
-      # scheduler — typically 40–50% faster. Doc tests are run separately
-      # below since nextest doesn't execute them.
+      # scheduler — typically 40–50% faster.
       - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-nextest

@@ -190,7 +190,6 @@ ios-test-full: _ios-sync (_ios-test-run "full")
 _ios-test-run tier:
     #!/usr/bin/env bash
     set -euo pipefail
-    just _ios-test-guard
     stamp=ios/build/.ios-test-stamp
     sha="$(git rev-parse HEAD)"
     if [ -z "$(git status --porcelain)" ] && [ -f "$stamp" ]; then
@@ -200,6 +199,7 @@ _ios-test-run tier:
             exit 0
         fi
     fi
+    just _ios-test-guard
     cd ios
     xcodegen generate
     name="$(just _ios-test-sim-name)"
@@ -235,7 +235,10 @@ _ios-test-guard:
     set -euo pipefail
     here="$(pwd)/ios"
     for pid in $(pgrep -f 'xcodebuild|XCTestAgent' 2>/dev/null || true); do
-        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+        # `|| true`: the pid can exit between pgrep and lsof (a routine race,
+        # not exotic) — lsof then fails, and under pipefail that failure
+        # propagates through the assignment and aborts the whole script.
+        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" || true
         if [ "$cwd" = "$here" ]; then
             echo "✗ another xcodebuild/XCTestAgent (pid $pid) is already running in this checkout ($here)." >&2
             echo "  Concurrent full-suite runs in one checkout are never intentional (#1192) — wait for it to finish." >&2
