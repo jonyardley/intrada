@@ -1,10 +1,10 @@
 # Intrada
 
-An intentional practice companion for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. Organise your music library, run timed practice sessions with scoring, build reusable routines, and track your progress.
+A **practice coach** for musicians, built with [Crux](https://redbadger.github.io/crux/) for cross-platform Rust. The app decides what you practise, gates every block on evidence (tap-verdicts against countable criteria — tempo, key, scope), and tells you when you're done. Around the coaching loop: a music library, timed sessions, and progress tracking, organised as three pillars — **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working).
 
-Intrada is organised around three activity pillars: **Plan** (decide what to practise), **Practice** (play with intention), and **Track** (see the process working). See [`docs/roadmap.md`](docs/roadmap.md) for the full roadmap and [`VISION.md`](VISION.md) for the research foundation.
+See [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md) for the coach vision and pedagogy, [`docs/roadmap.md`](docs/roadmap.md) for the phase plan, [`docs/status.md`](docs/status.md) for what's in flight right now, and [`VISION.md`](VISION.md) for the research foundation.
 
-The active platform is the **native SwiftUI iOS app**. A Leptos web shell and Tauri iOS host previously shared this core; both were removed (see [`docs/rebuild-review.md`](docs/rebuild-review.md)) as the product pivots to a practice-coach vision that is native-iOS-only.
+The only platform is the **native SwiftUI iOS app**, offline-first: on-device SQLite is the source of truth and the app works fully with no network and no account. A Leptos web shell and Tauri iOS host previously shared this core; both were removed (see [`docs/rebuild-review.md`](docs/rebuild-review.md)) in the pivot to the native-iOS-only practice coach.
 
 ## Architecture
 
@@ -38,18 +38,17 @@ Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all busi
 
 ## Quick start
 
-```bash
-# 1. Set up environment
-cp .env.example .env
-# Edit .env with your Turso credentials
+The app is offline-first — you don't need the API running to use it.
 
-# 2. Start the API dev server
+```bash
+# 1. Open the iOS app
+just ios
+# → regenerates Swift bindings if the core changed, then opens Xcode; Cmd+R
+
+# 2. (Optional) run the API — only needed for auth/sync work
+cp .env.example .env   # edit with your Turso credentials
 just dev
 # → API on :3001
-
-# 3. Open the iOS app
-just ios
-# → regenerates Swift bindings if the core changed, then opens Xcode
 ```
 
 ## Available commands
@@ -64,7 +63,7 @@ just dev          # Start the API dev server
 just test         # Run all tests
 just lint         # Run clippy
 just fmt          # Format code
-just check        # Run test + clippy + format check
+just check        # fmt-check + clippy + tests + hygiene (mirrors CI)
 
 # iOS (native SwiftUI)
 just ios              # Regenerate bindings (if core changed) + open in Xcode
@@ -81,12 +80,13 @@ just seed         # Seed development data (API must be running)
 
 ```
 crates/
-  intrada-core/       # Pure Crux core (no I/O, no side effects)
+  intrada-core/       # Pure Crux core (no I/O, no side effects) — incl. the coach engine
   intrada-ffi/        # UniFFI bridge — generates the Swift bindings
   intrada-api/         # REST API (Axum + Turso)
 ios/                  # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
+content/              # Practice-coach authored content (read by the engine)
 design/               # Claude Design system (intrada-design-system.dc.html)
-docs/                 # Product roadmap and documentation
+docs/                 # Roadmap, status, and documentation
 scripts/              # Development utilities (seed data, simulator helpers)
 specs/                # Design specs for major features
 ```
@@ -103,8 +103,11 @@ specs/                # Design specs for major features
 | Document | Purpose |
 |----------|---------|
 | [`CLAUDE.md`](CLAUDE.md) | Development guidelines, architecture, design system rules |
+| [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md) | The practice-coach vision, pedagogy model, and phased build plan |
+| [`docs/status.md`](docs/status.md) | What's in flight right now — updated in every scope-changing PR |
+| [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
 | [`docs/development-workflow.md`](docs/development-workflow.md) | End-to-end feature workflow |
-| [`docs/roadmap.md`](docs/roadmap.md) | Product roadmap (Plan/Practice/Track pillars) — **single source of truth** |
+| [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
 | [`docs/rebuild-review.md`](docs/rebuild-review.md) | Rebuild-vs-pivot review against the practice-coach design |

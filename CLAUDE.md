@@ -1,6 +1,6 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-07-19.
+> Last reviewed: 2026-08-05.
 
 > ## ⚠️ CURRENT FOCUS: NATIVE iOS ONLY — the web and Tauri shells are removed
 >
@@ -41,9 +41,9 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Reference Swift preserved from the removed Tauri shell (not built)
-content/                 # Practice-coach authored content (Phase 0 paper teacher; no code reads it yet)
+content/                 # Practice-coach authored content — the engine's gates.toml parser reads it (#1194)
 design/                  # Claude Design system (intrada-design-system.dc.html)
-docs/                    # Product roadmap (single source of truth)
+docs/                    # Roadmap (direction/phases) + status.md (what's in flight now)
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
@@ -871,7 +871,8 @@ guidance above.
    answered. Silent omission is the failure mode.
 
 ### After completing work
-1. Update `docs/roadmap.md`, close the GitHub issue.
+1. Update `docs/status.md` (in flight / landed / next) in the same PR; update
+   `docs/roadmap.md` if a phase or direction changed; close the GitHub issue.
 2. Update this file if architecture/patterns changed.
 3. Update the Claude Design system (`design/intrada-design-system.dc.html`) if UI
    diverged from design; re-export the shareable `.html`.
@@ -945,7 +946,8 @@ itself. Never run a second vertical session beside it. Start one with
 - [ ] Tests shipped with the new code (see Testing)
 - [ ] PR opened via the `ship` skill; self-review comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
-- [ ] Roadmap updated; deferred items tracked as issues
+- [ ] `docs/status.md` updated (roadmap too if a phase/direction changed);
+      deferred items tracked as issues
 - [ ] A human reviews and merges. Agents never merge.
 
 ## Known Tech Debt
