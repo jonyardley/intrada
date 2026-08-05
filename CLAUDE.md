@@ -1,6 +1,6 @@
 # intrada Development Guidelines
 
-> Last reviewed: 2026-07-19.
+> Last reviewed: 2026-08-05.
 
 > ## ⚠️ CURRENT FOCUS: NATIVE iOS ONLY — the web and Tauri shells are removed
 >
@@ -19,11 +19,13 @@
 
 ## Project Overview
 
-intrada is a music practice companion app. Users sign in with Google (via Clerk),
-manage a library of pieces and exercises, run timed practice sessions with scoring,
-build reusable routines, and view analytics. Organised around three pillars:
-**Plan** (library, routines), **Practice** (focus mode, timers, scoring),
-**Track** (analytics, insights).
+intrada is a **practice coach** for musicians: the app decides what you
+practise, gates every block on evidence (tap-verdicts against countable
+criteria), and tells you when you're done. Around the coaching loop: a music
+library, timed sessions, and analytics, organised as three pillars — **Plan**
+(library, what to practise), **Practice** (the drill loop), **Track**
+(analytics, insights). Direction and phases: `docs/roadmap.md`; what's in
+flight now: `docs/status.md`.
 
 **Platform**: The **native SwiftUI iOS app** (on the Crux core) is the only
 shell. The Leptos web shell and the Tauri 2 iOS WKWebView host were removed
@@ -41,9 +43,9 @@ crates/
   intrada-api/           # REST API — Axum 0.8 + Turso (libsql)
 ios/                     # Native SwiftUI app (Intrada.xcodeproj via xcodegen)
   Reference/             #   Reference Swift preserved from the removed Tauri shell (not built)
-content/                 # Practice-coach authored content (Phase 0 paper teacher; no code reads it yet)
+content/                 # Practice-coach authored content — the engine's gates.toml parser reads it (#1194)
 design/                  # Claude Design system (intrada-design-system.dc.html)
-docs/                    # Product roadmap (single source of truth)
+docs/                    # Roadmap (direction/phases) + status.md (what's in flight now)
 specs/                   # Spec docs for major features (Tier 3 only — see Workflow)
 ```
 
@@ -93,46 +95,15 @@ they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a
 full regenerate.
 
 **Simulator build/snapshot/UI testing** — the `xcrun simctl` / `xcodebuild`
-CLI workflow (screenshots via `xcrun simctl io <udid> screenshot`), the optional
-XcodeBuildMCP server in `.mcp.json`, and host gotchas (e.g. quit Xcode before
-`xcodebuild test` to avoid `Pseudo Terminal Setup Error`) — is documented in
-[`docs/ios-testing.md`](docs/ios-testing.md).
-
-**Shared-simulator rule (esp. in a git worktree):** the iOS Simulator and
-`CoreSimulatorService` are machine-global — one per login, shared with the main
-checkout and any other worktree. Files are isolated; the sim is not. So:
-create a worktree-scoped sim (`xcrun simctl create "snap-$(basename "$PWD")" …`)
-and target it by UDID; only delete sims you created; and **never run a global
-sim reset blind** (`simctl shutdown all`, `simctl erase|delete`, `killall
-com.apple.CoreSimulator.CoreSimulatorService`). Before any such global op — or
-before kicking off a fresh test run — check for another live session
-(`xcrun simctl list devices | grep Booted`; `pgrep -fl 'xcodebuild|XCTestAgent'`;
-`pgrep -x Xcode`). If anything you didn't start is active, **pause and ask the
-user** rather than risk killing their running sim/tests.
-
-`just ios-test` already follows this rule: it names its sim per worktree
-(`intrada-test-26-5-<worktree-basename>`), so parallel worktrees run snapshot
-tests on **distinct** devices instead of serializing on one shared device. The
-device model is irrelevant to snapshot output (swift-snapshot-testing pins
-`.iPhone13`; only the iOS 26.5 runtime affects the pixels). `just
-ios-test-sim-clean` deletes only the current worktree's sim. Removing blocking
-isn't free of resource limits — N booted sims + N Swift builds is heavy, so the
-practical ceiling is how many parallel agents the host can take, not the sim.
-
-`just ios-test` is tiered (#1198): it runs only `IntradaTests` (unit +
-snapshot — seconds once built), never `IntradaUITests`. `just ios-test-full`
-adds the XCUITests and is what `ship` and CI run before merge, so nothing
-merges without the UI tier even though the local inner loop skips it. Both
-split `xcodebuild build-for-testing` from `test-without-building`, so a flake
-retry or test-only change reruns without rebuilding the app.
-
-**Two overlapping runs in one checkout will crash each other's XCUITests**
-(#1192) — `just ios-test`/`ios-test-full` refuse to start while another
-`xcodebuild`/`XCTestAgent` is already live against this checkout's
-DerivedData (parallel *worktrees* are unaffected — they already get distinct
-sims). They also skip the run outright when HEAD is clean and already
-stamped green at this tier in `ios/build/.ios-test-stamp` — don't hand-run a
-gate a teammate already ran green at the same commit; let the stamp skip it.
+CLI workflow, worktree sim-isolation, test tiering (`just ios-test` vs
+`-full`), the green-stamp skip, and host gotchas are all documented in
+[`docs/ios-testing.md`](docs/ios-testing.md). The one rule worth stating here
+because it's a safety behaviour, not reference detail: the iOS Simulator and
+`CoreSimulatorService` are machine-global, so before any global reset
+(`simctl shutdown all`, `killall CoreSimulatorService`) or a fresh test run,
+check for another live session (`xcrun simctl list devices | grep Booted`;
+`pgrep -fl 'xcodebuild|XCTestAgent'`). If anything you didn't start is active,
+**pause and ask the user** rather than risk killing their running sim/tests.
 
 **Demo data vs. real on-device data.** A plain launch (`just ios` → Cmd+R on the
 default **Intrada** scheme, or any build with no launch args) runs
@@ -163,32 +134,10 @@ is listed in `.git-blame-ignore-revs`; run
 skips it.
 
 Git hooks install automatically for Claude Code sessions (a `SessionStart`
-hook in `.claude/settings.json` runs the script below), catching the "pushed
-onto a merged-PR branch and the commits orphaned" pitfall. Manual/one-time
-install for non-Claude shells:
-```bash
-bash scripts/install-git-hooks.sh   # sets core.hooksPath = .githooks
-```
-The pre-push hook uses `gh` + `jq` to refuse pushes to a branch whose
-most recent PR is already MERGED, with a hint to create a fresh branch
-from `origin/main`. Bypass for legitimate edge cases:
-`SKIP_PR_CHECK=1 git push`. Opt out: `git config --unset core.hooksPath`.
-
-First-time iOS setup (run once after cloning or pulling this branch):
-```bash
-brew install xcodegen   # generates the Xcode project from ios/project.yml
-# Also requires: iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
-just ios   # regenerates bindings (if needed) + generates the Xcode project + opens it
-```
-
-If you're forking this repo, update the development team in `ios/project.yml`
-to your own Apple Team ID (find it at developer.apple.com → Membership, or
-Xcode → Settings → Accounts).
-
-`just ios` / `just ios-run` read `INTRADA_API_URL` and `CLERK_PUBLISHABLE_KEY`
-from your shell or a `.env` file at the repo root (the justfile uses
-`set dotenv-load`). Without them set, the build will use defaults and Clerk
-auth won't work.
+hook runs `scripts/install-git-hooks.sh`), catching the "pushed onto a
+merged-PR branch and the commits orphaned" pitfall via a pre-push check
+against `gh`. Manual install, forking setup, and first-time iOS setup are in
+the [README](README.md#prerequisites) — read that before your first `just ios`.
 
 ## Knowledge graph (graphify)
 
@@ -298,16 +247,10 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 - **Quality is per-screen, not deferred.** Every screen ships with a
   swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
   built *with* the screen. Sentry is wired from the first build.
-- **Spacing & radius are tokens, not literals** — same discipline as colour
-  (`IntradaColor`) and type (`IntradaFont`). Padding / inset / list-gap values
-  come from `IntradaSpacing` (`controlGap` 8, `cardCompact` 12, `row` 14,
-  `card` 16, `section` 24, `stage` 40 — the first four mirror the web `p-card`
-  scale, one step serves several roles; `stage` is the drill-screen rhythm that
-  separates five facts into five glances) and
-  corner radii from `IntradaRadius` (`card` 12); all in `Theme.swift`. Don't
-  hard-code `.padding(16)` / `cornerRadius: 12` etc. — a raw value is how two
-  screens silently drift. Genuine one-offs (a fixed component height, a 2pt
-  baseline nudge) stay literal; don't force those into the scale.
+- **Every colour, font, spacing and radius value is a named token** from
+  `Theme.swift` — full rules under Design System Rules below. Genuine one-offs
+  (a fixed component height, a 2pt baseline nudge) stay literal; don't force
+  those into the scale.
 - **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
   `MainActor`-default isolation ([uniffi-rs#2818]). Keep the generated package
   non-MainActor-defaulted (build recipe handles it); don't "fix" it by editing
@@ -366,10 +309,6 @@ gate for the UI, so we keep the suite but keep it lean:
   fails any reference with no matching `func test…` (renamed/removed tests
   otherwise leave dead images in history). Run it locally with
   `just ios-snapshots-check`.
-- **Escalation path.** In-repo is fine now. When history gets heavy or the suite
-  crosses ~50–100 references, move to Git LFS (note: adds a fetch to every CI
-  run) or external hashed storage (S3 by SHA-256 / Screenshotbot). Don't reach
-  for that machinery early.
 
 ### Offline-first invariants (non-negotiable)
 
@@ -570,7 +509,7 @@ single view.
 - **Haptics**: use `UIImpactFeedbackGenerator`/`UISelectionFeedbackGenerator`
   via the `Store+Feedback` helpers — `selection` for tabs, `light` for taps,
   `success` for saves (only after the core confirms — see "Surface, don't
-  swallow" below), `warning` for destructive confirms.
+  swallow" above), `warning` for destructive confirms.
 - **iPad**: list→detail screens use `LibrarySplitView` (adaptive
   sidebar + detail pane at regular width class). Build it before the view,
   not as a retrofit.
@@ -761,7 +700,7 @@ No spec doc.
 
 ### Tier 3 — Lightweight spec (rare; architectural only)
 Net-new top-level features, Crux core / FFI bridge changes, auth or DB
-schema changes, multi-week work spanning core + web + iOS.
+schema changes, multi-week work spanning core + API + iOS.
 
 Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
 approach, key decisions, open questions). Then Claude Design for UI work, then
@@ -791,7 +730,7 @@ If unsure between tiers, go one tier lighter. Drift up if scope expands.
 | Fix typo in a label | 1 | Trivial copy change |
 | Bump a dependency with no API change | 1 | Dep bump |
 | New "Recently practiced" view following existing list patterns | 2 | New view, established patterns |
-| Refactor `intrada-core/src/practice/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
+| Refactor `intrada-core/src/domain/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
 | Tweak retry backoff in `auth.rs` | 2 | Sensitivity override from Tier 1 |
 | Add `notes` field to a piece (touches FFI + DB) | 3 | Override: FFI + schema |
 | New auth provider | 3 | Auth + multi-crate |
@@ -799,49 +738,34 @@ If unsure between tiers, go one tier lighter. Drift up if scope expands.
 
 ### Optional skills (Superpowers, opt-in only)
 
-The [Superpowers](https://github.com/obra/superpowers) plugin provides ~14 auto-triggering skills + a methodology. We don't adopt it whole — its "always TDD, multi-stage subagent review, formal plans for everything" philosophy conflicts with the tier system above. But three of its skills are useful **when invoked deliberately**:
+The [Superpowers](https://github.com/obra/superpowers) plugin's full methodology
+(`brainstorming`, `writing-plans`, `systematic-debugging`, etc.) conflicts with
+the tier system above and is **not** enabled by default. Three of its skills
+are useful **when invoked deliberately**, telling the agent to skip the rest:
 
-- **`test-driven-development`** — opt in for **non-UI Tier 2 / all Tier 3** work. Skip for visual / gesture / styling work where verification is on-device. The "watch the test fail before writing the code" discipline is what's valuable; the "delete code written before tests" rule is too strict for our pace.
-- **`requesting-code-review`** — opt in **before opening any Tier 3 PR**, and for Tier 2 PRs touching auth / DB / FFI. Acts as a pre-flight checklist: does the diff match the spec, are tests passing, are there obvious quality issues. Cheaper than discovering them post-merge.
-- **`using-git-worktrees`** — opt in when **two or more PR branches are in flight at once** (e.g., the recent #329 / #330 / #331 sequence). Prevents the rebase-conflict tangles that happen when squash-merges land while you're still working on the next branch.
+- `test-driven-development` — non-UI Tier 2 / all Tier 3 work (skip for
+  visual/gesture work verified on-device).
+- `requesting-code-review` — before any Tier 3 PR, and Tier 2 PRs touching
+  auth/DB/FFI.
+- `using-git-worktrees` — when two or more PR branches are in flight at once.
 
-**Do NOT enable** the rest of the methodology by default — `brainstorming`, `writing-plans`, `subagent-driven-development`, `executing-plans`, `finishing-a-development-branch`, `systematic-debugging`. Those collapse the tier system into one-size-fits-all heavyweight ceremony, which we explicitly don't want.
-
-If you're unsure whether a skill applies, default to the tier system. The skills are sharper tools for specific situations, not replacements for "match ceremony to scope".
-
-**Install (Claude Code):** `/plugin install superpowers@claude-plugins-official`
-
-**Invoke selectively:** Tell the agent which skill to apply (e.g., "use test-driven-development for this"). Superpowers' default behaviour is to auto-trigger skills based on context — when invoking a single skill deliberately, also tell it to skip the others (e.g., "use just test-driven-development, no plan or subagent review needed").
-
-**Re-evaluate** after the next 3 PRs that use any of these skills: did they catch a real issue, or did they add ceremony for its own sake? Expand scope, drop a skill, or trial another from the Superpowers set based on what we observe.
+If unsure whether a skill applies, default to the tier system instead.
 
 ### Lessons from recent skill use
 
-Captured after PR #719 / #724 — discipline tightening on top of the existing
-guidance above.
+Discipline tightening after #719/#724, on top of the guidance above:
 
-- **TDD is the default for `intrada-core` changes.** When modifying handlers
-  (`domain/*.rs`), `validation.rs`, `http.rs`, or `model.rs`, invoke
-  `superpowers:test-driven-development` and **write the failing test first**.
-  The core test suite runs in under a second — there's no excuse for the
-  red-green-refactor shape to slip to "implement, then add tests." The
-  #719 delete-404 bug shipped because the test was written after the fix,
-  retrofit to pass rather than to constrain behaviour. Red phase forces you
-  to state what the model owes its callers.
-
-- **`requesting-code-review` is the standard channel for Tier 2+ PRs.**
-  Don't hand-roll prompts to the `code-reviewer` agent — load the skill,
-  use its structured invocation. Include "comment-policy violations are
-  Blockers, not Nits" (see Code Style → Comments). When the review comes
-  back, run `superpowers:receiving-code-review` on the findings before
-  acting on them — "I agree" before implementing.
-
-- **UI verification means driving the preview.** Tests don't catch flicker,
-  state-after-delete, or transition timing. Either start the dev server
-  yourself and exercise the flow, **or** state explicitly "I can't reach
-  the running preview — user verification required for X / Y / Z." Don't
-  claim "all green" when "all green" means cargo test green. CLAUDE.md
-  already says this under "Doing tasks"; the lesson is to actually do it.
+- **TDD is the default for `intrada-core` changes** (`domain/*.rs`,
+  `validation.rs`, `http.rs`, `model.rs`): invoke
+  `superpowers:test-driven-development` and write the failing test first. The
+  #719 delete-404 bug shipped because the test was retrofit to pass after the
+  fix rather than written to constrain behaviour.
+- **`requesting-code-review` is the standard channel for Tier 2+ PRs** — load
+  the skill rather than hand-rolling a prompt; run
+  `superpowers:receiving-code-review` on the findings before acting on them.
+- **UI verification means actually driving the app on the simulator**, not
+  claiming "all green" when that means cargo test green. If you can't reach
+  the running app, say exactly what needs user verification.
 
 ### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
@@ -871,7 +795,8 @@ guidance above.
    answered. Silent omission is the failure mode.
 
 ### After completing work
-1. Update `docs/roadmap.md`, close the GitHub issue.
+1. Update `docs/status.md` (in flight / landed / next) in the same PR; update
+   `docs/roadmap.md` if a phase or direction changed; close the GitHub issue.
 2. Update this file if architecture/patterns changed.
 3. Update the Claude Design system (`design/intrada-design-system.dc.html`) if UI
    diverged from design; re-export the shareable `.html`.
@@ -945,7 +870,8 @@ itself. Never run a second vertical session beside it. Start one with
 - [ ] Tests shipped with the new code (see Testing)
 - [ ] PR opened via the `ship` skill; self-review comment posted
 - [ ] Codecov compared against the PR's Coverage line (Tier 2+)
-- [ ] Roadmap updated; deferred items tracked as issues
+- [ ] `docs/status.md` updated (roadmap too if a phase/direction changed);
+      deferred items tracked as issues
 - [ ] A human reviews and merges. Agents never merge.
 
 ## Known Tech Debt

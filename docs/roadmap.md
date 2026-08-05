@@ -1,7 +1,8 @@
 # intrada — Product Roadmap
 
 *This is a vision and prioritisation doc, not a project plan. For what's
-actually shipping right now, see the [project board](https://github.com/users/jonyardley/projects/2)
+actually shipping right now, see [`status.md`](status.md) (one screen, updated
+per PR), the [project board](https://github.com/users/jonyardley/projects/2)
 and [open issues](https://github.com/jonyardley/intrada/issues).*
 
 ---
@@ -28,9 +29,10 @@ and [open issues](https://github.com/jonyardley/intrada/issues).*
 > the pivot plan. Keep-column assets (chord theory in `chart.rs`, the GRDB
 > persistence pattern, the design system, the FFI toolchain) carry forward.
 >
-> Current phase: **Phase 0** (paper teacher — content authored under
-> [`content/`](../content/README.md), practice logs in progress, no code),
-> then **Phase 2a**. Phase 1 closed early under decision 18: the capture
+> Current phase: **Phase 2a** (in flight — the state machine, drill screen,
+> content parser and persistence are built; see [`status.md`](status.md)),
+> with the **Phase 0** paper-teacher fortnight running alongside (#1143).
+> Phase 1 closed early under decision 18: the capture
 > harness and segmentation spike are **removed from the tree** and recoverable
 > from history (#1176); the click ships, since click-always governs the loop.
 > Their findings stay in [`segmentation-findings.md`](segmentation-findings.md).
@@ -63,7 +65,7 @@ coach work** — this is.
 |---|---|---|
 | **0 · Paper teacher** | Content authored (`content/`); the fortnight of practice + four logs | Content done; fortnight outstanding (#1143) |
 | **1 · The listening gate** | Capture harness + click → segmentation spike → lick-transposition scoring → one drill screen | **Closed early (decision 18, 4 Aug 2026).** PR 2 merged (jonyardley/intrada#1157); PR 3 done (#1161) — the segmentation module handled all five real takes, findings in [`segmentation-findings.md`](segmentation-findings.md). Both the iOS capture harness and that module are **deleted** (#1176) rather than left inert, recoverable from history when the path returns; the click ships. Lick-transposition scoring and the machine-verdict drill screen defer with it (trigger: play-to-input). USB comparison stays open-ended (#1156) |
-| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **In flight.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended). The drill screen (A2 during play + A3 tap-verdict) and the seven coach primitives are **built** (#1178). The **session state machine and the tap-verdict bridge surface are built** (#1176, spec §4/§6): `engine/session.rs` owns counting, gating, the stuck ladder and the ceiling; `DrillScreen` renders the core's `CoachView` and the Swift harness is deleted. The **`gates.toml` parser, the planner and persistence are built** (#1180, #1181): the engine plans today's session from the authored content (nodes with prerequisites and ladders, drills, gate criteria, escalation thresholds, the declared intent) rather than a seeded block, and block records plus the in-progress session reach the store. Still open in 2a: press-start (#1182), the live mastery store (#1148), and the planner stages that depend on it |
+| **2a · Prescribe and run** | Planner as a pure function, press-start, gated blocks on tap-verdicts, stuck ladder, soft-landing exit, builder deleted | **In flight.** Mastery function specified (#1155); evidence = tap-verdicts, source-tagged (decision 17 as amended). The drill screen (A2 during play + A3 tap-verdict) and the seven coach primitives are **built** (#1178). The **session state machine and the tap-verdict bridge surface are built** (#1176, spec §4/§6): `engine/session.rs` owns counting, gating, the stuck ladder and the ceiling; `DrillScreen` renders the core's `CoachView` and the Swift harness is deleted. The **`gates.toml` parser, the planner and persistence are built** (#1180, #1181): the engine plans today's session from the authored content (nodes with prerequisites and ladders, drills, gate criteria, escalation thresholds, the declared intent) rather than a seeded block, and block records plus the in-progress session reach the store. Still open in 2a: press-start (#1182), the live mastery track (#1188), and the remaining planner stages (#1189) |
 | **2b · Steer and guard** | Declaration surfaces (goal / campaign / steer), three-way target resolution + user-created items + the built session (decision 19), back-chaining, gap read, circling check, grind trade, off-piano queue, unmonitored play, circle tally, the judgement track | After 2a |
 | **3 · The voice** | LLM behind Axum: summaries, whys, stuck coaching, goal interpretation | Deliberately late |
 | **4 · Widen** | Spacing, difficulty auto-adjust, statistical gap read, planner bias, audio path, placement, second user | Ongoing |
@@ -119,14 +121,14 @@ horizon.
 
 Filter `is:open is:issue` on the board to see what's currently in flight.
 
-### Current focus (2026-07)
+### Current focus (2026-08)
 
 The practice-coach pivot (see the banner at the top). The lesson-to-mastery
 loop that was the previous focus (epic #1087; workstreams B and C largely
-landed, A reverted) is parked under `superseded-by-pivot`. Phase 1's harness,
-click and segmentation spike are merged (#1157, #1161) and the phase closed
-early under decision 18. Active work: the Phase 0 fortnight (#1143), then
-Phase 2a — the coaching loop on tap-verdict evidence. Check the
+landed, A reverted) is parked under `superseded-by-pivot`. Phase 1 closed
+early under decision 18. Active work: Phase 2a — the coaching loop on
+tap-verdict evidence — with the Phase 0 fortnight (#1143) alongside. See
+[`status.md`](status.md) and the
 [project board](https://github.com/users/jonyardley/projects/2)
 for what's actually in flight.
 
@@ -212,7 +214,7 @@ one place — the banner at the top of this doc.
 | `architecture` | Technical debt, infrastructure |
 | `ux` / `accessibility` | Cross-cutting |
 | `security` | Security-relevant |
-| `ios` | iOS-specific (Tauri shell) |
+| `ios` | iOS-specific (native SwiftUI shell) |
 | `epic` | Umbrella issue with sub-items |
 
 ### Board
@@ -231,12 +233,14 @@ multiple items share the same horizon.
 These are unresolved product questions. Each one likely produces issues
 (or a Tier-3 spec) once answered.
 
-1. **Metronome: built-in or external?** Tempo tracking (#52) shipped — a
-   built-in metronome would complete the tempo-building loop. Building
-   one in WASM is non-trivial (timing accuracy in a browser/WebView).
+1. **Metronome (resolved 2026-08).** The click shipped natively as part of
+   Phase 1 (decision 18: click-always governs the drill loop), retiring the
+   WASM-timing concern along with the web shell.
 
-2. **Offline-first architecture.** Currently API-dependent. What syncs?
-   When? Gets harder to retrofit the longer we wait. Tracked at #41.
+2. **Offline-first architecture (resolved 2026-07).** The native app is
+   offline-first by design — on-device SQLite is the source of truth, with
+   test-enforced invariants (see CLAUDE.md). #41 closed. What remains is the
+   future paid sync tier, deliberately deferred.
 
 3. **Scoring + tempo coupling.** Should every mastery rating require a
    tempo? Or is tempo optional (only for items with tempo targets)?
