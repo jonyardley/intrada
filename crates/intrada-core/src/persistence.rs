@@ -637,7 +637,11 @@ mod tests {
         #[test]
         fn a_closed_block_is_appended_to_the_store_without_touching_the_network() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             for second in [9, 18, 27] {
                 rep(&app, &mut model, true, second);
             }
@@ -660,7 +664,11 @@ mod tests {
         #[test]
         fn a_tap_rewrites_the_crash_recovery_blob_and_a_beat_does_not() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             let body = model.coach.session.block().unwrap().body_beats();
             let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
 
@@ -686,7 +694,11 @@ mod tests {
         #[test]
         fn the_saved_blob_is_the_session_as_it_stands() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             let body = model.coach.session.block().unwrap().body_beats();
             let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
             let mut cmd = send(
@@ -711,7 +723,11 @@ mod tests {
         #[test]
         fn closing_the_session_clears_the_blob() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             let mut cmd = send(&app, &mut model, CoachEvent::LeaveSession { now: at(20) });
 
             // `effects()` drains, so read the write before the clear.
@@ -727,7 +743,7 @@ mod tests {
         /// Runs the first block to its gate and past the hold, so a record has
         /// been offered to the store and the retry has something to hold.
         fn close_a_block(app: &Intrada, model: &mut Model) {
-            let _ = send(app, model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(app, model, CoachEvent::StartPlannedSession { now: at(0) });
             rep(app, model, true, 9);
             let _ = send(app, model, CoachEvent::Tick { now: at(30) });
         }
@@ -819,7 +835,11 @@ mod tests {
         #[test]
         fn the_recovered_session_comes_back_through_the_bridge() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             let body = model.coach.session.block().unwrap().body_beats();
             let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
             let _ = send(
@@ -851,7 +871,11 @@ mod tests {
         #[test]
         fn the_evidence_op_survives_the_ffi_wire() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             for second in [9, 18, 27] {
                 rep(&app, &mut model, true, second);
             }
@@ -868,7 +892,11 @@ mod tests {
         #[test]
         fn the_crash_recovery_blob_survives_the_ffi_wire() {
             let (app, mut model) = local_first();
-            let _ = send(&app, &mut model, CoachEvent::StartDrillLoop { now: at(0) });
+            let _ = send(
+                &app,
+                &mut model,
+                CoachEvent::StartPlannedSession { now: at(0) },
+            );
             let body = model.coach.session.block().unwrap().body_beats();
             let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
             let _ = send(

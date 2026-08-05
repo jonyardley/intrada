@@ -20,10 +20,17 @@ use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum CoachEvent {
-    /// Plan today's session from the authored content and run it. Becomes
-    /// "run this plan" when the session-start screen can say how long the user
-    /// has (#1182); until then the length comes from `[defaults]`.
-    StartDrillLoop {
+    /// Plan today's session without running it: the press-start surface reads
+    /// the result from `CoachView::plan`. `available_minutes` is `None` until a
+    /// surface can ask how long the user has, and falls back to the authored
+    /// `[defaults]` length.
+    PlanSession {
+        now: DateTime<Utc>,
+        available_minutes: Option<u16>,
+    },
+    /// Run the plan already made. From `Idle` this plans today's session first,
+    /// so a shell that wants no preview can send this alone.
+    StartPlannedSession {
         now: DateTime<Utc>,
     },
     /// One count-in click, reported as it sounds; `remaining` is beats left
@@ -388,7 +395,10 @@ impl EngineSession {
 
     pub fn spec(&self) -> Option<&BlockSpec> {
         match &self.state {
-            SessionState::Running { plan, block, .. } => plan.blocks.get(block.spec_index),
+            SessionState::Running { plan, block, .. } => plan
+                .blocks
+                .get(block.spec_index)
+                .map(|planned| &planned.spec),
             _ => None,
         }
     }
@@ -422,12 +432,18 @@ impl EngineSession {
     }
 
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
+        self.apply_with_plan(event, None)
+    }
+
+    /// `plan` is today's session, which only `CoachState` can work out: the
+    /// planner reads the mastery track, and the session is inside it.
+    pub fn apply_with_plan(&mut self, event: &CoachEvent, plan: Option<Plan>) -> CoachWrites {
         let before = self.recovery_key();
         let was_closing = matches!(self.state, SessionState::Closing);
         let blocks_written = self.closed_blocks.len();
         let wanders_written = self.wanders.len();
 
-        let evidence = self.handle(event);
+        let evidence = self.handle(event, plan);
 
         // Recovery replaces the session wholesale, so it can hand back fewer
         // records than the live one had (a swallowed snapshot write leaves an
@@ -466,12 +482,22 @@ impl EngineSession {
         writes
     }
 
-    fn handle(&mut self, event: &CoachEvent) -> Option<ScoredAttempt> {
+    fn handle(&mut self, event: &CoachEvent, planned: Option<Plan>) -> Option<ScoredAttempt> {
         match event {
-            CoachEvent::StartDrillLoop { now } => {
-                let content = ContentIndex::shipped();
-                self.start(Plan::for_today(content, content.session_minutes, 0), *now)
+            CoachEvent::PlanSession { .. } => {
+                if let Some(plan) = planned {
+                    self.state = SessionState::Planned { plan };
+                }
             }
+            CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
+                SessionState::Planned { plan } => self.start(plan, *now),
+                SessionState::Idle => {
+                    if let Some(plan) = planned {
+                        self.start(plan, *now);
+                    }
+                }
+                running_or_closing => self.state = running_or_closing,
+            },
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
             CoachEvent::Tap { clean, now } => return self.tap(*clean, *now),
@@ -496,7 +522,8 @@ impl EngineSession {
     /// clock. A tap carries its own, which is the one that matters.
     pub fn now_of(event: &CoachEvent) -> Option<DateTime<Utc>> {
         match event {
-            CoachEvent::StartDrillLoop { now }
+            CoachEvent::PlanSession { now, .. }
+            | CoachEvent::StartPlannedSession { now }
             | CoachEvent::Tap { now, .. }
             | CoachEvent::Stuck { now }
             | CoachEvent::Tick { now }
@@ -543,12 +570,12 @@ impl EngineSession {
         *self = session;
     }
 
-    fn start(&mut self, plan: Plan, now: DateTime<Utc>) {
-        let Some(spec) = plan.blocks.first() else {
+    pub(crate) fn start(&mut self, plan: Plan, now: DateTime<Utc>) {
+        let Some(planned) = plan.blocks.first() else {
             self.state = SessionState::Planned { plan };
             return;
         };
-        let block = BlockState::open(spec, 0, now);
+        let block = BlockState::open(&planned.spec, 0, now);
         self.state = SessionState::Running { plan, block };
     }
 
@@ -821,7 +848,11 @@ impl EngineSession {
         let SessionState::Running { plan, block } = &mut self.state else {
             return;
         };
-        let Some(spec) = plan.blocks.get(block.spec_index) else {
+        let Some(spec) = plan
+            .blocks
+            .get(block.spec_index)
+            .map(|planned| &planned.spec)
+        else {
             return;
         };
 
@@ -847,7 +878,7 @@ impl EngineSession {
         let next = block.spec_index + 1;
         let now = block.now;
         match plan.blocks.get(next).filter(|_| advance) {
-            Some(spec) => *block = BlockState::open(spec, next, now),
+            Some(planned) => *block = BlockState::open(&planned.spec, next, now),
             None => self.state = SessionState::Closing,
         }
     }
@@ -904,9 +935,20 @@ mod tests {
     // ── Entering the loop ──
 
     #[test]
-    fn starting_a_session_runs_todays_plan_from_the_content() {
+    fn starting_a_session_runs_the_plan_it_was_handed() {
         let mut session = EngineSession::default();
-        session.apply(&CoachEvent::StartDrillLoop { now: at(0) });
+        let content = ContentIndex::shipped();
+        session.apply_with_plan(
+            &CoachEvent::StartPlannedSession { now: at(0) },
+            Some(crate::engine::plan::plan(
+                &crate::engine::coach::CoachState::default(),
+                crate::engine::plan::PlanContext {
+                    now: at(0),
+                    available_minutes: content.session_minutes,
+                    rng_seed: 0,
+                },
+            )),
+        );
 
         let SessionState::Running { plan, .. } = &session.state else {
             panic!("a session should be running");
@@ -1145,11 +1187,11 @@ mod tests {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
         if let SessionState::Running { plan, block } = &mut session.state {
-            plan.blocks[0].gate.requirement = Requirement::CleanPasses {
+            plan.blocks[0].spec.gate.requirement = Requirement::CleanPasses {
                 count: 3,
                 consecutive: true,
             };
-            block.gate_progress = GateProgress::new(&plan.blocks[0].gate.requirement);
+            block.gate_progress = GateProgress::new(&plan.blocks[0].spec.gate.requirement);
         }
         session.apply(&CoachEvent::Beat { beat_index: 0 });
 
@@ -1182,8 +1224,8 @@ mod tests {
         session.start_fixture(at(0));
         if let SessionState::Running { plan, .. } = &mut session.state {
             let mut second = plan.blocks[0].clone();
-            second.drill_title = "Shells".to_string();
-            second.node = "shells-ii-v-i".to_string();
+            second.spec.drill_title = "Shells".to_string();
+            second.spec.node = "shells-ii-v-i".to_string();
             plan.blocks.push(second);
         }
         session.apply(&CoachEvent::Beat { beat_index: 0 });

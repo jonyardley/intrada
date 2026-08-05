@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::content::ContentIndex;
 use super::gate::{Requirement, Verdict};
 use super::mastery::MasteryStore;
-use super::plan::ParameterLevel;
+use super::plan::{plan, ParameterLevel, Plan, PlanContext};
 use super::session::{
     BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase, SessionState,
 };
@@ -37,7 +37,8 @@ impl Default for CoachState {
 impl CoachState {
     pub fn apply(&mut self, event: &CoachEvent) -> CoachWrites {
         self.mark_cold(event);
-        let writes = self.session.apply(event);
+        let planned = self.plan_for(event);
+        let writes = self.session.apply_with_plan(event, planned);
         for attempt in &writes.evidence {
             self.mastery
                 .record(&attempt.node, attempt.level, attempt.verdict, attempt.at);
@@ -48,6 +49,30 @@ impl CoachState {
             }
         }
         writes
+    }
+
+    /// Only the two press-start events need a plan, and only `CoachState` can
+    /// make one: the planner reads the mastery track, which the session does not
+    /// hold. The clock seeds the dealer and is stored on the `Plan`, so the
+    /// session still replays.
+    fn plan_for(&self, event: &CoachEvent) -> Option<Plan> {
+        let (now, minutes) = match event {
+            CoachEvent::PlanSession {
+                now,
+                available_minutes,
+            } => (*now, *available_minutes),
+            CoachEvent::StartPlannedSession { now } => (*now, None),
+            _ => return None,
+        };
+        let content = ContentIndex::shipped();
+        Some(plan(
+            self,
+            PlanContext {
+                now,
+                available_minutes: minutes.unwrap_or(content.session_minutes),
+                rng_seed: now.timestamp().unsigned_abs(),
+            },
+        ))
     }
 
     fn mark_cold(&mut self, event: &CoachEvent) {
@@ -69,7 +94,31 @@ impl CoachState {
     pub fn view(&self) -> CoachView {
         CoachView {
             drill: self.drill_view(),
+            plan: self.plan_view(),
         }
+    }
+
+    /// The press-start surface: what today's session is, before it runs. Gone
+    /// the moment the first block opens, because the drill view takes over.
+    fn plan_view(&self) -> Option<PlanView> {
+        let SessionState::Planned { plan } = &self.session.state else {
+            return None;
+        };
+        Some(PlanView {
+            total_minutes: plan.blocks.iter().map(|block| block.spec.minutes).sum(),
+            blocks: plan
+                .blocks
+                .iter()
+                .map(|block| PlannedBlockView {
+                    drill_title: block.spec.drill_title.clone(),
+                    section: block.spec.section.clone(),
+                    kind: block.spec.kind.clone(),
+                    minutes: block.spec.minutes,
+                    why: block.why_line(),
+                })
+                .collect(),
+            deferred: plan.deferred.clone(),
+        })
     }
 
     fn drill_view(&self) -> Option<DrillView> {
@@ -107,7 +156,11 @@ impl CoachState {
             click_beats: block.click_beats(),
             elapsed_seconds: block.elapsed_seconds(),
             ceiling_seconds: Some(u32::from(spec.minutes) * 60),
-            block_kinds: plan.blocks.iter().map(|block| block.kind.clone()).collect(),
+            block_kinds: plan
+                .blocks
+                .iter()
+                .map(|block| block.spec.kind.clone())
+                .collect(),
             block_index: block.spec_index,
             gate_question: gate_question(&spec.gate.requirement, block.level.tempo_bpm),
             gate_summary: gate_summary(&spec.gate.requirement, block.level.tempo_bpm),
@@ -167,6 +220,31 @@ fn gate_summary(requirement: &Requirement, tempo_bpm: u16) -> String {
 pub struct CoachView {
     /// `None` unless a coach session is inside a block.
     pub drill: Option<DrillView>,
+    /// `Some` while a session is planned but not yet running.
+    pub plan: Option<PlanView>,
+}
+
+/// What press-start shows: today's session before it starts.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PlanView {
+    pub blocks: Vec<PlannedBlockView>,
+    pub total_minutes: u16,
+    /// What today could not take, in the plan's own words. Rendered as it
+    /// stands; silent dropping is a defect (spec §5 stage 5).
+    pub deferred: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct PlannedBlockView {
+    pub drill_title: String,
+    pub section: Option<String>,
+    pub kind: ItemKind,
+    pub minutes: u16,
+    /// One sentence, written by the core. The shell renders it and never
+    /// composes one.
+    pub why: String,
 }
 
 /// What the drill screen shows. Deliberately presentational: `Escalating`
@@ -358,6 +436,86 @@ mod tests {
         assert_eq!(coach.view().drill.unwrap().elapsed_seconds, 97);
     }
 
+    // ── Press-start: the plan before it runs (#1182, #1189) ──
+
+    fn press_start_preview() -> CoachState {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::PlanSession {
+            now: at(0),
+            available_minutes: Some(20),
+        });
+        coach
+    }
+
+    #[test]
+    fn planning_a_session_shows_it_without_starting_it() {
+        let coach = press_start_preview();
+        let plan = coach.view().plan.expect("the press-start surface");
+
+        assert_eq!(coach.view().drill, None, "nothing is running yet");
+        assert!(plan.blocks.len() > 1, "a session has a shape");
+        assert_eq!(
+            plan.total_minutes,
+            plan.blocks.iter().map(|block| block.minutes).sum::<u16>()
+        );
+        assert!(
+            plan.blocks.iter().all(|block| !block.why.is_empty()),
+            "every block says why it is there"
+        );
+        assert!(
+            !plan.deferred.is_empty(),
+            "and what today could not take is on the surface too, not dropped"
+        );
+    }
+
+    #[test]
+    fn a_planned_session_runs_the_plan_that_was_shown() {
+        let mut coach = press_start_preview();
+        let shown = coach.view().plan.expect("a preview").blocks[0]
+            .drill_title
+            .clone();
+
+        coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+
+        let drill = coach.view().drill.expect("a running drill");
+        assert_eq!(
+            drill.drill_title, shown,
+            "press start runs the first block of the plan press-start showed"
+        );
+        assert_eq!(
+            coach.view().plan,
+            None,
+            "and the press-start surface gives way to the drill"
+        );
+    }
+
+    #[test]
+    fn pressing_start_with_nothing_planned_plans_first() {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::StartPlannedSession { now: at(0) });
+
+        assert!(
+            coach.view().drill.is_some(),
+            "a shell that wants no preview can start in one event"
+        );
+    }
+
+    #[test]
+    fn the_session_length_falls_back_to_the_authored_default() {
+        let mut coach = CoachState::default();
+        coach.apply(&CoachEvent::PlanSession {
+            now: at(0),
+            available_minutes: None,
+        });
+
+        let plan = coach.view().plan.expect("a plan");
+        assert!(
+            plan.total_minutes > 0 && plan.total_minutes <= 20,
+            "the [defaults] session length until a surface can ask: {}",
+            plan.total_minutes
+        );
+    }
+
     // ── The mastery track, fed by the loop (#1188) ──
 
     fn fixture_level() -> ParameterLevel {
@@ -488,7 +646,11 @@ mod tests {
     #[test]
     fn every_coach_event_survives_the_ffi_wire() {
         for event in [
-            CoachEvent::StartDrillLoop { now: at(0) },
+            CoachEvent::PlanSession {
+                now: at(0),
+                available_minutes: Some(20),
+            },
+            CoachEvent::StartPlannedSession { now: at(0) },
             CoachEvent::CountInBeat { remaining: 3 },
             CoachEvent::Beat { beat_index: 12 },
             CoachEvent::Tap {
@@ -506,6 +668,22 @@ mod tests {
         ] {
             assert_round_trips(crate::app::Event::Coach(event));
         }
+    }
+
+    #[test]
+    fn a_recovered_session_carries_the_whole_plan_across_the_wire() {
+        let mut coach = press_start_preview();
+        coach.apply(&CoachEvent::StartPlannedSession { now: at(1) });
+
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::RecoverSession {
+            session: coach.session.clone(),
+            now: at(2),
+        }));
+    }
+
+    #[test]
+    fn the_press_start_surface_survives_the_ffi_wire() {
+        assert_round_trips(press_start_preview().view());
     }
 
     #[test]
