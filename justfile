@@ -46,11 +46,9 @@ hygiene:
     typos
     cargo-shear
 
-# Check everything (fmt → clippy → test → hygiene, cheapest first). Skips
-# entirely when HEAD is clean and already stamped green — mirrors the iOS
-# test-tier stamp (#1200) — so a lead re-running a gate a teammate already
-# ran green on the same commit costs nothing (#1204). Delete
-# `target/.check-stamp` to force a re-run.
+# Check everything (fmt → clippy → test → hygiene, cheapest first). Mirrors
+# the iOS test-tier green-stamp (#1200): skips on a clean, already-green HEAD
+# (#1204). Delete `target/.check-stamp` to force a re-run.
 check:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -103,10 +101,9 @@ ports:
 # the Swift bindings ONLY when the core changed, so they stay in sync without
 # slowing pure-Swift edits. ios/generated is a build precondition (gitignored,
 # regenerated) — never hand-edit it; fix the Rust type and regenerate.
-# `xcodegen generate --use-cache` (#1202) skips the project rewrite when
-# project.yml is unchanged; verified it also invalidates on a changed
-# SENTRY_DSN_NATIVE (xcodegen hashes the spec post env-substitution), so it's
-# safe on every call site here, not just the test path.
+# `--use-cache` (#1202) skips the project rewrite when project.yml is
+# unchanged; verified it also invalidates on a changed SENTRY_DSN_NATIVE, so
+# it's safe on every call site here.
 
 # Open the app in Xcode (regenerates bindings first if the core changed).
 [group('iOS')]
@@ -229,12 +226,9 @@ _ios-test-run tier:
     if [ "{{tier}}" = "fast" ]; then
         only="-only-testing:IntradaTests"
     else
-        # Retries relaunch in a new process (not in-process): the observed
-        # XCUITest flake ("crashed with signal kill") kills the runner
-        # process, so an in-process retry wouldn't recover it. Fast tier
-        # stays strict — unit/snapshot tests are deterministic, so a flake
-        # there is signal, not noise. If a specific test starts passing
-        # only-on-retry regularly, that's a bug to fix, not a retry to keep.
+        # Relaunch-in-new-process, not in-process: the flake this recovers
+        # from kills the runner process (#1203). Fast tier (unit/snapshot,
+        # deterministic) stays strict.
         retry="-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES"
     fi
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
