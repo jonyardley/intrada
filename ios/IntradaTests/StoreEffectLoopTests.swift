@@ -562,6 +562,39 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
+  /// Press-start with a blob already on disk (#1182). `DrillLoopHost.run()`
+  /// prefers recovery over starting whenever `pendingCoachSession()` returns
+  /// something, so anything planning leaves behind is read as a session to
+  /// resume. This drives that exact branch through a real Store and a real
+  /// bridge: plan, then take the same decision the host takes, and require a
+  /// drill at the end of it. Pressing start and landing back on Practice is the
+  /// #846 class, and the two earlier press-start tests could not see it because
+  /// neither had a blob in play.
+  ///
+  /// Deliberately indifferent to how the core keeps the promise — whether
+  /// planning stops snapshotting, or recovering a planned session starts it —
+  /// because the invariant is that press-start reaches a drill either way.
+  func testRealBridgePressStartReachesADrillWithABlobOnDisk() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let store = Store(bridge: LiveBridge(), session: mockSession(), sortDefaults: defaults)
+    store.send(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
+    XCTAssertNotNil(store.viewModel?.coach.plan, "the hero needs a plan to press start on")
+
+    // Verbatim the branch in DrillLoopHost.run().
+    let now = SessionClock.nowRFC3339()
+    if let crashed = store.pendingCoachSession() {
+      store.send(.coach(.recoverSession(session: crashed, now: now)))
+    } else {
+      store.send(.coach(.startPlannedSession(now: now)))
+    }
+
+    XCTAssertNotNil(
+      store.viewModel?.coach.drill,
+      "press start must open a block; with no drill the host closes and the tap does nothing")
+  }
+
   /// Real-bridge press-start (#1182): `PlanView` is what the Practice hero
   /// renders, so it has to survive the actual bincode wire before it reaches a
   /// screen — a stub bridge would pass while the hero showed the no-plan

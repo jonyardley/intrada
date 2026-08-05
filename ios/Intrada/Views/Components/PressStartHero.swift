@@ -10,6 +10,11 @@ struct PressStartHero: View {
   let footnote: String
   var onStart: () -> Void
 
+  // The app's largest tap target, and the glyph rides off it the way the coach
+  // primitives' discs do (see RepVerdict) rather than carrying its own size.
+  private let disc: CGFloat = 96
+  private var glyph: CGFloat { disc * 0.4 }
+
   var body: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
@@ -41,9 +46,9 @@ struct PressStartHero: View {
 
       Button(action: onStart) {
         Image(systemName: "play.fill")
-          .font(.system(size: 38))
+          .font(.system(size: glyph))
           .foregroundStyle(IntradaColor.accent)
-          .frame(width: 96, height: 96)
+          .frame(width: disc, height: disc)
           .background(IntradaColor.playerBgTop)
           .clipShape(Circle())
           .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
