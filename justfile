@@ -20,12 +20,13 @@ dev-api: dev
 check-fast:
     cargo check --workspace
 
-# Run all tests: nextest + doc tests, same as CI's `test` job.
+# Run all tests: nextest, same as CI's `test` job.
 # Local green must mean CI green: keep these flags in lockstep with ci.yml.
 # (CI adds --profile ci for junit output only; assertions are identical.)
+# Doc tests dropped (#1198): they compiled three crates to run zero tests —
+# revisit if doc tests ever exist.
 test:
     cargo nextest run --workspace
-    cargo test --doc --workspace
 
 # Clippy with -D warnings: same targets as CI's `clippy` job.
 lint:
@@ -51,9 +52,11 @@ check: fmt-check lint test hygiene
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check
 
-# Full gate: Rust (fmt/clippy/test) + the native iOS build & test suite.
+# Full gate: Rust (fmt/clippy/test) + the native iOS unit/snapshot tier.
 # Slower — builds the iOS app — so run it before pushing changes under `ios/`.
-# Plain `just check` stays Rust-only for fast Rust-only iterations.
+# Plain `just check` stays Rust-only for fast Rust-only iterations. Runs the
+# fast `ios-test` tier only; `ship` and CI additionally gate on
+# `ios-test-full` (XCUITests too) before merge — see #1198.
 check-all: check ios-test
 
 # Seed development data (API must be running)
@@ -161,24 +164,91 @@ ios-fmt:
 ios-fmt-check:
     swift format lint --strict --recursive --parallel ios/Intrada ios/IntradaTests ios/IntradaUITests
 
-# Build + run the whole IntradaTests suite (snapshots + unit tests) on the
-# pinned iPhone 16 / iOS 26.5 sim — the same command CI's `native-ios` job runs.
-# Catches iOS-only breakage (e.g. a Swift type collision) locally instead of via
-# the ~5-min macOS CI roundtrip. Regenerates bindings first if the core changed.
-# The device pin must match the recorded snapshot references (renderer-specific).
+# Fast tier: IntradaTests only (unit + snapshot) on the pinned iPhone 16 /
+# iOS 26.5 sim. Seconds once built — catches wire breaks, codecs, upgrade
+# paths. XCUITests are NOT run here: 204 unit/snapshot tests are the local
+# signal that matters, the 18 XCUITests add ~2 min plus flake and caught
+# nothing locally in the #1194 session (#1198). `ship` and CI additionally
+# run `ios-test-full` before merge, so nothing merges without the UI tier.
+# Regenerates bindings first if the core changed. The device pin must match
+# the recorded snapshot references (renderer-specific).
 [group('iOS')]
-ios-test: _ios-sync
+ios-test: _ios-sync (_ios-test-run "fast")
+
+# Full gate: IntradaTests + IntradaUITests. What `ship` and CI run before
+# merge — see #1198.
+[group('iOS')]
+ios-test-full: _ios-sync (_ios-test-run "full")
+
+# Shared build+test body for both tiers. Splits `build-for-testing` from
+# `test-without-building` (#1198) so a flake retry or test-only change reruns
+# in seconds instead of rebuilding the whole app. Skips the run entirely when
+# HEAD is clean and already stamped green at this tier (or better) — kills
+# re-verifying an unchanged tree, e.g. a lead re-running a gate a teammate
+# already ran green (#1192). Delete `ios/build/.ios-test-stamp` to force.
+[private]
+_ios-test-run tier:
     #!/usr/bin/env bash
     set -euo pipefail
+    stamp=ios/build/.ios-test-stamp
+    sha="$(git rev-parse HEAD)"
+    if [ -z "$(git status --porcelain)" ] && [ -f "$stamp" ]; then
+        read -r stamped_sha stamped_tier < "$stamp" || true
+        if [ "${stamped_sha:-}" = "$sha" ] && { [ "${stamped_tier:-}" = "full" ] || [ "${stamped_tier:-}" = "{{tier}}" ]; }; then
+            echo "✓ HEAD $sha already green at tier '$stamped_tier' on a clean tree — skipping. Delete $stamp to force a re-run."
+            exit 0
+        fi
+    fi
+    just _ios-test-guard
     cd ios
     xcodegen generate
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
-    xcodebuild test -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+    only=""
+    if [ "{{tier}}" = "fast" ]; then only="-only-testing:IntradaTests"; fi
+    xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    xcodebuild test-without-building -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+        -destination "id=$udid" -derivedDataPath build/dd \
+        -clonedSourcePackagesDirPath build/spm -quiet \
+        $only \
+        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+    cd ..
+    printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
+
+# Refuse to start while another xcodebuild/XCTestAgent is already running
+# against THIS checkout — two overlapping full-suite runs in one checkout
+# share a simulator and crash each other's XCUITests (#1192). `xcodebuild` is
+# invoked with a relative `-derivedDataPath` (from `cd ios`), so it never
+# appears in the process's own command line — every checkout's argv is
+# identical text. Match on each candidate process's cwd via `lsof` instead;
+# parallel worktrees (distinct cwds, and already on distinct sims) are
+# unaffected. Warns rather than blocking on uncommitted `crates/` changes: a
+# concurrent core edit by another writer can red this gate with a compile
+# error unrelated to the diff under test.
+[private]
+_ios-test-guard:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    here="$(pwd)/ios"
+    for pid in $(pgrep -f 'xcodebuild|XCTestAgent' 2>/dev/null || true); do
+        # `|| true`: the pid can exit between pgrep and lsof (a routine race,
+        # not exotic) — lsof then fails, and under pipefail that failure
+        # propagates through the assignment and aborts the whole script.
+        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" || true
+        if [ "$cwd" = "$here" ]; then
+            echo "✗ another xcodebuild/XCTestAgent (pid $pid) is already running in this checkout ($here)." >&2
+            echo "  Concurrent full-suite runs in one checkout are never intentional (#1192) — wait for it to finish." >&2
+            echo "  Check with: pgrep -fl 'xcodebuild|XCTestAgent'" >&2
+            exit 1
+        fi
+    done
+    if [ -n "$(git status --porcelain -- crates/ 2>/dev/null)" ]; then
+        echo "⚠ uncommitted changes under crates/ — if another writer is mid-edit to intrada-core, a build failure below may be theirs, not this diff's (#1192)." >&2
+    fi
 
 # Per-worktree sim name (basename of the checkout, sanitised to simctl-safe
 # chars) so parallel worktrees don't share one device. The device model is

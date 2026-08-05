@@ -70,7 +70,8 @@ just check        # Run test + clippy + format check
 just ios              # Regenerate bindings (if core changed) + open in Xcode
 just ios-run          # Build + launch on a simulator + screenshot (seeds demo data)
 SEED=0 just ios-run   # …launch against your real on-device data instead of demo data
-just ios-test         # Build + run the snapshot/unit test suite
+just ios-test         # Build + run the snapshot/unit test suite (fast tier)
+just ios-test-full    # …+ XCUITests (full gate; what ship/CI run before merge)
 
 # Data
 just seed         # Seed development data (API must be running)
