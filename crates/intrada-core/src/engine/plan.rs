@@ -17,6 +17,7 @@ use super::gate::{ClickLevel, GateCriteria};
 #[cfg(test)]
 use super::gate::{Judge, Requirement};
 use super::mastery::{MasteryStore, Reading};
+use super::session::Rung;
 use crate::domain::item::ItemKind;
 
 /// Which circle of the fluency frame a node grows: the music you can hear
@@ -89,6 +90,9 @@ pub enum Stage {
     Interleave,
     GrindCap,
     Template,
+    /// Not a planning stage: the ladder drew this block mid-session from the
+    /// alternatives the plan carried (#1182).
+    Escalation,
 }
 
 /// How well the hands know this rung, in the terms a why line says out loud.
@@ -127,9 +131,24 @@ pub struct Why {
 pub struct PlannedBlock {
     pub spec: BlockSpec,
     pub why: Why,
+    /// What the ladder's third and fourth rungs may draw on. Empty where the
+    /// content offers nothing, which is why a block can still end
+    /// `Exit::Escalated` rather than pretending to escalate.
+    pub alternatives: Vec<Alternative>,
     /// The dealer's new-key quota for this block, where the node authors a
     /// `[traversal.<node>]` entry. `None` where it does not.
     pub new_keys: Option<u8>,
+}
+
+/// A block the ladder may swap in when the one in flight is not landing. Held
+/// on the plan rather than worked out mid-block: choosing what to practise is
+/// the planner's job, and the state machine only moves the cursor.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct Alternative {
+    pub rung: Rung,
+    pub spec: BlockSpec,
+    pub why: Why,
 }
 
 impl PlannedBlock {
@@ -147,6 +166,7 @@ impl PlannedBlock {
             {
                 format!("A warm-up on {}, which you own", lower_first(title))
             }
+            Stage::Escalation => format!("Another way into {}", lower_first(title)),
             _ => match self.why.node_state.maturity {
                 Maturity::New => format!("{title} is new ground"),
                 _ => format!("{title} is the frontier"),
@@ -203,7 +223,7 @@ fn plan_from(content: &ContentIndex, mastery: &MasteryStore, ctx: PlanContext) -
     let mut candidates = back_chain(content, &targets, &mut deferred);
     interleave(content, mastery, ctx.now, &mut candidates);
     cap_grind(content, &mut candidates, &mut deferred);
-    let blocks = fit_template(content, ctx, candidates, &mut deferred);
+    let blocks = fit_template(content, mastery, ctx, candidates, &mut deferred);
 
     Plan {
         blocks,
@@ -453,6 +473,7 @@ fn cap_grind(content: &ContentIndex, candidates: &mut Vec<Candidate>, deferred: 
 /// session closes on music. What did not fit is queued and reported.
 fn fit_template(
     content: &ContentIndex,
+    mastery: &MasteryStore,
     ctx: PlanContext,
     candidates: Vec<Candidate>,
     deferred: &mut Vec<String>,
@@ -479,43 +500,126 @@ fn fit_template(
             continue;
         }
         spent += candidate.minutes;
-        blocks.push(planned(content, ctx, candidate));
+        blocks.push(planned(content, mastery, ctx, candidate));
     }
     if let Some(candidate) = closing {
-        blocks.push(planned(content, ctx, candidate));
+        blocks.push(planned(content, mastery, ctx, candidate));
     }
     blocks
 }
 
-fn planned(content: &ContentIndex, ctx: PlanContext, candidate: Candidate) -> PlannedBlock {
-    let maturity = candidate.maturity(content.planner.maintenance_estimate);
+fn node_state(content: &ContentIndex, candidate: &Candidate) -> NodeState {
+    NodeState {
+        estimate_pct: (candidate.reading.estimate * 100.0)
+            .round()
+            .clamp(0.0, 100.0) as u8,
+        evidence: candidate
+            .reading
+            .evidence
+            .round()
+            .clamp(0.0, f32::from(u16::MAX)) as u16,
+        overdue_pct: (candidate.reading.overdue * 100.0)
+            .round()
+            .clamp(0.0, f32::from(u16::MAX)) as u16,
+        maturity: candidate.maturity(content.planner.maintenance_estimate),
+    }
+}
+
+fn planned(
+    content: &ContentIndex,
+    mastery: &MasteryStore,
+    ctx: PlanContext,
+    candidate: Candidate,
+) -> PlannedBlock {
     let new_keys = content
         .traversal
         .get(&candidate.node.id)
         .map(|quota| deal_new_keys(ctx.rng_seed, &candidate.node.id, quota));
 
     PlannedBlock {
+        alternatives: alternatives(content, mastery, ctx.now, &candidate),
         why: Why {
             destination: destination(content, candidate.drill),
-            node_state: NodeState {
-                estimate_pct: (candidate.reading.estimate * 100.0)
-                    .round()
-                    .clamp(0.0, 100.0) as u8,
-                evidence: candidate
-                    .reading
-                    .evidence
-                    .round()
-                    .clamp(0.0, f32::from(u16::MAX)) as u16,
-                overdue_pct: (candidate.reading.overdue * 100.0)
-                    .round()
-                    .clamp(0.0, f32::from(u16::MAX)) as u16,
-                maturity,
-            },
+            node_state: node_state(content, &candidate),
             placed_by: candidate.placed_by,
         },
         spec: block_spec(content, &candidate),
         new_keys,
     }
+}
+
+/// What the ladder may swap to, worked out here so the state machine never has
+/// to choose material: the rung below for a drill swap, and a neighbour node
+/// that runs in a different mode for a mode change. Either may be absent, and
+/// an absent alternative is what ends a block `Exit::Escalated`.
+fn alternatives(
+    content: &ContentIndex,
+    mastery: &MasteryStore,
+    now: DateTime<Utc>,
+    candidate: &Candidate,
+) -> Vec<Alternative> {
+    let node = candidate.node;
+    let swap = node
+        .drills
+        .iter()
+        .filter(|id| *id != &candidate.drill.id)
+        .filter_map(|id| content.drill(id))
+        .find(|drill| drill.level.is_some())
+        .map(|drill| (Rung::SwapDrill, node, drill));
+
+    let mode_change = neighbours(content, node)
+        .filter(|neighbour| neighbour.mode != node.mode)
+        .flat_map(|neighbour| {
+            neighbour
+                .drills
+                .iter()
+                .filter_map(|id| content.drill(id))
+                .map(move |drill| (neighbour, drill))
+        })
+        .find(|(_, drill)| drill.level.is_some())
+        .map(|(neighbour, drill)| (Rung::ChangeMode, neighbour, drill));
+
+    // The ladder's order, so a plan reads the way it will be spent.
+    [mode_change, swap]
+        .into_iter()
+        .flatten()
+        .map(|(rung, node, drill)| {
+            let level = drill.level.expect("filtered to the runnable rungs");
+            let swapped = Candidate {
+                node,
+                drill,
+                level,
+                minutes: candidate.minutes,
+                reading: mastery.reading(&node.id, level, now),
+                placed_by: Stage::Escalation,
+            };
+            Alternative {
+                rung,
+                why: Why {
+                    destination: destination(content, drill),
+                    node_state: node_state(content, &swapped),
+                    placed_by: Stage::Escalation,
+                },
+                spec: block_spec(content, &swapped),
+            }
+        })
+        .collect()
+}
+
+/// Adjacent in the graph: what this node depends on, and what depends on it.
+fn neighbours<'c>(
+    content: &'c ContentIndex,
+    node: &'c Node,
+) -> impl Iterator<Item = &'c Node> + 'c {
+    node.prerequisites
+        .iter()
+        .filter_map(|id| content.node(id))
+        .chain(
+            content
+                .nodes
+                .values()
+                .filter(|other| other.prerequisites.contains(&node.id)),
+        )
 }
 
 /// The dealer for a `[traversal.<node>]` quota: how many new keys this session
@@ -623,6 +727,7 @@ impl Plan {
                     },
                     placed_by: Stage::Intent,
                 },
+                alternatives: Vec::new(),
                 new_keys: None,
             }],
             rng_seed: 0,
@@ -635,6 +740,7 @@ impl Plan {
 mod tests {
     use super::*;
     use crate::engine::gate::Verdict;
+    use crate::engine::session::Rung;
     use chrono::{TimeDelta, TimeZone};
 
     fn at(day: i64) -> DateTime<Utc> {
@@ -1015,6 +1121,80 @@ mod tests {
                     .to_string()
             )
         );
+    }
+
+    // ── What the ladder's third and fourth rungs may draw on (#1182) ──
+
+    #[test]
+    fn a_block_carries_a_swap_to_another_rung_of_its_own_node() {
+        let block = seeded(30)
+            .blocks
+            .into_iter()
+            .find(|block| block.spec.drill == "rootless-under-melody")
+            .expect("the campaign's music block");
+
+        let swap = block
+            .alternatives
+            .iter()
+            .find(|alternative| alternative.rung == Rung::SwapDrill)
+            .expect("somewhere for the fourth rung to go");
+        assert_eq!(
+            swap.spec.node, "rootless-a-b",
+            "the same material, a different rung of it"
+        );
+        assert_ne!(swap.spec.drill, block.spec.drill);
+        assert_eq!(
+            swap.spec.drill, "rootless-one-key",
+            "the easiest rung of the ladder below the one that is not landing"
+        );
+    }
+
+    #[test]
+    fn todays_content_offers_no_way_off_the_keys_so_no_mode_change_is_promised() {
+        for block in seeded(30).blocks {
+            assert!(
+                !block
+                    .alternatives
+                    .iter()
+                    .any(|alternative| alternative.rung == Rung::ChangeMode),
+                "{}: every away-from-the-keys rung in the content is clickless, so \
+                 a mode change here would be a promise the loop cannot keep",
+                block.spec.drill
+            );
+        }
+    }
+
+    #[test]
+    fn a_mode_change_is_offered_when_a_neighbour_node_can_be_run_off_the_keys() {
+        // Two edits, because today's content offers no mode change at all: give
+        // micro-transcription a rung with a click, and a mode that differs from
+        // the node it is a prerequisite of.
+        let content = edited(|source| {
+            source
+                .replace(
+                    "judge = \"self-confirmed\"\nmax_listens = 5",
+                    "clean_passes = 1\ntempo_bpm = 70\nclick_level = \"l3\"",
+                )
+                .replace(
+                    "[nodes.micro-transcription]\ntitle = \"Micro-transcription\"\ncircle = \"head\"\nmode = \"keys-to-away\"",
+                    "[nodes.micro-transcription]\ntitle = \"Micro-transcription\"\ncircle = \"head\"\nmode = \"away\"",
+                )
+        });
+        let plan = plan_from(&content, &MasteryStore::seeded_from(&content), context(60));
+
+        let phrase = plan
+            .blocks
+            .iter()
+            .find(|block| block.spec.node == "phrase-transposition")
+            .expect("the node whose prerequisite is micro-transcription");
+        let mode_change = phrase
+            .alternatives
+            .iter()
+            .find(|alternative| alternative.rung == Rung::ChangeMode)
+            .expect("a neighbour with a different mode and a click to run against");
+
+        assert_eq!(mode_change.spec.node, "micro-transcription");
+        assert_ne!(mode_change.spec.mode, phrase.spec.mode);
     }
 
     // ── The seeded dealer, and replay ──

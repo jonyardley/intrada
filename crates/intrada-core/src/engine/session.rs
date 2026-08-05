@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::content::ContentIndex;
 use super::gate::{EvidenceSource, GateProgress, Verdict};
-use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan};
+use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
 
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
@@ -689,62 +689,112 @@ impl EngineSession {
     /// caller ends the block instead of pretending to escalate.
     fn escalate(&mut self) -> bool {
         loop {
-            let (pct, floor, rung) = {
-                let Some(block) = self.block() else {
-                    return false;
-                };
-                let Some(rung) = self
-                    .config
-                    .ladder
-                    .get(block.escalation_fired.len())
-                    .copied()
-                else {
-                    return false;
-                };
-                (
-                    self.config.tempo_down_pct.min(100),
-                    self.config.tempo_floor_bpm,
-                    rung,
-                )
-            };
-            let Some(block) = self.block_mut() else {
+            let Some(rung) = self.next_rung() else {
                 return false;
             };
-
-            let acted = match rung {
-                Rung::TempoDown => {
-                    let dropped = block
-                        .level
-                        .tempo_bpm
-                        .saturating_sub(
-                            (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
-                        )
-                        .max(floor);
-                    let moved = dropped < block.level.tempo_bpm;
-                    block.level.tempo_bpm = dropped;
-                    moved
+            // A rung is spent whether or not it could act: restarting an
+            // identical rep is not an escalation, so the ladder moves on.
+            match rung {
+                // These two change the material rather than the parameters, so
+                // they close this block and open the alternative the plan
+                // carried (#1182).
+                Rung::ChangeMode | Rung::SwapDrill => {
+                    self.spend_rung(rung);
+                    if self.draw_alternative(rung) {
+                        self.close_block(Exit::Escalated, true);
+                        return true;
+                    }
                 }
-                Rung::ShrinkScope => {
-                    let shrunk = (block.bars / 2).max(1);
-                    let moved = shrunk < block.bars;
-                    block.bars = shrunk;
-                    moved
+                Rung::TempoDown | Rung::ShrinkScope => {
+                    let acted = self.change_parameter(rung);
+                    self.spend_rung(rung);
+                    if acted {
+                        let Some(block) = self.block_mut() else {
+                            return false;
+                        };
+                        block.consecutive_fails = 0;
+                        block.start_rep();
+                        block.phase = Phase::Escalating { rung };
+                        return true;
+                    }
                 }
-                // Changing mode or swapping the drill needs alternatives only
-                // §5's planner can supply (#1182).
-                Rung::ChangeMode | Rung::SwapDrill => return false,
-            };
-            block.escalation_fired.push(rung);
-            if !acted {
-                // Already at the floor or down to one bar: record the rung as
-                // spent and try the next, rather than restart an identical rep.
-                continue;
             }
-            block.consecutive_fails = 0;
-            block.start_rep();
-            block.phase = Phase::Escalating { rung };
-            return true;
         }
+    }
+
+    fn next_rung(&self) -> Option<Rung> {
+        let block = self.block()?;
+        self.config
+            .ladder
+            .get(block.escalation_fired.len())
+            .copied()
+    }
+
+    fn spend_rung(&mut self, rung: Rung) {
+        if let Some(block) = self.block_mut() {
+            block.escalation_fired.push(rung);
+        }
+    }
+
+    /// `false` = already at the tempo floor or down to a single bar, so this
+    /// rung would change nothing.
+    fn change_parameter(&mut self, rung: Rung) -> bool {
+        let pct = self.config.tempo_down_pct.min(100);
+        let floor = self.config.tempo_floor_bpm;
+        let Some(block) = self.block_mut() else {
+            return false;
+        };
+        match rung {
+            Rung::TempoDown => {
+                let dropped = block
+                    .level
+                    .tempo_bpm
+                    .saturating_sub(
+                        (u32::from(block.level.tempo_bpm) * u32::from(pct) / 100) as u16,
+                    )
+                    .max(floor);
+                let moved = dropped < block.level.tempo_bpm;
+                block.level.tempo_bpm = dropped;
+                moved
+            }
+            Rung::ShrinkScope => {
+                let shrunk = (block.bars / 2).max(1);
+                let moved = shrunk < block.bars;
+                block.bars = shrunk;
+                moved
+            }
+            Rung::ChangeMode | Rung::SwapDrill => false,
+        }
+    }
+
+    /// The plan supplies the alternative; this only moves the cursor onto it, by
+    /// putting it next in the plan so the closing block hands straight over.
+    fn draw_alternative(&mut self, rung: Rung) -> bool {
+        let SessionState::Running { plan, block } = &mut self.state else {
+            return false;
+        };
+        let index = block.spec_index;
+        let Some(planned) = plan.blocks.get_mut(index) else {
+            return false;
+        };
+        let Some(offer) = planned
+            .alternatives
+            .iter()
+            .position(|alternative| alternative.rung == rung)
+        else {
+            return false;
+        };
+        let drawn = planned.alternatives.remove(offer);
+        plan.blocks.insert(
+            index + 1,
+            PlannedBlock {
+                spec: drawn.spec,
+                why: drawn.why,
+                alternatives: Vec::new(),
+                new_keys: None,
+            },
+        );
+        true
     }
 
     fn stuck(&mut self, now: DateTime<Utc>) {
@@ -1182,6 +1232,127 @@ mod tests {
         );
     }
 
+    /// A fixture plan whose one block has somewhere to go when the ladder gets
+    /// past dropping the tempo and shrinking the phrase.
+    fn with_alternative(rung: Rung) -> EngineSession {
+        let mut plan = Plan::fixture();
+        let mut spec = plan.blocks[0].spec.clone();
+        spec.drill = "rootless-one-key".to_string();
+        spec.section = Some("one key, LH alone".to_string());
+        let why = plan.blocks[0].why.clone();
+        plan.blocks[0]
+            .alternatives
+            .push(crate::engine::plan::Alternative { rung, spec, why });
+
+        let mut session = EngineSession::default();
+        session.start(plan, at(0));
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+        session
+    }
+
+    /// Every rung of the ladder, fired by asking rather than by missing.
+    fn get_stuck(session: &mut EngineSession, times: usize) {
+        for time in 0..times {
+            session.apply(&CoachEvent::Stuck {
+                now: at(5 + time as i64),
+            });
+            session.apply(&CoachEvent::Beat { beat_index: 0 });
+        }
+    }
+
+    #[test]
+    fn swapping_the_drill_draws_the_alternative_the_plan_supplied() {
+        let mut session = with_alternative(Rung::SwapDrill);
+
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.as_str()),
+            Some("rootless-one-key"),
+            "the fourth rung swaps the drill for one the plan carried"
+        );
+        let closed = session
+            .closed_blocks
+            .last()
+            .expect("the block it gave up on");
+        assert_eq!(closed.exit, Exit::Escalated);
+        assert_eq!(
+            closed.escalation_fired,
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ],
+            "every rung it went through is on the record, including the one that \
+             had nothing to draw"
+        );
+        assert!(
+            matches!(session.state, SessionState::Running { .. }),
+            "and the session carries on: abandoning is not what the app teaches"
+        );
+    }
+
+    #[test]
+    fn changing_mode_draws_its_own_alternative_before_the_drill_is_swapped() {
+        let mut session = with_alternative(Rung::ChangeMode);
+
+        get_stuck(&mut session, 3);
+
+        assert_eq!(
+            session.spec().map(|spec| spec.drill.as_str()),
+            Some("rootless-one-key"),
+            "the third rung acts when the plan can supply a different way in"
+        );
+        assert_eq!(
+            session
+                .closed_blocks
+                .last()
+                .map(|closed| closed.escalation_fired.clone()),
+            Some(vec![Rung::TempoDown, Rung::ShrinkScope, Rung::ChangeMode]),
+            "and the ladder stops there rather than swapping the drill too"
+        );
+    }
+
+    #[test]
+    fn a_block_that_escalates_past_what_the_plan_can_supply_still_ends_escalated() {
+        let mut session = listening();
+
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.state,
+            SessionState::Closing,
+            "one block, no alternatives, so the session closes rather than pretending"
+        );
+        let closed = session.closed_blocks.last().expect("the block");
+        assert_eq!(closed.exit, Exit::Escalated);
+        assert_eq!(
+            closed.escalation_fired,
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ]
+        );
+    }
+
+    #[test]
+    fn an_alternative_is_drawn_once_and_not_dealt_twice() {
+        let mut session = with_alternative(Rung::SwapDrill);
+
+        get_stuck(&mut session, 4);
+        get_stuck(&mut session, 4);
+
+        assert_eq!(
+            session.closed_blocks.len(),
+            2,
+            "the swapped-in block escalates too, and has nothing left to draw"
+        );
+        assert_eq!(session.state, SessionState::Closing);
+    }
+
     #[test]
     fn a_consecutive_gate_empties_its_dots_and_still_escalates() {
         let mut session = EngineSession::default();
@@ -1343,8 +1514,13 @@ mod tests {
         assert_eq!(session.closed_blocks[0].exit, Exit::Escalated);
         assert_eq!(
             session.closed_blocks[0].escalation_fired,
-            vec![Rung::TempoDown, Rung::ShrinkScope],
-            "only the rungs that actually changed the plan are recorded"
+            vec![
+                Rung::TempoDown,
+                Rung::ShrinkScope,
+                Rung::ChangeMode,
+                Rung::SwapDrill
+            ],
+            "a rung with nothing to draw on is still spent, the same way a rung              that would change nothing is (#1182)"
         );
     }
 
