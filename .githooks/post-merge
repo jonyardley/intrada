@@ -1,0 +1,5 @@
+#!/bin/sh
+# PRs merge on GitHub, so the main checkout only ever fast-forwards via
+# `git pull` — post-commit and post-checkout never fire there and the
+# knowledge graph goes stale. Reuse post-commit's refresh logic.
+exec "$(dirname "$0")/post-commit"
