@@ -68,6 +68,10 @@ struct DrillLoopHost: View {
     } else {
       store.send(.coach(.startDrillLoop(now: now)))
     }
+    // No block came back — the core could not plan one, and has said why. Now
+    // that press-start is a user path (#1182), holding a blank screen instead
+    // of returning is the #846 silent no-op.
+    guard drill != nil else { return close() }
     startClickIfNeeded()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))

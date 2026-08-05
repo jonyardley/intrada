@@ -11,6 +11,9 @@ struct PracticeScreen: View {
   private let referenceDate: Date
   @State private var selectedDay: Date?
   @State private var weekIndexOverride: Int?
+  // Presentation only: the core owns the session itself, and closes the loop by
+  // clearing `coach.drill`, which `DrillLoopHost` reports back through onClose.
+  @State private var drillLoopRunning = false
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -83,6 +86,9 @@ struct PracticeScreen: View {
     .navigationDestination(isPresented: buildingBinding) {
       SessionBuilderScreen()
     }
+    .fullScreenCover(isPresented: $drillLoopRunning) {
+      DrillLoopHost(onClose: { drillLoopRunning = false })
+    }
   }
 
   private var buildingBinding: Binding<Bool> {
@@ -95,40 +101,13 @@ struct PracticeScreen: View {
 
   // MARK: - (0) One-tap hero
 
+  // No haptic on the tap: the loop is only really started once the core hands
+  // back a block, and DrillLoopHost closes straight away if it can't.
   private var hero: some View {
-    VStack(spacing: IntradaSpacing.cardCompact) {
-      Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
-
-      Text("A focused session")
-        .font(IntradaFont.pageTitle(25))
-        .foregroundStyle(IntradaColor.paperTop)
-        .multilineTextAlignment(.center)
-
-      Button {
-        store.send(.session(.startBuilding))
-      } label: {
-        Image(systemName: "play.fill")
-          .font(.system(size: 38))
-          .foregroundStyle(IntradaColor.accent)
-          .frame(width: 96, height: 96)
-          .background(IntradaColor.playerBgTop)
-          .clipShape(Circle())
-          .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
-      }
-      .buttonStyle(PressRebound())
-      .accessibilityLabel("Start practising")
-      .padding(.vertical, IntradaSpacing.controlGap)
-
-      Text("Tap to begin — one decision")
-        .font(IntradaFont.bodyMedium)
-        .foregroundStyle(IntradaColor.onAccent.opacity(0.85))
-        .multilineTextAlignment(.center)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(IntradaSpacing.section)
-    .background(LinearGradient.practiceHero)
-    .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.hero))
-    .shadow(color: .black.opacity(0.18), radius: 20, y: 10)
+    PressStartHero(
+      headline: "A focused session",
+      footnote: "Tap to begin — one decision",
+      onStart: { drillLoopRunning = true })
   }
 
   // MARK: - (1) This week
