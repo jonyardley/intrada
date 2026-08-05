@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-05 (#1211)
+> Last updated: 2026-08-05 (#1219)
 
 ## Where we are
 
@@ -18,14 +18,15 @@ countable criteria.
 
 ## In flight
 
-- #1182 — drill loop reachable from Practice; retire the MidiSpike entry point
-- #1188 — mastery track: Beta state per (node, level), fed by tap-verdicts
-- #1189 — planner as a pure function, retiring the seeded block
 - #1143 — Phase 0 fortnight practising from `content/`
 - Tooling: gate speed-ups (#1202–#1204), team-briefing edits (#1199)
 
 ## Recently landed
 
+- #1188 — the mastery track: Beta state per (node, level), fed by tap-verdicts
+- #1189 — the five-stage planner as a pure function, retiring the seeded block
+- #1182 — the drill loop reached from Practice: press-start, and the ladder's
+  last two rungs
 - #1194 — the engine reads its authored content (`gates.toml` parser, planner
   + persistence groundwork); tap-verdict evidence survives a crash
 - #1183 — the session state machine and the tap-verdict bridge
@@ -35,6 +36,8 @@ countable criteria.
 
 ## Next (once 2a closes)
 
+- #1214 — the mastery store survives a restart, which is what makes the
+  planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
   circling check, grind trade (see the phase plan in `roadmap.md`)
