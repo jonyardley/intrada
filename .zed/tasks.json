@@ -1,0 +1,34 @@
+[
+  {
+    "label": "just check (pre-push gate)",
+    "command": "just check",
+    "reveal": "always",
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "just test",
+    "command": "just test"
+  },
+  {
+    "label": "just lint",
+    "command": "just lint"
+  },
+  {
+    "label": "just ios-test (fast tier)",
+    "command": "just ios-test",
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "just ios-run (build + launch sim)",
+    "command": "just ios-run",
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "just ios-fmt",
+    "command": "just ios-fmt"
+  },
+  {
+    "label": "cargo test -p intrada-core",
+    "command": "cargo test -p intrada-core"
+  }
+]
