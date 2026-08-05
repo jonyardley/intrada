@@ -26,6 +26,8 @@ countable criteria.
 
 ## Recently landed
 
+- #1122 — re-exported `design/intrada-design-system.html` (the Step ladder
+  gallery entry, via Claude Design's Playwright-driven export)
 - #1194 — the engine reads its authored content (`gates.toml` parser, planner
   + persistence groundwork); tap-verdict evidence survives a crash
 - #1183 — the session state machine and the tap-verdict bridge
