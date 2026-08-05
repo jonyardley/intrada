@@ -34,7 +34,19 @@ Intrada follows the **Crux pure-core pattern**: `intrada-core` contains all busi
 
 - Rust stable (2021 edition, 1.75+)
 - [just](https://github.com/casey/just) (`brew install just` or `cargo install just`)
-- Xcode 26+, iOS 17.0+ target, [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
+- Xcode 26+, iOS 17.0+ target, [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`), and the iOS Simulator runtime (Xcode → Settings → Platforms → iOS Simulator)
+
+Git hooks (a pre-push check that refuses pushes onto an already-merged PR
+branch) install automatically in Claude Code sessions; for other shells run
+`bash scripts/install-git-hooks.sh` once (sets `core.hooksPath = .githooks`;
+bypass a specific push with `SKIP_PR_CHECK=1 git push`, opt out entirely with
+`git config --unset core.hooksPath`).
+
+Forking this repo: update the development team in `ios/project.yml` to your
+own Apple Team ID (developer.apple.com → Membership, or Xcode → Settings →
+Accounts). `just ios`/`just ios-run` read `INTRADA_API_URL` and
+`CLERK_PUBLISHABLE_KEY` from your shell or `.env` (`set dotenv-load` in the
+justfile) — without them the build uses defaults and Clerk auth won't work.
 
 ## Quick start
 
@@ -122,4 +134,4 @@ GitHub Actions runs on every push:
 
 ## License
 
-TBD
+All rights reserved. See [`LICENSE`](LICENSE).
