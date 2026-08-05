@@ -220,23 +220,29 @@ _ios-test-run tier:
     printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
-# against THIS checkout's DerivedData — two overlapping full-suite runs in one
-# checkout share a simulator and crash each other's XCUITests (#1192). Scoped
-# to this checkout's derivedDataPath, not global, so parallel worktrees (which
-# already get distinct sims) are unaffected. Warns rather than blocking on
-# uncommitted `crates/` changes: a concurrent core edit by another writer can
-# red this gate with a compile error unrelated to the diff under test.
+# against THIS checkout — two overlapping full-suite runs in one checkout
+# share a simulator and crash each other's XCUITests (#1192). `xcodebuild` is
+# invoked with a relative `-derivedDataPath` (from `cd ios`), so it never
+# appears in the process's own command line — every checkout's argv is
+# identical text. Match on each candidate process's cwd via `lsof` instead;
+# parallel worktrees (distinct cwds, and already on distinct sims) are
+# unaffected. Warns rather than blocking on uncommitted `crates/` changes: a
+# concurrent core edit by another writer can red this gate with a compile
+# error unrelated to the diff under test.
 [private]
 _ios-test-guard:
     #!/usr/bin/env bash
     set -euo pipefail
-    dd="$(pwd)/ios/build/dd"
-    if pgrep -fl 'xcodebuild|XCTestAgent' 2>/dev/null | grep -F "$dd" > /dev/null; then
-        echo "✗ another xcodebuild/XCTestAgent is already running against this checkout ($dd)." >&2
-        echo "  Concurrent full-suite runs in one checkout are never intentional (#1192) — wait for it to finish." >&2
-        echo "  Check with: pgrep -fl 'xcodebuild|XCTestAgent'" >&2
-        exit 1
-    fi
+    here="$(pwd)/ios"
+    for pid in $(pgrep -f 'xcodebuild|XCTestAgent' 2>/dev/null || true); do
+        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+        if [ "$cwd" = "$here" ]; then
+            echo "✗ another xcodebuild/XCTestAgent (pid $pid) is already running in this checkout ($here)." >&2
+            echo "  Concurrent full-suite runs in one checkout are never intentional (#1192) — wait for it to finish." >&2
+            echo "  Check with: pgrep -fl 'xcodebuild|XCTestAgent'" >&2
+            exit 1
+        fi
+    done
     if [ -n "$(git status --porcelain -- crates/ 2>/dev/null)" ]; then
         echo "⚠ uncommitted changes under crates/ — if another writer is mid-edit to intrada-core, a build failure below may be theirs, not this diff's (#1192)." >&2
     fi
