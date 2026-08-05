@@ -6,9 +6,6 @@ struct RootView: View {
 
   private enum AppTab {
     case library, practice, routines, progress
-    #if DEBUG
-      case drillLoop
-    #endif
   }
 
   @State private var selectedTab: AppTab = .library
@@ -36,13 +33,6 @@ struct RootView: View {
       AnalyticsScreen().screenTransaction("Progress")
         .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
         .tag(AppTab.progress)
-      #if DEBUG
-        // Until press-start reaches the drill loop from Practice (#1182), this
-        // is the only way to run it at a piano.
-        DrillLoopEntry()
-          .tabItem { Label("Drill Loop", systemImage: "metronome") }
-          .tag(AppTab.drillLoop)
-      #endif
     }
     .tint(IntradaColor.accent)
     // State-driven: building can now start outside the Practice tab (the
