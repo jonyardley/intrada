@@ -19,11 +19,13 @@
 
 ## Project Overview
 
-intrada is a music practice companion app. Users sign in with Google (via Clerk),
-manage a library of pieces and exercises, run timed practice sessions with scoring,
-build reusable routines, and view analytics. Organised around three pillars:
-**Plan** (library, routines), **Practice** (focus mode, timers, scoring),
-**Track** (analytics, insights).
+intrada is a **practice coach** for musicians: the app decides what you
+practise, gates every block on evidence (tap-verdicts against countable
+criteria), and tells you when you're done. Around the coaching loop: a music
+library, timed sessions, and analytics, organised as three pillars — **Plan**
+(library, what to practise), **Practice** (the drill loop), **Track**
+(analytics, insights). Direction and phases: `docs/roadmap.md`; what's in
+flight now: `docs/status.md`.
 
 **Platform**: The **native SwiftUI iOS app** (on the Crux core) is the only
 shell. The Leptos web shell and the Tauri 2 iOS WKWebView host were removed
@@ -245,16 +247,10 @@ in Swift. If you're tempted to write logic in Swift, the logic belongs in
 - **Quality is per-screen, not deferred.** Every screen ships with a
   swift-snapshot-test, VoiceOver labels + Dynamic Type, and an iPad `SplitView`
   built *with* the screen. Sentry is wired from the first build.
-- **Spacing & radius are tokens, not literals** — same discipline as colour
-  (`IntradaColor`) and type (`IntradaFont`). Padding / inset / list-gap values
-  come from `IntradaSpacing` (`controlGap` 8, `cardCompact` 12, `row` 14,
-  `card` 16, `section` 24, `stage` 40 — the first four mirror the web `p-card`
-  scale, one step serves several roles; `stage` is the drill-screen rhythm that
-  separates five facts into five glances) and
-  corner radii from `IntradaRadius` (`card` 12); all in `Theme.swift`. Don't
-  hard-code `.padding(16)` / `cornerRadius: 12` etc. — a raw value is how two
-  screens silently drift. Genuine one-offs (a fixed component height, a 2pt
-  baseline nudge) stay literal; don't force those into the scale.
+- **Every colour, font, spacing and radius value is a named token** from
+  `Theme.swift` — full rules under Design System Rules below. Genuine one-offs
+  (a fixed component height, a 2pt baseline nudge) stay literal; don't force
+  those into the scale.
 - **Build hazard:** UniFFI-generated Swift fails under Xcode 26 / Swift 6.2
   `MainActor`-default isolation ([uniffi-rs#2818]). Keep the generated package
   non-MainActor-defaulted (build recipe handles it); don't "fix" it by editing
@@ -513,7 +509,7 @@ single view.
 - **Haptics**: use `UIImpactFeedbackGenerator`/`UISelectionFeedbackGenerator`
   via the `Store+Feedback` helpers — `selection` for tabs, `light` for taps,
   `success` for saves (only after the core confirms — see "Surface, don't
-  swallow" below), `warning` for destructive confirms.
+  swallow" above), `warning` for destructive confirms.
 - **iPad**: list→detail screens use `LibrarySplitView` (adaptive
   sidebar + detail pane at regular width class). Build it before the view,
   not as a retrofit.
@@ -704,7 +700,7 @@ No spec doc.
 
 ### Tier 3 — Lightweight spec (rare; architectural only)
 Net-new top-level features, Crux core / FFI bridge changes, auth or DB
-schema changes, multi-week work spanning core + web + iOS.
+schema changes, multi-week work spanning core + API + iOS.
 
 Write ONE markdown doc in `specs/<feature>.md` (~100-200 lines: problem,
 approach, key decisions, open questions). Then Claude Design for UI work, then
@@ -734,7 +730,7 @@ If unsure between tiers, go one tier lighter. Drift up if scope expands.
 | Fix typo in a label | 1 | Trivial copy change |
 | Bump a dependency with no API change | 1 | Dep bump |
 | New "Recently practiced" view following existing list patterns | 2 | New view, established patterns |
-| Refactor `intrada-core/src/practice/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
+| Refactor `intrada-core/src/domain/session.rs` (no FFI change) | 2 | Single file, non-trivial domain logic |
 | Tweak retry backoff in `auth.rs` | 2 | Sensitivity override from Tier 1 |
 | Add `notes` field to a piece (touches FFI + DB) | 3 | Override: FFI + schema |
 | New auth provider | 3 | Auth + multi-crate |
@@ -767,8 +763,9 @@ Discipline tightening after #719/#724, on top of the guidance above:
 - **`requesting-code-review` is the standard channel for Tier 2+ PRs** — load
   the skill rather than hand-rolling a prompt; run
   `superpowers:receiving-code-review` on the findings before acting on them.
-- **UI verification means actually driving the preview**, not just claiming
-  "all green" when that means cargo test green (see "Doing tasks" above).
+- **UI verification means actually driving the app on the simulator**, not
+  claiming "all green" when that means cargo test green. If you can't reach
+  the running app, say exactly what needs user verification.
 
 ### Always
 1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.

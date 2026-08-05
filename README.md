@@ -118,7 +118,6 @@ specs/                # Design specs for major features
 | [`specs/intrada-practice-coach-design.md`](specs/intrada-practice-coach-design.md) | The practice-coach vision, pedagogy model, and phased build plan |
 | [`docs/status.md`](docs/status.md) | What's in flight right now — updated in every scope-changing PR |
 | [`docs/design-principles.md`](docs/design-principles.md) | Interaction and design principles (how the app should feel) |
-| [`docs/development-workflow.md`](docs/development-workflow.md) | End-to-end feature workflow |
 | [`docs/roadmap.md`](docs/roadmap.md) | Direction and the phase plan; issues/board carry scope and timing |
 | [`VISION.md`](VISION.md) | Product vision |
 | [`docs/research-foundation.md`](docs/research-foundation.md) | Research basis for design decisions |
