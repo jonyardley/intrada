@@ -63,12 +63,14 @@ struct PracticeScreen: View {
           }
           hero
             .fadeUp(0)
-          thisWeek
+          deferredFromPlan
             .fadeUp(1)
-          selectedDaySection
+          thisWeek
             .fadeUp(2)
-          footerLink
+          selectedDaySection
             .fadeUp(3)
+          footerLink
+            .fadeUp(4)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -87,8 +89,21 @@ struct PracticeScreen: View {
       SessionBuilderScreen()
     }
     .fullScreenCover(isPresented: $drillLoopRunning) {
-      DrillLoopHost(onClose: { drillLoopRunning = false })
+      DrillLoopHost(onClose: {
+        drillLoopRunning = false
+        planToday()
+      })
     }
+    .task { planToday() }
+  }
+
+  /// The core clears `plan` when the first block opens, so this asks for one
+  /// only when there isn't one — on arrival, and again after a session ends.
+  /// `availableMinutes: nil` takes the authored `[defaults]` length; the
+  /// declaration surfaces that would ask are Phase 2b.
+  private func planToday() {
+    guard store.viewModel?.coach.plan == nil else { return }
+    store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
   }
 
   private var buildingBinding: Binding<Bool> {
@@ -101,13 +116,43 @@ struct PracticeScreen: View {
 
   // MARK: - (0) One-tap hero
 
+  private var plan: PlanView? { store.viewModel?.coach.plan }
+  private var firstBlock: PlannedBlockView? { plan?.blocks.first }
+
   // No haptic on the tap: the loop is only really started once the core hands
   // back a block, and DrillLoopHost closes straight away if it can't.
   private var hero: some View {
     PressStartHero(
-      headline: "A focused session",
-      footnote: "Tap to begin — one decision",
+      headline: firstBlock?.drillTitle ?? "A focused session",
+      section: firstBlock?.section,
+      why: firstBlock?.why,
+      footnote: planShape ?? "Tap to begin — one decision",
       onStart: { drillLoopRunning = true })
+  }
+
+  private var planShape: String? {
+    guard let plan, !plan.blocks.isEmpty else { return nil }
+    let count = plan.blocks.count
+    return "\(count) block\(count == 1 ? "" : "s") · about \(plan.totalMinutes) minutes"
+  }
+
+  // What the plan could not take. Rendered because silent dropping is a defect
+  // (spec §5 stage 5) — the wording is the core's, never composed here.
+  @ViewBuilder private var deferredFromPlan: some View {
+    if let deferred = plan?.deferred, !deferred.isEmpty {
+      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
+        Eyebrow("Queued for another day")
+        ForEach(deferred, id: \.self) { line in
+          Text(line)
+            .font(IntradaFont.bodyMedium)
+            .foregroundStyle(IntradaColor.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(IntradaSpacing.card)
+      .cardSurface()
+    }
   }
 
   // MARK: - (1) This week

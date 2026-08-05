@@ -66,7 +66,7 @@ struct DrillLoopHost: View {
     if let crashed = store.pendingCoachSession() {
       store.send(.coach(.recoverSession(session: crashed, now: now)))
     } else {
-      store.send(.coach(.startDrillLoop(now: now)))
+      store.send(.coach(.startPlannedSession(now: now)))
     }
     // No block came back — the core could not plan one, and has said why. Now
     // that press-start is a user path (#1182), holding a blank screen instead

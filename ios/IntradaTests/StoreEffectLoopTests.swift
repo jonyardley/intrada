@@ -186,7 +186,7 @@ final class StoreEffectLoopTests: XCTestCase {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     return try coachSession(
-      in: try bridge.update(.coach(.startDrillLoop(now: "2026-08-04T10:00:00Z"))))
+      in: try bridge.update(.coach(.startPlannedSession(now: "2026-08-04T10:00:00Z"))))
   }
 
   func testSaveCoachSessionEffectWritesBlobAndClearRemovesIt() throws {
@@ -562,6 +562,34 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error, "clearing the rung round-trips")
   }
 
+  /// Real-bridge press-start (#1182): `PlanView` is what the Practice hero
+  /// renders, so it has to survive the actual bincode wire before it reaches a
+  /// screen — a stub bridge would pass while the hero showed the no-plan
+  /// fallback forever (`specs/coach-2a-slice-contract.md` §3).
+  ///
+  /// The plan's content is authored (`content/`), so the assertions are the
+  /// invariants press-start depends on rather than titles: a first block with a
+  /// non-empty why line, minutes that add up to something, and the plan giving
+  /// way to a drill once the session runs.
+  func testRealBridgePlanSessionCrossesTheWireForPressStart() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    XCTAssertNil(try bridge.view().coach.plan, "no plan until one is asked for")
+
+    _ = try bridge.update(
+      .coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
+    let plan = try XCTUnwrap(
+      try bridge.view().coach.plan, "planning must reach the shell (#846)")
+    let first = try XCTUnwrap(plan.blocks.first, "a plan press-start can run has a first block")
+    XCTAssertFalse(first.drillTitle.isEmpty, "the hero's headline crossed the wire")
+    XCTAssertFalse(first.why.isEmpty, "every block cites why it is here (spec §5)")
+    XCTAssertGreaterThan(plan.totalMinutes, 0, "the hero promises a length")
+
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    XCTAssertNotNil(try bridge.view().coach.drill, "running the plan opens its first block")
+    XCTAssertNil(try bridge.view().coach.plan, "the plan gives way once the block opens")
+  }
+
   /// Real-bridge drill loop (#846, #1176): drives a gate to completion — start,
   /// count-in, body beats, a clean tap per required pass — through the actual
   /// Swift↔Rust bincode wire, and asserts the core's own counting comes back in
@@ -577,7 +605,7 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     XCTAssertNil(try bridge.view().coach.drill, "no drill until one is started")
 
-    _ = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     XCTAssertFalse(opening.drillTitle.isEmpty, "the block crossed the wire with its title")
     XCTAssertEqual(
@@ -626,7 +654,7 @@ final class StoreEffectLoopTests: XCTestCase {
   func testRealBridgeStuckDropsTheTempoInTheCore() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    let started = try bridge.update(.coach(.startDrillLoop(now: SessionClock.nowRFC3339())))
+    let started = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
     let config = try coachSession(in: started).config
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))

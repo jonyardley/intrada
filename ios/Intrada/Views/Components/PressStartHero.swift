@@ -5,6 +5,7 @@ import SwiftUI
 /// core's plan; this only lays it out.
 struct PressStartHero: View {
   let headline: String
+  var section: String?
   var why: String?
   let footnote: String
   var onStart: () -> Void
@@ -13,11 +14,21 @@ struct PressStartHero: View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       Eyebrow("Today", tint: IntradaColor.onAccent.opacity(0.7))
 
-      Text(headline)
-        .font(IntradaFont.pageTitle(25))
-        .foregroundStyle(IntradaColor.paperTop)
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
+      // The section sits on its own line rather than joining the headline: a
+      // centred serif title wraps mid-phrase and leaves the separator dangling.
+      VStack(spacing: 4) {
+        Text(headline)
+          .font(IntradaFont.pageTitle(25))
+          .foregroundStyle(IntradaColor.paperTop)
+          .fixedSize(horizontal: false, vertical: true)
+        if let section {
+          Text(section)
+            .font(IntradaFont.ambient())
+            .foregroundStyle(IntradaColor.onAccent.opacity(0.75))
+            .fixedSize(horizontal: false, vertical: true)
+        }
+      }
+      .multilineTextAlignment(.center)
 
       if let why {
         Label(why, systemImage: "arrow.turn.down.right")
@@ -66,7 +77,8 @@ struct PressStartHero: View {
       PaperBackground()
       PressStartHero(
         headline: "Rootless voicings",
-        why: "Strasbourg / St. Denis",
+        section: "A section",
+        why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
         footnote: "5 blocks · about 30 minutes",
         onStart: {}
       )
