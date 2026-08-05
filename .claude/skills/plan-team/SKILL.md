@@ -45,16 +45,27 @@ bury one mid-paragraph (Jon's feedback, 2026-08-05).
    - A `Model:` line — model + effort (lead and teammates for a team), and
      **where**: plain terminal vs Zed (agent teams are terminal-only), new
      vs existing session, which checkout/worktree.
-   - The paste-ready command, alone in its own fenced block:
+   - TWO fenced blocks, never one combined command (Jon manages workspaces
+     with his own tooling, and `claude "/team-vertical <n>"` drops the
+     arguments — he launches Claude bare and pastes the prompt inside):
+
+     *Shell* — workspace setup ending in a bare `claude`:
 
      ```bash
-     cd ~/Dev/intrada && git pull && claude "/team-vertical <issue numbers>"
+     cd ~/Dev/intrada && git pull
+     claude
+     ```
+
+     *Inside Claude, paste* — the slash command or opener prompt only:
+
+     ```text
+     /team-vertical <issue numbers>
      ```
 
      Substitute a fresh worktree for `~/Dev/intrada` if another session is
      live in the main checkout, and say which path you chose. If step 5
-     called for solo, this is the single-session opener with test-runner
-     subagents instead.
+     called for solo, the second block is the opener prompt for a solo
+     session with test-runner subagents instead.
    - Steps that are Jon's own (hardware, practising) go last, no command.
 3. Nothing between or after the command blocks except the next step —
    explanation lives in the orientation, above.
