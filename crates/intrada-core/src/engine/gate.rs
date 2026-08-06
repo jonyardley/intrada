@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(ClickLevel::EveryBeat.spoken(), "every beat");
     }
 
-    // ── Click placement (#1224) ──
+    // ── Click placement ──
 
     #[test]
     fn every_beat_sounds_the_whole_bar() {

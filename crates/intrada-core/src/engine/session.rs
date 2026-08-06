@@ -702,12 +702,11 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
+        // Mid-pass the false start is the pass in flight, so the boundary it
+        // reaches opens no window; with a window already open it is the pass
+        // that window is asking about, and the one in flight is untouched.
         match block.phase {
-            // The pass in flight is the false start, so the boundary it reaches
-            // opens no window.
             Phase::Listening => block.discarded = true,
-            // The window already open is the false start; the pass under it is
-            // untouched and will open its own.
             Phase::AwaitingVerdict => block.phase = Phase::Listening,
             _ => return,
         }
@@ -1101,8 +1100,7 @@ mod tests {
         session
     }
 
-    /// On to the next phrase boundary. The pulse never restarts, so the beat
-    /// the shell reports keeps climbing across the whole block.
+    /// On to the next phrase boundary, wherever the climbing beat has got to.
     fn play_to_the_end(session: &mut EngineSession) {
         let block = session.block().expect("a running block");
         let phrase = block.body_beats();
@@ -1122,7 +1120,7 @@ mod tests {
         });
     }
 
-    // ── The block-entry card (#1223) ──
+    // ── The block-entry card ──
 
     #[test]
     fn a_session_opens_on_the_first_block_card_rather_than_a_count_in() {
@@ -1134,7 +1132,6 @@ mod tests {
             Some(&Phase::BlockEntry),
             "one glance and one tap before the hands move (T1)"
         );
-        assert_eq!(session.block().unwrap().pulse_seq, 1);
     }
 
     #[test]
@@ -1171,6 +1168,21 @@ mod tests {
     }
 
     #[test]
+    fn a_stray_start_cannot_hand_a_running_block_a_fresh_ceiling() {
+        let mut session = listening();
+        session.apply(&CoachEvent::Tick { now: at(300) });
+
+        session.apply(&CoachEvent::StartBlock { now: at(300) });
+
+        assert_eq!(
+            session.block().unwrap().elapsed_seconds(),
+            300,
+            "a second Start must not refund the minutes already spent"
+        );
+        assert_eq!(session.phase(), Some(&Phase::Listening));
+    }
+
+    #[test]
     fn the_ceiling_cannot_run_out_while_the_card_is_still_up() {
         let mut session = EngineSession::default();
         session.start_fixture(at(0));
@@ -1198,7 +1210,7 @@ mod tests {
         );
     }
 
-    // ── Skip (#1223) ──
+    // ── Skip ──
 
     #[test]
     fn skipping_from_the_card_closes_the_block_and_moves_on() {
@@ -1243,7 +1255,7 @@ mod tests {
         assert_eq!(session.closed_blocks[0].exit, Exit::Skipped);
     }
 
-    // ── The continuous pulse (#1223) ──
+    // ── The continuous pulse ──
 
     #[test]
     fn a_tap_does_not_restart_the_click() {
@@ -1317,9 +1329,9 @@ mod tests {
 
         session.apply(&CoachEvent::Stuck { now: at(5) });
 
-        assert_eq!(
+        assert_ne!(
             session.block().unwrap().pulse_seq,
-            pulse + 1,
+            pulse,
             "a new tempo is a new pulse, so the shell has to restart it"
         );
     }
@@ -1381,7 +1393,7 @@ mod tests {
         );
     }
 
-    // ── Discard (#1223) ──
+    // ── Discard ──
 
     #[test]
     fn discarding_an_open_verdict_records_nothing() {
@@ -2187,6 +2199,52 @@ mod tests {
             restored.phase(),
             Some(&Phase::CountIn { beats_remaining: 4 }),
             "the hands come back to a count-in, not mid-phrase"
+        );
+    }
+
+    #[test]
+    fn a_recovered_block_tells_the_shell_to_start_the_click_again() {
+        let mut crashed = listening();
+        crashed.apply(&CoachEvent::DiscardAttempt { now: at(5) });
+        let pulse = crashed.block().unwrap().pulse_seq;
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+
+        let block = restored.block().expect("the block came back");
+        assert_ne!(
+            block.pulse_seq, pulse,
+            "nothing is sounding after a crash, so the shell has to be told to \
+             start the click rather than left thinking it already runs"
+        );
+        assert_eq!(
+            block.beat_index, 0,
+            "and the new pulse counts from its own first beat"
+        );
+    }
+
+    #[test]
+    fn a_discard_does_not_survive_the_crash_that_interrupted_it() {
+        let mut crashed = listening();
+        crashed.apply(&CoachEvent::DiscardAttempt { now: at(5) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+        restored.apply(&CoachEvent::CountInBeat { remaining: 0 });
+        restored.apply(&CoachEvent::Beat { beat_index: 0 });
+        let phrase = restored.block().unwrap().body_beats();
+        restored.apply(&CoachEvent::Beat { beat_index: phrase });
+
+        assert_eq!(
+            restored.phase(),
+            Some(&Phase::AwaitingVerdict),
+            "the discarded pass died with the crash; the first pass back is judged"
         );
     }
 

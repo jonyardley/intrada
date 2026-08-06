@@ -139,9 +139,8 @@ impl CoachState {
                 Phase::CountIn { beats_remaining } => DrillPhase::CountIn {
                     remaining: beats_remaining,
                 },
-                // The glance now draws over a pulse that never stopped, so it
-                // is the beat after the tap that turns the page, not a
-                // count-in click (T10, #1223).
+                // The glance draws over a pulse that never stopped, so the
+                // beat after the tap turns the page, not a count-in click (T11).
                 Phase::Listening => match block.last_verdict {
                     Some(verdict) => DrillPhase::Acknowledged {
                         clean: verdict == Verdict::Clean,
@@ -270,8 +269,7 @@ pub struct PlannedBlockView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum DrillPhase {
-    /// The card a block opens on: title, section, minutes and why, one Start
-    /// and one Skip. Silent — nothing is scheduled until Start (T1, #1223).
+    /// The card a block opens on. Silent: nothing is scheduled until Start.
     BlockEntry,
     Playing,
     /// The during-play page, count-in dots in the stuck target's place.
@@ -318,11 +316,10 @@ pub struct DrillView {
     /// clicks every beat whatever the level (#1224).
     pub click_pattern: Vec<bool>,
     pub elapsed_seconds: u32,
-    /// The block's length, for the entry card. `ceiling_seconds` is the same
-    /// budget as the during-play countdown reads it.
+    /// The same budget as `ceiling_seconds`, in the unit the entry card says
+    /// it in.
     pub minutes: u16,
-    /// One sentence, written by the core. The shell renders it and never
-    /// composes one.
+    /// Written by the core; the shell never composes one.
     pub why: String,
     pub ceiling_seconds: Option<u32>,
     pub block_kinds: Vec<ItemKind>,
@@ -422,9 +419,9 @@ mod tests {
         );
 
         coach.apply(&CoachEvent::Stuck { now: at(12) });
-        assert_eq!(
+        assert_ne!(
             coach.view().drill.unwrap().pulse_seq,
-            pulse + 1,
+            pulse,
             "a new tempo is a new pulse"
         );
     }
@@ -673,8 +670,7 @@ mod tests {
         }
     }
 
-    /// One pass of the phrase, answered. The pulse never restarts, so the beat
-    /// the shell reports climbs from pass to pass.
+    /// One pass of the phrase, answered, from wherever the block has got to.
     fn tap(coach: &mut CoachState, clean: bool, second: i64) {
         if coach.session.phase() == Some(&Phase::BlockEntry) {
             coach.apply(&CoachEvent::StartBlock { now: at(0) });

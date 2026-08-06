@@ -594,8 +594,8 @@ mod tests {
             app.update(Event::Coach(event), model)
         }
 
-        /// Leave the block-entry card if it is up, then run the pulse on to the
-        /// next phrase boundary.
+        /// Leave the block-entry card if it is up, then run on to the next
+        /// phrase boundary.
         fn play_to_the_boundary(app: &Intrada, model: &mut Model) {
             if model.coach.session.phase() == Some(&Phase::BlockEntry) {
                 let _ = send(app, model, CoachEvent::StartBlock { now: at(0) });
