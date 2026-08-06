@@ -27,12 +27,13 @@
     private let summary: SummaryView?
 
     private let analytics: AnalyticsView?
+    private let plan: PlanView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
-      analytics: AnalyticsView? = nil
+      analytics: AnalyticsView? = nil, plan: PlanView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -41,6 +42,7 @@
       self.activeSession = activeSession
       self.summary = summary
       self.analytics = analytics
+      self.plan = plan
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -65,6 +67,7 @@
       viewModel.activeSession = activeSession
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
+      if let plan { viewModel.coach.plan = plan }
       return viewModel
     }
   }
@@ -129,6 +132,14 @@
         bridge: PreviewBridge(sessions: [
           .previewCompleted, .previewEndedEarly,
         ]))
+    }
+
+    /// Practice home with today's plan already made — the press-start hero over
+    /// the block list and the deferred lines (#1225).
+    static var previewPracticePlanned: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted, .previewEndedEarly], plan: .preview))
     }
 
     /// Practice home with a crash-recovery blob pending (#962) — drives the

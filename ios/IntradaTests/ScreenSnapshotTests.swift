@@ -128,6 +128,22 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  /// Component-level, not the whole press-start screen: the hero's gradient is
+  /// already covered by `testPressStartHeroPlanned` and would triple this PNG.
+  func testSessionOverview() {
+    let overview = SessionOverview(
+      blocks: PlanView.preview.blocks, deferred: PlanView.preview.deferred
+    )
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    .frame(width: 390)
+    assertSnapshot(
+      of: host(overview),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 560),
+        traits: .init(displayScale: 2)))
+  }
+
   func testRecoveryPromptCard() throws {
     // Component-level (not full-screen): the card is the load-bearing state and
     // the flat crop keeps the reference PNG well under the size ceiling (#840).
@@ -726,7 +742,9 @@ final class ScreenSnapshotTests: XCTestCase {
   // ── The coach drill loop (A2 / A3) ──
 
   private func drill(_ state: DrillView) -> some View {
-    DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
+    DrillScreen(
+      state: state, onVerdict: { _ in }, onStuck: {}, onDiscard: {}, onStart: {}, onSkip: {},
+      onDismiss: {})
   }
 
   func testDrillScreenDuringPlay() {
@@ -759,6 +777,35 @@ final class ScreenSnapshotTests: XCTestCase {
   func testDrillScreenGateOpen() {
     let state = DrillView.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
     assertSnapshot(of: host(drill(state)), as: config)
+  }
+
+  /// The block-entry card (#1223): one glance, one tap, Skip demoted under it.
+  func testDrillScreenBlockEntry() {
+    assertSnapshot(of: host(drill(.preview(phase: .blockEntry))), as: config)
+  }
+
+  /// The three key weights at the sizes no screen snapshot reaches — iPad
+  /// regular width and an accessibility text size, where the labels grow but
+  /// the keys must not become the screen.
+  func testCoachActionWeights() {
+    let keys = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: IntradaSpacing.row) {
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+        CoachAction(title: "I'm stuck", action: {})
+        CoachAction(title: "Don't count that", emphasis: .quiet, action: {})
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+          .environment(\.coachScale, .regular)
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+          .dynamicTypeSize(.accessibility3)
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(
+      of: host(keys),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 500),
+        traits: .init(displayScale: 2)))
   }
 
   /// The two verdict-pair layouts no screen snapshot reaches: iPad regular
