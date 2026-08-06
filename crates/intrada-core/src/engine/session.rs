@@ -62,10 +62,8 @@ pub enum CoachEvent {
     DiscardAttempt {
         now: DateTime<Utc>,
     },
-    /// The click stopped and the shell did not choose to stop it: an audio
-    /// interruption, a route or configuration change, or the app leaving the
-    /// foreground. Reports the fact only; what it costs the block is the
-    /// core's call.
+    /// The click stopped and the shell did not choose to stop it. Reports the
+    /// fact only; what it costs the block is the core's call.
     ClickInterrupted {
         now: DateTime<Utc>,
     },
@@ -299,15 +297,13 @@ pub struct BlockState {
     /// count-in click.
     pub last_verdict: Option<Verdict>,
     /// Bumped when the shell must stop the click and start it again, count-in
-    /// first. Unchanged means keep clicking, whatever else moved: a tap, a
-    /// discard and a phrase boundary all leave the pulse alone.
+    /// first. A tap, a discard and a phrase boundary all leave it alone.
     pub pulse_seq: u32,
     /// The pass in flight is a false start the user has already written off,
     /// so the boundary it reaches opens no verdict window.
     discarded: bool,
-    /// Practice banked by earlier stretches of this block. A block can run,
-    /// be interrupted back to its card and be resumed, and the minutes it
-    /// already took are not refunded by that.
+    /// What earlier stretches of this block took. Resuming after an
+    /// interruption carries on from it rather than refunding it.
     spent_ms: u64,
     pub gate_opened_at_attempt: Option<u16>,
     pub reps_after_gate: u16,
@@ -360,10 +356,7 @@ impl BlockState {
         u32::from(self.bars.max(1)) * u32::from(self.beats_per_bar.max(1))
     }
 
-    /// Practice banked, plus the stretch in flight. A card bills nothing while
-    /// it is up, whether it is a block not yet started or one interrupted back
-    /// to it, so neither the countdown, the ceiling nor `active_ms` counts the
-    /// time it sits there.
+    /// A card bills nothing while it is up, started or interrupted back to it.
     fn active_ms(&self) -> u64 {
         self.spent_ms + self.running_ms()
     }
@@ -672,10 +665,6 @@ impl EngineSession {
         }
     }
 
-    /// The pulse runs unbroken for the whole block, so the beat the shell
-    /// reports climbs across every pass and a rep boundary is a beat like any
-    /// other. Only the crossing opens a verdict window; the beats under an open
-    /// one are the hands playing the next pass.
     fn beat(&mut self, beat_index: u32) {
         let Some(block) = self.block_mut() else {
             return;
@@ -739,9 +728,6 @@ impl EngineSession {
         self.close_block(Exit::Skipped, true);
     }
 
-    /// The click died under the block. Park it on its card with everything it
-    /// earned: the attempts, the gate progress and the minutes are all still
-    /// its own, and Start is what brings the pulse back.
     fn click_interrupted(&mut self, now: DateTime<Utc>) {
         let Some(block) = self.block_mut() else {
             return;
@@ -842,8 +828,8 @@ impl EngineSession {
             return;
         }
 
-        // The pulse never stopped, so the hands are already in the next pass.
-        // `last_verdict` is what the glance draws until the next beat clears it.
+        // `last_verdict` is left set: it is what the glance draws until the
+        // next beat clears it.
         block.phase = Phase::Listening;
     }
 
@@ -1003,8 +989,7 @@ impl EngineSession {
             && block
                 .gate_open_since
                 .is_some_and(|since| (now - since).num_seconds() >= i64::from(hold));
-        // The card is not practice time, so a block nobody has started cannot
-        // run out of it.
+        // A card bills nothing, so it cannot run out of time while it is up.
         let over = block.phase != Phase::BlockEntry
             && ceiling.is_some_and(|ceiling| block.elapsed_seconds() >= ceiling);
 
@@ -1371,7 +1356,7 @@ mod tests {
         assert_eq!(session.closed_blocks[0].exit, Exit::Skipped);
     }
 
-    // ── Interruption (the click stopped and nobody asked it to) ──
+    // ── Interruption ──
 
     #[test]
     fn an_interruption_parks_the_block_on_its_card() {
@@ -1508,6 +1493,62 @@ mod tests {
         assert_eq!(session.block().map(|block| block.spec_index), Some(1));
     }
 
+    #[test]
+    fn leaving_from_an_interrupted_card_still_records_what_was_practised() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::Tick { now: at(180) });
+        session.apply(&CoachEvent::ClickInterrupted { now: at(180) });
+
+        session.apply(&CoachEvent::LeaveSession { now: at(400) });
+
+        let record = session.closed_blocks.last().expect("a record");
+        assert_eq!(record.exit, Exit::SessionEnded);
+        assert_eq!(record.active_ms, 180_000);
+    }
+
+    #[test]
+    fn an_interrupted_block_keeps_its_minutes_across_a_crash() {
+        let mut crashed = listening();
+        crashed.apply(&CoachEvent::Tick { now: at(180) });
+        crashed.apply(&CoachEvent::ClickInterrupted { now: at(180) });
+        crashed.apply(&CoachEvent::Tick { now: at(300) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(9000),
+        });
+
+        let block = restored.block().expect("the block came back");
+        assert_eq!(block.phase, Phase::BlockEntry);
+        assert_eq!(
+            block.elapsed_seconds(),
+            180,
+            "the blob carries what was practised, and the outage is not more of it"
+        );
+    }
+
+    #[test]
+    fn an_interruption_on_the_last_block_closes_the_session_on_its_pass() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        rep(&mut session, true, 27);
+        assert_eq!(session.phase(), Some(&Phase::GateOpen));
+
+        let writes = session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        assert_eq!(session.state, SessionState::Closing);
+        assert_eq!(
+            writes.blocks.len(),
+            1,
+            "the record still leaves for the store"
+        );
+        assert_eq!(writes.blocks[0].exit, Exit::GatePassed);
+        assert_eq!(writes.snapshot, SnapshotAction::Clear);
+    }
+
     // ── The continuous pulse ──
 
     #[test]
@@ -1582,8 +1623,6 @@ mod tests {
         session.apply(&CoachEvent::Beat { beat_index: 20 });
         session.apply(&CoachEvent::Stuck { now: at(5) });
 
-        // The shell's click drains asynchronously, so a beat scheduled by the
-        // pulse just torn down can still land here.
         session.apply(&CoachEvent::Beat { beat_index: 47 });
         assert_eq!(
             session.block().unwrap().beat_index,

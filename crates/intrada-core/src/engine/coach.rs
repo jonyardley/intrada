@@ -425,6 +425,29 @@ mod tests {
     }
 
     #[test]
+    fn a_gate_interrupted_open_still_moves_the_mastery_track_up() {
+        let mut coach = playing();
+        let seed = *coach
+            .mastery
+            .get("rootless-a-b", next_rung())
+            .expect("the content seeds every runnable rung");
+        for second in [9, 18, 27] {
+            tap(&mut coach, true, second);
+        }
+
+        coach.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        let above = coach
+            .mastery
+            .get("rootless-a-b", next_rung())
+            .expect("the rung above");
+        assert_ne!(
+            above.prior, seed.prior,
+            "the pass was banked before the phone rang, so the level-up is owed"
+        );
+    }
+
+    #[test]
     fn the_pulse_key_survives_a_tap_and_moves_when_the_ladder_acts() {
         let mut coach = playing();
         let pulse = coach.view().drill.unwrap().pulse_seq;
@@ -884,8 +907,6 @@ mod tests {
         coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
         assert_round_trips(coach.view());
 
-        // Renumbering `DrillPhase` puts every variant on the wire, not only the
-        // ones this slice touched.
         let mut awaiting = playing();
         awaiting.apply(&CoachEvent::Beat { beat_index: 32 });
         assert_eq!(
