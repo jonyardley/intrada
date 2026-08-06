@@ -895,15 +895,16 @@ mod tests {
                 AttemptSummary, Circle, ClickLevel, EvidenceSource, Exit, Mode, ParameterLevel,
             };
             let played = at(0) - chrono::TimeDelta::days(days_ago);
+            let level = ParameterLevel {
+                tempo_bpm: 60,
+                click_level: ClickLevel::EveryBeat,
+            };
             vec![BlockRecord {
                 id: "b1".into(),
                 node: "rootless-a-b".into(),
                 drill: "rootless-one-key".into(),
                 gate: "rootless-one-key".into(),
-                level: ParameterLevel {
-                    tempo_bpm: 60,
-                    click_level: ClickLevel::EveryBeat,
-                },
+                level,
                 circle: Circle::Hands,
                 mode: Mode::Keys,
                 started_at: played,
@@ -914,6 +915,7 @@ mod tests {
                     source: EvidenceSource::TapVerdict,
                     cold: true,
                     self_predicted: None,
+                    level,
                 }],
                 attempts_to_pass: None,
                 gate_opened_at_attempt: None,

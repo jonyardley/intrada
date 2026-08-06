@@ -130,7 +130,7 @@ final class StoreEffectLoopTests: XCTestCase {
     attempts: [
       AttemptSummary(
         at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
-        selfPredicted: nil)
+        selfPredicted: nil, level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour))
     ],
     attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
     escalationFired: [], exit: .gatePassed)
@@ -569,9 +569,11 @@ final class StoreEffectLoopTests: XCTestCase {
   /// Real-bridge evidence read-back (#846, #1214): `PersistenceOutput` carries
   /// a `Vec<BlockRecord>` back to the core, which a stub bridge can't exercise.
   /// A wire break here would leave the mastery track silently unrebuilt — the
-  /// exact dead-path this closes — so drive the resolve through LiveBridge,
-  /// where a serialization failure throws instead of being swallowed.
-  func testRealBridgeCoachRecordsResolveOnTheWire() throws {
+  /// exact dead path this closes — so drive the resolve through LiveBridge,
+  /// where a serialization failure throws instead of being swallowed, and read
+  /// the outcome off the plan, which is the only ViewModel surface the mastery
+  /// track reaches.
+  func testRealBridgeCoachRecordsRebuildMasteryOnTheWire() throws {
     let bridge = LiveBridge()
     let launch = try bridge.update(
       .startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
@@ -581,9 +583,41 @@ final class StoreEffectLoopTests: XCTestCase {
         return false
       }?.id, "a local-first launch must ask for the coach records")
 
-    _ = try bridge.resolve(id, persistenceOutput: .coachRecords([Self.coachBlock]))
+    _ = try bridge.resolve(id, persistenceOutput: .coachRecords(Self.overdueEvidence))
+    _ = try bridge.update(
+      .coach(.planSession(now: "2026-09-20T10:00:00Z", availableMinutes: 30)))
 
+    let plan = try XCTUnwrap(try bridge.view().coach.plan, "a planned session")
     XCTAssertNil(try bridge.view().error, "a clean read leaves nothing to surface")
+    // "is due back" is written only where `overdue_pct >= 100`, which nothing can
+    // reach without a `last_attempt_at` — so this sentence appearing on screen is
+    // the proof the records crossed the wire and were replayed.
+    XCTAssertTrue(
+      plan.blocks.contains { $0.why.contains("is due back") },
+      "the plan must say what fell due while the app was closed: "
+        + "\(plan.blocks.map(\.why))")
+  }
+
+  /// A fortnight of clean passes on the last node of the authored route, far
+  /// enough back to be overdue by the time the plan is asked for.
+  private static var overdueEvidence: [BlockRecord] {
+    (0..<12).map { day in
+      BlockRecord(
+        id: "b\(day)", node: "phrase-transposition", drill: "phrase-home-key",
+        gate: "phrase-home-key",
+        level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour),
+        circle: .head, mode: .keys,
+        startedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:00Z",
+        endedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:30Z",
+        attempts: [
+          AttemptSummary(
+            at: "2026-08-\(String(format: "%02d", day + 1))T10:00:09Z", verdict: .clean,
+            source: .tapVerdict, cold: false, selfPredicted: nil,
+            level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour))
+        ],
+        attemptsToPass: nil, gateOpenedAtAttempt: nil, repsAfterGate: 0, activeMs: 30_000,
+        escalationFired: [], exit: .ceilingHit)
+    }
   }
 
   /// Real-bridge step round-trip (#846, #1083): `AddVariant` pushes a `Variant`

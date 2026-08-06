@@ -447,9 +447,12 @@ impl Intrada {
             // The mastery track is a projection of this evidence, so the replay
             // is the whole of the read: nothing is stored twice (#1214).
             Event::CoachStoreLoaded(output) => match output {
+                // No render: nothing in `ViewModel` derives from the mastery
+                // track. It reaches a screen only through the plan, which is
+                // computed on `PlanSession`, after this has already run.
                 PersistenceOutput::CoachRecords(records) => {
                     model.coach.rebuild_mastery(&records);
-                    crux_core::render::render()
+                    Command::done()
                 }
                 PersistenceOutput::Items(_)
                 | PersistenceOutput::Sessions(_)

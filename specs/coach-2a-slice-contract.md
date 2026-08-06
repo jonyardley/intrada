@@ -268,6 +268,32 @@ pub enum Event {
 Blocks only. A `WanderRecord` has no node and no level (§4), so it carries
 nothing the mastery track is keyed by and nothing to replay.
 
+`AttemptSummary` gains the level it was played at, which is a change to a
+persisted shape as well as a bridged one:
+
+```rust
+pub struct AttemptSummary {
+    // … unchanged …
+    /// Not always the block's: `Rung::TempoDown` drops the tempo mid-block, so
+    /// a block that escalated holds attempts belonging to two rungs.
+    pub level: ParameterLevel,
+}
+```
+
+`BlockRecord::level` is the level the block *closed* on, so without this a
+rebuild puts the pre-drop attempts on the post-drop rung, and the rung the user
+was actually stuck at comes back looking untouched — `overdue == 0`,
+`is_cold == false`, which is the dead path this was meant to close. The ladder's
+first rung is a tempo drop at three consecutive misses, so that is the common
+case, not a corner. `escalation_fired` carries no timestamp, so the row cannot be
+repaired after the fact: the level has to travel with the attempt.
+
+The stored `attempts` blob is JSON, so the two new keys are additive and no table
+migration follows. Rows written before this read back with the block's level,
+which is all they ever knew. The level-up replay still uses `BlockRecord::level`:
+the gate was passed at the level the block closed on, whatever the ladder did on
+the way there.
+
 `Event::StartApp { local_first: true }` requests it alongside `LoadItems` and
 `LoadSessions`. `CoachStoreLoaded(CoachRecords(blocks))` calls:
 

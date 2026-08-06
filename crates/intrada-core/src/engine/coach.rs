@@ -53,15 +53,20 @@ impl CoachState {
 
     /// The persisted `BlockRecord`s are the log and the mastery track is a
     /// projection of them (#1214), so the store is never persisted itself: it is
-    /// re-seeded from content and replayed. Idempotent by construction — the
-    /// seed is where every replay starts, so reading the rows twice cannot
-    /// double-count the evidence.
+    /// re-seeded from content and replayed. Every replay starts from that seed,
+    /// so reading the same rows twice cannot double-count — but for the same
+    /// reason this discards anything recorded since, which is why it belongs at
+    /// launch and nowhere else.
     pub fn rebuild_mastery(&mut self, records: &[BlockRecord]) {
         self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
         let mut replay = Vec::new();
         for record in records {
             for attempt in &record.attempts {
-                replay.push((attempt.at, Replay::Attempt(attempt.verdict), record));
+                replay.push((
+                    attempt.at,
+                    Replay::Attempt(attempt.verdict, attempt.level),
+                    record,
+                ));
             }
             // A pass banked in a previous run still owes its level-up, and
             // `level_up` declines a rung that already has evidence — so it has
@@ -75,9 +80,11 @@ impl CoachState {
         replay.sort_by_key(|(at, _, _)| *at);
         for (at, step, record) in replay {
             match step {
-                Replay::Attempt(verdict) => {
-                    self.mastery.record(&record.node, record.level, verdict, at)
+                Replay::Attempt(verdict, level) => {
+                    self.mastery.record(&record.node, level, verdict, at)
                 }
+                // The gate was passed at the level the block closed on, whatever
+                // the ladder did on the way there.
                 Replay::LevelUp(to) => self.mastery.level_up(&record.node, record.level, to),
             }
         }
@@ -219,7 +226,7 @@ impl CoachState {
 }
 
 enum Replay {
-    Attempt(Verdict),
+    Attempt(Verdict, ParameterLevel),
     LevelUp(ParameterLevel),
 }
 
@@ -888,6 +895,8 @@ mod tests {
         at(0) + TimeDelta::days(day)
     }
 
+    /// Level-less: `record_on` stamps each attempt with the block's own level,
+    /// which is what a block the ladder never touched looks like.
     fn attempt(clean: bool, at: DateTime<Utc>) -> crate::engine::AttemptSummary {
         crate::engine::AttemptSummary {
             at,
@@ -899,6 +908,7 @@ mod tests {
             source: crate::engine::EvidenceSource::TapVerdict,
             cold: false,
             self_predicted: None,
+            level: rung(60),
         }
     }
 
@@ -920,6 +930,10 @@ mod tests {
         exit: Exit,
         attempts: Vec<crate::engine::AttemptSummary>,
     ) -> BlockRecord {
+        let attempts: Vec<_> = attempts
+            .into_iter()
+            .map(|attempt| crate::engine::AttemptSummary { level, ..attempt })
+            .collect();
         let ended_at = attempts.last().map(|a| a.at).unwrap_or(day(0));
         BlockRecord {
             id: id.to_string(),
@@ -1114,6 +1128,44 @@ mod tests {
                 .iter()
                 .map(|block| block.spec.node.as_str())
                 .collect::<Vec<_>>()
+        );
+    }
+
+    /// The strongest statement the replay can make, and the one that catches a
+    /// whole class of loss rather than one instance: run a block through the live
+    /// path, then rebuild from the record it wrote and assert the two stores
+    /// agree. A block that escalated is the case that matters, because the
+    /// ladder's first rung drops the tempo mid-block, so the attempts before the
+    /// drop and the attempts after it belong to different rungs.
+    #[test]
+    fn a_rebuild_reproduces_the_store_the_live_run_held() {
+        let mut live = playing();
+        for second in [9, 18, 27] {
+            tap(&mut live, false, second);
+        }
+        assert!(
+            !live
+                .session
+                .block()
+                .expect("a running block")
+                .escalation_fired
+                .is_empty(),
+            "three misses fire the ladder, which is what puts two rungs in one block"
+        );
+        tap(&mut live, true, 36);
+        let writes = live.apply(&CoachEvent::LeaveSession { now: at(40) });
+        let record = writes
+            .blocks
+            .first()
+            .expect("the block it ended is written down");
+
+        let mut rebuilt = CoachState::default();
+        rebuilt.rebuild_mastery(std::slice::from_ref(record));
+
+        assert_eq!(
+            rebuilt.mastery, live.mastery,
+            "the record has to carry what the live path told the mastery track, or \
+             the rung the user was actually stuck at comes back as untouched"
         );
     }
 

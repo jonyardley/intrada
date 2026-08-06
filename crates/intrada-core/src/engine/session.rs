@@ -212,6 +212,12 @@ pub struct AttemptSummary {
     /// First rep of the block: the highest-information tap-verdict.
     pub cold: bool,
     pub self_predicted: Option<Verdict>,
+    /// The rung this attempt was played at, which is not always the block's:
+    /// `Rung::TempoDown` drops the tempo mid-block, so a block that escalated
+    /// holds attempts belonging to two rungs. The mastery track is keyed by
+    /// `(node, level)`, so the level has to travel with the attempt or a rebuild
+    /// puts the pre-drop evidence on the post-drop rung (#1214).
+    pub level: ParameterLevel,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -788,6 +794,7 @@ impl EngineSession {
             source: EvidenceSource::TapVerdict,
             cold: block.cold && block.attempts.is_empty(),
             self_predicted: None,
+            level: block.level,
         });
         let scored = ScoredAttempt {
             node,
