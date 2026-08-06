@@ -133,17 +133,22 @@ impl CoachState {
 
         Some(DrillView {
             phase: match block.phase {
+                Phase::BlockEntry => DrillPhase::BlockEntry,
                 Phase::AwaitingVerdict => DrillPhase::AwaitingVerdict,
                 Phase::GateOpen => DrillPhase::GateOpen,
-                Phase::CountIn { beats_remaining } => match block.last_verdict {
+                Phase::CountIn { beats_remaining } => DrillPhase::CountIn {
+                    remaining: beats_remaining,
+                },
+                // The glance now draws over a pulse that never stopped, so it
+                // is the beat after the tap that turns the page, not a
+                // count-in click (T10, #1223).
+                Phase::Listening => match block.last_verdict {
                     Some(verdict) => DrillPhase::Acknowledged {
                         clean: verdict == Verdict::Clean,
                     },
-                    None => DrillPhase::CountIn {
-                        remaining: beats_remaining,
-                    },
+                    None => DrillPhase::Playing,
                 },
-                Phase::Listening | Phase::Escalating { .. } => DrillPhase::Playing,
+                Phase::Escalating { .. } => DrillPhase::Playing,
             },
             drill_title: spec.drill_title.clone(),
             section: spec.section.clone(),
@@ -156,8 +161,17 @@ impl CoachState {
             bar: block.bar(),
             bars: block.bars,
             count_in_beats: block.count_in_beats,
-            click_beats: block.click_beats(),
+            phrase_beats: block.body_beats(),
+            pulse_seq: block.pulse_seq,
+            pulse_running: block.phase != Phase::BlockEntry,
+            click_pattern: block.level.click_level.pattern(block.beats_per_bar),
             elapsed_seconds: block.elapsed_seconds(),
+            minutes: spec.minutes,
+            why: plan
+                .blocks
+                .get(block.spec_index)
+                .map(|planned| planned.why_line())
+                .unwrap_or_default(),
             ceiling_seconds: Some(u32::from(spec.minutes) * 60),
             block_kinds: plan
                 .blocks
@@ -169,7 +183,6 @@ impl CoachState {
             gate_summary: gate_summary(&spec.gate.requirement, block.level.tempo_bpm),
             gate_filled: block.gate_progress.filled(),
             gate_target: block.gate_progress.target(),
-            rep_seq: block.rep_seq,
         })
     }
 }
@@ -257,6 +270,9 @@ pub struct PlannedBlockView {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum DrillPhase {
+    /// The card a block opens on: title, section, minutes and why, one Start
+    /// and one Skip. Silent — nothing is scheduled until Start (T1, #1223).
+    BlockEntry,
     Playing,
     /// The during-play page, count-in dots in the stuck target's place.
     /// `remaining` is beats left after the sounding click, down to 0; the
@@ -287,10 +303,27 @@ pub struct DrillView {
     pub bar: u16,
     pub bars: u16,
     pub count_in_beats: u8,
-    /// Beats for the shell to schedule per rep, count-in excluded: the phrase
-    /// body plus the landing beat that ends it.
-    pub click_beats: u32,
+    /// Beats in one pass of the phrase. The pulse itself is unbounded: the
+    /// shell keeps a rolling schedule going rather than one rep's worth.
+    pub phrase_beats: u32,
+    /// Bumped when the shell must stop the click and start it again, count-in
+    /// first; unchanged means leave it running. Block-scoped, so the shell
+    /// keys on `(block_index, pulse_seq)`.
+    pub pulse_seq: u32,
+    /// `false` while a block-entry card is up: stop the click and forget the
+    /// key.
+    pub pulse_running: bool,
+    /// One cycle of the click placement, from the pulse's first body beat:
+    /// `click_pattern[beat_index % click_pattern.len()]` sounds. The count-in
+    /// clicks every beat whatever the level (#1224).
+    pub click_pattern: Vec<bool>,
     pub elapsed_seconds: u32,
+    /// The block's length, for the entry card. `ceiling_seconds` is the same
+    /// budget as the during-play countdown reads it.
+    pub minutes: u16,
+    /// One sentence, written by the core. The shell renders it and never
+    /// composes one.
+    pub why: String,
     pub ceiling_seconds: Option<u32>,
     pub block_kinds: Vec<ItemKind>,
     pub block_index: usize,
@@ -298,9 +331,6 @@ pub struct DrillView {
     pub gate_summary: String,
     pub gate_filled: u8,
     pub gate_target: u8,
-    /// Changes when the shell should restart the click. Nothing else in this
-    /// view tells it that a new rep began at a new tempo or scope.
-    pub rep_seq: u32,
 }
 
 #[cfg(test)]
@@ -319,6 +349,7 @@ mod tests {
     fn playing() -> CoachState {
         let mut coach = CoachState::default();
         coach.session.start_fixture(at(0));
+        coach.apply(&CoachEvent::StartBlock { now: at(0) });
         coach.apply(&CoachEvent::Beat { beat_index: 5 });
         coach
     }
@@ -343,14 +374,59 @@ mod tests {
             (2, 2),
             "beat 5 of 4/4 is bar 2 beat 2"
         );
+        assert_eq!(drill.phrase_beats, 32, "8 bars of 4");
         assert_eq!(
-            drill.click_beats, 33,
-            "32 beats of phrase plus the landing beat"
+            drill.click_pattern,
+            vec![false, true, false, true],
+            "beats 2 & 4, as the level says and the audio must now do (#1224)"
         );
+        assert!(drill.pulse_running);
         assert_eq!(drill.gate_question, "Clean at 120?");
         assert_eq!(drill.gate_summary, "3 clean at 120");
         assert_eq!((drill.gate_filled, drill.gate_target), (0, 3));
         assert_eq!(drill.ceiling_seconds, Some(360));
+        assert_eq!(drill.minutes, 6);
+        assert!(
+            !drill.why.is_empty(),
+            "the card's why line is the core's sentence, not the shell's"
+        );
+    }
+
+    #[test]
+    fn a_block_entry_card_is_silent_and_carries_what_it_draws() {
+        let mut coach = CoachState::default();
+        coach.session.start_fixture(at(0));
+
+        let drill = coach.view().drill.expect("the card is the drill surface");
+        assert_eq!(drill.phase, DrillPhase::BlockEntry);
+        assert!(
+            !drill.pulse_running,
+            "nothing is scheduled until the user taps Start"
+        );
+        assert_eq!(drill.drill_title, "Rootless voicings");
+        assert_eq!(drill.section.as_deref(), Some("A section"));
+        assert_eq!(drill.minutes, 6);
+        assert!(!drill.why.is_empty());
+    }
+
+    #[test]
+    fn the_pulse_key_survives_a_tap_and_moves_when_the_ladder_acts() {
+        let mut coach = playing();
+        let pulse = coach.view().drill.unwrap().pulse_seq;
+
+        tap(&mut coach, true, 9);
+        assert_eq!(
+            coach.view().drill.unwrap().pulse_seq,
+            pulse,
+            "a verdict is not a reason to break the pulse"
+        );
+
+        coach.apply(&CoachEvent::Stuck { now: at(12) });
+        assert_eq!(
+            coach.view().drill.unwrap().pulse_seq,
+            pulse + 1,
+            "a new tempo is a new pulse"
+        );
     }
 
     #[test]
@@ -370,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn the_glance_after_a_tap_yields_to_the_count_in() {
+    fn the_glance_after_a_tap_yields_to_the_next_beat() {
         let mut coach = playing();
         coach.apply(&CoachEvent::Beat { beat_index: 32 });
         coach.apply(&CoachEvent::Tap {
@@ -378,26 +454,17 @@ mod tests {
             now: at(9),
         });
 
-        let before = coach.view().drill.unwrap();
         assert_eq!(
-            before.phase,
+            coach.view().drill.unwrap().phase,
             DrillPhase::Acknowledged { clean: false },
             "the glance carries the verdict and nothing to read (#1184)"
         );
-        assert_eq!(before.rep_seq, 2);
 
-        coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
-        assert_eq!(
-            coach.view().drill.unwrap().phase,
-            DrillPhase::CountIn { remaining: 3 },
-            "the first count-in click turns the page to the next rep's facts"
-        );
-
-        coach.apply(&CoachEvent::Beat { beat_index: 0 });
+        coach.apply(&CoachEvent::Beat { beat_index: 33 });
         assert_eq!(
             coach.view().drill.unwrap().phase,
             DrillPhase::Playing,
-            "the glance goes when the hands are back"
+            "half a second at 120bpm, and the page turns back to the hands (T10)"
         );
     }
 
@@ -405,6 +472,7 @@ mod tests {
     fn the_first_count_in_of_a_block_has_no_glance_to_show() {
         let mut coach = CoachState::default();
         coach.session.start_fixture(at(0));
+        coach.apply(&CoachEvent::StartBlock { now: at(0) });
 
         assert_eq!(
             coach.view().drill.unwrap().phase,
@@ -417,12 +485,7 @@ mod tests {
     fn the_gate_open_moment_shows_the_criterion_met() {
         let mut coach = playing();
         for second in [9, 18, 27] {
-            coach.apply(&CoachEvent::Beat { beat_index: 32 });
-            coach.apply(&CoachEvent::Tap {
-                clean: true,
-                now: at(second),
-            });
-            coach.apply(&CoachEvent::Beat { beat_index: 0 });
+            tap(&mut coach, true, second);
         }
 
         let drill = coach.view().drill.unwrap();
@@ -610,13 +673,25 @@ mod tests {
         }
     }
 
+    /// One pass of the phrase, answered. The pulse never restarts, so the beat
+    /// the shell reports climbs from pass to pass.
     fn tap(coach: &mut CoachState, clean: bool, second: i64) {
-        coach.apply(&CoachEvent::Beat { beat_index: 32 });
+        if coach.session.phase() == Some(&Phase::BlockEntry) {
+            coach.apply(&CoachEvent::StartBlock { now: at(0) });
+        }
+        if matches!(coach.session.phase(), Some(Phase::CountIn { .. })) {
+            coach.apply(&CoachEvent::Beat { beat_index: 0 });
+        }
+        let block = coach.session.block().expect("a running block");
+        let phrase = block.body_beats();
+        let boundary = (block.beat_index / phrase + 1) * phrase;
+        coach.apply(&CoachEvent::Beat {
+            beat_index: boundary,
+        });
         coach.apply(&CoachEvent::Tap {
             clean,
             now: at(second),
         });
-        coach.apply(&CoachEvent::Beat { beat_index: 0 });
     }
 
     #[test]
@@ -742,6 +817,9 @@ mod tests {
                 clean: true,
                 now: at(1),
             },
+            CoachEvent::StartBlock { now: at(1) },
+            CoachEvent::SkipBlock { now: at(1) },
+            CoachEvent::DiscardAttempt { now: at(1) },
             CoachEvent::Stuck { now: at(2) },
             CoachEvent::Tick { now: at(3) },
             CoachEvent::LeaveSession { now: at(4) },
@@ -775,6 +853,10 @@ mod tests {
     fn the_coach_view_survives_the_ffi_wire() {
         assert_round_trips(CoachState::default().view());
 
+        let mut carded = CoachState::default();
+        carded.session.start_fixture(at(0));
+        assert_round_trips(carded.view());
+
         let mut coach = playing();
         coach.apply(&CoachEvent::Beat { beat_index: 32 });
         coach.apply(&CoachEvent::Tap {
@@ -783,6 +865,7 @@ mod tests {
         });
         assert_round_trips(coach.view());
 
+        coach.apply(&CoachEvent::Stuck { now: at(10) });
         coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
         assert_round_trips(coach.view());
     }

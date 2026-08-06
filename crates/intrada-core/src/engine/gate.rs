@@ -61,6 +61,20 @@ impl ClickLevel {
             ClickLevel::EveryOtherBar => "beat 1, every other bar",
         }
     }
+
+    /// One cycle of the placement, from the pulse's first body beat: the beats
+    /// that sound. A bar or two bars rather than the phrase, because placement
+    /// is a bar-level fact and a phrase of an odd number of bars would
+    /// otherwise flip `EveryOtherBar`'s alternation on every pass.
+    pub fn pattern(&self, beats_per_bar: u8) -> Vec<bool> {
+        let bar = usize::from(beats_per_bar.max(1));
+        match self {
+            ClickLevel::EveryBeat => vec![true; bar],
+            ClickLevel::TwoAndFour => (0..bar).map(|beat| beat == 1 || beat == 3).collect(),
+            ClickLevel::BarDownbeat => (0..bar).map(|beat| beat == 0).collect(),
+            ClickLevel::EveryOtherBar => (0..bar * 2).map(|beat| beat == 0).collect(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -327,5 +341,59 @@ mod tests {
     fn click_levels_read_as_a_musician_says_them() {
         assert_eq!(ClickLevel::TwoAndFour.spoken(), "beats 2 & 4");
         assert_eq!(ClickLevel::EveryBeat.spoken(), "every beat");
+    }
+
+    // ── Click placement (#1224) ──
+
+    #[test]
+    fn every_beat_sounds_the_whole_bar() {
+        assert_eq!(ClickLevel::EveryBeat.pattern(4), vec![true; 4]);
+        assert_eq!(ClickLevel::EveryBeat.pattern(3), vec![true; 3]);
+    }
+
+    #[test]
+    fn two_and_four_sounds_the_backbeats() {
+        assert_eq!(
+            ClickLevel::TwoAndFour.pattern(4),
+            vec![false, true, false, true]
+        );
+    }
+
+    #[test]
+    fn two_and_four_drops_the_beat_a_short_bar_does_not_have() {
+        assert_eq!(
+            ClickLevel::TwoAndFour.pattern(3),
+            vec![false, true, false],
+            "a bar of 3 has no fourth beat to click"
+        );
+    }
+
+    #[test]
+    fn the_bar_downbeat_sounds_once_a_bar() {
+        assert_eq!(
+            ClickLevel::BarDownbeat.pattern(4),
+            vec![true, false, false, false]
+        );
+    }
+
+    #[test]
+    fn every_other_bar_runs_a_two_bar_cycle() {
+        let pattern = ClickLevel::EveryOtherBar.pattern(4);
+        assert_eq!(
+            pattern.len(),
+            8,
+            "the alternation is two bars long, so the cycle has to be too"
+        );
+        assert!(pattern[0]);
+        assert!(pattern[1..].iter().all(|beat| !beat));
+    }
+
+    #[test]
+    fn a_pattern_never_has_a_zero_length_cycle() {
+        assert_eq!(
+            ClickLevel::EveryBeat.pattern(0),
+            vec![true],
+            "a bar of no beats would divide by zero in the shell"
+        );
     }
 }
