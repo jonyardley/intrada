@@ -726,9 +726,8 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
-        // Mid-pass the false start is the pass in flight, so the boundary it
-        // reaches opens no window; with a window already open it is the pass
-        // that window is asking about, and the one in flight is untouched.
+        // With a window open this voids the pass it asks about, not the one in
+        // flight. Voiding the pass in flight reads as well: open, see #1237.
         match block.phase {
             Phase::Listening => block.discarded = true,
             Phase::AwaitingVerdict => block.phase = Phase::Listening,
