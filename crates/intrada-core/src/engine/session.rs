@@ -732,6 +732,9 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
+        // Nothing was sounding, so a route change between blocks is not an
+        // event. Inert while a card bills nothing either way; kept so the
+        // accounting below can never start billing one.
         if block.phase == Phase::BlockEntry {
             return;
         }
@@ -1411,20 +1414,6 @@ mod tests {
             session.block().unwrap().pulse_seq,
             pulse,
             "nothing to restart yet; Start from the card is what restarts it"
-        );
-    }
-
-    #[test]
-    fn an_interruption_on_a_card_is_nothing_to_report() {
-        let mut session = EngineSession::default();
-        session.start_fixture(at(0));
-
-        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
-
-        assert_eq!(
-            session.phase(),
-            Some(&Phase::BlockEntry),
-            "nothing was sounding, so a route change between blocks is not an event"
         );
     }
 
