@@ -22,6 +22,13 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # Cropping does not help these: flat paper costs almost nothing and the gradient
 # is the whole bill, so testPressStartHeroPlanned is no smaller than the full
 # screen despite being a third of the pixels.
+# Added #1223: testDrillScreenBlockEntry (254KB) and
+# testDrillScreenTapVerdictAccessibilitySize (281KB) — two more full-screen drill
+# faces over the same playerPaper radial, alongside siblings already here at
+# 243-247KB, so cropping does not help them either. A third candidate that PR
+# considered, a full-screen planned Practice at 364KB, was cut rather than
+# listed: the hero gradient it paid for is already covered by
+# testPressStartHeroPlanned, so it became a 96KB component crop instead.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
