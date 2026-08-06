@@ -21,7 +21,12 @@ final class Store {
   /// field change could misdecode an old blob into a structurally valid but
   /// wrong session, which `guarded` cannot catch. Bump the suffix with any such
   /// change and the upgrade ignores the stale blob instead of misreading it.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v1"
+  /// v2 (#1223): `Phase::BlockEntry` renumbered every variant and `discarded`
+  /// added a byte mid-struct, so a v1 blob no longer decodes.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v2"
+  /// Retired keys, cleared on the next write so a dead blob doesn't sit in
+  /// UserDefaults for the life of the install.
+  static let retiredCoachSessionKeys = ["intrada.coach-session-in-progress.v1"]
 
   private let bridge: CoreBridge
   private let session: URLSession
@@ -89,10 +94,16 @@ final class Store {
     case .saveCoachSessionInProgress(let session):
       if let bytes = guarded({ try session.bincodeSerialize() }) {
         sortDefaults.set(Data(bytes), forKey: Self.coachSessionInProgressKey)
+        dropRetiredCoachSessions()
       }
     case .clearCoachSessionInProgress:
       sortDefaults.removeObject(forKey: Self.coachSessionInProgressKey)
+      dropRetiredCoachSessions()
     }
+  }
+
+  private func dropRetiredCoachSessions() {
+    for key in Self.retiredCoachSessionKeys { sortDefaults.removeObject(forKey: key) }
   }
 
   /// The drill loop's crash-recovery blob, if a session was cut off mid-block.

@@ -250,6 +250,39 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.pendingCoachSession(), "a stale blob degrades to a fresh start")
   }
 
+  /// #1223 renumbered `Phase` and added a byte mid-`BlockState`, so a blob from
+  /// the previous build cannot decode. The key bump means it is never read at
+  /// all — a designed absence rather than a logged decode failure.
+  func testAPreviousVersionsCoachBlobIsNeverOffered() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let stale = Data(try runningCoachSession().bincodeSerialize())
+    let retired = try XCTUnwrap(Store.retiredCoachSessionKeys.first)
+    defaults.set(stale, forKey: retired)
+
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(
+      store.pendingCoachSession(), "a blob under a retired key is not a recovery candidate")
+  }
+
+  /// And it does not sit in UserDefaults for the life of the install: the next
+  /// write of the current key clears every retired one.
+  func testWritingTheCurrentCoachBlobDropsRetiredOnes() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let retired = try XCTUnwrap(Store.retiredCoachSessionKeys.first)
+    defaults.set(Data([0xff, 0x00, 0x2a]), forKey: retired)
+
+    let session = try runningCoachSession()
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveCoachSessionInProgress(session)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+    store.send(.setQuery(nil))
+
+    XCTAssertNil(defaults.data(forKey: retired), "the dead blob is gone, not merely ignored")
+    XCTAssertNotNil(store.pendingCoachSession(), "and the current one is there")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -702,6 +735,38 @@ final class StoreEffectLoopTests: XCTestCase {
       }
     }
     XCTAssertNil(try bridge.view().error, "a whole gate must decode on the wire (#846)")
+  }
+
+  /// Real-bridge untapped window (#1223): not tapping costs one unrecorded pass
+  /// rather than freezing the loop. The shell holds no state of its own here, so
+  /// this is what stops A3 implying a pass is waiting to be judged for ever —
+  /// the core re-opens the window on the pass that just finished, and the screen
+  /// follows.
+  func testRealBridgeAnUntappedPassDropsAndTheWindowReopens() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
+    let phrase = opening.phraseBeats
+
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .awaitingVerdict)
+
+    // A beat inside the open window leaves it open — the hands are mid-pass.
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase + 1)))
+    XCTAssertEqual(
+      try bridge.view().coach.drill?.phase, .awaitingVerdict,
+      "an ordinary beat does not close the window")
+
+    // The next boundary drops the untapped pass and asks about the new one.
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase * 2)))
+    let reopened = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(reopened.phase, .awaitingVerdict, "the window re-opens on the pass just played")
+    XCTAssertEqual(reopened.gateFilled, 0, "the pass nobody judged banked nothing")
+    XCTAssertEqual(reopened.pulseSeq, opening.pulseSeq, "and the click never paused for it")
+    XCTAssertNil(try bridge.view().error)
   }
 
   /// Real-bridge discard (#1223): "don't count that" records nothing — the gate

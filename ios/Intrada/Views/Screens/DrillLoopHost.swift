@@ -14,7 +14,7 @@ struct DrillLoopHost: View {
   /// The pulse the click is sounding. The core bumps `pulseSeq` only when the
   /// click must actually restart, so an unchanged key means leave it alone —
   /// including across taps, gates and rep boundaries, which is what makes the
-  /// pulse continuous (`specs/coach-loop-2b-contract.md` §1). Keyed on the
+  /// pulse continuous (`specs/intrada-coach-engine.md` §6). Keyed on the
   /// block too: `pulseSeq` is block-scoped.
   @State private var startedPulse: Pulse?
 

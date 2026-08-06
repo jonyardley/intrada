@@ -6,7 +6,8 @@ import AVFoundation
 ///
 /// The pulse is unbounded: the core says "keep clicking" by leaving the pulse key
 /// alone, so this tops up a rolling window of beats rather than scheduling one
-/// rep's worth (`specs/coach-loop-2b-contract.md` §1).
+/// rep's worth (`specs/intrada-coach-engine.md` §6, "The pulse, and how the
+/// shell knows what to do with it").
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
