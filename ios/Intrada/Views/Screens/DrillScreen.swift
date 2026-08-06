@@ -134,6 +134,9 @@ struct DrillScreen: View {
           .font(IntradaFont.verdict(scale.question))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
+          // The criterion is the whole ask; at accessibility sizes it wrapped
+          // to one truncated line ("Clean at…"), which asks nothing.
+          .fixedSize(horizontal: false, vertical: true)
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
     case .acknowledged(let clean):
@@ -162,6 +165,7 @@ struct DrillScreen: View {
         .font(IntradaFont.drillTitle(scale.drillTitle))
         .foregroundStyle(IntradaColor.ink)
         .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
       Text(blockShape)
         .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
         .foregroundStyle(IntradaColor.inkSecondary)

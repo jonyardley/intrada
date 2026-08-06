@@ -761,6 +761,12 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
   }
 
+  /// The one branch the compact A3 snapshot can't reach: the two escapes stack
+  /// instead of sitting side by side, and "Don't count that" needs the room.
+  func testDrillScreenTapVerdictAccessibilitySize() {
+    assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: axConfig)
+  }
+
   /// Identical composition to a pass — a miss is the user's own report.
   func testDrillScreenMissAcknowledged() {
     let state = DrillView.preview(phase: .acknowledged(clean: false), elapsedSeconds: 798)

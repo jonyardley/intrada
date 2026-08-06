@@ -30,7 +30,7 @@ is_large() {
       testFocusPlayerWithReps | testFocusPlayerWithTarget | \
       testSessionSummaryCompleted | testSessionSummaryWithReflection | \
       testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \
-      testDrillScreenBlockEntry | \
+      testDrillScreenBlockEntry | testDrillScreenTapVerdictAccessibilitySize | \
       testDrillScreenCountIn | testDrillScreenTapVerdict | \
       testDrillScreenMissAcknowledged | testDrillScreenGateOpen) return 0 ;;
     *) return 1 ;;
