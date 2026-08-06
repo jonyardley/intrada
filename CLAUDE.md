@@ -613,6 +613,16 @@ existing XCTest files only when already touching them, no wholesale rewrite.
 XCUITest (`IntradaUITests`) stays on XCTest: UI tests have no Swift Testing
 equivalent.
 
+**Before asserting, ask what the value was one line earlier.** A test whose
+arrange step already satisfies its assert passes for the wrong reason and looks
+like coverage forever. Three landed on one branch (#1223) sharing that exact
+shape: each asserted the state the system was *already in* before the event
+under test. It is a cheaper check than mutation testing and catches them at
+writing time. When one turns up, mutation-test it (break the line it names, see
+if it fails) before hardening: if nothing can distinguish the behaviour being
+present from absent, the honest fix is to delete the test, not to bulk it out
+with assertions about something else while keeping the name.
+
 When skipping tests, say so explicitly in the PR description with the reason
 (e.g. "requires real HTTP to an external API and we don't have a mock server").
 "All 157 tests pass" is not coverage — those are existing tests, not tests
