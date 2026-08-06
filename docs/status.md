@@ -36,6 +36,8 @@ countable criteria.
   genuinely independent work. Evidence from building #1223 as a team. Its
   follow-up #1199 (speed edits to the team briefings) closed with it: the
   briefings are gone, and the one item that outlived them shipped as #1204.
+  The `plan-slice` skill went too: its tier and fan-out rules are already in
+  CLAUDE.md, so it was restating them for one reader.
 - #1188 — the mastery track: Beta state per (node, level), fed by tap-verdicts
 - #1189 — the five-stage planner as a pure function, retiring the seeded block
 - #1182 — the drill loop reached from Practice: press-start, and the ladder's
