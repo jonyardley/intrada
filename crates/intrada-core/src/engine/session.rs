@@ -62,6 +62,13 @@ pub enum CoachEvent {
     DiscardAttempt {
         now: DateTime<Utc>,
     },
+    /// The click stopped and the shell did not choose to stop it: an audio
+    /// interruption, a route or configuration change, or the app leaving the
+    /// foreground. Reports the fact only; what it costs the block is the
+    /// core's call.
+    ClickInterrupted {
+        now: DateTime<Utc>,
+    },
     /// "I'm stuck" — fires the next rung of the ladder now, without waiting
     /// for a run of misses.
     Stuck {
@@ -298,6 +305,10 @@ pub struct BlockState {
     /// The pass in flight is a false start the user has already written off,
     /// so the boundary it reaches opens no verdict window.
     discarded: bool,
+    /// Practice banked by earlier stretches of this block. A block can run,
+    /// be interrupted back to its card and be resumed, and the minutes it
+    /// already took are not refunded by that.
+    spent_ms: u64,
     pub gate_opened_at_attempt: Option<u16>,
     pub reps_after_gate: u16,
     /// Whether this block's first rep is a cold test: decided by the mastery
@@ -327,6 +338,7 @@ impl BlockState {
             last_verdict: None,
             pulse_seq: 1,
             discarded: false,
+            spent_ms: 0,
             gate_opened_at_attempt: None,
             reps_after_gate: 0,
             cold: false,
@@ -348,20 +360,23 @@ impl BlockState {
         u32::from(self.bars.max(1)) * u32::from(self.beats_per_bar.max(1))
     }
 
-    /// Zero while the entry card is up: reading the card is not practice, so
-    /// neither the countdown, the ceiling nor `active_ms` may bill it.
-    pub fn elapsed_seconds(&self) -> u32 {
-        if self.phase == Phase::BlockEntry {
-            return 0;
-        }
-        (self.now - self.started_at).num_seconds().max(0) as u32
+    /// Practice banked, plus the stretch in flight. A card bills nothing while
+    /// it is up, whether it is a block not yet started or one interrupted back
+    /// to it, so neither the countdown, the ceiling nor `active_ms` counts the
+    /// time it sits there.
+    fn active_ms(&self) -> u64 {
+        self.spent_ms + self.running_ms()
     }
 
-    fn active_ms(&self) -> u64 {
+    fn running_ms(&self) -> u64 {
         if self.phase == Phase::BlockEntry {
             return 0;
         }
         (self.now - self.started_at).num_milliseconds().max(0) as u64
+    }
+
+    pub fn elapsed_seconds(&self) -> u32 {
+        (self.active_ms() / 1000) as u32
     }
 
     /// The musician's 1-based counting, within the phrase: the beat the shell
@@ -553,6 +568,7 @@ impl EngineSession {
             CoachEvent::StartBlock { now } => self.start_block(*now),
             CoachEvent::SkipBlock { now } => self.skip_block(*now),
             CoachEvent::DiscardAttempt { now } => self.discard(*now),
+            CoachEvent::ClickInterrupted { now } => self.click_interrupted(*now),
             CoachEvent::Stuck { now } => self.stuck(*now),
             CoachEvent::Tick { now } => self.tick(*now),
             CoachEvent::LeaveSession { now } => self.leave_session(*now),
@@ -580,6 +596,7 @@ impl EngineSession {
             | CoachEvent::StartBlock { now }
             | CoachEvent::SkipBlock { now }
             | CoachEvent::DiscardAttempt { now }
+            | CoachEvent::ClickInterrupted { now }
             | CoachEvent::Stuck { now }
             | CoachEvent::Tick { now }
             | CoachEvent::LeaveSession { now }
@@ -720,6 +737,31 @@ impl EngineSession {
         };
         block.now = now;
         self.close_block(Exit::Skipped, true);
+    }
+
+    /// The click died under the block. Park it on its card with everything it
+    /// earned: the attempts, the gate progress and the minutes are all still
+    /// its own, and Start is what brings the pulse back.
+    fn click_interrupted(&mut self, now: DateTime<Utc>) {
+        let Some(block) = self.block_mut() else {
+            return;
+        };
+        if block.phase == Phase::BlockEntry {
+            return;
+        }
+        block.now = now;
+        // A pass earned before the interruption is still a pass, and the card
+        // has no way to hold an open gate.
+        if block.phase == Phase::GateOpen {
+            self.close_block(Exit::GatePassed, true);
+            return;
+        }
+        block.spent_ms = block.active_ms();
+        block.started_at = now;
+        block.beat_index = 0;
+        block.last_verdict = None;
+        block.discarded = false;
+        block.phase = Phase::BlockEntry;
     }
 
     fn discard(&mut self, now: DateTime<Utc>) {
@@ -1327,6 +1369,143 @@ mod tests {
 
         assert_eq!(session.state, SessionState::Closing);
         assert_eq!(session.closed_blocks[0].exit, Exit::Skipped);
+    }
+
+    // ── Interruption (the click stopped and nobody asked it to) ──
+
+    #[test]
+    fn an_interruption_parks_the_block_on_its_card() {
+        let mut session = listening();
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::BlockEntry),
+            "the card is the re-entry point: Start to carry on, Skip to move on"
+        );
+    }
+
+    #[test]
+    fn an_interruption_keeps_every_pass_already_banked() {
+        let mut session = listening();
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        let block = session.block().expect("the block is still here");
+        assert_eq!(block.attempts.len(), 2, "a phone call costs no evidence");
+        assert_eq!(block.gate_progress.filled(), 2);
+        assert!(session.closed_blocks.is_empty(), "and closes nothing");
+    }
+
+    #[test]
+    fn an_interruption_closes_an_open_window_without_recording_it() {
+        let mut session = listening();
+        play_to_the_end(&mut session);
+        assert_eq!(session.phase(), Some(&Phase::AwaitingVerdict));
+
+        let writes = session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        assert!(
+            session.block().unwrap().attempts.is_empty(),
+            "the pass was interrupted, so a verdict on it would be false evidence"
+        );
+        assert!(writes.evidence.is_empty());
+    }
+
+    #[test]
+    fn an_interruption_does_not_restart_the_click() {
+        let mut session = listening();
+        let pulse = session.block().unwrap().pulse_seq;
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        assert_eq!(
+            session.block().unwrap().pulse_seq,
+            pulse,
+            "nothing to restart yet; Start from the card is what restarts it"
+        );
+    }
+
+    #[test]
+    fn an_interruption_on_a_card_is_nothing_to_report() {
+        let mut session = EngineSession::default();
+        session.start_fixture(at(0));
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::BlockEntry),
+            "nothing was sounding, so a route change between blocks is not an event"
+        );
+    }
+
+    #[test]
+    fn the_minutes_already_practised_survive_an_interruption() {
+        let mut session = listening();
+        session.apply(&CoachEvent::Tick { now: at(180) });
+        assert_eq!(session.block().unwrap().elapsed_seconds(), 180);
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(180) });
+        assert_eq!(
+            session.block().unwrap().elapsed_seconds(),
+            180,
+            "three minutes were practised; parking on the card does not unspend them"
+        );
+
+        session.apply(&CoachEvent::Tick { now: at(400) });
+        assert_eq!(
+            session.block().unwrap().elapsed_seconds(),
+            180,
+            "and the interruption itself is not practice either"
+        );
+
+        session.apply(&CoachEvent::StartBlock { now: at(400) });
+        session.apply(&CoachEvent::Tick { now: at(430) });
+        assert_eq!(
+            session.block().unwrap().elapsed_seconds(),
+            210,
+            "resuming carries on from what was spent rather than refunding it"
+        );
+    }
+
+    #[test]
+    fn a_block_skipped_after_an_interruption_records_the_time_it_took() {
+        let mut session = two_block_session();
+        rep(&mut session, true, 9);
+        session.apply(&CoachEvent::Tick { now: at(180) });
+        session.apply(&CoachEvent::ClickInterrupted { now: at(180) });
+
+        session.apply(&CoachEvent::SkipBlock { now: at(400) });
+
+        let record = session.closed_blocks.last().expect("a record");
+        assert_eq!(record.attempts.len(), 1);
+        assert_eq!(
+            record.active_ms, 180_000,
+            "a record carrying attempts must carry the time they took"
+        );
+    }
+
+    #[test]
+    fn an_interruption_after_the_gate_opened_still_banks_the_pass() {
+        let mut session = two_block_session();
+        rep(&mut session, true, 9);
+        rep(&mut session, true, 18);
+        rep(&mut session, true, 27);
+        assert_eq!(session.phase(), Some(&Phase::GateOpen));
+
+        session.apply(&CoachEvent::ClickInterrupted { now: at(30) });
+
+        let record = session.closed_blocks.last().expect("the block closed");
+        assert_eq!(
+            record.exit,
+            Exit::GatePassed,
+            "the criterion was met before the phone rang, and that stands"
+        );
+        assert_eq!(session.block().map(|block| block.spec_index), Some(1));
     }
 
     // ── The continuous pulse ──

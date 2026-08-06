@@ -277,6 +277,28 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 >   flight so the boundary it reaches opens no window. No `AttemptSummary`, no
 >   `ScoredAttempt`, no gate progress, no `consecutive_fails`. A false start
 >   must not bias the Beta estimate down.
+> - **`ClickInterrupted` parks the block on its card** (#1223 follow-up). The
+>   click stopping when the shell did not choose to stop it, an audio
+>   interruption, a route change or the app leaving the foreground, is a fact
+>   the shell reports and a cost the core decides. It returns the block to
+>   `BlockEntry` with `pulse_running` false, keeping attempts, gate progress
+>   and mastery: a phone call must not cost banked evidence, which is why
+>   `ClickUnavailable` (which ends the session) is too blunt for it. An open
+>   verdict window closes with nothing recorded, since the pass was
+>   interrupted and a verdict on it would be false evidence. `pulse_seq` does
+>   **not** move, because nothing restarts until `StartBlock` does it from the
+>   card. A no-op on a card and with no session. From `GateOpen` it closes the
+>   block with `Exit::GatePassed` instead: the criterion was met before the
+>   interruption, and the card has no way to hold an open gate.
+>
+>   **Practice already banked survives it.** `BlockState::spent_ms` holds what
+>   earlier stretches of the block took, so a block that runs, is interrupted
+>   and is resumed is not refunded its minutes: the ceiling still bites and
+>   `active_ms` on the record still matches the attempts beside it. A card
+>   bills nothing while it is up, whether the block has never started or has
+>   been interrupted back to it. Without this, reusing `BlockEntry` for an
+>   interruption would silently write `active_ms: 0` on records carrying real
+>   evidence.
 > - **`SkipBlock` reaches `Exit::Skipped`**, which the machine has carried
 >   since 2a with nothing in Swift able to reach it. Legal in any running
 >   phase, closes the block and advances to the next card (or `Closing` on the

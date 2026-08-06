@@ -404,6 +404,27 @@ mod tests {
     }
 
     #[test]
+    fn an_interrupted_block_comes_back_as_a_card_that_owes_its_minutes() {
+        let mut coach = playing();
+        tap(&mut coach, true, 9);
+        coach.apply(&CoachEvent::Tick { now: at(180) });
+
+        coach.apply(&CoachEvent::ClickInterrupted { now: at(180) });
+
+        let drill = coach.view().drill.expect("the block is still here");
+        assert_eq!(drill.phase, DrillPhase::BlockEntry);
+        assert!(
+            !drill.pulse_running,
+            "nothing is sounding to report beats from"
+        );
+        assert_eq!(
+            drill.elapsed_seconds, 180,
+            "the card owes the minutes already practised, unlike a fresh one"
+        );
+        assert_eq!(drill.gate_filled, 1, "and the pass banked before it");
+    }
+
+    #[test]
     fn the_pulse_key_survives_a_tap_and_moves_when_the_ladder_acts() {
         let mut coach = playing();
         let pulse = coach.view().drill.unwrap().pulse_seq;
@@ -813,6 +834,7 @@ mod tests {
             CoachEvent::StartBlock { now: at(1) },
             CoachEvent::SkipBlock { now: at(1) },
             CoachEvent::DiscardAttempt { now: at(1) },
+            CoachEvent::ClickInterrupted { now: at(1) },
             CoachEvent::Stuck { now: at(2) },
             CoachEvent::Tick { now: at(3) },
             CoachEvent::LeaveSession { now: at(4) },
