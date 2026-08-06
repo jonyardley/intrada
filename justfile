@@ -59,8 +59,13 @@ check:
         exit 0
     fi
     just fmt-check lint test hygiene
-    mkdir -p target
-    echo "$sha" > "$stamp"
+    # Stamp only a tree that matched HEAD: a green run over uncommitted edits
+    # says nothing about HEAD, so stamping it would let a later `git restore`
+    # leave a clean HEAD reading as verified without ever being tested (#1204).
+    if [ -z "$(git status --porcelain)" ]; then
+        mkdir -p target
+        echo "$sha" > "$stamp"
+    fi
 
 # Alias for check — catches errors before the 3-min CI roundtrip
 pre-push: check
@@ -200,7 +205,7 @@ ios-test-full: _ios-sync (_ios-test-run "full")
 # `test-without-building` (#1198) so a flake retry or test-only change reruns
 # in seconds instead of rebuilding the whole app. Skips the run entirely when
 # HEAD is clean and already stamped green at this tier (or better) — kills
-# re-verifying an unchanged tree, e.g. a lead re-running a gate a teammate
+# re-verifying an unchanged tree, e.g. re-running a gate a test-runner subagent
 # already ran green (#1192). Delete `ios/build/.ios-test-stamp` to force.
 [private]
 _ios-test-run tier:
@@ -241,7 +246,10 @@ _ios-test-run tier:
         $only $retry \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     cd ..
-    printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
+    # Clean-tree-only, same reason as `check` above (#1204).
+    if [ -z "$(git status --porcelain)" ]; then
+        printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
+    fi
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout

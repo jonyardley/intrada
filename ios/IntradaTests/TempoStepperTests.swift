@@ -3,6 +3,7 @@ import XCTest
 
 @testable import Intrada
 
+@MainActor
 final class TempoStepperTests: XCTestCase {
   func testClampWithinRangeIsUnchanged() {
     XCTAssertEqual(TempoStepper.clamp(96), 96)
@@ -37,6 +38,7 @@ final class TempoStepperTests: XCTestCase {
   }
 }
 
+@MainActor
 final class ReflectionSheetTempoResolutionTests: XCTestCase {
   func testNoTempoTargetResolvesToNilRegardlessOfStepperValue() {
     XCTAssertNil(ReflectionSheet.resolvedAchievedTempo(tempoTarget: nil, current: 96))
