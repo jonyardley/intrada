@@ -5,7 +5,9 @@ import SwiftUI
 /// and static, not low-contrast; no ring or countdown, since a filling track
 /// reads as a deadline.
 struct OrientationStrip: View {
-  let elapsedSeconds: Int
+  /// `nil` on a block that has not run yet — a zeroed clock is noise, not
+  /// orientation.
+  let elapsedSeconds: Int?
   var ceilingSeconds: Int?
   /// One entry per block in today's session, in order.
   let blockKinds: [ItemKind]
@@ -54,7 +56,11 @@ struct OrientationStrip: View {
     .accessibilityElement(children: .contain)
   }
 
-  private var clock: some View {
+  @ViewBuilder private var clock: some View {
+    if let elapsedSeconds { clockFace(elapsedSeconds) }
+  }
+
+  private func clockFace(_ elapsedSeconds: Int) -> some View {
     HStack(spacing: 0) {
       Text(Self.duration(elapsedSeconds))
         .font(IntradaFont.ambientStrong(scale.clock))
@@ -70,17 +76,17 @@ struct OrientationStrip: View {
     .lineLimit(1)
     .fixedSize(horizontal: true, vertical: false)
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityClock)
+    .accessibilityLabel(accessibilityClock(elapsedSeconds))
   }
 
   private static func duration(_ seconds: Int) -> String {
     String(format: "%d:%02d", seconds / 60, seconds % 60)
   }
 
-  private var accessibilityClock: String {
-    let elapsed = "\(Self.duration(elapsedSeconds)) elapsed"
+  private func accessibilityClock(_ elapsedSeconds: Int) -> String {
+    let elapsed = "\(Self.duration(elapsedSeconds)) spent on this block"
     guard let ceilingSeconds else { return elapsed }
-    return "\(elapsed) of \(Self.duration(ceilingSeconds))"
+    return "\(elapsed), of \(Self.duration(ceilingSeconds))"
   }
 }
 
@@ -97,6 +103,11 @@ struct OrientationStrip: View {
           elapsedSeconds: 192,
           blockKinds: [.exercise, .piece, .piece],
           blockIndex: 0)
+        // A block that has not run yet: no clock at all.
+        OrientationStrip(
+          elapsedSeconds: nil,
+          blockKinds: [.exercise, .piece, .piece],
+          blockIndex: 0, onDismiss: {})
         Spacer()
       }
       .padding(IntradaSpacing.card)

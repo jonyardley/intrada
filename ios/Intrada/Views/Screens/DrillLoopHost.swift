@@ -72,15 +72,20 @@ struct DrillLoopHost: View {
       // ended the session, so this only tears down.
       if ended { close() }
     }
-    // There is no `UIBackgroundModes: audio`, so a backgrounded app's poll task
-    // freezes while its scheduled host times run on. Stop the pulse on the way
-    // out rather than let it be resumed stale, and start a fresh one — count-in
-    // first — on the way back.
+    // There is no `UIBackgroundModes: audio`, so a suspended app's poll task
+    // freezes while its scheduled host times run on — the pulse is dead the
+    // moment we background, whatever the audio session thinks.
     .onChange(of: scenePhase) { _, phase in
-      if phase == .active {
-        syncClick()
-      } else {
-        silencePulse()
+      switch phase {
+      case .background:
+        pulseDied()
+      // Control Centre, the app switcher, a notification banner. The app is
+      // never suspended and the audio keeps playing, so stopping here would
+      // cost the player a block for a gesture nobody meant as an interruption.
+      case .active, .inactive:
+        break
+      @unknown default:
+        break
       }
     }
   }
@@ -129,18 +134,21 @@ struct DrillLoopHost: View {
     startedPulse = nil
   }
 
+  /// The click stopped and we did not choose it. Report the fact and stop
+  /// there — whether that costs the block, the pass, or nothing is the core's
+  /// call, and it answers by parking the block on its entry card. Guarded on a
+  /// live drill so a death during teardown cannot park a block that closed.
+  private func pulseDied() {
+    guard drill != nil else { return }
+    silencePulse()
+    store.send(.coach(.clickInterrupted(now: SessionClock.nowRFC3339())))
+  }
+
   private func clickEngine() -> Click? {
     if let click { return click }
     do {
       let created = try Click()
-      created.onPulseStopped = { silencePulse() }
-      // Only ever back into a foreground app: restarting into an interruption
-      // that is still running would fail the session activation and take the
-      // whole session down through `unavailable()`.
-      created.onPulseShouldRestart = {
-        silencePulse()
-        if scenePhase == .active { syncClick() }
-      }
+      created.onPulseDied = { pulseDied() }
       click = created
       return created
     } catch {
@@ -194,16 +202,9 @@ private struct PulseState: Equatable {
 private final class Click {
   private let engine: ClickEngine
 
-  /// The pulse died and cannot be restarted yet — an interruption is running.
-  var onPulseStopped: (() -> Void)? {
-    get { engine.onPulseStopped }
-    set { engine.onPulseStopped = newValue }
-  }
-
-  /// The pulse died and a fresh one may start.
-  var onPulseShouldRestart: (() -> Void)? {
-    get { engine.onPulseShouldRestart }
-    set { engine.onPulseShouldRestart = newValue }
+  var onPulseDied: (() -> Void)? {
+    get { engine.onPulseDied }
+    set { engine.onPulseDied = newValue }
   }
 
   init() throws {
@@ -239,8 +240,7 @@ private final class Click {
   /// deliberately leaves live because a stopped pulse is exactly when they still
   /// need to speak.
   func dispose() {
-    onPulseStopped = nil
-    onPulseShouldRestart = nil
+    onPulseDied = nil
     engine.onCountIn = nil
     engine.onBeat = nil
     engine.dispose()

@@ -30,12 +30,21 @@ struct DrillScreen: View {
     return false
   }
 
+  /// A card means one of two things now. On a block that has not run, a zeroed
+  /// clock is noise. On one parked by an interruption it is the most useful
+  /// thing you can tell someone coming back from a phone call, so the time
+  /// already spent stays on screen (#1223).
+  private var cardAwareElapsed: Int? {
+    if isBlockEntry && state.elapsedSeconds == 0 { return nil }
+    return Int(state.elapsedSeconds)
+  }
+
   var body: some View {
     ZStack {
       RadialGradient.playerPaper.ignoresSafeArea()
       VStack(spacing: 0) {
         OrientationStrip(
-          elapsedSeconds: Int(state.elapsedSeconds),
+          elapsedSeconds: cardAwareElapsed,
           // The block's clock starts when the hands do, so the card shows no
           // ceiling — a countdown against unstarted time reads as a deadline.
           ceilingSeconds: isBlockEntry ? nil : state.ceilingSeconds.map(Int.init),
@@ -350,7 +359,13 @@ private struct CountIn: View {
   }
 
   #Preview("Block entry") {
-    DrillPreview(state: .preview(phase: .blockEntry, elapsedSeconds: 724))
+    DrillPreview(state: .preview(phase: .blockEntry, elapsedSeconds: 0))
+  }
+
+  /// The same card after an interruption parked the block: three minutes in,
+  /// so the clock stays on screen.
+  #Preview("Block entry, resumed") {
+    DrillPreview(state: .preview(phase: .blockEntry, elapsedSeconds: 184))
   }
 
   #Preview("A2 during play") { DrillPreview(state: .preview()) }

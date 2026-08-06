@@ -31,15 +31,11 @@ final class ClickEngine {
   /// this one, counting down to 0 on the last click (#1184).
   var onCountIn: ((_ remaining: Int) -> Void)?
 
-  /// The pulse stopped and cannot restart itself yet — an interruption began,
-  /// or the engine's configuration changed under it. No further beats will be
-  /// reported, so the core stays where it is rather than counting passes
-  /// nobody heard.
-  var onPulseStopped: (() -> Void)?
-
-  /// The pulse stopped and it is safe to start a new one: an interruption ended
-  /// asking to resume, or the clock ran away and the schedule was abandoned.
-  var onPulseShouldRestart: (() -> Void)?
+  /// The pulse died and the shell did not choose to stop it — an interruption
+  /// began, the engine's configuration changed under it, or the clock ran away.
+  /// Reports the fact and nothing else: no further beats are reported, and what
+  /// it costs the block is the core's call, not this one's.
+  var onPulseDied: (() -> Void)?
 
   /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
   /// `index` is 0-based from the pulse's first body beat and counts on across
@@ -210,7 +206,7 @@ final class ClickEngine {
       while let self, !Task.isCancelled {
         let now = HostClock.now()
         if self.clockRanAway(now: now) {
-          self.abandonPulse(restartable: true)
+          self.abandonPulse()
           return
         }
         while let next = self.pendingBeats.first, next.audibleHostTime <= now {
@@ -262,7 +258,7 @@ final class ClickEngine {
       centre.addObserver(
         forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
       ) { [weak self] _ in
-        MainActor.assumeIsolated { self?.abandonPulse(restartable: false) }
+        MainActor.assumeIsolated { self?.abandonPulse() }
       })
   }
 
@@ -270,26 +266,24 @@ final class ClickEngine {
     guard let type, let kind = AVAudioSession.InterruptionType(rawValue: type) else { return }
     switch kind {
     case .began:
-      abandonPulse(restartable: false)
+      abandonPulse()
     case .ended:
-      let resume = AVAudioSession.InterruptionOptions(rawValue: options ?? 0)
-      if resume.contains(.shouldResume) { onPulseShouldRestart?() }
+      // Deliberately nothing. `shouldResume` is the system's opinion about the
+      // audio, not the coach's about the block: the core has parked the block
+      // on its card, and it restarts when the player taps Start.
+      break
     @unknown default:
-      abandonPulse(restartable: false)
+      abandonPulse()
     }
   }
 
-  /// Stops everything and tells the host which of the two it was. Silent about
-  /// a pulse that was not running, so a route change between blocks is not an
-  /// event.
-  private func abandonPulse(restartable: Bool) {
+  /// Stops everything and reports it. Silent about a pulse that was not running,
+  /// so a route change between blocks is not an event — and silent from `stop()`
+  /// itself, so a teardown the shell chose is never mistaken for a death.
+  private func abandonPulse() {
     guard pulse != nil else { return }
     stop()
-    if restartable {
-      onPulseShouldRestart?()
-    } else {
-      onPulseStopped?()
-    }
+    onPulseDied?()
   }
 
   /// Synthesized inline (mirrors ios/Reference/BackgroundAudioPlugin.swift's

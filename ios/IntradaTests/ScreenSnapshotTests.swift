@@ -786,8 +786,37 @@ final class ScreenSnapshotTests: XCTestCase {
   }
 
   /// The block-entry card (#1223): one glance, one tap, Skip demoted under it.
+  /// A block that has not run, so no clock — the common case, every block opens
+  /// this way.
   func testDrillScreenBlockEntry() {
-    assertSnapshot(of: host(drill(.preview(phase: .blockEntry))), as: config)
+    assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
+  }
+
+  /// The strip's three clock states, including the one a full-screen reference
+  /// would cost 250KB to show: a card parked by an interruption keeps the time
+  /// already spent on screen, a fresh one says nothing.
+  func testOrientationStripClockStates() {
+    let strips = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: IntradaSpacing.section) {
+        OrientationStrip(
+          elapsedSeconds: 724, ceilingSeconds: 360,
+          blockKinds: [.piece, .exercise, .exercise], blockIndex: 1, onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: 184, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
+          onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: nil, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
+          onDismiss: {})
+        Spacer()
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(
+      of: host(strips),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 300),
+        traits: .init(displayScale: 2)))
   }
 
   /// The three key weights at the sizes no screen snapshot reaches — iPad
