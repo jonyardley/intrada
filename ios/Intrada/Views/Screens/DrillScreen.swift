@@ -8,8 +8,7 @@ struct DrillScreen: View {
   /// `true` = "Yes — clean", `false` = "No — missed it".
   var onVerdict: (Bool) -> Void
   var onStuck: () -> Void
-  /// A false start thrown away — neither a pass nor a fail, so it never reaches
-  /// the gate or the estimate.
+  /// Neither a pass nor a fail, so it never reaches the gate or the estimate.
   var onDiscard: () -> Void
   var onStart: () -> Void
   var onSkip: () -> Void
@@ -30,10 +29,9 @@ struct DrillScreen: View {
     return false
   }
 
-  /// A card means one of two things now. On a block that has not run, a zeroed
-  /// clock is noise. On one parked by an interruption it is the most useful
-  /// thing you can tell someone coming back from a phone call, so the time
-  /// already spent stays on screen (#1223).
+  /// On a block that has not run, a zeroed clock is noise. On one parked by an
+  /// interruption, the time already spent is the most useful thing to show
+  /// someone coming back from a phone call (#1223).
   private var cardAwareElapsed: Int? {
     if isBlockEntry && state.elapsedSeconds == 0 { return nil }
     return Int(state.elapsedSeconds)
@@ -144,8 +142,8 @@ struct DrillScreen: View {
           .font(IntradaFont.verdict(scale.question))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
-          // The criterion is the whole ask; at accessibility sizes it wrapped
-          // to one truncated line ("Clean at…"), which asks nothing.
+          // Without this it truncates to "Clean at…" at accessibility sizes,
+          // which asks nothing.
           .fixedSize(horizontal: false, vertical: true)
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
@@ -164,8 +162,7 @@ struct DrillScreen: View {
     }
   }
 
-  /// The beat before a block starts: what you are about to play and why, then
-  /// one tap. The T1 intention beat — read in a glance, never a config surface.
+  /// The T1 intention beat — read in a glance, never a config surface.
   private var blockEntryCard: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       if showsIdentityDetail {
@@ -260,17 +257,15 @@ struct DrillScreen: View {
     }
   }
 
-  /// The two ways out of an attempt, both quiet: the verdict is still the ask.
-  /// Side by side so A3 keeps its shape; stacked where the labels need the room.
+  /// Both quiet: the verdict is still the ask.
   @ViewBuilder private var escapes: some View {
     let stuck = StuckTarget(emphasis: .quiet, action: onStuck)
     let discard = CoachAction(
       title: "Don't count that", emphasis: .quiet,
       hint: "Throws the attempt away — neither clean nor missed", action: onDiscard)
     if typeSize.isAccessibilitySize {
-      // Both are borderless, so with no gap they read as one 92pt target that
-      // does two different things — and mistaking discard for "I'm stuck"
-      // costs you a rung of tempo.
+      // Borderless, so ungapped they read as one 92pt target doing two things,
+      // and hitting "I'm stuck" by mistake costs a rung of tempo.
       VStack(spacing: IntradaSpacing.cardCompact) {
         stuck
         discard

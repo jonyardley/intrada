@@ -12,11 +12,8 @@ struct DrillLoopHost: View {
   var onClose: () -> Void
 
   @State private var click: Click?
-  /// The pulse the click is sounding. The core bumps `pulseSeq` only when the
-  /// click must actually restart, so an unchanged key means leave it alone —
-  /// including across taps, gates and rep boundaries, which is what makes the
-  /// pulse continuous (`specs/intrada-coach-engine.md` §6). Keyed on the
-  /// block too: `pulseSeq` is block-scoped.
+  /// The core bumps `pulseSeq` only when the click must actually restart, so
+  /// an unchanged key means leave it alone (spec §6).
   @State private var startedPulse: Pulse?
 
   private struct Pulse: Equatable {
@@ -52,11 +49,8 @@ struct DrillLoopHost: View {
         Color.clear
       }
     }
-    // The loop is a fullScreenCover, so RootView's banner is occluded while it's
-    // up. Re-surface viewModel.error here — otherwise "Couldn't save what you
-    // just practised." renders nowhere and a lost block is a silent no-op
-    // (#846, #1181). On the host rather than the entry point, so the real
-    // press-start route into the loop (#1182) inherits it.
+    // The loop is a fullScreenCover, so RootView's banner is occluded and a
+    // lost block would be a silent no-op (#846, #1181).
     .safeAreaInset(edge: .top, spacing: 0) {
       if let error = store.viewModel?.error {
         GlobalBanner(message: error) { store.send(.clearError) }
@@ -72,16 +66,14 @@ struct DrillLoopHost: View {
       // ended the session, so this only tears down.
       if ended { close() }
     }
-    // There is no `UIBackgroundModes: audio`, so a suspended app's poll task
-    // freezes while its scheduled host times run on — the pulse is dead the
-    // moment we background, whatever the audio session thinks.
+    // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
+    // while its host times run on: the pulse is dead the moment we background.
     .onChange(of: scenePhase) { _, phase in
       switch phase {
       case .background:
         pulseDied()
-      // Control Centre, the app switcher, a notification banner. The app is
-      // never suspended and the audio keeps playing, so stopping here would
-      // cost the player a block for a gesture nobody meant as an interruption.
+      // Control Centre, the app switcher, a banner: never suspended, audio
+      // still playing. Stopping would cost a block for an idle gesture.
       case .active, .inactive:
         break
       @unknown default:
@@ -125,19 +117,15 @@ struct DrillLoopHost: View {
     startedPulse = pulse
   }
 
-  /// Stops the click and forgets the key, so no beat is reported while nothing
-  /// is sounding. That is what keeps the evidence honest: a core that hears no
-  /// beats cannot count passes the player never heard, and the next
-  /// `syncClick` starts a fresh pulse rather than resuming a dead one.
+  /// No beat is reported while nothing sounds, so the core cannot count passes
+  /// nobody played.
   private func silencePulse() {
     click?.stop()
     startedPulse = nil
   }
 
-  /// The click stopped and we did not choose it. Report the fact and stop
-  /// there — whether that costs the block, the pass, or nothing is the core's
-  /// call, and it answers by parking the block on its entry card. Guarded on a
-  /// live drill so a death during teardown cannot park a block that closed.
+  /// What it costs is the core's call. Guarded on a live drill so a death
+  /// during teardown cannot park a closed block.
   private func pulseDied() {
     guard drill != nil else { return }
     silencePulse()
@@ -182,8 +170,8 @@ struct DrillLoopHost: View {
   }
 }
 
-/// The view fields the click is driven by. Anything else moving in the drill
-/// view — a tap, a gate, a beat — must not reach `syncClick`.
+/// The only fields the click is driven by: a tap, a gate or a beat must not
+/// reach `syncClick`.
 private struct PulseState: Equatable {
   let block: UInt64
   let seq: UInt32
@@ -236,9 +224,8 @@ private final class Click {
     engine.stop()
   }
 
-  /// Stops for good: unhooks the interruption callbacks, which `stop()`
-  /// deliberately leaves live because a stopped pulse is exactly when they still
-  /// need to speak.
+  /// Unhooks the callbacks that `stop()` deliberately leaves live, a stopped
+  /// pulse being exactly when they still need to speak.
   func dispose() {
     onPulseDied = nil
     engine.onCountIn = nil

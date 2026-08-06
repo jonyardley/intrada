@@ -1,13 +1,8 @@
 import AVFoundation
 
-/// AVAudioEngine metronome scheduled via AVAudioTime(hostTime:). Beat callbacks
-/// fire at the *audible* instant (scheduled time + AVAudioSession.outputLatency),
-/// since that is what the player reacts to.
-///
-/// The pulse is unbounded: the core says "keep clicking" by leaving the pulse key
-/// alone, so this tops up a rolling window of beats rather than scheduling one
-/// rep's worth (`specs/intrada-coach-engine.md` §6, "The pulse, and how the
-/// shell knows what to do with it").
+/// AVAudioEngine metronome. Beats fire at the *audible* instant (scheduled +
+/// outputLatency); the pulse is unbounded, so this tops up a rolling window
+/// rather than scheduling one rep's worth (`specs/intrada-coach-engine.md` §6).
 @MainActor
 final class ClickEngine {
   private let engine = AVAudioEngine()
@@ -17,43 +12,31 @@ final class ClickEngine {
   private let accentBuffer: AVAudioPCMBuffer
 
   private let leadInSeconds: Double = 0.5
-  /// Beats scheduled ahead, and the level the poll tops up at, so the queue
-  /// oscillates between 24 and 88 beats — 12s to 44s at 120bpm. Far enough that
-  /// a coalesced wakeup can't run it dry, short enough that `stop()` is not
-  /// fighting a long queue.
+  // Queue oscillates 24-88 beats, 12s to 44s at 120bpm: too long for a
+  // coalesced wakeup to run it dry, short enough that `stop()` isn't fighting it.
+  //
+  // Polled rather than one `Task.sleep` per beat, since iOS coalesces long
+  // timer wakeups while `AVAudioTime(hostTime:)` audio is immune to that.
   private let windowBeats = 64
   private let topUpBelow = 24
-  /// Past this much lag the queue is not late, it is stranded — see
-  /// `hasLostTheClock`.
   static let maxLagBeats: Double = 2
 
-  /// Fires as each count-in click sounds; `remaining` is beats left *after*
-  /// this one, counting down to 0 on the last click (#1184).
+  /// `remaining` is beats left *after* this one, down to 0 on the last (#1184).
   var onCountIn: ((_ remaining: Int) -> Void)?
 
-  /// The pulse died and the shell did not choose to stop it — an interruption
-  /// began, the engine's configuration changed under it, or the clock ran away.
-  /// Reports the fact and nothing else: no further beats are reported, and what
-  /// it costs the block is the core's call, not this one's.
+  /// The pulse died and the shell did not choose to stop it. Reports the fact
+  /// and nothing else; what it costs the block is the core's call.
   var onPulseDied: (() -> Void)?
 
-  /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
-  /// `index` is 0-based from the pulse's first body beat and counts on across
-  /// reps; the core turns it into a bar, a beat and a rep. A beat the placement
-  /// silences still fires — only the audio goes quiet (#1224).
+  /// `index` counts on across reps from the pulse's first body beat. A beat the
+  /// placement silences still fires — only the audio goes quiet (#1224).
   var onBeat: ((_ index: Int, _ hostTime: UInt64) -> Void)?
 
-  /// Pending (hostTime, action) pairs, polled on a short interval rather
-  /// than one `Task.sleep` per beat — iOS coalesces long timer wakeups to
-  /// save power, so a several-second sleep can fire tens to hundreds of ms
-  /// late, while the audio itself (scheduled via `AVAudioTime(hostTime:)`)
-  /// renders sample-accurately and is immune to that.
   private var pendingBeats: [ScheduledBeat] = []
   private var pollTask: Task<Void, Never>?
   private let pollIntervalNanoseconds: UInt64 = 10_000_000  // 10ms
 
   private var pulse: Pulse?
-  /// The first beat not yet scheduled, count-in included.
   private var nextBeat = 0
   private var observers: [NSObjectProtocol] = []
 
@@ -61,9 +44,7 @@ final class ClickEngine {
     let bpm: Double
     let beatsPerBar: Int
     let countInBeats: Int
-    /// One cycle of the click placement, from the first body beat. An empty or
-    /// all-silent pattern would leave a body with no audible pulse at all, so
-    /// callers pass the core's `clickPattern`, which always sounds something.
+    /// Never empty or all-silent: the body would have no audible pulse at all.
     let clickPattern: [Bool]
     let scheduledStart: UInt64
     let outputLatencyTicks: UInt64
@@ -80,7 +61,6 @@ final class ClickEngine {
 
   struct ScheduledBeat {
     let voice: Voice
-    /// When the buffer is handed to the player node.
     let hostTime: UInt64
     /// When the player *hears* it, and so when `fire` runs.
     let audibleHostTime: UInt64
@@ -98,22 +78,18 @@ final class ClickEngine {
     observeInterruptions()
   }
 
-  /// Unregisters the interruption observers. Explicit rather than a `deinit`,
-  /// which is nonisolated and so cannot touch them under Swift 6; the host calls
-  /// it when it lets the engine go.
+  /// Explicit rather than a `deinit`, which is nonisolated and so cannot touch
+  /// the observers under Swift 6.
   func dispose() {
     stop()
     for observer in observers { NotificationCenter.default.removeObserver(observer) }
     observers = []
   }
 
-  /// Starts a pulse: `countInBeats` clicks on every beat, then body beats that
-  /// sound where `clickPattern` says, on and on until `stop()`. Safe to call
-  /// repeatedly — each call restarts from the count-in.
+  /// Safe to call repeatedly — each call restarts from the count-in.
   func start(bpm: Double, beatsPerBar: Int, countInBeats: Int, clickPattern: [Bool]) throws {
-    // `secondsPerBeat` would be infinite or NaN, and `HostClock.ticks`'
-    // precondition on NaN is a crash rather than something `unavailable()` can
-    // route around. Core-controlled today; one line so it cannot become a trap.
+    // NaN `secondsPerBeat` trips `HostClock.ticks`' precondition, which is a
+    // crash rather than something `unavailable()` can route around.
     guard bpm > 0 else { throw ClickEngineError.nonPositiveTempo }
     playerNode.stop()
 
@@ -149,9 +125,8 @@ final class ClickEngine {
     }
   }
 
-  /// One window's worth of beats: which voice each carries, when it sounds, and
-  /// what it reports. Silent beats keep their `fire` — the core counts beats,
-  /// not clicks — so a placement level can never shift bar or rep tracking.
+  /// Silent beats keep their `fire` — the core counts beats, not clicks — so a
+  /// placement level can never shift bar or rep tracking.
   func buildSchedule(beats: Range<Int>, pulse: Pulse) -> [ScheduledBeat] {
     beats.map { beatIndex in
       let offset = HostClock.ticks(fromSeconds: Double(beatIndex) * pulse.secondsPerBeat)
@@ -225,14 +200,9 @@ final class ClickEngine {
       head: head.audibleHostTime, now: now, secondsPerBeat: pulse.secondsPerBeat)
   }
 
-  /// A backlog deeper than a couple of beats is not a late wakeup — the app was
-  /// suspended (there is no `UIBackgroundModes: audio`, so the poll task simply
-  /// freezes) or the main thread stalled for seconds. Every queued host time is
-  /// then in the past, and draining them would hand the core hundreds of beats
-  /// in one iteration: phrase boundaries the player never played, verdict
-  /// windows opening and dropping, and a burst of clicks from buffers reaching
-  /// a live node with a past host time. So the schedule is abandoned and a
-  /// fresh pulse starts, count-in first, rather than fast-forwarded.
+  /// A backlog this deep is a suspended app, not a late wakeup. Draining it
+  /// would hand the core hundreds of beats at once, so the schedule is
+  /// abandoned rather than fast-forwarded.
   static func hasLostTheClock(head: UInt64, now: UInt64, secondsPerBeat: Double) -> Bool {
     HostClock.secondsBetween(now, head) > maxLagBeats * secondsPerBeat
   }
@@ -245,15 +215,13 @@ final class ClickEngine {
       centre.addObserver(
         forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
       ) { [weak self] note in
-        // Read the raw values out here: `Notification` is not Sendable, so
-        // carrying it across the isolation boundary is a data race, while the
-        // two `UInt`s inside it are fine.
+        // Unpacked here because `Notification` is not Sendable; the `UInt`s are.
         let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
         let options = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
         MainActor.assumeIsolated { self?.handleInterruption(type: type, options: options) }
       })
-    // The engine tears its graph down on a route or configuration change (the
-    // headphones case), leaving `isRunning` false with nothing to restart it.
+    // A route change (the headphones case) tears the graph down, leaving
+    // `isRunning` false with nothing to restart it.
     observers.append(
       centre.addObserver(
         forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
@@ -268,18 +236,16 @@ final class ClickEngine {
     case .began:
       abandonPulse()
     case .ended:
-      // Deliberately nothing. `shouldResume` is the system's opinion about the
-      // audio, not the coach's about the block: the core has parked the block
-      // on its card, and it restarts when the player taps Start.
+      // `shouldResume` is the system's opinion about the audio, not the coach's
+      // about the block. The core parked it; the player taps Start.
       break
     @unknown default:
       abandonPulse()
     }
   }
 
-  /// Stops everything and reports it. Silent about a pulse that was not running,
-  /// so a route change between blocks is not an event — and silent from `stop()`
-  /// itself, so a teardown the shell chose is never mistaken for a death.
+  /// Silent about a pulse that was not running, and never called from `stop()`,
+  /// so a teardown the shell chose is not mistaken for a death.
   private func abandonPulse() {
     guard pulse != nil else { return }
     stop()

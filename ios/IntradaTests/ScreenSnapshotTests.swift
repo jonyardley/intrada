@@ -128,8 +128,8 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
-  /// Component-level, not the whole press-start screen: the hero's gradient is
-  /// already covered by `testPressStartHeroPlanned` and would triple this PNG.
+  /// Component-level: the hero's gradient is already covered by
+  /// `testPressStartHeroPlanned` and would triple this PNG.
   func testSessionOverview() {
     let overview = SessionOverview(
       blocks: PlanView.preview.blocks, deferred: PlanView.preview.deferred
@@ -761,8 +761,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
   }
 
-  /// The one branch the compact A3 snapshot can't reach: the two escapes stack
-  /// instead of sitting side by side, and "Don't count that" needs the room.
+  /// The one branch the compact A3 snapshot can't reach: the escapes stack.
   func testDrillScreenTapVerdictAccessibilitySize() {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: axConfig)
   }
@@ -785,16 +784,13 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(state)), as: config)
   }
 
-  /// The block-entry card (#1223): one glance, one tap, Skip demoted under it.
-  /// A block that has not run, so no clock — the common case, every block opens
-  /// this way.
+  /// A block that has not run, so no clock — how every block opens.
   func testDrillScreenBlockEntry() {
     assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
   }
 
-  /// The strip's three clock states, including the one a full-screen reference
-  /// would cost 250KB to show: a card parked by an interruption keeps the time
-  /// already spent on screen, a fresh one says nothing.
+  /// The parked-card clock, which a full-screen reference would cost 250KB
+  /// to show.
   func testOrientationStripClockStates() {
     let strips = ZStack {
       RadialGradient.playerPaper
@@ -819,9 +815,8 @@ final class ScreenSnapshotTests: XCTestCase {
         traits: .init(displayScale: 2)))
   }
 
-  /// The three key weights at the sizes no screen snapshot reaches — iPad
-  /// regular width and an accessibility text size, where the labels grow but
-  /// the keys must not become the screen.
+  /// The sizes no screen snapshot reaches: iPad regular width, and an
+  /// accessibility size where the labels grow but the keys must not.
   func testCoachActionWeights() {
     let keys = ZStack {
       RadialGradient.playerPaper

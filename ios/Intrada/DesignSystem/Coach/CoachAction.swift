@@ -1,16 +1,15 @@
 import SwiftUI
 
-/// A labelled key in the drill loop, at the shared target height. The loop's
-/// buttons are surfaces you can find without looking down, not gradients that
-/// ask to be admired — `StuckTarget` and the block-entry card's Start / Skip are
-/// all this one shape at three weights.
+/// A labelled key in the drill loop: a surface you can find without looking
+/// down, not a gradient that asks to be admired. `StuckTarget` and the card's
+/// Start / Skip are all this one shape at three weights.
 struct CoachAction: View {
   enum Emphasis {
-    /// The one thing to do next — accent fill, at the loop's target height.
+    /// The one thing to do next.
     case primary
-    /// A resident control on paper: card fill, seated edge, ink label.
+    /// A resident control on paper.
     case key
-    /// Demoted beneath a rule; the ask is elsewhere on the screen.
+    /// Demoted beneath a rule; the ask is elsewhere.
     case quiet
   }
 

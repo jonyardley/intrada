@@ -16,8 +16,8 @@ struct ClickEngineTests {
     Array(repeating: pattern, count: times).flatMap { $0 }
   }
 
-  /// #1184: the last count-in click must report 0, so its dot fills.
-  @Test func countInReportsBeatsLeftAfterEachClick() throws {
+  /// #1184: the last count-in click reports 0, so its dot fills.
+  @Test func theLastCountInClickReportsZeroBeatsLeft() throws {
     let engine = try ClickEngine()
     var countIns: [Int] = []
     var beats: [Int] = []
@@ -48,37 +48,31 @@ struct ClickEngineTests {
   }
 
   // ── #1224 · the four authored levels, each over a four-bar phrase ──
-  //
-  // Placement is audio, and no automated check can hear it, so these assert the
-  // exact voice of all sixteen beats of a phrase rather than a summary, and that
-  // every one of the sixteen still reports.
+  // Placement is audio and no automated check can hear it, so these assert the
+  // exact voice of every beat rather than a summary.
 
-  /// l1 — every beat, bar downbeats accented.
-  @Test func l1SoundsEveryBeat() throws {
+  @Test func l1SoundsEveryBeatWithAccentedBarDownbeats() throws {
     let voices = try soundedAndReported(clickPattern: [true, true, true, true], bars: 4)
 
     #expect(voices == repeated([.accent, .click, .click, .click], 4))
   }
 
-  /// l2 — beats 2 and 4, so the bar's downbeat is silent and no beat is accented.
-  @Test func l2SoundsBeatsTwoAndFourOnly() throws {
+  @Test func l2SoundsBeatsTwoAndFourAndNeverAccents() throws {
     let voices = try soundedAndReported(clickPattern: [false, true, false, true], bars: 4)
 
     #expect(voices == repeated([.silent, .click, .silent, .click], 4))
     #expect(!voices.contains(.accent), "the accented beat is the one this level silences")
   }
 
-  /// l3 — the bar's downbeat alone, which is also the accent.
-  @Test func l3SoundsTheBarDownbeatOnly() throws {
+  @Test func l3SoundsTheBarDownbeatAlone() throws {
     let voices = try soundedAndReported(clickPattern: [true, false, false, false], bars: 4)
 
     #expect(voices == repeated([.accent, .silent, .silent, .silent], 4))
   }
 
-  /// l4 — one click every other bar. The cycle is two bars, which is why the
-  /// mask's own length drives it and not `beatsPerBar`; a phrase of an odd
-  /// number of bars would otherwise flip the alternation on every pass.
-  @Test func l4SoundsEveryOtherBarsDownbeat() throws {
+  /// The mask's own length drives the cycle, not `beatsPerBar` — otherwise a
+  /// phrase of an odd number of bars flips the alternation on every pass.
+  @Test func l4SoundsOneDownbeatEveryOtherBar() throws {
     let voices = try soundedAndReported(
       clickPattern: [true, false, false, false, false, false, false, false], bars: 4)
 
@@ -89,8 +83,6 @@ struct ClickEngineTests {
     #expect(voices.filter { $0 != .silent }.count == 2, "four bars carry exactly two clicks")
   }
 
-  /// A 3/4 bar: `TwoAndFour` drops its beat 4, and the accent must still land on
-  /// the bar line rather than every fourth beat.
   @Test func aThreeBeatBarKeepsTheAccentOnItsOwnDownbeat() throws {
     let onTheBeat = try soundedAndReported(
       clickPattern: [true, true, true], bars: 4, beatsPerBar: 3)
@@ -101,9 +93,7 @@ struct ClickEngineTests {
     #expect(twoAndFour == repeated([.silent, .click, .silent], 4))
   }
 
-  /// The one that would break bar and rep tracking silently: a beat the level
-  /// silences still reports itself, so only the audio goes quiet. Asserted for
-  /// every level above via `soundedAndReported`, and spelled out here.
+  /// Spelled out here, and enforced for every level above by `soundedAndReported`.
   @Test func silentBeatsStillReportThemselves() throws {
     let engine = try ClickEngine()
     var beats: [Int] = []
@@ -121,10 +111,7 @@ struct ClickEngineTests {
 
   // ── The stranded clock (#1223 review) ──
 
-  /// The app has no background audio mode, so a suspended poll task wakes with
-  /// every scheduled host time in the past. Draining that backlog would hand the
-  /// core hundreds of beats in one iteration; this is the check that stops it.
-  @Test func aSuspendedPulseIsRecognisedAsStranded() {
+  @Test func aPulseSuspendedForFiveMinutesIsStranded() {
     let secondsPerBeat = 0.5
     let head = HostClock.ticks(fromSeconds: 100)
     let fiveMinutesLater = head &+ HostClock.ticks(fromSeconds: 300)
@@ -134,9 +121,8 @@ struct ClickEngineTests {
         head: head, now: fiveMinutesLater, secondsPerBeat: secondsPerBeat))
   }
 
-  /// The case it must not fire on: a coalesced wakeup running a beat or so late
-  /// is exactly what the 10ms poll exists to absorb.
-  @Test func anOrdinaryLateWakeupIsNotStranded() {
+  /// A coalesced wakeup a beat or so late is what the 10ms poll exists to absorb.
+  @Test func aWakeupUpToOneBeatLateIsNotStranded() {
     let secondsPerBeat = 0.5
     let head = HostClock.ticks(fromSeconds: 100)
 
@@ -151,9 +137,7 @@ struct ClickEngineTests {
       !ClickEngine.hasLostTheClock(head: head, now: oneBeatLate, secondsPerBeat: secondsPerBeat))
   }
 
-  /// A beat still in the future is never stranded — `secondsBetween` is signed,
-  /// so this is the case an unsigned subtraction would get catastrophically
-  /// wrong.
+  /// The case an unsigned subtraction would get catastrophically wrong.
   @Test func aBeatStillAheadIsNeverStranded() {
     let now = HostClock.ticks(fromSeconds: 100)
     let head = now &+ HostClock.ticks(fromSeconds: 30)
@@ -161,9 +145,7 @@ struct ClickEngineTests {
     #expect(!ClickEngine.hasLostTheClock(head: head, now: now, secondsPerBeat: 0.5))
   }
 
-  /// The threshold is in beats, not seconds, so a slow tempo tolerates more
-  /// wall-clock lag before its pulse counts as lost.
-  @Test func theStrandedThresholdScalesWithTempo() {
+  @Test func theStrandedThresholdScalesWithTempoNotWallClock() {
     let head = HostClock.ticks(fromSeconds: 100)
     let threeSecondsLate = head &+ HostClock.ticks(fromSeconds: 3)
 
@@ -175,9 +157,9 @@ struct ClickEngineTests {
       !ClickEngine.hasLostTheClock(head: head, now: threeSecondsLate, secondsPerBeat: 1.5))
   }
 
-  /// A tempo of zero would make `secondsPerBeat` infinite and `HostClock.ticks`
-  /// trap on the NaN that follows — a crash `unavailable()` cannot route around.
-  @Test func aNonPositiveTempoIsRejectedRatherThanCrashing() throws {
+  /// `HostClock.ticks` traps on the NaN a zero tempo produces, and a trap is a
+  /// crash rather than something `unavailable()` can route around.
+  @Test func aNonPositiveTempoThrowsRatherThanCrashing() throws {
     let engine = try ClickEngine()
 
     #expect(throws: ClickEngine.ClickEngineError.nonPositiveTempo) {
@@ -188,9 +170,8 @@ struct ClickEngineTests {
     }
   }
 
-  /// Builds a phrase at one level and asserts, before returning the voices, that
-  /// every beat in it reported itself — so no level can pass its placement
-  /// assertion while quietly swallowing beats.
+  /// Asserts every beat reported before returning the voices, so no level can
+  /// pass its placement assertion while quietly swallowing beats.
   private func soundedAndReported(clickPattern: [Bool], bars: Int, beatsPerBar: Int = 4) throws
     -> [ClickEngine.Voice]
   {
