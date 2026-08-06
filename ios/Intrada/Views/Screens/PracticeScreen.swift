@@ -63,7 +63,7 @@ struct PracticeScreen: View {
           }
           hero
             .fadeUp(0)
-          deferredFromPlan
+          sessionOverview
             .fadeUp(1)
           thisWeek
             .fadeUp(2)
@@ -136,22 +136,12 @@ struct PracticeScreen: View {
     return "\(count) block\(count == 1 ? "" : "s") · about \(plan.totalMinutes) minutes"
   }
 
-  // What the plan could not take. Rendered because silent dropping is a defect
-  // (spec §5 stage 5) — the wording is the core's, never composed here.
-  @ViewBuilder private var deferredFromPlan: some View {
-    if let deferred = plan?.deferred, !deferred.isEmpty {
-      VStack(alignment: .leading, spacing: IntradaSpacing.controlGap) {
-        Eyebrow("Queued for another day")
-        ForEach(deferred, id: \.self) { line in
-          Text(line)
-            .font(IntradaFont.bodyMedium)
-            .foregroundStyle(IntradaColor.inkSecondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(IntradaSpacing.card)
-      .cardSurface()
+  // The whole session, not just the block the hero headlines, plus what the plan
+  // could not take. The prose — deferred, titles, why — is the core's wording
+  // verbatim; the shell only formats minutes and the spoken position.
+  @ViewBuilder private var sessionOverview: some View {
+    if let plan, SessionOverview.hasContent(blocks: plan.blocks, deferred: plan.deferred) {
+      SessionOverview(blocks: plan.blocks, deferred: plan.deferred)
     }
   }
 
@@ -302,6 +292,11 @@ struct PracticeScreen: View {
   #Preview("Populated") {
     PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
       .environment(Store.previewPractice)
+  }
+
+  #Preview("Planned") {
+    PracticeScreen(referenceDate: PracticeSessionView.previewReferenceDate)
+      .environment(Store.previewPracticePlanned)
   }
 
   #Preview("Empty") {

@@ -250,6 +250,37 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(store.pendingCoachSession(), "a stale blob degrades to a fresh start")
   }
 
+  /// #1223 renumbered `Phase` and added a byte mid-`BlockState`, so a previous
+  /// build's blob cannot decode. The key bump makes that a designed absence
+  /// rather than a logged decode failure.
+  func testAPreviousVersionsCoachBlobIsNeverOffered() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let stale = Data(try runningCoachSession().bincodeSerialize())
+    let retired = try XCTUnwrap(Store.retiredCoachSessionKeys.first)
+    defaults.set(stale, forKey: retired)
+
+    let store = Store(bridge: FakeBridge(), session: mockSession(), sortDefaults: defaults)
+    XCTAssertNil(
+      store.pendingCoachSession(), "a blob under a retired key is not a recovery candidate")
+  }
+
+  func testWritingTheCurrentCoachBlobDropsRetiredOnes() throws {
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: "coach-\(UUID().uuidString)"))
+    let retired = try XCTUnwrap(Store.retiredCoachSessionKeys.first)
+    defaults.set(Data([0xff, 0x00, 0x2a]), forKey: retired)
+
+    let session = try runningCoachSession()
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 1, effect: .app(.saveCoachSessionInProgress(session)))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), sortDefaults: defaults)
+    store.send(.setQuery(nil))
+
+    XCTAssertNil(defaults.data(forKey: retired), "the dead blob is gone, not merely ignored")
+    XCTAssertNotNil(store.pendingCoachSession(), "and the current one is there")
+  }
+
   func testBatchProcessesEveryRequest() {
     let bridge = FakeBridge()
     bridge.updateHandler = { _ in
@@ -647,6 +678,13 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().coach.drill, "no drill until one is started")
 
     _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    let card = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(card.phase, .blockEntry, "a session opens on block 1's card (#1223)")
+    XCTAssertFalse(card.pulseRunning, "the card is silent — nothing sounds until Start")
+    XCTAssertFalse(card.why.isEmpty, "the card cites why this block is here")
+    XCTAssertGreaterThan(card.minutes, 0, "the card promises a length")
+
+    _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     XCTAssertFalse(opening.drillTitle.isEmpty, "the block crossed the wire with its title")
     XCTAssertEqual(
@@ -656,16 +694,22 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(opening.gateFilled, 0)
     XCTAssertEqual(
       opening.phase, .countIn(remaining: 4),
-      "a fresh block counts in on the during-play page (#1184)")
+      "Start counts the block in on the during-play page (#1184)")
+    XCTAssertTrue(opening.pulseRunning, "Start is what sets the click going")
+    XCTAssertFalse(
+      opening.clickPattern.isEmpty, "placement crosses as a mask, not an enum (#1224)")
+    XCTAssertGreaterThan(opening.phraseBeats, 0, "a pass has a length")
 
     _ = try bridge.update(.coach(.countInBeat(remaining: 1)))
     XCTAssertEqual(try bridge.view().coach.drill?.phase, .countIn(remaining: 1))
 
-    for pass in 1...opening.gateTarget {
-      _ = try bridge.update(.coach(.beat(beatIndex: 0)))
-      XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing, "pass \(pass) is under way")
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .playing, "the first pass is under way")
 
-      _ = try bridge.update(.coach(.beat(beatIndex: opening.clickBeats - 1)))
+    for pass in 1...opening.gateTarget {
+      // Beats count on across the whole pulse now; a pass ends on the boundary.
+      let boundary = opening.phraseBeats * UInt32(pass)
+      _ = try bridge.update(.coach(.beat(beatIndex: boundary)))
       XCTAssertEqual(
         try bridge.view().coach.drill?.phase, .awaitingVerdict,
         "the phrase ended on pass \(pass), so the core asks the question")
@@ -673,16 +717,99 @@ final class StoreEffectLoopTests: XCTestCase {
       _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
       let after = try XCTUnwrap(try bridge.view().coach.drill)
       XCTAssertEqual(after.gateFilled, pass, "the core fills the dots, not the shell")
+      XCTAssertEqual(
+        after.pulseSeq, opening.pulseSeq,
+        "a tap never restarts the click — the pulse runs the whole block (#1223)")
+      XCTAssertTrue(after.pulseRunning)
 
       if pass == opening.gateTarget {
         XCTAssertEqual(after.phase, .gateOpen, "the last clean pass opens the gate")
       } else {
         XCTAssertEqual(after.phase, .acknowledged(clean: true))
-        XCTAssertEqual(
-          after.repSeq, UInt32(pass) + 1, "the shell restarts the click off this")
+        _ = try bridge.update(.coach(.beat(beatIndex: boundary + 1)))
+        let playing = try XCTUnwrap(try bridge.view().coach.drill)
+        XCTAssertEqual(playing.phase, .playing, "the next beat clears the glance (T10)")
+        XCTAssertEqual(playing.pulseSeq, opening.pulseSeq, "and still leaves the click alone")
       }
     }
     XCTAssertNil(try bridge.view().error, "a whole gate must decode on the wire (#846)")
+  }
+
+  /// Two phrase boundaries go by and only the tapped one banks anything, so not
+  /// tapping costs the pass rather than freezing the loop. The closing tap is
+  /// the control: without it, "still 0" would pass on a core that had never
+  /// counted at all.
+  func testRealBridgeOnlyATappedPassBanks() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
+    let phrase = opening.phraseBeats
+
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .awaitingVerdict)
+
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase + 1)))
+    XCTAssertEqual(
+      try bridge.view().coach.drill?.phase, .awaitingVerdict,
+      "an ordinary beat does not close the window — the hands are mid-pass")
+
+    // Leave the first pass unjudged and play through the next boundary.
+    _ = try bridge.update(.coach(.beat(beatIndex: phrase * 2)))
+    let second = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(second.gateFilled, 0, "the pass nobody judged banked nothing")
+    XCTAssertEqual(second.pulseSeq, opening.pulseSeq, "and the click never paused for it")
+
+    _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
+    XCTAssertEqual(
+      try bridge.view().coach.drill?.gateFilled, 1,
+      "one tap, one dot — two boundaries went by and only the judged pass counted")
+    XCTAssertNil(try bridge.view().error)
+  }
+
+  /// A wire break here would look like a button that quietly logs a fail.
+  func testRealBridgeDiscardRecordsNothing() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
+    let opening = try XCTUnwrap(try bridge.view().coach.drill)
+    _ = try bridge.update(.coach(.beat(beatIndex: 0)))
+    _ = try bridge.update(.coach(.beat(beatIndex: opening.phraseBeats)))
+    XCTAssertEqual(try bridge.view().coach.drill?.phase, .awaitingVerdict)
+
+    _ = try bridge.update(.coach(.discardAttempt(now: SessionClock.nowRFC3339())))
+    let after = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(after.phase, .playing, "a discard closes the window and plays on")
+    XCTAssertEqual(after.gateFilled, 0, "a discarded pass banks nothing")
+    XCTAssertEqual(after.pulseSeq, opening.pulseSeq, "and never restarts the click")
+
+    // The control for the assertion above: a dot the discard did not fill is
+    // only evidence if the very next tap can still fill one.
+    _ = try bridge.update(.coach(.beat(beatIndex: opening.phraseBeats * 2)))
+    _ = try bridge.update(.coach(.tap(clean: true, now: SessionClock.nowRFC3339())))
+    XCTAssertEqual(
+      try bridge.view().coach.drill?.gateFilled, 1,
+      "the gate was fillable all along — the discard chose not to")
+    XCTAssertNil(try bridge.view().error)
+  }
+
+  /// `Exit::Skipped` was specced in the engine and unreachable from Swift.
+  func testRealBridgeSkipBlockAdvancesToTheNextCard() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
+    let card = try XCTUnwrap(try bridge.view().coach.drill)
+    XCTAssertEqual(card.phase, .blockEntry)
+
+    _ = try bridge.update(.coach(.skipBlock(now: SessionClock.nowRFC3339())))
+    let next = try XCTUnwrap(
+      try bridge.view().coach.drill, "skipping block 1 opens block 2, not nothing")
+    XCTAssertEqual(next.blockIndex, card.blockIndex + 1, "the session moved on one block")
+    XCTAssertEqual(next.phase, .blockEntry, "and lands on its card, not mid-count-in")
+    XCTAssertNil(try bridge.view().error)
   }
 
   /// Real-bridge escalation (#846, #1176): "I'm stuck" is the core's decision —
@@ -697,6 +824,7 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     let started = try bridge.update(.coach(.startPlannedSession(now: SessionClock.nowRFC3339())))
     let config = try coachSession(in: started).config
+    _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
     _ = try bridge.update(.coach(.beat(beatIndex: 0)))
 
@@ -714,6 +842,9 @@ final class StoreEffectLoopTests: XCTestCase {
       after.gateQuestion, "Clean at \(after.tempoBpm)?",
       "the criterion follows the tempo down")
     XCTAssertEqual(after.phase, .playing, "escalation acts rather than narrates")
+    XCTAssertGreaterThan(
+      after.pulseSeq, opening.pulseSeq,
+      "a rung that moved a click parameter is the one thing that does restart it (#1223)")
   }
 
   /// Real-bridge chord-chart round-trip (#846): `SetChordChart` carries a String

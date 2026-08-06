@@ -128,6 +128,22 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  /// Component-level: the hero's gradient is already covered by
+  /// `testPressStartHeroPlanned` and would triple this PNG.
+  func testSessionOverview() {
+    let overview = SessionOverview(
+      blocks: PlanView.preview.blocks, deferred: PlanView.preview.deferred
+    )
+    .padding(IntradaSpacing.card)
+    .background(IntradaColor.paperTop)
+    .frame(width: 390)
+    assertSnapshot(
+      of: host(overview),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 560),
+        traits: .init(displayScale: 2)))
+  }
+
   func testRecoveryPromptCard() throws {
     // Component-level (not full-screen): the card is the load-bearing state and
     // the flat crop keeps the reference PNG well under the size ceiling (#840).
@@ -726,7 +742,9 @@ final class ScreenSnapshotTests: XCTestCase {
   // ── The coach drill loop (A2 / A3) ──
 
   private func drill(_ state: DrillView) -> some View {
-    DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
+    DrillScreen(
+      state: state, onVerdict: { _ in }, onStuck: {}, onDiscard: {}, onStart: {}, onSkip: {},
+      onDismiss: {})
   }
 
   func testDrillScreenDuringPlay() {
@@ -741,6 +759,11 @@ final class ScreenSnapshotTests: XCTestCase {
 
   func testDrillScreenTapVerdict() {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
+  }
+
+  /// The one branch the compact A3 snapshot can't reach: the escapes stack.
+  func testDrillScreenTapVerdictAccessibilitySize() {
+    assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: axConfig)
   }
 
   /// Identical composition to a pass — a miss is the user's own report.
@@ -759,6 +782,60 @@ final class ScreenSnapshotTests: XCTestCase {
   func testDrillScreenGateOpen() {
     let state = DrillView.preview(phase: .gateOpen, gateFilled: 3, elapsedSeconds: 842)
     assertSnapshot(of: host(drill(state)), as: config)
+  }
+
+  /// A block that has not run, so no clock — how every block opens.
+  func testDrillScreenBlockEntry() {
+    assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
+  }
+
+  /// The parked-card clock, which a full-screen reference would cost 250KB
+  /// to show.
+  func testOrientationStripClockStates() {
+    let strips = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: IntradaSpacing.section) {
+        OrientationStrip(
+          elapsedSeconds: 724, ceilingSeconds: 360,
+          blockKinds: [.piece, .exercise, .exercise], blockIndex: 1, onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: 184, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
+          onDismiss: {})
+        OrientationStrip(
+          elapsedSeconds: nil, blockKinds: [.piece, .exercise, .exercise], blockIndex: 1,
+          onDismiss: {})
+        Spacer()
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(
+      of: host(strips),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 300),
+        traits: .init(displayScale: 2)))
+  }
+
+  /// The sizes no screen snapshot reaches: iPad regular width, and an
+  /// accessibility size where the labels grow but the keys must not.
+  func testCoachActionWeights() {
+    let keys = ZStack {
+      RadialGradient.playerPaper
+      VStack(spacing: IntradaSpacing.row) {
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+        CoachAction(title: "I'm stuck", action: {})
+        CoachAction(title: "Don't count that", emphasis: .quiet, action: {})
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+          .environment(\.coachScale, .regular)
+        CoachAction(title: "Start", emphasis: .primary, action: {})
+          .dynamicTypeSize(.accessibility3)
+      }
+      .padding(IntradaSpacing.card)
+    }
+    assertSnapshot(
+      of: host(keys),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 500),
+        traits: .init(displayScale: 2)))
   }
 
   /// The two verdict-pair layouts no screen snapshot reaches: iPad regular

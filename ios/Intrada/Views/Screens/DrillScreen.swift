@@ -8,6 +8,10 @@ struct DrillScreen: View {
   /// `true` = "Yes — clean", `false` = "No — missed it".
   var onVerdict: (Bool) -> Void
   var onStuck: () -> Void
+  /// Neither a pass nor a fail, so it never reaches the gate or the estimate.
+  var onDiscard: () -> Void
+  var onStart: () -> Void
+  var onSkip: () -> Void
   var onDismiss: () -> Void
 
   @Environment(\.horizontalSizeClass) private var sizeClass
@@ -20,14 +24,28 @@ struct DrillScreen: View {
   /// The chip and tune line give way first; drill, tempo, position and target
   /// survive at any size.
   private var showsIdentityDetail: Bool { !typeSize.isAccessibilitySize }
+  private var isBlockEntry: Bool {
+    if case .blockEntry = state.phase { return true }
+    return false
+  }
+
+  /// On a block that has not run, a zeroed clock is noise. On one parked by an
+  /// interruption, the time already spent is the most useful thing to show
+  /// someone coming back from a phone call (#1223).
+  private var cardAwareElapsed: Int? {
+    if isBlockEntry && state.elapsedSeconds == 0 { return nil }
+    return Int(state.elapsedSeconds)
+  }
 
   var body: some View {
     ZStack {
       RadialGradient.playerPaper.ignoresSafeArea()
       VStack(spacing: 0) {
         OrientationStrip(
-          elapsedSeconds: Int(state.elapsedSeconds),
-          ceilingSeconds: state.ceilingSeconds.map(Int.init),
+          elapsedSeconds: cardAwareElapsed,
+          // The block's clock starts when the hands do, so the card shows no
+          // ceiling — a countdown against unstarted time reads as a deadline.
+          ceilingSeconds: isBlockEntry ? nil : state.ceilingSeconds.map(Int.init),
           blockKinds: state.blockKinds, blockIndex: Int(state.blockIndex),
           onDismiss: onDismiss)
         identity
@@ -47,6 +65,9 @@ struct DrillScreen: View {
 
   @ViewBuilder private var identity: some View {
     switch state.phase {
+    case .blockEntry:
+      // The card is read as one centred group, so its identity lives in `centre`.
+      EmptyView()
     case .playing, .countIn:
       VStack(spacing: IntradaSpacing.cardCompact) {
         if showsIdentityDetail {
@@ -73,6 +94,7 @@ struct DrillScreen: View {
           .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
+          .fixedSize(horizontal: false, vertical: true)
           .accessibilityLabel(spoken(subtitleLine))
       }
       .padding(.top, IntradaSpacing.section)
@@ -102,6 +124,8 @@ struct DrillScreen: View {
 
   @ViewBuilder private var centre: some View {
     switch state.phase {
+    case .blockEntry:
+      blockEntryCard
     case .playing, .countIn:
       VStack(spacing: IntradaSpacing.row + 2) {
         tempo
@@ -118,6 +142,9 @@ struct DrillScreen: View {
           .font(IntradaFont.verdict(scale.question))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
+          // Without this it truncates to "Clean at…" at accessibility sizes,
+          // which asks nothing.
+          .fixedSize(horizontal: false, vertical: true)
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       }
     case .acknowledged(let clean):
@@ -133,6 +160,36 @@ struct DrillScreen: View {
           caption: state.gateSummary)
       }
     }
+  }
+
+  /// The T1 intention beat — read in a glance, never a config surface.
+  private var blockEntryCard: some View {
+    VStack(spacing: IntradaSpacing.cardCompact) {
+      if showsIdentityDetail {
+        TypeBadge(kind: state.kind, label: "Up next")
+      }
+      Text(state.drillTitle)
+        .font(IntradaFont.drillTitle(scale.drillTitle))
+        .foregroundStyle(IntradaColor.ink)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+      Text(blockShape)
+        .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .multilineTextAlignment(.center)
+        .accessibilityLabel(spoken(blockShape))
+      Label(state.why, systemImage: "arrow.turn.down.right")
+        .font(IntradaFont.ambient(scale == .compact ? 14 : 19))
+        .foregroundStyle(IntradaColor.exerciseBadgeFg)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.top, IntradaSpacing.controlGap)
+        .accessibilityLabel(spoken(state.why))
+    }
+  }
+
+  private var blockShape: String {
+    [state.section, "about \(state.minutes) min"].compactMap { $0 }.joined(separator: " · ")
   }
 
   private var tempo: some View {
@@ -170,6 +227,14 @@ struct DrillScreen: View {
 
   @ViewBuilder private var footer: some View {
     switch state.phase {
+    case .blockEntry:
+      VStack(spacing: 0) {
+        CoachAction(
+          title: "Start", emphasis: .primary, hint: "Begins the count-in for this block",
+          action: onStart)
+        CoachAction(title: "Skip this block", emphasis: .quiet, action: onSkip)
+          .padding(.top, IntradaSpacing.controlGap)
+      }
     case .playing:
       StuckTarget(action: onStuck)
     case .countIn(let remaining):
@@ -180,7 +245,7 @@ struct DrillScreen: View {
         HairlineDivider()
           .padding(.top, IntradaSpacing.row - 2)
           .padding(.bottom, IntradaSpacing.controlGap + 2)
-        StuckTarget(emphasis: .quiet, action: onStuck)
+        escapes
       }
     case .acknowledged:
       // Deliberately empty: the glance carries the verdict alone (#1184).
@@ -189,6 +254,27 @@ struct DrillScreen: View {
       Text("moving on")
         .font(IntradaFont.ambient())
         .foregroundStyle(IntradaColor.inkSecondary)
+    }
+  }
+
+  /// Both quiet: the verdict is still the ask.
+  @ViewBuilder private var escapes: some View {
+    let stuck = StuckTarget(emphasis: .quiet, action: onStuck)
+    let discard = CoachAction(
+      title: "Don't count that", emphasis: .quiet,
+      hint: "Throws the attempt away — neither clean nor missed", action: onDiscard)
+    if typeSize.isAccessibilitySize {
+      // Borderless, so ungapped they read as one 92pt target doing two things,
+      // and hitting "I'm stuck" by mistake costs a rung of tempo.
+      VStack(spacing: IntradaSpacing.cardCompact) {
+        stuck
+        discard
+      }
+    } else {
+      HStack(spacing: IntradaSpacing.controlGap) {
+        stuck
+        discard
+      }
     }
   }
 }
@@ -245,21 +331,36 @@ private struct CountIn: View {
         tempoBpm: 120,
         clickLevel: "beats 2 & 4",
         beat: 2, beatsPerBar: 4, bar: 3, bars: 8,
-        countInBeats: 4, clickBeats: 33,
-        elapsedSeconds: elapsedSeconds, ceilingSeconds: 360,
+        countInBeats: 4, phraseBeats: 32,
+        pulseSeq: 1, pulseRunning: true, clickPattern: [false, true, false, true],
+        elapsedSeconds: elapsedSeconds,
+        minutes: 8,
+        why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
+        ceilingSeconds: 360,
         blockKinds: [.piece, .exercise, .exercise, .piece, .piece], blockIndex: 1,
         gateQuestion: "Clean at 120?",
         gateSummary: "3 clean at 120",
-        gateFilled: gateFilled, gateTarget: 3,
-        repSeq: 1)
+        gateFilled: gateFilled, gateTarget: 3)
     }
   }
 
   private struct DrillPreview: View {
     let state: DrillView
     var body: some View {
-      DrillScreen(state: state, onVerdict: { _ in }, onStuck: {}, onDismiss: {})
+      DrillScreen(
+        state: state, onVerdict: { _ in }, onStuck: {}, onDiscard: {}, onStart: {}, onSkip: {},
+        onDismiss: {})
     }
+  }
+
+  #Preview("Block entry") {
+    DrillPreview(state: .preview(phase: .blockEntry, elapsedSeconds: 0))
+  }
+
+  /// The same card after an interruption parked the block: three minutes in,
+  /// so the clock stays on screen.
+  #Preview("Block entry, resumed") {
+    DrillPreview(state: .preview(phase: .blockEntry, elapsedSeconds: 184))
   }
 
   #Preview("A2 during play") { DrillPreview(state: .preview()) }

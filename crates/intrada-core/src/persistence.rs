@@ -577,7 +577,7 @@ mod tests {
     mod coach {
         use super::*;
         use crate::app::{AppEffect, Intrada};
-        use crate::engine::{BlockRecord, CoachEvent};
+        use crate::engine::{BlockRecord, CoachEvent, Phase};
         use chrono::TimeZone;
 
         fn at(second: i64) -> DateTime<Utc> {
@@ -594,16 +594,28 @@ mod tests {
             app.update(Event::Coach(event), model)
         }
 
+        /// Leave the card if it is up, then run on to the next boundary.
+        fn play_to_the_boundary(app: &Intrada, model: &mut Model) {
+            if model.coach.session.phase() == Some(&Phase::BlockEntry) {
+                let _ = send(app, model, CoachEvent::StartBlock { now: at(0) });
+                let _ = send(app, model, CoachEvent::Beat { beat_index: 0 });
+            }
+            let block = model.coach.session.block().expect("a running block");
+            let phrase = block.body_beats();
+            let boundary = (block.beat_index / phrase + 1) * phrase;
+            let _ = send(
+                app,
+                model,
+                CoachEvent::Beat {
+                    beat_index: boundary,
+                },
+            );
+        }
+
         /// One whole repetition through the app, so the wiring is what is under
         /// test rather than the state machine on its own.
         fn rep(app: &Intrada, model: &mut Model, clean: bool, second: i64) {
-            let body = model
-                .coach
-                .session
-                .block()
-                .expect("a running block")
-                .body_beats();
-            let _ = send(app, model, CoachEvent::Beat { beat_index: body });
+            play_to_the_boundary(app, model);
             let _ = send(
                 app,
                 model,
@@ -612,7 +624,6 @@ mod tests {
                     now: at(second),
                 },
             );
-            let _ = send(app, model, CoachEvent::Beat { beat_index: 0 });
         }
 
         fn coach_records(cmd: &mut Command<Effect, Event>) -> Option<Vec<BlockRecord>> {
@@ -669,8 +680,7 @@ mod tests {
                 &mut model,
                 CoachEvent::StartPlannedSession { now: at(0) },
             );
-            let body = model.coach.session.block().unwrap().body_beats();
-            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            play_to_the_boundary(&app, &mut model);
 
             let mut cmd = send(
                 &app,
@@ -684,7 +694,8 @@ mod tests {
                 .iter()
                 .any(|effect| matches!(effect, AppEffect::SaveCoachSessionInProgress(_))));
 
-            let mut cmd = send(&app, &mut model, CoachEvent::Beat { beat_index: 1 });
+            let next = model.coach.session.block().unwrap().beat_index + 1;
+            let mut cmd = send(&app, &mut model, CoachEvent::Beat { beat_index: next });
             assert!(
                 app_effects(&mut cmd).is_empty(),
                 "the click reports several beats a second — no write per beat"
@@ -699,8 +710,7 @@ mod tests {
                 &mut model,
                 CoachEvent::StartPlannedSession { now: at(0) },
             );
-            let body = model.coach.session.block().unwrap().body_beats();
-            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            play_to_the_boundary(&app, &mut model);
             let mut cmd = send(
                 &app,
                 &mut model,
@@ -840,8 +850,7 @@ mod tests {
                 &mut model,
                 CoachEvent::StartPlannedSession { now: at(0) },
             );
-            let body = model.coach.session.block().unwrap().body_beats();
-            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            play_to_the_boundary(&app, &mut model);
             let _ = send(
                 &app,
                 &mut model,
@@ -897,8 +906,7 @@ mod tests {
                 &mut model,
                 CoachEvent::StartPlannedSession { now: at(0) },
             );
-            let body = model.coach.session.block().unwrap().body_beats();
-            let _ = send(&app, &mut model, CoachEvent::Beat { beat_index: body });
+            play_to_the_boundary(&app, &mut model);
             let _ = send(
                 &app,
                 &mut model,

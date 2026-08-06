@@ -492,7 +492,7 @@
       </div>
 
       <div style="margin-top:34px;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:#9A927F;">Coach primitives · the drill loop</div>
-      <p style="font-size:13.5px;line-height:1.62;color:#6E6557;max-width:660px;margin:11px 0 0;">Nine parts the practice-coach drill loop is assembled from — six added 3 Aug 2026 with the Session A drill screens (<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">Drill Loop.dc.html</span>), three on 6 Aug with the continuous-pulse rework: <strong style="color:#2B2A26;font-weight:600;">TapVerdict</strong>, <strong style="color:#2B2A26;font-weight:600;">BlockEntryCard</strong> and <strong style="color:#2B2A26;font-weight:600;">PlanBlockRow</strong> (#1223, #1225). All but PlanBlockRow — read before you start, phone in hand — are read at arm's length in a dim practice room, so none of them uses <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">inkFaint</span>, and none of them animates while the user is playing.</p>
+      <p style="font-size:13.5px;line-height:1.62;color:#6E6557;max-width:660px;margin:11px 0 0;">Ten parts the practice-coach drill loop is assembled from — six added 3 Aug 2026 with the Session A drill screens (<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">Drill Loop.dc.html</span>), four on 6 Aug with the continuous-pulse rework: <strong style="color:#2B2A26;font-weight:600;">TapVerdict</strong>, <strong style="color:#2B2A26;font-weight:600;">BlockEntryCard</strong>, <strong style="color:#2B2A26;font-weight:600;">PlanBlockRow</strong> and <strong style="color:#2B2A26;font-weight:600;">CoachAction</strong> (#1223, #1225). All but PlanBlockRow — read before you start, phone in hand — are read at arm's length in a dim practice room, so none of them uses <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;">inkFaint</span>, and none of them animates while the user is playing.</p>
       <div style="background:#F0E7D6;border:1px solid #E5DECD;border-radius:16px;padding:30px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:34px 30px;">
 
         <div>
@@ -555,7 +555,7 @@
 
         <div>
           <div style="height:96px;border-radius:22px;background:#FCFAF3;border:1.5px solid #E0D9C8;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#2B2A26;">I'm stuck</div>
-          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">StuckTarget</strong> — the one large target on the drill screen, ≥96pt tall and full-bleed to the safe area so it is hittable without looking. Surface, not gradient: it must be findable, not attractive. <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">radius.hero</span>.</div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">StuckTarget</strong> — the one large target on the drill screen, ≥96pt tall and full-bleed to the safe area so it is hittable without looking. Surface, not gradient: it must be findable, not attractive. <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">radius.hero</span>. Drawn by <strong style="font-weight:600;">CoachAction</strong> at its <em>key</em> weight — the name carries the meaning, the shape is shared.</div>
         </div>
 
         <div>
@@ -588,6 +588,16 @@
             <button style="display:flex;align-items:center;justify-content:center;gap:6px;background:none;border:none;font-family:Inter;font-size:13px;font-weight:500;color:#6E6557;padding:8px;cursor:pointer;"><i data-lucide="chevron-down" width="15" height="15"></i>2 more blocks · 21 min</button>
           </div>
           <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">PlanBlockRow</strong> <span style="font-size:11px;font-weight:600;letter-spacing:.5px;color:#4C3FA6;background:#E7E3F4;border:1px solid #D9D2EC;border-radius:999px;padding:3px 10px;flex:none;">TO BUILD · #1225</span> — one line of the agreed plan on the press-start screen: kind tint, title, minutes. Deliberately <strong style="font-weight:600;">not tappable and with no chevron</strong> — the library/session row it resembles opens a detail screen, and promising one here would invite exactly the pre-play decision the plan exists to remove. Three rows is the glance budget; the rest collapses behind a quiet disclosure that names what it is hiding.</div>
+        </div>
+
+        <div style="grid-column:span 2;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end;">
+            <div style="height:66px;border-radius:16px;background:#4C3FA6;box-shadow:0 2px 0 #392F7C;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#F2EFE8;">Start</div>
+            <div style="height:66px;border-radius:16px;background:#FCFAF3;border:1px solid #DCD4C1;box-shadow:0 2px 0 #E0D9C8;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#2B2A26;">I'm stuck</div>
+            <div style="height:46px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#6E6557;">Don't count that</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:9px;font-size:11px;color:#6E6557;"><span style="text-align:center;">primary</span><span style="text-align:center;">key</span><span style="text-align:center;">quiet</span></div>
+          <div style="font-size:12.5px;color:#6E6557;line-height:1.6;margin-top:14px;"><strong style="color:#2B2A26;font-weight:600;">CoachAction</strong> — the loop's labelled key, at three weights. <em>primary</em> is the one thing to do next (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">accent</span> fill, the block-entry card's Start); <em>key</em> is a resident control on paper (<span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;">cardFill</span>, what StuckTarget draws); <em>quiet</em> is demoted beneath a rule (Skip, "Don't count that"). All three carry the 2pt seated edge that reads as a key rather than a floating card, and all three size off <strong style="font-weight:600;">CoachScale</strong>, never a per-call height. Exactly one <em>primary</em> per surface — two keys competing to be "the" action means the screen is ambiguous.</div>
         </div>
 
       </div>

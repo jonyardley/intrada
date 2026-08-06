@@ -244,6 +244,67 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 > the minutes already spent against its ceiling and a wander banks none of the
 > outage.
 
+> **Rebuilt 6 Aug 2026 (#1223), from a fortnight of playing it.** Three
+> transitions changed and one state was added; the table below reads through
+> this note.
+>
+> - **`BlockEntry` is where every block starts**, including the first. A silent
+>   card carrying the drill title, section, minutes and the planner's why line,
+>   with `StartBlock` as its primary action and `SkipBlock` beside it. A phase
+>   rather than a `SessionState` variant or a second `CoachView` field:
+>   everything the card draws is already `DrillView`, and `Running` keeps
+>   meaning what it means, so `spec()`, `mark_cold()` and recovery are
+>   untouched. `StartBlock` re-stamps `started_at`, because reading the card is
+>   not practice time and the ceiling starts when the hands do; `Tick` will not
+>   close a block on its ceiling while the card is up. Recovery does **not**
+>   land on a card: a recovered block is mid-flight rather than newly entered,
+>   and re-entering it would refund minutes already spent.
+> - **The `Verdict` → `CountIn` row is gone.** The click runs unbroken for a
+>   whole block, counted in once at block entry, so a tap returns to
+>   `Listening` and the glance is ended by the next beat (T10 as amended by
+>   T11). `AwaitingVerdict` now *rests* for one phrase cycle rather than until
+>   the tap: it opens on the boundary beat, the beats under it are the hands
+>   playing the next pass, and the following boundary closes an untapped window
+>   with no attempt recorded and opens a fresh one. So a tap still judges
+>   exactly one bounded pass and there is never more than one candidate
+>   (decision 17), and not tapping costs an unrecorded pass instead of freezing
+>   the loop. `CountIn` survives for the two places a pulse legitimately
+>   restarts: block entry, and a ladder rung that changed the tempo or the
+>   phrase.
+> - **`DiscardAttempt` records nothing.** Legal in `Listening` and
+>   `AwaitingVerdict`, ignored elsewhere. From an open window it closes the
+>   window and lands in `Listening`; from `Listening` it flags the pass in
+>   flight so the boundary it reaches opens no window. No `AttemptSummary`, no
+>   `ScoredAttempt`, no gate progress, no `consecutive_fails`. A false start
+>   must not bias the Beta estimate down.
+> - **`ClickInterrupted` parks the block on its card** (#1223 follow-up). The
+>   click stopping when the shell did not choose to stop it, an audio
+>   interruption, a route change or the app leaving the foreground, is a fact
+>   the shell reports and a cost the core decides. It returns the block to
+>   `BlockEntry` with `pulse_running` false, keeping attempts, gate progress
+>   and mastery: a phone call must not cost banked evidence, which is why
+>   `ClickUnavailable` (which ends the session) is too blunt for it. An open
+>   verdict window closes with nothing recorded, since the pass was
+>   interrupted and a verdict on it would be false evidence. `pulse_seq` does
+>   **not** move, because nothing restarts until `StartBlock` does it from the
+>   card. A no-op on a card and with no session. From `GateOpen` it closes the
+>   block with `Exit::GatePassed` instead: the criterion was met before the
+>   interruption, and the card has no way to hold an open gate.
+>
+>   **Practice already banked survives it.** `BlockState::spent_ms` holds what
+>   earlier stretches of the block took, so a block that runs, is interrupted
+>   and is resumed is not refunded its minutes: the ceiling still bites and
+>   `active_ms` on the record still matches the attempts beside it. A card
+>   bills nothing while it is up, whether the block has never started or has
+>   been interrupted back to it. Without this, reusing `BlockEntry` for an
+>   interruption would silently write `active_ms: 0` on records carrying real
+>   evidence.
+> - **`SkipBlock` reaches `Exit::Skipped`**, which the machine has carried
+>   since 2a with nothing in Swift able to reach it. Legal in any running
+>   phase, closes the block and advances to the next card (or `Closing` on the
+>   last). A block skipped from its card still writes a `BlockRecord` with no
+>   attempts: a skip is a fact worth keeping, not an absence.
+
 New machine in `engine/`, beside the legacy `SessionStatus` that Phase 2a
 deletes. Off-piste and unmonitored are **peers** of `Running`, not sub-states,
 because `Running` implies a plan and gates: `Idle` → `Planned(Plan)` →
@@ -414,6 +475,56 @@ Rules, from the #846 bincode hazard and review §3.2:
 - **Round-trip before wiring.** `assert_round_trips` on every bridge type before
   it reaches a screen, plus one `LiveBridge` test pushing a real `NoteBatch`
   through the actual Swift↔Rust wire. A stub bridge cannot catch a wire break.
+
+### The pulse, and how the shell knows what to do with it (#1223, #1224)
+
+The click is the one place the shell owns real machinery, so the contract has
+to let it decide **keep clicking** or **restart the click** with no domain
+reasoning in it. Four fields on `DrillView` do that:
+
+```rust
+pulse_seq: u32,          // restart key; unchanged means leave the click alone
+pulse_running: bool,     // false while a block-entry card is up
+phrase_beats: u32,       // one pass of the phrase
+click_pattern: Vec<bool>,// one cycle of the placement
+```
+
+| view says | shell does |
+|---|---|
+| `pulse_running == false` | stop the click, forget the key |
+| `pulse_running`, `(block_index, pulse_seq)` differs from the sounding one | stop, start again with a count-in |
+| `pulse_running`, key unchanged | nothing at all |
+
+`pulse_seq` is bumped in exactly three places (a block opening, a `TempoDown`
+or `ShrinkScope` rung, and `RecoverSession`) and by nothing else. A tap, a
+discard, a beat and a gate opening all leave it. It is block-scoped, hence the
+pair.
+
+The pulse is **unbounded in reps**: the shell schedules the count-in and then
+body beats forever, topping up a rolling window, and nothing in the view bounds
+the schedule. `Beat { beat_index }` climbs monotonically for the whole pulse
+rather than restarting each rep, and the core derives the pass
+(`beat_index % phrase_beats`) and the bar the musician counts, so nobody reads
+bar 41.
+
+**Placement crosses as a mask, not as `ClickLevel`.** Re-exporting the enum
+would put a `switch` over domain semantics in the shell, which is what the
+dumb-pipe rule exists to prevent. `click_pattern[beat_index % len]` sounds; the
+count-in clicks every beat whatever the level. The cycle is a bar or two bars,
+never the phrase, because placement is a bar-level fact and a phrase of an odd
+number of bars would otherwise flip `EveryOtherBar`'s alternation every pass:
+
+| level | cycle | sounding beats (0-based) |
+|---|---|---|
+| `EveryBeat` | `beats_per_bar` | all |
+| `TwoAndFour` | `beats_per_bar` | 1 and 3, dropped if the bar is shorter |
+| `BarDownbeat` | `beats_per_bar` | 0 |
+| `EveryOtherBar` | `2 * beats_per_bar` | 0 |
+
+The mask is aligned to `beat_index` 0, which is bar 1 beat 1 of the pulse, so a
+`ShrinkScope` rung re-aligns it with the restart and nothing drifts. Accents
+stay the shell's business, and an accent on a beat the mask silences is simply
+not played.
 
 ## 7. Interruption arbitration (#1147)
 

@@ -7,16 +7,16 @@ import SwiftUI
 /// the core's session state machine (`specs/intrada-coach-engine.md` §4).
 struct DrillLoopHost: View {
   @Environment(Store.self) private var store
+  @Environment(\.scenePhase) private var scenePhase
 
   var onClose: () -> Void
 
   @State private var click: Click?
-  /// Which rep the click is running, so a re-render mid-rep doesn't restart it
-  /// and a new one always does. Keyed on the block too: `repSeq` restarts at 1
-  /// in each block, so on its own it can miss a boundary.
-  @State private var startedRep: Rep?
+  /// The core bumps `pulseSeq` only when the click must actually restart, so
+  /// an unchanged key means leave it alone (spec §6).
+  @State private var startedPulse: Pulse?
 
-  private struct Rep: Equatable {
+  private struct Pulse: Equatable {
     let block: UInt64
     let seq: UInt32
   }
@@ -32,16 +32,25 @@ struct DrillLoopHost: View {
             store.send(.coach(.tap(clean: clean, now: SessionClock.nowRFC3339())))
           },
           onStuck: { store.send(.coach(.stuck(now: SessionClock.nowRFC3339()))) },
+          // `onSuccess` fires only once the core has accepted the event, so a
+          // rejected one can never feel like it landed.
+          onDiscard: {
+            store.send(
+              .coach(.discardAttempt(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
+          onStart: {
+            store.send(.coach(.startBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
+          onSkip: {
+            store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
           onDismiss: dismiss)
       } else {
         Color.clear
       }
     }
-    // The loop is a fullScreenCover, so RootView's banner is occluded while it's
-    // up. Re-surface viewModel.error here — otherwise "Couldn't save what you
-    // just practised." renders nowhere and a lost block is a silent no-op
-    // (#846, #1181). On the host rather than the entry point, so the real
-    // press-start route into the loop (#1182) inherits it.
+    // The loop is a fullScreenCover, so RootView's banner is occluded and a
+    // lost block would be a silent no-op (#846, #1181).
     .safeAreaInset(edge: .top, spacing: 0) {
       if let error = store.viewModel?.error {
         GlobalBanner(message: error) { store.send(.clearError) }
@@ -49,13 +58,27 @@ struct DrillLoopHost: View {
     }
     .task { await run() }
     .onDisappear(perform: teardown)
-    .onChange(of: drill.map { Rep(block: $0.blockIndex, seq: $0.repSeq) }) { _, _ in
-      startClickIfNeeded()
+    .onChange(of: drill.map { PulseState(from: $0) }) { _, _ in
+      syncClick()
     }
     .onChange(of: drill == nil) { _, ended in
       // The core closed the block — ceiling, ladder or gate. It has already
       // ended the session, so this only tears down.
       if ended { close() }
+    }
+    // No `UIBackgroundModes: audio`, so a suspended app's poll task freezes
+    // while its host times run on: the pulse is dead the moment we background.
+    .onChange(of: scenePhase) { _, phase in
+      switch phase {
+      case .background:
+        pulseDied()
+      // Control Centre, the app switcher, a banner: never suspended, audio
+      // still playing. Stopping would cost a block for an idle gesture.
+      case .active, .inactive:
+        break
+      @unknown default:
+        break
+      }
     }
   }
 
@@ -72,7 +95,7 @@ struct DrillLoopHost: View {
     // that press-start is a user path (#1182), holding a blank screen instead
     // of returning is the #846 silent no-op.
     guard drill != nil else { return close() }
-    startClickIfNeeded()
+    syncClick()
     while !Task.isCancelled {
       try? await Task.sleep(for: .seconds(1))
       guard !Task.isCancelled else { return }
@@ -80,22 +103,40 @@ struct DrillLoopHost: View {
     }
   }
 
-  private func startClickIfNeeded() {
+  /// The shell's whole click rule, with no domain reasoning in it.
+  private func syncClick() {
     guard let drill else { return }
-    let rep = Rep(block: drill.blockIndex, seq: drill.repSeq)
-    guard startedRep != rep else { return }
+    guard drill.pulseRunning else { return silencePulse() }
+    let pulse = Pulse(block: drill.blockIndex, seq: drill.pulseSeq)
+    guard startedPulse != pulse else { return }
 
-    // Only a started rep is a consumed one: bailing out with `startedRep` set
-    // would leave a silent, permanently frozen screen (the #846 class).
+    // Only a sounding pulse is a consumed one: bailing out with `startedPulse`
+    // set would leave a silent, permanently frozen screen (the #846 class).
     guard let engine = clickEngine() else { return unavailable() }
     guard engine.start(drill: drill, store: store) else { return unavailable() }
-    startedRep = rep
+    startedPulse = pulse
+  }
+
+  /// No beat is reported while nothing sounds, so the core cannot count passes
+  /// nobody played.
+  private func silencePulse() {
+    click?.stop()
+    startedPulse = nil
+  }
+
+  /// What it costs is the core's call. Guarded on a live drill so a death
+  /// during teardown cannot park a closed block.
+  private func pulseDied() {
+    guard drill != nil else { return }
+    silencePulse()
+    store.send(.coach(.clickInterrupted(now: SessionClock.nowRFC3339())))
   }
 
   private func clickEngine() -> Click? {
     if let click { return click }
     do {
       let created = try Click()
+      created.onPulseDied = { pulseDied() }
       click = created
       return created
     } catch {
@@ -123,23 +164,42 @@ struct DrillLoopHost: View {
   }
 
   private func teardown() {
-    click?.stop()
+    click?.dispose()
     click = nil
-    startedRep = nil
+    startedPulse = nil
+  }
+}
+
+/// The only fields the click is driven by: a tap, a gate or a beat must not
+/// reach `syncClick`.
+private struct PulseState: Equatable {
+  let block: UInt64
+  let seq: UInt32
+  let running: Bool
+
+  init(from drill: DrillView) {
+    block = drill.blockIndex
+    seq = drill.pulseSeq
+    running = drill.pulseRunning
   }
 }
 
 /// A reference wrapper so the callbacks below outlive a SwiftUI body pass, and
-/// so the AVAudioEngine survives a re-render mid-rep.
+/// so the AVAudioEngine survives a re-render mid-block.
 @MainActor
 private final class Click {
   private let engine: ClickEngine
+
+  var onPulseDied: (() -> Void)? {
+    get { engine.onPulseDied }
+    set { engine.onPulseDied = newValue }
+  }
 
   init() throws {
     engine = try ClickEngine()
   }
 
-  /// `false` = the click could not be scheduled, so this rep never sounded.
+  /// `false` = the click could not be scheduled, so this pulse never sounded.
   func start(drill: DrillView, store: Store) -> Bool {
     engine.onCountIn = { remaining in
       store.send(.coach(.countInBeat(remaining: UInt8(max(0, remaining)))))
@@ -150,7 +210,7 @@ private final class Click {
     do {
       try engine.start(
         bpm: Double(drill.tempoBpm), beatsPerBar: Int(drill.beatsPerBar),
-        countInBeats: Int(drill.countInBeats), bodyBeats: Int(drill.clickBeats))
+        countInBeats: Int(drill.countInBeats), clickPattern: drill.clickPattern)
       return true
     } catch {
       report(error, "drill-click-start")
@@ -162,5 +222,14 @@ private final class Click {
     engine.onCountIn = nil
     engine.onBeat = nil
     engine.stop()
+  }
+
+  /// Unhooks the callbacks that `stop()` deliberately leaves live, a stopped
+  /// pulse being exactly when they still need to speak.
+  func dispose() {
+    onPulseDied = nil
+    engine.onCountIn = nil
+    engine.onBeat = nil
+    engine.dispose()
   }
 }

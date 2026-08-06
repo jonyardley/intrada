@@ -230,34 +230,65 @@ considered: turning immediately on the tap lost the glance; keeping A3 for the
 whole count-in kept the next rep's facts off screen until the hands were
 already moving.
 
-### T11 — Block entry is a beat, and the plan is shown before you press start
-**Status:** DECIDED 2026-08-06 (jonyardley/intrada#1223, #1225, from the Phase 0
-fortnight; design folded into `design/intrada-design-system.dc.html`).
-Two rulings on the surfaces either side of a block, both instances of T1
-(intention friction is worth keeping, admin friction is not).
+### T11 — The pulse runs for the block, and the beats go either side of it
 
-**Entry.** Blocks stop auto-advancing silently. Every block, including the
-first, opens on a card carrying four facts and one sentence: kind, minutes,
-drill title with its section, and the plan's own why line. Start is the single
-primary; Skip sits under it with no border or fill, because skipping is cheap
-and the eye should not be drawn to it. Nothing on the card is configurable (T2),
-and nothing about the block just finished appears on it, so the beat cannot turn
-into a report card. Skip takes no confirm: it is reversible by the planner, and
-a confirm sheet is exactly the stall the card exists to remove (T6). Where a
-boundary CoachNote fires it resolves before the card, never stacked with it, so
-there is at most one thing to read at a boundary.
+**Status:** DECIDED 2026-08-06 (jonyardley/intrada#1223, #1224, #1225, from the
+Phase 0 fortnight at the piano; design folded into
+`design/intrada-design-system.dc.html` in #1232).
 
-**Press start.** The hero shows the shape of the whole session, not just block
-one and a count: the upcoming blocks as read-only rows, and the lines the plan
-could not fit today, worded as the plan wrote them. Deferred lines are never
-dropped, because being told what is not in today is what makes the plan
-trustworthy enough to press start without editing it. The rows carry no chevron,
-no tap target and no reordering, since a per-block decision point before playing
-is a stall, not a choice (research foundation §7). Expanding the list shrinks
-the hero rather than pushing it off screen, so Start stays under a thumb at
-every disclosure state.
+**Supersedes the mid-block half of T10.** T10 ruled that the first count-in
+click turns the page from the verdict glance back to the during-play facts.
+There is no longer a count-in between reps to turn it: the click runs unbroken
+for a whole block, counted in once at block entry. So the glance is ended by
+the next beat instead, which lands in the same half-second at 120bpm and reads
+the same way. Everything else T10 decided stands: the glance is still the
+verdict and gate dots alone, and the count-in still draws on the during-play
+page, in place of the stuck target, wherever a count-in does happen (block
+entry, and after a ladder rung that changed the tempo or the phrase).
 
-Options considered: a confirm on Skip (rejected, above); a tappable block row
-opening a detail sheet (rejected, it promises a screen that must not exist);
-keeping the "N blocks, about M minutes" footnote alone (rejected, it tells you
-nothing about what you agreed to).
+Why: the per-rep restart was a cost of deferring machine listening (decision
+18), not a design goal. The original loop was continuous (hands never leave
+the keys), and stopping the click to ask a question each pass turned a
+practice loop into a quiz. The verdict window now opens at each phrase
+boundary and rests for one pass while the hands play the next, so the tap is
+still a verdict on one bounded attempt (decision 17 is untouched) and missing
+one costs a dropped rep rather than a frozen screen.
+
+Three surfaces come with it, all instances of T1: intention friction is worth
+keeping, admin friction is not.
+
+- **The block-entry card.** Blocks stop auto-advancing silently. Every block,
+  including the first, opens on a silent card carrying four facts and one
+  sentence: kind, minutes, drill title with its section, and the plan's own
+  why line. Start is the single primary; Skip sits under it with no border or
+  fill, because skipping is cheap and the eye should not be drawn to it. This
+  is T1's intention beat, and it is where the breath between blocks goes now
+  that the loop itself has none. Nothing on the card is configurable (T2) and
+  nothing about the block just finished appears on it, so the beat cannot turn
+  into a report card. Skip takes no confirm: it is reversible by the planner,
+  and a confirm sheet is exactly the stall the card exists to remove (T6).
+  Where a boundary CoachNote fires it resolves before the card, never stacked
+  with it, so there is at most one thing to read at a boundary. The ceiling
+  starts when the hands do, not when the card goes up.
+- **Discard.** A false start is not a fail. "Don't count that" records nothing
+  at all: no attempt, no evidence, no gate progress, no miss run. Without it
+  the continuous pulse makes fumbles expensive, because the loop no longer
+  pauses for you to gather yourself. It is a *cheap* action, not a confirmed
+  one: reversible-by-default applied to the record rather than to the data.
+- **Press start.** The hero shows the shape of the whole session, not just
+  block one and a count: the upcoming blocks as read-only rows, and the lines
+  the plan could not fit today, worded as the plan wrote them. Deferred lines
+  are never dropped, because being told what is not in today is what makes the
+  plan trustworthy enough to press start without editing it. The rows carry no
+  chevron, no tap target and no reordering, since a per-block decision point
+  before playing is a stall, not a choice (research foundation §7). Expanding
+  the list shrinks the hero rather than pushing it off screen, so Start stays
+  under a thumb at every disclosure state.
+
+Options considered: keeping the per-rep count-in and shortening it (still
+breaks the loop, still a quiz); letting the verdict window stay open across
+passes until tapped (ambiguous which pass a late tap judged, which is exactly
+the attempt bounding decision 17 protects); a confirm on Skip (rejected
+above); a tappable block row opening a detail sheet (rejected, it promises a
+screen that must not exist); keeping the "N blocks, about M minutes" footnote
+alone (rejected, it tells you nothing about what you agreed to).
