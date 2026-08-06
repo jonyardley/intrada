@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-05 (#1219)
+> Last updated: 2026-08-06 (#1223)
 
 ## Where we are
 
@@ -23,6 +23,14 @@ countable criteria.
 
 ## Recently landed
 
+- #1223, #1224, #1225 — the loop's choreography, corrected from Phase 0 play:
+  the click runs unbroken for a whole block (one count-in at block entry, and
+  a restart only where a parameter actually changed), every block opens on an
+  entry card with Start and Skip, a false start can be discarded without
+  counting, the authored sparse click levels are honoured by the audio rather
+  than only by the pill, and press-start shows the whole session rather than
+  block one. Rationale: `docs/design-principles.md` T11, which supersedes half
+  of T10.
 - #1188 — the mastery track: Beta state per (node, level), fed by tap-verdicts
 - #1189 — the five-stage planner as a pure function, retiring the seeded block
 - #1182 — the drill loop reached from Practice: press-start, and the ladder's
@@ -38,6 +46,8 @@ countable criteria.
 
 ## Next (once 2a closes)
 
+- #1233 — the design system is ahead of the Claude Design project and the
+  shareable export: sync the new `CoachAction` primitive, then re-export
 - #1214 — the mastery store survives a restart, which is what makes the
   planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
