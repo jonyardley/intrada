@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-05 (#1219)
+> Last updated: 2026-08-06 (#1223/#1225 design fold-in)
 
 ## Where we are
 
@@ -19,6 +19,11 @@ countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
+- #1223 / #1225 — the coach entry surfaces: continuous pulse, the block-entry
+  card, and the press-start session overview. The design is folded into
+  `design/intrada-design-system.dc.html` (Coach primitives `TapVerdict`,
+  `BlockEntryCard` and `PlanBlockRow`, four TO BUILD screen entries, ruling
+  logged as T11 in `design-principles.md`); the build is with the vertical team.
 - Tooling: gate speed-ups (#1202–#1204), team-briefing edits (#1199)
 
 ## Recently landed
