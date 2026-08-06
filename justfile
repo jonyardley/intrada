@@ -59,9 +59,8 @@ check:
         exit 0
     fi
     just fmt-check lint test hygiene
-    # Stamp only a tree that matched HEAD: a green run over uncommitted edits
-    # says nothing about HEAD, so stamping it would let a later `git restore`
-    # leave a clean HEAD reading as verified without ever being tested (#1204).
+    # Stamp only a clean tree: a green run over uncommitted edits says nothing
+    # about HEAD, so a later `git restore` would read as verified (#1204).
     if [ -z "$(git status --porcelain)" ]; then
         mkdir -p target
         echo "$sha" > "$stamp"
