@@ -17,7 +17,8 @@ trace back to `Theme.swift` — the reference visualises the tokens, it never
 defines new ones.
 
 The Claude Design workspace is the claude.ai/design project **"Intrada"**
-(`claude.ai/design/p/cd74e299-f5c1-4915-a603-347db46158d6`). **The repo stays
+(`claude.ai/design/p/0e60f6f5-1dcf-404f-afe6-6f5488a4e3bc`; the older
+`cd74e299…` id is dead and 404s). **The repo stays
 canonical**: Claude Code bridges the two with `DesignSync` — pushing repo
 design files up after they change here, and pulling finished mockups down
 (design sessions save to project paths like `mockups/`; they cannot write to
@@ -34,6 +35,28 @@ standalone.
 2. Open `design/intrada-design-system.html` in any browser to confirm it renders.
 3. Update `specs/design-system.md` and `docs/design-principles.md` to point at the
    new system and name Claude Design as the design tool (retire the Pencil note).
+
+### Regenerating the shareable export
+
+`design/intrada-design-system.html` is Claude Design's "standalone HTML" bundle:
+one `<script type="__bundler/template">` holding the whole page as a JSON string,
+plus every font, icon and image inlined as an asset (hence about 4.9 MB, well
+over DesignSync's 256 KiB `get_file` cap). Two routes:
+
+- **Claude Design's own Share → Export → Standalone HTML**, driven in a browser
+  (what #1213 did via Playwright). Needs an interactive claude.ai login, so it is
+  unavailable in a headless or non-interactive session.
+- **Patch the bundle in place**: decode the template string with
+  `json.loads`, apply the same edits made to the `.dc.html`, re-encode with
+  `json.dumps(..., ensure_ascii=False)` then `"</" → "<\\u002F"`, and splice it
+  back. Verify by decoding again and diffing against the `.dc.html`: the only
+  differences should be the bundler's own normalisations (head rewritten with
+  inlined fonts, asset URLs replaced by uuids, `viewBox` → `sc-camel-view-box`,
+  entities decoded, boolean attributes quoted). Then load the result in a browser
+  and check the page height and a new component against the `.dc.html`.
+
+Either way, push the updated `.dc.html` to the project with `DesignSync` first,
+so the project and the repo do not drift.
 
 ## Adding design to the SDLC
 

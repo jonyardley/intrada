@@ -28,9 +28,18 @@
   (rough passes for Phase 2a). Its six primitives are canonical in the design system
   under *Components · Coach primitives*; the feature file holds only the journey.
   A2/A3 and the primitives are **built** in SwiftUI
-  (`ios/Intrada/DesignSystem/Coach/`, `ios/Intrada/Views/Screens/DrillScreen.swift`);
-  `TapVerdict` is the seventh primitive and still needs folding into the design
-  system's Coach primitives section.
+  (`ios/Intrada/DesignSystem/Coach/`, `ios/Intrada/Views/Screens/DrillScreen.swift`).
+  Nine primitives are now canonical in the design system: `TapVerdict` folded in
+  6 Aug, with `BlockEntryCard` and `PlanBlockRow` from the continuous-pulse
+  rework. Seven have Swift; `BlockEntryCard` and `PlanBlockRow` are marked
+  TO BUILD in the catalogue, so the design system is their whole spec until
+  #1223/#1225 land.
+- **Coach entry surfaces (6 Aug 2026, #1223/#1225)** — the block-entry card and
+  the press-start session overview live in the **design system** (Screens, marked
+  TO BUILD, with a "how they compose" panel), not in a feature file. The Claude
+  Design project's `Drill Loop.dc.html` still carries the working `#pulse`
+  section they came from: strip it to a reference on the next design pass, per
+  the fold-in ratchet.
 - `Intrada Concepts.dc.html` — exploratory/validated screen concepts (Progress, Focus
   Player with rep counter, one-tap+calendar Practice, Library mastery, session-summary
   celebration, after-dark variant, live motion lab).
