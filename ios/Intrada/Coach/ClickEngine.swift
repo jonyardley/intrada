@@ -17,15 +17,29 @@ final class ClickEngine {
   private let accentBuffer: AVAudioPCMBuffer
 
   private let leadInSeconds: Double = 0.5
-  /// Beats scheduled ahead, and the level the poll tops up at. About 30s of
-  /// audio at 120bpm — far enough that a coalesced wakeup can't run it dry,
-  /// short enough that `stop()` is not fighting a long queue.
+  /// Beats scheduled ahead, and the level the poll tops up at, so the queue
+  /// oscillates between 24 and 88 beats — 12s to 44s at 120bpm. Far enough that
+  /// a coalesced wakeup can't run it dry, short enough that `stop()` is not
+  /// fighting a long queue.
   private let windowBeats = 64
   private let topUpBelow = 24
+  /// Past this much lag the queue is not late, it is stranded — see
+  /// `hasLostTheClock`.
+  static let maxLagBeats: Double = 2
 
   /// Fires as each count-in click sounds; `remaining` is beats left *after*
   /// this one, counting down to 0 on the last click (#1184).
   var onCountIn: ((_ remaining: Int) -> Void)?
+
+  /// The pulse stopped and cannot restart itself yet — an interruption began,
+  /// or the engine's configuration changed under it. No further beats will be
+  /// reported, so the core stays where it is rather than counting passes
+  /// nobody heard.
+  var onPulseStopped: (() -> Void)?
+
+  /// The pulse stopped and it is safe to start a new one: an interruption ended
+  /// asking to resume, or the clock ran away and the schedule was abandoned.
+  var onPulseShouldRestart: (() -> Void)?
 
   /// Fires after each *body* beat's audible host time (Layer 0 UI pip).
   /// `index` is 0-based from the pulse's first body beat and counts on across
@@ -45,6 +59,7 @@ final class ClickEngine {
   private var pulse: Pulse?
   /// The first beat not yet scheduled, count-in included.
   private var nextBeat = 0
+  private var observers: [NSObjectProtocol] = []
 
   struct Pulse {
     let bpm: Double
@@ -84,12 +99,26 @@ final class ClickEngine {
     accentBuffer = try Self.synthesizeClick(format: format, frequency: 1500)
     engine.attach(playerNode)
     engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+    observeInterruptions()
+  }
+
+  /// Unregisters the interruption observers. Explicit rather than a `deinit`,
+  /// which is nonisolated and so cannot touch them under Swift 6; the host calls
+  /// it when it lets the engine go.
+  func dispose() {
+    stop()
+    for observer in observers { NotificationCenter.default.removeObserver(observer) }
+    observers = []
   }
 
   /// Starts a pulse: `countInBeats` clicks on every beat, then body beats that
   /// sound where `clickPattern` says, on and on until `stop()`. Safe to call
   /// repeatedly — each call restarts from the count-in.
   func start(bpm: Double, beatsPerBar: Int, countInBeats: Int, clickPattern: [Bool]) throws {
+    // `secondsPerBeat` would be infinite or NaN, and `HostClock.ticks`'
+    // precondition on NaN is a crash rather than something `unavailable()` can
+    // route around. Core-controlled today; one line so it cannot become a trap.
+    guard bpm > 0 else { throw ClickEngineError.nonPositiveTempo }
     playerNode.stop()
 
     let session = AVAudioSession.sharedInstance()
@@ -180,6 +209,10 @@ final class ClickEngine {
     pollTask = Task { @MainActor [weak self] in
       while let self, !Task.isCancelled {
         let now = HostClock.now()
+        if self.clockRanAway(now: now) {
+          self.abandonPulse(restartable: true)
+          return
+        }
         while let next = self.pendingBeats.first, next.audibleHostTime <= now {
           self.pendingBeats.removeFirst()
           next.fire()
@@ -187,6 +220,75 @@ final class ClickEngine {
         if self.pendingBeats.count < self.topUpBelow { self.scheduleWindow() }
         try? await Task.sleep(nanoseconds: self.pollIntervalNanoseconds)
       }
+    }
+  }
+
+  private func clockRanAway(now: UInt64) -> Bool {
+    guard let pulse, let head = pendingBeats.first else { return false }
+    return Self.hasLostTheClock(
+      head: head.audibleHostTime, now: now, secondsPerBeat: pulse.secondsPerBeat)
+  }
+
+  /// A backlog deeper than a couple of beats is not a late wakeup — the app was
+  /// suspended (there is no `UIBackgroundModes: audio`, so the poll task simply
+  /// freezes) or the main thread stalled for seconds. Every queued host time is
+  /// then in the past, and draining them would hand the core hundreds of beats
+  /// in one iteration: phrase boundaries the player never played, verdict
+  /// windows opening and dropping, and a burst of clicks from buffers reaching
+  /// a live node with a past host time. So the schedule is abandoned and a
+  /// fresh pulse starts, count-in first, rather than fast-forwarded.
+  static func hasLostTheClock(head: UInt64, now: UInt64, secondsPerBeat: Double) -> Bool {
+    HostClock.secondsBetween(now, head) > maxLagBeats * secondsPerBeat
+  }
+
+  // ── Interruptions ──
+
+  private func observeInterruptions() {
+    let centre = NotificationCenter.default
+    observers.append(
+      centre.addObserver(
+        forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+      ) { [weak self] note in
+        // Read the raw values out here: `Notification` is not Sendable, so
+        // carrying it across the isolation boundary is a data race, while the
+        // two `UInt`s inside it are fine.
+        let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+        let options = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+        MainActor.assumeIsolated { self?.handleInterruption(type: type, options: options) }
+      })
+    // The engine tears its graph down on a route or configuration change (the
+    // headphones case), leaving `isRunning` false with nothing to restart it.
+    observers.append(
+      centre.addObserver(
+        forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+      ) { [weak self] _ in
+        MainActor.assumeIsolated { self?.abandonPulse(restartable: false) }
+      })
+  }
+
+  private func handleInterruption(type: UInt?, options: UInt?) {
+    guard let type, let kind = AVAudioSession.InterruptionType(rawValue: type) else { return }
+    switch kind {
+    case .began:
+      abandonPulse(restartable: false)
+    case .ended:
+      let resume = AVAudioSession.InterruptionOptions(rawValue: options ?? 0)
+      if resume.contains(.shouldResume) { onPulseShouldRestart?() }
+    @unknown default:
+      abandonPulse(restartable: false)
+    }
+  }
+
+  /// Stops everything and tells the host which of the two it was. Silent about
+  /// a pulse that was not running, so a route change between blocks is not an
+  /// event.
+  private func abandonPulse(restartable: Bool) {
+    guard pulse != nil else { return }
+    stop()
+    if restartable {
+      onPulseShouldRestart?()
+    } else {
+      onPulseStopped?()
     }
   }
 
@@ -211,7 +313,8 @@ final class ClickEngine {
     return buffer
   }
 
-  enum ClickEngineError: Error {
+  enum ClickEngineError: Error, Equatable {
     case bufferAllocationFailed
+    case nonPositiveTempo
   }
 }

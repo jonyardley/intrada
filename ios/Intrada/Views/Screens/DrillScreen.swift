@@ -87,6 +87,7 @@ struct DrillScreen: View {
           .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
           .foregroundStyle(IntradaColor.inkSecondary)
           .multilineTextAlignment(.center)
+          .fixedSize(horizontal: false, vertical: true)
           .accessibilityLabel(spoken(subtitleLine))
       }
       .padding(.top, IntradaSpacing.section)
@@ -258,7 +259,10 @@ struct DrillScreen: View {
       title: "Don't count that", emphasis: .quiet,
       hint: "Throws the attempt away — neither clean nor missed", action: onDiscard)
     if typeSize.isAccessibilitySize {
-      VStack(spacing: 0) {
+      // Both are borderless, so with no gap they read as one 92pt target that
+      // does two different things — and mistaking discard for "I'm stuck"
+      // costs you a rung of tempo.
+      VStack(spacing: IntradaSpacing.cardCompact) {
         stuck
         discard
       }

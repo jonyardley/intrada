@@ -137,7 +137,8 @@ struct PracticeScreen: View {
   }
 
   // The whole session, not just the block the hero headlines, plus what the plan
-  // could not take. Every line is the core's wording, never composed here.
+  // could not take. The prose — deferred, titles, why — is the core's wording
+  // verbatim; the shell only formats minutes and the spoken position.
   @ViewBuilder private var sessionOverview: some View {
     if let plan, SessionOverview.hasContent(blocks: plan.blocks, deferred: plan.deferred) {
       SessionOverview(blocks: plan.blocks, deferred: plan.deferred)

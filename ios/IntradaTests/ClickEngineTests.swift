@@ -49,10 +49,9 @@ struct ClickEngineTests {
 
   // ── #1224 · the four authored levels, each over a four-bar phrase ──
   //
-  // These carry more weight than usual: the sparse click is audio, and it is
-  // merging without an ear on it, so this is the only thing between a wrong
-  // mask and a shipped one. Each level asserts the exact voice of all sixteen
-  // beats, not a summary, and that every one of the sixteen still reports.
+  // Placement is audio, and no automated check can hear it, so these assert the
+  // exact voice of all sixteen beats of a phrase rather than a summary, and that
+  // every one of the sixteen still reports.
 
   /// l1 — every beat, bar downbeats accented.
   @Test func l1SoundsEveryBeat() throws {
@@ -118,6 +117,75 @@ struct ClickEngineTests {
 
     #expect(schedule.filter { $0.voice == .silent }.count == 14, "fourteen of the sixteen")
     #expect(beats == Array(0..<16), "and all sixteen reach the core regardless")
+  }
+
+  // ── The stranded clock (#1223 review) ──
+
+  /// The app has no background audio mode, so a suspended poll task wakes with
+  /// every scheduled host time in the past. Draining that backlog would hand the
+  /// core hundreds of beats in one iteration; this is the check that stops it.
+  @Test func aSuspendedPulseIsRecognisedAsStranded() {
+    let secondsPerBeat = 0.5
+    let head = HostClock.ticks(fromSeconds: 100)
+    let fiveMinutesLater = head &+ HostClock.ticks(fromSeconds: 300)
+
+    #expect(
+      ClickEngine.hasLostTheClock(
+        head: head, now: fiveMinutesLater, secondsPerBeat: secondsPerBeat))
+  }
+
+  /// The case it must not fire on: a coalesced wakeup running a beat or so late
+  /// is exactly what the 10ms poll exists to absorb.
+  @Test func anOrdinaryLateWakeupIsNotStranded() {
+    let secondsPerBeat = 0.5
+    let head = HostClock.ticks(fromSeconds: 100)
+
+    let onTime = head
+    let slightlyLate = head &+ HostClock.ticks(fromSeconds: 0.2)
+    let oneBeatLate = head &+ HostClock.ticks(fromSeconds: 0.5)
+
+    #expect(!ClickEngine.hasLostTheClock(head: head, now: onTime, secondsPerBeat: secondsPerBeat))
+    #expect(
+      !ClickEngine.hasLostTheClock(head: head, now: slightlyLate, secondsPerBeat: secondsPerBeat))
+    #expect(
+      !ClickEngine.hasLostTheClock(head: head, now: oneBeatLate, secondsPerBeat: secondsPerBeat))
+  }
+
+  /// A beat still in the future is never stranded — `secondsBetween` is signed,
+  /// so this is the case an unsigned subtraction would get catastrophically
+  /// wrong.
+  @Test func aBeatStillAheadIsNeverStranded() {
+    let now = HostClock.ticks(fromSeconds: 100)
+    let head = now &+ HostClock.ticks(fromSeconds: 30)
+
+    #expect(!ClickEngine.hasLostTheClock(head: head, now: now, secondsPerBeat: 0.5))
+  }
+
+  /// The threshold is in beats, not seconds, so a slow tempo tolerates more
+  /// wall-clock lag before its pulse counts as lost.
+  @Test func theStrandedThresholdScalesWithTempo() {
+    let head = HostClock.ticks(fromSeconds: 100)
+    let threeSecondsLate = head &+ HostClock.ticks(fromSeconds: 3)
+
+    // 240bpm: two beats is half a second, so three seconds is long gone.
+    #expect(
+      ClickEngine.hasLostTheClock(head: head, now: threeSecondsLate, secondsPerBeat: 0.25))
+    // 40bpm: two beats is three seconds, so the same lag is still in tolerance.
+    #expect(
+      !ClickEngine.hasLostTheClock(head: head, now: threeSecondsLate, secondsPerBeat: 1.5))
+  }
+
+  /// A tempo of zero would make `secondsPerBeat` infinite and `HostClock.ticks`
+  /// trap on the NaN that follows — a crash `unavailable()` cannot route around.
+  @Test func aNonPositiveTempoIsRejectedRatherThanCrashing() throws {
+    let engine = try ClickEngine()
+
+    #expect(throws: ClickEngine.ClickEngineError.nonPositiveTempo) {
+      try engine.start(bpm: 0, beatsPerBar: 4, countInBeats: 4, clickPattern: [true])
+    }
+    #expect(throws: ClickEngine.ClickEngineError.nonPositiveTempo) {
+      try engine.start(bpm: -120, beatsPerBar: 4, countInBeats: 4, clickPattern: [true])
+    }
   }
 
   /// Builds a phrase at one level and asserts, before returning the voices, that

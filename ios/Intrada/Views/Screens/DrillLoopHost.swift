@@ -7,6 +7,7 @@ import SwiftUI
 /// the core's session state machine (`specs/intrada-coach-engine.md` §4).
 struct DrillLoopHost: View {
   @Environment(Store.self) private var store
+  @Environment(\.scenePhase) private var scenePhase
 
   var onClose: () -> Void
 
@@ -34,10 +35,8 @@ struct DrillLoopHost: View {
             store.send(.coach(.tap(clean: clean, now: SessionClock.nowRFC3339())))
           },
           onStuck: { store.send(.coach(.stuck(now: SessionClock.nowRFC3339()))) },
-          // The three the user has no other confirmation of: a discard leaves
-          // the screen looking as it did, and the card's two both hand off to
-          // the core. `onSuccess` fires only if the core accepted it, so a
-          // rejected event can never feel like it landed.
+          // `onSuccess` fires only once the core has accepted the event, so a
+          // rejected one can never feel like it landed.
           onDiscard: {
             store.send(
               .coach(.discardAttempt(now: SessionClock.nowRFC3339())), onSuccess: .impact)
@@ -73,6 +72,17 @@ struct DrillLoopHost: View {
       // ended the session, so this only tears down.
       if ended { close() }
     }
+    // There is no `UIBackgroundModes: audio`, so a backgrounded app's poll task
+    // freezes while its scheduled host times run on. Stop the pulse on the way
+    // out rather than let it be resumed stale, and start a fresh one — count-in
+    // first — on the way back.
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active {
+        syncClick()
+      } else {
+        silencePulse()
+      }
+    }
   }
 
   private func run() async {
@@ -96,16 +106,10 @@ struct DrillLoopHost: View {
     }
   }
 
-  /// The shell's whole click rule, with no domain reasoning in it: not running →
-  /// stop; running under a new key → restart with a count-in; running under the
-  /// same key → do nothing at all.
+  /// The shell's whole click rule, with no domain reasoning in it.
   private func syncClick() {
     guard let drill else { return }
-    guard drill.pulseRunning else {
-      click?.stop()
-      startedPulse = nil
-      return
-    }
+    guard drill.pulseRunning else { return silencePulse() }
     let pulse = Pulse(block: drill.blockIndex, seq: drill.pulseSeq)
     guard startedPulse != pulse else { return }
 
@@ -116,10 +120,27 @@ struct DrillLoopHost: View {
     startedPulse = pulse
   }
 
+  /// Stops the click and forgets the key, so no beat is reported while nothing
+  /// is sounding. That is what keeps the evidence honest: a core that hears no
+  /// beats cannot count passes the player never heard, and the next
+  /// `syncClick` starts a fresh pulse rather than resuming a dead one.
+  private func silencePulse() {
+    click?.stop()
+    startedPulse = nil
+  }
+
   private func clickEngine() -> Click? {
     if let click { return click }
     do {
       let created = try Click()
+      created.onPulseStopped = { silencePulse() }
+      // Only ever back into a foreground app: restarting into an interruption
+      // that is still running would fail the session activation and take the
+      // whole session down through `unavailable()`.
+      created.onPulseShouldRestart = {
+        silencePulse()
+        if scenePhase == .active { syncClick() }
+      }
       click = created
       return created
     } catch {
@@ -147,7 +168,7 @@ struct DrillLoopHost: View {
   }
 
   private func teardown() {
-    click?.stop()
+    click?.dispose()
     click = nil
     startedPulse = nil
   }
@@ -172,6 +193,18 @@ private struct PulseState: Equatable {
 @MainActor
 private final class Click {
   private let engine: ClickEngine
+
+  /// The pulse died and cannot be restarted yet — an interruption is running.
+  var onPulseStopped: (() -> Void)? {
+    get { engine.onPulseStopped }
+    set { engine.onPulseStopped = newValue }
+  }
+
+  /// The pulse died and a fresh one may start.
+  var onPulseShouldRestart: (() -> Void)? {
+    get { engine.onPulseShouldRestart }
+    set { engine.onPulseShouldRestart = newValue }
+  }
 
   init() throws {
     engine = try ClickEngine()
@@ -200,5 +233,16 @@ private final class Click {
     engine.onCountIn = nil
     engine.onBeat = nil
     engine.stop()
+  }
+
+  /// Stops for good: unhooks the interruption callbacks, which `stop()`
+  /// deliberately leaves live because a stopped pulse is exactly when they still
+  /// need to speak.
+  func dispose() {
+    onPulseStopped = nil
+    onPulseShouldRestart = nil
+    engine.onCountIn = nil
+    engine.onBeat = nil
+    engine.dispose()
   }
 }
