@@ -62,18 +62,22 @@ impl ClickLevel {
         }
     }
 
-    /// One cycle of the placement, from the pulse's first body beat: the beats
-    /// that sound. A bar or two bars rather than the phrase, because placement
-    /// is a bar-level fact and a phrase of an odd number of bars would
-    /// otherwise flip `EveryOtherBar`'s alternation on every pass.
+    /// One cycle of the placement, from the pulse's first body beat. A bar or
+    /// two, never the phrase: an odd-bar phrase would flip `EveryOtherBar`.
     pub fn pattern(&self, beats_per_bar: u8) -> Vec<bool> {
         let bar = usize::from(beats_per_bar.max(1));
-        match self {
+        let mut pattern = match self {
             ClickLevel::EveryBeat => vec![true; bar],
             ClickLevel::TwoAndFour => (0..bar).map(|beat| beat == 1 || beat == 3).collect(),
             ClickLevel::BarDownbeat => (0..bar).map(|beat| beat == 0).collect(),
             ClickLevel::EveryOtherBar => (0..bar * 2).map(|beat| beat == 0).collect(),
+        };
+        // A bar too short for the beats a level names would go silent, which
+        // is a broken click rather than a hard level.
+        if !pattern.iter().any(|beat| *beat) {
+            pattern[0] = true;
         }
+        pattern
     }
 }
 
@@ -386,6 +390,15 @@ mod tests {
         );
         assert!(pattern[0]);
         assert!(pattern[1..].iter().all(|beat| !beat));
+    }
+
+    #[test]
+    fn a_bar_too_short_for_the_backbeats_still_sounds_something() {
+        assert_eq!(
+            ClickLevel::TwoAndFour.pattern(1),
+            vec![true],
+            "a silent metronome is not a difficulty level, it is a broken click"
+        );
     }
 
     #[test]

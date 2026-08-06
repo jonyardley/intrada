@@ -304,22 +304,18 @@ pub struct DrillView {
     /// Beats in one pass of the phrase. The pulse itself is unbounded: the
     /// shell keeps a rolling schedule going rather than one rep's worth.
     pub phrase_beats: u32,
-    /// Bumped when the shell must stop the click and start it again, count-in
-    /// first; unchanged means leave it running. Block-scoped, so the shell
-    /// keys on `(block_index, pulse_seq)`.
+    /// The restart key, block-scoped, so the shell keys on
+    /// `(block_index, pulse_seq)`. Contract: [`BlockState::pulse_seq`].
     pub pulse_seq: u32,
     /// `false` while a block-entry card is up: stop the click and forget the
     /// key.
     pub pulse_running: bool,
     /// One cycle of the click placement, from the pulse's first body beat:
-    /// `click_pattern[beat_index % click_pattern.len()]` sounds. The count-in
-    /// clicks every beat whatever the level (#1224).
+    /// `click_pattern[beat_index % click_pattern.len()]` sounds, and at least
+    /// one beat of it always does. The count-in clicks every beat regardless.
     pub click_pattern: Vec<bool>,
     pub elapsed_seconds: u32,
-    /// The same budget as `ceiling_seconds`, in the unit the entry card says
-    /// it in.
     pub minutes: u16,
-    /// Written by the core; the shell never composes one.
     pub why: String,
     pub ceiling_seconds: Option<u32>,
     pub block_kinds: Vec<ItemKind>,
@@ -347,6 +343,7 @@ mod tests {
         let mut coach = CoachState::default();
         coach.session.start_fixture(at(0));
         coach.apply(&CoachEvent::StartBlock { now: at(0) });
+        coach.apply(&CoachEvent::Beat { beat_index: 0 });
         coach.apply(&CoachEvent::Beat { beat_index: 5 });
         coach
     }
@@ -864,5 +861,22 @@ mod tests {
         coach.apply(&CoachEvent::Stuck { now: at(10) });
         coach.apply(&CoachEvent::CountInBeat { remaining: 3 });
         assert_round_trips(coach.view());
+
+        // Renumbering `DrillPhase` puts every variant on the wire, not only the
+        // ones this slice touched.
+        let mut awaiting = playing();
+        awaiting.apply(&CoachEvent::Beat { beat_index: 32 });
+        assert_eq!(
+            awaiting.view().drill.unwrap().phase,
+            DrillPhase::AwaitingVerdict
+        );
+        assert_round_trips(awaiting.view());
+
+        let mut open = playing();
+        for second in [9, 18, 27] {
+            tap(&mut open, true, second);
+        }
+        assert_eq!(open.view().drill.unwrap().phase, DrillPhase::GateOpen);
+        assert_round_trips(open.view());
     }
 }

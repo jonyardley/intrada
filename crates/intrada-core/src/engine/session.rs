@@ -334,8 +334,7 @@ impl BlockState {
         }
     }
 
-    /// The click's parameters changed, so the pulse cannot carry on: back to
-    /// bar 1, and a `pulse_seq` the shell restarts on.
+    /// The click's parameters changed, so the pulse cannot carry on.
     fn restart_pulse(&mut self) {
         self.beat_index = 0;
         self.last_verdict = None;
@@ -349,8 +348,20 @@ impl BlockState {
         u32::from(self.bars.max(1)) * u32::from(self.beats_per_bar.max(1))
     }
 
+    /// Zero while the entry card is up: reading the card is not practice, so
+    /// neither the countdown, the ceiling nor `active_ms` may bill it.
     pub fn elapsed_seconds(&self) -> u32 {
+        if self.phase == Phase::BlockEntry {
+            return 0;
+        }
         (self.now - self.started_at).num_seconds().max(0) as u32
+    }
+
+    fn active_ms(&self) -> u64 {
+        if self.phase == Phase::BlockEntry {
+            return 0;
+        }
+        (self.now - self.started_at).num_milliseconds().max(0) as u64
     }
 
     /// The musician's 1-based counting, within the phrase: the beat the shell
@@ -597,7 +608,13 @@ impl EngineSession {
                 block.last_verdict = None;
                 block.discarded = false;
                 block.pulse_seq = block.pulse_seq.saturating_add(1);
-                if block.gate_progress.satisfied() && block.gate_opened_at_attempt.is_some() {
+                if block.phase == Phase::BlockEntry {
+                    // The card is where a user pauses, so coming back must not
+                    // start a block they never tapped Start on.
+                    block.started_at = now;
+                    block.gate_open_since = None;
+                } else if block.gate_progress.satisfied() && block.gate_opened_at_attempt.is_some()
+                {
                     block.gate_open_since = Some(now);
                     block.phase = Phase::GateOpen;
                 } else {
@@ -646,33 +663,40 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
-        let opening = matches!(
-            block.phase,
-            Phase::CountIn { .. } | Phase::Escalating { .. }
-        );
-        if !opening && !matches!(block.phase, Phase::Listening | Phase::AwaitingVerdict) {
-            return;
-        }
-        // A beat that does not advance is a repeat the click already reported:
-        // obeying it would open a second window on one pass.
-        if !opening && beat_index <= block.beat_index {
-            return;
-        }
-
         let phrase = block.body_beats();
-        let crossed = !opening && beat_index / phrase > block.beat_index / phrase;
-        block.beat_index = beat_index;
-
-        if crossed {
-            block.last_verdict = None;
-            block.phase = if std::mem::take(&mut block.discarded) {
-                Phase::Listening
-            } else {
-                Phase::AwaitingVerdict
-            };
-        } else if !matches!(block.phase, Phase::AwaitingVerdict) {
-            block.last_verdict = None;
-            block.phase = Phase::Listening;
+        match block.phase {
+            // A pulse reports its first body beat as 0, so anything else here
+            // is a straggler from the pulse just torn down (the click drains
+            // asynchronously) and adopting it would cost the first pass.
+            Phase::CountIn { .. } | Phase::Escalating { .. } => {
+                if beat_index != 0 {
+                    return;
+                }
+                block.beat_index = 0;
+                block.last_verdict = None;
+                block.phase = Phase::Listening;
+            }
+            Phase::Listening | Phase::AwaitingVerdict => {
+                // A beat that does not advance is a repeat the click already
+                // reported: obeying it would open a second window on one pass.
+                if beat_index <= block.beat_index {
+                    return;
+                }
+                let crossed = beat_index / phrase > block.beat_index / phrase;
+                block.beat_index = beat_index;
+                if crossed {
+                    block.last_verdict = None;
+                    block.phase = if std::mem::take(&mut block.discarded) {
+                        Phase::Listening
+                    } else {
+                        Phase::AwaitingVerdict
+                    };
+                } else if block.phase != Phase::AwaitingVerdict {
+                    block.last_verdict = None;
+                    block.phase = Phase::Listening;
+                }
+            }
+            Phase::BlockEntry | Phase::GateOpen => {}
         }
     }
 
@@ -1037,7 +1061,7 @@ impl EngineSession {
             attempts_to_pass: block.gate_opened_at_attempt,
             gate_opened_at_attempt: block.gate_opened_at_attempt,
             reps_after_gate: block.reps_after_gate,
-            active_ms: (block.now - block.started_at).num_milliseconds().max(0) as u64,
+            active_ms: block.active_ms(),
             escalation_fired: block.escalation_fired.clone(),
             exit,
         });
@@ -1085,8 +1109,8 @@ mod tests {
     }
 
     /// A fixture whose plan has somewhere to go, so a close lands on a card
-    /// rather than ending the session.
-    fn two_block_session() -> EngineSession {
+    /// rather than ending the session. Left on block 1's card.
+    fn two_block_session_carded() -> EngineSession {
         let mut plan = Plan::fixture();
         let mut second = plan.blocks[0].clone();
         second.spec.drill_title = "Shells".to_string();
@@ -1095,6 +1119,11 @@ mod tests {
 
         let mut session = EngineSession::default();
         session.start(plan, at(0));
+        session
+    }
+
+    fn two_block_session() -> EngineSession {
+        let mut session = two_block_session_carded();
         session.apply(&CoachEvent::StartBlock { now: at(0) });
         session.apply(&CoachEvent::Beat { beat_index: 0 });
         session
@@ -1210,11 +1239,32 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_recovered_card_is_still_a_card() {
+        let mut crashed = EngineSession::default();
+        crashed.start_fixture(at(0));
+        crashed.apply(&CoachEvent::Tick { now: at(30) });
+
+        let mut restored = EngineSession::default();
+        restored.apply(&CoachEvent::RecoverSession {
+            session: crashed,
+            now: at(3600),
+        });
+
+        assert_eq!(
+            restored.phase(),
+            Some(&Phase::BlockEntry),
+            "backgrounding on the card is where a user pauses; coming back to a \
+             count-in starts a block they never tapped Start on"
+        );
+        assert_eq!(restored.block().unwrap().elapsed_seconds(), 0);
+    }
+
     // ── Skip ──
 
     #[test]
     fn skipping_from_the_card_closes_the_block_and_moves_on() {
-        let mut session = two_block_session();
+        let mut session = two_block_session_carded();
 
         session.apply(&CoachEvent::SkipBlock { now: at(5) });
 
@@ -1224,8 +1274,33 @@ mod tests {
             record.attempts.is_empty(),
             "a skip is a fact worth keeping, not an attempt"
         );
+        assert_eq!(record.active_ms, 0, "and no practice time against it");
         assert_eq!(session.block().map(|block| block.spec_index), Some(1));
         assert_eq!(session.phase(), Some(&Phase::BlockEntry));
+    }
+
+    #[test]
+    fn a_block_skipped_from_its_card_bills_no_practice_time() {
+        let mut session = two_block_session_carded();
+        session.apply(&CoachEvent::Tick { now: at(600) });
+
+        session.apply(&CoachEvent::SkipBlock { now: at(600) });
+
+        let record = session.closed_blocks.last().expect("a record for the skip");
+        assert_eq!(
+            record.active_ms, 0,
+            "ten minutes of a card sitting there is not ten minutes of practice"
+        );
+    }
+
+    #[test]
+    fn leaving_from_a_card_bills_no_practice_time_either() {
+        let mut session = two_block_session_carded();
+        session.apply(&CoachEvent::Tick { now: at(600) });
+
+        session.apply(&CoachEvent::LeaveSession { now: at(600) });
+
+        assert_eq!(session.closed_blocks.last().expect("a record").active_ms, 0);
     }
 
     #[test]
@@ -1320,6 +1395,35 @@ mod tests {
             Some(&Phase::CountIn { beats_remaining: 4 }),
             "new material, so the click starts again from a count-in"
         );
+    }
+
+    #[test]
+    fn a_straggler_from_the_torn_down_pulse_does_not_silence_the_new_one() {
+        let mut session = listening();
+        let phrase = session.block().unwrap().body_beats();
+        session.apply(&CoachEvent::Beat { beat_index: 20 });
+        session.apply(&CoachEvent::Stuck { now: at(5) });
+
+        // The shell's click drains asynchronously, so a beat scheduled by the
+        // pulse just torn down can still land here.
+        session.apply(&CoachEvent::Beat { beat_index: 47 });
+        assert_eq!(
+            session.block().unwrap().beat_index,
+            0,
+            "a beat from a pulse that no longer exists is not this pulse's position"
+        );
+
+        session.apply(&CoachEvent::CountInBeat { remaining: 0 });
+        session.apply(&CoachEvent::Beat { beat_index: 0 });
+        let shrunk = session.block().unwrap().body_beats();
+        session.apply(&CoachEvent::Beat { beat_index: shrunk });
+
+        assert_eq!(
+            session.phase(),
+            Some(&Phase::AwaitingVerdict),
+            "the first pass after an escalation is judged like any other"
+        );
+        let _ = phrase;
     }
 
     #[test]
