@@ -835,6 +835,10 @@ Evidence base: coupling analysis of the last 400 commits (2026-08).
 
 - British English in all UI copy, comments, commit messages and PR bodies.
 - No em dashes and no double dashes in prose: docs, commits, comments, PR bodies.
+  One exception, settled 2026-08-06 (#1231): ` — ` as the **label separator on a
+  list item** in a structured doc (`docs/status.md`, `docs/roadmap.md`,
+  `design/CLAUDE.md` and this file's own lists) is house style, so match the
+  siblings there. Sentences never take one, in a list item or anywhere else.
 
 ### Stream rules
 

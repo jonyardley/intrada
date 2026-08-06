@@ -8,6 +8,7 @@ enum SuccessFeedback {
   case impact
   case selection
 
+  @MainActor
   fileprivate func fire() {
     switch self {
     case .impact: UIImpactFeedbackGenerator(style: .light).impactOccurred()
