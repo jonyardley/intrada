@@ -41,7 +41,7 @@ path returns later as an evidence upgrade.
 ## Decisions (recorded, overrulable)
 
 1. **Personal tool first, product decision deferred.** Built for user zero; placement, onboarding, content generalisation, and the audio path are deferred until three months of daily personal use argue for a product. Every scoping call below assumes this.
-2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident. Sparse-click modes (2-and-4, click every other bar) are gate levels *within* click-always: they convert the internal-time objection (Galper, Longo) into a difficulty ladder rather than a rebuttal. **Scoped (3 Aug 2026): click-always governs *scored attempts*, not the learning rungs beneath a gate.** Singing a phrase, finding notes in a new key hands-alone, working out a shape slowly — the method packs already prescribe these without a click, and the constraint was never meant to forbid them. This is a clarification, not a weakening: playing against a steady pulse *is* swing (the lay-back, the ratio, playing ahead are all defined relative to a grid), which is why decision 6 scores consistency rather than deviation, and why rubato is correctly deferred until time is internalised rather than treated as a missing feature.
+2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident. Sparse-click modes (2-and-4, click every other bar) are gate levels *within* click-always: they convert the internal-time objection (Galper, Longo) into a difficulty ladder rather than a rebuttal. **Scoped (3 Aug 2026): click-always governs *scored attempts*, not the learning rungs beneath a gate.** Singing a phrase, finding notes in a new key hands-alone, working out a shape slowly — the method packs already prescribe these without a click, and the constraint was never meant to forbid them. This is a clarification, not a weakening: playing against a steady pulse *is* swing (the lay-back, the ratio, playing ahead are all defined relative to a grid), which is why decision 6 scores consistency rather than deviation, and why rubato is correctly deferred until time is internalised rather than treated as a missing feature. **Honoured in the audio 6 Aug 2026 (#1224):** the sparse levels were authored, parsed and displayed but the metronome sounded every beat regardless, so the difficulty ladder existed only on the pill. The click level now crosses the bridge as a beat mask the shell schedules from. Deliberately no user toggle: placement is a gate level, so it moves via the core's escalation path, never a preference control.
 3. **Deploy-gates are self-confirmed in v1.** Detecting a transposed, varied device inside free improvisation is research-grade; v1 asks "did you land it?", with machine suggestion at best later.
 4. **Horizons are self-trend-based, not population-based.** "Most people need ~10 sessions" requires population data that does not exist at launch; the honest version is "your trend suggests roughly N more sessions".
 5. **Content scope for v1 is minimal:** 5 nodes, 2 method packs, 1 phrase, fully specified; the rest of the branch as stubs. The prove-the-loop principle applies to content as much as code.
@@ -433,10 +433,20 @@ Four layers, organised by *when*, not what:
   without thought. Gate progress ticks visibly (● ● ○, "2 of 3"). The next
   count-in starts automatically; hands never leave the keys, nothing to tap
   between reps. **Scoped 4 Aug 2026 (decision 18):** until the scoring path
-  returns, the tick *is* your tap — one per rep, count-in follows it — and
-  the one fact is a fact the app owns (gate progress, attempts against your
-  own norm), never a claim about notes it cannot hear. Per-note facts and the
-  nothing-to-tap rep loop return with machine listening.
+  returns, the tick *is* your tap, one per rep, and the one fact is a fact
+  the app owns (gate progress, attempts against your own norm), never a claim
+  about notes it cannot hear. Per-note facts and the nothing-to-tap rep loop
+  return with machine listening. **Corrected 6 Aug 2026 (#1223):** the scoping
+  note above said "count-in follows it", which held for two days of playing
+  and then read as a quiz. The click now runs unbroken for a whole block,
+  counted in once at block entry, and the verdict window opens at each phrase
+  boundary and rests for one pass while the hands play the next. So "hands
+  never leave the keys" is honoured in v1 after all; what is still deferred is
+  only *nothing to tap*. A pass nobody judges is dropped rather than freezing
+  the loop, and a false start can be discarded outright: no attempt, no
+  evidence, no gate progress. Decision 17 is untouched: the tap is still a
+  verdict on one bounded attempt, and there is never more than one candidate
+  pass to judge. Choreography: `docs/design-principles.md` T11.
 - **Layer 2 — block boundaries: the coaching voice, and it earns its slot.** The
   only place the app speaks in sentences, at the natural rest. Why this drill,
   the trend, and exactly one thing to listen for next. One thought, not a

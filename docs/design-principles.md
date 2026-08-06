@@ -229,3 +229,45 @@ verdict is the user's own tap, an acknowledgement rather than news. Options
 considered: turning immediately on the tap lost the glance; keeping A3 for the
 whole count-in kept the next rep's facts off screen until the hands were
 already moving.
+
+### T11 - The pulse runs for the block, and the card is where the breath goes
+**Status:** DECIDED 2026-08-06 (jonyardley/intrada#1223, from the Phase 0
+fortnight at the piano).
+**Supersedes the mid-block half of T10.** T10 ruled that the first count-in
+click turns the page from the verdict glance back to the during-play facts.
+There is no longer a count-in between reps to turn it: the click runs unbroken
+for a whole block, counted in once at block entry. So the glance is ended by
+the next beat instead, which lands in the same half-second at 120bpm and reads
+the same way. Everything else T10 decided stands: the glance is still the
+verdict and gate dots alone, and the count-in still draws on the during-play
+page, in place of the stuck target, wherever a count-in does happen (block
+entry, and after a ladder rung that changed the tempo or the phrase).
+
+Why: the per-rep restart was a cost of deferring machine listening (decision
+18), not a design goal. The original loop was continuous (hands never leave
+the keys), and stopping the click to ask a question each pass turned a
+practice loop into a quiz. The verdict window now opens at each phrase
+boundary and rests for one pass while the hands play the next, so the tap is
+still a verdict on one bounded attempt (decision 17 is untouched) and missing
+one costs a dropped rep rather than a frozen screen.
+
+Two affordances come with it:
+
+- **The block-entry card.** Every block, including the first, opens on a
+  silent card: drill title, section, minutes, the core's why line, Start as
+  the single primary action and Skip beside it. This is T1's intention beat,
+  one glance and one tap, and it is where the breath between blocks goes now
+  that the loop itself has none. It must never grow into a config surface:
+  no per-block decisions, no parameters, no "adjust before you start". The
+  ceiling starts when the hands do, not when the card goes up.
+- **Discard.** A false start is not a fail. "Don't count that" records
+  nothing at all: no attempt, no evidence, no gate progress, no miss run.
+  Without it the continuous pulse makes fumbles expensive, because the loop
+  no longer pauses for you to gather yourself. It is a *cheap* action, not a
+  confirmed one: reversible-by-default applied to the record rather than to
+  the data.
+
+Options considered: keeping the per-rep count-in and shortening it (still
+breaks the loop, still a quiz); letting the verdict window stay open across
+passes until tapped (ambiguous which pass a late tap judged, which is exactly
+the attempt bounding decision 17 protects).
