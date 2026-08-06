@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-06 (#1231, #1236, #1175, #1239 follow-ups)
+> Last updated: 2026-08-06 (#1214)
 
 ## Where we are
 
@@ -22,6 +22,12 @@ countable criteria.
 
 ## Recently landed
 
+- #1214 — the mastery store survives a restart, rebuilt at launch by replaying
+  the persisted `BlockRecord`s in timestamp order. The store is never persisted
+  itself: the records already hold the evidence it derives. This makes two
+  designed behaviours real for the first time rather than test-only — planner
+  stage 3's overdue pull, and the cold test on the first rep of the day.
+  Contract: `specs/coach-2a-slice-contract.md` §7.
 - #1223, #1224, #1225 — the loop's choreography, corrected from Phase 0 play:
   the click runs unbroken for a whole block (one count-in at block entry, and
   a restart only where a parameter actually changed), every block opens on an
@@ -65,8 +71,6 @@ countable criteria.
   4.9MB `design/intrada-design-system.html` is one BeatPosition paragraph behind
   the `.dc.html` as of #1175, deliberately: #1232 patched that bundle in place
   and the re-export should be a real export, done once, on this visit
-- #1214 — the mastery store survives a restart, which is what makes the
-  planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
   circling check, grind trade (see the phase plan in `roadmap.md`)

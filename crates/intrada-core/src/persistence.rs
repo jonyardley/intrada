@@ -39,6 +39,11 @@ pub enum PersistenceOperation {
         wanders: Vec<WanderRecord>,
         updated_at: DateTime<Utc>,
     },
+    /// Every closed block, tombstones excluded (#1214). Read once at a
+    /// local-first launch: the mastery track is a projection of this evidence,
+    /// so it is rebuilt from it rather than persisted alongside it. Wanders are
+    /// not read — they carry no node or level, so nothing to replay.
+    LoadCoachRecords,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -47,6 +52,7 @@ pub enum PersistenceOperation {
 pub enum PersistenceOutput {
     Items(Vec<Item>),
     Sessions(Vec<PracticeSession>),
+    CoachRecords(Vec<BlockRecord>),
     Ack,
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
@@ -78,6 +84,11 @@ pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Eve
 /// same batch to offer again if the write fails (#1181).
 pub fn save_coach_records(batch: PersistenceOperation) -> Command<Effect, Event> {
     Command::request_from_shell(batch).then_send(Event::CoachStoreWritten)
+}
+
+pub fn load_coach_records() -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::LoadCoachRecords)
+        .then_send(Event::CoachStoreLoaded)
 }
 
 pub fn load_sessions() -> Command<Effect, Event> {
@@ -875,7 +886,134 @@ mod tests {
             assert_eq!(block.gate_progress.filled(), 1);
         }
 
+        // ── The read half: mastery rebuilt from the records (#1214) ──
+
+        /// One closed block's worth of evidence, as the store would hand it
+        /// back: a clean pass on `rootless-a-b`, three days ago.
+        fn stored_records(days_ago: i64) -> Vec<BlockRecord> {
+            use crate::engine::{
+                AttemptSummary, Circle, ClickLevel, EvidenceSource, Exit, Mode, ParameterLevel,
+            };
+            let played = at(0) - chrono::TimeDelta::days(days_ago);
+            vec![BlockRecord {
+                id: "b1".into(),
+                node: "rootless-a-b".into(),
+                drill: "rootless-one-key".into(),
+                gate: "rootless-one-key".into(),
+                level: ParameterLevel {
+                    tempo_bpm: 60,
+                    click_level: ClickLevel::EveryBeat,
+                },
+                circle: Circle::Hands,
+                mode: Mode::Keys,
+                started_at: played,
+                ended_at: played,
+                attempts: vec![AttemptSummary {
+                    at: played,
+                    verdict: crate::engine::Verdict::Clean,
+                    source: EvidenceSource::TapVerdict,
+                    cold: true,
+                    self_predicted: None,
+                }],
+                attempts_to_pass: None,
+                gate_opened_at_attempt: None,
+                reps_after_gate: 0,
+                active_ms: 30_000,
+                escalation_fired: vec![],
+                exit: Exit::CeilingHit,
+            }]
+        }
+
+        fn sixty() -> crate::engine::ParameterLevel {
+            crate::engine::ParameterLevel {
+                tempo_bpm: 60,
+                click_level: crate::engine::ClickLevel::EveryBeat,
+            }
+        }
+
+        #[test]
+        fn load_coach_records_requests_the_load_operation() {
+            let mut cmd = load_coach_records();
+            assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+                if req.operation == PersistenceOperation::LoadCoachRecords)));
+        }
+
+        #[test]
+        fn a_local_first_launch_reads_the_evidence_back() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            let mut cmd = app.update(
+                Event::StartApp {
+                    api_base_url: "http://x".into(),
+                    local_first: true,
+                },
+                &mut model,
+            );
+            assert!(cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+                if req.operation == PersistenceOperation::LoadCoachRecords)));
+            assert!(!has_http(&mut cmd), "the evidence never comes over HTTP");
+        }
+
+        #[test]
+        fn the_records_read_back_give_the_planner_something_overdue_to_pull() {
+            let (app, mut model) = local_first();
+            assert_eq!(
+                model
+                    .coach
+                    .mastery
+                    .reading("rootless-a-b", sixty(), at(0))
+                    .overdue,
+                0.0,
+                "a launch re-seeded from content has nothing to be overdue against"
+            );
+
+            let _ = app.update(
+                Event::CoachStoreLoaded(PersistenceOutput::CoachRecords(stored_records(3))),
+                &mut model,
+            );
+
+            assert!(
+                model
+                    .coach
+                    .mastery
+                    .reading("rootless-a-b", sixty(), at(0))
+                    .overdue
+                    > 1.0,
+                "stage 3's maintenance pull fires for a real user, not only in tests"
+            );
+            assert!(
+                model.coach.mastery.is_cold("rootless-a-b", sixty(), at(0)),
+                "and the first rep of the day on it is the cold test the design wants"
+            );
+        }
+
+        #[test]
+        fn a_failed_evidence_read_surfaces_rather_than_vanishing() {
+            let (app, mut model) = local_first();
+            let mut cmd = app.update(
+                Event::CoachStoreLoaded(PersistenceOutput::Failed),
+                &mut model,
+            );
+            assert!(
+                model.last_error.is_some(),
+                "a failed local read is never a silent success (invariant 5)"
+            );
+            assert!(
+                !cmd.effects().any(|e| matches!(e, Effect::Persistence(_))),
+                "and it is not retried: a read that just failed would loop"
+            );
+            assert!(!has_http(&mut cmd), "nor does it fall back to the network");
+        }
+
         // ── The #846 hazard: the new payloads on the real wire ──
+
+        #[test]
+        fn the_evidence_read_survives_the_ffi_wire() {
+            crate::domain::types::assert_round_trips(PersistenceOperation::LoadCoachRecords);
+            crate::domain::types::assert_round_trips(PersistenceOutput::CoachRecords(
+                stored_records(3),
+            ));
+        }
 
         #[test]
         fn the_evidence_op_survives_the_ffi_wire() {

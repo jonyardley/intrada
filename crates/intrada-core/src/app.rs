@@ -118,10 +118,13 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
-    /// Coach evidence write result. Nothing reads these rows back, so a failure
-    /// has nothing to reload to: the batch is offered again once instead, and
-    /// only a second failure surfaces (#1181).
+    /// Coach evidence write result. A failure has nothing to reload to — the
+    /// rows are append-only and the model already holds them — so the batch is
+    /// offered again once instead, and only a second failure surfaces (#1181).
     CoachStoreWritten(PersistenceOutput),
+    /// Every closed block, read back at launch to rebuild the mastery track
+    /// (#1214).
+    CoachStoreLoaded(PersistenceOutput),
 }
 
 /// Side effects the core requests from shells.
@@ -194,7 +197,11 @@ impl Intrada {
                 model.api_base_url = api_base_url;
                 model.local_first = local_first;
                 if local_first {
-                    Command::all([persistence::load_items(), persistence::load_sessions()])
+                    Command::all([
+                        persistence::load_items(),
+                        persistence::load_sessions(),
+                        persistence::load_coach_records(),
+                    ])
                 } else {
                     Command::all([
                         http::fetch_items(&model.api_base_url),
@@ -372,7 +379,9 @@ impl Intrada {
                     model.items = items;
                     crux_core::render::render()
                 }
-                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Ack
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -381,7 +390,9 @@ impl Intrada {
             },
             Event::StoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -394,7 +405,9 @@ impl Intrada {
                     model.practice_summaries = build_practice_summaries(&model.sessions);
                     crux_core::render::render()
                 }
-                PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Ack
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     crux_core::render::render()
@@ -402,7 +415,9 @@ impl Intrada {
             },
             Event::SessionStoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed save → reload sessions to roll back the optimistic push (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -412,14 +427,15 @@ impl Intrada {
             Event::CoachStoreWritten(output) => match output {
                 PersistenceOutput::Ack
                 | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_) => {
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => {
                     model.coach_write_in_flight = None;
                     Command::done()
                 }
-                // Nothing reads these rows back, so a failure has nothing to
-                // reload to and the block would simply be gone. Offer the batch
-                // again first (the store upserts by id, so a repeat is safe) and
-                // surface only if that fails too.
+                // A failure has nothing to reload to — the rows are append-only
+                // and the block would simply be gone. Offer the batch again first
+                // (the store upserts by id, so a repeat is safe) and surface only
+                // if that fails too.
                 PersistenceOutput::Failed => match model.coach_write_in_flight.take() {
                     Some(batch) => persistence::save_coach_records(batch),
                     None => {
@@ -427,6 +443,22 @@ impl Intrada {
                         crux_core::render::render()
                     }
                 },
+            },
+            // The mastery track is a projection of this evidence, so the replay
+            // is the whole of the read: nothing is stored twice (#1214).
+            Event::CoachStoreLoaded(output) => match output {
+                PersistenceOutput::CoachRecords(records) => {
+                    model.coach.rebuild_mastery(&records);
+                    crux_core::render::render()
+                }
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::Ack => Command::done(),
+                // No reload: a read that just failed would loop (as `StoreLoaded`).
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't read back what you've practised.");
+                    crux_core::render::render()
+                }
             },
         }
     }

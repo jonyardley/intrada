@@ -51,6 +51,38 @@ impl CoachState {
         writes
     }
 
+    /// The persisted `BlockRecord`s are the log and the mastery track is a
+    /// projection of them (#1214), so the store is never persisted itself: it is
+    /// re-seeded from content and replayed. Idempotent by construction — the
+    /// seed is where every replay starts, so reading the rows twice cannot
+    /// double-count the evidence.
+    pub fn rebuild_mastery(&mut self, records: &[BlockRecord]) {
+        self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
+        let mut replay = Vec::new();
+        for record in records {
+            for attempt in &record.attempts {
+                replay.push((attempt.at, Replay::Attempt(attempt.verdict), record));
+            }
+            // A pass banked in a previous run still owes its level-up, and
+            // `level_up` declines a rung that already has evidence — so it has
+            // to reach the store in the order it happened.
+            if record.exit == Exit::GatePassed {
+                if let Some(next) = next_rung(record) {
+                    replay.push((record.ended_at, Replay::LevelUp(next), record));
+                }
+            }
+        }
+        replay.sort_by_key(|(at, _, _)| *at);
+        for (at, step, record) in replay {
+            match step {
+                Replay::Attempt(verdict) => {
+                    self.mastery.record(&record.node, record.level, verdict, at)
+                }
+                Replay::LevelUp(to) => self.mastery.level_up(&record.node, record.level, to),
+            }
+        }
+    }
+
     /// Only the two press-start events need a plan, and only `CoachState` can
     /// make one: the planner reads the mastery track, which the session does not
     /// hold. The clock seeds the dealer and is stored on the `Plan`, so the
@@ -184,6 +216,11 @@ impl CoachState {
             gate_target: block.gate_progress.target(),
         })
     }
+}
+
+enum Replay {
+    Attempt(Verdict),
+    LevelUp(ParameterLevel),
 }
 
 /// A gate pass moves the cursor to the next rung of the node's ladder the loop
@@ -836,6 +873,261 @@ mod tests {
             tempo_bpm: 80,
             click_level: ClickLevel::EveryBeat,
         }
+    }
+
+    // ── The mastery track, rebuilt from the persisted records (#1214) ──
+
+    fn rung(tempo_bpm: u16) -> ParameterLevel {
+        ParameterLevel {
+            tempo_bpm,
+            click_level: ClickLevel::EveryBeat,
+        }
+    }
+
+    fn day(day: i64) -> DateTime<Utc> {
+        at(0) + TimeDelta::days(day)
+    }
+
+    fn attempt(clean: bool, at: DateTime<Utc>) -> crate::engine::AttemptSummary {
+        crate::engine::AttemptSummary {
+            at,
+            verdict: if clean {
+                Verdict::Clean
+            } else {
+                Verdict::Missed
+            },
+            source: crate::engine::EvidenceSource::TapVerdict,
+            cold: false,
+            self_predicted: None,
+        }
+    }
+
+    fn record(
+        id: &str,
+        drill: &str,
+        level: ParameterLevel,
+        exit: Exit,
+        attempts: Vec<crate::engine::AttemptSummary>,
+    ) -> BlockRecord {
+        record_on("rootless-a-b", id, drill, level, exit, attempts)
+    }
+
+    fn record_on(
+        node: &str,
+        id: &str,
+        drill: &str,
+        level: ParameterLevel,
+        exit: Exit,
+        attempts: Vec<crate::engine::AttemptSummary>,
+    ) -> BlockRecord {
+        let ended_at = attempts.last().map(|a| a.at).unwrap_or(day(0));
+        BlockRecord {
+            id: id.to_string(),
+            node: node.to_string(),
+            drill: drill.to_string(),
+            gate: drill.to_string(),
+            level,
+            circle: crate::engine::Circle::Hands,
+            mode: crate::engine::Mode::Keys,
+            started_at: attempts.first().map(|a| a.at).unwrap_or(ended_at),
+            ended_at,
+            attempts,
+            attempts_to_pass: None,
+            gate_opened_at_attempt: None,
+            reps_after_gate: 0,
+            active_ms: 0,
+            escalation_fired: vec![],
+            exit,
+        }
+    }
+
+    #[test]
+    fn a_store_rebuilt_from_the_records_knows_when_the_material_was_last_played() {
+        let records = vec![record(
+            "b1",
+            "rootless-one-key",
+            rung(60),
+            Exit::CeilingHit,
+            vec![attempt(true, day(0))],
+        )];
+        let mut coach = CoachState::default();
+        assert_eq!(
+            coach
+                .mastery
+                .reading("rootless-a-b", rung(60), day(3))
+                .overdue,
+            0.0,
+            "a launch re-seeded from content has nothing to be overdue against"
+        );
+
+        coach.rebuild_mastery(&records);
+
+        let reading = coach.mastery.reading("rootless-a-b", rung(60), day(3));
+        assert!(
+            reading.overdue > 1.0,
+            "three days after the last clean pass, the pull that puts maintenance \
+             ahead of new keys has something to fire on: {}",
+            reading.overdue
+        );
+        assert!(
+            coach.mastery.is_cold("rootless-a-b", rung(60), day(3)),
+            "and the first rep of the day on material played three days ago is a cold test"
+        );
+    }
+
+    #[test]
+    fn rebuilding_twice_does_not_double_count_the_evidence() {
+        let records = vec![record(
+            "b1",
+            "rootless-one-key",
+            rung(60),
+            Exit::CeilingHit,
+            vec![attempt(true, day(0)), attempt(false, day(0))],
+        )];
+        let mut coach = CoachState::default();
+
+        coach.rebuild_mastery(&records);
+        let once = coach.mastery.clone();
+        coach.rebuild_mastery(&records);
+
+        assert_eq!(
+            coach.mastery, once,
+            "the store is a projection of the records, so replaying them is not \
+             an append"
+        );
+    }
+
+    #[test]
+    fn records_read_back_in_any_order_rebuild_the_same_store() {
+        // The rung above only inherits from the one below while it has no
+        // evidence of its own, so a gate pass and the attempts that followed it
+        // land differently if the replay takes them in the order the rows arrived.
+        let passed = record(
+            "b1",
+            "rootless-transition",
+            rung(60),
+            Exit::GatePassed,
+            vec![attempt(true, day(0))],
+        );
+        let after = record(
+            "b2",
+            "rootless-under-melody",
+            rung(80),
+            Exit::CeilingHit,
+            vec![attempt(true, day(1))],
+        );
+
+        let mut chronological = CoachState::default();
+        chronological.rebuild_mastery(&[passed.clone(), after.clone()]);
+        let mut reversed = CoachState::default();
+        reversed.rebuild_mastery(&[after, passed]);
+
+        assert_eq!(
+            reversed.mastery, chronological.mastery,
+            "the store must not depend on the order SQLite handed the rows back"
+        );
+        let above = reversed
+            .mastery
+            .get("rootless-a-b", rung(80))
+            .expect("the rung the pass moved the cursor to");
+        assert!(
+            above.prior.0 + above.prior.1 > 2.0,
+            "and the level-up ran before the attempts above it, so the rung \
+             above holds an inherited prior rather than the content seed: {:?}",
+            above.prior
+        );
+    }
+
+    #[test]
+    fn a_gate_pass_in_the_records_moves_the_cursor_up_the_ladder() {
+        let seeded = *CoachState::default()
+            .mastery
+            .get("rootless-a-b", rung(80))
+            .expect("the content seeds every runnable rung");
+        let mut coach = CoachState::default();
+
+        coach.rebuild_mastery(&[record(
+            "b1",
+            "rootless-transition",
+            rung(60),
+            Exit::GatePassed,
+            vec![attempt(true, day(0))],
+        )]);
+
+        let above = coach.mastery.get("rootless-a-b", rung(80)).unwrap();
+        assert_ne!(
+            above.prior, seeded.prior,
+            "a pass banked in a previous run is still a pass: the rebuild owes \
+             the level-up it earned"
+        );
+    }
+
+    /// The consequence #1214 is about, end to end: what the store holds decides
+    /// what today's plan opens with. Without the read side this ordering was
+    /// only ever reachable by a test writing straight to the mastery track.
+    #[test]
+    fn evidence_from_a_previous_run_reorders_todays_plan() {
+        let phrase = ParameterLevel {
+            tempo_bpm: 120,
+            click_level: ClickLevel::TwoAndFour,
+        };
+        // The last node in the authored route, so route order alone leaves it
+        // last: only being overdue can pull it forward.
+        let records: Vec<_> = (0..12)
+            .map(|d| {
+                record_on(
+                    "phrase-transposition",
+                    &format!("b{d}"),
+                    "phrase-home-key",
+                    phrase,
+                    Exit::CeilingHit,
+                    vec![attempt(true, day(d))],
+                )
+            })
+            .collect();
+        let mut coach = CoachState::default();
+
+        coach.rebuild_mastery(&records);
+        coach.apply(&CoachEvent::PlanSession {
+            now: day(60),
+            available_minutes: Some(30),
+        });
+
+        let SessionState::Planned { plan } = &coach.session.state else {
+            panic!("a planned session");
+        };
+        let overdue = plan
+            .blocks
+            .iter()
+            .position(|block| block.spec.node == "phrase-transposition")
+            .expect("the overdue node");
+        let new_ground = plan
+            .blocks
+            .iter()
+            .position(|block| block.spec.node == "chord-tone-targeting")
+            .expect("a node with nothing behind it");
+        assert!(
+            overdue < new_ground,
+            "maintenance that fell due while the app was closed outranks new keys \
+             (journey 7): {:?}",
+            plan.blocks
+                .iter()
+                .map(|block| block.spec.node.as_str())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn a_rebuild_with_nothing_recorded_leaves_the_content_seeds_alone() {
+        let mut coach = CoachState::default();
+
+        coach.rebuild_mastery(&[]);
+
+        assert_eq!(
+            coach.mastery,
+            CoachState::default().mastery,
+            "a first launch has no evidence and must not lose its priors"
+        );
     }
 
     // ── The #846 hazard: every bridge type on the real wire ──

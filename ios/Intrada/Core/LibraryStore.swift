@@ -14,6 +14,9 @@ protocol ItemStore {
   /// Append coach evidence in one transaction — blocks, wanders and their
   /// attempts land together or not at all (#1181).
   func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws
+  /// Every closed block, oldest first — the core replays them to rebuild the
+  /// mastery track (#1214).
+  func loadCoachRecords() throws -> [BlockRecord]
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -186,6 +189,19 @@ final class LibraryStore: ItemStore {
       for wander in wanders {
         try Self.upsert(wander, updatedAt: updatedAt, in: db)
       }
+    }
+  }
+
+  func loadCoachRecords() throws -> [BlockRecord] {
+    try dbQueue.read { db in
+      try Row.fetchAll(
+        db,
+        sql: """
+          SELECT * FROM block_record WHERE deleted_at IS NULL
+          ORDER BY started_at, id
+          """
+      )
+      .map(Self.blockRecord(from:))
     }
   }
 
@@ -695,10 +711,9 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  // ── BlockRecord / WanderRecord → row codec (#1181) ────────────────────
-  // Write-only: nothing reads coach evidence back yet, so there is no decoder
-  // here to go stale. The stored enum spellings are the format contract a
-  // future reader must match.
+  // ── Row ↔ BlockRecord / WanderRecord codec (#1181 writes, #1214 reads) ─
+  // A wander has no decoder: it carries no node or level, so it holds nothing
+  // the mastery replay is keyed by and nothing reads it back.
 
   private struct StoredAttempt: Codable {
     var at: String
@@ -710,7 +725,8 @@ final class LibraryStore: ItemStore {
 
   private struct CoachCodecError: Error, CustomStringConvertible {
     let field: String
-    var description: String { "coach \(field) failed to encode" }
+    let phase: String
+    var description: String { "coach \(field) failed to \(phase)" }
   }
 
   private static func upsert(_ record: BlockRecord, updatedAt: String, in db: Database) throws {
@@ -772,7 +788,7 @@ final class LibraryStore: ItemStore {
   private static func encodeJSON<T: Encodable>(_ value: T, field: String) throws -> String {
     let data = try JSONEncoder().encode(value)
     guard let json = String(data: data, encoding: .utf8) else {
-      throw CoachCodecError(field: field)
+      throw CoachCodecError(field: field, phase: "encode")
     }
     return json
   }
@@ -833,6 +849,129 @@ final class LibraryStore: ItemStore {
     case .shrinkScope: "shrink_scope"
     case .changeMode: "change_mode"
     case .swapDrill: "swap_drill"
+    }
+  }
+
+  private static func blockRecord(from row: Row) -> BlockRecord {
+    BlockRecord(
+      id: row["id"], node: row["node"], drill: row["drill"], gate: row["gate"],
+      level: ParameterLevel(
+        tempoBpm: UInt16(row["level_tempo_bpm"] as Int),
+        clickLevel: clickLevel(from: row["level_click_level"])),
+      circle: circle(from: row["circle"]), mode: mode(from: row["mode"]),
+      startedAt: row["started_at"], endedAt: row["ended_at"],
+      attempts: decodeAttempts(row["attempts"]),
+      attemptsToPass: (row["attempts_to_pass"] as Int?).map { UInt16($0) },
+      gateOpenedAtAttempt: (row["gate_opened_at_attempt"] as Int?).map { UInt16($0) },
+      repsAfterGate: UInt16(row["reps_after_gate"] as Int),
+      activeMs: UInt64(row["active_ms"] as Int64),
+      escalationFired: decodeRungs(row["escalation_fired"]),
+      exit: exit(from: row["exit"]))
+  }
+
+  /// Reports rather than returning empty silently: an attempts blob that failed
+  /// to decode would replay as a block nobody played, which the mastery track
+  /// then reads as material never practised.
+  private static func decodeAttempts(_ json: String) -> [AttemptSummary] {
+    guard let stored = try? JSONDecoder().decode([StoredAttempt].self, from: Data(json.utf8)) else {
+      report(CoachCodecError(field: "attempts", phase: "decode"), decodeContext)
+      return []
+    }
+    return stored.map { attempt in
+      AttemptSummary(
+        at: attempt.at, verdict: verdict(from: attempt.verdict),
+        source: evidenceSource(from: attempt.source), cold: attempt.cold,
+        selfPredicted: attempt.selfPredicted.map(verdict(from:)))
+    }
+  }
+
+  private static func decodeRungs(_ json: String) -> [Rung] {
+    guard let raw = try? JSONDecoder().decode([String].self, from: Data(json.utf8)) else {
+      report(CoachCodecError(field: "escalation_fired", phase: "decode"), decodeContext)
+      return []
+    }
+    return raw.map(rung(from:))
+  }
+
+  private static func verdict(from raw: String) -> Verdict {
+    switch raw {
+    case "clean": return .clean
+    case "missed": return .missed
+    default:
+      report(UnknownStoredEnum(kind: "Verdict", raw: raw), decodeContext)
+      return .missed  // conservative: an unknown verdict must not inflate mastery (#949)
+    }
+  }
+
+  private static func evidenceSource(from raw: String) -> EvidenceSource {
+    switch raw {
+    case "tap_verdict": return .tapVerdict
+    case "midi": return .midi
+    case "audio": return .audio
+    default:
+      report(UnknownStoredEnum(kind: "EvidenceSource", raw: raw), decodeContext)
+      return .tapVerdict
+    }
+  }
+
+  private static func clickLevel(from raw: String) -> ClickLevel {
+    switch raw {
+    case "every_beat": return .everyBeat
+    case "two_and_four": return .twoAndFour
+    case "bar_downbeat": return .barDownbeat
+    case "every_other_bar": return .everyOtherBar
+    default:
+      report(UnknownStoredEnum(kind: "ClickLevel", raw: raw), decodeContext)
+      return .everyBeat
+    }
+  }
+
+  private static func circle(from raw: String) -> Circle {
+    switch raw {
+    case "head": return .head
+    case "hands": return .hands
+    case "bridge": return .bridge
+    default:
+      report(UnknownStoredEnum(kind: "Circle", raw: raw), decodeContext)
+      return .hands
+    }
+  }
+
+  private static func mode(from raw: String) -> Mode {
+    switch raw {
+    case "keys": return .keys
+    case "away": return .away
+    case "keys_to_away": return .keysToAway
+    default:
+      report(UnknownStoredEnum(kind: "Mode", raw: raw), decodeContext)
+      return .keys
+    }
+  }
+
+  private static func exit(from raw: String) -> Exit {
+    switch raw {
+    case "gate_passed": return .gatePassed
+    case "ceiling_hit": return .ceilingHit
+    case "skipped": return .skipped
+    case "escalated": return .escalated
+    case "session_ended": return .sessionEnded
+    default:
+      report(UnknownStoredEnum(kind: "Exit", raw: raw), decodeContext)
+      // Never `.gatePassed`: the core replays a pass as a level-up, so guessing
+      // one here would invent a rung the hands never earned.
+      return .sessionEnded
+    }
+  }
+
+  private static func rung(from raw: String) -> Rung {
+    switch raw {
+    case "tempo_down": return .tempoDown
+    case "shrink_scope": return .shrinkScope
+    case "change_mode": return .changeMode
+    case "swap_drill": return .swapDrill
+    default:
+      report(UnknownStoredEnum(kind: "Rung", raw: raw), decodeContext)
+      return .tempoDown
     }
   }
 

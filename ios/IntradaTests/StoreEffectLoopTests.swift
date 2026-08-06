@@ -168,6 +168,35 @@ final class StoreEffectLoopTests: XCTestCase {
       "a lost block must surface as .failed, never a phantom .ack (#816)")
   }
 
+  func testCoachRecordsReadResolvesWhatWasWritten() throws {
+    let libraryStore = try LibraryStore.inMemory()
+    try libraryStore.saveCoachRecords(
+      blocks: [Self.coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 22, effect: .persistence(.loadCoachRecords))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), store: libraryStore)
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .coachRecords([Self.coachBlock]),
+      "the launch read hands the core back the evidence it wrote (#1214)")
+  }
+
+  func testCoachRecordsReadFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Request(id: 23, effect: .persistence(.loadCoachRecords))] }
+    let store = Store(bridge: bridge, session: mockSession(), store: FailingStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a failed read surfaces, so the core never rebuilds mastery from a lie (#816)")
+  }
+
   /// The session the core just snapshotted for crash recovery — also the only
   /// route to its `EngineConfig`, which `CoachView` does not carry.
   private func coachSession(in requests: [Request]) throws -> EngineSession {
@@ -535,6 +564,26 @@ final class StoreEffectLoopTests: XCTestCase {
       afterEdit.items.first?.title, "Renamed",
       "edited title should apply (err=\(afterEdit.error ?? "nil"))")
     XCTAssertEqual(afterEdit.items.first?.itemType, .exercise, "edited type should apply")
+  }
+
+  /// Real-bridge evidence read-back (#846, #1214): `PersistenceOutput` carries
+  /// a `Vec<BlockRecord>` back to the core, which a stub bridge can't exercise.
+  /// A wire break here would leave the mastery track silently unrebuilt — the
+  /// exact dead-path this closes — so drive the resolve through LiveBridge,
+  /// where a serialization failure throws instead of being swallowed.
+  func testRealBridgeCoachRecordsResolveOnTheWire() throws {
+    let bridge = LiveBridge()
+    let launch = try bridge.update(
+      .startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let id = try XCTUnwrap(
+      launch.first { request in
+        if case .persistence(.loadCoachRecords) = request.effect { return true }
+        return false
+      }?.id, "a local-first launch must ask for the coach records")
+
+    _ = try bridge.resolve(id, persistenceOutput: .coachRecords([Self.coachBlock]))
+
+    XCTAssertNil(try bridge.view().error, "a clean read leaves nothing to surface")
   }
 
   /// Real-bridge step round-trip (#846, #1083): `AddVariant` pushes a `Variant`
@@ -1281,6 +1330,7 @@ private struct FailingStore: ItemStore {
   func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
     throw TestError()
   }
+  func loadCoachRecords() throws -> [BlockRecord] { throw TestError() }
 }
 
 final class MockURLProtocol: URLProtocol {

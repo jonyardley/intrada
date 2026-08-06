@@ -5,9 +5,9 @@ import Testing
 
 @testable import Intrada
 
-/// Coach evidence persistence (#1181, spec §4). The production codec is
-/// write-only, so the stored shape is pinned here: `DecodedAttempt` is the
-/// format contract a future reader has to match.
+/// Coach evidence persistence (#1181 writes, #1214 reads; spec §4). The writes
+/// are asserted against raw SQL rather than through the decoder, so the stored
+/// shape stays pinned independently of it: `DecodedAttempt` is that contract.
 @Suite("Coach evidence store")
 struct CoachRecordStoreTests {
 
@@ -221,6 +221,85 @@ struct CoachRecordStoreTests {
     try store.saveCoachRecords(blocks: [record], wanders: [], updatedAt: Self.updatedAt)
 
     #expect(try count(queue, "block_record") == 1, "a retried write must not double-count evidence")
+  }
+
+  // ── Reads (#1214) ─────────────────────────────────────────────────────
+
+  @Test("a written block reads back with every field the mastery replay needs")
+  func readBackRoundTrips() throws {
+    let (store, _) = try makeStore()
+    let attempts = [
+      attempt(clean: false, cold: true, at: "2026-08-04T10:00:09Z"),
+      attempt(clean: true, at: "2026-08-04T10:00:18Z", source: .midi, selfPredicted: .clean),
+    ]
+    let written = block(
+      attempts: attempts, escalations: [.tempoDown, .swapDrill], exit: .ceilingHit,
+      attemptsToPass: 4, gateOpenedAtAttempt: 2, repsAfterGate: 1, activeMs: 42_000)
+    try store.saveCoachRecords(blocks: [written], wanders: [], updatedAt: Self.updatedAt)
+
+    let read = try #require(try store.loadCoachRecords().first)
+    #expect(read == written, "the decoder must give the core back what it wrote")
+  }
+
+  @Test("a block that never passed reads its nullable counters back as nil")
+  func readBackNullableCounters() throws {
+    let (store, _) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
+      wanders: [], updatedAt: Self.updatedAt)
+
+    let read = try #require(try store.loadCoachRecords().first)
+    #expect(read.attemptsToPass == nil, "NULL reads back as never-passed, not 0")
+    #expect(read.gateOpenedAtAttempt == nil)
+  }
+
+  @Test("a tombstoned block is not replayed into the mastery track")
+  func readBackSkipsTombstones() throws {
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [block("b1"), block("b2")], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(
+        sql: "UPDATE block_record SET deleted_at = ? WHERE id = 'b2'",
+        arguments: [Self.updatedAt])
+    }
+
+    #expect(try store.loadCoachRecords().map(\.id) == ["b1"])
+  }
+
+  @Test("an unrecognised stored enum is reported rather than silently defaulted")
+  func readBackUnknownEnum() throws {
+    // An older binary reading a row a newer version wrote (#949). The row must
+    // still decode — losing a whole block's evidence is worse than one field
+    // falling back — but it must not do so silently.
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(sql: "UPDATE block_record SET exit = 'teleported' WHERE id = 'b1'")
+    }
+
+    let read = try #require(try store.loadCoachRecords().first)
+    #expect(read.exit == .sessionEnded, "an unknown exit reads as the neutral one")
+  }
+
+  @Test("blocks read back oldest first, whatever order they were written")
+  func readBackOrder() throws {
+    let (store, _) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [lateBlock, block("b-early")], wanders: [], updatedAt: Self.updatedAt)
+
+    #expect(try store.loadCoachRecords().map(\.id) == ["b-early", "b-late"])
+  }
+
+  private var lateBlock: BlockRecord {
+    BlockRecord(
+      id: "b-late", node: "rootless-a-b", drill: "rootless-one-key",
+      gate: "rootless-one-key",
+      level: ParameterLevel(tempoBpm: 60, clickLevel: .everyBeat),
+      circle: .hands, mode: .keys,
+      startedAt: "2026-08-05T10:00:00Z", endedAt: "2026-08-05T10:00:30Z",
+      attempts: [], attemptsToPass: nil, gateOpenedAtAttempt: nil, repsAfterGate: 0,
+      activeMs: 0, escalationFired: [], exit: .skipped)
   }
 
   // ── Upgrade path (CLAUDE.md "Local data migrations") ───────────────────
