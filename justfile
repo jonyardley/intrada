@@ -59,9 +59,9 @@ check:
         exit 0
     fi
     just fmt-check lint test hygiene
-    # Stamp only a clean tree: a green run over uncommitted edits says nothing
-    # about HEAD, so a later `git restore` would read as verified (#1204).
-    if [ -z "$(git status --porcelain)" ]; then
+    # Stamp only the exact tree we tested: a green run over uncommitted edits,
+    # or one HEAD moved under, says nothing about $sha (#1204).
+    if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
         mkdir -p target
         echo "$sha" > "$stamp"
     fi
@@ -245,8 +245,8 @@ _ios-test-run tier:
         $only $retry \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
     cd ..
-    # Clean-tree-only, same reason as `check` above (#1204).
-    if [ -z "$(git status --porcelain)" ]; then
+    # Same exact-tree guard as `check` above (#1204).
+    if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
         printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
     fi
 
