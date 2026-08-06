@@ -34,9 +34,20 @@ struct DrillLoopHost: View {
             store.send(.coach(.tap(clean: clean, now: SessionClock.nowRFC3339())))
           },
           onStuck: { store.send(.coach(.stuck(now: SessionClock.nowRFC3339()))) },
-          onDiscard: { store.send(.coach(.discardAttempt(now: SessionClock.nowRFC3339()))) },
-          onStart: { store.send(.coach(.startBlock(now: SessionClock.nowRFC3339()))) },
-          onSkip: { store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339()))) },
+          // The three the user has no other confirmation of: a discard leaves
+          // the screen looking as it did, and the card's two both hand off to
+          // the core. `onSuccess` fires only if the core accepted it, so a
+          // rejected event can never feel like it landed.
+          onDiscard: {
+            store.send(
+              .coach(.discardAttempt(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
+          onStart: {
+            store.send(.coach(.startBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
+          onSkip: {
+            store.send(.coach(.skipBlock(now: SessionClock.nowRFC3339())), onSuccess: .impact)
+          },
           onDismiss: dismiss)
       } else {
         Color.clear
