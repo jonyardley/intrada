@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-06 (#1223)
+> Last updated: 2026-08-06 (#1223, #1224, #1225)
 
 ## Where we are
 
@@ -19,7 +19,7 @@ countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
-- Tooling: gate speed-ups (#1202–#1204), team-briefing edits (#1199)
+- Tooling: gate speed-ups (#1202–#1204)
 
 ## Recently landed
 
@@ -30,7 +30,11 @@ countable criteria.
   counting, the authored sparse click levels are honoured by the audio rather
   than only by the pill, and press-start shows the whole session rather than
   block one. Rationale: `docs/design-principles.md` T11, which supersedes half
-  of T10.
+  of T10. Design folded into `design/intrada-design-system.dc.html` first
+  (#1232): Coach primitives `TapVerdict`, `BlockEntryCard`, `PlanBlockRow` and
+  `CoachAction`.
+- #1239 — agent teams retired: one agent per slice, worktree fan-out only for
+  genuinely independent work. Evidence from building #1223 as a team.
 - #1188 — the mastery track: Beta state per (node, level), fed by tap-verdicts
 - #1189 — the five-stage planner as a pure function, retiring the seeded block
 - #1182 — the drill loop reached from Practice: press-start, and the ladder's

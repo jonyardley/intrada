@@ -854,29 +854,44 @@ Evidence base: coupling analysis of the last 400 commits (2026-08).
   shared-simulator rule under Commands. Close the second session when its task
   ships; do not keep it warm.
 
-### Agent teams (in-session teammates)
+### One agent per slice; fan out only on independent work
 
-An agent team (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, terminal sessions only)
-counts as **one** stream: the whole team shares a single checkout and one
-feature branch, so a core+iOS team satisfies the one-vertical-stream rule by
-itself. Never run a second vertical session beside it. Start one with
-`/team-vertical <issues>` (`.claude/commands/team-vertical.md`).
+**A vertical slice is one agent's job.** Do not split core and iOS across two
+agents working the same slice. In-session agent teams
+(`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, `/team-vertical`) were tried on #1223
+and retired: on a slice coupled by a bridge contract, the split cost more than
+it bought. What it actually produced, measured on that PR:
 
-- **Shared checkout, no file locking.** Teams lock task claiming, not file
-  edits. Every file gets exactly one writing teammate, fixed in the brief;
-  the serialisation-point files above are single-owner by definition.
-- **Commit with an explicit pathspec**: `git commit -F <msg-file> -- <paths>`
-  (implies `--only`). In a shared checkout a bare `git commit` sweeps the
-  other writer's staged files into your commit; a scoped `git add` does not
-  protect against it (#1219 misfiled a deletion exactly this way).
-- **Contract before code.** The core teammate publishes the
-  Event/Effect/ViewModel contract for the slice before either side wires it.
-  A bridge-type change is messaged to the team, never landed silently.
-- **Per-teammate gates.** Each teammate runs its gates (`just check` for
-  core; `just ios-fmt-check` + `just ios-test` for `ios/`) before marking a
-  task done.
-- **One PR, via `ship`, human merges** — the definition of done below applies
-  to the team as a whole, not per teammate.
+- The halves were never independent. One genuinely parallel window (~25 min)
+  against ~20 coordination messages, three nudges to idle teammates, and three
+  replies to superseded instructions.
+- **The split caused the worst bug in the PR.** The shell teammate restarted
+  the click without bumping `pulse_seq`, because it could not see the core
+  invariant that says a restart is signalled by that field. It then rebuilt the
+  hardest code in the slice from scratch. One agent holding both sides would
+  not have written it.
+- The quality came from elsewhere: adversarial review, the pre-push comment
+  hook, and mutation-testing vacuous tests. All three work with one agent.
+
+**Fan out to worktrees when the pieces are genuinely independent** — no shared
+contract in flight, and no piece blocked on another's output. Good shapes: an
+audit or migration sweep across many files, N independent approaches to one
+design question, or unrelated tasks in the decoupled set. Bad shape: anything
+where two agents would edit either side of one contract.
+
+- **One git worktree per agent**, branched from fresh `origin/main`. Separate
+  checkouts mean no shared-index hazard, so a bare `git commit` is safe again
+  (the explicit-pathspec rule existed only for the shared-checkout teams).
+- **The lead integrates.** Fan-out agents report; they do not merge into each
+  other's work. Reconcile in one place.
+- **The simulator is machine-global.** Only one agent runs iOS tests at a time.
+  See the shared-simulator rule under Commands.
+- `superpowers:using-git-worktrees` for the mechanics; the `Workflow` tool's
+  `isolation: 'worktree'` does the same per-agent when scripting a fan-out.
+
+**Contract before code still applies, to one agent as much as to several.** Pin
+the Event/Effect/ViewModel shape for a slice before wiring either side — the
+discipline is what makes bridge changes reviewable, not a handoff protocol.
 
 ### Definition of done (every stream, before requesting review)
 
