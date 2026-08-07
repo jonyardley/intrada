@@ -261,6 +261,8 @@ pub struct EngineConfig {
     pub consecutive_fail_trigger: u8,
     pub ladder: Vec<Rung>,
     pub gate_open_hold_s: u32,
+    /// How long the tap's glance holds where no beat ends it, which is only l0.
+    pub glance_hold_s: u32,
     pub tempo_down_pct: u16,
     pub tempo_floor_bpm: u16,
 }
@@ -272,6 +274,7 @@ impl Default for EngineConfig {
             consecutive_fail_trigger: escalation.consecutive_fail_trigger,
             ladder: escalation.ladder.clone(),
             gate_open_hold_s: escalation.gate_open_hold_s,
+            glance_hold_s: escalation.glance_hold_s,
             tempo_down_pct: escalation.tempo_down_pct,
             tempo_floor_bpm: escalation.tempo_floor_bpm,
         }
@@ -361,6 +364,22 @@ impl BlockState {
             Phase::CountIn {
                 beats_remaining: self.count_in_beats,
             }
+        }
+    }
+
+    /// At a clicked level the next beat turns the page on the tap's glance
+    /// (T11). At l0 no beat ever arrives, so the clock ends it instead: left
+    /// to a beat, the screen would hold on a phase with nothing to tap.
+    fn end_untimed_glance(&mut self, now: DateTime<Utc>, hold_s: u32) {
+        if !self.level.is_untimed() || self.phase != Phase::Listening {
+            return;
+        }
+        let held = self
+            .attempts
+            .last()
+            .is_some_and(|attempt| (now - attempt.at).num_seconds() >= i64::from(hold_s));
+        if held {
+            self.last_verdict = None;
         }
     }
 
@@ -675,10 +694,6 @@ impl EngineSession {
         let Some(block) = self.block_mut() else {
             return;
         };
-        // Nothing sounds at l0, so nothing can be reported from it.
-        if block.level.is_untimed() {
-            return;
-        }
         if matches!(
             block.phase,
             Phase::CountIn { .. } | Phase::Escalating { .. }
@@ -787,9 +802,6 @@ impl EngineSession {
         // With a window open this voids the pass it asks about, not the one in
         // flight. Voiding the pass in flight reads as well: open, see #1237.
         match block.phase {
-            // At l0 nothing is pending: the tap is the only thing that records,
-            // so the discarded pass is simply the one not tapped for.
-            Phase::Listening if block.level.is_untimed() => {}
             Phase::Listening => block.discarded = true,
             Phase::AwaitingVerdict => block.phase = Phase::Listening,
             _ => return,
@@ -1035,10 +1047,12 @@ impl EngineSession {
     fn tick(&mut self, now: DateTime<Utc>) {
         let ceiling = self.spec().map(|spec| u32::from(spec.minutes) * 60);
         let hold = self.config.gate_open_hold_s;
+        let glance = self.config.glance_hold_s;
         let Some(block) = self.block_mut() else {
             return;
         };
         block.now = now;
+        block.end_untimed_glance(now, glance);
 
         let held = block.phase == Phase::GateOpen
             && block
@@ -1162,7 +1176,6 @@ impl EngineSession {
         self.start(Plan::fixture(), now);
     }
 
-    /// The same fixture at l0, for the clickless half of the machine.
     #[cfg(test)]
     pub(crate) fn start_untimed_fixture(&mut self, now: DateTime<Utc>) {
         self.start(Plan::fixture_untimed(), now);
@@ -2796,8 +2809,8 @@ mod tests {
 
     // ── l0: the clickless acquisition block (decision 20) ──
 
-    /// An l0 block, started. There is no count-in to sit through, so the hands
-    /// are already on the material.
+    /// An l0 block, started: no count-in to sit through, so the hands are
+    /// already on the material.
     fn untimed() -> EngineSession {
         let mut session = EngineSession::default();
         session.start_untimed_fixture(at(0));
@@ -2888,8 +2901,8 @@ mod tests {
         assert_eq!(
             session.block().unwrap().attempts.len(),
             1,
-            "nothing was pending when the user discarded, so the pass they went \
-             on to play still counts"
+            "the tap is the only thing that records at l0, so a discard voids \
+             nothing and the pass the user goes on to play still counts"
         );
     }
 

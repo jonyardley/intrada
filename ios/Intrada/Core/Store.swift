@@ -23,10 +23,16 @@ final class Store {
   /// change and the upgrade ignores the stale blob instead of misreading it.
   /// v2 (#1223): `Phase::BlockEntry` renumbered every variant and `discarded`
   /// added a byte mid-struct, so a v1 blob no longer decodes.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v2"
+  /// v3 (#1244): `ClickLevel::NoClick` and `EvidenceSource::TapVerdictUntimed`
+  /// went in at the bottom of their enums, renumbering the variants below them.
+  /// A v2 blob still *decodes*, into a clocked block read back as an l0 one,
+  /// with its evidence on a rung nothing practised.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v3"
   /// Retired keys, cleared on the next write so a dead blob doesn't sit in
   /// UserDefaults for the life of the install.
-  static let retiredCoachSessionKeys = ["intrada.coach-session-in-progress.v1"]
+  static let retiredCoachSessionKeys = [
+    "intrada.coach-session-in-progress.v1", "intrada.coach-session-in-progress.v2",
+  ]
 
   private let bridge: CoreBridge
   private let session: URLSession

@@ -45,14 +45,14 @@ pub enum Judge {
     SelfConfirmed,
 }
 
-/// The sparse-click ladder — gate levels *within* click-always (decision 2),
-/// below which sits the rung where the clock has not arrived yet (decision 20).
-/// Declared in ladder order: `NoClick` is the bottom.
+/// The sparse-click ladder: gate levels *within* click-always (decision 2),
+/// plus the rung below them where the clock has not arrived yet (decision 20).
+/// Declared in ladder order, so `NoClick` sorts bottom.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ClickLevel {
-    /// l0: no click, no tempo, no count-in. Acquisition happens out of time.
+    /// l0: no click, no tempo, no count-in.
     NoClick,
     EveryBeat,
     TwoAndFour,

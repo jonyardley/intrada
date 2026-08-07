@@ -42,7 +42,7 @@ count_in_beats = 4
 
 # Sparse-click ladder: gate levels *within* click-always (decision 2), plus the
 # rung beneath them where the clock has not arrived yet (decision 20, #1244).
-# An l0 gate names no `tempo_bpm` — a tempo at l0 is a contradiction, and fails
+# An l0 gate names no `tempo_bpm`: a tempo at l0 is a contradiction, and fails
 # the parse. The know-it/own-it gate pairs that use it are #1245.
 [click_levels]
 l0 = "no click at all"
@@ -74,6 +74,10 @@ name_the_wall_max_times = 1      # the second encouragement is a nag
 tempo_down_pct = 20              # what the first rung drops the tempo by
 tempo_floor_bpm = 40             # below this a drop is not practice
 gate_open_hold_s = 2             # how long the open gate is left on screen
+# How long the tap's glance is left on screen where no beat ends it, which is
+# only l0 (#1244). At a clicked level the next beat turns the page, about half
+# a second at 120.
+glance_hold_s = 1
 
 [planner]
 # A node at or above this seeded estimate is maintenance rather than

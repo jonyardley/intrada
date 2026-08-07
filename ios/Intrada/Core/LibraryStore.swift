@@ -868,7 +868,9 @@ final class LibraryStore: ItemStore {
     case "audio": return .audio
     default:
       report(UnknownStoredEnum(kind: "EvidenceSource", raw: raw), decodeContext)
-      return .tapVerdictUntimed  // conservative: the lowest-weight evidence class
+      // Not `.tapVerdictUntimed`: an untimed source on a clocked rung is a row
+      // the engine can never write, and a fallback must not invent one.
+      return .tapVerdict
     }
   }
 

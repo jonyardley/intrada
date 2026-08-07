@@ -207,9 +207,8 @@ private final class Click {
     engine.onBeat = { index, _ in
       store.send(.coach(.beat(beatIndex: UInt32(max(0, index)))))
     }
-    // A pulse needs a tempo. The core sends none at l0, where it also holds
-    // `pulseRunning` false, so this is unreachable rather than a state to
-    // invent a bpm for.
+    // The core sends no tempo at l0, and holds `pulseRunning` false there, so
+    // this is unreachable rather than a state to invent a bpm for.
     guard let bpm = drill.tempoBpm else { return false }
     do {
       try engine.start(

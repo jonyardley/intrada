@@ -57,7 +57,7 @@ pub struct ParameterLevel {
 
 impl ParameterLevel {
     /// The acquisition rung (decision 20): no click, so no tempo, no count-in
-    /// and no phrase boundary to bound an attempt on.
+    /// and no boundary to bound an attempt on.
     pub fn is_untimed(&self) -> bool {
         self.click_level == ClickLevel::NoClick
     }
@@ -745,8 +745,8 @@ impl Plan {
         }
     }
 
-    /// The same block at l0 (decision 20). Only the rung changes: everything
-    /// the clock implied — the count-in included — falls out of it.
+    /// The same block at l0. Only the rung changes: what the clock implied,
+    /// the count-in included, falls out of it.
     pub(crate) fn fixture_untimed() -> Self {
         let mut plan = Self::fixture();
         plan.blocks[0].spec.level = ParameterLevel {

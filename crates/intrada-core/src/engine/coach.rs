@@ -241,8 +241,8 @@ fn next_rung(record: &BlockRecord) -> Option<ParameterLevel> {
         .find_map(|drill| drill.level)
 }
 
-/// " at 120", where there is a tempo to be at. An l0 rung has none to claim
-/// (decision 20), and a gate must not ask for one it cannot name.
+/// " at 120", where there is a tempo to be at: a gate must not ask for one
+/// the rung cannot name (decision 20).
 fn at_tempo(tempo_bpm: Option<u16>) -> String {
     tempo_bpm
         .map(|bpm| format!(" at {bpm}"))
@@ -474,6 +474,29 @@ mod tests {
     }
 
     #[test]
+    fn the_glance_at_l0_is_ended_by_the_clock_rather_than_by_a_beat() {
+        let mut coach = playing_untimed();
+        coach.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+        assert_eq!(
+            coach.view().drill.unwrap().phase,
+            DrillPhase::Acknowledged { clean: true },
+            "the tap is still acknowledged"
+        );
+
+        coach.apply(&CoachEvent::Tick { now: at(22) });
+
+        assert_eq!(
+            coach.view().drill.unwrap().phase,
+            DrillPhase::Playing,
+            "no beat turns the page at l0, so a glance left to a beat would \
+             hold the screen on a phase with nothing to tap"
+        );
+    }
+
+    #[test]
     fn the_gate_question_at_l0_makes_no_claim_about_tempo() {
         let drill = playing_untimed().view().drill.expect("a running drill");
 
@@ -488,10 +511,20 @@ mod tests {
             tempo_bpm: 120,
             click_level: ClickLevel::TwoAndFour,
         };
+        // Real evidence at the tempo, so "unchanged" is a claim about this
+        // tap rather than about a rung nothing has ever touched.
+        for second in [1, 2, 3] {
+            coach
+                .mastery
+                .record("rootless-a-b", clocked, Verdict::Clean, at(second));
+        }
+        // Read at the same instant as the assertion below: decay is a read,
+        // so two clocks would differ by elapsed time, not by the tap.
         let before = coach
             .mastery
-            .reading("rootless-a-b", clocked, at(0))
+            .reading("rootless-a-b", clocked, at(20))
             .evidence;
+        assert!(before > 0.0);
 
         coach.apply(&CoachEvent::Tap {
             clean: true,

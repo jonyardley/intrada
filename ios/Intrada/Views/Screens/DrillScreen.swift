@@ -130,11 +130,15 @@ struct DrillScreen: View {
       VStack(spacing: IntradaSpacing.row + 2) {
         tempo
         clickPill
-        BeatPosition(
-          beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
-          bars: Int(state.bars)
-        )
-        .padding(.top, IntradaSpacing.cardCompact)
+        // No tempo means no beat to count either (l0): a position frozen at
+        // bar 1 beat 1 would claim a pulse that never runs. Centre is #1260.
+        if state.tempoBpm != nil {
+          BeatPosition(
+            beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
+            bars: Int(state.bars)
+          )
+          .padding(.top, IntradaSpacing.cardCompact)
+        }
       }
     case .awaitingVerdict:
       VStack(spacing: IntradaSpacing.section) {
@@ -192,8 +196,8 @@ struct DrillScreen: View {
     [state.section, "about \(state.minutes) min"].compactMap { $0 }.joined(separator: " · ")
   }
 
-  /// Nothing at all where the rung has no tempo (l0): the core says so by
-  /// sending none, and a marking the music does not carry is worse than a gap.
+  /// Nothing at all where the rung has no tempo (l0), which the core says by
+  /// sending none.
   @ViewBuilder private var tempo: some View {
     if let bpm = state.tempoBpm {
       HStack(alignment: .firstTextBaseline, spacing: scale == .compact ? 9 : 12) {

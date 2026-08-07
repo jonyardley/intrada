@@ -116,6 +116,7 @@ pub struct Escalation {
     pub tempo_down_pct: u16,
     pub tempo_floor_bpm: u16,
     pub gate_open_hold_s: u32,
+    pub glance_hold_s: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -233,6 +234,7 @@ struct RawEscalation {
     tempo_down_pct: u16,
     tempo_floor_bpm: u16,
     gate_open_hold_s: u32,
+    glance_hold_s: u32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -616,6 +618,7 @@ impl RawContent {
                 tempo_down_pct: self.escalation.tempo_down_pct,
                 tempo_floor_bpm: self.escalation.tempo_floor_bpm,
                 gate_open_hold_s: self.escalation.gate_open_hold_s,
+                glance_hold_s: self.escalation.glance_hold_s,
             },
             planner: PlannerLimits {
                 maintenance_estimate: self.planner.maintenance_estimate,
@@ -651,8 +654,7 @@ impl RawGate {
                 tempo_bpm,
                 click_level: click_level.into(),
             })),
-            // A rung the loop cannot run: the planner defers it rather than
-            // prescribing a block with nothing to play against.
+            // A rung the loop cannot run, which the planner defers.
             (Some(_), None) | (None, _) => Ok(None),
         }
     }
@@ -787,8 +789,7 @@ mod tests {
 
     // ── l0, the acquisition rung (decision 20) ──
 
-    /// The shells cycle gate, rewritten as the clickless rung it would be while
-    /// the hands are still finding the shapes.
+    /// The shells cycle gate, rewritten as the clickless rung it would be.
     fn shells_cycle_at_l0(tempo: &str) -> String {
         SHIPPED.replace(
             "criterion = \"ii-V-I shells through the full cycle of fourths, no stops\"\n\
@@ -819,13 +820,13 @@ mod tests {
 
     #[test]
     fn an_l0_gate_that_names_a_tempo_fails_to_parse() {
-        let error = error_of(ContentIndex::parse(&shells_cycle_at_l0(
-            "tempo_bpm = 100\n",
-        )));
-        assert!(
-            error.contains("shells-cycle"),
+        assert_eq!(
+            ContentIndex::parse(&shells_cycle_at_l0("tempo_bpm = 100\n")),
+            Err(ContentError::TimedAcquisitionGate(
+                "shells-cycle".to_string()
+            )),
             "a tempo at l0 states two contradictory things, and a gate that \
-             cannot be represented fails rather than losing one of them: {error}"
+             cannot be represented fails rather than losing one of them"
         );
     }
 
@@ -893,6 +894,7 @@ mod tests {
         assert_eq!(content.escalation.tempo_down_pct, 20);
         assert_eq!(content.escalation.tempo_floor_bpm, 40);
         assert_eq!(content.escalation.gate_open_hold_s, 2);
+        assert_eq!(content.escalation.glance_hold_s, 1);
     }
 
     // ── Validation: what must fail to parse (spec §8) ──
