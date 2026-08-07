@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-07 (#1214: the mastery store survives a restart)
+> Last updated: 2026-08-07 (#1233 landed as #1248; the claim protocol)
 
 ## Where we are
 
@@ -22,6 +22,10 @@ countable criteria.
 
 ## Recently landed
 
+- #1248 — the Claude Design project caught up with the repo design system
+  (`CoachAction` synced up, `design/intrada-design-system.html` re-exported
+  through Share → Export), closing #1233
+- #1249 — CLAUDE.md split into rules and `docs/reference.md`
 - #1214 — the mastery store survives a restart: a local-first launch reads the
   persisted block records back (`LoadCoachRecords`) and replays them through
   the mastery track in timestamp order, level-ups included. The planner's
@@ -73,11 +77,6 @@ countable criteria.
 
 ## Next (once 2a closes)
 
-- #1233 — the Claude Design project is behind the repo design system: sync the
-  new `CoachAction` primitive up, then re-export through Share → Export. The
-  4.9MB `design/intrada-design-system.html` is one BeatPosition paragraph behind
-  the `.dc.html` as of #1175, deliberately: #1232 patched that bundle in place
-  and the re-export should be a real export, done once, on this visit
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
   circling check, grind trade, acquisition before the clock (#1244, #1245;

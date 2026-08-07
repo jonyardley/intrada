@@ -605,26 +605,41 @@ If unsure whether a skill applies, default to the tier system.
 say exactly what needs user verification.
 
 ### Always
-1. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
-2. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
-3. Never push to main. Always a feature branch + PR.
-4. **Open/update any non-trivial PR through the `ship` skill** — don't
+1. **Claim the issue before building it, and check nobody else has.** First
+   action on picking up issue N, before reading code:
+   `gh pr list --repo jonyardley/intrada --state open --search "N"` and
+   `gh issue view N --json closedByPullRequestsReferences`. If a PR is already
+   open against it, **stop and say so** rather than implementing it again. If
+   clear, claim it: add the `in-flight` label and comment the branch name on the
+   issue. Drop the label when the PR merges or closes.
+   - The same check binds any session *recommending* the next task or writing a
+     handover opener: never name an issue as next without running it, and start
+     every opener with "claim #N (stop if a PR already exists)".
+   - Why (2026-08-07): #1214 got two complete independent implementations
+     (#1243, #1247) fifteen hours apart. The merged one was the weaker, and
+     #1250 had to port back what was lost. The issue carried no assignee, label
+     or comment, and `docs/status.md`'s "in flight" only lands at merge — so an
+     open PR was the sole live claim signal and nothing required looking.
+2. Find the roadmap item in `docs/roadmap.md`. No item = discuss first.
+3. Check priority on the [project board](https://github.com/users/jonyardley/projects/2).
+4. Never push to main. Always a feature branch + PR.
+5. **Open/update any non-trivial PR through the `ship` skill** — don't
    `gh pr create`/`git push` feature work directly. `ship` runs the pre-push
    gates *and* the self-review in one funnel, so the review can't be skipped in a
    fast build→push cadence (which is exactly how it gets skipped when left to
    "remember to review"). `ship` uses the code-reviewer subagent via
    `requesting-code-review`; post its summary as a `gh pr comment` (the reviewer
    doesn't see in-conversation subagent output), apply blockers and important
-   findings inline, and defer the rest as tracked issues per (6).
+   findings inline, and defer the rest as tracked issues per (7).
    - **Tier 1 trivia** (typos, dep bumps, single-line config) may skip the review
      step but still run the gates.
    - **Small Tier 2** — one file, no bridge / DB / auth / migration surface — may
      use `/review` in place of the subagent. Anything on the domain-sensitivity
      list, or spanning files, takes the full subagent.
-5. **Check Codecov after CI** (Tier 2+). Compare the patch-coverage comment
+6. **Check Codecov after CI** (Tier 2+). Compare the patch-coverage comment
    against the **Coverage** line in the PR description. If there are unexpected
    gaps, push tests or explain in a PR comment before calling the PR ready.
-6. **Open a tracked issue for every deferred / out-of-scope item**, labelled
+7. **Open a tracked issue for every deferred / out-of-scope item**, labelled
    (`horizon:now|next|later`, kind: `ux` / `architecture` / `bug` /
    `accessibility` / `ios` / `pillar:*`). PR descriptions are not tracking — they
    get auto-collapsed after merge. Open the issues *before* posting the
@@ -635,7 +650,9 @@ say exactly what needs user verification.
 
 ### After completing work
 1. Update `docs/status.md` in the same PR; update `docs/roadmap.md` if a phase or
-   direction changed; close the GitHub issue.
+   direction changed; close the GitHub issue and drop its `in-flight` label.
+   A landed item also leaves the **Next** list, or the next session reads a
+   stale plan and re-does it.
 2. Update this file if architecture or patterns changed.
 3. Update the Claude Design system
    (`design/intrada-design-system.dc.html`) if UI diverged from design, and
@@ -645,6 +662,9 @@ say exactly what needs user verification.
 
 Rules for running more than one Claude Code session against this repo at once.
 Evidence base: coupling analysis of the last 400 commits (2026-08).
+
+The claim protocol in Always(1) is what stops two streams building the same
+issue; these rules stop two streams colliding in the same *files*. Both apply.
 
 ### Conventions
 
