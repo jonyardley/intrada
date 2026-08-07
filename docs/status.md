@@ -30,6 +30,17 @@ countable criteria.
   act where there is no tempo. `DrillView::tempo_bpm` is now `Option<u16>`.
   The l0 drill screen is #1260 and the gates that use l0 are #1245, so nothing
   reaches it in the app yet
+- #1207 — the native-ios full-tier CI job fanned out: `native-ios-build`
+  builds the test products once and uploads them as an artifact,
+  `native-ios-test-unit` (IntradaTests) and `native-ios-test-ui`
+  (IntradaUITests) consume it in parallel instead of each rebuilding, with the
+  #1203 retry flags scoped to the UI job only. A thin `native-ios` fan-in job
+  keeps branch protection's required-check name unchanged. `justfile`'s
+  `_ios-test-run` was split into `_ios-build-for-testing` /
+  `_ios-test-without-building` so CI and local dev share the same xcodebuild
+  invocations. Deliberately parked since 2026-08-05 (doubles macOS runner
+  minutes to save ~2min); picked up on request. xcodegen version-pin
+  follow-up tracked in #1263
 - #1206 — sccache adopted for cross-checkout Rust build caching: ~30% faster
   `just check` in a fresh worktree with `target/` cold and the sccache cache
   warm (58s → 40s, measured on the issue). Opt-in per developer via a
