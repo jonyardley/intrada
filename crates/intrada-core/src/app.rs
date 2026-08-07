@@ -92,7 +92,7 @@ pub enum Event {
     SetUpdated {
         set: Set,
     },
-    /// Server confirmed `Save{Building,Summary}AsSet`. `request_id` echoes
+    /// Server confirmed `SaveSummaryAsSet`. `request_id` echoes
     /// the shell's dispatch tag so per-form promotion stays isolated (#663).
     SetSaveSucceeded {
         request_id: String,

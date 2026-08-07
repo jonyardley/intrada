@@ -78,9 +78,9 @@ pub struct SetlistEntry {
     pub planned_duration_secs: Option<u32>,
     #[serde(default)]
     pub achieved_tempo: Option<u16>,
-    /// Block grouping (building phase): entries pulled in alongside a piece via
-    /// its related exercises share one `group_id`. A block is the contiguous run
-    /// of entries with the same id; `None` = standalone.
+    /// Block grouping: entries pulled in alongside a piece via its related
+    /// exercises share one `group_id`. A block is the contiguous run of
+    /// entries with the same id; `None` = standalone.
     #[serde(default)]
     pub group_id: Option<String>,
     /// Which step of the exercise's ladder this entry practised (#1083).
