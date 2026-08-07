@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-07 (#1214: the mastery store survives a restart)
+> Last updated: 2026-08-07 (#1214 follow-up: an attempt carries its rung)
 
 ## Where we are
 
@@ -22,6 +22,12 @@ countable criteria.
 
 ## Recently landed
 
+- #1214 follow-up — an attempt carries the rung it was played at
+  (`AttemptSummary::level`), so an escalated block replays truthfully: the
+  ladder's tempo drop puts two rungs in one block, and without this the rebuild
+  relocated the pre-drop evidence onto the post-drop rung. Also: a corrupt
+  attempts blob fails the read instead of replaying as a block nobody played
+  (invariant 5), and the spec gained the read-side contract (§7)
 - #1214 — the mastery store survives a restart: a local-first launch reads the
   persisted block records back (`LoadCoachRecords`) and replays them through
   the mastery track in timestamp order, level-ups included. The planner's

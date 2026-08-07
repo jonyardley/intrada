@@ -130,7 +130,7 @@ final class StoreEffectLoopTests: XCTestCase {
     attempts: [
       AttemptSummary(
         at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
-        selfPredicted: nil)
+        selfPredicted: nil, level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour))
     ],
     attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
     escalationFired: [], exit: .gatePassed)
@@ -166,6 +166,35 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(
       bridge.persistenceResolved.first?.output, .failed,
       "a lost block must surface as .failed, never a phantom .ack (#816)")
+  }
+
+  func testCoachRecordsReadResolvesWhatWasWritten() throws {
+    let libraryStore = try LibraryStore.inMemory()
+    try libraryStore.saveCoachRecords(
+      blocks: [Self.coachBlock], wanders: [], updatedAt: "2026-08-04T10:00:30Z")
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in
+      [Request(id: 22, effect: .persistence(.loadCoachRecords))]
+    }
+    let store = Store(bridge: bridge, session: mockSession(), store: libraryStore)
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .coachRecords([Self.coachBlock]),
+      "the launch read hands the core back the evidence it wrote (#1214)")
+  }
+
+  func testCoachRecordsReadFailureResolvesFailed() {
+    let bridge = FakeBridge()
+    bridge.updateHandler = { _ in [Request(id: 23, effect: .persistence(.loadCoachRecords))] }
+    let store = Store(bridge: bridge, session: mockSession(), store: FailingStore())
+
+    store.send(.setQuery(nil))
+
+    XCTAssertEqual(
+      bridge.persistenceResolved.first?.output, .failed,
+      "a failed read surfaces, so the core never rebuilds mastery from a lie (#816)")
   }
 
   /// The session the core just snapshotted for crash recovery — also the only
@@ -812,36 +841,53 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error)
   }
 
-  /// Real-bridge rebuild round-trip (#846, #1214): the launch's
-  /// `LoadCoachRecords` request decodes in Swift, and a full `BlockRecord`
-  /// batch rides back across the bincode wire into the core's replay. A wire
-  /// break here would silently reset mastery on every restart.
-  func testRealBridgeLaunchLoadsCoachRecordsAndDecodesOnTheRealWire() throws {
+  /// Real-bridge evidence read-back (#846, #1214): a wire break would leave the
+  /// mastery track silently unrebuilt, so drive the resolve through LiveBridge
+  /// and read the outcome off the plan, the only ViewModel surface it reaches.
+  func testRealBridgeCoachRecordsRebuildMasteryOnTheWire() throws {
     let bridge = LiveBridge()
-    let requests = try bridge.update(
+    let launch = try bridge.update(
       .startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    let request = try XCTUnwrap(
-      requests.first {
-        if case .persistence(.loadCoachRecords) = $0.effect { return true }
+    let id = try XCTUnwrap(
+      launch.first { request in
+        if case .persistence(.loadCoachRecords) = request.effect { return true }
         return false
-      }, "a local-first launch asks the store for the coach records")
+      }?.id, "a local-first launch must ask for the coach records")
 
-    let block = BlockRecord(
-      id: "b1", node: "rootless-a-b", drill: "rootless-under-melody",
-      gate: "rootless-under-melody",
-      level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour),
-      circle: .hands, mode: .keys,
-      startedAt: "2026-08-04T10:00:00Z", endedAt: "2026-08-04T10:00:30Z",
-      attempts: [
-        AttemptSummary(
-          at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
-          selfPredicted: nil)
-      ],
-      attemptsToPass: 1, gateOpenedAtAttempt: 1, repsAfterGate: 0, activeMs: 30_000,
-      escalationFired: [], exit: .gatePassed)
+    _ = try bridge.resolve(id, persistenceOutput: .coachRecords(Self.overdueEvidence))
+    _ = try bridge.update(
+      .coach(.planSession(now: "2026-09-20T10:00:00Z", availableMinutes: 30)))
 
-    _ = try bridge.resolve(request.id, persistenceOutput: .coachRecords([block]))
-    XCTAssertNil(try bridge.view().error, "a decoded batch is not a storage error")
+    let plan = try XCTUnwrap(try bridge.view().coach.plan, "a planned session")
+    XCTAssertNil(try bridge.view().error, "a clean read leaves nothing to surface")
+    // "is due back" needs `overdue_pct >= 100`, unreachable without a replayed
+    // `last_attempt_at`: its appearance proves the records crossed the wire.
+    XCTAssertTrue(
+      plan.blocks.contains { $0.why.contains("is due back") },
+      "the plan must say what fell due while the app was closed: "
+        + "\(plan.blocks.map(\.why))")
+  }
+
+  /// A fortnight of clean passes on the last node of the authored route, far
+  /// enough back to be overdue by the time the plan is asked for.
+  private static var overdueEvidence: [BlockRecord] {
+    (0..<12).map { day in
+      BlockRecord(
+        id: "b\(day)", node: "phrase-transposition", drill: "phrase-home-key",
+        gate: "phrase-home-key",
+        level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour),
+        circle: .head, mode: .keys,
+        startedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:00Z",
+        endedAt: "2026-08-\(String(format: "%02d", day + 1))T10:00:30Z",
+        attempts: [
+          AttemptSummary(
+            at: "2026-08-\(String(format: "%02d", day + 1))T10:00:09Z", verdict: .clean,
+            source: .tapVerdict, cold: false, selfPredicted: nil,
+            level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour))
+        ],
+        attemptsToPass: nil, gateOpenedAtAttempt: nil, repsAfterGate: 0, activeMs: 30_000,
+        escalationFired: [], exit: .ceilingHit)
+    }
   }
 
   /// Real-bridge escalation (#846, #1176): "I'm stuck" is the core's decision —

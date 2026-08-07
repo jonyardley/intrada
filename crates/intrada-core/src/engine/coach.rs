@@ -55,18 +55,33 @@ impl CoachState {
     /// the same one-way replay as the live path in [`Self::apply`]. Replaces
     /// rather than adds, like every other load handler, so a repeated load can
     /// never double-count.
-    pub fn rebuild_mastery(&mut self, mut records: Vec<BlockRecord>) {
+    pub fn rebuild_mastery(&mut self, records: Vec<BlockRecord>) {
         self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
-        records.sort_by(|a, b| a.ended_at.cmp(&b.ended_at).then_with(|| a.id.cmp(&b.id)));
-        for record in records {
+        let mut replay = Vec::new();
+        for record in &records {
             for attempt in &record.attempts {
-                self.mastery
-                    .record(&record.node, record.level, attempt.verdict, attempt.at);
+                replay.push((
+                    attempt.at,
+                    Replay::Attempt(attempt.verdict, attempt.level),
+                    record,
+                ));
             }
+            // `level_up` declines a rung that already has evidence, so a banked
+            // pass has to reach the store in the order it happened.
             if record.exit == Exit::GatePassed {
-                if let Some(next) = next_rung(&record) {
-                    self.mastery.level_up(&record.node, record.level, next);
+                if let Some(next) = next_rung(record) {
+                    replay.push((record.ended_at, Replay::LevelUp(next), record));
                 }
+            }
+        }
+        replay.sort_by_key(|(at, _, _)| *at);
+        for (at, step, record) in replay {
+            match step {
+                Replay::Attempt(verdict, level) => {
+                    self.mastery.record(&record.node, level, verdict, at)
+                }
+                // The gate was passed at the level the block closed on.
+                Replay::LevelUp(to) => self.mastery.level_up(&record.node, record.level, to),
             }
         }
     }
@@ -204,6 +219,11 @@ impl CoachState {
             gate_target: block.gate_progress.target(),
         })
     }
+}
+
+enum Replay {
+    Attempt(Verdict, ParameterLevel),
+    LevelUp(ParameterLevel),
 }
 
 /// A gate pass moves the cursor to the next rung of the node's ladder the loop
@@ -886,6 +906,7 @@ mod tests {
                     source: EvidenceSource::TapVerdict,
                     cold: false,
                     self_predicted: None,
+                    level: fixture_level(),
                 })
                 .collect(),
             attempts_to_pass: None,
@@ -991,6 +1012,38 @@ mod tests {
         assert_eq!(
             rebuilt.mastery, live.mastery,
             "a restart loses nothing the records hold"
+        );
+    }
+
+    /// Live-vs-rebuilt equality through an escalation: the ladder's first rung
+    /// drops the tempo mid-block, so the block holds attempts on two rungs and
+    /// a replay keyed only by the block's closing level loses one (#1214).
+    #[test]
+    fn a_rebuild_reproduces_the_store_an_escalated_block_left_behind() {
+        let mut live = playing();
+        for second in [9, 18, 27] {
+            tap(&mut live, false, second);
+        }
+        assert!(
+            !live
+                .session
+                .block()
+                .expect("a running block")
+                .escalation_fired
+                .is_empty(),
+            "three misses fire the ladder, which is what puts two rungs in one block"
+        );
+        let mut records = tap_collect(&mut live, true, 36);
+        records.extend(live.apply(&CoachEvent::LeaveSession { now: at(40) }).blocks);
+        assert!(!records.is_empty(), "the block it ended is written down");
+
+        let mut rebuilt = CoachState::default();
+        rebuilt.rebuild_mastery(records);
+
+        assert_eq!(
+            rebuilt.mastery, live.mastery,
+            "the record has to carry what the live path told the mastery track, or \
+             the rung the user was actually stuck at comes back as untouched"
         );
     }
 
