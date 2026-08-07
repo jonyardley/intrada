@@ -10,6 +10,7 @@ use crate::app::{Effect, Event};
 use crate::engine::Circle;
 use crate::model::Model;
 use crate::persistence;
+use crate::validation;
 
 /// Decision 19b: a countable target with no authored node. The dictated
 /// sentence *is* the gate; the parsed parameters are read back, never asked
@@ -149,7 +150,8 @@ pub enum ReflectionKind {
     SessionClose,
 }
 
-/// At most one per block, and only where feel is the point (C1).
+/// One feel, asked at most once per block and only where feel is the point
+/// (C1) — the budget is the asking surface's, enforced in Phase D, not here.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct FeelEntry {
@@ -185,6 +187,16 @@ pub struct CreateUserDrill {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct RecordPlayThrough {
+    pub item_id: String,
+    pub started_at: DateTime<Utc>,
+    pub ended_at: DateTime<Utc>,
+    pub counted: bool,
+    pub sections: Vec<SectionVerdict>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct CreateJournalItem {
     pub name: String,
     pub notes: Option<String>,
@@ -215,9 +227,7 @@ pub enum BuiltSessionEvent {
     SaveBuiltSession {
         session: BuiltSession,
     },
-    RecordPlayThrough {
-        record: PlayThroughRecord,
-    },
+    RecordPlayThrough(RecordPlayThrough),
     RecordReflection {
         kind: ReflectionKind,
         session_ref: Option<String>,
@@ -244,6 +254,11 @@ pub fn handle_built_session_event(
     let now = chrono::Utc::now();
     match event {
         BuiltSessionEvent::CreateUserDrill(input) => {
+            let input = validation::normalize_create_user_drill(input);
+            if let Err(e) = validation::validate_create_user_drill(&input) {
+                model.surface_error(e.to_string());
+                return crux_core::render::render();
+            }
             let drill = UserDrill {
                 id: mint_id(),
                 name: input.name,
@@ -264,6 +279,10 @@ pub fn handle_built_session_event(
                 model.surface_error("That drill no longer exists.");
                 return crux_core::render::render();
             };
+            // Provenance and tombstone are the core's to set: an update must
+            // not be able to resurrect a deleted drill or delete a live one.
+            drill.created_at = stored.created_at;
+            drill.deleted_at = stored.deleted_at;
             drill.updated_at = now;
             *stored = drill.clone();
             save_and_render(persistence::save_user_drill(drill))
@@ -279,6 +298,11 @@ pub fn handle_built_session_event(
             save_and_render(persistence::save_user_drill(tombstone))
         }
         BuiltSessionEvent::CreateJournalItem(input) => {
+            let input = validation::normalize_create_journal_item(input);
+            if let Err(e) = validation::validate_create_journal_item(&input) {
+                model.surface_error(e.to_string());
+                return crux_core::render::render();
+            }
             let journal = JournalItem {
                 id: mint_id(),
                 name: input.name,
@@ -296,6 +320,8 @@ pub fn handle_built_session_event(
                 model.surface_error("That journal item no longer exists.");
                 return crux_core::render::render();
             };
+            journal.created_at = stored.created_at;
+            journal.deleted_at = stored.deleted_at;
             journal.updated_at = now;
             *stored = journal.clone();
             save_and_render(persistence::save_journal_item(journal))
@@ -318,8 +344,17 @@ pub fn handle_built_session_event(
             }
             save_and_render(persistence::save_built_session(session))
         }
-        BuiltSessionEvent::RecordPlayThrough { mut record } => {
-            record.updated_at = now;
+        BuiltSessionEvent::RecordPlayThrough(input) => {
+            let record = PlayThroughRecord {
+                id: mint_id(),
+                item_id: input.item_id,
+                started_at: input.started_at,
+                ended_at: input.ended_at,
+                counted: input.counted,
+                sections: input.sections,
+                updated_at: now,
+                deleted_at: None,
+            };
             model.play_throughs.push(record.clone());
             save_and_render(persistence::save_play_through(record))
         }
@@ -580,6 +615,66 @@ mod tests {
     }
 
     #[test]
+    fn a_whitespace_only_criterion_is_refused_not_stored() {
+        let mut model = Model::test_default();
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::CreateUserDrill(CreateUserDrill {
+                criterion: "   ".into(),
+                ..sample_create_drill()
+            }),
+        );
+        assert!(model.user_drills.is_empty(), "nothing persisted");
+        assert!(persistence_ops(&effects).is_empty());
+        assert!(model.last_error.is_some(), "the refusal reaches the user");
+    }
+
+    #[test]
+    fn an_ungateable_drill_is_refused() {
+        let mut model = Model::test_default();
+        update(
+            &mut model,
+            BuiltSessionEvent::CreateUserDrill(CreateUserDrill {
+                passes_to_open: 0,
+                ..sample_create_drill()
+            }),
+        );
+        assert!(
+            model.user_drills.is_empty(),
+            "zero passes is a gate nothing can open"
+        );
+    }
+
+    #[test]
+    fn drill_free_text_is_trimmed_before_it_is_stored() {
+        let mut model = Model::test_default();
+        update(
+            &mut model,
+            BuiltSessionEvent::CreateUserDrill(CreateUserDrill {
+                name: "  Descending run  ".into(),
+                ..sample_create_drill()
+            }),
+        );
+        assert_eq!(model.user_drills[0].name, "Descending run");
+    }
+
+    #[test]
+    fn a_nameless_journal_item_is_refused() {
+        let mut model = Model::test_default();
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::CreateJournalItem(CreateJournalItem {
+                name: "  ".into(),
+                notes: None,
+                linked_item_id: None,
+            }),
+        );
+        assert!(model.journal_items.is_empty());
+        assert!(persistence_ops(&effects).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
     fn update_user_drill_stamps_updated_at_and_persists() {
         let mut model = Model::test_default();
         update(
@@ -606,6 +701,25 @@ mod tests {
             vec![PersistenceOperation::SaveUserDrill(stored.clone())]
         );
         assert_no_http(&effects);
+    }
+
+    #[test]
+    fn an_update_cannot_resurrect_a_tombstoned_drill() {
+        let mut model = Model::test_default();
+        update(
+            &mut model,
+            BuiltSessionEvent::CreateUserDrill(sample_create_drill()),
+        );
+        let mut revived = model.user_drills[0].clone();
+        revived.deleted_at = Some(at());
+        update(
+            &mut model,
+            BuiltSessionEvent::UpdateUserDrill { drill: revived },
+        );
+        assert_eq!(
+            model.user_drills[0].deleted_at, None,
+            "only Delete* sets a tombstone"
+        );
     }
 
     #[test]
@@ -724,25 +838,26 @@ mod tests {
     }
 
     #[test]
-    fn record_play_through_persists() {
+    fn record_play_through_mints_a_ulid_and_persists() {
         let mut model = Model::test_default();
-        let record = PlayThroughRecord {
-            id: "01J0000000000000000000PLAY".into(),
-            item_id: "piece".into(),
-            started_at: at(),
-            ended_at: at(),
-            counted: true,
-            sections: vec![],
-            updated_at: at(),
-            deleted_at: None,
-        };
         let effects = update(
             &mut model,
-            BuiltSessionEvent::RecordPlayThrough {
-                record: record.clone(),
-            },
+            BuiltSessionEvent::RecordPlayThrough(RecordPlayThrough {
+                item_id: "piece".into(),
+                started_at: at(),
+                ended_at: at(),
+                counted: true,
+                sections: vec![SectionVerdict {
+                    section: "The bridge".into(),
+                    held: false,
+                    at: at(),
+                }],
+            }),
         );
         assert_eq!(model.play_throughs.len(), 1);
+        assert_eq!(model.play_throughs[0].id.len(), 26);
+        assert_eq!(model.play_throughs[0].deleted_at, None);
+        assert_eq!(model.play_throughs[0].sections.len(), 1);
         assert_eq!(
             persistence_ops(&effects),
             vec![PersistenceOperation::SavePlayThrough(
@@ -750,6 +865,25 @@ mod tests {
             )]
         );
         assert_no_http(&effects);
+    }
+
+    #[test]
+    fn two_play_throughs_are_two_records() {
+        let mut model = Model::test_default();
+        let input = RecordPlayThrough {
+            item_id: "piece".into(),
+            started_at: at(),
+            ended_at: at(),
+            counted: true,
+            sections: vec![],
+        };
+        update(
+            &mut model,
+            BuiltSessionEvent::RecordPlayThrough(input.clone()),
+        );
+        update(&mut model, BuiltSessionEvent::RecordPlayThrough(input));
+        assert_eq!(model.play_throughs.len(), 2);
+        assert_ne!(model.play_throughs[0].id, model.play_throughs[1].id);
     }
 
     #[test]
@@ -886,31 +1020,127 @@ mod tests {
 
     // ── Bridge payloads (#846) ──────────────────────────────────────────
 
-    #[test]
-    fn built_session_events_round_trip_on_the_wire() {
-        assert_round_trips(Event::BuiltSession(BuiltSessionEvent::CreateUserDrill(
-            sample_create_drill(),
-        )));
-        assert_round_trips(Event::BuiltSession(BuiltSessionEvent::RecordFeel {
+    fn sample_journal_item() -> JournalItem {
+        JournalItem {
+            id: "01J000000000000000000JOUR".into(),
+            name: "Rubato feel".into(),
+            notes: Some("Time and notes".into()),
+            linked_item_id: Some("piece".into()),
+            created_at: at(),
+            updated_at: at(),
+            deleted_at: None,
+        }
+    }
+
+    fn sample_play_through() -> PlayThroughRecord {
+        PlayThroughRecord {
+            id: "01J0000000000000000000PLAY".into(),
+            item_id: "piece".into(),
+            started_at: at(),
+            ended_at: at(),
+            counted: true,
+            sections: vec![SectionVerdict {
+                section: "The bridge".into(),
+                held: true,
+                at: at(),
+            }],
+            updated_at: at(),
+            deleted_at: None,
+        }
+    }
+
+    fn sample_reflection() -> Reflection {
+        Reflection {
+            id: "01J000000000000000000REFL".into(),
+            kind: ReflectionKind::SessionClose,
+            session_ref: Some("built".into()),
+            transcript: Some("The bridge still rushes".into()),
+            audio_path: Some("reflections/r1.m4a".into()),
+            duration_s: Some(24),
+            at: at(),
+            updated_at: at(),
+            deleted_at: None,
+        }
+    }
+
+    fn sample_feel_entry() -> FeelEntry {
+        FeelEntry {
+            id: "01J000000000000000000FEEL".into(),
             block_id: "b1".into(),
-            feel: Feel::GettingThere,
-        }));
-        assert_round_trips(Event::BuiltSession(BuiltSessionEvent::SaveBuiltSession {
-            session: sample_built_session(),
-        }));
+            feel: Feel::ItSang,
+            at: at(),
+            updated_at: at(),
+            deleted_at: None,
+        }
+    }
+
+    /// Every variant, not a sample: a positional bincode wire has no "absent",
+    /// so an untested variant is an untested field order (#846).
+    #[test]
+    fn every_built_session_event_round_trips_on_the_wire() {
+        for event in [
+            BuiltSessionEvent::CreateUserDrill(sample_create_drill()),
+            BuiltSessionEvent::UpdateUserDrill {
+                drill: sample_drill(),
+            },
+            BuiltSessionEvent::DeleteUserDrill { id: "d1".into() },
+            BuiltSessionEvent::CreateJournalItem(CreateJournalItem {
+                name: "Rubato feel".into(),
+                notes: Some("Time and notes".into()),
+                linked_item_id: Some("piece".into()),
+            }),
+            BuiltSessionEvent::UpdateJournalItem {
+                journal: sample_journal_item(),
+            },
+            BuiltSessionEvent::DeleteJournalItem { id: "j1".into() },
+            BuiltSessionEvent::SaveBuiltSession {
+                session: sample_built_session(),
+            },
+            BuiltSessionEvent::RecordPlayThrough(RecordPlayThrough {
+                item_id: "piece".into(),
+                started_at: at(),
+                ended_at: at(),
+                counted: false,
+                sections: vec![SectionVerdict {
+                    section: "Out head".into(),
+                    held: false,
+                    at: at(),
+                }],
+            }),
+            BuiltSessionEvent::RecordReflection {
+                kind: ReflectionKind::VoiceNote,
+                session_ref: Some("built".into()),
+                transcript: Some("The bridge still rushes".into()),
+                audio_path: Some("reflections/r1.m4a".into()),
+                duration_s: Some(24),
+            },
+            BuiltSessionEvent::RecordFeel {
+                block_id: "b1".into(),
+                feel: Feel::GettingThere,
+            },
+        ] {
+            assert_round_trips(Event::BuiltSession(event));
+        }
     }
 
     #[test]
     fn built_session_persistence_payloads_round_trip_on_the_wire() {
         assert_round_trips(PersistenceOperation::SaveUserDrill(sample_drill()));
+        assert_round_trips(PersistenceOperation::SaveJournalItem(sample_journal_item()));
+        assert_round_trips(PersistenceOperation::SaveBuiltSession(
+            sample_built_session(),
+        ));
+        assert_round_trips(PersistenceOperation::SavePlayThrough(sample_play_through()));
+        assert_round_trips(PersistenceOperation::SaveReflection(sample_reflection()));
+        assert_round_trips(PersistenceOperation::SaveFeelEntry(sample_feel_entry()));
         assert_round_trips(PersistenceOperation::LoadBuiltSessionData);
         assert_round_trips(PersistenceOutput::BuiltSessionData(BuiltSessionData {
             user_drills: vec![sample_drill()],
-            journal_items: vec![],
+            journal_items: vec![sample_journal_item()],
             built_sessions: vec![sample_built_session()],
-            play_throughs: vec![],
-            reflections: vec![],
-            feel_entries: vec![],
+            play_throughs: vec![sample_play_through()],
+            reflections: vec![sample_reflection()],
+            feel_entries: vec![sample_feel_entry()],
         }));
     }
 }

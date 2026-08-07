@@ -702,7 +702,12 @@ final class StoreEffectLoopTests: XCTestCase {
           serves: .circle(.hands), createdAt: "2026-08-07T10:00:00Z",
           updatedAt: "2026-08-07T10:00:00Z", deletedAt: nil)
       ],
-      journalItems: [],
+      journalItems: [
+        JournalItem(
+          id: "01JOURNAL000000000000000001", name: "Rubato feel", notes: "Time and notes",
+          linkedItemId: "p1", createdAt: "2026-08-07T10:00:00Z",
+          updatedAt: "2026-08-07T10:00:00Z", deletedAt: nil)
+      ],
       builtSessions: [],
       playThroughs: [
         PlayThroughRecord(
@@ -717,6 +722,46 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.resolve(load.id, persistenceOutput: .builtSessionData(data))
     let view = try bridge.view()
     XCTAssertNil(view.error, "hydration must not surface an error")
+  }
+
+  /// Real-bridge journal + play-through writes (#846, #1256): the two write
+  /// legs the other bridge tests don't reach. `CreateJournalItem` carries two
+  /// optional Strings; `RecordPlayThrough` carries a nested struct array.
+  func testRealBridgeJournalAndPlayThroughWritesDecodeOnWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    let journalRequests = try bridge.update(
+      .builtSession(
+        .createJournalItem(
+          CreateJournalItem(name: "Rubato feel", notes: nil, linkedItemId: "p1"))))
+    let journal = try XCTUnwrap(
+      journalRequests.compactMap { request -> JournalItem? in
+        if case .persistence(.saveJournalItem(let journal)) = request.effect { return journal }
+        return nil
+      }.first, "CreateJournalItem must emit a SaveJournalItem persistence op")
+    XCTAssertEqual(journal.id.count, 26, "core-minted ulid")
+    XCTAssertNil(journal.notes, "an absent optional stays absent across the wire")
+    XCTAssertEqual(journal.linkedItemId, "p1")
+
+    let playRequests = try bridge.update(
+      .builtSession(
+        .recordPlayThrough(
+          RecordPlayThrough(
+            itemId: "p1", startedAt: "2026-08-07T10:00:00Z", endedAt: "2026-08-07T10:04:00Z",
+            counted: false,
+            sections: [
+              SectionVerdict(section: "The bridge", held: true, at: "2026-08-07T10:01:00Z"),
+              SectionVerdict(section: "Out head", held: false, at: "2026-08-07T10:03:00Z"),
+            ]))))
+    let record = try XCTUnwrap(
+      playRequests.compactMap { request -> PlayThroughRecord? in
+        if case .persistence(.savePlayThrough(let record)) = request.effect { return record }
+        return nil
+      }.first, "RecordPlayThrough must emit a SavePlayThrough persistence op")
+    XCTAssertEqual(record.id.count, 26, "core-minted ulid")
+    XCTAssertEqual(record.counted, false)
+    XCTAssertEqual(record.sections.map(\.held), [true, false], "verdict order survives the wire")
   }
 
   /// Real-bridge rung tag (#846, #1083): `SetEntryVariant` carries an optional

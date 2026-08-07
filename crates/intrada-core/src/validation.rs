@@ -1,3 +1,4 @@
+use crate::domain::built_session::{CreateJournalItem, CreateUserDrill};
 use crate::domain::item::ItemKind;
 use crate::domain::types::{CreateItem, Tempo, UpdateItem};
 use crate::error::LibraryError;
@@ -29,6 +30,12 @@ pub const MIN_SESSION_TARGET_MINS: u32 = 5;
 pub const MAX_SESSION_TARGET_MINS: u32 = 120;
 pub const MIN_ACHIEVED_TEMPO: u16 = 1;
 pub const MAX_ACHIEVED_TEMPO: u16 = 500;
+pub const MAX_DRILL_NAME: usize = 200;
+pub const MAX_CRITERION: usize = 500;
+pub const MAX_DRILL_KEYS: usize = 12;
+pub const MIN_PASSES_TO_OPEN: u8 = 1;
+pub const MAX_PASSES_TO_OPEN: u8 = 20;
+pub const MAX_JOURNAL_NAME: usize = 200;
 
 // ── Normalisation ──
 // Trim free-text on input and collapse a now-blank value to absent, so a
@@ -76,6 +83,73 @@ pub fn normalize_update_item(mut input: UpdateItem) -> UpdateItem {
     input.tempo = input.tempo.map(normalize_tempo);
     input.tags = input.tags.map(normalize_tags);
     input
+}
+
+pub fn normalize_create_user_drill(mut input: CreateUserDrill) -> CreateUserDrill {
+    input.name = input.name.trim().to_string();
+    input.criterion = input.criterion.trim().to_string();
+    input.keys = normalize_tags(input.keys);
+    input
+}
+
+pub fn normalize_create_journal_item(mut input: CreateJournalItem) -> CreateJournalItem {
+    input.name = input.name.trim().to_string();
+    input.notes = trimmed_nonempty(input.notes);
+    input.linked_item_id = trimmed_nonempty(input.linked_item_id);
+    input
+}
+
+fn validate_bounded(field: &str, label: &str, value: &str, max: usize) -> Result<(), LibraryError> {
+    if value.is_empty() || value.len() > max {
+        return Err(LibraryError::Validation {
+            field: field.to_string(),
+            message: format!("{label} must be between 1 and {max} characters"),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_create_user_drill(input: &CreateUserDrill) -> Result<(), LibraryError> {
+    validate_bounded("name", "Name", &input.name, MAX_DRILL_NAME)?;
+    // The dictated sentence *is* the gate (decision 19b), so an empty one
+    // leaves a block with nothing to pass.
+    validate_bounded("criterion", "Criterion", &input.criterion, MAX_CRITERION)?;
+    if let Some(bpm) = input.tempo_bpm {
+        if !(MIN_BPM..=MAX_BPM).contains(&bpm) {
+            return Err(LibraryError::Validation {
+                field: "tempo_bpm".to_string(),
+                message: format!("BPM must be between {MIN_BPM} and {MAX_BPM}"),
+            });
+        }
+    }
+    if input.keys.len() > MAX_DRILL_KEYS {
+        return Err(LibraryError::Validation {
+            field: "keys".to_string(),
+            message: format!("A drill can name at most {MAX_DRILL_KEYS} keys"),
+        });
+    }
+    if !(MIN_PASSES_TO_OPEN..=MAX_PASSES_TO_OPEN).contains(&input.passes_to_open) {
+        return Err(LibraryError::Validation {
+            field: "passes_to_open".to_string(),
+            message: format!(
+                "Passes must be between {MIN_PASSES_TO_OPEN} and {MAX_PASSES_TO_OPEN}"
+            ),
+        });
+    }
+    Ok(())
+}
+
+pub fn validate_create_journal_item(input: &CreateJournalItem) -> Result<(), LibraryError> {
+    validate_bounded("name", "Name", &input.name, MAX_JOURNAL_NAME)?;
+    if let Some(ref notes) = input.notes {
+        if notes.len() > MAX_NOTES {
+            return Err(LibraryError::Validation {
+                field: "notes".to_string(),
+                message: format!("Notes must be {MAX_NOTES} characters or fewer"),
+            });
+        }
+    }
+    Ok(())
 }
 
 pub fn validate_title(title: &str) -> Result<(), LibraryError> {
