@@ -21,6 +21,13 @@ countable criteria.
 
 ## Recently landed
 
+- #1206 — sccache adopted for cross-checkout Rust build caching: ~30% faster
+  `just check` in a fresh worktree with `target/` cold and the sccache cache
+  warm (58s → 40s, measured on the issue). Opt-in per developer via a
+  gitignored `mise.local.toml` (`RUSTC_WRAPPER=sccache`), not the committed
+  `mise.toml` — nobody's build behaviour changes by surprise. CI stays on
+  Swatinem/rust-cache. Follow-up spot-check for `cargo swift package` /
+  codegen builds tracked in #1258
 - #1190 — the session-builder machinery deleted (2a close-out): the Building
   phase and its screens (`SessionBuilderScreen`, `AddToSessionSheet`,
   `EntrySettingsSheet`, `AddRelatedExerciseSheet`) are gone from both

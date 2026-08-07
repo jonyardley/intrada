@@ -14,3 +14,7 @@ typos = "1.48"
 # Pinned exactly: cargo-swift 0.9.0's bundled uniffi-bindgen matches our
 # uniffi 0.29.4 runtime contract (see justfile ios-package). Bump in lockstep.
 "cargo:cargo-swift" = "0.9.0"
+# Cross-checkout Rust build cache — measured ~30% faster `just check` in a
+# fresh worktree with a warm cache (#1206). Provisioned for everyone, but
+# only active if you opt in with RUSTC_WRAPPER=sccache — see SETUP.md §6.
+sccache = "0.17"
