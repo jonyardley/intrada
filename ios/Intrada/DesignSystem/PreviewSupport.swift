@@ -22,7 +22,6 @@
     private let items: [LibraryItemView]
     private let activeQuery: ListQuery?
     private let sessions: [PracticeSessionView]
-    private let buildingSetlist: BuildingSetlistView?
     private let activeSession: ActiveSessionView?
     private let summary: SummaryView?
 
@@ -31,14 +30,13 @@
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
-      sessions: [PracticeSessionView] = [], buildingSetlist: BuildingSetlistView? = nil,
+      sessions: [PracticeSessionView] = [],
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
       analytics: AnalyticsView? = nil, plan: PlanView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
       self.sessions = sessions
-      self.buildingSetlist = buildingSetlist
       self.activeSession = activeSession
       self.summary = summary
       self.analytics = analytics
@@ -63,7 +61,6 @@
       viewModel.visiblePieces = UInt64(visible.filter { $0.itemType == .piece }.count)
       viewModel.visibleExercises = UInt64(visible.filter { $0.itemType == .exercise }.count)
       viewModel.sessions = sessions
-      viewModel.buildingSetlist = buildingSetlist
       viewModel.activeSession = activeSession
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
@@ -169,55 +166,6 @@
         currentItemStartedAt: "2026-06-16T09:02:00Z", sessionStartedAt: "2026-06-16T09:02:00Z",
         sessionIntention: nil)
       return store
-    }
-
-    /// Session builder mid-assembly: a non-empty setlist for the populated-state
-    /// preview + snapshot. Injected directly (deterministic, offline) rather than
-    /// driven through the core, whose ulids/timestamps aren't snapshot-stable.
-    static var previewBuilding: Store {
-      Store(
-        bridge: PreviewBridge(
-          items: [.previewPiece, .previewExercise, .previewMinimal],
-          buildingSetlist: BuildingSetlistView(
-            entries: [.previewPiece, .previewExercise],
-            itemCount: 2,
-            blocks: [
-              SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewPiece]),
-              SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewExercise]),
-            ],
-            blockCount: 2,
-            totalDurationDisplay: nil, totalDurationSummary: nil,
-            sessionIntention: nil, targetDurationMins: nil,
-            sourceStatus: .noSource)))
-    }
-
-    /// Session builder with a block (a piece + 2 related) above a standalone
-    /// item — the grouped-state preview + snapshot.
-    static var previewBuildingGrouped: Store {
-      let block: [SetlistEntryView] = [
-        .previewGroupedScales, .previewGroupedArpeggios, .previewGroupedPiece,
-      ]
-      return Store(
-        bridge: PreviewBridge(
-          items: [.previewPiece, .previewExercise, .previewMinimal],
-          buildingSetlist: BuildingSetlistView(
-            entries: block + [.previewStandaloneExercise],
-            itemCount: 4,
-            blocks: [
-              SetlistBlockView(
-                groupId: "g1", pieceTitle: "Clair de Lune", relatedCount: 2,
-                durationDisplay: "12 min", entries: block),
-              SetlistBlockView(
-                groupId: nil, pieceTitle: nil, relatedCount: 0, durationDisplay: "—",
-                entries: [.previewStandaloneExercise]),
-            ],
-            blockCount: 2,
-            totalDurationDisplay: "12m 0s", totalDurationSummary: "12 min",
-            sessionIntention: nil, targetDurationMins: nil, sourceStatus: .noSource)))
     }
 
     /// Player Focus — a piece mid-session with a session intention and a time
@@ -571,55 +519,6 @@
         practice: nil, latestAchievedTempo: nil, priority: false,
         linkedExercises: [], linkedFromPieces: [], exerciseContexts: [], scaffoldPreview: nil,
         chordChart: nil, variants: [])
-    }
-  }
-
-  extension SetlistEntryView {
-    static var previewPiece: SetlistEntryView {
-      building(id: "setlist-1", item: "piece-1", title: "Clair de Lune", type: .piece, position: 0)
-    }
-
-    static var previewExercise: SetlistEntryView {
-      building(
-        id: "setlist-2", item: "exercise-1", title: "Hanon No. 1", type: .exercise, position: 1)
-    }
-
-    static var previewGroupedScales: SetlistEntryView {
-      building(id: "g-a", item: "ex-a", title: "Scales", type: .exercise, position: 0, group: "g1")
-    }
-    static var previewGroupedArpeggios: SetlistEntryView {
-      building(
-        id: "g-b", item: "ex-b", title: "Broken arpeggios", type: .exercise, position: 1,
-        group: "g1")
-    }
-    static var previewGroupedPiece: SetlistEntryView {
-      building(
-        id: "g-p", item: "piece-1", title: "Clair de Lune", type: .piece, position: 2, group: "g1")
-    }
-    static var previewStandaloneExercise: SetlistEntryView {
-      building(id: "g-s", item: "ex-c", title: "Sight-reading", type: .exercise, position: 3)
-    }
-
-    /// All three per-entry settings set — the "populated" `EntrySettingsSheet` snapshot.
-    static var previewGroupedScalesConfigured: SetlistEntryView {
-      var e = previewGroupedScales
-      e.intention = "Even RH over the LH arpeggios"
-      e.repTarget = 7
-      e.plannedDurationSecs = 360
-      e.plannedDurationDisplay = "6 min"
-      return e
-    }
-
-    private static func building(
-      id: String, item: String, title: String, type: ItemKind, position: UInt64,
-      group: String? = nil
-    ) -> SetlistEntryView {
-      SetlistEntryView(
-        id: id, itemId: item, itemTitle: title, itemType: type, position: position,
-        durationDisplay: "—", status: .notAttempted, notes: nil, score: nil, intention: nil,
-        repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
-        plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: nil, groupId: group,
-        variantId: nil)
     }
   }
 

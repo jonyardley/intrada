@@ -24,10 +24,9 @@ use crate::domain::types::{LibrarySort, ListQuery, SortDirection, SortField};
 use crate::engine::{CoachEvent, EngineSession, SnapshotAction};
 use crate::http;
 use crate::model::{
-    build_active_session_view, build_blocks, build_summary_view, entry_to_view, session_to_view,
-    BuildingSetlistView, ItemPracticeSummary, LibraryItemView, LinkedExerciseView, Model,
-    PieceRefView, ScaffoldPreviewView, ScaffoldSpecView, SessionStatusView, SetSourceStatus,
-    ViewModel,
+    build_active_session_view, build_summary_view, session_to_view, ItemPracticeSummary,
+    LibraryItemView, LinkedExerciseView, Model, PieceRefView, ScaffoldPreviewView,
+    ScaffoldSpecView, SessionStatusView, ViewModel,
 };
 use crate::persistence::{self, PersistenceOperation, PersistenceOutput};
 
@@ -93,7 +92,7 @@ pub enum Event {
     SetUpdated {
         set: Set,
     },
-    /// Server confirmed `Save{Building,Summary}AsSet`. `request_id` echoes
+    /// Server confirmed `SaveSummaryAsSet`. `request_id` echoes
     /// the shell's dispatch tag so per-form promotion stays isolated (#663).
     SetSaveSucceeded {
         request_id: String,
@@ -696,96 +695,18 @@ impl Intrada {
         let mut sessions: Vec<_> = model.sessions.iter().map(session_to_view).collect();
         sessions.sort_by(|a, b| b.finished_at.cmp(&a.finished_at));
 
-        let (active_session, building_setlist, summary) = match &model.session_status {
-            SessionStatus::Idle => (None, None, None),
-            SessionStatus::Building(building) => {
-                let entries: Vec<_> = building.entries.iter().map(entry_to_view).collect();
-                let item_count = entries.len();
-                let blocks = build_blocks(&entries);
-                let block_count = blocks.len();
-                let source_status = match &building.source_set_id {
-                    None => SetSourceStatus::NoSource,
-                    Some(sid) => {
-                        let set_name = model
-                            .sets
-                            .iter()
-                            .find(|s| &s.id == sid)
-                            .map(|s| s.name.clone());
-                        match set_name {
-                            None => SetSourceStatus::NoSource,
-                            Some(name) => {
-                                let current_ids: Vec<&str> = building
-                                    .entries
-                                    .iter()
-                                    .map(|e| e.item_id.as_str())
-                                    .collect();
-                                let snapshot_ids: Vec<&str> = building
-                                    .source_set_entry_snapshot
-                                    .iter()
-                                    .map(|s| s.as_str())
-                                    .collect();
-                                if current_ids == snapshot_ids {
-                                    SetSourceStatus::UnmodifiedFromSource {
-                                        set_id: sid.clone(),
-                                        set_name: name,
-                                    }
-                                } else {
-                                    SetSourceStatus::ModifiedFromSource {
-                                        set_id: sid.clone(),
-                                        set_name: name,
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-                let planned_total_secs: u64 = building
-                    .entries
-                    .iter()
-                    .filter_map(|e| e.planned_duration_secs)
-                    .map(u64::from)
-                    .sum();
-                let (total_duration_display, total_duration_summary) = if planned_total_secs > 0 {
-                    (
-                        Some(crate::domain::session::format_duration_display(
-                            planned_total_secs,
-                        )),
-                        Some(crate::domain::session::format_planned_duration(
-                            planned_total_secs,
-                        )),
-                    )
-                } else {
-                    (None, None)
-                };
-                (
-                    None,
-                    Some(BuildingSetlistView {
-                        entries,
-                        item_count,
-                        blocks,
-                        block_count,
-                        total_duration_display,
-                        total_duration_summary,
-                        session_intention: building.session_intention.clone(),
-                        target_duration_mins: building.target_duration_mins,
-                        source_status,
-                    }),
-                    None,
-                )
+        let (active_session, summary) = match &model.session_status {
+            SessionStatus::Idle => (None, None),
+            SessionStatus::Active(active) => {
+                (Some(build_active_session_view(active, &item_index)), None)
             }
-            SessionStatus::Active(active) => (
-                Some(build_active_session_view(active, &item_index)),
-                None,
-                None,
-            ),
             SessionStatus::Summary(summary_session) => {
-                (None, None, Some(build_summary_view(summary_session)))
+                (None, Some(build_summary_view(summary_session)))
             }
         };
 
         let session_status = match &model.session_status {
             SessionStatus::Idle => SessionStatusView::Idle,
-            SessionStatus::Building(_) => SessionStatusView::Building,
             SessionStatus::Active(_) => SessionStatusView::Active,
             SessionStatus::Summary(_) => SessionStatusView::Summary,
         };
@@ -833,7 +754,6 @@ impl Intrada {
             available_composers,
             sessions,
             active_session,
-            building_setlist,
             summary,
             session_status,
             error: model.last_error.clone(),
@@ -3548,33 +3468,6 @@ mod tests {
         assert!(model.last_error.is_none());
     }
 
-    // --- View: session status mapping ---
-
-    #[test]
-    fn test_view_session_status_building() {
-        use crate::domain::session::BuildingSession;
-
-        let app = Intrada;
-        let model = Model {
-            session_status: SessionStatus::Building(BuildingSession {
-                session_intention: Some("Focus on dynamics".to_string()),
-                ..Default::default()
-            }),
-            ..Model::test_default()
-        };
-
-        let vm = app.view(&model);
-        assert_eq!(vm.session_status, SessionStatusView::Building);
-        assert!(vm.building_setlist.is_some());
-        assert!(vm.active_session.is_none());
-        assert!(vm.summary.is_none());
-        let setlist = vm.building_setlist.unwrap();
-        assert_eq!(
-            setlist.session_intention,
-            Some("Focus on dynamics".to_string())
-        );
-    }
-
     // --- View: sets ---
 
     #[test]
@@ -4011,136 +3904,12 @@ mod tests {
     }
 
     #[test]
-    fn view_set_source_status_no_source() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.session_status =
-            SessionStatus::Building(crate::domain::session::BuildingSession::default());
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert_eq!(building.source_status, SetSourceStatus::NoSource);
-    }
-
-    #[test]
-    fn view_set_source_status_unmodified() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.sets = vec![crate::domain::set::Set {
-            id: "set-1".to_string(),
-            name: "Morning".to_string(),
-            entries: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        }];
-        let entry = SetlistEntry {
-            id: "e1".to_string(),
-            item_id: "item-a".to_string(),
-            item_title: "Scale".to_string(),
-            item_type: ItemKind::Exercise,
-            position: 0,
-            duration_secs: 0,
-            status: EntryStatus::NotAttempted,
-            notes: None,
-            score: None,
-            intention: None,
-            rep_target: None,
-            rep_count: None,
-            rep_target_reached: None,
-            rep_history: None,
-            planned_duration_secs: None,
-            achieved_tempo: None,
-            group_id: None,
-            variant_id: None,
-        };
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![entry],
-            source_set_id: Some("set-1".to_string()),
-            source_set_entry_snapshot: vec!["item-a".to_string()],
-            ..Default::default()
-        });
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert!(matches!(
-            building.source_status,
-            SetSourceStatus::UnmodifiedFromSource { .. }
-        ));
-    }
-
-    #[test]
-    fn view_set_source_status_modified() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.sets = vec![crate::domain::set::Set {
-            id: "set-1".to_string(),
-            name: "Morning".to_string(),
-            entries: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        }];
-        let entry = SetlistEntry {
-            id: "e1".to_string(),
-            item_id: "item-b".to_string(),
-            item_title: "Etude".to_string(),
-            item_type: ItemKind::Piece,
-            position: 0,
-            duration_secs: 0,
-            status: EntryStatus::NotAttempted,
-            notes: None,
-            score: None,
-            intention: None,
-            rep_target: None,
-            rep_count: None,
-            rep_target_reached: None,
-            rep_history: None,
-            planned_duration_secs: None,
-            achieved_tempo: None,
-            group_id: None,
-            variant_id: None,
-        };
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![entry],
-            source_set_id: Some("set-1".to_string()),
-            source_set_entry_snapshot: vec!["item-a".to_string()],
-            ..Default::default()
-        });
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert!(matches!(
-            building.source_status,
-            SetSourceStatus::ModifiedFromSource { .. }
-        ));
-    }
-
-    fn building_entry(id: &str, planned_duration_secs: Option<u32>) -> SetlistEntry {
-        SetlistEntry {
-            id: id.to_string(),
-            item_id: format!("item-{id}"),
-            item_title: "Etude".to_string(),
-            item_type: ItemKind::Piece,
-            position: 0,
-            duration_secs: 0,
-            status: EntryStatus::NotAttempted,
-            notes: None,
-            score: None,
-            intention: None,
-            rep_target: None,
-            rep_count: None,
-            rep_target_reached: None,
-            rep_history: None,
-            planned_duration_secs,
-            achieved_tempo: None,
-            group_id: None,
-            variant_id: None,
-        }
-    }
-
-    #[test]
     fn error_seq_bumps_on_each_failed_update_even_with_identical_message() {
         let app = Intrada;
         let mut model = Model::test_default();
         let fail = || {
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "x".to_string(),
+            Event::Session(SessionEvent::NextItem {
+                now: chrono::Utc::now(),
             })
         };
         let _ = app.update(fail(), &mut model);
@@ -4159,56 +3928,8 @@ mod tests {
         let app = Intrada;
         let mut model = Model::test_default();
         let before = app.view(&model).error_seq;
-        let _ = app.update(Event::Session(SessionEvent::StartBuilding), &mut model);
+        let _ = app.update(Event::ClearError, &mut model);
         assert_eq!(app.view(&model).error_seq, before);
-    }
-
-    #[test]
-    fn view_building_setlist_total_duration_sums_planned() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![
-                building_entry("e1", Some(900)),
-                building_entry("e2", Some(630)),
-                building_entry("e3", None),
-            ],
-            ..Default::default()
-        });
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert_eq!(building.total_duration_display.as_deref(), Some("25m 30s"));
-        assert_eq!(building.total_duration_summary.as_deref(), Some("25m 30s"));
-    }
-
-    #[test]
-    fn view_building_setlist_total_duration_whole_minutes_matches_block_dialect() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![
-                building_entry("e1", Some(900)),
-                building_entry("e2", Some(300)),
-            ],
-            ..Default::default()
-        });
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert_eq!(building.total_duration_summary.as_deref(), Some("20 min"));
-    }
-
-    #[test]
-    fn view_building_setlist_total_duration_none_when_unplanned() {
-        let app = Intrada;
-        let mut model = Model::test_default();
-        model.session_status = SessionStatus::Building(crate::domain::session::BuildingSession {
-            entries: vec![building_entry("e1", None), building_entry("e2", None)],
-            ..Default::default()
-        });
-        let vm = app.view(&model);
-        let building = vm.building_setlist.unwrap();
-        assert_eq!(building.total_duration_display, None);
-        assert_eq!(building.total_duration_summary, None);
     }
 
     #[test]

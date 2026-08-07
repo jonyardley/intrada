@@ -69,8 +69,6 @@ struct PracticeScreen: View {
             .fadeUp(2)
           selectedDaySection
             .fadeUp(3)
-          footerLink
-            .fadeUp(4)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -82,11 +80,6 @@ struct PracticeScreen: View {
     // view to a stale page; reads are already clamped, this resets the store.
     .onChange(of: weeks.count) { _, newCount in
       if let pinned = weekIndexOverride, pinned >= newCount { weekIndexOverride = nil }
-    }
-    // State-driven: `startBuilding` makes `buildingSetlist` non-nil → push; a
-    // pop sends `cancelBuilding` → core returns to Idle. No local nav flag.
-    .navigationDestination(isPresented: buildingBinding) {
-      SessionBuilderScreen()
     }
     .fullScreenCover(isPresented: $drillLoopRunning) {
       DrillLoopHost(onClose: {
@@ -104,14 +97,6 @@ struct PracticeScreen: View {
   private func planToday() {
     guard store.viewModel?.coach.plan == nil else { return }
     store.send(.coach(.planSession(now: SessionClock.nowRFC3339(), availableMinutes: nil)))
-  }
-
-  private var buildingBinding: Binding<Bool> {
-    Binding(
-      get: { store.viewModel?.buildingSetlist != nil },
-      set: { presented in
-        if !presented { store.send(.session(.cancelBuilding)) }
-      })
   }
 
   // MARK: - (0) One-tap hero
@@ -245,20 +230,6 @@ struct PracticeScreen: View {
           IntradaColor.slotOutline,
           style: StrokeStyle(lineWidth: 1, dash: [5]))
     )
-  }
-
-  // MARK: - (3) Footer link
-
-  private var footerLink: some View {
-    Button {
-      store.send(.session(.startBuilding))
-    } label: {
-      Label("Build a custom session", systemImage: "slider.horizontal.3")
-        .font(IntradaFont.bodyMedium.weight(.medium))
-        .foregroundStyle(IntradaColor.inkSecondary)
-    }
-    .buttonStyle(.plain)
-    .frame(maxWidth: .infinity)
   }
 
   private var dayLabel: String {
