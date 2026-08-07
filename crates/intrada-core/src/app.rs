@@ -193,24 +193,31 @@ impl App for Intrada {
     }
 }
 
-/// What one applied coach event leaves for the shell: the evidence batch and
-/// the crash-recovery blob. Shared, because a built session enters the same
-/// state machine by a different door (#1256) and its writes must not go
-/// missing on the way.
 /// Replay every kind of evidence the store holds, from whichever load has
-/// landed. `rebuild_mastery` replaces rather than adds, so running it twice at
-/// launch costs a rebuild and can never double-count (#1214).
+/// landed. `rebuild_mastery` replaces rather than adds, so running it twice
+/// costs a rebuild and can never double-count (#1214) — but only while the
+/// model holds *everything* the live track was fed, which is why
+/// [`coach_write_commands`] banks each record as it closes.
 fn rebuild_mastery(model: &mut Model) {
     model
         .coach
         .rebuild_mastery(model.coach_blocks.clone(), model.play_throughs.clone());
 }
 
+/// What one applied coach event leaves for the shell: the evidence batch and
+/// the crash-recovery blob. Shared, because a built session enters the same
+/// state machine by a different door (#1256) and its writes must not go
+/// missing on the way.
 pub(crate) fn coach_write_commands(
     model: &mut Model,
     writes: crate::engine::CoachWrites,
 ) -> Vec<Command<Effect, Event>> {
     let mut commands = Vec::new();
+    // Banked as they close, not just handed to the store: a later reload — a
+    // failed built-session write reissues one — rebuilds the mastery track from
+    // the model, and a record the model dropped is evidence the rebuild would
+    // silently undo.
+    model.coach_blocks.extend(writes.blocks.clone());
     model.play_throughs.extend(writes.play_throughs.clone());
     // Append-only rows, so `updated_at` is the instant the record closed on the
     // engine's own clock — the shell never formats a timestamp of its own (the

@@ -59,10 +59,7 @@ impl CoachState {
     /// session machine must still be the one that runs it, or a steer would be
     /// a second drill loop.
     pub fn adopt_plan(&mut self, plan: Plan, now: DateTime<Utc>) -> CoachWrites {
-        if !matches!(
-            self.session.state,
-            SessionState::Idle | SessionState::Planned { .. }
-        ) {
+        if !self.session.state.accepts_something_new() {
             // A session already running is not something a steer may replace:
             // the blocks in flight have evidence riding on them.
             return CoachWrites::default();
@@ -1388,6 +1385,21 @@ mod tests {
                 item_id: None,
                 now: at(5),
             },
+            CoachEvent::GoOffPiste {
+                item_id: Some("01J000000000000000000PIECE".into()),
+                now: at(5),
+            },
+            CoachEvent::StartRunThrough {
+                item_id: "01J000000000000000000PIECE".into(),
+                title: "Alice in Wonderland".into(),
+                sections: vec!["A".into(), "Bridge".into()],
+                now: at(5),
+            },
+            CoachEvent::JudgeSection {
+                held: true,
+                now: at(6),
+            },
+            CoachEvent::DiscardRunThrough { now: at(7) },
             CoachEvent::GoUnmonitored { now: at(6) },
             CoachEvent::KeepWanderAsDrill { keep: true },
             CoachEvent::CloseSession { now: at(7) },
@@ -1456,6 +1468,28 @@ mod tests {
             now: at(20),
         });
         assert_round_trips(untimed.view());
+
+        // The altitudes, whose view fields are `None` in every case above.
+        let mut run = CoachState::default();
+        run.apply(&CoachEvent::StartRunThrough {
+            item_id: "01J000000000000000000PIECE".into(),
+            title: "Alice in Wonderland".into(),
+            sections: vec!["A".into(), "Bridge".into()],
+            now: at(0),
+        });
+        assert_round_trips(run.view());
+        run.apply(&CoachEvent::JudgeSection {
+            held: false,
+            now: at(30),
+        });
+        assert_round_trips(run.view());
+
+        let mut wandering = CoachState::default();
+        wandering.apply(&CoachEvent::GoOffPiste {
+            item_id: Some("01J000000000000000000PIECE".into()),
+            now: at(0),
+        });
+        assert_round_trips(wandering.view());
     }
 
     #[test]

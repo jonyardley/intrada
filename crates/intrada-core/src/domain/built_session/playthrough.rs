@@ -1,17 +1,9 @@
 //! Journey B's three altitudes: what a piece can be played at, and where a
 //! gated run-through's verdicts land.
 //!
-//! **Open question 1, resolved (Phase C): v1 has no pipeline.** What a
-//! run-through gates on is the piece's own named chart sections — the `[A]`,
-//! `[Bridge]` labels the user already writes into their chart, in reading
-//! order. There is no stage graph, no authored pipeline entity and nothing
-//! between the piece and its sections. A piece with no chart, or a chart with
-//! no labelled section, cannot be run through: B0 offers the two lower
-//! altitudes instead, which is the graceful degradation B1's note asked for.
-//!
-//! Nothing lands on the piece as a whole. A section verdict is a bounded claim
-//! about a named stretch of music; "the piece held" is not a claim anything can
-//! currently make, so nothing here makes it (Phase B's interim, unchanged).
+//! A run-through gates on the piece's own named chart sections and nothing
+//! else — `specs/built-session.md` open question 1 carries the reasoning and
+//! what it costs.
 
 use serde::{Deserialize, Serialize};
 
@@ -28,8 +20,12 @@ pub fn named_sections(item: &Item) -> Vec<String> {
     chart
         .sections
         .iter()
-        .filter_map(|section| section.label.clone())
-        .filter(|label| !label.trim().is_empty())
+        .filter_map(|section| section.label.as_ref())
+        // Trimmed before it is used, because the label is half the node id: a
+        // stray space in the chart would otherwise strand that section's
+        // evidence on a node nothing else names.
+        .map(|label| label.trim().to_string())
+        .filter(|label| !label.is_empty())
         .collect()
 }
 
@@ -58,7 +54,8 @@ pub struct AltitudeOffer {
 }
 
 /// `None` for anything that is not a piece: an exercise is drilled, not played
-/// through.
+/// through. The one gate on entering an altitude, so the rule cannot hold on
+/// the sheet and not on the event that starts the run.
 pub fn altitude_offer(item: &Item) -> Option<AltitudeOffer> {
     if item.kind != ItemKind::Piece {
         return None;
@@ -72,13 +69,14 @@ pub fn altitude_offer(item: &Item) -> Option<AltitudeOffer> {
     })
 }
 
-/// Whether this altitude can be entered for this piece at all. Only the
-/// run-through has a precondition; the two lower ones need nothing, which is
-/// the point of them.
-pub fn can_enter(item: &Item, altitude: Altitude) -> bool {
-    match altitude {
-        Altitude::RunThrough => !named_sections(item).is_empty(),
-        Altitude::OffPiste | Altitude::Unmonitored => true,
+impl AltitudeOffer {
+    /// Only the run-through has a precondition; the two lower ones need
+    /// nothing, which is the point of them.
+    pub fn allows(&self, altitude: Altitude) -> bool {
+        match altitude {
+            Altitude::RunThrough => self.run_through_available,
+            Altitude::OffPiste | Altitude::Unmonitored => true,
+        }
     }
 }
 
@@ -104,21 +102,22 @@ mod tests {
     #[test]
     fn an_uncharted_piece_has_nothing_to_gate_on() {
         let item = sample_item("p1", "Alice in Wonderland", ItemKind::Piece);
+        let offer = altitude_offer(&item).expect("a piece is still offered");
         assert!(named_sections(&item).is_empty());
         assert!(
-            !can_enter(&item, Altitude::RunThrough),
+            !offer.allows(Altitude::RunThrough),
             "a run-through with no sections would be a whole-piece verdict, which nothing can make"
         );
     }
 
     #[test]
     fn a_chart_with_no_labels_degrades_to_the_lower_altitudes() {
-        let item = charted("| Cmaj7 | Am7 |");
-        assert!(named_sections(&item).is_empty());
-        assert!(!can_enter(&item, Altitude::RunThrough));
-        assert!(can_enter(&item, Altitude::OffPiste));
+        let offer = altitude_offer(&charted("| Cmaj7 | Am7 |")).expect("a piece is offered");
+        assert!(offer.sections.is_empty());
+        assert!(!offer.allows(Altitude::RunThrough));
+        assert!(offer.allows(Altitude::OffPiste));
         assert!(
-            can_enter(&item, Altitude::Unmonitored),
+            offer.allows(Altitude::Unmonitored),
             "the two lower altitudes need nothing authored — that is the point of them"
         );
     }
@@ -141,8 +140,14 @@ mod tests {
     }
 
     #[test]
-    fn two_pieces_with_the_same_section_name_keep_separate_evidence() {
-        assert_ne!(section_node("p1", "A"), section_node("p2", "A"));
+    fn a_stray_space_in_the_chart_does_not_strand_a_sections_evidence() {
+        let item = charted("[ A ]\n| Cmaj7 |");
+        assert_eq!(named_sections(&item), vec!["A"]);
+        assert_eq!(
+            section_node("p1", &named_sections(&item)[0]),
+            section_node("p1", "A"),
+            "the label is half the node id, so it has to be the same label either way"
+        );
     }
 
     #[test]
@@ -162,7 +167,12 @@ mod tests {
 
     #[test]
     fn an_exercise_is_drilled_rather_than_played_through() {
-        let exercise = sample_item("e1", "Two-fives", ItemKind::Exercise);
-        assert_eq!(altitude_offer(&exercise), None);
+        let mut exercise = sample_item("e1", "Two-fives", ItemKind::Exercise);
+        exercise.chord_chart = charted("[A]\n| Cmaj7 |").chord_chart;
+        assert_eq!(
+            altitude_offer(&exercise),
+            None,
+            "a chart on an exercise must not open an altitude the sheet never offers it"
+        );
     }
 }

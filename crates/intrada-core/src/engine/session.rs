@@ -302,8 +302,10 @@ pub struct WanderRecord {
     /// `None` = not yet asked.
     pub keep_as_drill: Option<bool>,
     /// The piece B0 was opened from (#1256). `None` for a wander reached
-    /// mid-session, which has no piece behind it.
-    #[serde(default)]
+    /// mid-session, which has no piece behind it. No `serde(default)`: this
+    /// crosses a positional wire with no "absent", so one would read as a
+    /// safety it cannot provide — the crash-recovery key bump is what makes
+    /// adding it safe.
     pub item_id: Option<String>,
 }
 
@@ -621,6 +623,19 @@ impl SessionState {
         )
     }
 
+    /// Whether something new may start here. The guard exists to protect a
+    /// session *in flight*, which has evidence riding on it; a closed one has
+    /// no such stake, because its records and evidence left with the event that
+    /// closed it. `Closing` counts, or the first thing the user plays is the
+    /// only thing they can play until the app restarts (#1256 Phase C found
+    /// this; the dead end predates it).
+    pub(crate) fn accepts_something_new(&self) -> bool {
+        matches!(
+            self,
+            SessionState::Idle | SessionState::Planned { .. } | SessionState::Closing
+        )
+    }
+
     /// Which altitude is running, for the chip that stays up for the whole run.
     /// A prescribed session is not one of the three: it is the top of the map,
     /// not a rung on it.
@@ -766,12 +781,12 @@ impl EngineSession {
             }
             CoachEvent::StartPlannedSession { now } => match std::mem::take(&mut self.state) {
                 SessionState::Planned { plan } => self.start(plan, *now),
-                SessionState::Idle => {
+                SessionState::Idle | SessionState::Closing => {
                     if let Some(plan) = planned {
                         self.start(plan, *now);
                     }
                 }
-                running_or_closing => self.state = running_or_closing,
+                running => self.state = running,
             },
             CoachEvent::CountInBeat { remaining } => self.count_in(*remaining),
             CoachEvent::Beat { beat_index } => self.beat(*beat_index),
@@ -1146,12 +1161,11 @@ impl EngineSession {
     /// not run the planner for an answer that would be discarded.
     pub(crate) fn accepts_plan(&self, event: &CoachEvent) -> bool {
         match event {
-            CoachEvent::PlanSession { .. } => matches!(
-                self.state,
-                SessionState::Idle | SessionState::Planned { .. }
-            ),
+            CoachEvent::PlanSession { .. } => self.state.accepts_something_new(),
             // A plan already made wins; from anywhere else the event is ignored.
-            CoachEvent::StartPlannedSession { .. } => matches!(self.state, SessionState::Idle),
+            CoachEvent::StartPlannedSession { .. } => {
+                matches!(self.state, SessionState::Idle | SessionState::Closing)
+            }
             _ => false,
         }
     }
@@ -1313,7 +1327,7 @@ impl EngineSession {
                     started_at: now,
                 };
             }
-            SessionState::Idle | SessionState::Planned { .. } => {
+            state if state.accepts_something_new() => {
                 self.state = SessionState::OffPiste {
                     item_id,
                     started_at: now,
@@ -1332,12 +1346,7 @@ impl EngineSession {
     ) {
         // Nothing to gate on is not a run-through, and a session already in
         // flight has evidence riding on it that a new altitude must not replace.
-        if sections.is_empty()
-            || !matches!(
-                self.state,
-                SessionState::Idle | SessionState::Planned { .. }
-            )
-        {
+        if sections.is_empty() || !self.state.accepts_something_new() {
             return;
         }
         self.state = SessionState::RunThrough(RunThroughState {
@@ -1385,10 +1394,7 @@ impl EngineSession {
     fn go_unmonitored(&mut self, now: DateTime<Utc>) {
         // Never from mid-`Running`: switching part-way would make the
         // already-captured half of the session retrospectively unconsented.
-        if matches!(
-            self.state,
-            SessionState::Idle | SessionState::Planned { .. }
-        ) {
+        if self.state.accepts_something_new() {
             self.state = SessionState::Unmonitored { started_at: now };
         }
     }
@@ -3344,6 +3350,44 @@ mod tests {
             SessionState::Idle,
             "a sectionless run would be a whole-piece verdict, which nothing can make"
         );
+    }
+
+    #[test]
+    fn a_closed_session_is_not_a_session_in_flight() {
+        let mut session = run_through(0);
+        judge(&mut session, true, 30);
+        session.apply(&CoachEvent::CloseSession { now: at(60) });
+        assert_eq!(session.state, SessionState::Closing);
+
+        session.apply(&CoachEvent::StartRunThrough {
+            item_id: "p2".into(),
+            title: "Blue in Green".into(),
+            sections: vec!["Head".into()],
+            now: at(90),
+        });
+        let run = session
+            .run_through()
+            .expect("the second piece of the day starts");
+        assert_eq!(run.item_id, "p2");
+        assert!(
+            run.verdicts.is_empty(),
+            "and it starts fresh rather than inheriting the closed run's taps"
+        );
+    }
+
+    #[test]
+    fn a_closed_session_takes_the_lower_altitudes_too() {
+        let mut session = run_through(0);
+        session.apply(&CoachEvent::CloseSession { now: at(60) });
+        session.apply(&CoachEvent::GoOffPiste {
+            item_id: Some("p2".into()),
+            now: at(90),
+        });
+        assert_eq!(session.state.altitude(), Some(Altitude::OffPiste));
+
+        session.apply(&CoachEvent::CloseSession { now: at(120) });
+        session.apply(&CoachEvent::GoUnmonitored { now: at(150) });
+        assert_eq!(session.state.altitude(), Some(Altitude::Unmonitored));
     }
 
     #[test]

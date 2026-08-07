@@ -105,10 +105,12 @@ system together; no hand-rolled clones.
   clicked rung, no tempo gives l0 — and its gate is the parsed passes (or key
   coverage, where the sentence named keys).
 - **C**: Journey B (B0 sheet, run-through with section gates, off-piste,
-  unmonitored; AltitudeChip). **Ships as two PRs** per CLAUDE.md's rule for a
-  phase spanning core and screens: C-core (the altitudes as engine states, the
-  section gates, evidence and replay, the wander tag and its migration) is
-  reviewed first, and C-screens follows against a settled contract.
+  unmonitored; AltitudeChip). **Ships as two PRs**: C-core (the altitudes as
+  engine states, the section gates, evidence and replay, the wander tag and its
+  migration) is reviewed first, and C-screens follows against a settled
+  contract. The core/screens split is the rule #1283 adds to CLAUDE.md, off the
+  back of Phase B landing 4,300 insertions in one PR with both self-review
+  blockers in core code written in the first third.
 - **D**: Journey C (feel moments, reflection at close, morning proposal).
 
 Each phase is its own PR; every screen ships with snapshots, VoiceOver labels,
@@ -161,6 +163,12 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    claim anything can make. A whole-piece verdict is what a single unnamed
    section would be, which is why an unlabelled chart is refused rather than
    run on one gate.
+
+   **The known cost**: evidence is label-addressed, so renaming `[Bridge]` to
+   `[B]` in the chart orphans that section's mastery silently. Accepted for v1
+   because the alternative is stable per-section ids on a chart the user edits
+   as text, which is a bigger change than the altitude needs — tracked in #1287
+   to fix before there is much user data to strand.
 2. ~~Audio storage/retention for voice notes and reflections.~~ **Settled in
    the Phase A schema review**: `reflection` carries `audio_path` (a
    shell-relative path) and `duration_s`; the bytes are the shell's, the core

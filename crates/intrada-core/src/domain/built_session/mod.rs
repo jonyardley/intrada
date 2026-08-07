@@ -667,23 +667,28 @@ pub fn handle_built_session_event(
             altitude,
             now,
         } => {
-            let Some(item) = model.items.iter().find(|item| item.id == item_id) else {
+            let offer = model
+                .items
+                .iter()
+                .find(|item| item.id == item_id)
+                .and_then(playthrough::altitude_offer);
+            let Some(offer) = offer else {
                 model.surface_error("That piece is no longer there.");
                 return crux_core::render::render();
             };
-            if !playthrough::can_enter(item, altitude) {
+            if !offer.allows(altitude) {
                 model.surface_error("Add some section labels to the chart first.");
                 return crux_core::render::render();
             }
             let event = match altitude {
                 Altitude::RunThrough => CoachEvent::StartRunThrough {
-                    item_id: item.id.clone(),
-                    title: item.title.clone(),
-                    sections: playthrough::named_sections(item),
+                    item_id: offer.item_id.clone(),
+                    title: offer.title.clone(),
+                    sections: offer.sections,
                     now,
                 },
                 Altitude::OffPiste => CoachEvent::GoOffPiste {
-                    item_id: Some(item.id.clone()),
+                    item_id: Some(offer.item_id.clone()),
                     now,
                 },
                 // The piece is dropped on purpose: this altitude captures
@@ -1982,6 +1987,61 @@ mod tests {
             relaunched.coach.mastery,
             Model::test_default().coach.mastery,
             "\"don't count this run\" has to mean it at launch as well as live"
+        );
+    }
+
+    #[test]
+    fn a_reload_mid_session_never_undoes_what_has_already_been_practised() {
+        // Both legs of the rebuild in one session — a closed block and a closed
+        // run-through — because a failed built-session write reissues the load,
+        // so `BuiltStoreLoaded` is reachable mid-session, not only at launch.
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        // The shape puts the user drill first, which is the block whose taps
+        // are evidence — a judgement block's would prove nothing here.
+        update(&mut model, BuiltSessionEvent::UseSuggestedShape);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let node = model.coach.session.spec().expect("a spec").node.clone();
+        let level = model.coach.session.block().expect("a block").level;
+        for _ in 0..3 {
+            play_one_pass(&mut model);
+        }
+        // The gate opens on the third pass; the hold is what closes the block.
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::Tick {
+                now: at() + chrono::TimeDelta::seconds(600),
+            }),
+        );
+        assert!(
+            !model.coach_blocks.is_empty(),
+            "the gate opened and the block closed, so there is a record to lose"
+        );
+        let practised = model.coach.mastery.reading(&node, level, at()).evidence;
+        assert!(practised > 0.0, "it is in the live track before the reload");
+
+        let reloaded = BuiltSessionData {
+            user_drills: model.user_drills.clone(),
+            journal_items: model.journal_items.clone(),
+            built_sessions: model.built_sessions.clone(),
+            play_throughs: model.play_throughs.clone(),
+            reflections: vec![],
+            feel_entries: vec![],
+        };
+        app_update(
+            &mut model,
+            Event::BuiltStoreLoaded(PersistenceOutput::BuiltSessionData(reloaded)),
+        );
+        assert_eq!(
+            model.coach.mastery.reading(&node, level, at()).evidence,
+            practised,
+            "a rebuild replays everything the live track was fed, not the launch snapshot"
         );
     }
 
