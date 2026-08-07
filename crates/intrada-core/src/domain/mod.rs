@@ -1,4 +1,5 @@
 pub mod account;
+pub mod built_session;
 pub mod chart;
 pub mod item;
 pub mod mcp_audit;
