@@ -113,6 +113,21 @@ trees, DerivedData (keyed by project *path*), `ios/generated` bindings, cargo
 `target/`, and snapshot PNG files. Building or recording in one never overwrites the
 other's files.
 
+**`just worktree-new <name>`** creates a worktree at
+`.claude/worktrees/<name>` (also `<name>`'s branch — no slashes, so
+`.claude/worktrees/` stays flat and the sim-name collision check below
+actually sees every worktree) off fresh `origin/main` and seeds it from the main
+checkout's warm caches (`target/`, `ios/build/spm`, `ios/build/dd`,
+`ios/generated`) via APFS clonefile (`cp -Rc`, copy-on-write — near-instant,
+no duplicated disk until the copies diverge). Cuts the first `just check` /
+`just ios-test` in a fresh worktree from ~5-10 minutes cold to close to what
+the main checkout pays warm. `ios/generated` seeds only when the new
+worktree's own core source hash matches the main checkout's binding stamp
+(same rule `_ios-sync` enforces) — otherwise it's left to regenerate.
+Refuses a `<name>` that sanitises to the same simulator name as an existing
+worktree (the `foo`/`foo.1` collision below). `just worktree-rm <name>`
+cleans up the worktree's sim, then removes the worktree.
+
 **The simulator is the exception.** The iOS Simulator and
 `CoreSimulatorService` are **one per macOS login, shared across every checkout**.
 That's the only real clash surface, and the recovery commands above are global
