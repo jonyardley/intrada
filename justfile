@@ -95,6 +95,15 @@ seed:
 worktree-new name:
     #!/usr/bin/env bash
     set -euo pipefail
+    # Directory and sim-name slug both derive from the raw name (matching
+    # _ios-test-sim-name's basename-of-checkout basis), so a slash or shell
+    # metacharacter would either nest the worktree under a subdirectory the
+    # collision scan below can't see, or break out of the surrounding quotes.
+    if ! printf '%s' "{{name}}" | grep -qE '^[A-Za-z0-9][A-Za-z0-9_-]*$'; then
+        echo "✗ '{{name}}' must be alphanumeric plus '_'/'-' (no slashes) — .claude/worktrees/ stays flat." >&2
+        exit 1
+    fi
+
     main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
     # Always alongside the main checkout's own worktrees, even when this
     # recipe is invoked from inside another worktree — otherwise it nests
@@ -122,8 +131,12 @@ worktree-new name:
         dst="$target/$rel"
         if [ -d "$src" ]; then
             mkdir -p "$(dirname "$dst")"
-            cp -Rc "$src" "$dst"
-            seeded+=("$rel")
+            if cp -Rc "$src" "$dst" 2>/dev/null; then
+                seeded+=("$rel")
+            else
+                echo "  ⚠ $rel: clonefile copy failed (non-APFS volume?) — worktree still created, will build cold" >&2
+                rm -rf "$dst"
+            fi
         fi
     done
     # A new branch must earn its own green (#1204) — strip the check-stamp
@@ -138,8 +151,12 @@ worktree-new name:
         current="$(cd "$target" && just _ios-src-hash)"
         if [ "$(cat "$stamp")" = "$current" ]; then
             mkdir -p "$target/ios"
-            cp -Rc "$main_root/ios/generated" "$target/ios/generated"
-            seeded+=("ios/generated")
+            if cp -Rc "$main_root/ios/generated" "$target/ios/generated" 2>/dev/null; then
+                seeded+=("ios/generated")
+            else
+                echo "  ⚠ ios/generated: clonefile copy failed (non-APFS volume?) — will build cold" >&2
+                rm -rf "$target/ios/generated"
+            fi
         else
             echo "  ios/generated skipped — main checkout's bindings don't match this branch's core source"
         fi
