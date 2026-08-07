@@ -11,9 +11,12 @@ protocol ItemStore {
   func delete(id: String, deletedAt: String) throws
   func loadSessions() throws -> [PracticeSession]
   func saveSession(_ session: PracticeSession) throws
-  /// Append coach evidence in one transaction — blocks, wanders and their
-  /// attempts land together or not at all (#1181).
-  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws
+  /// Append coach evidence in one transaction — blocks, wanders, run-throughs
+  /// and their attempts land together or not at all (#1181).
+  func saveCoachRecords(
+    blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
+    updatedAt: String
+  ) throws
   /// The closed blocks back, so the core can rebuild the mastery track at
   /// launch (#1214). Wanders stay write-only: no `(node, level)` to score.
   func loadCoachRecords() throws -> [BlockRecord]
@@ -22,7 +25,6 @@ protocol ItemStore {
   func saveUserDrill(_ drill: UserDrill) throws
   func saveJournalItem(_ journal: JournalItem) throws
   func saveBuiltSession(_ session: BuiltSession) throws
-  func savePlayThrough(_ record: PlayThroughRecord) throws
   func saveReflection(_ reflection: Reflection) throws
   func saveFeelEntry(_ entry: FeelEntry) throws
   func loadBuiltSessionData() throws -> BuiltSessionData
@@ -190,13 +192,19 @@ final class LibraryStore: ItemStore {
   /// never half-land (#1181). Upsert by id: a retry after a failed write is
   /// idempotent, and the off-piste *keep this as a drill?* answer updates the
   /// wander row already written rather than duplicating it.
-  func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
+  func saveCoachRecords(
+    blocks: [BlockRecord], wanders: [WanderRecord], playThroughs: [PlayThroughRecord],
+    updatedAt: String
+  ) throws {
     try dbQueue.write { db in
       for block in blocks {
         try Self.upsert(block, updatedAt: updatedAt, in: db)
       }
       for wander in wanders {
         try Self.upsert(wander, updatedAt: updatedAt, in: db)
+      }
+      for record in playThroughs {
+        try Self.upsert(record, in: db)
       }
     }
   }
@@ -445,6 +453,13 @@ final class LibraryStore: ItemStore {
       // block's taps were ever evidence (decision 17).
       try db.execute(
         sql: "ALTER TABLE block_record ADD COLUMN origin TEXT NOT NULL DEFAULT 'authored'")
+    }
+    migrator.registerMigration("v13_wander_item") { db in
+      // #1256 Phase C: off-piste is now reachable from a piece (B0), so a
+      // wander can name what it was played against. Nullable, because the
+      // mid-session door has no piece behind it and every existing row came
+      // through it.
+      try db.execute(sql: "ALTER TABLE wander_record ADD COLUMN item_id TEXT")
     }
     return migrator
   }()
@@ -865,15 +880,16 @@ final class LibraryStore: ItemStore {
     try db.execute(
       sql: """
         INSERT INTO wander_record
-          (id, started_at, ended_at, attempts, keep_as_drill, updated_at, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, NULL)
+          (id, started_at, ended_at, attempts, keep_as_drill, item_id, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           ended_at = excluded.ended_at, attempts = excluded.attempts,
-          keep_as_drill = excluded.keep_as_drill, updated_at = excluded.updated_at
+          keep_as_drill = excluded.keep_as_drill, item_id = excluded.item_id,
+          updated_at = excluded.updated_at
         """,
       arguments: [
         record.id, record.startedAt, record.endedAt, try encodeAttempts(record.attempts),
-        record.keepAsDrill, updatedAt,
+        record.keepAsDrill, record.itemId, updatedAt,
       ])
   }
 
@@ -1160,24 +1176,22 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  func savePlayThrough(_ record: PlayThroughRecord) throws {
-    try dbQueue.write { db in
-      try db.execute(
-        sql: """
-          INSERT INTO play_through
-            (id, item_id, started_at, ended_at, counted, sections, updated_at, deleted_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            item_id = excluded.item_id, started_at = excluded.started_at,
-            ended_at = excluded.ended_at, counted = excluded.counted,
-            sections = excluded.sections, updated_at = excluded.updated_at,
-            deleted_at = excluded.deleted_at
-          """,
-        arguments: [
-          record.id, record.itemId, record.startedAt, record.endedAt, record.counted,
-          try Self.encodeSections(record.sections), record.updatedAt, record.deletedAt,
-        ])
-    }
+  private static func upsert(_ record: PlayThroughRecord, in db: Database) throws {
+    try db.execute(
+      sql: """
+        INSERT INTO play_through
+          (id, item_id, started_at, ended_at, counted, sections, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          item_id = excluded.item_id, started_at = excluded.started_at,
+          ended_at = excluded.ended_at, counted = excluded.counted,
+          sections = excluded.sections, updated_at = excluded.updated_at,
+          deleted_at = excluded.deleted_at
+        """,
+      arguments: [
+        record.id, record.itemId, record.startedAt, record.endedAt, record.counted,
+        try Self.encodeSections(record.sections), record.updatedAt, record.deletedAt,
+      ])
   }
 
   func saveReflection(_ reflection: Reflection) throws {

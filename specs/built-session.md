@@ -1,6 +1,7 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase B landed (Journey A end-to-end) · **Issue**: #1256 · **Tier**: 3
+**Status**: Phase C core landed (Journey B's altitudes; screens next) ·
+**Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
 `design/briefs/2026-08-copy-language.md` (voice, graduated as T13)
@@ -104,7 +105,10 @@ system together; no hand-rolled clones.
   clicked rung, no tempo gives l0 — and its gate is the parsed passes (or key
   coverage, where the sentence named keys).
 - **C**: Journey B (B0 sheet, run-through with section gates, off-piste,
-  unmonitored; AltitudeChip).
+  unmonitored; AltitudeChip). **Ships as two PRs** per CLAUDE.md's rule for a
+  phase spanning core and screens: C-core (the altitudes as engine states, the
+  section gates, evidence and replay, the wander tag and its migration) is
+  reviewed first, and C-screens follows against a settled contract.
 - **D**: Journey C (feel moments, reflection at close, morning proposal).
 
 Each phase is its own PR; every screen ships with snapshots, VoiceOver labels,
@@ -128,19 +132,35 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
    back over the only copy of the user's data with less than it had, and a row
    the model never holds is a row no write can reach. One bad row costs that
    row, not the library, and a newer binary still reads it whole.
-7. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
+7. **Off-piste carries the piece; unmonitored carries nothing** (Phase C). B0
+   is reached from a piece for all three altitudes, but only off-piste keeps
+   the tag: it already writes a record, because it captures. Unmonitored writes
+   no record at all, so there is nothing to tag and nothing that could later say
+   what was played. The asymmetry is the consent gradient, not an oversight —
+   "minutes only" means minutes.
+8. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
    It rides the spec *and* the record, because the mastery track is rebuilt
    from records at launch: a decision-17 rule the live path enforces and the
    replay does not is not a rule (the #1214 class).
 
 ## Open questions
 
-1. How much pipeline does v1 need? B1's note argues: a piece + named section
-   gates only, degrading gracefully to off-piste + piece tag when sections
-   aren't authored. Resolve when Phase C is planned. **Phase B's interim**: a
-   piece block in a composed session runs on the judgement track — time is
-   logged, one tap says when it is done, nothing is inferred. Nothing can
-   count a whole piece yet, so nothing claims to.
+1. ~~How much pipeline does v1 need?~~ **Resolved in Phase C: none.** What a
+   run-through gates on is the piece's own named chart sections — the `[A]`,
+   `[Bridge]` labels already in `Item.chord_chart`, in reading order. No stage
+   graph, no authored pipeline entity, nothing between the piece and its
+   sections; the data is the user's own and reads in their words. This is B1's
+   note taken literally, and the degradation it asked for falls out: a piece
+   with no chart, or a chart with no labelled section, cannot be run through,
+   and B0 offers off-piste and just-play instead (saying why, rather than
+   hiding the option).
+
+   Evidence lands per section, on `piece:<item_id>#<label>`, at l0 — the tap is
+   what bounds the attempt there (#1244). **Nothing lands on the piece as a
+   whole**: Phase B's interim stands, because "the piece held" is still not a
+   claim anything can make. A whole-piece verdict is what a single unnamed
+   section would be, which is why an unlabelled chart is refused rather than
+   run on one gate.
 2. ~~Audio storage/retention for voice notes and reflections.~~ **Settled in
    the Phase A schema review**: `reflection` carries `audio_path` (a
    shell-relative path) and `duration_s`; the bytes are the shell's, the core

@@ -48,11 +48,12 @@ struct CoachRecordStoreTests {
   }
 
   private func wander(
-    _ id: String = "w1", attempts: [AttemptSummary] = [], keepAsDrill: Bool? = nil
+    _ id: String = "w1", attempts: [AttemptSummary] = [], keepAsDrill: Bool? = nil,
+    itemId: String? = nil
   ) -> WanderRecord {
     WanderRecord(
       id: id, startedAt: "2026-08-04T10:05:00Z", endedAt: "2026-08-04T10:09:00Z",
-      attempts: attempts, keepAsDrill: keepAsDrill)
+      attempts: attempts, keepAsDrill: keepAsDrill, itemId: itemId)
   }
 
   /// A store plus its queue, so the write tests can pin the stored rows with
@@ -89,7 +90,7 @@ struct CoachRecordStoreTests {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
       blocks: [block(escalations: [.tempoDown, .shrinkScope], exit: .ceilingHit)],
-      wanders: [], updatedAt: Self.updatedAt)
+      wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT * FROM block_record WHERE id = 'b1'"))
     #expect(row["node"] as String? == "rootless-a-b")
@@ -115,7 +116,7 @@ struct CoachRecordStoreTests {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
       blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
-      wanders: [], updatedAt: Self.updatedAt)
+      wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT * FROM block_record WHERE id = 'b1'"))
     #expect(row["attempts_to_pass"] as Int? == nil, "never passed reads back as NULL, not 0")
@@ -130,7 +131,7 @@ struct CoachRecordStoreTests {
       attempt(clean: true, at: "2026-08-04T10:00:18Z", source: .midi, selfPredicted: .clean),
     ]
     try store.saveCoachRecords(
-      blocks: [block(attempts: attempts)], wanders: [], updatedAt: Self.updatedAt)
+      blocks: [block(attempts: attempts)], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT attempts FROM block_record WHERE id = 'b1'"))
     let json = try #require(row["attempts"] as String?)
@@ -153,7 +154,7 @@ struct CoachRecordStoreTests {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
       blocks: [block(escalations: [.tempoDown, .changeMode, .swapDrill])],
-      wanders: [], updatedAt: Self.updatedAt)
+      wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(
       try self.row(queue, "SELECT escalation_fired FROM block_record WHERE id = 'b1'"))
@@ -166,7 +167,7 @@ struct CoachRecordStoreTests {
   func emptyBlobs() throws {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
-      blocks: [block(exit: .skipped)], wanders: [], updatedAt: Self.updatedAt)
+      blocks: [block(exit: .skipped)], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT * FROM block_record WHERE id = 'b1'"))
     #expect(row["attempts"] as String? == "[]")
@@ -177,7 +178,7 @@ struct CoachRecordStoreTests {
   func wanderColumns() throws {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
-      blocks: [], wanders: [wander(attempts: [attempt(clean: true)])],
+      blocks: [], wanders: [wander(attempts: [attempt(clean: true)])], playThroughs: [],
       updatedAt: Self.updatedAt)
 
     let row = try #require(try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w1'"))
@@ -196,7 +197,8 @@ struct CoachRecordStoreTests {
   func batchWritesBoth() throws {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
-      blocks: [block("b1"), block("b2")], wanders: [wander("w1")], updatedAt: Self.updatedAt)
+      blocks: [block("b1"), block("b2")], wanders: [wander("w1")], playThroughs: [],
+      updatedAt: Self.updatedAt)
 
     #expect(try count(queue, "block_record") == 2)
     #expect(try count(queue, "wander_record") == 1)
@@ -205,9 +207,11 @@ struct CoachRecordStoreTests {
   @Test("answering the keep prompt updates the wander row rather than duplicating it")
   func wanderUpsert() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(blocks: [], wanders: [wander()], updatedAt: Self.updatedAt)
     try store.saveCoachRecords(
-      blocks: [], wanders: [wander(keepAsDrill: true)], updatedAt: "2026-08-04T10:10:00Z")
+      blocks: [], wanders: [wander()], playThroughs: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [], wanders: [wander(keepAsDrill: true)], playThroughs: [],
+      updatedAt: "2026-08-04T10:10:00Z")
 
     #expect(try count(queue, "wander_record") == 1, "the same id upserts, never duplicates")
     let row = try #require(try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w1'"))
@@ -219,8 +223,10 @@ struct CoachRecordStoreTests {
   func blockUpsertIsIdempotent() throws {
     let (store, queue) = try makeStore()
     let record = block(attempts: [attempt(clean: true)])
-    try store.saveCoachRecords(blocks: [record], wanders: [], updatedAt: Self.updatedAt)
-    try store.saveCoachRecords(blocks: [record], wanders: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [record], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [record], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     #expect(try count(queue, "block_record") == 1, "a retried write must not double-count evidence")
   }
@@ -239,7 +245,8 @@ struct CoachRecordStoreTests {
         attempt(clean: true, at: "2026-08-04T10:00:27Z", source: .tapVerdictUntimed),
       ],
       escalations: [.tempoDown, .changeMode], exit: .ceilingHit)
-    try store.saveCoachRecords(blocks: [written], wanders: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [written], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     #expect(try store.loadCoachRecords() == [written])
   }
@@ -249,7 +256,7 @@ struct CoachRecordStoreTests {
     let (store, _) = try makeStore()
     try store.saveCoachRecords(
       blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
-      wanders: [], updatedAt: Self.updatedAt)
+      wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let loaded = try #require(try store.loadCoachRecords().first)
     #expect(loaded.attemptsToPass == nil)
@@ -260,7 +267,7 @@ struct CoachRecordStoreTests {
   func readSkipsTombstones() throws {
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
-      blocks: [block("b1"), block("b2")], wanders: [], updatedAt: Self.updatedAt)
+      blocks: [block("b1"), block("b2")], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(
         sql: "UPDATE block_record SET deleted_at = ? WHERE id = 'b1'",
@@ -280,7 +287,8 @@ struct CoachRecordStoreTests {
   @Test("an unknown stored exit falls back without claiming a gate pass")
   func readUnknownExit() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET exit = 'from_the_future' WHERE id = 'b1'")
     }
@@ -304,7 +312,7 @@ struct CoachRecordStoreTests {
             attempt(clean: false, at: "2026-08-04T10:00:09Z", level: before),
             attempt(clean: true, at: "2026-08-04T10:00:18Z", level: after),
           ], escalations: [.tempoDown], exit: .gatePassed)
-      ], wanders: [], updatedAt: Self.updatedAt)
+      ], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let read = try #require(try store.loadCoachRecords().first)
     #expect(read.attempts.map(\.level) == [before, after])
@@ -323,7 +331,7 @@ struct CoachRecordStoreTests {
               clean: true, at: "2026-08-04T10:0\(index):09Z",
               level: ParameterLevel(tempoBpm: 80, clickLevel: level))
           ])
-      }, wanders: [], updatedAt: Self.updatedAt)
+      }, wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
 
     let read = try store.loadCoachRecords()
     #expect(
@@ -334,7 +342,8 @@ struct CoachRecordStoreTests {
   @Test("a row written before the per-attempt level falls back to the block's")
   func readBackLegacyAttemptWithoutLevel() throws {
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       // A level no suite helper uses, so a hardcoded fallback would fail.
       try db.execute(
@@ -361,7 +370,8 @@ struct CoachRecordStoreTests {
     // Returning [] would replay as a block nobody played (invariant 5).
     let (store, queue) = try makeStore()
     try store.saveCoachRecords(
-      blocks: [block(attempts: [attempt(clean: true)])], wanders: [], updatedAt: Self.updatedAt)
+      blocks: [block(attempts: [attempt(clean: true)])], wanders: [], playThroughs: [],
+      updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET attempts = 'not json' WHERE id = 'b1'")
     }
@@ -374,7 +384,8 @@ struct CoachRecordStoreTests {
     // Guessing `authored` would replay a judgement-track block's taps into the
     // mastery track at launch, which is the one thing decision 17 forbids.
     let (store, queue) = try makeStore()
-    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try store.saveCoachRecords(
+      blocks: [block()], wanders: [], playThroughs: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET origin = 'from_the_future' WHERE id = 'b1'")
     }
@@ -434,9 +445,40 @@ struct CoachRecordStoreTests {
     #expect(try count(queue, "wander_record") == 0)
     try store.saveCoachRecords(
       blocks: [block(attempts: [attempt(clean: true, cold: true)])], wanders: [wander()],
-      updatedAt: Self.updatedAt)
+      playThroughs: [], updatedAt: Self.updatedAt)
     #expect(try count(queue, "block_record") == 1, "a migrated database accepts evidence")
     #expect(try count(queue, "wander_record") == 1)
+  }
+
+  @Test("a wander written before v13 keeps its rows and reads back untagged")
+  func upgradeFromV12() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v12_block_origin")
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO wander_record
+            (id, started_at, ended_at, attempts, keep_as_drill, updated_at, deleted_at)
+          VALUES ('w-legacy', '2026-01-01T00:00:00Z', '2026-01-01T00:10:00Z', '[]', 1,
+                  '2026-01-01T00:10:00Z', NULL)
+          """)
+    }
+
+    let store = try LibraryStore(queue)
+
+    let row = try #require(
+      try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w-legacy'"),
+      "the pre-v13 wander survives")
+    #expect(row["keep_as_drill"] as Bool? == true, "its answer survives the migration")
+    #expect(
+      row["item_id"] as String? == nil,
+      "a wander from before B0 existed was reached mid-session, so it has no piece")
+
+    try store.saveCoachRecords(
+      blocks: [], wanders: [wander("w-new", itemId: "p1")], playThroughs: [],
+      updatedAt: Self.updatedAt)
+    let tagged = try #require(try self.row(queue, "SELECT * FROM wander_record WHERE id = 'w-new'"))
+    #expect(tagged["item_id"] as String? == "p1", "a migrated database accepts the tag")
   }
 
   @Test("the migration chain runs cleanly on a fresh database")
@@ -444,6 +486,6 @@ struct CoachRecordStoreTests {
     let queue = try DatabaseQueue()
     _ = try LibraryStore(queue)
     let applied = try queue.read { db in try LibraryStore.migrator.appliedMigrations(db) }
-    #expect(applied.contains("v10_coach_records"), "applied \(applied)")
+    #expect(applied.contains("v13_wander_item"), "applied \(applied)")
   }
 }

@@ -33,13 +33,20 @@ pub enum PersistenceOperation {
     },
     LoadSessions,
     SaveSession(PracticeSession),
-    /// Append coach evidence as it closes (spec §4, #1181). One transaction:
-    /// blocks, wanders and their attempts land together or not at all, so the
-    /// evidence is never half-written. `updated_at` is core-stamped for the
-    /// whole batch — the shell formats no timestamp of its own.
+    /// Append coach evidence as it closes (spec §4, #1181). One transaction,
+    /// one retry slot: blocks, wanders, run-throughs and their attempts land
+    /// together or not at all, so the evidence is never half-written.
+    /// `updated_at` is core-stamped for the whole batch — the shell formats no
+    /// timestamp of its own.
+    ///
+    /// A run-through rides this rather than saving on its own, because its
+    /// section verdicts are already in the mastery track by the time it is
+    /// sent: a write that could fail without being offered again would leave
+    /// the live track ahead of what the launch replay can rebuild.
     SaveCoachRecords {
         blocks: Vec<BlockRecord>,
         wanders: Vec<WanderRecord>,
+        play_throughs: Vec<PlayThroughRecord>,
         updated_at: DateTime<Utc>,
     },
     /// The closed blocks back, so the mastery track can rebuild at launch
@@ -50,7 +57,6 @@ pub enum PersistenceOperation {
     SaveUserDrill(UserDrill),
     SaveJournalItem(JournalItem),
     SaveBuiltSession(BuiltSession),
-    SavePlayThrough(PlayThroughRecord),
     SaveReflection(Reflection),
     SaveFeelEntry(FeelEntry),
     /// One read for the whole surface at launch, like `LoadItems`.
@@ -139,10 +145,6 @@ pub fn save_journal_item(journal: JournalItem) -> Command<Effect, Event> {
 
 pub fn save_built_session(session: BuiltSession) -> Command<Effect, Event> {
     save_built(PersistenceOperation::SaveBuiltSession(session))
-}
-
-pub fn save_play_through(record: PlayThroughRecord) -> Command<Effect, Event> {
-    save_built(PersistenceOperation::SavePlayThrough(record))
 }
 
 pub fn save_reflection(reflection: Reflection) -> Command<Effect, Event> {
@@ -1042,9 +1044,32 @@ mod tests {
             let mut cmd = send(&app, &mut model, CoachEvent::Tick { now: at(30) });
             let blocks = coach_records(&mut cmd).expect("a SaveCoachRecords op");
 
+            // Saturated on purpose: every arm of the batch has to cross, and an
+            // empty vec proves nothing about the one beside it (#846).
             crate::domain::types::assert_round_trips(PersistenceOperation::SaveCoachRecords {
                 blocks,
-                wanders: vec![],
+                wanders: vec![crate::engine::WanderRecord {
+                    id: "01J00000000000000000WANDER".into(),
+                    started_at: at(0),
+                    ended_at: at(30),
+                    attempts: vec![],
+                    keep_as_drill: Some(true),
+                    item_id: Some("01J000000000000000000PIECE".into()),
+                }],
+                play_throughs: vec![crate::domain::built_session::PlayThroughRecord {
+                    id: "01J0000000000000000000RUN1".into(),
+                    item_id: "01J000000000000000000PIECE".into(),
+                    started_at: at(0),
+                    ended_at: at(30),
+                    counted: true,
+                    sections: vec![crate::domain::built_session::SectionVerdict {
+                        section: "A".into(),
+                        held: true,
+                        at: at(12),
+                    }],
+                    updated_at: at(30),
+                    deleted_at: None,
+                }],
                 updated_at: at(30),
             });
         }
