@@ -25,6 +25,8 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # Added #1223: testDrillScreenBlockEntry (254KB) and
 # testDrillScreenTapVerdictAccessibilitySize (281KB) — two more full-screen drill
 # faces over the same playerPaper radial as the siblings above.
+# Added #1260: testDrillScreenDuringPlayUntimed and testDrillScreenBlockEntryUntimed
+# — the l0 (no-click) faces of the same two drill screens, same radial.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
@@ -35,7 +37,8 @@ is_large() {
       testDrillScreenDuringPlay | testDrillScreenDuringPlayAccessibilitySize | \
       testDrillScreenBlockEntry | testDrillScreenTapVerdictAccessibilitySize | \
       testDrillScreenCountIn | testDrillScreenTapVerdict | \
-      testDrillScreenMissAcknowledged | testDrillScreenGateOpen) return 0 ;;
+      testDrillScreenMissAcknowledged | testDrillScreenGateOpen | \
+      testDrillScreenDuringPlayUntimed | testDrillScreenBlockEntryUntimed) return 0 ;;
     *) return 1 ;;
   esac
 }
