@@ -52,16 +52,22 @@ fn json_response<T: Clone>(
             Some(body) => on_body(body),
             None => Event::LoadFailed(empty_msg.to_string()),
         },
-        Err(e) => {
-            let detail = rejection_reason(&e).unwrap_or_else(|| e.to_string());
-            Event::LoadFailed(format!("{error_context}: {detail}"))
-        }
+        Err(e) => Event::LoadFailed(format!("{error_context}: {}", rejection_detail(&e))),
     }
 }
 
-/// Reads `intrada-api`'s `{"error": …}` envelope. `Display` on `HttpError`
-/// reports the status alone, so without this a 409 reaches the user as
-/// "HTTP error 409: 409 Conflict" and the API's explanation is dropped (#1272).
+/// The only way an `HttpError` becomes user-facing text in this module: every
+/// builder's error arm goes through it, so a new one can't reintroduce a bare
+/// `{e}` by copy-paste (#1272).
+///
+/// `Display` reports the status alone, so a bare `{e}` reaches the user as
+/// "HTTP error 409: 409 Conflict" and the API's own explanation is dropped.
+fn rejection_detail(error: &crux_http::HttpError) -> String {
+    rejection_reason(error).unwrap_or_else(|| error.to_string())
+}
+
+/// The sentence `intrada-api` sent in its `{"error": …}` envelope
+/// (`ApiError::into_response`), if it sent a non-blank one.
 fn rejection_reason(error: &crux_http::HttpError) -> Option<String> {
     #[derive(serde::Deserialize)]
     struct Envelope {
@@ -200,7 +206,7 @@ pub fn delete_item(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete item: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to delete item: {}", rejection_detail(&e))),
         })
 }
 
@@ -221,7 +227,9 @@ pub fn create_session(api_base_url: &str, session: &PracticeSession) -> Command<
             // before the write is visible, causing #247 (practice data not
             // updating after session save).
             Ok(_) => Event::SessionSaved,
-            Err(e) => Event::LoadFailed(format!("Failed to save session: {e}")),
+            Err(e) => {
+                Event::LoadFailed(format!("Failed to save session: {}", rejection_detail(&e)))
+            }
         })
 }
 
@@ -233,7 +241,10 @@ pub fn delete_session(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete session: {e}")),
+            Err(e) => Event::LoadFailed(format!(
+                "Failed to delete session: {}",
+                rejection_detail(&e)
+            )),
         })
 }
 
@@ -254,7 +265,7 @@ pub fn create_set(
         .build()
         .then_send(move |result| match result {
             Ok(_) => Event::SetSaveSucceeded { request_id },
-            Err(e) => Event::LoadFailed(format!("Failed to save set: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to save set: {}", rejection_detail(&e))),
         })
 }
 
@@ -288,7 +299,7 @@ pub fn delete_set(api_base_url: &str, id: &str) -> Command<Effect, Event> {
         .build()
         .then_send(|result| match result {
             Ok(_) => Event::DeleteConfirmed,
-            Err(e) => Event::LoadFailed(format!("Failed to delete set: {e}")),
+            Err(e) => Event::LoadFailed(format!("Failed to delete set: {}", rejection_detail(&e))),
         })
 }
 
@@ -334,7 +345,7 @@ pub fn save_account_preferences(
             },
             Err(e) => Event::Account(AccountEvent::SavePreferencesFailed {
                 previous: previous.clone(),
-                message: format!("Failed to save preferences: {e}"),
+                message: format!("Failed to save preferences: {}", rejection_detail(&e)),
             }),
         })
 }
@@ -348,7 +359,8 @@ pub fn delete_account(api_base_url: &str) -> Command<Effect, Event> {
         .then_send(|result| match result {
             Ok(_) => Event::Account(AccountEvent::AccountDeleted),
             Err(e) => Event::Account(AccountEvent::DeleteAccountFailed(format!(
-                "Failed to delete account: {e}"
+                "Failed to delete account: {}",
+                rejection_detail(&e)
             ))),
         })
 }
@@ -370,7 +382,8 @@ pub fn list_mcp_tokens(api_base_url: &str) -> Command<Effect, Event> {
                 )),
             },
             Err(e) => Event::McpToken(McpTokenEvent::LoadTokensFailed(format!(
-                "Failed to load tokens: {e}"
+                "Failed to load tokens: {}",
+                rejection_detail(&e)
             ))),
         })
 }
@@ -397,7 +410,8 @@ pub fn create_mcp_token(api_base_url: &str, name: &str) -> Command<Effect, Event
                 )),
             },
             Err(e) => Event::McpToken(McpTokenEvent::CreateTokenFailed(format!(
-                "Failed to create token: {e}"
+                "Failed to create token: {}",
+                rejection_detail(&e)
             ))),
         })
 }
@@ -416,7 +430,7 @@ pub fn revoke_mcp_token(api_base_url: &str, id: &str) -> Command<Effect, Event> 
             }),
             Err(e) => Event::McpToken(McpTokenEvent::RevokeTokenFailed {
                 id: id_for_callback.clone(),
-                message: format!("Failed to revoke token: {e}"),
+                message: format!("Failed to revoke token: {}", rejection_detail(&e)),
             }),
         })
 }
@@ -438,7 +452,8 @@ pub fn list_mcp_audit(api_base_url: &str) -> Command<Effect, Event> {
                 )),
             },
             Err(e) => Event::McpAudit(McpAuditEvent::LoadAuditFailed(format!(
-                "Failed to load audit log: {e}"
+                "Failed to load audit log: {}",
+                rejection_detail(&e)
             ))),
         })
 }
@@ -469,7 +484,8 @@ pub fn oauth_finalize(api_base_url: &str, params: &OAuthFinalizeParams) -> Comma
                 )),
             },
             Err(e) => Event::OAuth(OAuthEvent::ConsentFailed(format!(
-                "Failed to finalize OAuth consent: {e}"
+                "Failed to finalize OAuth consent: {}",
+                rejection_detail(&e)
             ))),
         })
 }
@@ -837,37 +853,59 @@ mod tests {
 
     // ── rejections ───────────────────────────────────────────────────
 
-    fn rejection_event(status: u16, body: &str) -> Event {
-        json_response::<Vec<u8>>(
-            crux_http::testing::rejection(status, body),
-            |_| panic!("on_body must not run on a rejection"),
-            "empty body",
-            "Failed to save set",
-        )
+    /// Every builder's error arm reaches `rejection_detail`, so testing it
+    /// directly covers all 19 rather than whichever one a context string names.
+    fn detail(status: u16, body: &str) -> String {
+        let error = crux_http::testing::rejection::<Vec<u8>>(status, body)
+            .expect_err("a 4xx/5xx is never Ok");
+        rejection_detail(&error)
     }
 
     #[test]
     fn rejection_surfaces_the_message_the_api_wrote() {
-        let event = rejection_event(409, r#"{"error":"A set with that name already exists"}"#);
-        assert!(matches!(event, Event::LoadFailed(m)
-                if m == "Failed to save set: A set with that name already exists"));
+        assert_eq!(
+            detail(409, r#"{"error":"A set with that name already exists"}"#),
+            "A set with that name already exists"
+        );
+    }
+
+    #[test]
+    fn rejection_message_is_trimmed_before_it_reaches_a_banner() {
+        assert_eq!(
+            detail(400, "{\"error\":\"  Name is required\\n\"}"),
+            "Name is required"
+        );
     }
 
     #[test]
     fn rejection_falls_back_to_the_status_when_the_body_is_not_our_envelope() {
-        let event = rejection_event(502, "<html>Bad Gateway</html>");
-        assert!(matches!(event, Event::LoadFailed(m) if m.contains("502")));
+        assert!(detail(502, "<html>Bad Gateway</html>").contains("502"));
+    }
+
+    #[test]
+    fn rejection_falls_back_to_the_status_when_the_error_key_is_not_a_string() {
+        assert!(detail(400, r#"{"error":{"code":42}}"#).contains("400"));
     }
 
     #[test]
     fn rejection_falls_back_to_the_status_when_there_is_no_body() {
-        let event = rejection_event(404, "");
-        assert!(matches!(event, Event::LoadFailed(m) if m.contains("404")));
+        assert!(detail(404, "").contains("404"));
     }
 
     #[test]
     fn rejection_falls_back_to_the_status_when_the_message_is_blank() {
-        let event = rejection_event(422, r#"{"error":"   "}"#);
-        assert!(matches!(event, Event::LoadFailed(m) if m.contains("422")));
+        assert!(detail(422, r#"{"error":"   "}"#).contains("422"));
+    }
+
+    #[test]
+    fn a_rejection_reaching_a_builder_carries_the_api_message_through() {
+        let event = json_response::<Vec<u8>>(
+            crux_http::testing::rejection(409, r#"{"error":"Already exists"}"#),
+            |_| panic!("on_body must not run on a rejection"),
+            "empty body",
+            "Failed to update set",
+        );
+        assert!(matches!(event, Event::LoadFailed(m)
+                if m == "Failed to update set: Already exists"));
     }
 }

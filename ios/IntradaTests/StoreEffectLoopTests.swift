@@ -1405,8 +1405,7 @@ final class StoreEffectLoopTests: XCTestCase {
       "the API's sentence must reach the banner, not the bare status")
   }
 
-  /// The fallback half of the pair above: a body that is not our envelope must
-  /// leave the status showing rather than blank the banner.
+  /// Guards the banner going blank rather than showing the status.
   func testRealBridgeFallsBackToTheStatusWhenARejectionIsNotOurEnvelope() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
