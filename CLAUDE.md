@@ -791,6 +791,10 @@ Discipline tightening after #719/#724, on top of the guidance above:
    subagent output), apply blockers / important findings inline, and defer the
    rest as tracked issues per (6). Tier 1 trivia (typos, dep bumps, single-line
    config tweaks) may skip `ship`'s review step but still run the gates.
+   **Small Tier 2** — one file, no bridge / DB / auth / migration surface — may
+   use `/review` in place of the subagent: the funnel still runs, the review
+   still happens, it just costs a turn instead of a subagent. Anything touching
+   the domain-sensitivity list, or spanning files, takes the full subagent.
 5. **Check Codecov after CI** (Tier 2+ only). Compare the patch-coverage
    comment against the **Coverage** line in the PR description. If there
    are unexpected gaps, push tests or explain in a PR comment. Don't
