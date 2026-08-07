@@ -112,6 +112,98 @@ struct BuiltSessionStoreTests {
     #expect(data.reflections.map(\.kind) == [.voiceNote, .sessionClose])
   }
 
+  // ── #1269: an unreadable value quarantines its row ──────────────────
+  //
+  // Phase B loads a built session, edits it and saves it back, so a row
+  // decoded *partially* would overwrite the only copy of the user's data with
+  // less than it had. The row stays on disk untouched instead.
+
+  private func storeSeeded(_ seed: String) throws -> LibraryStore {
+    try LibraryStore.upgradeTestStore(migratedTo: "v11_built_session", seed: seed)
+  }
+
+  @Test func aSessionWithAnUnknownBlockKindIsLeftOutWholeRatherThanPartial() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO built_session (id, source, blocks, created_at, updated_at, deleted_at)
+      VALUES ('01BUILT0000000000000000001', 'From Friday''s lesson',
+        '[{"id":"b1","targetKind":"node","targetValue":"shell-voicings","minutes":5},
+          {"id":"b2","targetKind":"from_the_future","targetValue":"x","minutes":5}]',
+        '2026-08-07T10:00:00Z', '2026-08-07T10:00:00Z', NULL);
+      """)
+    let data = try store.loadBuiltSessionData()
+    #expect(
+      data.builtSessions.isEmpty,
+      "a session missing a block is the wrong session, not a smaller one")
+  }
+
+  @Test func quarantineIsPerRowNotPerLoad() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO built_session (id, source, blocks, created_at, updated_at, deleted_at)
+      VALUES ('01BUILT0000000000000000001', NULL,
+        '[{"id":"b1","targetKind":"from_the_future","targetValue":"x","minutes":5}]',
+        '2026-08-07T10:00:00Z', '2026-08-07T10:00:00Z', NULL);
+      INSERT INTO built_session (id, source, blocks, created_at, updated_at, deleted_at)
+      VALUES ('01BUILT0000000000000000002', NULL,
+        '[{"id":"b1","targetKind":"journal","targetValue":"j1","minutes":5}]',
+        '2026-08-07T11:00:00Z', '2026-08-07T11:00:00Z', NULL);
+      INSERT INTO journal_item (id, name, notes, linked_item_id, created_at, updated_at, deleted_at)
+      VALUES ('j1', 'Rubato feel', NULL, NULL,
+        '2026-08-07T10:00:00Z', '2026-08-07T10:00:00Z', NULL);
+      """)
+    let data = try store.loadBuiltSessionData()
+    #expect(data.builtSessions.map(\.id) == ["01BUILT0000000000000000002"])
+    #expect(data.journalItems.count == 1, "one bad row must not cost the whole library")
+  }
+
+  @Test func theQuarantinedRowIsStillOnDiskForANewerBinary() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO built_session (id, source, blocks, created_at, updated_at, deleted_at)
+      VALUES ('01BUILT0000000000000000001', NULL,
+        '[{"id":"b1","targetKind":"from_the_future","targetValue":"x","minutes":5}]',
+        '2026-08-07T10:00:00Z', '2026-08-07T10:00:00Z', NULL);
+      """)
+    _ = try store.loadBuiltSessionData()
+    #expect(
+      try store.rawBuiltSessionBlocks(id: "01BUILT0000000000000000001")?.contains(
+        "from_the_future") == true,
+      "reading must never rewrite: the block is intact for the binary that understands it")
+  }
+
+  @Test func anUnknownReflectionKindQuarantinesItsRowRatherThanDefaulting() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO reflection (id, kind, session_ref, transcript, audio_path, duration_s,
+        at, updated_at, deleted_at)
+      VALUES ('r1', 'from_the_future', NULL, 'The bridge still rushes', NULL, NULL,
+        '2026-08-07T10:30:00Z', '2026-08-07T10:30:00Z', NULL);
+      """)
+    #expect(try store.loadBuiltSessionData().reflections.isEmpty)
+  }
+
+  @Test func anUnknownFeelQuarantinesItsRowRatherThanDefaulting() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO feel_entry (id, block_id, feel, at, updated_at, deleted_at)
+      VALUES ('f1', 'b1', 'from_the_future',
+        '2026-08-07T10:15:00Z', '2026-08-07T10:15:00Z', NULL);
+      """)
+    #expect(try store.loadBuiltSessionData().feelEntries.isEmpty)
+  }
+
+  @Test func anUnknownServesKindQuarantinesItsDrillRatherThanDroppingTheTag() throws {
+    let store = try storeSeeded(
+      """
+      INSERT INTO user_drill (id, name, criterion, tempo_bpm, keys, passes_to_open,
+        serves_kind, serves_value, created_at, updated_at, deleted_at)
+      VALUES ('d1', 'Descending run', 'Three clean passes at 72', 72, '[]', 3,
+        'from_the_future', 'x', '2026-08-07T10:00:00Z', '2026-08-07T10:00:00Z', NULL);
+      """)
+    #expect(try store.loadBuiltSessionData().userDrills.isEmpty)
+  }
+
   @Test func feelEntryRoundTripsForEveryFeel() throws {
     let store = try LibraryStore.inMemory()
     let feels: [(String, Feel)] = [("f1", .foughtIt), ("f2", .gettingThere), ("f3", .itSang)]

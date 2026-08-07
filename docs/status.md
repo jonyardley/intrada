@@ -24,7 +24,15 @@ countable criteria.
   core scaffold: entities (`UserDrill`, `JournalItem`, `BuiltSession`,
   `PlayThroughRecord`, `Reflection`, `FeelEntry`), `BuiltSessionEvent`
   handlers (local-first only), GRDB v11 with an upgrade-path test, and
-  real-bridge round-trips. Next: Phase B, Journey A end-to-end
+  real-bridge round-trips.
+  **Phase B landed Journey A end-to-end**: the steer line under the intact
+  hero, the compose sheet, decision 19's three-way resolution (proposed node
+  match / user drill from one dictated sentence / journal), the composed
+  session with declinable shape advice, and the canonical drill loop running a
+  user drill with its evidence on its own node. `BlockOrigin` on the spec *and*
+  the record enforces decision 17 on the live path and the launch replay
+  (GRDB v12); #1269 is closed by the row-quarantine rule. Next: Phase C,
+  Journey B's three altitudes
 
 ## Recently landed
 

@@ -73,24 +73,24 @@ struct DrillScreen: View {
     case .playing, .countIn:
       VStack(spacing: IntradaSpacing.cardCompact) {
         if showsIdentityDetail {
-          TypeBadge(kind: state.kind, label: "Drill")
+          TypeBadge(kind: state.kind, label: kindLabel)
         }
         Text(state.drillTitle)
           .font(IntradaFont.drillTitle(scale.drillTitle))
           .foregroundStyle(IntradaColor.ink)
           .multilineTextAlignment(.center)
-        if let serves, showsIdentityDetail {
-          Label(serves, systemImage: "arrow.turn.down.right")
+        if let orientation, showsIdentityDetail {
+          Label(orientation, systemImage: "arrow.turn.down.right")
             .font(IntradaFont.ambient(scale == .compact ? 12 : 17))
             .foregroundStyle(IntradaColor.exerciseBadgeFg)
-            .accessibilityLabel(spoken(serves))
+            .accessibilityLabel(spoken(orientation))
         }
       }
       .padding(.top, IntradaSpacing.section)
     case .awaitingVerdict:
       VStack(spacing: IntradaSpacing.cardCompact) {
         if showsIdentityDetail {
-          TypeBadge(kind: state.kind, label: "Drill")
+          TypeBadge(kind: state.kind, label: kindLabel)
         }
         Text(subtitleLine)
           .font(IntradaFont.ambient(scale == .compact ? 14 : 20))
@@ -111,9 +111,20 @@ struct DrillScreen: View {
     line.replacingOccurrences(of: " · ", with: ", ")
   }
 
-  private var serves: String? {
+  private var orientation: String? {
     let parts = [state.section, state.destination].compactMap { $0 }
     return parts.isEmpty ? nil : parts.joined(separator: " · ")
+  }
+
+  /// What this block *is*, in the player's words (#1256, A7). "Your drill" is
+  /// the only mark distinguishing a user node — same weight, same dots, no
+  /// second-class styling.
+  private var kindLabel: String {
+    switch state.origin {
+    case .userDrill: "Your drill"
+    case .judgement: state.kind == .piece ? "Play it" : "Journal"
+    case .authored: "Drill"
+    }
   }
 
   /// On A3 the criterion is the headline, so the identity drops to one quiet
@@ -160,6 +171,7 @@ struct DrillScreen: View {
         GateDots(
           filled: Int(state.gateFilled), target: Int(state.gateTarget),
           caption: state.gateSummary)
+        servesLine
       }
     }
   }
@@ -180,6 +192,8 @@ struct DrillScreen: View {
   private var blockEntryCard: some View {
     VStack(spacing: IntradaSpacing.cardCompact) {
       if showsIdentityDetail {
+        // "Up next" is a position, not a kind: the entry card is about what is
+        // coming, and the kind chip does its own work once play starts.
         TypeBadge(kind: state.kind, label: "Up next")
       }
       Text(state.drillTitle)
@@ -199,6 +213,20 @@ struct DrillScreen: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(.top, IntradaSpacing.controlGap)
         .accessibilityLabel(spoken(state.why))
+      servesLine
+    }
+  }
+
+  /// Where this drill's evidence shows in the ability picture (A7). The core's
+  /// sentence; the shell renders it and never composes one.
+  @ViewBuilder private var servesLine: some View {
+    if let serves = state.serves, showsIdentityDetail {
+      Label(serves, systemImage: "arrow.turn.down.right")
+        .font(IntradaFont.ambient(scale == .compact ? 13 : 17))
+        .foregroundStyle(IntradaColor.inkSecondary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityLabel(spoken(serves))
     }
   }
 
@@ -352,7 +380,8 @@ private struct CountIn: View {
     /// core's `CoachView`.
     static func preview(
       phase: DrillPhase = .playing, gateFilled: UInt8 = 2, elapsedSeconds: UInt32 = 724,
-      tempoBpm: UInt16? = 120, clickLevel: String = "beats 2 & 4"
+      tempoBpm: UInt16? = 120, clickLevel: String = "beats 2 & 4",
+      origin: BlockOrigin = .authored, serves: String? = nil
     ) -> DrillView {
       DrillView(
         phase: phase,
@@ -372,7 +401,8 @@ private struct CountIn: View {
         blockKinds: [.piece, .exercise, .exercise, .piece, .piece], blockIndex: 1,
         gateQuestion: "Clean at 120?",
         gateSummary: "3 clean at 120",
-        gateFilled: gateFilled, gateTarget: 3)
+        gateFilled: gateFilled, gateTarget: 3,
+        origin: origin, serves: serves)
     }
   }
 

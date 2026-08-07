@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::content::ContentIndex;
 use super::gate::{EvidenceSource, GateProgress, Verdict};
-use super::plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
+use super::plan::{BlockOrigin, BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
 
 /// What the shell tells the engine. The whole write half of the bridge surface
 /// for the tap-verdict loop (spec §6, as scoped) — the shell reports clicks,
@@ -237,6 +237,11 @@ pub struct BlockRecord {
     pub active_ms: u64,
     pub escalation_fired: Vec<Rung>,
     pub exit: Exit,
+    /// Whose block this was (#1256). Carried onto the record because the
+    /// mastery track is rebuilt from records at launch: a decision-17 rule the
+    /// live path enforces and the replay does not is not a rule.
+    #[serde(default)]
+    pub origin: BlockOrigin,
 }
 
 /// A wander has no node, drill, gate or level, so it gets its own type rather
@@ -812,7 +817,12 @@ impl EngineSession {
 
     fn tap(&mut self, clean: bool, now: DateTime<Utc>) -> Option<ScoredAttempt> {
         let trigger = self.config.consecutive_fail_trigger;
-        let node = self.spec()?.node.clone();
+        let spec = self.spec()?;
+        let node = spec.node.clone();
+        // Decision 17: a judgement-track block logs its time and its tap, and
+        // hands the mastery store nothing. Refused here rather than at the
+        // store, so no caller can forget.
+        let feeds_mastery = spec.origin.feeds_mastery();
         let block = self.block_mut()?;
         // At l0 the tap is what bounds the attempt (decision 20), so it is
         // taken from the pass in flight rather than from an open window.
@@ -844,12 +854,12 @@ impl EngineSession {
             self_predicted: None,
             level: block.level,
         });
-        let scored = ScoredAttempt {
+        let scored = feeds_mastery.then_some(ScoredAttempt {
             node,
             level: block.level,
             verdict,
             at: now,
-        };
+        });
         if block.gate_opened_at_attempt.is_some() {
             block.reps_after_gate += 1;
         }
@@ -862,7 +872,7 @@ impl EngineSession {
         block.last_verdict = Some(verdict);
 
         self.resolve_tap(trigger);
-        Some(scored)
+        scored
     }
 
     /// The spec's three `Verdict | … |` rows, in one place.
@@ -1159,6 +1169,7 @@ impl EngineSession {
             active_ms: block.active_ms(),
             escalation_fired: block.escalation_fired.clone(),
             exit,
+            origin: spec.origin,
         });
 
         let next = block.spec_index + 1;

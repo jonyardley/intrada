@@ -27,6 +27,10 @@ MAX_BYTES="${SNAPSHOT_MAX_BYTES:-200000}"
 # faces over the same playerPaper radial as the siblings above.
 # Added #1260: testDrillScreenDuringPlayUntimed and testDrillScreenBlockEntryUntimed
 # — the l0 (no-click) faces of the same two drill screens, same radial.
+# Added #1256: the three resolution faces are the same playerPaper radial again,
+# and testComposedSession carries the practice hero's indigo gradient. Cropping
+# was tried and bought ~14% (243KB -> 208KB), which is the note above restated:
+# the gradient is the bill, not the pixel count.
 LARGE_MAX_BYTES="${SNAPSHOT_LARGE_MAX_BYTES:-300000}"
 is_large() {
   case "$1" in
@@ -38,7 +42,9 @@ is_large() {
       testDrillScreenBlockEntry | testDrillScreenTapVerdictAccessibilitySize | \
       testDrillScreenCountIn | testDrillScreenTapVerdict | \
       testDrillScreenMissAcknowledged | testDrillScreenGateOpen | \
-      testDrillScreenDuringPlayUntimed | testDrillScreenBlockEntryUntimed) return 0 ;;
+      testDrillScreenDuringPlayUntimed | testDrillScreenBlockEntryUntimed | \
+      testResolutionNodeMatch | testResolutionUserDrill | \
+      testResolutionUserDrillLargeText | testComposedSession) return 0 ;;
     *) return 1 ;;
   esac
 }

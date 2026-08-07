@@ -6,12 +6,13 @@
 //! Everything the drill screen draws comes from this module, so counting,
 //! gating and what-comes-next stay in Rust.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use super::content::ContentIndex;
 use super::gate::{Requirement, Verdict};
 use super::mastery::MasteryStore;
-use super::plan::{plan, ParameterLevel, Plan, PlanContext};
+use super::plan::{plan, BlockOrigin, ParameterLevel, Plan, PlanContext};
 use super::session::{
     BlockRecord, CoachEvent, CoachWrites, EngineSession, Exit, Phase, SessionState,
 };
@@ -51,6 +52,26 @@ impl CoachState {
         writes
     }
 
+    /// Run a plan the planner did not make: the built session (#1256). The
+    /// composition is the user's, so `CoachState` cannot work it out — but the
+    /// session machine must still be the one that runs it, or a steer would be
+    /// a second drill loop.
+    pub fn adopt_plan(&mut self, plan: Plan, now: DateTime<Utc>) -> CoachWrites {
+        if !matches!(
+            self.session.state,
+            SessionState::Idle | SessionState::Planned { .. }
+        ) {
+            // A session already running is not something a steer may replace:
+            // the blocks in flight have evidence riding on them.
+            return CoachWrites::default();
+        }
+        // Clearing to `Idle` is what makes the machine take the plan it is
+        // handed rather than the prescribed one it made for itself.
+        self.session.state = SessionState::Idle;
+        self.session
+            .apply_with_plan(&CoachEvent::StartPlannedSession { now }, Some(plan))
+    }
+
     /// Rebuild the mastery track from the persisted evidence at launch (#1214):
     /// the same one-way replay as the live path in [`Self::apply`]. Replaces
     /// rather than adds, like every other load handler, so a repeated load can
@@ -59,6 +80,12 @@ impl CoachState {
         self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
         let mut replay = Vec::new();
         for record in &records {
+            // Decision 17, on the replay path too: a judgement-track block's
+            // taps were never evidence, so they must not become evidence at
+            // launch (the #1214 class of bug, one rule along).
+            if !record.origin.feeds_mastery() {
+                continue;
+            }
             for attempt in &record.attempts {
                 replay.push((
                     attempt.at,
@@ -216,10 +243,20 @@ impl CoachState {
                 .map(|block| block.spec.kind.clone())
                 .collect(),
             block_index: block.spec_index,
-            gate_question: gate_question(&spec.gate.requirement, tempo_bpm),
-            gate_summary: gate_summary(&spec.gate.requirement, tempo_bpm),
+            // A judgement-track block counts nothing, so it asks nothing a
+            // count could answer: "you decide when it's done" (A5).
+            gate_question: match spec.origin {
+                BlockOrigin::Judgement => "Done for now?".to_string(),
+                _ => gate_question(&spec.gate.requirement, tempo_bpm),
+            },
+            gate_summary: match spec.origin {
+                BlockOrigin::Judgement => "your call".to_string(),
+                _ => gate_summary(&spec.gate.requirement, tempo_bpm),
+            },
             gate_filled: block.gate_progress.filled(),
             gate_target: block.gate_progress.target(),
+            origin: spec.origin,
+            serves: spec.serves.clone(),
         })
     }
 }
@@ -380,6 +417,12 @@ pub struct DrillView {
     pub gate_summary: String,
     pub gate_filled: u8,
     pub gate_target: u8,
+    /// Whose block this is (#1256): what the boundary card's kind chip says,
+    /// and whether the taps count for anything beyond the time.
+    pub origin: BlockOrigin,
+    /// Where a user drill's evidence shows in the ability picture, in the
+    /// player's words (A7). `None` where the drill claims nothing.
+    pub serves: Option<String>,
 }
 
 #[cfg(test)]
@@ -1012,7 +1055,7 @@ mod tests {
 
     fn closed_block(id: &str, verdicts: &[(bool, i64)], exit: Exit) -> BlockRecord {
         use crate::engine::gate::EvidenceSource;
-        use crate::engine::plan::{Circle, Mode};
+        use crate::engine::plan::{BlockOrigin, Circle, Mode};
         use crate::engine::session::AttemptSummary;
         BlockRecord {
             id: id.to_string(),
@@ -1045,6 +1088,7 @@ mod tests {
             active_ms: 0,
             escalation_fired: vec![],
             exit,
+            origin: BlockOrigin::Authored,
         }
     }
 

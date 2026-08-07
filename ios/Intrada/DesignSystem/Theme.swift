@@ -31,6 +31,12 @@ enum IntradaColor {
   static let exerciseAccent = Color(hex: 0x9E7B33)
   static let exerciseBadgeBg = Color(hex: 0xF0E5CC)
   static let exerciseBadgeFg = Color(hex: 0x8A6A2E)
+  // The judgement track's kind, beside piece and exercise (#1256, A2). Neutral
+  // on purpose: a journal target counts nothing, and a kind colour of its own
+  // would claim it does.
+  static let journalAccent = Color(hex: 0xC9C0AC)
+  static let journalBadgeBg = Color(hex: 0xF0E7D6)
+  static let journalBadgeFg = Color(hex: 0x6E6557)
 
   // ── Engaging-refresh tokens ──
   /// Mastery gains, clean reps, trending-up. Reserved from `danger` (destructive).

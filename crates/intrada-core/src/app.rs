@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::compute_analytics;
 use crate::domain::account::{handle_account_event, AccountEvent};
+use crate::domain::built_session::compose::{compose_view, composed_session_view, BuiltView};
 use crate::domain::built_session::{handle_built_session_event, BuiltSessionEvent};
 use crate::domain::item::{handle_item_event, Item, ItemEvent, ItemKind};
 use crate::domain::mcp_audit::{handle_mcp_audit_event, McpAuditEvent};
@@ -192,6 +193,47 @@ impl App for Intrada {
     }
 }
 
+/// What one applied coach event leaves for the shell: the evidence batch and
+/// the crash-recovery blob. Shared, because a built session enters the same
+/// state machine by a different door (#1256) and its writes must not go
+/// missing on the way.
+pub(crate) fn coach_write_commands(
+    model: &mut Model,
+    writes: crate::engine::CoachWrites,
+) -> Vec<Command<Effect, Event>> {
+    let mut commands = Vec::new();
+    // Append-only rows, so `updated_at` is the instant the record closed on the
+    // engine's own clock — the shell never formats a timestamp of its own (the
+    // `saveSession` convention).
+    let recorded_at = writes
+        .blocks
+        .last()
+        .map(|record| record.ended_at)
+        .or_else(|| writes.wanders.last().map(|record| record.ended_at));
+    if let Some(recorded_at) = recorded_at {
+        let batch = PersistenceOperation::SaveCoachRecords {
+            blocks: writes.blocks,
+            wanders: writes.wanders,
+            updated_at: recorded_at,
+        };
+        model.coach_write_in_flight = Some(batch.clone());
+        commands.push(persistence::save_coach_records(batch));
+    }
+    match writes.snapshot {
+        SnapshotAction::Save => commands.push(
+            Command::notify_shell(AppEffect::SaveCoachSessionInProgress(
+                model.coach.session.clone(),
+            ))
+            .into(),
+        ),
+        SnapshotAction::Clear => {
+            commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
+        }
+        SnapshotAction::Unchanged => {}
+    }
+    commands
+}
+
 impl Intrada {
     fn handle_event(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
         match event {
@@ -267,35 +309,7 @@ impl Intrada {
                 }
                 let before = model.coach.view();
                 let writes = model.coach.apply(&coach_event);
-                let mut commands = Vec::new();
-                // Append-only rows, so `updated_at` is the instant the record
-                // closed on the engine's own clock — the shell never formats a
-                // timestamp of its own (the `saveSession` convention).
-                let recorded_at = writes
-                    .blocks
-                    .last()
-                    .map(|record| record.ended_at)
-                    .or_else(|| writes.wanders.last().map(|record| record.ended_at));
-                if let Some(recorded_at) = recorded_at {
-                    let batch = PersistenceOperation::SaveCoachRecords {
-                        blocks: writes.blocks,
-                        wanders: writes.wanders,
-                        updated_at: recorded_at,
-                    };
-                    model.coach_write_in_flight = Some(batch.clone());
-                    commands.push(persistence::save_coach_records(batch));
-                }
-                match writes.snapshot {
-                    SnapshotAction::Save => commands.push(
-                        Command::notify_shell(AppEffect::SaveCoachSessionInProgress(
-                            model.coach.session.clone(),
-                        ))
-                        .into(),
-                    ),
-                    SnapshotAction::Clear => commands
-                        .push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into()),
-                    SnapshotAction::Unchanged => {}
-                }
+                let mut commands = coach_write_commands(model, writes);
                 // Render coalescing (engine spec §6) again: an event the machine
                 // ignored changes nothing, but a write it asked for still goes.
                 if model.coach.view() != before || model.last_error.is_some() {
@@ -822,7 +836,23 @@ impl Intrada {
             oauth_redirect_url: model.oauth_redirect_url.clone(),
             last_set_save_request_id: model.last_set_save_request_id.clone(),
             coach: model.coach.view(),
+            built: built_view(model),
         }
+    }
+}
+
+/// The steer sheet and the composed session (#1256). Clock-free by
+/// construction: the only reading a question needs was snapshotted when the
+/// match was proposed.
+fn built_view(model: &Model) -> BuiltView {
+    BuiltView {
+        compose: model
+            .compose
+            .as_ref()
+            .map(|draft| compose_view(draft, &model.items)),
+        session: model
+            .today_built_session()
+            .map(|session| composed_session_view(session, &model.build_context())),
     }
 }
 

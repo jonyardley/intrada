@@ -1,6 +1,6 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase A landed (core scaffold, no UI) · **Issue**: #1256 · **Tier**: 3
+**Status**: Phase B landed (Journey A end-to-end) · **Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
 `design/briefs/2026-08-copy-language.md` (voice, graduated as T13)
@@ -93,11 +93,16 @@ system together; no hand-rolled clones.
 
 ### Phasing
 
-- **A (this branch)**: spec + design assets + core scaffold: entity types,
+- **A (landed)**: spec + design assets + core scaffold: entity types,
   events, model fields, migrations, bridge round-trip tests for every new
   payload (build precondition, #846), no UI.
-- **B**: Journey A end-to-end (steer line, sheet, resolution, composed
-  session, drill-loop integration, evidence landing).
+- **B (landed)**: Journey A end-to-end (steer line, sheet, resolution,
+  composed session, drill-loop integration, evidence landing). A composed
+  session becomes an ordinary `Plan` and runs the canonical drill loop; what
+  differs per block is only what its taps may mean, which is `BlockOrigin`'s
+  job. A user drill's rung comes from its own sentence — a tempo gives a
+  clicked rung, no tempo gives l0 — and its gate is the parsed passes (or key
+  coverage, where the sentence named keys).
 - **C**: Journey B (B0 sheet, run-through with section gates, off-piste,
   unmonitored; AltitudeChip).
 - **D**: Journey C (feel moments, reflection at close, morning proposal).
@@ -115,12 +120,27 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
 4. Tap bounds the l0 attempt (#1244 ruling); B0 headline stays "how should it
    count?" (#1256 comment; record in the design file when next open).
 5. Voice is T13; serif is reserved for the user's own words.
+6. **An unreadable stored value quarantines its row** (#1269, settled in
+   Phase B): reported, left out of the load, and left untouched on disk. The
+   two options the issue offered were preserve-verbatim and fail-the-decode;
+   this is the second, scoped to the row rather than the whole load. A session
+   decoded *partially* — a dropped block, a defaulted enum — would be saved
+   back over the only copy of the user's data with less than it had, and a row
+   the model never holds is a row no write can reach. One bad row costs that
+   row, not the library, and a newer binary still reads it whole.
+7. **Judgement-track blocks are enforced by `BlockOrigin`, not by convention.**
+   It rides the spec *and* the record, because the mastery track is rebuilt
+   from records at launch: a decision-17 rule the live path enforces and the
+   replay does not is not a rule (the #1214 class).
 
 ## Open questions
 
 1. How much pipeline does v1 need? B1's note argues: a piece + named section
    gates only, degrading gracefully to off-piste + piece tag when sections
-   aren't authored. Resolve when Phase C is planned.
+   aren't authored. Resolve when Phase C is planned. **Phase B's interim**: a
+   piece block in a composed session runs on the judgement track — time is
+   logged, one tap says when it is done, nothing is inferred. Nothing can
+   count a whole piece yet, so nothing claims to.
 2. ~~Audio storage/retention for voice notes and reflections.~~ **Settled in
    the Phase A schema review**: `reflection` carries `audio_path` (a
    shell-relative path) and `duration_s`; the bytes are the shell's, the core

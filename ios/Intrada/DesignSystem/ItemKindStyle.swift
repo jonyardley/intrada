@@ -33,3 +33,51 @@ extension ItemKind {
     }
   }
 }
+
+/// The same type-language, extended to the compose sheet's third kind
+/// (#1256, A2). `unresolved` wears no kind at all — a row that still owes a
+/// question must not be tinted as though it were already something.
+extension ComposeKind {
+  var accent: Color {
+    switch self {
+    case .piece: IntradaColor.accent
+    case .exercise: IntradaColor.exerciseAccent
+    case .journal: IntradaColor.journalAccent
+    case .unresolved: IntradaColor.inkFainter
+    }
+  }
+
+  var iconName: String {
+    switch self {
+    case .piece: "music.note"
+    case .exercise: "dumbbell.fill"
+    case .journal: "note.text"
+    case .unresolved: "questionmark.circle"
+    }
+  }
+
+  var label: String {
+    switch self {
+    case .piece: "Piece"
+    case .exercise: "Exercise"
+    case .journal: "Journal"
+    case .unresolved: "Needs a moment"
+    }
+  }
+
+  var badgeBackground: Color {
+    switch self {
+    case .piece: IntradaColor.pieceBadgeBg
+    case .exercise: IntradaColor.exerciseBadgeBg
+    case .journal, .unresolved: IntradaColor.journalBadgeBg
+    }
+  }
+
+  var badgeForeground: Color {
+    switch self {
+    case .piece: IntradaColor.pieceBadgeFg
+    case .exercise: IntradaColor.exerciseBadgeFg
+    case .journal, .unresolved: IntradaColor.journalBadgeFg
+    }
+  }
+}

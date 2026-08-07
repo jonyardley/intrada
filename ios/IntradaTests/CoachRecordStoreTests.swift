@@ -34,7 +34,8 @@ struct CoachRecordStoreTests {
   private func block(
     _ id: String = "b1", attempts: [AttemptSummary] = [], escalations: [Rung] = [],
     exit: Exit = .gatePassed, attemptsToPass: UInt16? = 3, gateOpenedAtAttempt: UInt16? = 3,
-    repsAfterGate: UInt16 = 0, activeMs: UInt64 = 30_000
+    repsAfterGate: UInt16 = 0, activeMs: UInt64 = 30_000,
+    origin: BlockOrigin = .authored
   ) -> BlockRecord {
     BlockRecord(
       id: id, node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
@@ -43,7 +44,7 @@ struct CoachRecordStoreTests {
       startedAt: "2026-08-04T10:00:00Z", endedAt: Self.updatedAt,
       attempts: attempts, attemptsToPass: attemptsToPass,
       gateOpenedAtAttempt: gateOpenedAtAttempt, repsAfterGate: repsAfterGate,
-      activeMs: activeMs, escalationFired: escalations, exit: exit)
+      activeMs: activeMs, escalationFired: escalations, exit: exit, origin: origin)
   }
 
   private func wander(

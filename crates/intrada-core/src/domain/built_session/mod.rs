@@ -1,6 +1,18 @@
 //! Self-directed practice — the built session, play-through altitudes and
-//! qualitative capture (#1256, `specs/built-session.md`). Entities only in
-//! Phase A; the compose/resolution flows arrive with their screens.
+//! qualitative capture (#1256, `specs/built-session.md`).
+//!
+//! - [`compose`] is the steer sheet and decision 19's three-way resolution.
+//! - [`criterion`] reads a dictated sentence back as gate parameters.
+//! - [`blocks`] turns a composed session into a plan the drill loop runs.
+//!
+//! Journey B's altitudes (Phase C) and Journey C's capture (Phase D) still have
+//! only their entities here.
+
+pub mod blocks;
+pub mod compose;
+pub mod criterion;
+#[cfg(test)]
+pub(crate) mod tests_support;
 
 use chrono::{DateTime, Utc};
 use crux_core::command::Command;
@@ -11,6 +23,9 @@ use crate::engine::Circle;
 use crate::model::Model;
 use crate::persistence;
 use crate::validation;
+
+use compose::{ComposeDraft, ComposeEntry, Question, Resolution, ResolutionKind};
+use criterion::parse_criterion;
 
 /// Decision 19b: a countable target with no authored node. The dictated
 /// sentence *is* the gate; the parsed parameters are read back, never asked
@@ -239,6 +254,57 @@ pub enum BuiltSessionEvent {
         block_id: String,
         feel: Feel,
     },
+
+    // ── The steer sheet (Journey A) ──────────────────────────────────
+    /// Open the sheet (A2). Idempotent: reopening keeps the list, because a
+    /// steer the user is halfway through writing is not a mistake.
+    OpenCompose,
+    /// Dismiss it. "Declining costs nothing and the hero is untouched."
+    CancelCompose,
+    /// One typed or dictated name. `picked_item_id` is set when the user tapped
+    /// a library suggestion rather than typing free text — the shell reports
+    /// which row was tapped and decides nothing.
+    AddComposeEntry {
+        text: String,
+        picked_item_id: Option<String>,
+    },
+    RemoveComposeEntry {
+        entry_id: String,
+    },
+    /// A3's "Yes — same drill".
+    ConfirmNodeMatch {
+        entry_id: String,
+    },
+    /// A3's "No, it's different" and A4's two exits: one surface, two ways out,
+    /// so a misjudged kind costs one tap either way.
+    ChooseResolutionKind {
+        entry_id: String,
+        kind: ResolutionKind,
+    },
+    /// A4 — the criterion sentence is the gate.
+    ResolveAsUserDrill {
+        entry_id: String,
+        criterion: String,
+        serves: Option<Serves>,
+    },
+    /// A5 — the judgement track.
+    ResolveAsJournal {
+        entry_id: String,
+        notes: Option<String>,
+        linked_item_id: Option<String>,
+    },
+    /// Compose it (A6). Refused while any question is open: the price was
+    /// stated, so it has to have been paid.
+    BuildSession {
+        source: Option<String>,
+    },
+    /// A6's declinable advice, accepted. Declining is simply not sending it.
+    UseSuggestedShape,
+    /// Start the composed session in the canonical drill loop (A6 → A7).
+    StartBuiltSession {
+        session_id: String,
+        now: DateTime<Utc>,
+    },
 }
 
 // ── Handlers ─────────────────────────────────────────────────────────
@@ -390,6 +456,224 @@ pub fn handle_built_session_event(
             };
             model.feel_entries.push(entry.clone());
             save_and_render(persistence::save_feel_entry(entry))
+        }
+
+        // ── The steer sheet ──────────────────────────────────────────
+        BuiltSessionEvent::OpenCompose => {
+            model.compose.get_or_insert_with(ComposeDraft::default);
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::CancelCompose => {
+            model.compose = None;
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::AddComposeEntry {
+            text,
+            picked_item_id,
+        } => {
+            let name = text.trim().to_string();
+            if name.is_empty() {
+                model.surface_error("Give it a name and it can go in today's list.");
+                return crux_core::render::render();
+            }
+            let resolution = compose::resolve(
+                &name,
+                picked_item_id.as_deref(),
+                &model.resolution_context(now),
+            );
+            let draft = model.compose.get_or_insert_with(ComposeDraft::default);
+            // Adding the same thing twice is a slip, not a second block.
+            if draft.entries.iter().any(|entry| {
+                entry.resolution == resolution && matches!(resolution, Resolution::Settled(_))
+            }) {
+                return crux_core::render::render();
+            }
+            draft.entries.push(ComposeEntry {
+                id: mint_id(),
+                name,
+                resolution,
+            });
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::RemoveComposeEntry { entry_id } => {
+            if let Some(draft) = model.compose.as_mut() {
+                draft.entries.retain(|entry| entry.id != entry_id);
+            }
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::ConfirmNodeMatch { entry_id } => {
+            let Some(draft) = model.compose.as_mut() else {
+                return crux_core::render::render();
+            };
+            if let Some(entry) = draft.entry_mut(&entry_id) {
+                if let Some(Question::NodeMatch { node, .. }) = entry.question() {
+                    entry.resolution =
+                        Resolution::Settled(BuiltTarget::Node { node: node.clone() });
+                }
+            }
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::ChooseResolutionKind { entry_id, kind } => {
+            let Some(draft) = model.compose.as_mut() else {
+                return crux_core::render::render();
+            };
+            if let Some(entry) = draft.entry_mut(&entry_id) {
+                // Only an open question changes kind: a settled entry is a
+                // block, and re-asking it would un-pay a paid resolution.
+                if entry.question().is_some() {
+                    entry.resolution = Resolution::Asking(match kind {
+                        ResolutionKind::UserDrill => Question::UserDrill,
+                        ResolutionKind::Journal => Question::Journal,
+                    });
+                }
+            }
+            crux_core::render::render()
+        }
+        BuiltSessionEvent::ResolveAsUserDrill {
+            entry_id,
+            criterion,
+            serves,
+        } => {
+            let Some(name) = model.compose_entry_name(&entry_id) else {
+                return crux_core::render::render();
+            };
+            let parsed = parse_criterion(&criterion);
+            let input = validation::normalize_create_user_drill(CreateUserDrill {
+                name,
+                criterion,
+                tempo_bpm: parsed.tempo_bpm,
+                keys: parsed.keys,
+                passes_to_open: parsed.passes_to_open,
+                serves,
+            });
+            if let Err(e) = validation::validate_create_user_drill(&input) {
+                model.surface_error(e.to_string());
+                return crux_core::render::render();
+            }
+            let drill = UserDrill {
+                id: mint_id(),
+                name: input.name,
+                criterion: input.criterion,
+                tempo_bpm: input.tempo_bpm,
+                keys: input.keys,
+                passes_to_open: input.passes_to_open,
+                serves: input.serves,
+                created_at: now,
+                updated_at: now,
+                deleted_at: None,
+            };
+            model.settle_compose_entry(
+                &entry_id,
+                BuiltTarget::UserDrill {
+                    drill_id: drill.id.clone(),
+                },
+            );
+            model.user_drills.push(drill.clone());
+            save_and_render(persistence::save_user_drill(drill))
+        }
+        BuiltSessionEvent::ResolveAsJournal {
+            entry_id,
+            notes,
+            linked_item_id,
+        } => {
+            let Some(name) = model.compose_entry_name(&entry_id) else {
+                return crux_core::render::render();
+            };
+            let input = validation::normalize_create_journal_item(CreateJournalItem {
+                name,
+                notes,
+                linked_item_id,
+            });
+            if let Err(e) = validation::validate_create_journal_item(&input) {
+                model.surface_error(e.to_string());
+                return crux_core::render::render();
+            }
+            let journal = JournalItem {
+                id: mint_id(),
+                name: input.name,
+                notes: input.notes,
+                linked_item_id: input.linked_item_id,
+                created_at: now,
+                updated_at: now,
+                deleted_at: None,
+            };
+            model.settle_compose_entry(
+                &entry_id,
+                BuiltTarget::Journal {
+                    journal_id: journal.id.clone(),
+                },
+            );
+            model.journal_items.push(journal.clone());
+            save_and_render(persistence::save_journal_item(journal))
+        }
+        BuiltSessionEvent::BuildSession { source } => {
+            let Some(draft) = model.compose.as_ref() else {
+                return crux_core::render::render();
+            };
+            if draft.entries.is_empty() {
+                model.surface_error("Add something to practise first.");
+                return crux_core::render::render();
+            }
+            if draft.open_questions() > 0 {
+                model.surface_error("A couple of questions left before this can be built.");
+                return crux_core::render::render();
+            }
+            let blocks = draft
+                .entries
+                .iter()
+                .filter_map(|entry| match &entry.resolution {
+                    Resolution::Settled(target) => Some(BuiltBlock {
+                        id: mint_id(),
+                        target: target.clone(),
+                        minutes: None,
+                    }),
+                    Resolution::Asking(_) => None,
+                })
+                .collect();
+            let session = BuiltSession {
+                id: mint_id(),
+                source: source
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty()),
+                blocks,
+                created_at: now,
+                updated_at: now,
+                deleted_at: None,
+            };
+            model.compose = None;
+            model.built_session_today = Some(session.id.clone());
+            model.built_sessions.push(session.clone());
+            save_and_render(persistence::save_built_session(session))
+        }
+        BuiltSessionEvent::UseSuggestedShape => {
+            let Some(session) = model.built_session_today_mut() else {
+                return crux_core::render::render();
+            };
+            session.blocks = blocks::suggested_shape(&session.blocks);
+            session.updated_at = now;
+            let session = session.clone();
+            save_and_render(persistence::save_built_session(session))
+        }
+        BuiltSessionEvent::StartBuiltSession { session_id, now } => {
+            let Some(session) = model
+                .built_sessions
+                .iter()
+                .find(|session| session.id == session_id)
+                .cloned()
+            else {
+                model.surface_error("That session is no longer there.");
+                return crux_core::render::render();
+            };
+            let plan = blocks::plan_from_built(&session, &model.build_context());
+            if plan.blocks.is_empty() {
+                model.surface_error("Nothing in this session can run today.");
+                return crux_core::render::render();
+            }
+            model.built_session_today = Some(session_id);
+            let writes = model.coach.adopt_plan(plan, now);
+            let mut commands = crate::app::coach_write_commands(model, writes);
+            commands.push(crux_core::render::render());
+            Command::all(commands)
         }
     }
 }
@@ -1018,6 +1302,498 @@ mod tests {
         assert!(persistence_ops(&effects).is_empty());
     }
 
+    // ── The steer sheet, end to end (Journey A) ─────────────────────────
+
+    use crate::domain::built_session::compose::{AskView, ComposeKind};
+    use crate::domain::built_session::tests_support::sample_item;
+    use crate::domain::item::ItemKind;
+    use crate::engine::{BlockOrigin, CoachEvent};
+
+    fn view(model: &Model) -> crate::model::ViewModel {
+        Intrada.view(model)
+    }
+
+    /// Start the open block and play one pass of it, ending in a clean tap. At
+    /// l0 the tap alone bounds the attempt (decision 20); at a clicked rung the
+    /// phrase boundary opens the verdict window first.
+    fn play_one_pass(model: &mut Model) {
+        app_update(model, Event::Coach(CoachEvent::StartBlock { now: at() }));
+        let block = model.coach.session.block().expect("a block");
+        if !block.level.is_untimed() {
+            let phrase = block.body_beats();
+            for beat_index in [0, phrase] {
+                app_update(model, Event::Coach(CoachEvent::Beat { beat_index }));
+            }
+        }
+        app_update(
+            model,
+            Event::Coach(CoachEvent::Tap {
+                clean: true,
+                now: at(),
+            }),
+        );
+    }
+
+    fn add(model: &mut Model, text: &str) -> String {
+        update(
+            model,
+            BuiltSessionEvent::AddComposeEntry {
+                text: text.into(),
+                picked_item_id: None,
+            },
+        );
+        model
+            .compose
+            .as_ref()
+            .unwrap()
+            .entries
+            .last()
+            .unwrap()
+            .id
+            .clone()
+    }
+
+    /// The lesson's own list: a piece, a drill the user must describe, and
+    /// something nothing can count.
+    fn a_composed_day(model: &mut Model) -> String {
+        model
+            .items
+            .push(sample_item("p1", "Alice in Wonderland", ItemKind::Piece));
+        update(model, BuiltSessionEvent::OpenCompose);
+        add(model, "Alice in Wonderland");
+        let drill_entry = add(model, "Zzz stride pattern, bars 1 to 8");
+        let journal_entry = add(model, "Zzz freer rubato in the intro");
+        update(
+            model,
+            BuiltSessionEvent::ResolveAsUserDrill {
+                entry_id: drill_entry,
+                criterion: "Both hands together, three clean passes at 72".into(),
+                serves: Some(Serves::Node("p1".into())),
+            },
+        );
+        update(
+            model,
+            BuiltSessionEvent::ChooseResolutionKind {
+                entry_id: journal_entry.clone(),
+                kind: ResolutionKind::Journal,
+            },
+        );
+        update(
+            model,
+            BuiltSessionEvent::ResolveAsJournal {
+                entry_id: journal_entry,
+                notes: None,
+                linked_item_id: Some("p1".into()),
+            },
+        );
+        update(
+            model,
+            BuiltSessionEvent::BuildSession {
+                source: Some("From Friday's lesson".into()),
+            },
+        );
+        model.built_session_today.clone().expect("a built session")
+    }
+
+    #[test]
+    fn the_sheet_states_its_price_and_a_piece_costs_nothing() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Alice in Wonderland", ItemKind::Piece));
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(&mut model, "Alice in Wonderland");
+        add(&mut model, "Zzz stride pattern");
+
+        let compose = view(&model).built.compose.expect("the sheet is open");
+        assert_eq!(compose.entries[0].kind, ComposeKind::Piece);
+        assert_eq!(compose.entries[1].kind, ComposeKind::Unresolved);
+        assert_eq!(compose.questions.len(), 1, "the piece asks nothing");
+        assert_eq!(compose.build_label, "Continue — one quick question");
+        assert!(
+            !compose.can_build,
+            "the price was stated, so it must be paid"
+        );
+    }
+
+    #[test]
+    fn resolution_is_paid_once_per_item_ever() {
+        let mut model = Model::test_default();
+        a_composed_day(&mut model);
+
+        // The second visit: the same three names, no questions at all (A2r).
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(&mut model, "Zzz stride pattern, bars 1 to 8");
+        add(&mut model, "Zzz freer rubato in the intro");
+        let compose = view(&model).built.compose.expect("the sheet is open");
+        assert!(compose.questions.is_empty(), "add, add, add, build");
+        assert_eq!(compose.build_label, "Build session — no questions today");
+        assert!(compose.can_build);
+    }
+
+    #[test]
+    fn the_user_drill_form_reads_the_sentence_back_rather_than_asking_again() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(
+            &mut model,
+            "Zzz stride pattern, three clean passes at 72, in F and G",
+        );
+        let compose = view(&model).built.compose.expect("the sheet is open");
+        match &compose.questions[0].ask {
+            AskView::UserDrill {
+                tempo_bpm,
+                keys,
+                passes_to_open,
+                ..
+            } => {
+                assert_eq!(*tempo_bpm, Some(72));
+                assert_eq!(keys, &["F", "G"]);
+                assert_eq!(*passes_to_open, 3);
+            }
+            other => panic!("expected the criterion form, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_created_drill_carries_the_name_the_user_gave_it() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        let entry = add(&mut model, "Zzz stride pattern");
+        update(
+            &mut model,
+            BuiltSessionEvent::ResolveAsUserDrill {
+                entry_id: entry,
+                criterion: "Five clean passes at 72".into(),
+                serves: None,
+            },
+        );
+        let drill = &model.user_drills[0];
+        assert_eq!(
+            drill.name, "Zzz stride pattern",
+            "the name is what the next visit recognises"
+        );
+        assert_eq!(
+            drill.passes_to_open, 5,
+            "parsed from the sentence, not asked"
+        );
+        assert_eq!(drill.tempo_bpm, Some(72));
+    }
+
+    #[test]
+    fn a_refused_criterion_leaves_the_question_open_rather_than_half_creating() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        let entry = add(&mut model, "Zzz stride pattern");
+        let effects = update(
+            &mut model,
+            BuiltSessionEvent::ResolveAsUserDrill {
+                entry_id: entry,
+                criterion: "   ".into(),
+                serves: None,
+            },
+        );
+        assert!(model.user_drills.is_empty());
+        assert!(persistence_ops(&effects).is_empty());
+        assert!(model.last_error.is_some());
+        assert_eq!(
+            view(&model).built.compose.unwrap().questions.len(),
+            1,
+            "the entry still owes its answer"
+        );
+    }
+
+    #[test]
+    fn a_kind_can_be_changed_but_a_paid_resolution_cannot_be_unpaid() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        let entry = add(&mut model, "Zzz stride pattern");
+        update(
+            &mut model,
+            BuiltSessionEvent::ChooseResolutionKind {
+                entry_id: entry.clone(),
+                kind: ResolutionKind::Journal,
+            },
+        );
+        assert!(matches!(
+            view(&model).built.compose.unwrap().questions[0].ask,
+            AskView::Journal
+        ));
+        update(
+            &mut model,
+            BuiltSessionEvent::ResolveAsJournal {
+                entry_id: entry.clone(),
+                notes: None,
+                linked_item_id: None,
+            },
+        );
+        update(
+            &mut model,
+            BuiltSessionEvent::ChooseResolutionKind {
+                entry_id: entry,
+                kind: ResolutionKind::UserDrill,
+            },
+        );
+        assert!(
+            view(&model).built.compose.unwrap().questions.is_empty(),
+            "re-asking a settled entry would un-pay a paid resolution"
+        );
+    }
+
+    #[test]
+    fn building_with_a_question_open_is_refused_and_says_so() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(&mut model, "Zzz stride pattern");
+        let effects = update(&mut model, BuiltSessionEvent::BuildSession { source: None });
+        assert!(model.built_sessions.is_empty());
+        assert!(persistence_ops(&effects).is_empty());
+        assert!(model.last_error.is_some());
+    }
+
+    #[test]
+    fn building_clears_the_sheet_and_persists_the_session() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        assert!(model.compose.is_none(), "the sheet is done with");
+        let session = model.today_built_session().expect("today's steer");
+        assert_eq!(session.id, id);
+        assert_eq!(session.blocks.len(), 3);
+        assert_eq!(session.source.as_deref(), Some("From Friday's lesson"));
+    }
+
+    #[test]
+    fn the_composed_session_names_its_source_and_offers_a_shape() {
+        let mut model = Model::test_default();
+        a_composed_day(&mut model);
+        let composed = view(&model).built.session.expect("A6");
+        assert_eq!(composed.source.as_deref(), Some("From Friday's lesson"));
+        assert_eq!(
+            composed.blocks.iter().map(|b| b.kind).collect::<Vec<_>>(),
+            vec![
+                ComposeKind::Piece,
+                ComposeKind::Exercise,
+                ComposeKind::Journal
+            ],
+            "the user's own order, untouched"
+        );
+        assert!(
+            composed.shape_advice.is_some(),
+            "a piece first is exactly what the shape has something to say about"
+        );
+        assert!(composed.total_minutes > 0);
+    }
+
+    #[test]
+    fn the_shape_is_advice_and_applying_it_is_the_users_choice() {
+        let mut model = Model::test_default();
+        a_composed_day(&mut model);
+        let effects = update(&mut model, BuiltSessionEvent::UseSuggestedShape);
+        let composed = view(&model).built.session.expect("A6");
+        assert_eq!(
+            composed.blocks.iter().map(|b| b.kind).collect::<Vec<_>>(),
+            vec![
+                ComposeKind::Exercise,
+                ComposeKind::Journal,
+                ComposeKind::Piece
+            ]
+        );
+        assert_eq!(
+            composed.shape_advice, None,
+            "advice that repeats the order on screen is noise"
+        );
+        assert_eq!(
+            persistence_ops(&effects).len(),
+            1,
+            "the reorder is persisted"
+        );
+        assert_no_http(&effects);
+    }
+
+    #[test]
+    fn starting_a_built_session_enters_the_canonical_drill_loop() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let drill = view(&model).coach.drill.expect("a block is open");
+        assert_eq!(drill.drill_title, "Alice in Wonderland");
+        assert_eq!(drill.origin, BlockOrigin::Judgement);
+        assert_eq!(drill.gate_summary, "your call");
+        assert_eq!(drill.gate_question, "Done for now?");
+    }
+
+    #[test]
+    fn a_user_drill_block_shows_where_its_evidence_lands() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(&mut model, BuiltSessionEvent::UseSuggestedShape);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let drill = view(&model).coach.drill.expect("a block is open");
+        assert_eq!(drill.origin, BlockOrigin::UserDrill);
+        assert_eq!(
+            drill.serves.as_deref(),
+            Some("Adds to Alice in Wonderland"),
+            "A7's serves line, written by the core"
+        );
+        assert_eq!(drill.gate_target, 3, "the sentence's three clean passes");
+    }
+
+    #[test]
+    fn a_user_drills_taps_land_on_its_own_node_at_full_weight() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(&mut model, BuiltSessionEvent::UseSuggestedShape);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let node = model.coach.session.spec().expect("a spec").node.clone();
+        let level = model.coach.session.block().expect("a block").level;
+        play_one_pass(&mut model);
+        assert!(
+            model.coach.mastery.reading(&node, level, at()).evidence > 0.0,
+            "a drill the user wrote still counts, on its own track"
+        );
+    }
+
+    #[test]
+    fn a_judgement_blocks_taps_never_reach_the_mastery_track() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        let node = model.coach.session.spec().expect("a spec").node.clone();
+        let level = model.coach.session.block().expect("a block").level;
+        play_one_pass(&mut model);
+        assert_eq!(
+            model.coach.mastery.reading(&node, level, at()).evidence,
+            0.0,
+            "decision 17: qualitative data never feeds mastery"
+        );
+        assert_eq!(
+            model.coach.session.block().expect("a block").attempts.len(),
+            1,
+            "the time and the tap are still logged — it is the inference that stops"
+        );
+    }
+
+    #[test]
+    fn a_running_session_is_not_something_a_steer_may_replace() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id.clone(),
+                now: at(),
+            },
+        );
+        let block_id = model.coach.session.block().expect("a block").id.clone();
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        assert_eq!(
+            model.coach.session.block().expect("a block").id,
+            block_id,
+            "the blocks in flight have evidence riding on them"
+        );
+    }
+
+    #[test]
+    fn starting_a_session_whose_targets_have_all_gone_says_so() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        model.user_drills.clear();
+        model.journal_items.clear();
+        model.items.clear();
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        assert!(view(&model).coach.drill.is_none());
+        assert!(model.last_error.is_some(), "never a silent nothing-happens");
+    }
+
+    #[test]
+    fn cancelling_the_sheet_leaves_the_prescribed_day_untouched() {
+        let mut model = Model::test_default();
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(&mut model, "Zzz stride pattern");
+        update(&mut model, BuiltSessionEvent::CancelCompose);
+        assert!(view(&model).built.compose.is_none());
+        assert!(model.built_sessions.is_empty());
+    }
+
+    #[test]
+    fn the_same_thing_added_twice_is_one_block() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Alice in Wonderland", ItemKind::Piece));
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        add(&mut model, "Alice in Wonderland");
+        add(&mut model, "alice in wonderland");
+        assert_eq!(model.compose.as_ref().unwrap().entries.len(), 1);
+    }
+
+    #[test]
+    fn the_whole_journey_never_touches_the_network() {
+        let mut model = Model::test_default();
+        model
+            .items
+            .push(sample_item("p1", "Alice in Wonderland", ItemKind::Piece));
+        update(&mut model, BuiltSessionEvent::OpenCompose);
+        let entry = add(&mut model, "Zzz stride pattern");
+        let mut effects = update(
+            &mut model,
+            BuiltSessionEvent::ResolveAsUserDrill {
+                entry_id: entry,
+                criterion: "Three clean passes at 72".into(),
+                serves: None,
+            },
+        );
+        effects.extend(update(
+            &mut model,
+            BuiltSessionEvent::BuildSession { source: None },
+        ));
+        let id = model.built_session_today.clone().expect("a built session");
+        effects.extend(update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        ));
+        assert_no_http(&effects);
+    }
+
     // ── Bridge payloads (#846) ──────────────────────────────────────────
 
     fn sample_journal_item() -> JournalItem {
@@ -1117,6 +1893,40 @@ mod tests {
             BuiltSessionEvent::RecordFeel {
                 block_id: "b1".into(),
                 feel: Feel::GettingThere,
+            },
+            BuiltSessionEvent::OpenCompose,
+            BuiltSessionEvent::CancelCompose,
+            BuiltSessionEvent::AddComposeEntry {
+                text: "Stride pattern".into(),
+                picked_item_id: Some("p1".into()),
+            },
+            BuiltSessionEvent::RemoveComposeEntry {
+                entry_id: "e1".into(),
+            },
+            BuiltSessionEvent::ConfirmNodeMatch {
+                entry_id: "e1".into(),
+            },
+            BuiltSessionEvent::ChooseResolutionKind {
+                entry_id: "e1".into(),
+                kind: ResolutionKind::Journal,
+            },
+            BuiltSessionEvent::ResolveAsUserDrill {
+                entry_id: "e1".into(),
+                criterion: "Three clean passes at 72".into(),
+                serves: Some(Serves::Circle(Circle::Bridge)),
+            },
+            BuiltSessionEvent::ResolveAsJournal {
+                entry_id: "e1".into(),
+                notes: Some("Time and notes".into()),
+                linked_item_id: Some("p1".into()),
+            },
+            BuiltSessionEvent::BuildSession {
+                source: Some("From Friday's lesson".into()),
+            },
+            BuiltSessionEvent::UseSuggestedShape,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: "01J000000000000000000BSESH".into(),
+                now: at(),
             },
         ] {
             assert_round_trips(Event::BuiltSession(event));

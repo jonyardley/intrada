@@ -128,6 +128,65 @@ final class ScreenSnapshotTests: XCTestCase {
         store: .previewPractice), as: config)
   }
 
+  // ── The built session (#1256, Journey A) ────────────────────────────
+
+  /// A2 — first use: what the sheet costs is on the primary action, and the
+  /// unresolved row wears no false kind while it still owes a question.
+  func testComposeSheetFirstUse() {
+    assertSnapshot(of: host(ComposeSheet(), store: .previewComposing), as: config)
+  }
+
+  /// A2r — the repeat visit, where every row is already known and the price is
+  /// zero. The whole point of resolution being paid once per item, ever.
+  func testComposeSheetAllKnown() {
+    assertSnapshot(of: host(ComposeSheet(), store: .previewComposingAllKnown), as: config)
+  }
+
+  /// A3 — the proposed match carries its own evidence, so the confirmation is
+  /// informed rather than blind.
+  func testResolutionNodeMatch() {
+    assertSnapshot(
+      of: host(ResolutionFlow(onFinished: {}), store: .previewResolvingNodeMatch),
+      as: config)
+  }
+
+  /// A4 — the criterion sentence with its three read-back chips. The form the
+  /// whole of decision 19b hangs on.
+  func testResolutionUserDrill() {
+    assertSnapshot(
+      of: host(ResolutionFlow(onFinished: {}), store: .previewComposing),
+      as: config)
+  }
+
+  /// The read-back chips and the serves tags are the reflow risk on A4 — three
+  /// chips across at accessibility sizes is where a form breaks. Cropped above
+  /// the fold: the reflow *is* above the fold, and a full-height radial wash at
+  /// this text size does not fit the hygiene ceiling.
+  func testResolutionUserDrillLargeText() {
+    assertSnapshot(
+      of: host(ResolutionFlow(onFinished: {}), store: .previewComposing),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 600),
+        traits: UITraitCollection { traits in
+          traits.displayScale = 2
+          traits.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        }))
+  }
+
+  /// A6 — the composed session, shape offered and declinable. Component-level:
+  /// the hero gradient is already covered by `testPressStartHeroPlanned`.
+  func testComposedSession() {
+    let composed = ComposedSessionScreen(session: .preview, onStart: {})
+      .padding(IntradaSpacing.card)
+      .background(IntradaColor.paperTop)
+      .frame(width: 390)
+    assertSnapshot(
+      of: host(composed, store: .previewComposedSession),
+      as: .image(
+        perceptualPrecision: 0.98, size: CGSize(width: 390, height: 680),
+        traits: .init(displayScale: 2)))
+  }
+
   /// Component-level: the hero's gradient is already covered by
   /// `testPressStartHeroPlanned` and would triple this PNG.
   func testSessionOverview() {
@@ -519,8 +578,9 @@ final class ScreenSnapshotTests: XCTestCase {
     let badges = ZStack {
       PaperBackground()
       HStack(spacing: 12) {
-        TypeBadge(kind: .piece)
-        TypeBadge(kind: .exercise)
+        TypeBadge(kind: ItemKind.piece)
+        TypeBadge(kind: ItemKind.exercise)
+        TypeBadge(kind: ComposeKind.journal)
       }
     }
     assertSnapshot(of: host(badges), as: config)

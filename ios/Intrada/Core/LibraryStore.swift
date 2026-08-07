@@ -432,6 +432,14 @@ final class LibraryStore: ItemStore {
           )
           """)
     }
+    migrator.registerMigration("v12_block_origin") { db in
+      // #1256: whose block this was. A record written before built sessions
+      // existed can only have been the planner's, so 'authored' is the honest
+      // backfill — and it is what the mastery rebuild reads to decide whether a
+      // block's taps were ever evidence (decision 17).
+      try db.execute(
+        sql: "ALTER TABLE block_record ADD COLUMN origin TEXT NOT NULL DEFAULT 'authored'")
+    }
     return migrator
   }()
 
@@ -825,15 +833,15 @@ final class LibraryStore: ItemStore {
         INSERT INTO block_record
           (id, node, drill, gate, level_tempo_bpm, level_click_level, circle, mode,
            started_at, ended_at, attempts, attempts_to_pass, gate_opened_at_attempt,
-           reps_after_gate, active_ms, escalation_fired, exit, updated_at, deleted_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+           reps_after_gate, active_ms, escalation_fired, exit, origin, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET
           ended_at = excluded.ended_at, attempts = excluded.attempts,
           attempts_to_pass = excluded.attempts_to_pass,
           gate_opened_at_attempt = excluded.gate_opened_at_attempt,
           reps_after_gate = excluded.reps_after_gate, active_ms = excluded.active_ms,
           escalation_fired = excluded.escalation_fired, exit = excluded.exit,
-          updated_at = excluded.updated_at
+          origin = excluded.origin, updated_at = excluded.updated_at
         """,
       arguments: [
         record.id, record.node, record.drill, record.gate,
@@ -843,7 +851,7 @@ final class LibraryStore: ItemStore {
         record.attemptsToPass.map { Int($0) }, record.gateOpenedAtAttempt.map { Int($0) },
         Int(record.repsAfterGate), Int(clamping: record.activeMs),
         try encodeJSON(record.escalationFired.map(rungString), field: "escalation_fired"),
-        exitString(record.exit), updatedAt,
+        exitString(record.exit), blockOriginString(record.origin), updatedAt,
       ])
   }
 
@@ -904,7 +912,8 @@ final class LibraryStore: ItemStore {
       repsAfterGate: UInt16(clamping: row["reps_after_gate"] as Int),
       activeMs: UInt64(clamping: row["active_ms"] as Int64),
       escalationFired: try decodeRungs(row["escalation_fired"]),
-      exit: exit(from: row["exit"]))
+      exit: exit(from: row["exit"]),
+      origin: try blockOrigin(from: row["origin"]))
   }
 
   private static func decodeAttempts(_ json: String, blockLevel: ParameterLevel) throws
@@ -1207,24 +1216,47 @@ final class LibraryStore: ItemStore {
   func loadBuiltSessionData() throws -> BuiltSessionData {
     try dbQueue.read { db in
       BuiltSessionData(
-        userDrills: try Row.fetchAll(
-          db, sql: "SELECT * FROM user_drill WHERE deleted_at IS NULL ORDER BY created_at, id"
-        ).map(Self.userDrill(from:)),
-        journalItems: try Row.fetchAll(
-          db, sql: "SELECT * FROM journal_item WHERE deleted_at IS NULL ORDER BY created_at, id"
-        ).map(Self.journalItem(from:)),
-        builtSessions: try Row.fetchAll(
-          db, sql: "SELECT * FROM built_session WHERE deleted_at IS NULL ORDER BY created_at, id"
-        ).map(Self.builtSession(from:)),
-        playThroughs: try Row.fetchAll(
-          db, sql: "SELECT * FROM play_through WHERE deleted_at IS NULL ORDER BY started_at, id"
-        ).map(Self.playThrough(from:)),
-        reflections: try Row.fetchAll(
-          db, sql: "SELECT * FROM reflection WHERE deleted_at IS NULL ORDER BY at, id"
-        ).map(Self.reflection(from:)),
-        feelEntries: try Row.fetchAll(
-          db, sql: "SELECT * FROM feel_entry WHERE deleted_at IS NULL ORDER BY at, id"
-        ).map(Self.feelEntry(from:)))
+        userDrills: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM user_drill WHERE deleted_at IS NULL ORDER BY created_at, id"),
+          Self.userDrill(from:)),
+        journalItems: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM journal_item WHERE deleted_at IS NULL ORDER BY created_at, id"),
+          Self.journalItem(from:)),
+        builtSessions: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM built_session WHERE deleted_at IS NULL ORDER BY created_at, id"),
+          Self.builtSession(from:)),
+        playThroughs: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM play_through WHERE deleted_at IS NULL ORDER BY started_at, id"),
+          Self.playThrough(from:)),
+        reflections: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM reflection WHERE deleted_at IS NULL ORDER BY at, id"),
+          Self.reflection(from:)),
+        feelEntries: Self.quarantining(
+          try Row.fetchAll(
+            db, sql: "SELECT * FROM feel_entry WHERE deleted_at IS NULL ORDER BY at, id"),
+          Self.feelEntry(from:)))
+    }
+  }
+
+  /// #1269: an unreadable stored value quarantines its whole **row** — reported,
+  /// left out of the load, and left untouched on disk. Phase B loads a built
+  /// session, edits it and saves it back, so a row decoded *partially* (a
+  /// dropped block, a defaulted enum) would overwrite the only copy of the
+  /// user's data with less than it had. A row the model never holds is a row no
+  /// write can reach, and a newer binary still reads it whole.
+  private static func quarantining<T>(_ rows: [Row], _ decode: (Row) throws -> T) -> [T] {
+    rows.compactMap { row in
+      do {
+        return try decode(row)
+      } catch {
+        report(error, decodeContext)
+        return nil
+      }
     }
   }
 
@@ -1249,7 +1281,7 @@ final class LibraryStore: ItemStore {
       tempoBpm: (row["tempo_bpm"] as Int?).map { UInt16(clamping: $0) },
       keys: try decodeKeys(row["keys"]),
       passesToOpen: UInt8(clamping: row["passes_to_open"] as Int),
-      serves: serves(kind: row["serves_kind"], value: row["serves_value"]),
+      serves: try serves(kind: row["serves_kind"], value: row["serves_value"]),
       createdAt: row["created_at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
@@ -1280,17 +1312,17 @@ final class LibraryStore: ItemStore {
       updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
-  private static func reflection(from row: Row) -> Reflection {
+  private static func reflection(from row: Row) throws -> Reflection {
     Reflection(
-      id: row["id"], kind: reflectionKind(from: row["kind"]), sessionRef: row["session_ref"],
+      id: row["id"], kind: try reflectionKind(from: row["kind"]), sessionRef: row["session_ref"],
       transcript: row["transcript"], audioPath: row["audio_path"],
       durationS: (row["duration_s"] as Int?).map { UInt32(clamping: $0) },
       at: row["at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
-  private static func feelEntry(from row: Row) -> FeelEntry {
+  private static func feelEntry(from row: Row) throws -> FeelEntry {
     FeelEntry(
-      id: row["id"], blockId: row["block_id"], feel: feel(from: row["feel"]),
+      id: row["id"], blockId: row["block_id"], feel: try feel(from: row["feel"]),
       at: row["at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
   }
 
@@ -1303,19 +1335,18 @@ final class LibraryStore: ItemStore {
       }, field: "blocks")
   }
 
-  /// Throws on a broken blob (a lost block is invariant-5 territory); an
-  /// unrecognised target kind reports and drops that block only (#949) —
-  /// the rest of the composition stays readable.
+  /// Throws on a broken blob *and* on an unrecognised target kind: a session
+  /// missing one block is not a smaller session, it is the wrong session, and
+  /// Phase B saves what it loads (#1269).
   private static func decodeBlocks(_ json: String) throws -> [BuiltBlock] {
     let stored: [StoredBuiltBlock]
     do { stored = try JSONDecoder().decode([StoredBuiltBlock].self, from: Data(json.utf8)) } catch {
       throw CoachCodecError(field: "blocks", phase: "decode")
     }
-    return stored.compactMap { block in
-      guard let target = target(kind: block.targetKind, value: block.targetValue) else {
-        return nil
-      }
-      return BuiltBlock(id: block.id, target: target, minutes: block.minutes)
+    return try stored.map { block in
+      BuiltBlock(
+        id: block.id, target: try target(kind: block.targetKind, value: block.targetValue),
+        minutes: block.minutes)
     }
   }
 
@@ -1353,15 +1384,13 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  private static func target(kind: String, value: String) -> BuiltTarget? {
+  private static func target(kind: String, value: String) throws -> BuiltTarget {
     switch kind {
     case "node": return .node(node: value)
     case "user_drill": return .userDrill(drillId: value)
     case "journal": return .journal(journalId: value)
     case "piece": return .piece(itemId: value)
-    default:
-      report(UnknownStoredEnum(kind: "BuiltTarget", raw: kind), decodeContext)
-      return nil
+    default: throw UnknownStoredEnum(kind: "BuiltTarget", raw: kind)
     }
   }
 
@@ -1381,14 +1410,12 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  private static func serves(kind: String?, value: String?) -> Serves? {
+  private static func serves(kind: String?, value: String?) throws -> Serves? {
     switch (kind, value) {
     case (nil, _), (_, nil): return nil
     case ("circle", .some(let value)): return .circle(circle(from: value))
     case ("node", .some(let value)): return .node(value)
-    case (.some(let other), _):
-      report(UnknownStoredEnum(kind: "Serves", raw: other), decodeContext)
-      return nil
+    case (.some(let other), _): throw UnknownStoredEnum(kind: "Serves", raw: other)
     }
   }
 
@@ -1399,13 +1426,31 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  private static func reflectionKind(from raw: String) -> ReflectionKind {
+  private static func reflectionKind(from raw: String) throws -> ReflectionKind {
     switch raw {
     case "voice_note": return .voiceNote
     case "session_close": return .sessionClose
-    default:
-      report(UnknownStoredEnum(kind: "ReflectionKind", raw: raw), decodeContext)
-      return .voiceNote
+    default: throw UnknownStoredEnum(kind: "ReflectionKind", raw: raw)
+    }
+  }
+
+  private static func blockOriginString(_ origin: BlockOrigin) -> String {
+    switch origin {
+    case .authored: "authored"
+    case .userDrill: "user_drill"
+    case .judgement: "judgement"
+    }
+  }
+
+  /// Throws rather than defaulting: guessing `authored` for a row a newer
+  /// binary wrote would replay judgement-track taps into the mastery track at
+  /// launch, which is the one thing decision 17 forbids (#1269's rule).
+  private static func blockOrigin(from raw: String) throws -> BlockOrigin {
+    switch raw {
+    case "authored": return .authored
+    case "user_drill": return .userDrill
+    case "judgement": return .judgement
+    default: throw UnknownStoredEnum(kind: "BlockOrigin", raw: raw)
     }
   }
 
@@ -1417,14 +1462,12 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  private static func feel(from raw: String) -> Feel {
+  private static func feel(from raw: String) throws -> Feel {
     switch raw {
     case "fought_it": return .foughtIt
     case "getting_there": return .gettingThere
     case "it_sang": return .itSang
-    default:
-      report(UnknownStoredEnum(kind: "Feel", raw: raw), decodeContext)
-      return .gettingThere  // conservative: the neutral middle, never the success tint
+    default: throw UnknownStoredEnum(kind: "Feel", raw: raw)
     }
   }
 
@@ -1439,6 +1482,16 @@ final class LibraryStore: ItemStore {
       try migrator.migrate(queue, upTo: version)
       try queue.write { db in try db.execute(sql: seed) }
       return try LibraryStore(queue)
+    }
+
+    /// Test seam for the #1269 quarantine rule: what is *on disk*, past the
+    /// decoder that refused to read it.
+    func rawBuiltSessionBlocks(id: String) throws -> String? {
+      try dbQueue.read { db in
+        try String.fetchOne(
+          db, sql: "SELECT blocks FROM built_session WHERE id = ?", arguments: [id]
+        )
+      }
     }
   }
 #endif

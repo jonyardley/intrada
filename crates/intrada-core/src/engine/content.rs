@@ -131,6 +131,9 @@ pub struct PlannerLimits {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ContentIndex {
     pub session_minutes: u16,
+    /// The phrase a rep runs where nothing states one — `[defaults] bars`. A
+    /// drill states its own; a block the user composed has no drill to ask.
+    pub bars: u16,
     pub beats_per_bar: u8,
     pub count_in_beats: u8,
     pub escalation: Escalation,
@@ -610,6 +613,7 @@ impl RawContent {
 
         Ok(ContentIndex {
             session_minutes: self.defaults.session_minutes,
+            bars: self.defaults.bars,
             beats_per_bar: self.defaults.beats_per_bar,
             count_in_beats: self.defaults.count_in_beats,
             escalation: Escalation {

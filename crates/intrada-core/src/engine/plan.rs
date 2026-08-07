@@ -63,6 +63,47 @@ impl ParameterLevel {
     }
 }
 
+/// Where a block came from, and therefore what its evidence is allowed to do.
+/// Carried on the spec *and* the record, because the mastery track is rebuilt
+/// from records at launch: a rule the live path enforces and the replay does
+/// not is not a rule (#1214).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+#[cfg_attr(feature = "facet_typegen", repr(C))]
+pub enum BlockOrigin {
+    /// A block against an authored node — whoever placed it. Its taps land on
+    /// that node at full weight, exactly as a prescribed block's do.
+    #[default]
+    Authored,
+    /// A user drill (decision 19b): own node, own gate, evidence at full weight
+    /// on its own track.
+    UserDrill,
+    /// The judgement track (decision 19c). Time is logged and nothing else is
+    /// inferred — qualitative data never feeds mastery (decision 17).
+    Judgement,
+}
+
+impl BlockOrigin {
+    pub fn feeds_mastery(&self) -> bool {
+        !matches!(self, BlockOrigin::Judgement)
+    }
+}
+
+/// The rung of `node` the loop can currently run: the first drill on its ladder
+/// with a click to run against. `None` for a stub, or for a node whose whole
+/// ladder is away from the keys.
+pub fn runnable_rung<'c>(
+    content: &'c ContentIndex,
+    node: &str,
+) -> Option<(&'c Drill, ParameterLevel)> {
+    content
+        .node(node)?
+        .drills
+        .iter()
+        .filter_map(|id| content.drill(id))
+        .find_map(|drill| drill.level.map(|level| (drill, level)))
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 pub struct BlockSpec {
@@ -87,6 +128,14 @@ pub struct BlockSpec {
     /// (decision 15). The gate's own `time_ceiling_s` is the content default
     /// the planner allocated from, never past it.
     pub minutes: u16,
+    /// Whose block this is, and what its taps may count for (#1256).
+    #[serde(default)]
+    pub origin: BlockOrigin,
+    /// Where a user drill's evidence shows in the ability picture, already in
+    /// the player's words — "Adds to Alice in Wonderland" (A7). Resolved where
+    /// the library lookups live, so the engine never does one.
+    #[serde(default)]
+    pub serves: Option<String>,
 }
 
 /// Which stage placed a block. Written by the stage itself, so the why cannot
@@ -103,6 +152,10 @@ pub enum Stage {
     /// Not a planning stage: the ladder drew this block mid-session from the
     /// alternatives the plan carried (#1182).
     Escalation,
+    /// Not a planning stage either: the user composed this block themselves
+    /// (decision 19). The strongest form of a steer, so it outranks every
+    /// stage above and its why line says whose it is.
+    Steer,
 }
 
 /// How well the hands know this rung, in the terms a why line says out loud.
@@ -177,6 +230,7 @@ impl PlannedBlock {
                 format!("A warm-up on {}, which you own", lower_first(title))
             }
             Stage::Escalation => format!("Another way into {}", lower_first(title)),
+            Stage::Steer => format!("You asked for {} today", lower_first(title)),
             _ => match self.why.node_state.maturity {
                 Maturity::New => format!("{title} is new ground"),
                 _ => format!("{title} is the frontier"),
@@ -330,21 +384,15 @@ fn walk<'c>(
         ));
         return;
     }
-    let runnable = |drill: &&Drill| drill.level.is_some();
     let chosen = wanted
         .and_then(|id| content.drill(id))
-        .filter(runnable)
-        .or_else(|| {
-            node.drills
-                .iter()
-                .filter_map(|id| content.drill(id))
-                .find(runnable)
-        });
+        .and_then(|drill| drill.level.map(|level| (drill, level)))
+        .or_else(|| runnable_rung(content, node_id));
     match chosen {
-        Some(drill) => candidates.push(Candidate {
+        Some((drill, level)) => candidates.push(Candidate {
             node,
             drill,
-            level: drill.level.expect("filtered to the runnable rungs"),
+            level,
             minutes: 0,
             reading: Reading {
                 estimate: 0.0,
@@ -688,6 +736,8 @@ fn block_spec(content: &ContentIndex, candidate: &Candidate) -> BlockSpec {
         beats_per_bar: content.beats_per_bar,
         count_in_beats: content.count_in_beats,
         minutes: candidate.minutes,
+        origin: BlockOrigin::Authored,
+        serves: None,
     }
 }
 
@@ -726,6 +776,8 @@ impl Plan {
                     beats_per_bar: 4,
                     count_in_beats: 4,
                     minutes: 6,
+                    origin: BlockOrigin::Authored,
+                    serves: None,
                 },
                 why: Why {
                     destination: Some("Strasbourg / St. Denis".to_string()),

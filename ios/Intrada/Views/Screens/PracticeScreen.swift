@@ -14,6 +14,7 @@ struct PracticeScreen: View {
   // Presentation only: the core owns the session itself, and closes the loop by
   // clearing `coach.drill`, which `DrillLoopHost` reports back through onClose.
   @State private var drillLoopRunning = false
+  @State private var composing = false
 
   init(referenceDate: Date = Date()) {
     self.referenceDate = referenceDate
@@ -61,14 +62,23 @@ struct PracticeScreen: View {
             )
             .fadeUp(0)
           }
-          hero
-            .fadeUp(0)
-          sessionOverview
-            .fadeUp(1)
+          if let built = store.viewModel?.built.session {
+            // The composed session replaces the prescribed hero for as long as
+            // it is today's steer — same scaffold, its own source line (A6).
+            ComposedSessionScreen(session: built, onStart: { start(built: built.id) })
+              .fadeUp(0)
+          } else {
+            hero
+              .fadeUp(0)
+            steerLine
+              .fadeUp(1)
+            sessionOverview
+              .fadeUp(2)
+          }
           thisWeek
-            .fadeUp(2)
-          selectedDaySection
             .fadeUp(3)
+          selectedDaySection
+            .fadeUp(4)
         }
         .padding(.horizontal, IntradaSpacing.card)
         .padding(.top, IntradaSpacing.card)
@@ -86,6 +96,9 @@ struct PracticeScreen: View {
         drillLoopRunning = false
         planToday()
       })
+    }
+    .sheet(isPresented: $composing) {
+      ComposeSheet()
     }
     .task { planToday() }
   }
@@ -113,6 +126,33 @@ struct PracticeScreen: View {
       why: firstBlock?.why,
       footnote: planShape ?? "Tap to begin — one decision",
       onStart: { drillLoopRunning = true })
+  }
+
+  /// A1 — where composition lives (#1256). Directly under the hero, quiet
+  /// weight, accent-coloured: reachable in one tap, never a footer secret and
+  /// never a mode chooser (decision 11). Phrased as the user's own thought,
+  /// because the built session is a steer on today, not an alternative app.
+  private var steerLine: some View {
+    Button {
+      store.send(.builtSession(.openCompose), onSuccess: .selection)
+      composing = true
+    } label: {
+      Label("I know what I want to practise today", systemImage: "text.badge.plus")
+        .font(IntradaFont.bodyMedium)
+        .foregroundStyle(IntradaColor.accent)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, IntradaSpacing.cardCompact)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  /// Entering the drill loop is the core's call: it hands back a block, or it
+  /// surfaces why it could not, and only then does the loop open.
+  private func start(built id: String) {
+    store.send(
+      .builtSession(.startBuiltSession(sessionId: id, now: SessionClock.nowRFC3339())))
+    if store.viewModel?.coach.drill != nil { drillLoopRunning = true }
   }
 
   private var planShape: String? {
