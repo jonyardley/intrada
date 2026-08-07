@@ -3,9 +3,13 @@
 //! Phase A; the compose/resolution flows arrive with their screens.
 
 use chrono::{DateTime, Utc};
+use crux_core::command::Command;
 use serde::{Deserialize, Serialize};
 
+use crate::app::{Effect, Event};
 use crate::engine::Circle;
+use crate::model::Model;
+use crate::persistence;
 
 /// Decision 19b: a countable target with no authored node. The dictated
 /// sentence *is* the gate; the parsed parameters are read back, never asked
@@ -227,10 +231,7 @@ pub enum BuiltSessionEvent {
     },
 }
 
-use crate::app::{Effect, Event};
-use crate::model::Model;
-use crate::persistence;
-use crux_core::command::Command;
+// ── Handlers ─────────────────────────────────────────────────────────
 
 fn mint_id() -> String {
     ulid::Ulid::generate().to_string()

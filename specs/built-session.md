@@ -1,6 +1,6 @@
 # Built session, play-through altitudes, and qualitative capture
 
-**Status**: Phase A in progress · **Issue**: #1256 · **Tier**: 3
+**Status**: Phase A landed (core scaffold, no UI) · **Issue**: #1256 · **Tier**: 3
 **Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
 briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
 `design/briefs/2026-08-copy-language.md` (voice, graduated as T13)
@@ -121,7 +121,11 @@ Dynamic Type and iPad SplitView per the per-screen quality rule.
 1. How much pipeline does v1 need? B1's note argues: a piece + named section
    gates only, degrading gracefully to off-piste + piece tag when sections
    aren't authored. Resolve when Phase C is planned.
-2. Audio storage/retention for voice notes and reflections (files on device,
-   rows carry paths; size cap? cleanup?). Resolve in Phase A schema review.
+2. ~~Audio storage/retention for voice notes and reflections.~~ **Settled in
+   the Phase A schema review**: `reflection` carries `audio_path` (a
+   shell-relative path) and `duration_s`; the bytes are the shell's, the core
+   never reads them, and a tombstoned row leaves its file for the shell to
+   reap. A size cap and the reaping pass are deferred to Phase D, when there
+   is recorded audio to cap (#1267).
 3. C3's v1 trigger (rule-based vs deferred to coach Phase 3): decide at
    Phase D, informed by what reflections actually look like by then.
