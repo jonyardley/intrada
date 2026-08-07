@@ -28,6 +28,8 @@ struct DrillScreen: View {
     if case .blockEntry = state.phase { return true }
     return false
   }
+  /// l0: no click, no tempo, no count-in — a read of the core's own state.
+  private var isUntimed: Bool { state.tempoBpm == nil }
 
   /// On a block that has not run, a zeroed clock is noise. On one parked by an
   /// interruption, the time already spent is the most useful thing to show
@@ -126,19 +128,15 @@ struct DrillScreen: View {
     switch state.phase {
     case .blockEntry:
       blockEntryCard
-    case .playing, .countIn:
-      VStack(spacing: IntradaSpacing.row + 2) {
-        tempo
-        clickPill
-        // No tempo means no beat to count either (l0): a position frozen at
-        // bar 1 beat 1 would claim a pulse that never runs. Centre is #1260.
-        if state.tempoBpm != nil {
-          BeatPosition(
-            beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
-            bars: Int(state.bars)
-          )
-          .padding(.top, IntradaSpacing.cardCompact)
-        }
+    case .countIn:
+      timedCentre
+    case .playing:
+      // No tempo means no beat to count either (l0) — a frozen bar 1 beat 1
+      // would claim a pulse that never runs. The gate is the one fact left.
+      if isUntimed {
+        GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
+      } else {
+        timedCentre
       }
     case .awaitingVerdict:
       VStack(spacing: IntradaSpacing.section) {
@@ -163,6 +161,18 @@ struct DrillScreen: View {
           filled: Int(state.gateFilled), target: Int(state.gateTarget),
           caption: state.gateSummary)
       }
+    }
+  }
+
+  private var timedCentre: some View {
+    VStack(spacing: IntradaSpacing.row + 2) {
+      tempo
+      clickPill
+      BeatPosition(
+        beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
+        bars: Int(state.bars)
+      )
+      .padding(.top, IntradaSpacing.cardCompact)
     }
   }
 
@@ -193,7 +203,10 @@ struct DrillScreen: View {
   }
 
   private var blockShape: String {
-    [state.section, "about \(state.minutes) min"].compactMap { $0 }.joined(separator: " · ")
+    var parts = [state.section, "about \(state.minutes) min"].compactMap { $0 }
+    // l0 has no click to leave unsaid.
+    if isUntimed { parts.append(state.clickLevel) }
+    return parts.joined(separator: " · ")
   }
 
   /// Nothing at all where the rung has no tempo (l0), which the core says by
@@ -244,17 +257,15 @@ struct DrillScreen: View {
           .padding(.top, IntradaSpacing.controlGap)
       }
     case .playing:
-      StuckTarget(action: onStuck)
+      if isUntimed {
+        tapVerdictFooter
+      } else {
+        StuckTarget(action: onStuck)
+      }
     case .countIn(let remaining):
       CountIn(remaining: Int(remaining), total: Int(state.countInBeats))
     case .awaitingVerdict:
-      VStack(spacing: 0) {
-        TapVerdict(onClean: { onVerdict(true) }, onMissed: { onVerdict(false) })
-        HairlineDivider()
-          .padding(.top, IntradaSpacing.row - 2)
-          .padding(.bottom, IntradaSpacing.controlGap + 2)
-        escapes
-      }
+      tapVerdictFooter
     case .acknowledged:
       // Deliberately empty: the glance carries the verdict alone (#1184).
       EmptyView()
@@ -262,6 +273,18 @@ struct DrillScreen: View {
       Text("moving on")
         .font(IntradaFont.ambient())
         .foregroundStyle(IntradaColor.inkSecondary)
+    }
+  }
+
+  /// Reachable from both `.awaitingVerdict` and l0's `.playing`, which has no
+  /// separate verdict phase to arrive at.
+  private var tapVerdictFooter: some View {
+    VStack(spacing: 0) {
+      TapVerdict(onClean: { onVerdict(true) }, onMissed: { onVerdict(false) })
+      HairlineDivider()
+        .padding(.top, IntradaSpacing.row - 2)
+        .padding(.bottom, IntradaSpacing.controlGap + 2)
+      escapes
     }
   }
 
@@ -328,7 +351,8 @@ private struct CountIn: View {
     /// previews and snapshots only — at runtime every field comes from the
     /// core's `CoachView`.
     static func preview(
-      phase: DrillPhase = .playing, gateFilled: UInt8 = 2, elapsedSeconds: UInt32 = 724
+      phase: DrillPhase = .playing, gateFilled: UInt8 = 2, elapsedSeconds: UInt32 = 724,
+      tempoBpm: UInt16? = 120, clickLevel: String = "beats 2 & 4"
     ) -> DrillView {
       DrillView(
         phase: phase,
@@ -336,11 +360,11 @@ private struct CountIn: View {
         section: "A section",
         destination: "Strasbourg / St. Denis",
         kind: .exercise,
-        tempoBpm: 120,
-        clickLevel: "beats 2 & 4",
+        tempoBpm: tempoBpm,
+        clickLevel: clickLevel,
         beat: 2, beatsPerBar: 4, bar: 3, bars: 8,
         countInBeats: 4, phraseBeats: 32,
-        pulseSeq: 1, pulseRunning: true, clickPattern: [false, true, false, true],
+        pulseSeq: 1, pulseRunning: tempoBpm != nil, clickPattern: [false, true, false, true],
         elapsedSeconds: elapsedSeconds,
         minutes: 8,
         why: "Shells and rootless are what sit between you and improvising over Strasbourg.",
@@ -372,6 +396,16 @@ private struct CountIn: View {
   }
 
   #Preview("A2 during play") { DrillPreview(state: .preview()) }
+
+  #Preview("A2 l0 during play") {
+    DrillPreview(state: .preview(tempoBpm: nil, clickLevel: "no click"))
+  }
+
+  #Preview("Block entry, l0") {
+    DrillPreview(
+      state: .preview(phase: .blockEntry, elapsedSeconds: 0, tempoBpm: nil, clickLevel: "no click")
+    )
+  }
 
   #Preview("A2 largest accessibility size") {
     DrillPreview(state: .preview()).environment(\.dynamicTypeSize, .accessibility5)

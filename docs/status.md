@@ -21,6 +21,16 @@ countable criteria.
 
 ## Recently landed
 
+- #1260 — the l0 drill screen: `DrillScreen` branches on `tempoBpm == nil`
+  throughout. During `.playing` the tempo/click pill/beat position give way to
+  `GateDots` alone, and the tap-verdict footer (`TapVerdict` + escapes) —
+  normally only reachable from `.awaitingVerdict` — is reachable from
+  `.playing` too, since l0 has no separate verdict phase to arrive at. The
+  entry card names "no click" alongside section and minutes. Claude Design was
+  skipped for this one (canonical project unreachable from this account, see
+  #1244's note below) — built directly against `Theme.swift` and the existing
+  coach primitives instead. The gates that use l0 are still #1245, so nothing
+  reaches this screen in the seeded app yet
 - #1244 — the coach engine runs a clickless block (decision 20's engine half):
   `ClickLevel` gains l0 at the bottom of the ladder, a block at it starts
   playing rather than counting in, and the tap bounds the attempt (Jon's ruling
@@ -28,8 +38,8 @@ countable criteria.
   Evidence is tagged `TapVerdictUntimed` and lands on l0's own mastery key, so
   knowing it out of time never vouches for the tempo; a tempo-down rung cannot
   act where there is no tempo. `DrillView::tempo_bpm` is now `Option<u16>`.
-  The l0 drill screen is #1260 and the gates that use l0 are #1245, so nothing
-  reaches it in the app yet
+  The l0 drill screen is #1260 (landed) and the gates that use l0 are #1245,
+  so nothing reaches it in the app yet
 - #1207 — the native-ios full-tier CI job fanned out: `native-ios-build`
   builds the test products once and uploads them as an artifact,
   `native-ios-test-unit` (IntradaTests) and `native-ios-test-ui`

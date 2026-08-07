@@ -709,6 +709,12 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview())), as: axConfig)
   }
 
+  /// l0: no tempo, no click, no beat position, tap-verdict reachable in place.
+  func testDrillScreenDuringPlayUntimed() {
+    let state = DrillView.preview(tempoBpm: nil, clickLevel: "no click")
+    assertSnapshot(of: host(drill(state)), as: config)
+  }
+
   func testDrillScreenTapVerdict() {
     assertSnapshot(of: host(drill(.preview(phase: .awaitingVerdict))), as: config)
   }
@@ -739,6 +745,13 @@ final class ScreenSnapshotTests: XCTestCase {
   /// A block that has not run, so no clock — how every block opens.
   func testDrillScreenBlockEntry() {
     assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
+  }
+
+  /// The entry card names the click even where there isn't one.
+  func testDrillScreenBlockEntryUntimed() {
+    let state = DrillView.preview(
+      phase: .blockEntry, elapsedSeconds: 0, tempoBpm: nil, clickLevel: "no click")
+    assertSnapshot(of: host(drill(state)), as: config)
   }
 
   /// The parked-card clock, which a full-screen reference would cost 250KB
