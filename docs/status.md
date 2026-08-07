@@ -77,5 +77,5 @@ countable criteria.
   planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
-  circling check, grind trade, acquisition before the clock (#1244, #1245 —
+  circling check, grind trade, acquisition before the clock (#1244, #1245;
   see the phase plan in `roadmap.md`)

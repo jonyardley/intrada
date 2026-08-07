@@ -297,7 +297,7 @@ alone (rejected, it tells you nothing about what you agreed to).
 
 **Status:** DECIDED 2026-08-07 (decision 20 in the design doc, from planning
 real tune-learning: shells and roots learnt out of tempo in 4-bar chunks;
-engine work tracked in jonyardley/intrada#1244, #1245).
+engine + planner work tracked in jonyardley/intrada#1244, #1245).
 
 New material opens at the least demanding rung the content authors (l0: no
 click, chunked, from memory) and the loop ramps upward: chunks, joins, full

@@ -23,7 +23,7 @@ countable targets that match no node become user nodes with gates and
 mastery, matched ones become user drills feeding the node, and a user may
 compose today's session from any of it without losing tracking. See
 "User-created items and the built session". v8 (7 Aug 2026): acquisition
-before the clock (decision 20), from planning real tune-learning — the
+before the clock (decision 20), from planning real tune-learning: the
 sparse-click ladder reaches l0 (no click at all), material-learning stages
 split into a know-it gate and an own-it-in-time gate, chunks and their joins
 become authored scope rungs, and tempo ramps up to a gate's target rather than
@@ -378,8 +378,11 @@ melody, comfortable enough in the harmony to improvise over it.
 
 The first blocks on new material are l0. The entry card asks for less, not
 for something different: *"Shells under the melody. Bars 1 to 8, from memory.
-No click."* One tap per pass, exactly as any other block; Discard still costs
-nothing. Chunks come first (seeded at 4 bars, corrected from the logs), then
+No click."* One tap per pass, and Discard still costs nothing. One point is
+deliberately open (#1244): with no pulse there is no phrase boundary to open
+the verdict window on, so what bounds an l0 attempt (the leading proposal:
+the tap itself) needs a ruling against decision 17's attempt-bounding
+rationale before the build. Chunks come first (seeded at 4 bars, corrected from the logs), then
 the joins as their own rung, then the full form, all still out of time. Only
 then does the click arrive, below the gate's target tempo, stepping up on
 clean passes until the target is the tempo being played. The same ramp serves

@@ -5,7 +5,7 @@ cargo: drills in [`nodes.md`](nodes.md) are parameterised by this tune
 ("rootless under the melody, Strasbourg A section"), and the in-flight
 phrase integrates over it at its stage 7.
 
-Each stage carries two gates (decision 20, acquisition before the clock):
+Each stage carries up to two gates (decision 20, acquisition before the clock):
 **know it** (l0: no click, no tempo, in chunks from memory) and **own it in
 time** (the clocked gate, entered below target tempo and ramped up on clean
 passes). Chunks seed at 4 bars, the joins are their own rung, then the full
