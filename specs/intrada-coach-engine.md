@@ -243,6 +243,12 @@ pre-play prediction against a tap-verdict — considered and cut, design doc v6.
 > `CoachEvent::RecoverSession` re-anchors the clock, so a recovered block keeps
 > the minutes already spent against its ceiling and a wander banks none of the
 > outage.
+>
+> **Read back 7 Aug 2026 (#1214).** `PersistenceOperation::LoadCoachRecords`
+> returns every closed `BlockRecord`, and a local-first launch replays their
+> attempts through the mastery track in timestamp order. The records are the log
+> and the mastery store is a projection of them, so the store is never persisted
+> itself. Contract: `specs/coach-2a-slice-contract.md` §7.
 
 > **Rebuilt 6 Aug 2026 (#1223), from a fortnight of playing it.** Three
 > transitions changed and one state was added; the table below reads through
@@ -427,6 +433,13 @@ non-empty why citing the destination whenever one is declared (principle 7).
 > until the session-end narrative. A stub target and a rung with no click both
 > land in `Plan::deferred` rather than vanishing, and the session length comes
 > from `[defaults]` until press-start (#1182) can ask for it.
+
+> **Stage 3 fires for a real user from 7 Aug 2026 (#1214).** The live mastery
+> store arrived with #1188, but nothing read the persisted evidence back, so
+> `last_attempt_at` existed only for attempts made since launch: the `overdue`
+> pull above and the cold test were covered by tests and dead in production. The
+> store is now rebuilt at launch by replaying the persisted `BlockRecord`s (§4's
+> read-back note).
 
 ## 6. The FFI contract
 

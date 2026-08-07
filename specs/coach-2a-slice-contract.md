@@ -231,8 +231,105 @@ pub struct PlanContext {
   `gates.toml`: the file authors none of them yet (#1188 permits this
   explicitly). `MasteryConstants` is the single place they live, and moving
   them into the file is a follow-up.
-- **The mastery store is not persisted.** It lives on `CoachState` for the app's
-  lifetime and is re-seeded from content at launch, so "returning material" and
-  `overdue` are within-run facts for now. Rebuilding it from the persisted
-  `BlockRecord`s needs a read side the persistence layer does not have. Tracked
-  as a follow-up.
+- **The mastery store is still not persisted, and never will be.** It is rebuilt
+  at launch from the persisted `BlockRecord`s instead (§7, #1214): the records
+  already hold every fact the store derives, so storing the store as well would
+  be a second source of truth for the same evidence.
+
+## 7. The read half of the evidence: rebuilding mastery at launch (#1214)
+
+`SaveCoachRecords` (§4 of the engine spec) has written every attempt with its
+verdict, level and timestamp since #1181, and nothing read them back. So
+`last_attempt_at` only existed for attempts made since launch, which made
+planner stage 3's overdue pull and the cold test dead paths for a real user.
+
+The store itself is **not** persisted. It is a projection of the records, and
+the records are the log:
+
+```rust
+pub enum PersistenceOperation {
+    // … unchanged …
+    /// Every closed block, tombstones excluded. Read once at a local-first
+    /// launch; the core replays the attempts through the mastery track.
+    LoadCoachRecords,
+}
+
+pub enum PersistenceOutput {
+    // … unchanged …
+    CoachRecords(Vec<BlockRecord>),
+}
+
+pub enum Event {
+    // … unchanged …
+    CoachRecordsLoaded(PersistenceOutput),
+}
+```
+
+Blocks only. A `WanderRecord` has no node and no level (§4), so it carries
+nothing the mastery track is keyed by and nothing to replay.
+
+`AttemptSummary` gains the level it was played at, which is a change to a
+persisted shape as well as a bridged one:
+
+```rust
+pub struct AttemptSummary {
+    // … unchanged …
+    /// Not always the block's: `Rung::TempoDown` drops the tempo mid-block, so
+    /// a block that escalated holds attempts belonging to two rungs.
+    pub level: ParameterLevel,
+}
+```
+
+`BlockRecord::level` is the level the block *closed* on, so without this a
+rebuild puts the pre-drop attempts on the post-drop rung, and the rung the user
+was actually stuck at comes back looking untouched (`overdue == 0`,
+`is_cold == false`), which is the dead path this was meant to close. The ladder's
+first rung is a tempo drop at three consecutive misses, so that is the common
+case, not a corner. `escalation_fired` carries no timestamp, so the row cannot be
+repaired after the fact: the level has to travel with the attempt.
+
+The stored `attempts` blob is JSON, so the two new keys are additive and no table
+migration follows. Rows written before this read back with the block's level,
+which is all they ever knew. The level-up replay still uses `BlockRecord::level`:
+the gate was passed at the level the block closed on, whatever the ladder did on
+the way there.
+
+`Event::StartApp { local_first: true }` requests it alongside `LoadItems` and
+`LoadSessions`. `CoachRecordsLoaded(CoachRecords(blocks))` calls:
+
+```rust
+impl CoachState {
+    /// Re-seed from content, then replay every attempt in timestamp order.
+    /// Idempotent by construction: the seed is the starting point each time,
+    /// so calling it twice cannot double-count evidence.
+    pub fn rebuild_mastery(&mut self, records: Vec<BlockRecord>)
+}
+```
+
+Replay is a projection, in one ordered pass:
+
+- Every attempt of every block becomes `mastery.record(node, level, verdict, at)`.
+- A block whose `exit` is `GatePassed` becomes a `level_up` at its `ended_at`.
+- The whole stream sorts by timestamp before it runs, stably. Order matters
+  (`level_up` declines to overwrite a rung that already has evidence), so a
+  store that read the rows back in a different order would hold different
+  priors.
+
+Reconciliation stays in the core (offline-first invariant 4): the shell runs the
+typed read and nothing else. `CoachRecordsLoaded(Failed)` surfaces an error and
+reloads nothing, like `StoreLoaded(Failed)`: a retry against a store that just
+failed a read is a loop.
+
+In Swift, the read is a decoder for rows the codec has only ever written:
+
+```swift
+protocol ItemStore {
+  // … unchanged …
+  func loadCoachRecords() throws -> [BlockRecord]
+}
+```
+
+`SELECT … WHERE deleted_at IS NULL`. The stored enum spellings (`"clean"`,
+`"two_and_four"`, `"gate_passed"`, …) that #1181 pinned as the format contract
+are now read by production code, and an unrecognised one is reported through
+`report(_:)` rather than silently defaulting (#949).

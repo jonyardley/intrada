@@ -425,16 +425,18 @@ impl Intrada {
                 }
             },
             Event::CoachRecordsLoaded(output) => match output {
+                // No render: nothing in `ViewModel` derives from the mastery
+                // track; it reaches a screen only through the plan, computed later.
                 PersistenceOutput::CoachRecords(blocks) => {
                     model.coach.rebuild_mastery(blocks);
-                    crux_core::render::render()
+                    Command::done()
                 }
                 PersistenceOutput::Items(_)
                 | PersistenceOutput::Sessions(_)
                 | PersistenceOutput::Ack => Command::done(),
                 // Failed read: surface only, no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
-                    model.surface_error("Couldn't access local storage.");
+                    model.surface_error("Couldn't read back what you've practised.");
                     crux_core::render::render()
                 }
             },
