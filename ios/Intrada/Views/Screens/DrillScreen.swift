@@ -131,31 +131,14 @@ struct DrillScreen: View {
     case .blockEntry:
       blockEntryCard
     case .countIn:
-      VStack(spacing: IntradaSpacing.row + 2) {
-        tempo
-        clickPill
-        BeatPosition(
-          beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
-          bars: Int(state.bars)
-        )
-        .padding(.top, IntradaSpacing.cardCompact)
-      }
+      timedCentre
     case .playing:
+      // No tempo means no beat to count either (l0) — a frozen bar 1 beat 1
+      // would claim a pulse that never runs. The gate is the one fact left.
       if isUntimed {
-        // No tempo means no beat to count either — a position frozen at bar 1
-        // beat 1 would claim a pulse that never runs. The gate is the one fact
-        // left worth a glance mid-play, same as everywhere else it's asked.
         GateDots(filled: Int(state.gateFilled), target: Int(state.gateTarget))
       } else {
-        VStack(spacing: IntradaSpacing.row + 2) {
-          tempo
-          clickPill
-          BeatPosition(
-            beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
-            bars: Int(state.bars)
-          )
-          .padding(.top, IntradaSpacing.cardCompact)
-        }
+        timedCentre
       }
     case .awaitingVerdict:
       VStack(spacing: IntradaSpacing.section) {
@@ -180,6 +163,18 @@ struct DrillScreen: View {
           filled: Int(state.gateFilled), target: Int(state.gateTarget),
           caption: state.gateSummary)
       }
+    }
+  }
+
+  private var timedCentre: some View {
+    VStack(spacing: IntradaSpacing.row + 2) {
+      tempo
+      clickPill
+      BeatPosition(
+        beat: Int(state.beat), beatsPerBar: Int(state.beatsPerBar), bar: Int(state.bar),
+        bars: Int(state.bars)
+      )
+      .padding(.top, IntradaSpacing.cardCompact)
     }
   }
 
