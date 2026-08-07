@@ -26,6 +26,8 @@ just ios-snapshots-check   # fail orphaned / oversized snapshot references
 just ios-snapshots-optimize # drop Xcode's opaque alpha channel (~75% smaller)
 just check-all             # check + the fast ios-test tier
 just testflight            # signed Release .ipa → TestFlight (needs setup)
+just worktree-new <name>   # new worktree, seeded from the main checkout's warm caches
+just worktree-rm <name>    # clean up a worktree's sim, then remove it
 ```
 
 Test tiering, worktree simulator isolation, and the green-stamp skip (which lets

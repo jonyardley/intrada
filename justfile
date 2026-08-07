@@ -81,6 +81,102 @@ seed:
     bash scripts/seed-dev-data.sh
 
 # ─────────────────────────────────────────────
+# Worktrees — warm-start bootstrap (#1205)
+# ─────────────────────────────────────────────
+
+# New worktree branched from fresh origin/main, seeded from the main
+# checkout's warm caches (target/, ios/build/{spm,dd}, ios/generated) via
+# APFS clonefile (`cp -Rc`: copy-on-write, near-instant, no duplicated disk
+# until files diverge). Cuts the first `just check` / `just ios-test` in a
+# fresh worktree from ~5-10 min cold to close to what the main checkout pays
+# warm. Refuses a name that sanitises to the same simulator name as an
+# existing worktree (the foo/foo.1 collision documented in ios-testing.md).
+[group('Worktrees')]
+worktree-new name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
+    # Always alongside the main checkout's own worktrees, even when this
+    # recipe is invoked from inside another worktree — otherwise it nests
+    # the new worktree under the current one instead of beside it.
+    target="$main_root/.claude/worktrees/{{name}}"
+
+    slug="$(printf '%s' "{{name}}" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
+    for dir in "$main_root"/.claude/worktrees/*/; do
+        [ -d "$dir" ] || continue
+        other="$(basename "$dir" | tr -c 'A-Za-z0-9_-' '-' | sed 's/-*$//')"
+        if [ "$other" = "$slug" ]; then
+            echo "✗ $(basename "$dir") already sanitises to sim name '$slug' — pick a different name (see docs/ios-testing.md § worktrees)." >&2
+            exit 1
+        fi
+    done
+
+    echo "→ fetching origin and creating worktree at $target…"
+    git fetch origin
+    git worktree add "$target" -b "{{name}}" origin/main
+
+    echo "→ seeding warm caches from $main_root…"
+    seeded=()
+    for rel in target ios/build/spm ios/build/dd; do
+        src="$main_root/$rel"
+        dst="$target/$rel"
+        if [ -d "$src" ]; then
+            mkdir -p "$(dirname "$dst")"
+            cp -Rc "$src" "$dst"
+            seeded+=("$rel")
+        fi
+    done
+    # A new branch must earn its own green (#1204) — strip the check-stamp
+    # that came along with the target/ clone rather than exclude it up front.
+    rm -f "$target/target/.check-stamp"
+
+    # ios/generated only seeds when this worktree's own core source hash
+    # matches the stamp being copied — same rule _ios-sync enforces, so a
+    # binding for a different core revision never gets treated as fresh.
+    stamp="$main_root/ios/generated/.gen-stamp"
+    if [ -f "$stamp" ] && [ -d "$main_root/ios/generated" ]; then
+        current="$(cd "$target" && just _ios-src-hash)"
+        if [ "$(cat "$stamp")" = "$current" ]; then
+            mkdir -p "$target/ios"
+            cp -Rc "$main_root/ios/generated" "$target/ios/generated"
+            seeded+=("ios/generated")
+        else
+            echo "  ios/generated skipped — main checkout's bindings don't match this branch's core source"
+        fi
+    fi
+
+    echo
+    echo "✓ worktree ready: $target"
+    if [ "${#seeded[@]}" -gt 0 ]; then
+        echo "  seeded (warm): ${seeded[*]}"
+    else
+        echo "  nothing to seed — main checkout has no warm caches yet"
+    fi
+    stale=()
+    for rel in target ios/build/spm ios/build/dd ios/generated; do
+        found=0
+        for s in "${seeded[@]:-}"; do [ "$s" = "$rel" ] && found=1; done
+        [ "$found" = 1 ] || stale+=("$rel")
+    done
+    [ "${#stale[@]}" -eq 0 ] || echo "  will rebuild cold: ${stale[*]}"
+    echo "  cd $target && just check"
+
+# Companion to worktree-new: cleans the worktree's throwaway sim (if any),
+# then removes the worktree via git. Run from any checkout; leaves the
+# branch itself intact (delete separately once merged).
+[group('Worktrees')]
+worktree-rm name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    main_root="$(git rev-parse --path-format=absolute --git-common-dir | xargs dirname)"
+    target="$main_root/.claude/worktrees/{{name}}"
+    if [ -d "$target" ]; then
+        (cd "$target" && just ios-test-sim-clean) || true
+    fi
+    git worktree remove "$target"
+    echo "✓ removed worktree $target"
+
+# ─────────────────────────────────────────────
 # Diagnostics & cleanup
 # ─────────────────────────────────────────────
 
