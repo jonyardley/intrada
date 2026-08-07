@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
+use crate::domain::built_session::{
+    BuiltSession, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
+};
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
 use crate::domain::mcp_audit::McpAuditEntry;
@@ -88,6 +91,14 @@ pub struct Model {
     /// One slot, because the shell resolves persistence synchronously
     /// (`Store.process`), so only one coach write is ever in flight.
     pub coach_write_in_flight: Option<PersistenceOperation>,
+    // Built-session entities (#1256, `specs/built-session.md`). Tombstoned
+    // rows stay out of these: the shell loads live rows only.
+    pub user_drills: Vec<UserDrill>,
+    pub journal_items: Vec<JournalItem>,
+    pub built_sessions: Vec<BuiltSession>,
+    pub play_throughs: Vec<PlayThroughRecord>,
+    pub reflections: Vec<Reflection>,
+    pub feel_entries: Vec<FeelEntry>,
 }
 
 impl Model {

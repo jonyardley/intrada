@@ -595,6 +595,175 @@ final class StoreEffectLoopTests: XCTestCase {
       "current step is the first not-yet-solid step")
   }
 
+  /// Real-bridge built-session write (#846, #1256): `CreateUserDrill` crosses
+  /// the wire, the core mints the entity, and the matching `SaveUserDrill`
+  /// operation comes back across the same wire. A stub bridge can't catch a
+  /// bincode break on either leg.
+  func testRealBridgeCreateUserDrillEmitsMatchingSaveOp() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let requests = try bridge.update(
+      .builtSession(
+        .createUserDrill(
+          CreateUserDrill(
+            name: "Descending run", criterion: "Three clean passes at 72",
+            tempoBpm: 72, keys: ["F"], passesToOpen: 3, serves: .node("alice-bridge")))))
+
+    let drill = try XCTUnwrap(
+      requests.compactMap { request -> UserDrill? in
+        if case .persistence(.saveUserDrill(let drill)) = request.effect { return drill }
+        return nil
+      }.first, "CreateUserDrill must emit a SaveUserDrill persistence op")
+    XCTAssertEqual(drill.id.count, 26, "core-minted ulid")
+    XCTAssertEqual(drill.criterion, "Three clean passes at 72")
+    XCTAssertEqual(drill.tempoBpm, 72)
+    XCTAssertEqual(drill.serves, .node("alice-bridge"))
+    XCTAssertNil(drill.deletedAt)
+  }
+
+  /// Real-bridge built-session composition (#846, #1256): every `BuiltTarget`
+  /// kind rides one `BuiltSession` across the wire and back out in the
+  /// `SaveBuiltSession` op — the enum-variant shape a stub can't exercise.
+  func testRealBridgeSaveBuiltSessionRoundTripsEveryTargetKind() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let blocks = [
+      BuiltBlock(id: "b1", target: .node(node: "shell-voicings"), minutes: 5),
+      BuiltBlock(id: "b2", target: .userDrill(drillId: "d1"), minutes: nil),
+      BuiltBlock(id: "b3", target: .journal(journalId: "j1"), minutes: 8),
+      BuiltBlock(id: "b4", target: .piece(itemId: "p1"), minutes: 10),
+    ]
+    let requests = try bridge.update(
+      .builtSession(
+        .saveBuiltSession(
+          session: BuiltSession(
+            id: "01BUILT0000000000000000001", source: "From Friday's lesson", blocks: blocks,
+            createdAt: "2026-08-07T10:00:00Z", updatedAt: "2026-08-07T10:00:00Z",
+            deletedAt: nil))))
+
+    let saved = try XCTUnwrap(
+      requests.compactMap { request -> BuiltSession? in
+        if case .persistence(.saveBuiltSession(let session)) = request.effect { return session }
+        return nil
+      }.first, "SaveBuiltSession must emit its persistence op")
+    XCTAssertEqual(saved.blocks, blocks, "all four target kinds survive the wire")
+    XCTAssertEqual(saved.source, "From Friday's lesson")
+  }
+
+  /// Real-bridge reflection + feel (#846, #1256): `RecordReflection` carries
+  /// three optional Strings (the absent-vs-present hazard) and `RecordFeel` a
+  /// fieldless enum; both must decode on the wire and emit their ops.
+  func testRealBridgeReflectionAndFeelDecodeOnWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let reflectionRequests = try bridge.update(
+      .builtSession(
+        .recordReflection(
+          kind: .sessionClose, sessionRef: nil,
+          transcript: "The bridge still rushes", audioPath: nil, durationS: 24)))
+    let reflection = try XCTUnwrap(
+      reflectionRequests.compactMap { request -> Reflection? in
+        if case .persistence(.saveReflection(let reflection)) = request.effect {
+          return reflection
+        }
+        return nil
+      }.first)
+    XCTAssertEqual(reflection.transcript, "The bridge still rushes")
+    XCTAssertNil(reflection.audioPath)
+
+    let feelRequests = try bridge.update(
+      .builtSession(.recordFeel(blockId: "b1", feel: .itSang)))
+    let entry = try XCTUnwrap(
+      feelRequests.compactMap { request -> FeelEntry? in
+        if case .persistence(.saveFeelEntry(let entry)) = request.effect { return entry }
+        return nil
+      }.first)
+    XCTAssertEqual(entry.feel, .itSang)
+  }
+
+  /// Real-bridge hydration (#846, #1256): the launch `LoadBuiltSessionData`
+  /// request resolves with a fully-populated `BuiltSessionData` — the read
+  /// leg of the wire, which must decode in Rust without error.
+  func testRealBridgeLoadBuiltSessionDataResolvesPopulatedPayload() throws {
+    let bridge = LiveBridge()
+    let requests = try bridge.update(
+      .startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let load = try XCTUnwrap(
+      requests.first { request in
+        if case .persistence(.loadBuiltSessionData) = request.effect { return true }
+        return false
+      }, "local-first launch must hydrate the built-session store")
+
+    let data = BuiltSessionData(
+      userDrills: [
+        UserDrill(
+          id: "01USERDRILL0000000000000001", name: "Descending run",
+          criterion: "Three clean passes", tempoBpm: nil, keys: [], passesToOpen: 3,
+          serves: .circle(.hands), createdAt: "2026-08-07T10:00:00Z",
+          updatedAt: "2026-08-07T10:00:00Z", deletedAt: nil)
+      ],
+      journalItems: [
+        JournalItem(
+          id: "01JOURNAL000000000000000001", name: "Rubato feel", notes: "Time and notes",
+          linkedItemId: "p1", createdAt: "2026-08-07T10:00:00Z",
+          updatedAt: "2026-08-07T10:00:00Z", deletedAt: nil)
+      ],
+      builtSessions: [],
+      playThroughs: [
+        PlayThroughRecord(
+          id: "01PLAY00000000000000000001", itemId: "p1",
+          startedAt: "2026-08-07T10:00:00Z", endedAt: "2026-08-07T10:04:00Z", counted: false,
+          sections: [SectionVerdict(section: "The bridge", held: true, at: "2026-08-07T10:01:00Z")],
+          updatedAt: "2026-08-07T10:04:00Z", deletedAt: nil)
+      ],
+      reflections: [],
+      feelEntries: [])
+    // A wire break on the read leg throws here rather than landing data.
+    _ = try bridge.resolve(load.id, persistenceOutput: .builtSessionData(data))
+    let view = try bridge.view()
+    XCTAssertNil(view.error, "hydration must not surface an error")
+  }
+
+  /// Real-bridge journal + play-through writes (#846, #1256): the two write
+  /// legs the other bridge tests don't reach. `CreateJournalItem` carries two
+  /// optional Strings; `RecordPlayThrough` carries a nested struct array.
+  func testRealBridgeJournalAndPlayThroughWritesDecodeOnWire() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    let journalRequests = try bridge.update(
+      .builtSession(
+        .createJournalItem(
+          CreateJournalItem(name: "Rubato feel", notes: nil, linkedItemId: "p1"))))
+    let journal = try XCTUnwrap(
+      journalRequests.compactMap { request -> JournalItem? in
+        if case .persistence(.saveJournalItem(let journal)) = request.effect { return journal }
+        return nil
+      }.first, "CreateJournalItem must emit a SaveJournalItem persistence op")
+    XCTAssertEqual(journal.id.count, 26, "core-minted ulid")
+    XCTAssertNil(journal.notes, "an absent optional stays absent across the wire")
+    XCTAssertEqual(journal.linkedItemId, "p1")
+
+    let playRequests = try bridge.update(
+      .builtSession(
+        .recordPlayThrough(
+          RecordPlayThrough(
+            itemId: "p1", startedAt: "2026-08-07T10:00:00Z", endedAt: "2026-08-07T10:04:00Z",
+            counted: false,
+            sections: [
+              SectionVerdict(section: "The bridge", held: true, at: "2026-08-07T10:01:00Z"),
+              SectionVerdict(section: "Out head", held: false, at: "2026-08-07T10:03:00Z"),
+            ]))))
+    let record = try XCTUnwrap(
+      playRequests.compactMap { request -> PlayThroughRecord? in
+        if case .persistence(.savePlayThrough(let record)) = request.effect { return record }
+        return nil
+      }.first, "RecordPlayThrough must emit a SavePlayThrough persistence op")
+    XCTAssertEqual(record.id.count, 26, "core-minted ulid")
+    XCTAssertEqual(record.counted, false)
+    XCTAssertEqual(record.sections.map(\.held), [true, false], "verdict order survives the wire")
+  }
+
   /// Real-bridge rung tag (#846, #1083): `SetEntryVariant` carries an optional
   /// String across the bincode wire (the absent-vs-present hazard). Drive it
   /// through the live bridge and assert it decodes without error.
@@ -1360,6 +1529,13 @@ private struct FailingStore: ItemStore {
     throw TestError()
   }
   func loadCoachRecords() throws -> [BlockRecord] { throw TestError() }
+  func saveUserDrill(_ drill: UserDrill) throws { throw TestError() }
+  func saveJournalItem(_ journal: JournalItem) throws { throw TestError() }
+  func saveBuiltSession(_ session: BuiltSession) throws { throw TestError() }
+  func savePlayThrough(_ record: PlayThroughRecord) throws { throw TestError() }
+  func saveReflection(_ reflection: Reflection) throws { throw TestError() }
+  func saveFeelEntry(_ entry: FeelEntry) throws { throw TestError() }
+  func loadBuiltSessionData() throws -> BuiltSessionData { throw TestError() }
 }
 
 final class MockURLProtocol: URLProtocol {

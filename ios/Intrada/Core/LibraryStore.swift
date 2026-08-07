@@ -17,6 +17,15 @@ protocol ItemStore {
   /// The closed blocks back, so the core can rebuild the mastery track at
   /// launch (#1214). Wanders stay write-only: no `(node, level)` to score.
   func loadCoachRecords() throws -> [BlockRecord]
+  // Built-session entities (#1256): upserts by id; deletes arrive as
+  // tombstoned saves, so no delete methods exist.
+  func saveUserDrill(_ drill: UserDrill) throws
+  func saveJournalItem(_ journal: JournalItem) throws
+  func saveBuiltSession(_ session: BuiltSession) throws
+  func savePlayThrough(_ record: PlayThroughRecord) throws
+  func saveReflection(_ reflection: Reflection) throws
+  func saveFeelEntry(_ entry: FeelEntry) throws
+  func loadBuiltSessionData() throws -> BuiltSessionData
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -336,6 +345,88 @@ final class LibraryStore: ItemStore {
             ended_at TEXT NOT NULL,
             attempts TEXT NOT NULL DEFAULT '[]',
             keep_as_drill INTEGER,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+    }
+    migrator.registerMigration("v11_built_session") { db in
+      // Self-directed practice (#1256, specs/built-session.md). `blocks` and
+      // `sections` are JSON blobs for the same reason `session.entries` is:
+      // ordered child docs edited as one document, not independently synced rows.
+      try db.execute(
+        sql: """
+          CREATE TABLE user_drill (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            criterion TEXT NOT NULL,
+            tempo_bpm INTEGER,
+            keys TEXT NOT NULL DEFAULT '[]',
+            passes_to_open INTEGER NOT NULL,
+            serves_kind TEXT,
+            serves_value TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE journal_item (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            notes TEXT,
+            linked_item_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE built_session (
+            id TEXT PRIMARY KEY NOT NULL,
+            source TEXT,
+            blocks TEXT NOT NULL DEFAULT '[]',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE play_through (
+            id TEXT PRIMARY KEY NOT NULL,
+            item_id TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            ended_at TEXT NOT NULL,
+            counted INTEGER NOT NULL,
+            sections TEXT NOT NULL DEFAULT '[]',
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE reflection (
+            id TEXT PRIMARY KEY NOT NULL,
+            kind TEXT NOT NULL,
+            session_ref TEXT,
+            transcript TEXT,
+            audio_path TEXT,
+            duration_s INTEGER,
+            at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+          )
+          """)
+      try db.execute(
+        sql: """
+          CREATE TABLE feel_entry (
+            id TEXT PRIMARY KEY NOT NULL,
+            block_id TEXT NOT NULL,
+            feel TEXT NOT NULL,
+            at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT
           )
@@ -985,6 +1076,355 @@ final class LibraryStore: ItemStore {
     case .shrinkScope: "shrink_scope"
     case .changeMode: "change_mode"
     case .swapDrill: "swap_drill"
+    }
+  }
+
+  // ── Built-session entities (#1256) ───────────────────────────────────
+
+  func saveUserDrill(_ drill: UserDrill) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO user_drill
+            (id, name, criterion, tempo_bpm, keys, passes_to_open, serves_kind, serves_value,
+             created_at, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name, criterion = excluded.criterion,
+            tempo_bpm = excluded.tempo_bpm, keys = excluded.keys,
+            passes_to_open = excluded.passes_to_open,
+            serves_kind = excluded.serves_kind, serves_value = excluded.serves_value,
+            created_at = excluded.created_at, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          drill.id, drill.name, drill.criterion, drill.tempoBpm.map { Int($0) },
+          try Self.encodeJSON(drill.keys, field: "keys"), Int(drill.passesToOpen),
+          Self.servesKind(drill.serves), Self.servesValue(drill.serves),
+          drill.createdAt, drill.updatedAt, drill.deletedAt,
+        ])
+    }
+  }
+
+  func saveJournalItem(_ journal: JournalItem) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO journal_item
+            (id, name, notes, linked_item_id, created_at, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name, notes = excluded.notes,
+            linked_item_id = excluded.linked_item_id,
+            created_at = excluded.created_at, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          journal.id, journal.name, journal.notes, journal.linkedItemId,
+          journal.createdAt, journal.updatedAt, journal.deletedAt,
+        ])
+    }
+  }
+
+  func saveBuiltSession(_ session: BuiltSession) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO built_session
+            (id, source, blocks, created_at, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            source = excluded.source, blocks = excluded.blocks,
+            created_at = excluded.created_at, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          session.id, session.source, try Self.encodeBlocks(session.blocks),
+          session.createdAt, session.updatedAt, session.deletedAt,
+        ])
+    }
+  }
+
+  func savePlayThrough(_ record: PlayThroughRecord) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO play_through
+            (id, item_id, started_at, ended_at, counted, sections, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            item_id = excluded.item_id, started_at = excluded.started_at,
+            ended_at = excluded.ended_at, counted = excluded.counted,
+            sections = excluded.sections, updated_at = excluded.updated_at,
+            deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          record.id, record.itemId, record.startedAt, record.endedAt, record.counted,
+          try Self.encodeSections(record.sections), record.updatedAt, record.deletedAt,
+        ])
+    }
+  }
+
+  func saveReflection(_ reflection: Reflection) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO reflection
+            (id, kind, session_ref, transcript, audio_path, duration_s, at, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            kind = excluded.kind, session_ref = excluded.session_ref,
+            transcript = excluded.transcript, audio_path = excluded.audio_path,
+            duration_s = excluded.duration_s, at = excluded.at,
+            updated_at = excluded.updated_at, deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          reflection.id, Self.reflectionKindString(reflection.kind), reflection.sessionRef,
+          reflection.transcript, reflection.audioPath, reflection.durationS.map { Int($0) },
+          reflection.at, reflection.updatedAt, reflection.deletedAt,
+        ])
+    }
+  }
+
+  func saveFeelEntry(_ entry: FeelEntry) throws {
+    try dbQueue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO feel_entry
+            (id, block_id, feel, at, updated_at, deleted_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            block_id = excluded.block_id, feel = excluded.feel, at = excluded.at,
+            updated_at = excluded.updated_at, deleted_at = excluded.deleted_at
+          """,
+        arguments: [
+          entry.id, entry.blockId, Self.feelString(entry.feel), entry.at,
+          entry.updatedAt, entry.deletedAt,
+        ])
+    }
+  }
+
+  func loadBuiltSessionData() throws -> BuiltSessionData {
+    try dbQueue.read { db in
+      BuiltSessionData(
+        userDrills: try Row.fetchAll(
+          db, sql: "SELECT * FROM user_drill WHERE deleted_at IS NULL ORDER BY created_at, id"
+        ).map(Self.userDrill(from:)),
+        journalItems: try Row.fetchAll(
+          db, sql: "SELECT * FROM journal_item WHERE deleted_at IS NULL ORDER BY created_at, id"
+        ).map(Self.journalItem(from:)),
+        builtSessions: try Row.fetchAll(
+          db, sql: "SELECT * FROM built_session WHERE deleted_at IS NULL ORDER BY created_at, id"
+        ).map(Self.builtSession(from:)),
+        playThroughs: try Row.fetchAll(
+          db, sql: "SELECT * FROM play_through WHERE deleted_at IS NULL ORDER BY started_at, id"
+        ).map(Self.playThrough(from:)),
+        reflections: try Row.fetchAll(
+          db, sql: "SELECT * FROM reflection WHERE deleted_at IS NULL ORDER BY at, id"
+        ).map(Self.reflection(from:)),
+        feelEntries: try Row.fetchAll(
+          db, sql: "SELECT * FROM feel_entry WHERE deleted_at IS NULL ORDER BY at, id"
+        ).map(Self.feelEntry(from:)))
+    }
+  }
+
+  // ── Row ↔ built-session codecs ───────────────────────────────────────
+
+  private struct StoredBuiltBlock: Codable {
+    var id: String
+    var targetKind: String
+    var targetValue: String
+    var minutes: UInt16?
+  }
+
+  private struct StoredSectionVerdict: Codable {
+    var section: String
+    var held: Bool
+    var at: String
+  }
+
+  private static func userDrill(from row: Row) throws -> UserDrill {
+    UserDrill(
+      id: row["id"], name: row["name"], criterion: row["criterion"],
+      tempoBpm: (row["tempo_bpm"] as Int?).map { UInt16(clamping: $0) },
+      keys: try decodeKeys(row["keys"]),
+      passesToOpen: UInt8(clamping: row["passes_to_open"] as Int),
+      serves: serves(kind: row["serves_kind"], value: row["serves_value"]),
+      createdAt: row["created_at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func decodeKeys(_ json: String) throws -> [String] {
+    do { return try JSONDecoder().decode([String].self, from: Data(json.utf8)) } catch {
+      throw CoachCodecError(field: "keys", phase: "decode")
+    }
+  }
+
+  private static func journalItem(from row: Row) -> JournalItem {
+    JournalItem(
+      id: row["id"], name: row["name"], notes: row["notes"],
+      linkedItemId: row["linked_item_id"],
+      createdAt: row["created_at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func builtSession(from row: Row) throws -> BuiltSession {
+    BuiltSession(
+      id: row["id"], source: row["source"], blocks: try decodeBlocks(row["blocks"]),
+      createdAt: row["created_at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func playThrough(from row: Row) throws -> PlayThroughRecord {
+    PlayThroughRecord(
+      id: row["id"], itemId: row["item_id"],
+      startedAt: row["started_at"], endedAt: row["ended_at"], counted: row["counted"],
+      sections: try decodeSections(row["sections"]),
+      updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func reflection(from row: Row) -> Reflection {
+    Reflection(
+      id: row["id"], kind: reflectionKind(from: row["kind"]), sessionRef: row["session_ref"],
+      transcript: row["transcript"], audioPath: row["audio_path"],
+      durationS: (row["duration_s"] as Int?).map { UInt32(clamping: $0) },
+      at: row["at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func feelEntry(from row: Row) -> FeelEntry {
+    FeelEntry(
+      id: row["id"], blockId: row["block_id"], feel: feel(from: row["feel"]),
+      at: row["at"], updatedAt: row["updated_at"], deletedAt: row["deleted_at"])
+  }
+
+  private static func encodeBlocks(_ blocks: [BuiltBlock]) throws -> String {
+    try encodeJSON(
+      blocks.map { block in
+        StoredBuiltBlock(
+          id: block.id, targetKind: targetKind(block.target),
+          targetValue: targetValue(block.target), minutes: block.minutes)
+      }, field: "blocks")
+  }
+
+  /// Throws on a broken blob (a lost block is invariant-5 territory); an
+  /// unrecognised target kind reports and drops that block only (#949) —
+  /// the rest of the composition stays readable.
+  private static func decodeBlocks(_ json: String) throws -> [BuiltBlock] {
+    let stored: [StoredBuiltBlock]
+    do { stored = try JSONDecoder().decode([StoredBuiltBlock].self, from: Data(json.utf8)) } catch {
+      throw CoachCodecError(field: "blocks", phase: "decode")
+    }
+    return stored.compactMap { block in
+      guard let target = target(kind: block.targetKind, value: block.targetValue) else {
+        return nil
+      }
+      return BuiltBlock(id: block.id, target: target, minutes: block.minutes)
+    }
+  }
+
+  private static func encodeSections(_ sections: [SectionVerdict]) throws -> String {
+    try encodeJSON(
+      sections.map { StoredSectionVerdict(section: $0.section, held: $0.held, at: $0.at) },
+      field: "sections")
+  }
+
+  private static func decodeSections(_ json: String) throws -> [SectionVerdict] {
+    let stored: [StoredSectionVerdict]
+    do {
+      stored = try JSONDecoder().decode([StoredSectionVerdict].self, from: Data(json.utf8))
+    } catch {
+      throw CoachCodecError(field: "sections", phase: "decode")
+    }
+    return stored.map { SectionVerdict(section: $0.section, held: $0.held, at: $0.at) }
+  }
+
+  private static func targetKind(_ target: BuiltTarget) -> String {
+    switch target {
+    case .node: "node"
+    case .userDrill: "user_drill"
+    case .journal: "journal"
+    case .piece: "piece"
+    }
+  }
+
+  private static func targetValue(_ target: BuiltTarget) -> String {
+    switch target {
+    case .node(let node): node
+    case .userDrill(let drillId): drillId
+    case .journal(let journalId): journalId
+    case .piece(let itemId): itemId
+    }
+  }
+
+  private static func target(kind: String, value: String) -> BuiltTarget? {
+    switch kind {
+    case "node": return .node(node: value)
+    case "user_drill": return .userDrill(drillId: value)
+    case "journal": return .journal(journalId: value)
+    case "piece": return .piece(itemId: value)
+    default:
+      report(UnknownStoredEnum(kind: "BuiltTarget", raw: kind), decodeContext)
+      return nil
+    }
+  }
+
+  private static func servesKind(_ serves: Serves?) -> String? {
+    switch serves {
+    case .circle: "circle"
+    case .node: "node"
+    case nil: nil
+    }
+  }
+
+  private static func servesValue(_ serves: Serves?) -> String? {
+    switch serves {
+    case .circle(let circle): circleString(circle)
+    case .node(let node): node
+    case nil: nil
+    }
+  }
+
+  private static func serves(kind: String?, value: String?) -> Serves? {
+    switch (kind, value) {
+    case (nil, _), (_, nil): return nil
+    case ("circle", .some(let value)): return .circle(circle(from: value))
+    case ("node", .some(let value)): return .node(value)
+    case (.some(let other), _):
+      report(UnknownStoredEnum(kind: "Serves", raw: other), decodeContext)
+      return nil
+    }
+  }
+
+  private static func reflectionKindString(_ kind: ReflectionKind) -> String {
+    switch kind {
+    case .voiceNote: "voice_note"
+    case .sessionClose: "session_close"
+    }
+  }
+
+  private static func reflectionKind(from raw: String) -> ReflectionKind {
+    switch raw {
+    case "voice_note": return .voiceNote
+    case "session_close": return .sessionClose
+    default:
+      report(UnknownStoredEnum(kind: "ReflectionKind", raw: raw), decodeContext)
+      return .voiceNote
+    }
+  }
+
+  private static func feelString(_ feel: Feel) -> String {
+    switch feel {
+    case .foughtIt: "fought_it"
+    case .gettingThere: "getting_there"
+    case .itSang: "it_sang"
+    }
+  }
+
+  private static func feel(from raw: String) -> Feel {
+    switch raw {
+    case "fought_it": return .foughtIt
+    case "getting_there": return .gettingThere
+    case "it_sang": return .itSang
+    default:
+      report(UnknownStoredEnum(kind: "Feel", raw: raw), decodeContext)
+      return .gettingThere  // conservative: the neutral middle, never the success tint
     }
   }
 

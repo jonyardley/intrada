@@ -257,6 +257,49 @@ final class LibraryStoreMigrationTests: XCTestCase {
       "chord_chart must round-trip through JSON storage intact")
   }
 
+  func testV11BuiltSessionTablesArriveWithV10DataIntact() throws {
+    let queue = try DatabaseQueue()  // in-memory
+
+    // A device that stopped at v10, with real rows in the tables that exist there.
+    try LibraryStore.migrator.migrate(queue, upTo: "v10_coach_records")
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO item (id, title, kind, tags, created_at, updated_at)
+          VALUES ('i1', 'Alice in Wonderland', 'piece', '[]',
+                  '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')
+          """)
+      try db.execute(
+        sql: """
+          INSERT INTO block_record (id, node, drill, gate, level_tempo_bpm, level_click_level,
+            circle, mode, started_at, ended_at, attempts, reps_after_gate, active_ms,
+            escalation_fired, exit, updated_at)
+          VALUES ('b1', 'n', 'd', 'g', 72, 'every_beat', 'hands', 'keys',
+                  '2026-01-01T00:00:00Z', '2026-01-01T00:01:00Z', '[]', 0, 60000, '[]',
+                  'gate_passed', '2026-01-01T00:01:00Z')
+          """)
+    }
+
+    // The remaining chain must run cleanly from v10.
+    try LibraryStore.migrator.migrate(queue)
+
+    try queue.read { db in
+      XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM item"), 1)
+      XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM block_record"), 1)
+      for table in [
+        "user_drill", "journal_item", "built_session", "play_through", "reflection", "feel_entry",
+      ] {
+        XCTAssertTrue(try db.tableExists(table), "\(table) must exist after v11")
+        XCTAssertEqual(
+          try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table)"), 0,
+          "\(table) starts empty on upgrade")
+        let columns = try db.columns(in: table).map(\.name)
+        XCTAssertTrue(columns.contains("updated_at"), "\(table) is sync-ready (invariant 2)")
+        XCTAssertTrue(columns.contains("deleted_at"), "\(table) carries a tombstone (invariant 2)")
+      }
+    }
+  }
+
   func testV6LinkedExerciseIdsRoundTrip() throws {
     let store = try LibraryStore.inMemory()
     let item = Item(

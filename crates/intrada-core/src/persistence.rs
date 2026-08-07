@@ -8,6 +8,9 @@ use crux_core::command::Command;
 use serde::{Deserialize, Serialize};
 
 use crate::app::{Effect, Event};
+use crate::domain::built_session::{
+    BuiltSession, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
+};
 use crate::domain::item::Item;
 use crate::domain::session::PracticeSession;
 use crate::engine::{BlockRecord, WanderRecord};
@@ -42,6 +45,28 @@ pub enum PersistenceOperation {
     /// The closed blocks back, so the mastery track can rebuild at launch
     /// (#1214). Wanders stay unread: they carry no `(node, level)` to score.
     LoadCoachRecords,
+    // Built-session entities (#1256). Saves are upserts by id; deletes are
+    // tombstoned saves (invariant 2) — no hard-delete op exists on purpose.
+    SaveUserDrill(UserDrill),
+    SaveJournalItem(JournalItem),
+    SaveBuiltSession(BuiltSession),
+    SavePlayThrough(PlayThroughRecord),
+    SaveReflection(Reflection),
+    SaveFeelEntry(FeelEntry),
+    /// One read for the whole surface at launch, like `LoadItems`.
+    LoadBuiltSessionData,
+}
+
+/// Everything the built-session surface hydrates from, in one output.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
+pub struct BuiltSessionData {
+    pub user_drills: Vec<UserDrill>,
+    pub journal_items: Vec<JournalItem>,
+    pub built_sessions: Vec<BuiltSession>,
+    pub play_throughs: Vec<PlayThroughRecord>,
+    pub reflections: Vec<Reflection>,
+    pub feel_entries: Vec<FeelEntry>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -51,6 +76,7 @@ pub enum PersistenceOutput {
     Items(Vec<Item>),
     Sessions(Vec<PracticeSession>),
     CoachRecords(Vec<BlockRecord>),
+    BuiltSessionData(BuiltSessionData),
     Ack,
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
@@ -97,6 +123,39 @@ pub fn load_sessions() -> Command<Effect, Event> {
 pub fn save_session(session: PracticeSession) -> Command<Effect, Event> {
     Command::request_from_shell(PersistenceOperation::SaveSession(session))
         .then_send(Event::SessionStoreWritten)
+}
+
+fn save_built(op: PersistenceOperation) -> Command<Effect, Event> {
+    Command::request_from_shell(op).then_send(Event::BuiltStoreWritten)
+}
+
+pub fn save_user_drill(drill: UserDrill) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SaveUserDrill(drill))
+}
+
+pub fn save_journal_item(journal: JournalItem) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SaveJournalItem(journal))
+}
+
+pub fn save_built_session(session: BuiltSession) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SaveBuiltSession(session))
+}
+
+pub fn save_play_through(record: PlayThroughRecord) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SavePlayThrough(record))
+}
+
+pub fn save_reflection(reflection: Reflection) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SaveReflection(reflection))
+}
+
+pub fn save_feel_entry(entry: FeelEntry) -> Command<Effect, Event> {
+    save_built(PersistenceOperation::SaveFeelEntry(entry))
+}
+
+pub fn load_built_session_data() -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::LoadBuiltSessionData)
+        .then_send(Event::BuiltStoreLoaded)
 }
 
 #[cfg(test)]

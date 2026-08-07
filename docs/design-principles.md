@@ -330,3 +330,50 @@ admin friction at the piano, T1, and self-assessed familiarity is exactly what
 decision 17 quarantines); keeping acquisition outside the app as unmonitored
 prose (rejected: the plan would skip the first week of any new material, and
 the evidence from that week would be lost to the mastery track).
+
+### T13 — Voice splits by surface, and the engine never speaks on screen
+
+**Status:** DECIDED 2026-08-07 (graduated from
+`design/briefs/2026-08-copy-language.md` v2, decided with Jon while reviewing
+the Built Session A/B/C mockups; lands with jonyardley/intrada#1256).
+
+The first copy pass fixed vocabulary but kept the stance: the app narrated its
+own data model in nicer words. The fix is not better sentences; it is fewer,
+and different rules per surface class.
+
+- **In-session — the silent tool** (drill loop, run-throughs, feel moments,
+  off-piste, unmonitored play): prose is budgeted like taps, at most eight
+  words beyond labels and buttons. No captions explaining mechanics: what is
+  and isn't being recorded is carried by the interface itself (the altitude
+  chip; the presence or absence of instrumentation). Buttons and chips are the
+  vocabulary: "Held / Broke down", "Fought it / Getting there / It sang".
+- **Set-up and composition — the plain peer** (steer sheet, resolution
+  questions, composed-session view, altitude choice): one short sentence per
+  card, maximum. Explain a thing once, at the decision point, then never
+  again; repeat visits get labels only. Questions are fine when they are the
+  actual decision.
+- **Reflective and narrative — warmth allowed** (session summary, reflection,
+  the morning proposal, the weekly thread): the user's own words do the
+  emotional work, quoted in serif; the app's words stay brief and concrete
+  around them. The only surface class where the app may have a personality.
+
+Universal: engine vocabulary never appears on screen: gate, verdict,
+evidence, mastery, prerequisite, node, steer, prescribed, judgement track,
+countable, cold test (as a noun). Screen translations: target / the buttons
+themselves / history / progress / "you added this" / "today's plan" / "by
+ear" / "from cold" (as lived experience). Never explain the data model inline
+(if a screen seems to need that paragraph, the design is wrong, not the copy);
+no philosophy headlines; buttons name the action, not the mechanism ("Keep it
+as a drill", never "write the gate").
+
+The full spec, with worked per-frame examples, is
+`design/briefs/2026-08-copy-language.md`; the design system gains a Voice
+section beside the tokens so future frames are written against it.
+
+Options considered: one app-wide voice with a softer register (rejected: what
+reads warm at session close is chatter mid-drill; the surfaces have opposite
+jobs); keeping the consent explanation as on-screen captions (rejected: the
+deleted three-bullet consent list on A5 is the type specimen; the interface
+carries it, or an ⓘ does); letting spec vocabulary through where it is
+"technically accurate" (rejected: core says `variant`, the screen says
+**Steps**, and the precedent holds everywhere).
