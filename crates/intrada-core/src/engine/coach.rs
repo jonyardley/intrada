@@ -51,6 +51,26 @@ impl CoachState {
         writes
     }
 
+    /// Rebuild the mastery track from the persisted evidence at launch (#1214):
+    /// the same one-way replay as the live path in [`Self::apply`]. Replaces
+    /// rather than adds, like every other load handler, so a repeated load can
+    /// never double-count.
+    pub fn rebuild_mastery(&mut self, mut records: Vec<BlockRecord>) {
+        self.mastery = MasteryStore::seeded_from(ContentIndex::shipped());
+        records.sort_by(|a, b| a.ended_at.cmp(&b.ended_at).then_with(|| a.id.cmp(&b.id)));
+        for record in records {
+            for attempt in &record.attempts {
+                self.mastery
+                    .record(&record.node, record.level, attempt.verdict, attempt.at);
+            }
+            if record.exit == Exit::GatePassed {
+                if let Some(next) = next_rung(&record) {
+                    self.mastery.level_up(&record.node, record.level, next);
+                }
+            }
+        }
+    }
+
     /// Only the two press-start events need a plan, and only `CoachState` can
     /// make one: the planner reads the mastery track, which the session does not
     /// hold. The clock seeds the dealer and is stored on the `Plan`, so the
@@ -836,6 +856,172 @@ mod tests {
             tempo_bpm: 80,
             click_level: ClickLevel::EveryBeat,
         }
+    }
+
+    // ── Rebuilt from the persisted evidence at launch (#1214) ──
+
+    fn closed_block(id: &str, verdicts: &[(bool, i64)], exit: Exit) -> BlockRecord {
+        use crate::engine::gate::EvidenceSource;
+        use crate::engine::plan::{Circle, Mode};
+        use crate::engine::session::AttemptSummary;
+        BlockRecord {
+            id: id.to_string(),
+            node: "rootless-a-b".to_string(),
+            drill: "rootless-under-melody".to_string(),
+            gate: "rootless-under-melody".to_string(),
+            level: fixture_level(),
+            circle: Circle::Hands,
+            mode: Mode::Keys,
+            started_at: at(0),
+            ended_at: at(verdicts.last().map(|(_, second)| *second).unwrap_or(0)),
+            attempts: verdicts
+                .iter()
+                .map(|(clean, second)| AttemptSummary {
+                    at: at(*second),
+                    verdict: if *clean {
+                        Verdict::Clean
+                    } else {
+                        Verdict::Missed
+                    },
+                    source: EvidenceSource::TapVerdict,
+                    cold: false,
+                    self_predicted: None,
+                })
+                .collect(),
+            attempts_to_pass: None,
+            gate_opened_at_attempt: None,
+            reps_after_gate: 0,
+            active_ms: 0,
+            escalation_fired: vec![],
+            exit,
+        }
+    }
+
+    #[test]
+    fn replaying_a_persisted_record_rebuilds_the_evidence_it_holds() {
+        let mut coach = CoachState::default();
+        coach.rebuild_mastery(vec![closed_block(
+            "b1",
+            &[(true, 9), (false, 18)],
+            Exit::SessionEnded,
+        )]);
+
+        let mastery = coach
+            .mastery
+            .get("rootless-a-b", fixture_level())
+            .expect("evidence at the rung the block ran");
+        assert!((mastery.evidence() - 2.0).abs() < 0.01, "both attempts");
+        assert_eq!(
+            mastery.last_attempt_at,
+            Some(at(18)),
+            "so overdue and the cold test read the real gap, not the launch"
+        );
+    }
+
+    #[test]
+    fn a_replayed_gate_pass_reseeds_the_rung_above_like_the_live_one_did() {
+        let mut coach = CoachState::default();
+        let seed = *coach
+            .mastery
+            .get("rootless-a-b", next_rung())
+            .expect("the content seeds every runnable rung");
+
+        coach.rebuild_mastery(vec![closed_block(
+            "b1",
+            &[(true, 9), (true, 18), (true, 27)],
+            Exit::GatePassed,
+        )]);
+
+        let above = coach.mastery.get("rootless-a-b", next_rung()).unwrap();
+        assert_ne!(above.prior, seed.prior, "the level-up replayed too");
+        assert_eq!(above.evidence(), 0.0, "inheritance is prior, not evidence");
+    }
+
+    #[test]
+    fn a_second_load_replaces_what_the_first_one_built() {
+        let record = closed_block("b1", &[(true, 9)], Exit::SessionEnded);
+        let mut coach = CoachState::default();
+        coach.rebuild_mastery(vec![record.clone()]);
+        let once = coach.mastery.clone();
+
+        coach.rebuild_mastery(vec![record]);
+
+        assert_eq!(
+            coach.mastery, once,
+            "a reload must never double the evidence"
+        );
+    }
+
+    #[test]
+    fn records_replay_in_time_order_however_the_store_returns_them() {
+        let earlier = closed_block("b1", &[(true, 9)], Exit::SessionEnded);
+        let later = closed_block("b2", &[(false, 100)], Exit::SessionEnded);
+
+        let mut coach = CoachState::default();
+        coach.rebuild_mastery(vec![later.clone(), earlier.clone()]);
+
+        let mut sorted = CoachState::default();
+        sorted.rebuild_mastery(vec![earlier, later]);
+        assert_eq!(coach.mastery, sorted.mastery);
+        assert_eq!(
+            coach
+                .mastery
+                .get("rootless-a-b", fixture_level())
+                .unwrap()
+                .last_attempt_at,
+            Some(at(100)),
+            "the newest attempt wins whatever order the rows arrive in"
+        );
+    }
+
+    #[test]
+    fn a_restart_rebuilds_the_store_the_live_session_left_behind() {
+        let mut live = CoachState::default();
+        live.session.start_fixture(at(0));
+        let mut records = Vec::new();
+        for second in [9, 18, 27] {
+            records.extend(tap_collect(&mut live, true, second));
+        }
+        records.extend(live.apply(&CoachEvent::Tick { now: at(40) }).blocks);
+        assert!(!records.is_empty(), "the run must have closed a block");
+
+        let mut rebuilt = CoachState::default();
+        rebuilt.rebuild_mastery(records);
+
+        assert_eq!(
+            rebuilt.mastery, live.mastery,
+            "a restart loses nothing the records hold"
+        );
+    }
+
+    /// `tap`, keeping the records the events closed.
+    fn tap_collect(coach: &mut CoachState, clean: bool, second: i64) -> Vec<BlockRecord> {
+        let mut records = Vec::new();
+        if coach.session.phase() == Some(&Phase::BlockEntry) {
+            records.extend(coach.apply(&CoachEvent::StartBlock { now: at(0) }).blocks);
+        }
+        if matches!(coach.session.phase(), Some(Phase::CountIn { .. })) {
+            records.extend(coach.apply(&CoachEvent::Beat { beat_index: 0 }).blocks);
+        }
+        let block = coach.session.block().expect("a running block");
+        let phrase = block.body_beats();
+        let boundary = (block.beat_index / phrase + 1) * phrase;
+        records.extend(
+            coach
+                .apply(&CoachEvent::Beat {
+                    beat_index: boundary,
+                })
+                .blocks,
+        );
+        records.extend(
+            coach
+                .apply(&CoachEvent::Tap {
+                    clean,
+                    now: at(second),
+                })
+                .blocks,
+        );
+        records
     }
 
     // ── The #846 hazard: every bridge type on the real wire ──
