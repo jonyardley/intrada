@@ -296,7 +296,7 @@ alone (rejected, it tells you nothing about what you agreed to).
 ### T12 — The ramp is a default, not a wall (acquisition before the clock)
 
 **Status:** DECIDED 2026-08-07 (decision 20 in the design doc, from planning
-real tune-learning: shells and roots learnt out of tempo in 4-bar chunks;
+real tune-learning: shells and roots learnt out of tempo in chunks;
 engine + planner work tracked in jonyardley/intrada#1244, #1245).
 
 New material opens at the least demanding rung the content authors (l0: no
@@ -309,6 +309,11 @@ The guiding-not-prescriptive rules, since familiarity differs per user, per
 piece and per session:
 
 - Prescriptions default to the ramp; nothing asks where to start.
+- Chunk size is never a parameter: content authors the musical boundaries
+  (sections, phrase marks), the block enters at a whole section, a fumble
+  splits at the nearest boundary and clean passes merge. Two bars for one
+  player's corner, the whole A for another's read-through, from the same
+  authored structure.
 - Skip on the entry card is the whole "I already know this" interface (T2: no
   mid-session configuration, and no questionnaire before playing).
 - Passing a later gate retires the rungs beneath it, so the ramp can never

@@ -25,7 +25,8 @@ countable criteria.
 - Decision 20 — acquisition before the clock (design doc v8, T12): new material
   is learnt out of time before it is owned in time. The sparse-click ladder
   reaches l0 (no click, no tempo), material stages split into know-it and
-  own-it-in-time gates, chunks and joins become authored scope rungs, and tempo
+  own-it-in-time gates, chunks follow authored musical structure (enter at the
+  section, split on a fumble, merge on clean, joins their own rung), and tempo
   ramps up to a gate's target instead of starting there. Guiding, not
   prescriptive: Skip jumps the ramp, later gates retire earlier ones, pace is
   inferred from verdicts. Engine + planner work tracked in #1244, #1245
