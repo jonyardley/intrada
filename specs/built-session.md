@@ -1,0 +1,127 @@
+# Built session, play-through altitudes, and qualitative capture
+
+**Status**: Phase A in progress · **Issue**: #1256 · **Tier**: 3
+**Design**: `specs/built-session/design/` (Built Session A/B/C mockups) ·
+briefs in `design/briefs/2026-08-built-session-journeys.md` (journeys) and
+`design/briefs/2026-08-copy-language.md` (voice, graduated as T13)
+
+## Problem
+
+The old `SessionBuilderScreen` (hand-assembled setlists, 1–5 self-ratings) was
+deleted in #1255 (close-out of #1190). Its replacement is decision 19's
+**built session**: the user composes today's blocks from their own items, each
+block keeps a gate, and evidence lands in the mastery model exactly as a
+prescribed block's does. Alongside it sit decision 16's two lower altitudes
+(off-piste, unmonitored play) and decision 17's qualitative capture. None of
+this exists yet; the journeys are designed and judged right (Built Session
+A/B/C, 2026-08-07).
+
+## The three journeys (what ships)
+
+**A — compose from a lesson.** A steer line under the untouched Practice hero
+("I know what I want to practise today") opens a sheet, not a mode (decision
+11). Each new item resolves one of three ways (decision 19):
+
+- (a) **matches an authored node** — proposal + one-tap confirm; "No, it's
+  different" falls through to (b) with the name pre-filled.
+- (b) **countable, no node → user drill** — one dictated/typed sentence is the
+  criterion; tempo, key and passes parse into read-back chips, not empty
+  fields. Low-band prior, cold-testable, own mastery, optional *serves* tag.
+- (c) **genuinely unmeasurable → journal item** — opaque target on the
+  judgement track; time and notes, kept with the piece.
+
+Resolution is paid once per item, ever: repeat visits are add-add-add-build.
+The composed session reuses the press-start scaffold; template shape (warm-up
+first, music at the ends) is a one-line declinable suggestion. Start enters
+the existing drill loop; a user drill's boundary card shows GateDots filling
+from tap-verdicts and the serves line.
+
+**B — play-through, three altitudes.** From a piece, the B0 sheet asks "Play
+it through — how should it count?" (headline settled, Jon 2026-08-07 on
+#1256): **run-through** (section-by-section gated run, "Held / Broke down",
+one tap each), **off-piste** (time logged + a 96pt "Found something? Say it"
+mic; exit offers "Keep this as a drill?" routing into A's form with the
+transcript as draft criterion), **just play** (minutes only, silent middle, no
+exit prompt ever). The AltitudeChip stays visible in the orientation strip for
+the whole run; absence of instrumentation is the consent signal.
+
+**C — qualitative capture.** At most one feel moment per block ("Fought it /
+Getting there / It sang"), only where feel is the point, skipped entirely
+after two misses in a block (the budget shrinks on a bad day). Voice-first
+reflection at session close (audio kept, transcription opportunistic). A kept
+reflection can resurface next morning as a proposed steer: quote back, one
+concrete offer, accept inserts one block marked "you added this" (decision 12:
+propose, confirm, never plan).
+
+## Approach
+
+Core owns everything (Crux, local-first, offline-first invariants apply in
+full). New domain surface, sketched for Phase A:
+
+- **Entities** (GRDB, client ulids, `updated_at`/`deleted_at`): `UserDrill`
+  (criterion text, parsed gate params, serves tag, low-band mastery state),
+  `JournalItem`, `BuiltSession` (ordered blocks + provenance), `PlayThrough`
+  (altitude, per-section verdicts for run-throughs, elapsed for the others),
+  `Reflection` / feel entries (judgement track: never feed mastery, may retire
+  a target, decision 17).
+- **Events/Effects**: compose/resolve/reorder events; existing drill-loop
+  events reused unchanged for gated blocks; a new audio-capture `AppEffect`
+  for voice notes (record + opportunistic transcription in the shell as a dumb
+  pipe; the core stores the marker, path and transcript).
+- **Evidence**: a user drill's tap-verdicts land at full weight on its own
+  node; a run-through's section verdicts land on the pipeline stage; per the
+  #1244 ruling, the tap bounds the attempt at l0 (`TapVerdictUntimed`, lower
+  weight, already covers the looser bound). Off-piste and unmonitored produce
+  time entries only, with zero inference (decision 16).
+- **Resolution matching (a)**: v1 matches typed/dictated names against library
+  and node names in core (normalised text match); LLM-proposed matching and
+  the C3 morning proposal's LLM narration are Phase 3 of the coach roadmap;
+  C3 ships rule-based (most recent kept reflection with a named target) or not
+  at all in v1. The criterion-sentence parsing (tempo/keys/passes) is a small
+  core parser over dictated text, not an LLM call.
+- **Voice/copy**: every screen is written against T13. Engine vocabulary never
+  appears on screen; in-session prose ≤ 8 words beyond labels.
+
+### New design-system components (promoted with the screen that ships them)
+
+`AltitudeChip` (always visible while playing), `FeelChips` (one-per-block rule
+in its DS entry), `ReflectionCard` + proposed-steer card, journal kind badge
+(third kind beside piece/exercise), read-back chips (A4), the inline
+shape-advice card (CoachNote-weight, two inline choices), GateDots at section
+granularity (one-line DS note). Each lands in `Theme.swift` + the design
+system together; no hand-rolled clones.
+
+### Phasing
+
+- **A (this branch)**: spec + design assets + core scaffold: entity types,
+  events, model fields, migrations, bridge round-trip tests for every new
+  payload (build precondition, #846), no UI.
+- **B**: Journey A end-to-end (steer line, sheet, resolution, composed
+  session, drill-loop integration, evidence landing).
+- **C**: Journey B (B0 sheet, run-through with section gates, off-piste,
+  unmonitored; AltitudeChip).
+- **D**: Journey C (feel moments, reflection at close, morning proposal).
+
+Each phase is its own PR; every screen ships with snapshots, VoiceOver labels,
+Dynamic Type and iPad SplitView per the per-screen quality rule.
+
+## Key decisions (settled; do not reopen)
+
+1. Never a mode (11): composition is a steer reached from the hero; altitudes
+   are reached from the piece.
+2. Three-way resolution (19), template shape is advice, resolution paid once.
+3. Qualitative data never feeds mastery (17); measurement budget: one tap per
+   rep, ≤ 1 feel per block, budget shrinks on a bad day.
+4. Tap bounds the l0 attempt (#1244 ruling); B0 headline stays "how should it
+   count?" (#1256 comment; record in the design file when next open).
+5. Voice is T13; serif is reserved for the user's own words.
+
+## Open questions
+
+1. How much pipeline does v1 need? B1's note argues: a piece + named section
+   gates only, degrading gracefully to off-piste + piece tag when sections
+   aren't authored. Resolve when Phase C is planned.
+2. Audio storage/retention for voice notes and reflections (files on device,
+   rows carry paths; size cap? cleanup?). Resolve in Phase A schema review.
+3. C3's v1 trigger (rule-based vs deferred to coach Phase 3): decide at
+   Phase D, informed by what reflections actually look like by then.
