@@ -118,9 +118,12 @@ pub enum Event {
     SessionsStoreLoaded(PersistenceOutput),
     /// Session write result, kept separate so a failed save reloads sessions (not items).
     SessionStoreWritten(PersistenceOutput),
-    /// Coach evidence write result. Nothing reads these rows back, so a failure
-    /// has nothing to reload to: the batch is offered again once instead, and
-    /// only a second failure surfaces (#1181).
+    /// The persisted block records back at launch, replayed into the mastery
+    /// track; without this, overdue and the cold test reset every restart (#1214).
+    CoachRecordsLoaded(PersistenceOutput),
+    /// Coach evidence write result. A failed write means the row was never
+    /// stored, so a reload cannot recover it: the batch is offered again once
+    /// instead, and only a second failure surfaces (#1181).
     CoachStoreWritten(PersistenceOutput),
 }
 
@@ -194,7 +197,11 @@ impl Intrada {
                 model.api_base_url = api_base_url;
                 model.local_first = local_first;
                 if local_first {
-                    Command::all([persistence::load_items(), persistence::load_sessions()])
+                    Command::all([
+                        persistence::load_items(),
+                        persistence::load_sessions(),
+                        persistence::load_coach_records(),
+                    ])
                 } else {
                     Command::all([
                         http::fetch_items(&model.api_base_url),
@@ -372,7 +379,9 @@ impl Intrada {
                     model.items = items;
                     crux_core::render::render()
                 }
-                PersistenceOutput::Ack | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Ack
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed read: surface only — no reload (would loop a broken store).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -381,7 +390,9 @@ impl Intrada {
             },
             Event::StoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed write → reload to roll back the un-persisted change (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
@@ -394,7 +405,9 @@ impl Intrada {
                     model.practice_summaries = build_practice_summaries(&model.sessions);
                     crux_core::render::render()
                 }
-                PersistenceOutput::Items(_) | PersistenceOutput::Ack => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Ack
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     crux_core::render::render()
@@ -402,17 +415,34 @@ impl Intrada {
             },
             Event::SessionStoreWritten(output) => match output {
                 PersistenceOutput::Ack => Command::done(),
-                PersistenceOutput::Items(_) | PersistenceOutput::Sessions(_) => Command::done(),
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => Command::done(),
                 // Failed save → reload sessions to roll back the optimistic push (#825).
                 PersistenceOutput::Failed => {
                     model.surface_error("Couldn't access local storage.");
                     persistence::load_sessions()
                 }
             },
+            Event::CoachRecordsLoaded(output) => match output {
+                PersistenceOutput::CoachRecords(blocks) => {
+                    model.coach.rebuild_mastery(blocks);
+                    crux_core::render::render()
+                }
+                PersistenceOutput::Items(_)
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::Ack => Command::done(),
+                // Failed read: surface only, no reload (would loop a broken store).
+                PersistenceOutput::Failed => {
+                    model.surface_error("Couldn't access local storage.");
+                    crux_core::render::render()
+                }
+            },
             Event::CoachStoreWritten(output) => match output {
                 PersistenceOutput::Ack
                 | PersistenceOutput::Items(_)
-                | PersistenceOutput::Sessions(_) => {
+                | PersistenceOutput::Sessions(_)
+                | PersistenceOutput::CoachRecords(_) => {
                     model.coach_write_in_flight = None;
                     Command::done()
                 }

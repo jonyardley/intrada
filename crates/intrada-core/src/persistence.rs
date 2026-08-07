@@ -39,6 +39,9 @@ pub enum PersistenceOperation {
         wanders: Vec<WanderRecord>,
         updated_at: DateTime<Utc>,
     },
+    /// The closed blocks back, so the mastery track can rebuild at launch
+    /// (#1214). Wanders stay unread: they carry no `(node, level)` to score.
+    LoadCoachRecords,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -47,6 +50,7 @@ pub enum PersistenceOperation {
 pub enum PersistenceOutput {
     Items(Vec<Item>),
     Sessions(Vec<PracticeSession>),
+    CoachRecords(Vec<BlockRecord>),
     Ack,
     /// Local store failed the op — surfaced, not trusted as success (#816).
     Failed,
@@ -78,6 +82,11 @@ pub fn delete_item(id: String, deleted_at: DateTime<Utc>) -> Command<Effect, Eve
 /// same batch to offer again if the write fails (#1181).
 pub fn save_coach_records(batch: PersistenceOperation) -> Command<Effect, Event> {
     Command::request_from_shell(batch).then_send(Event::CoachStoreWritten)
+}
+
+pub fn load_coach_records() -> Command<Effect, Event> {
+    Command::request_from_shell(PersistenceOperation::LoadCoachRecords)
+        .then_send(Event::CoachRecordsLoaded)
 }
 
 pub fn load_sessions() -> Command<Effect, Event> {
@@ -875,7 +884,90 @@ mod tests {
             assert_eq!(block.gate_progress.filled(), 1);
         }
 
+        // ── Rebuilt from the persisted evidence at launch (#1214) ──
+
+        /// Run a session far enough to close one block, and keep what it wrote.
+        fn recorded_blocks(app: &Intrada, model: &mut Model) -> Vec<BlockRecord> {
+            let _ = send(app, model, CoachEvent::StartPlannedSession { now: at(0) });
+            rep(app, model, true, 9);
+            let mut cmd = send(app, model, CoachEvent::Tick { now: at(30) });
+            coach_records(&mut cmd).expect("a SaveCoachRecords op")
+        }
+
+        #[test]
+        fn the_launch_asks_the_store_for_the_coach_records() {
+            let app = Intrada;
+            let mut model = Model::test_default();
+            let mut cmd = app.update(
+                Event::StartApp {
+                    api_base_url: "http://localhost:3001".to_string(),
+                    local_first: true,
+                },
+                &mut model,
+            );
+
+            assert!(
+                cmd.effects().any(|e| matches!(e, Effect::Persistence(req)
+                    if req.operation == PersistenceOperation::LoadCoachRecords)),
+                "the mastery track rebuilds from the store at launch"
+            );
+            assert!(!has_http(&mut cmd), "and never from the network");
+        }
+
+        #[test]
+        fn the_loaded_records_rebuild_what_the_last_run_learned() {
+            let (app, mut model) = local_first();
+            let blocks = recorded_blocks(&app, &mut model);
+            let learned = model.coach.mastery.clone();
+
+            let (app, mut fresh) = local_first();
+            let _ = app.update(
+                Event::CoachRecordsLoaded(PersistenceOutput::CoachRecords(blocks.clone())),
+                &mut fresh,
+            );
+
+            assert_eq!(
+                fresh.coach.mastery, learned,
+                "the restart holds what the run left behind"
+            );
+            assert!(
+                fresh.coach.mastery.is_cold(
+                    &blocks[0].node,
+                    blocks[0].level,
+                    at(30) + chrono::TimeDelta::days(1)
+                ),
+                "so tomorrow's first rep is the cold test again (#1214's dead path)"
+            );
+        }
+
+        #[test]
+        fn a_failed_coach_read_surfaces_and_does_not_loop() {
+            let (app, mut model) = local_first();
+            let mut cmd = app.update(
+                Event::CoachRecordsLoaded(PersistenceOutput::Failed),
+                &mut model,
+            );
+
+            assert!(
+                model.last_error.is_some(),
+                "a broken read degrades the plan silently otherwise"
+            );
+            assert!(
+                !cmd.effects().any(|e| matches!(e, Effect::Persistence(_))),
+                "no reload against a store that is not having it"
+            );
+        }
+
         // ── The #846 hazard: the new payloads on the real wire ──
+
+        #[test]
+        fn the_records_read_survives_the_ffi_wire() {
+            let (app, mut model) = local_first();
+            let blocks = recorded_blocks(&app, &mut model);
+
+            crate::domain::types::assert_round_trips(PersistenceOperation::LoadCoachRecords);
+            crate::domain::types::assert_round_trips(PersistenceOutput::CoachRecords(blocks));
+        }
 
         #[test]
         fn the_evidence_op_survives_the_ffi_wire() {

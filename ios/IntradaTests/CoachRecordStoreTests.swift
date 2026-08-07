@@ -5,9 +5,9 @@ import Testing
 
 @testable import Intrada
 
-/// Coach evidence persistence (#1181, spec §4). The production codec is
-/// write-only, so the stored shape is pinned here: `DecodedAttempt` is the
-/// format contract a future reader has to match.
+/// Coach evidence persistence (#1181 writes, #1214 reads, spec §4).
+/// `DecodedAttempt` pins the stored shape independently of the production
+/// codec, so a drift in either direction fails here.
 @Suite("Coach evidence store")
 struct CoachRecordStoreTests {
 
@@ -53,8 +53,8 @@ struct CoachRecordStoreTests {
       attempts: attempts, keepAsDrill: keepAsDrill)
   }
 
-  /// A store plus its queue, so a write-only codec can still be read back in
-  /// tests with raw SQL rather than a production decoder nothing would call.
+  /// A store plus its queue, so the write tests can pin the stored rows with
+  /// raw SQL rather than trusting the production decoder they share (#1214).
   private func makeStore() throws -> (LibraryStore, DatabaseQueue) {
     let queue = try DatabaseQueue()
     return (try LibraryStore(queue), queue)
@@ -221,6 +221,69 @@ struct CoachRecordStoreTests {
     try store.saveCoachRecords(blocks: [record], wanders: [], updatedAt: Self.updatedAt)
 
     #expect(try count(queue, "block_record") == 1, "a retried write must not double-count evidence")
+  }
+
+  // ── Reads: the mastery rebuild at launch (#1214) ───────────────────────
+
+  @Test("a saved block reads back exactly as it was written")
+  func blockRoundTrip() throws {
+    let (store, _) = try makeStore()
+    let written = block(
+      attempts: [
+        attempt(clean: false, cold: true, at: "2026-08-04T10:00:09Z"),
+        attempt(clean: true, at: "2026-08-04T10:00:18Z", source: .midi, selfPredicted: .clean),
+      ],
+      escalations: [.tempoDown, .changeMode], exit: .ceilingHit)
+    try store.saveCoachRecords(blocks: [written], wanders: [], updatedAt: Self.updatedAt)
+
+    #expect(try store.loadCoachRecords() == [written])
+  }
+
+  @Test("nullable counters read back as nil, not zero")
+  func readNullableCounters() throws {
+    let (store, _) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [block(exit: .escalated, attemptsToPass: nil, gateOpenedAtAttempt: nil)],
+      wanders: [], updatedAt: Self.updatedAt)
+
+    let loaded = try #require(try store.loadCoachRecords().first)
+    #expect(loaded.attemptsToPass == nil)
+    #expect(loaded.gateOpenedAtAttempt == nil)
+  }
+
+  @Test("a tombstoned block stays out of the rebuild")
+  func readSkipsTombstones() throws {
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [block("b1"), block("b2")], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(
+        sql: "UPDATE block_record SET deleted_at = ? WHERE id = 'b1'",
+        arguments: [Self.updatedAt])
+    }
+
+    let loaded = try store.loadCoachRecords()
+    #expect(loaded.map(\.id) == ["b2"])
+  }
+
+  @Test("an empty store rebuilds from nothing")
+  func readEmptyStore() throws {
+    let (store, _) = try makeStore()
+    #expect(try store.loadCoachRecords().isEmpty)
+  }
+
+  @Test("an unknown stored exit falls back without claiming a gate pass")
+  func readUnknownExit() throws {
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(sql: "UPDATE block_record SET exit = 'from_the_future' WHERE id = 'b1'")
+    }
+
+    let loaded = try #require(try store.loadCoachRecords().first)
+    #expect(
+      loaded.exit != .gatePassed,
+      "a spelling this binary doesn't know must not replay a level-up (#949)")
   }
 
   // ── Upgrade path (CLAUDE.md "Local data migrations") ───────────────────

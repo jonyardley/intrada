@@ -14,6 +14,9 @@ protocol ItemStore {
   /// Append coach evidence in one transaction — blocks, wanders and their
   /// attempts land together or not at all (#1181).
   func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws
+  /// The closed blocks back, so the core can rebuild the mastery track at
+  /// launch (#1214). Wanders stay write-only: no `(node, level)` to score.
+  func loadCoachRecords() throws -> [BlockRecord]
 }
 
 /// On-device SQLite store (GRDB) — the B2 local-first persistence layer the
@@ -186,6 +189,14 @@ final class LibraryStore: ItemStore {
       for wander in wanders {
         try Self.upsert(wander, updatedAt: updatedAt, in: db)
       }
+    }
+  }
+
+  func loadCoachRecords() throws -> [BlockRecord] {
+    try dbQueue.read { db in
+      try Row.fetchAll(
+        db, sql: "SELECT * FROM block_record WHERE deleted_at IS NULL ORDER BY ended_at, id"
+      ).map(Self.blockRecord(from:))
     }
   }
 
@@ -695,10 +706,9 @@ final class LibraryStore: ItemStore {
     }
   }
 
-  // ── BlockRecord / WanderRecord → row codec (#1181) ────────────────────
-  // Write-only: nothing reads coach evidence back yet, so there is no decoder
-  // here to go stale. The stored enum spellings are the format contract a
-  // future reader must match.
+  // ── BlockRecord / WanderRecord ↔ row codec (#1181, read side #1214) ───
+  // The stored enum spellings are the format contract both directions share.
+  // Wanders stay write-only: they carry no (node, level) for the rebuild.
 
   private struct StoredAttempt: Codable {
     var at: String
@@ -777,10 +787,127 @@ final class LibraryStore: ItemStore {
     return json
   }
 
+  private static func blockRecord(from row: Row) -> BlockRecord {
+    BlockRecord(
+      id: row["id"], node: row["node"], drill: row["drill"], gate: row["gate"],
+      level: ParameterLevel(
+        tempoBpm: UInt16(clamping: row["level_tempo_bpm"] as Int),
+        clickLevel: clickLevel(from: row["level_click_level"])),
+      circle: circle(from: row["circle"]), mode: mode(from: row["mode"]),
+      startedAt: row["started_at"], endedAt: row["ended_at"],
+      attempts: decodeAttempts(row["attempts"]),
+      attemptsToPass: (row["attempts_to_pass"] as Int?).map { UInt16(clamping: $0) },
+      gateOpenedAtAttempt: (row["gate_opened_at_attempt"] as Int?).map { UInt16(clamping: $0) },
+      repsAfterGate: UInt16(clamping: row["reps_after_gate"] as Int),
+      activeMs: UInt64(clamping: row["active_ms"] as Int64),
+      escalationFired: decodeRungs(row["escalation_fired"]),
+      exit: exit(from: row["exit"]))
+  }
+
+  private static func decodeAttempts(_ json: String) -> [AttemptSummary] {
+    guard let dtos = try? JSONDecoder().decode([StoredAttempt].self, from: Data(json.utf8)) else {
+      report(CoachCodecError(field: "attempts (decode)"), decodeContext)
+      return []
+    }
+    return dtos.map { d in
+      AttemptSummary(
+        at: d.at, verdict: verdict(from: d.verdict), source: evidenceSource(from: d.source),
+        cold: d.cold, selfPredicted: d.selfPredicted.map(verdict(from:)))
+    }
+  }
+
+  private static func decodeRungs(_ json: String) -> [Rung] {
+    guard let raw = try? JSONDecoder().decode([String].self, from: Data(json.utf8)) else {
+      report(CoachCodecError(field: "escalation_fired (decode)"), decodeContext)
+      return []
+    }
+    return raw.map(rung(from:))
+  }
+
   private static func verdictString(_ verdict: Verdict) -> String {
     switch verdict {
     case .clean: "clean"
     case .missed: "missed"
+    }
+  }
+
+  private static func verdict(from raw: String) -> Verdict {
+    switch raw {
+    case "clean": return .clean
+    case "missed": return .missed
+    default:
+      report(UnknownStoredEnum(kind: "Verdict", raw: raw), decodeContext)
+      return .missed  // conservative: an unknown verdict must not inflate mastery (#949)
+    }
+  }
+
+  private static func evidenceSource(from raw: String) -> EvidenceSource {
+    switch raw {
+    case "tap_verdict": return .tapVerdict
+    case "midi": return .midi
+    case "audio": return .audio
+    default:
+      report(UnknownStoredEnum(kind: "EvidenceSource", raw: raw), decodeContext)
+      return .tapVerdict  // conservative: the lowest-weight evidence class
+    }
+  }
+
+  private static func clickLevel(from raw: String) -> ClickLevel {
+    switch raw {
+    case "every_beat": return .everyBeat
+    case "two_and_four": return .twoAndFour
+    case "bar_downbeat": return .barDownbeat
+    case "every_other_bar": return .everyOtherBar
+    default:
+      report(UnknownStoredEnum(kind: "ClickLevel", raw: raw), decodeContext)
+      return .everyBeat
+    }
+  }
+
+  private static func circle(from raw: String) -> Circle {
+    switch raw {
+    case "head": return .head
+    case "hands": return .hands
+    case "bridge": return .bridge
+    default:
+      report(UnknownStoredEnum(kind: "Circle", raw: raw), decodeContext)
+      return .hands
+    }
+  }
+
+  private static func mode(from raw: String) -> Mode {
+    switch raw {
+    case "keys": return .keys
+    case "away": return .away
+    case "keys_to_away": return .keysToAway
+    default:
+      report(UnknownStoredEnum(kind: "Mode", raw: raw), decodeContext)
+      return .keys
+    }
+  }
+
+  private static func rung(from raw: String) -> Rung {
+    switch raw {
+    case "tempo_down": return .tempoDown
+    case "shrink_scope": return .shrinkScope
+    case "change_mode": return .changeMode
+    case "swap_drill": return .swapDrill
+    default:
+      report(UnknownStoredEnum(kind: "Rung", raw: raw), decodeContext)
+      return .tempoDown  // conservative: the mildest rung
+    }
+  }
+
+  private static func exit(from raw: String) -> Exit {
+    switch raw {
+    case "gate_passed": return .gatePassed
+    case "ceiling_hit": return .ceilingHit
+    case "skipped": return .skipped
+    case "escalated": return .escalated
+    case "session_ended": return .sessionEnded
+    default:
+      report(UnknownStoredEnum(kind: "Exit", raw: raw), decodeContext)
+      return .sessionEnded  // conservative: an unknown exit must not replay a level-up (#949)
     }
   }
 

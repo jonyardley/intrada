@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-07 (decision 20: acquisition before the clock)
+> Last updated: 2026-08-07 (#1214: the mastery store survives a restart)
 
 ## Where we are
 
@@ -22,6 +22,10 @@ countable criteria.
 
 ## Recently landed
 
+- #1214 — the mastery store survives a restart: a local-first launch reads the
+  persisted block records back (`LoadCoachRecords`) and replays them through
+  the mastery track in timestamp order, level-ups included. The planner's
+  overdue pull and the cold test now fire for a real user, not only in tests
 - Decision 20 — acquisition before the clock (design doc v8, T12): new material
   is learnt out of time before it is owned in time. The sparse-click ladder
   reaches l0 (no click, no tempo), material stages split into know-it and
@@ -74,8 +78,6 @@ countable criteria.
   4.9MB `design/intrada-design-system.html` is one BeatPosition paragraph behind
   the `.dc.html` as of #1175, deliberately: #1232 patched that bundle in place
   and the re-export should be a real export, done once, on this visit
-- #1214 — the mastery store survives a restart, which is what makes the
-  planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
   circling check, grind trade, acquisition before the clock (#1244, #1245;
