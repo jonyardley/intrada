@@ -184,6 +184,26 @@ final class Store {
         try store.saveCoachRecords(blocks: blocks, wanders: wanders, updatedAt: updatedAt)
         return .ack
       case .loadCoachRecords: return .coachRecords(try store.loadCoachRecords())
+      case .saveUserDrill(let drill):
+        try store.saveUserDrill(drill)
+        return .ack
+      case .saveJournalItem(let journal):
+        try store.saveJournalItem(journal)
+        return .ack
+      case .saveBuiltSession(let session):
+        try store.saveBuiltSession(session)
+        return .ack
+      case .savePlayThrough(let record):
+        try store.savePlayThrough(record)
+        return .ack
+      case .saveReflection(let reflection):
+        try store.saveReflection(reflection)
+        return .ack
+      case .saveFeelEntry(let entry):
+        try store.saveFeelEntry(entry)
+        return .ack
+      case .loadBuiltSessionData:
+        return .builtSessionData(try store.loadBuiltSessionData())
       }
     } catch {
       report(error, "persistence")
