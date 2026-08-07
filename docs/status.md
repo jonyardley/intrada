@@ -7,7 +7,7 @@ scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
 doc and the issues disagree, the issues are right.*
 
-> Last updated: 2026-08-06 (#1231, #1236, #1175, #1239 follow-ups)
+> Last updated: 2026-08-07 (decision 20: acquisition before the clock)
 
 ## Where we are
 
@@ -22,6 +22,14 @@ countable criteria.
 
 ## Recently landed
 
+- Decision 20 — acquisition before the clock (design doc v8, T12): new material
+  is learnt out of time before it is owned in time. The sparse-click ladder
+  reaches l0 (no click, no tempo), material stages split into know-it and
+  own-it-in-time gates, chunks and joins become authored scope rungs, and tempo
+  ramps up to a gate's target instead of starting there. Guiding, not
+  prescriptive: Skip jumps the ramp, later gates retire earlier ones, pace is
+  inferred from verdicts. Engine + planner work tracked in #1244, #1245
+  (2b scope); until then the know-it rungs are practised by hand, Phase 0 style
 - #1223, #1224, #1225 — the loop's choreography, corrected from Phase 0 play:
   the click runs unbroken for a whole block (one count-in at block entry, and
   a restart only where a parameter actually changed), every block opens on an
@@ -69,4 +77,5 @@ countable criteria.
   planner's overdue pull and the cold test real
 - #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
-  circling check, grind trade (see the phase plan in `roadmap.md`)
+  circling check, grind trade, acquisition before the clock (#1244, #1245 —
+  see the phase plan in `roadmap.md`)

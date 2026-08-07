@@ -1,6 +1,6 @@
 # Intrada: The Practice Coach
 
-Design document, v7. Captured 18 July 2026; revised same day after critical
+Design document, v8. Captured 18 July 2026; revised same day after critical
 review. v2 (2 Aug 2026): the measurement-validity decisions, the feedback
 choreography, the fluency frame. v3 (3 Aug 2026): intent promoted to a
 first-class mechanism alongside the graph and the pipelines, after the
@@ -22,7 +22,12 @@ dissolved decision 13's conflation of *unmeasurable* with *unauthored*, so
 countable targets that match no node become user nodes with gates and
 mastery, matched ones become user drills feeding the node, and a user may
 compose today's session from any of it without losing tracking. See
-"User-created items and the built session".
+"User-created items and the built session". v8 (7 Aug 2026): acquisition
+before the clock (decision 20), from planning real tune-learning — the
+sparse-click ladder reaches l0 (no click at all), material-learning stages
+split into a know-it gate and an own-it-in-time gate, chunks and their joins
+become authored scope rungs, and tempo ramps up to a gate's target rather than
+starting there. See "Acquisition before the clock".
 
 ## Vision
 
@@ -41,7 +46,7 @@ path returns later as an evidence upgrade.
 ## Decisions (recorded, overrulable)
 
 1. **Personal tool first, product decision deferred.** Built for user zero; placement, onboarding, content generalisation, and the audio path are deferred until three months of daily personal use argue for a product. Every scoping call below assumes this.
-2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident. Sparse-click modes (2-and-4, click every other bar) are gate levels *within* click-always: they convert the internal-time objection (Galper, Longo) into a difficulty ladder rather than a rebuttal. **Scoped (3 Aug 2026): click-always governs *scored attempts*, not the learning rungs beneath a gate.** Singing a phrase, finding notes in a new key hands-alone, working out a shape slowly — the method packs already prescribe these without a click, and the constraint was never meant to forbid them. This is a clarification, not a weakening: playing against a steady pulse *is* swing (the lay-back, the ratio, playing ahead are all defined relative to a grid), which is why decision 6 scores consistency rather than deviation, and why rubato is correctly deferred until time is internalised rather than treated as a missing feature. **Honoured in the audio 6 Aug 2026 (#1224):** the sparse levels were authored, parsed and displayed but the metronome sounded every beat regardless, so the difficulty ladder existed only on the pill. The click level now crosses the bridge as a beat mask the shell schedules from. Deliberately no user toggle: placement is a gate level, so it moves via the core's escalation path, never a preference control.
+2. **Click-always.** Practice is always to a metronome or backing track. This is a pedagogical stance (time is the foundation) and a technical necessity (attempt segmentation and bar-level feedback need a shared clock). A stated constraint, not an accident. Sparse-click modes (2-and-4, click every other bar) are gate levels *within* click-always: they convert the internal-time objection (Galper, Longo) into a difficulty ladder rather than a rebuttal. **Scoped (3 Aug 2026): click-always governs *scored attempts*, not the learning rungs beneath a gate.** Singing a phrase, finding notes in a new key hands-alone, working out a shape slowly — the method packs already prescribe these without a click, and the constraint was never meant to forbid them. This is a clarification, not a weakening: playing against a steady pulse *is* swing (the lay-back, the ratio, playing ahead are all defined relative to a grid), which is why decision 6 scores consistency rather than deviation, and why rubato is correctly deferred until time is internalised rather than treated as a missing feature. **Honoured in the audio 6 Aug 2026 (#1224):** the sparse levels were authored, parsed and displayed but the metronome sounded every beat regardless, so the difficulty ladder existed only on the pill. The click level now crosses the bridge as a beat mask the shell schedules from. Deliberately no user toggle: placement is a gate level, so it moves via the core's escalation path, never a preference control. **Sequenced 7 Aug 2026 (decision 20):** the ladder now reaches l0 (no click at all), and material-learning stages split into a know-it gate (l0, from memory, untimed) and an own-it-in-time gate (clocked, ramped up to target). Click-always binds from the first own-it gate of a stage, not from the first encounter with the material.
 3. **Deploy-gates are self-confirmed in v1.** Detecting a transposed, varied device inside free improvisation is research-grade; v1 asks "did you land it?", with machine suggestion at best later.
 4. **Horizons are self-trend-based, not population-based.** "Most people need ~10 sessions" requires population data that does not exist at launch; the honest version is "your trend suggests roughly N more sessions".
 5. **Content scope for v1 is minimal:** 5 nodes, 2 method packs, 1 phrase, fully specified; the rest of the branch as stubs. The prove-the-loop principle applies to content as much as code.
@@ -60,6 +65,8 @@ path returns later as an evidence upgrade.
 18. **Machine listening is deferred; the loop ships on tap-verdicts** (added 4 Aug 2026). The scoring path — MIDI capture, attempt segmentation, per-bar verdicts — needs machine-readable, note-level, per-key targets for everything scorable: content that must be sourced (licensing and authoring hours) or typed in (exactly the admin friction this design exists to remove). The segmentation spike sharpened the problem rather than solving it: an attempt is defined by what it was an attempt *at* ([`docs/segmentation-findings.md`](../docs/segmentation-findings.md), PR #1161), so the scorable universe is click-locked, pre-declared short phrases — and since an app optimises what it can see (challenge 2), a scoring-first build pulls the product toward a drill machine for that narrow slice. The retention-critical journeys (1, 5, 6, 7) need none of it. So the coaching loop ships first on the evidence model in "Measures without machine listening"; the spike's engine module is deleted rather than left inert (#1176) — unread code goes stale and adds weight — and returns from history with the path. **Re-entry trigger, recorded now:** when the loop retains and users ask "did I actually nail it?", MIDI returns — **play-to-input first** (play the lick in once, the capture becomes the target, `chart.rs` transposes it to twelve keys: thirty seconds of playing replaces the note-entry admin), verification second. Decisions 6, 7 and 8 and challenge 1 stand as decisions but now govern that later path; decision 2 (click-always) still binds v1 — the click is what makes the parameter axes machine-facts.
 
 19. **User-created items are first-class where they are countable; the built session composes them without losing tracking** (added 4 Aug 2026). Decision 13 conflated two kinds of unmatched target: the genuinely unmeasurable ("make the last A sing") and the merely *unauthored* — a teacher's exercise with a perfectly countable criterion ("hands together at 80, all twelve keys"). Decision 18 dissolved the reason for treating them alike: once every v1 verdict is a tap against a countable criterion, an exercise the user typed in can carry a gate and a Beta-updated mastery exactly as authored content does. So targets resolve **three ways**, not two: **(a) matches a node** → a user-authored *drill* on that node (the LLM proposes the match per decision 12; the user confirms), whose tap-verdicts feed that node's mastery at full weight — the evidence source tag already distinguishes them, and decision 17's self-correction argument (a generous pass buys a too-hard prescription tomorrow) applies unchanged; **(b) countable but no node** → a **user node**: own gate criteria (data, like every gate), own mastery with a default low-band prior, cold-testable and spaceable like everything else, no prerequisites, and an optional *serves* tag (a circle, or a named node) so it appears in the ability picture. This is where a teacher's exercises live, and where off-piste's "keep this as a drill?" wanders land; **(c) genuinely unmeasurable** → opaque target on the judgement track, exactly as decision 13 (as rescoped) says. The authoring queue now watches tier (b) too: a user node that earns weeks of use is the strongest possible authoring signal. The **built session** follows from the same move: a user may compose today's session from pipelines, nodes and their own items — each block keeps its normal gate and its evidence lands identically to a prescribed block. This is the strongest form of today's steer, **not a mode** — decision 11 stands: the app opens prescribed and never asks; composing is something you reach for, never something you are asked to choose. What decision 10 keeps: back-chaining still owns the *route to a declared destination*. What it cedes: today's *sequence*, when the user explicitly writes one — and for a built session the template invariants (warm-up first, music at the ends, principle 5) are **offered as advice, never enforced**, because a shape you can't decline isn't your session.
+
+20. **Acquisition happens out of time; the click is earned per stage** (added 7 Aug 2026, from planning real tune-learning: a standard's shells and roots, learnt in chunks out of tempo). Decision 2's 3 Aug scoping already said the learning rungs beneath a gate need no click, but the app could not *run* those rungs: every block the loop can prescribe is clocked, counted in and tempo-stamped, so the plan skipped the first week of any new material and opened with a demand ("full form at 90") the hands had not earned. Now it runs them. The sparse-click ladder gains a bottom rung, **l0: no click, no tempo, no count-in** (#1244). Material-learning stages carry two gates (#1245): **know it** (l0, in authored chunks, from memory, criteria countable but never timed: "bars 1 to 8, hands find it, no fumble") and **own it in time** (the existing clocked gate, entered *below* its target tempo and stepped up on clean passes, the mirror of the tempo-down rung). Chunks and their joins are authored scope rungs, because the join is where memory actually breaks; assembly is a rung, not an afterthought. Three guards keep this guiding rather than prescriptive, since familiarity differs per user, per piece and per session: **the ramp is a default, never a wall** (passing any later gate retires the rungs beneath it, and the block-entry card's Skip is the whole "I already know this" interface, so nobody is made to re-acquire what they can play); **pace is inferred from verdicts, never asked** (clean taps merge chunks and raise tempo, struggle falls onto the existing escalation ladder, and no screen ever asks "how well do you know this?"); and **the clock still arrives** (an l0 gate that keeps passing gets its clocked sibling offered on the next plan, and the circling check watches a node that never leaves acquisition). Evidence: l0 verdicts feed the Beta update source-tagged as a distinct, lower-weight class, the same mechanism as decision 17 as amended, so "knows it out of time" and "owns it at tempo" never silently share a number; mastery is already held per (node, parameter level), and l0 is a level. This narrows decision 2 a second time without weakening it: swing is still defined against a pulse and rubato still waits for internalised time. What moves is when the pulse first appears in a piece of material's life.
 
 ## The problem
 
@@ -363,7 +370,32 @@ Worked example, 20 minutes on Strasbourg / St. Denis:
 
 Every block carries: a one-line why (citing the campaign it serves where one is declared, and graph state otherwise), a gate, a stuck path, and state written back.
 
-### Fixation and the circling check (added 3 Aug 2026)
+### Acquisition before the clock (added 7 Aug 2026, decision 20)
+
+How new material enters a session, worked through the case that produced the
+decision: learning a standard, getting the shells and the roots under the
+melody, comfortable enough in the harmony to improvise over it.
+
+The first blocks on new material are l0. The entry card asks for less, not
+for something different: *"Shells under the melody. Bars 1 to 8, from memory.
+No click."* One tap per pass, exactly as any other block; Discard still costs
+nothing. Chunks come first (seeded at 4 bars, corrected from the logs), then
+the joins as their own rung, then the full form, all still out of time. Only
+then does the click arrive, below the gate's target tempo, stepping up on
+clean passes until the target is the tempo being played. The same ramp serves
+the roots, the rootless voicings, a new key of an old shape: anything where
+the hands are still *finding* rather than *keeping time*.
+
+What the user sees is deliberately nothing new. Same entry card, same one-tap
+verdict, same ladder underneath, no mode, no toggle, no familiarity
+questionnaire. The pace is theirs because the verdicts are theirs: clean taps
+merge chunks and raise tempo, a fumble at a join re-opens the halves, and Skip
+jumps the whole ramp when the material is already in the hands. A returning
+day re-enters lower on the ramp without ceremony, because the per-level
+mastery record already says where yesterday ended. The metronome at l0 is
+absent, not silenced: no beat position, no count-in, nothing to obey. The
+ceiling and the elapsed clock stay (decision 15: orientation is never
+withheld); a block without a pulse still isn't open-ended.
 
 The mirror of the stuck ladder, and the v4 review's headline gap: every
 existing intervention triggers on *failure*, so a learner who is succeeding and

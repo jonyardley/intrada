@@ -292,3 +292,36 @@ the attempt bounding decision 17 protects); a confirm on Skip (rejected
 above); a tappable block row opening a detail sheet (rejected, it promises a
 screen that must not exist); keeping the "N blocks, about M minutes" footnote
 alone (rejected, it tells you nothing about what you agreed to).
+
+### T12 — The ramp is a default, not a wall (acquisition before the clock)
+
+**Status:** DECIDED 2026-08-07 (decision 20 in the design doc, from planning
+real tune-learning: shells and roots learnt out of tempo in 4-bar chunks;
+engine work tracked in jonyardley/intrada#1244, #1245).
+
+New material opens at the least demanding rung the content authors (l0: no
+click, chunked, from memory) and the loop ramps upward: chunks, joins, full
+form, then the click below target tempo, then the target. A metronome at first
+contact asks for time-keeping from hands still finding the notes; the demand
+was arriving a week early.
+
+The guiding-not-prescriptive rules, since familiarity differs per user, per
+piece and per session:
+
+- Prescriptions default to the ramp; nothing asks where to start.
+- Skip on the entry card is the whole "I already know this" interface (T2: no
+  mid-session configuration, and no questionnaire before playing).
+- Passing a later gate retires the rungs beneath it, so the ramp can never
+  hold back what the hands already own.
+- Pace is inferred from verdicts alone: clean taps merge chunks and raise
+  tempo; struggle falls onto the existing escalation ladder.
+- The clock still arrives: an l0 gate that keeps passing gets its clocked
+  sibling offered next plan, and the circling check watches acquisition that
+  never ends.
+
+Options considered: a "learning mode" toggle (rejected: decision 11, no mode
+switches); asking the user to self-rate familiarity at block entry (rejected:
+admin friction at the piano, T1, and self-assessed familiarity is exactly what
+decision 17 quarantines); keeping acquisition outside the app as unmonitored
+prose (rejected: the plan would skip the first week of any new material, and
+the evidence from that week would be lost to the mastery track).
