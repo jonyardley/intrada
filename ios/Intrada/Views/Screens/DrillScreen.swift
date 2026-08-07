@@ -28,9 +28,7 @@ struct DrillScreen: View {
     if case .blockEntry = state.phase { return true }
     return false
   }
-  /// l0: no click, no tempo, no count-in — the same fact `DrillView.tempoBpm`
-  /// itself is built from, so this is a read of the core's own state, not the
-  /// shell inferring one.
+  /// l0: no click, no tempo, no count-in — a read of the core's own state.
   private var isUntimed: Bool { state.tempoBpm == nil }
 
   /// On a block that has not run, a zeroed clock is noise. On one parked by an
@@ -206,8 +204,7 @@ struct DrillScreen: View {
 
   private var blockShape: String {
     var parts = [state.section, "about \(state.minutes) min"].compactMap { $0 }
-    // l0 has no click to leave unsaid — the entry card names it same as the
-    // running screen does, rather than a start that surprises with silence.
+    // l0 has no click to leave unsaid.
     if isUntimed { parts.append(state.clickLevel) }
     return parts.joined(separator: " · ")
   }
@@ -261,9 +258,6 @@ struct DrillScreen: View {
       }
     case .playing:
       if isUntimed {
-        // No `.awaitingVerdict` to reach at l0 — the tap bounds the attempt in
-        // place, so the same tap-verdict footer that phase builds has to be
-        // reachable from here instead.
         tapVerdictFooter
       } else {
         StuckTarget(action: onStuck)
@@ -282,9 +276,8 @@ struct DrillScreen: View {
     }
   }
 
-  /// The tap-verdict pair plus its escapes — reachable from both A3's
-  /// `.awaitingVerdict` and l0's `.playing`, since l0 has no separate verdict
-  /// phase to arrive at (the tap bounds the attempt in place).
+  /// Reachable from both `.awaitingVerdict` and l0's `.playing`, which has no
+  /// separate verdict phase to arrive at.
   private var tapVerdictFooter: some View {
     VStack(spacing: 0) {
       TapVerdict(onClean: { onVerdict(true) }, onMissed: { onVerdict(false) })

@@ -709,9 +709,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview())), as: axConfig)
   }
 
-  /// l0: no tempo, no click, no beat position — the gate dots are the one
-  /// fact left worth a glance, and the tap-verdict has to live here since l0
-  /// never reaches `.awaitingVerdict` (#1260).
+  /// l0: no tempo, no click, no beat position, tap-verdict reachable in place.
   func testDrillScreenDuringPlayUntimed() {
     let state = DrillView.preview(tempoBpm: nil, clickLevel: "no click")
     assertSnapshot(of: host(drill(state)), as: config)
@@ -749,8 +747,7 @@ final class ScreenSnapshotTests: XCTestCase {
     assertSnapshot(of: host(drill(.preview(phase: .blockEntry, elapsedSeconds: 0))), as: config)
   }
 
-  /// The entry card names the click even where there isn't one, rather than a
-  /// start that surprises with silence (#1260).
+  /// The entry card names the click even where there isn't one.
   func testDrillScreenBlockEntryUntimed() {
     let state = DrillView.preview(
       phase: .blockEntry, elapsedSeconds: 0, tempoBpm: nil, clickLevel: "no click")
