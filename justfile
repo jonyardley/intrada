@@ -200,6 +200,22 @@ ios-test: _ios-sync (_ios-test-run "fast")
 [group('iOS')]
 ios-test-full: _ios-sync (_ios-test-run "full")
 
+# Compile-only Release build (no signing, no tests) — catches `#if DEBUG`-only
+# code referenced from a file that itself compiles in Release, which passes
+# every Debug-only PR gate and then fails `just testflight` / the release lane
+# nobody runs per-PR (#1177). Separate derivedDataPath from the Debug test
+# build so it can't disturb the products `_ios-build-for-testing` uploads.
+[group('iOS')]
+ios-build-release: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    xcodegen generate --use-cache
+    xcodebuild build -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
+        -configuration Release -destination "generic/platform=iOS Simulator" \
+        -derivedDataPath build/dd-release -clonedSourcePackagesDirPath build/spm -quiet \
+        COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+
 # Shared build+test body for both tiers. Splits `build-for-testing` from
 # `test-without-building` (#1198) so a flake retry or test-only change reruns
 # in seconds instead of rebuilding the whole app. Skips the run entirely when

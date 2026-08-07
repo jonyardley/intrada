@@ -312,6 +312,12 @@ jobs:
       # reference together when local dev moves to a newer Xcode/iOS.
       - name: Build for testing (just _ios-build-for-testing)
         run: just _ios-build-for-testing
+      # Debug and Release can diverge on `#if DEBUG`-gated code (#1177) — the
+      # Debug build above wouldn't catch a non-DEBUG-gated file referencing a
+      # DEBUG-only symbol. Compile-only, no signing, no tests; a separate
+      # derivedDataPath (ios-build-release) keeps it out of the artifact below.
+      - name: Build Release (just ios-build-release)
+        run: just ios-build-release
       # Not all of DerivedData — just the built app + .xctest bundles (and the
       # .xctestrun that points at them) the test-without-building jobs need.
       # ios/build/dd is a relative derivedDataPath under the same checkout
