@@ -44,7 +44,7 @@ impl CoachState {
             self.mastery
                 .record(&attempt.node, attempt.level, attempt.verdict, attempt.at);
         }
-        for record in writes.blocks.iter().filter(|r| r.exit == Exit::GatePassed) {
+        for record in banked_passes(&writes.blocks) {
             if let Some(next) = next_rung(record) {
                 self.mastery.level_up(&record.node, record.level, next);
             }
@@ -95,10 +95,11 @@ impl CoachState {
             }
             // `level_up` declines a rung that already has evidence, so a banked
             // pass has to reach the store in the order it happened.
-            if record.exit == Exit::GatePassed {
-                if let Some(next) = next_rung(record) {
-                    replay.push((record.ended_at, Replay::LevelUp(next), record));
-                }
+            if let Some(next) = banked_passes(std::slice::from_ref(record))
+                .next()
+                .and_then(next_rung)
+            {
+                replay.push((record.ended_at, Replay::LevelUp(next), record));
             }
         }
         replay.sort_by_key(|(at, _, _)| *at);
@@ -264,6 +265,16 @@ impl CoachState {
 enum Replay {
     Attempt(Verdict, ParameterLevel),
     LevelUp(ParameterLevel),
+}
+
+/// The gate passes allowed to move a cursor. One definition, called by both the
+/// live path and the launch replay, so decision 17 cannot hold in one and not
+/// the other — and so it rests on `BlockOrigin` rather than on a judgement
+/// node's id happening to be unknown to the content.
+fn banked_passes(records: &[BlockRecord]) -> impl Iterator<Item = &BlockRecord> {
+    records
+        .iter()
+        .filter(|record| record.exit == Exit::GatePassed && record.origin.feeds_mastery())
 }
 
 /// A gate pass moves the cursor to the next rung of the node's ladder the loop
@@ -1130,6 +1141,39 @@ mod tests {
         let above = coach.mastery.get("rootless-a-b", next_rung()).unwrap();
         assert_ne!(above.prior, seed.prior, "the level-up replayed too");
         assert_eq!(above.evidence(), 0.0, "inheritance is prior, not evidence");
+    }
+
+    /// Decision 17 has to hold on an *authored* node too. A `journal:`-prefixed
+    /// id makes the built-session case unobservable — `next_rung` simply cannot
+    /// find the node — so this pins the rule to `BlockOrigin`, which is what
+    /// Phase C needs when the run-through altitude puts a real node on the
+    /// judgement track.
+    #[test]
+    fn a_judgement_gate_pass_banks_nothing_on_either_path() {
+        let passed = closed_block("b1", &[(true, 9), (true, 18), (true, 27)], Exit::GatePassed);
+        let judgement = BlockRecord {
+            origin: BlockOrigin::Judgement,
+            ..passed.clone()
+        };
+
+        assert_eq!(
+            banked_passes(&[passed]).count(),
+            1,
+            "an authored pass banks"
+        );
+        assert_eq!(
+            banked_passes(std::slice::from_ref(&judgement)).count(),
+            0,
+            "the same pass on the judgement track does not"
+        );
+
+        let mut replayed = CoachState::default();
+        replayed.rebuild_mastery(vec![judgement]);
+        assert_eq!(
+            replayed.mastery,
+            CoachState::default().mastery,
+            "and the launch replay agrees, attempts and level-up alike"
+        );
     }
 
     #[test]

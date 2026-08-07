@@ -9,7 +9,10 @@ import SwiftUI
 /// nothing and decides nothing.
 struct ResolutionFlow: View {
   @Environment(Store.self) private var store
-  let onFinished: () -> Void
+  /// Called when the queue empties. `cancelled` is true when the user left
+  /// rather than answered — the sheet behind has nothing left to show, so it
+  /// has to close too.
+  let onFinished: (_ cancelled: Bool) -> Void
 
   private var questions: [ComposeQuestionView] {
     store.viewModel?.built.compose?.questions ?? []
@@ -33,7 +36,7 @@ struct ResolutionFlow: View {
     }
     .onAppear { total = max(total, questions.count) }
     .onChange(of: questions.count) { _, remaining in
-      if remaining == 0 { onFinished() }
+      if remaining == 0 { onFinished(false) }
     }
     // A new question, or the same one turned into a different kind, starts
     // from what the core says rather than from the last answer's leftovers.
@@ -41,8 +44,8 @@ struct ResolutionFlow: View {
     .onAppear { resetDraft() }
   }
 
-  /// What the flow is currently asking. Changes when the queue moves on *or*
-  /// when the same entry switches kind, which is the case a plain id misses.
+  /// Changes when the queue moves on *or* when the same entry switches kind,
+  /// which is the case a plain entry id misses.
   private var questionKey: String {
     guard let question = questions.first else { return "" }
     let kind =
@@ -90,7 +93,7 @@ struct ResolutionFlow: View {
     HStack {
       Button {
         store.send(.builtSession(.cancelCompose))
-        onFinished()
+        onFinished(true)
       } label: {
         Image(systemName: "xmark")
           .font(.system(size: 18, weight: .medium))
@@ -190,10 +193,11 @@ struct ResolutionFlow: View {
     switch question.ask {
     case .nodeMatch:
       VStack(spacing: 0) {
-        Button("Yes — same drill") {
+        BrandBarButton(prominent: true) {
           store.send(.builtSession(.confirmNodeMatch(entryId: question.entryId)))
+        } label: {
+          Text("Yes — same drill")
         }
-        .buttonStyle(PrimaryAction())
         Button("No, it's different") {
           // Falls through to the criterion form with the name already there —
           // a wrong guess costs one tap, not a retype.
@@ -205,15 +209,16 @@ struct ResolutionFlow: View {
       }
     case .userDrill(_, _, _, _, let servesOptions):
       VStack(spacing: 0) {
-        Button("Create drill") {
+        BrandBarButton(prominent: true) {
           store.send(
             .builtSession(
               .resolveAsUserDrill(
                 entryId: question.entryId, criterion: criterion,
                 serves: chosenServes.map { servesOptions[$0].serves })),
             onSuccess: .impact)
+        } label: {
+          Text("Create drill")
         }
-        .buttonStyle(PrimaryAction())
         .disabled(criterion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         // The honest exit to (c): the form never forces a fake gate.
         Button("Track time and notes instead") {
@@ -224,13 +229,14 @@ struct ResolutionFlow: View {
       }
     case .journal:
       VStack(spacing: 0) {
-        Button("Add") {
+        BrandBarButton(prominent: true) {
           store.send(
             .builtSession(
               .resolveAsJournal(entryId: question.entryId, notes: nil, linkedItemId: nil)),
             onSuccess: .impact)
+        } label: {
+          Text("Add")
         }
-        .buttonStyle(PrimaryAction())
         Button("Set a target instead") {
           store.send(
             .builtSession(
@@ -353,25 +359,12 @@ private struct UserDrillForm: View {
   }
 }
 
-/// The declinable second action under a primary one. Quiet by weight, never by
-/// being hard to find — every resolution screen has an honest way out.
-struct QuietAction: ButtonStyle {
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.inkSecondary)
-      .frame(maxWidth: .infinity, minHeight: 50)
-      .contentShape(Rectangle())
-      .opacity(configuration.isPressed ? 0.6 : 1)
-  }
-}
-
 #if DEBUG
   #Preview("Proposed match") {
-    ResolutionFlow(onFinished: {}).environment(Store.previewResolvingNodeMatch)
+    ResolutionFlow(onFinished: { _ in }).environment(Store.previewResolvingNodeMatch)
   }
 
   #Preview("User drill") {
-    ResolutionFlow(onFinished: {}).environment(Store.previewComposing)
+    ResolutionFlow(onFinished: { _ in }).environment(Store.previewComposing)
   }
 #endif

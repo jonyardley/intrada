@@ -135,7 +135,9 @@ struct ComposedSessionScreen: View {
     static var preview: ComposedSessionView {
       ComposedSessionView(
         id: "01BUILT0000000000000000001",
-        source: "From Friday's lesson",
+        // No surface asks for a source yet (#1280), so the shipped hero falls
+        // back to "Your session" — snapshot what the app can reach.
+        source: nil,
         totalMinutes: 18,
         blocks: [
           ComposedBlockView(title: "Alice in Wonderland", minutes: 6, kind: .piece),

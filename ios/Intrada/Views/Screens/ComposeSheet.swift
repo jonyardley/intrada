@@ -47,7 +47,10 @@ struct ComposeSheet: View {
       }
     }
     .fullScreenCover(isPresented: $resolving) {
-      ResolutionFlow(onFinished: { resolving = false })
+      ResolutionFlow(onFinished: { cancelled in
+        resolving = false
+        if cancelled { dismiss() }
+      })
     }
   }
 
@@ -193,7 +196,7 @@ struct ComposeSheet: View {
     .accessibilityAction(named: "Remove") {
       store.send(.builtSession(.removeComposeEntry(entryId: entry.id)))
     }
-    .swipeActionsCompatibleRemove {
+    .removeOnLongPress {
       store.send(.builtSession(.removeComposeEntry(entryId: entry.id)))
     }
   }
@@ -201,7 +204,7 @@ struct ComposeSheet: View {
   @ViewBuilder private var primaryAction: some View {
     if let compose, !compose.entries.isEmpty {
       VStack(spacing: 0) {
-        Button(compose.buildLabel) {
+        BrandBarButton(prominent: true) {
           guard compose.canBuild else {
             resolving = true
             return
@@ -211,8 +214,9 @@ struct ComposeSheet: View {
           if store.send(.builtSession(.buildSession(source: nil)), onSuccess: .impact) {
             dismiss()
           }
+        } label: {
+          Text(compose.buildLabel)
         }
-        .buttonStyle(PrimaryAction())
         // Declining costs nothing and the hero is untouched — said here, in
         // words, rather than left to a toolbar glyph.
         Button("Back to today's plan") { cancel() }
@@ -238,25 +242,10 @@ struct ComposeSheet: View {
   }
 }
 
-/// A full-width primary button in the brand gradient — the one action a screen
-/// offers (docs/design-principles.md, one primary action per screen).
-struct PrimaryAction: ButtonStyle {
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(IntradaFont.bodyMedium)
-      .foregroundStyle(IntradaColor.onAccent)
-      .frame(maxWidth: .infinity, minHeight: 56)
-      .background(LinearGradient.brandBar)
-      .clipShape(RoundedRectangle(cornerRadius: IntradaRadius.panel))
-      .scaleEffect(configuration.isPressed ? 0.97 : 1)
-      .animation(IntradaMotion.snappy, value: configuration.isPressed)
-  }
-}
-
 extension View {
-  /// Swipe-to-remove on a card that is not in a `List`. Kept as a modifier so
-  /// the row reads as one thing and VoiceOver gets the same action.
-  func swipeActionsCompatibleRemove(_ remove: @escaping () -> Void) -> some View {
+  /// A card outside a `List` gets no swipe actions, so removal is a long-press
+  /// menu. VoiceOver reaches the same action through `accessibilityAction`.
+  func removeOnLongPress(_ remove: @escaping () -> Void) -> some View {
     contextMenu {
       Button("Remove", systemImage: "trash", role: .destructive, action: remove)
     }

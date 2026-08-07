@@ -34,7 +34,6 @@ pub struct ComposeEntry {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum Resolution {
-    /// Nothing more to ask: this entry is a block already.
     Settled(BuiltTarget),
     /// A question the sheet still owes. The count of these is the price the
     /// primary action states out loud (A2).
@@ -497,8 +496,7 @@ pub fn composed_session_view(
     }
 }
 
-/// Case-folded, punctuation-free, single-spaced. Two names that differ only in
-/// how they were typed are the same name.
+/// Two names that differ only in how they were typed are the same name.
 pub fn normalised(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut space_pending = false;

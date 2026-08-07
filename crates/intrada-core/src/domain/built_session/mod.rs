@@ -1741,6 +1741,35 @@ mod tests {
         assert!(model.last_error.is_some(), "never a silent nothing-happens");
     }
 
+    /// Without this the composed hero never leaves, so Start re-adopts a
+    /// finished session and credits the same drill's mastery twice.
+    #[test]
+    fn a_session_that_has_been_practised_stops_being_todays_steer() {
+        let mut model = Model::test_default();
+        let id = a_composed_day(&mut model);
+        update(
+            &mut model,
+            BuiltSessionEvent::StartBuiltSession {
+                session_id: id,
+                now: at(),
+            },
+        );
+        assert!(
+            view(&model).built.session.is_some(),
+            "it is still today's steer while the loop is running over it"
+        );
+
+        app_update(
+            &mut model,
+            Event::Coach(CoachEvent::CloseSession { now: at() }),
+        );
+        assert_eq!(model.built_session_today, None);
+        assert!(
+            view(&model).built.session.is_none(),
+            "the prescribed hero comes back once the session is over"
+        );
+    }
+
     #[test]
     fn cancelling_the_sheet_leaves_the_prescribed_day_untouched() {
         let mut model = Model::test_default();

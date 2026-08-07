@@ -38,8 +38,8 @@ pub fn parse_criterion(sentence: &str) -> ParsedCriterion {
     }
 }
 
-/// Lowercased words, with punctuation dropped but `=`, `♩` and `,` kept as
-/// their own tokens: "crotchet = 72" and "F, G" both hinge on them.
+/// `=`, `♩` and `,` survive as tokens of their own: "crotchet = 72" and "F, G"
+/// both hinge on them.
 fn tokenise(sentence: &str) -> Vec<String> {
     let mut words = Vec::new();
     let mut current = String::new();
@@ -113,8 +113,6 @@ fn tempo(words: &[String]) -> Option<u16> {
     None
 }
 
-/// "three clean passes", "3 clean", "five times", "twice". The count sits
-/// immediately before the word that says what is being counted.
 fn passes(words: &[String]) -> Option<u8> {
     for (index, word) in words.iter().enumerate() {
         let counted = matches!(
@@ -146,7 +144,6 @@ fn passes(words: &[String]) -> Option<u8> {
     })
 }
 
-/// "in F", "in B flat", "in all keys", "in 12 keys", "in F and G".
 fn keys(words: &[String]) -> Vec<String> {
     let mut found: Vec<String> = Vec::new();
     let mut index = 0;
@@ -200,8 +197,6 @@ fn keys(words: &[String]) -> Vec<String> {
     found
 }
 
-/// One key name at `at`, and where the reader gets to. "b flat" and "bb" are
-/// the same key said two ways.
 fn key_at(words: &[String], at: usize) -> Option<(String, usize)> {
     let word = words.get(at)?;
     let mut chars = word.chars();
@@ -209,15 +204,19 @@ fn key_at(words: &[String], at: usize) -> Option<(String, usize)> {
     if !matches!(letter, 'a'..='g') {
         return None;
     }
-    let letter = letter.to_ascii_uppercase();
+    let upper = letter.to_ascii_uppercase();
     match chars.as_str() {
         "" => match words.get(at + 1).map(String::as_str) {
-            Some("flat") => Some((format!("{letter}b"), at + 2)),
-            Some("sharp") => Some((format!("{letter}#"), at + 2)),
-            _ => Some((letter.to_string(), at + 1)),
+            Some("flat") => Some((format!("{upper}b"), at + 2)),
+            Some("sharp") => Some((format!("{upper}#"), at + 2)),
+            // "three clean passes in a row" is the likeliest sentence there is,
+            // and a bare "a" there is the article. A one-letter key has to be
+            // the last thing said, or joined to another key, to be a key.
+            next if letter == 'a' && !matches!(next, None | Some("and" | ",")) => None,
+            _ => Some((upper.to_string(), at + 1)),
         },
-        "b" => Some((format!("{letter}b"), at + 1)),
-        "#" => Some((format!("{letter}#"), at + 1)),
+        "b" => Some((format!("{upper}b"), at + 1)),
+        "#" => Some((format!("{upper}#"), at + 1)),
         _ => None,
     }
 }
@@ -323,6 +322,30 @@ mod tests {
         assert_eq!(parsed.tempo_bpm, None, "12 keys is not 12 bpm");
     }
 
+    /// The likeliest sentence a musician dictates, and the one the article "a"
+    /// used to turn into the key of A — which at two keys silently doubled the
+    /// gate into key coverage.
+    #[test]
+    fn the_article_a_is_not_the_key_of_a() {
+        for sentence in [
+            "Three clean passes in a row",
+            "clean in a slow tempo",
+            "no stalls, in a steady pulse",
+        ] {
+            assert!(parsed(sentence).keys.is_empty(), "{sentence}");
+        }
+        let mixed = parsed("warm up in G, then in a row three times");
+        assert_eq!(mixed.keys, vec!["G"], "one real key, and no phantom second");
+        assert_eq!(mixed.passes_to_open, 3);
+    }
+
+    #[test]
+    fn a_really_is_a_key_when_the_sentence_ends_on_it() {
+        assert_eq!(parsed("three clean in A").keys, vec!["A"]);
+        assert_eq!(parsed("clean in A and D").keys, vec!["A", "D"]);
+        assert_eq!(parsed("clean in A flat").keys, vec!["Ab"]);
+    }
+
     #[test]
     fn a_word_that_merely_starts_with_a_note_letter_is_not_a_key() {
         assert!(
@@ -338,6 +361,44 @@ mod tests {
     #[test]
     fn a_repeated_key_is_named_once() {
         assert_eq!(parsed("clean in F and F").keys, vec!["F"]);
+    }
+
+    /// Every parse has to be a drill `validation.rs` will accept, or the form
+    /// reads a sentence back in chips and then refuses to create it. A table
+    /// rather than one case: the "in a row" bug was a *behavioural* wrong that
+    /// bounds-checking one sentence could never have caught.
+    #[test]
+    fn every_parse_is_a_drill_validation_will_accept() {
+        for sentence in [
+            "Both hands together, bars 1–8, no stalls, at crotchet = 72.",
+            "Three clean passes in a row",
+            "clean in all keys, 40 times at 72",
+            "twice",
+            "once through, slowly",
+            "♩ = 200, five clean",
+            "at 900",
+            "in",
+            "clean in F, G, Bb, Eb, Ab, Db, Gb, B, E, A, D and C",
+            "make the intro breathe",
+            "0 clean passes",
+            "hands apart, then together, 12 times at 60, in every key",
+            "bars 1 to 8",
+            "tempo 40 bpm",
+        ] {
+            let parsed = parse_criterion(sentence);
+            let input = crate::domain::built_session::CreateUserDrill {
+                name: "A drill".into(),
+                criterion: sentence.into(),
+                tempo_bpm: parsed.tempo_bpm,
+                keys: parsed.keys,
+                passes_to_open: parsed.passes_to_open,
+                serves: None,
+            };
+            assert!(
+                crate::validation::validate_create_user_drill(&input).is_ok(),
+                "{sentence:?} parsed into a drill validation refuses"
+            );
+        }
     }
 
     #[test]

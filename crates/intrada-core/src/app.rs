@@ -227,6 +227,11 @@ pub(crate) fn coach_write_commands(
             .into(),
         ),
         SnapshotAction::Clear => {
+            // The session is over, so a composed one has been practised: today's
+            // steer stops being today's, the prescribed hero comes back, and
+            // Start cannot re-run a finished composition into the same drill's
+            // mastery a second time (#1256).
+            model.built_session_today = None;
             commands.push(Command::notify_shell(AppEffect::ClearCoachSessionInProgress).into())
         }
         SnapshotAction::Unchanged => {}

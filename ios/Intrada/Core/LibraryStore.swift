@@ -201,6 +201,12 @@ final class LibraryStore: ItemStore {
     }
   }
 
+  /// Deliberately *not* quarantined per-row, unlike `loadBuiltSessionData`.
+  /// #1269's rule protects rows that get written back; a block record is
+  /// append-only and never rewritten, so the hazard there is the opposite one —
+  /// silently dropping a row understates mastery for ever, where failing the
+  /// read surfaces and simply rebuilds next launch. See
+  /// `readBackCorruptAttemptsThrows`.
   func loadCoachRecords() throws -> [BlockRecord] {
     try dbQueue.read { db in
       try Row.fetchAll(
@@ -1413,9 +1419,21 @@ final class LibraryStore: ItemStore {
   private static func serves(kind: String?, value: String?) throws -> Serves? {
     switch (kind, value) {
     case (nil, _), (_, nil): return nil
-    case ("circle", .some(let value)): return .circle(circle(from: value))
+    case ("circle", .some(let value)): return .circle(try servesCircle(from: value))
     case ("node", .some(let value)): return .node(value)
     case (.some(let other), _): throw UnknownStoredEnum(kind: "Serves", raw: other)
+    }
+  }
+
+  /// `circle(from:)` reports and defaults for the block records that only ever
+  /// read (#949). A drill's `serves` is different: Phase B writes it back, so a
+  /// defaulted circle would be saved over the tag the user chose.
+  private static func servesCircle(from raw: String) throws -> Circle {
+    switch raw {
+    case "head": return .head
+    case "hands": return .hands
+    case "bridge": return .bridge
+    default: throw UnknownStoredEnum(kind: "Serves.circle", raw: raw)
     }
   }
 

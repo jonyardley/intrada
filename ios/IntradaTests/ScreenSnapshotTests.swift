@@ -146,7 +146,7 @@ final class ScreenSnapshotTests: XCTestCase {
   /// informed rather than blind.
   func testResolutionNodeMatch() {
     assertSnapshot(
-      of: host(ResolutionFlow(onFinished: {}), store: .previewResolvingNodeMatch),
+      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewResolvingNodeMatch),
       as: config)
   }
 
@@ -154,7 +154,7 @@ final class ScreenSnapshotTests: XCTestCase {
   /// whole of decision 19b hangs on.
   func testResolutionUserDrill() {
     assertSnapshot(
-      of: host(ResolutionFlow(onFinished: {}), store: .previewComposing),
+      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewComposing),
       as: config)
   }
 
@@ -164,7 +164,7 @@ final class ScreenSnapshotTests: XCTestCase {
   /// this text size does not fit the hygiene ceiling.
   func testResolutionUserDrillLargeText() {
     assertSnapshot(
-      of: host(ResolutionFlow(onFinished: {}), store: .previewComposing),
+      of: host(ResolutionFlow(onFinished: { _ in }), store: .previewComposing),
       as: .image(
         perceptualPrecision: 0.98, size: CGSize(width: 390, height: 600),
         traits: UITraitCollection { traits in

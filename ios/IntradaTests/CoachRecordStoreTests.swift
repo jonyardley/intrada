@@ -369,6 +369,19 @@ struct CoachRecordStoreTests {
     #expect(throws: (any Error).self) { try store.loadCoachRecords() }
   }
 
+  @Test("an origin this build does not know fails the read rather than guessing")
+  func readBackUnknownOriginThrows() throws {
+    // Guessing `authored` would replay a judgement-track block's taps into the
+    // mastery track at launch, which is the one thing decision 17 forbids.
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(sql: "UPDATE block_record SET origin = 'from_the_future' WHERE id = 'b1'")
+    }
+
+    #expect(throws: (any Error).self) { try store.loadCoachRecords() }
+  }
+
   // ── Upgrade path (CLAUDE.md "Local data migrations") ───────────────────
 
   @Test("a database populated at v9 migrates to v10 with its data intact")

@@ -334,7 +334,6 @@ mod tests {
     use crate::domain::built_session::tests_support::{
         built_block, journal_item, sample_item, user_drill,
     };
-    use crate::engine::Verdict;
 
     fn ctx<'a>(
         items: &'a [Item],
@@ -656,6 +655,9 @@ mod tests {
             &ctx(&[], &[], &journals),
         );
         assert_eq!(plan.blocks[0].spec.gate.judge, Judge::SelfConfirmed);
-        let _ = Verdict::Clean;
+        assert_eq!(
+            plan.blocks[0].spec.gate.criterion,
+            "You decide when it's done."
+        );
     }
 }
