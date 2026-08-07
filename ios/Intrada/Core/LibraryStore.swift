@@ -716,11 +716,16 @@ final class LibraryStore: ItemStore {
     var source: String
     var cold: Bool
     var selfPredicted: String?
+    /// Optional because rows written before #1214 have no per-attempt level.
+    /// The decoder falls back to the block's, which is all those rows ever knew.
+    var levelTempoBpm: UInt16?
+    var levelClickLevel: String?
   }
 
   private struct CoachCodecError: Error, CustomStringConvertible {
     let field: String
-    var description: String { "coach \(field) failed to encode" }
+    let phase: String
+    var description: String { "coach \(field) failed to \(phase)" }
   }
 
   private static func upsert(_ record: BlockRecord, updatedAt: String, in db: Database) throws {
@@ -775,51 +780,65 @@ final class LibraryStore: ItemStore {
         StoredAttempt(
           at: attempt.at, verdict: verdictString(attempt.verdict),
           source: evidenceSourceString(attempt.source), cold: attempt.cold,
-          selfPredicted: attempt.selfPredicted.map(verdictString))
+          selfPredicted: attempt.selfPredicted.map(verdictString),
+          levelTempoBpm: attempt.level.tempoBpm,
+          levelClickLevel: clickLevelString(attempt.level.clickLevel))
       }, field: "attempts")
   }
 
   private static func encodeJSON<T: Encodable>(_ value: T, field: String) throws -> String {
     let data = try JSONEncoder().encode(value)
     guard let json = String(data: data, encoding: .utf8) else {
-      throw CoachCodecError(field: field)
+      throw CoachCodecError(field: field, phase: "encode")
     }
     return json
   }
 
-  private static func blockRecord(from row: Row) -> BlockRecord {
-    BlockRecord(
+  /// Throws rather than substituting a partial record: evidence that failed to
+  /// decode would replay as a block nobody played (invariant 5). An unrecognised
+  /// enum spelling is different: the row is still readable, so those report and
+  /// fall back (#949).
+  private static func blockRecord(from row: Row) throws -> BlockRecord {
+    let level = ParameterLevel(
+      tempoBpm: UInt16(clamping: row["level_tempo_bpm"] as Int),
+      clickLevel: clickLevel(from: row["level_click_level"]))
+    return BlockRecord(
       id: row["id"], node: row["node"], drill: row["drill"], gate: row["gate"],
-      level: ParameterLevel(
-        tempoBpm: UInt16(clamping: row["level_tempo_bpm"] as Int),
-        clickLevel: clickLevel(from: row["level_click_level"])),
+      level: level,
       circle: circle(from: row["circle"]), mode: mode(from: row["mode"]),
       startedAt: row["started_at"], endedAt: row["ended_at"],
-      attempts: decodeAttempts(row["attempts"]),
+      attempts: try decodeAttempts(row["attempts"], blockLevel: level),
       attemptsToPass: (row["attempts_to_pass"] as Int?).map { UInt16(clamping: $0) },
       gateOpenedAtAttempt: (row["gate_opened_at_attempt"] as Int?).map { UInt16(clamping: $0) },
       repsAfterGate: UInt16(clamping: row["reps_after_gate"] as Int),
       activeMs: UInt64(clamping: row["active_ms"] as Int64),
-      escalationFired: decodeRungs(row["escalation_fired"]),
+      escalationFired: try decodeRungs(row["escalation_fired"]),
       exit: exit(from: row["exit"]))
   }
 
-  private static func decodeAttempts(_ json: String) -> [AttemptSummary] {
-    guard let dtos = try? JSONDecoder().decode([StoredAttempt].self, from: Data(json.utf8)) else {
-      report(CoachCodecError(field: "attempts (decode)"), decodeContext)
-      return []
+  private static func decodeAttempts(_ json: String, blockLevel: ParameterLevel) throws
+    -> [AttemptSummary]
+  {
+    let stored: [StoredAttempt]
+    do { stored = try JSONDecoder().decode([StoredAttempt].self, from: Data(json.utf8)) } catch {
+      throw CoachCodecError(field: "attempts", phase: "decode")
     }
-    return dtos.map { d in
+    return stored.map { attempt in
       AttemptSummary(
-        at: d.at, verdict: verdict(from: d.verdict), source: evidenceSource(from: d.source),
-        cold: d.cold, selfPredicted: d.selfPredicted.map(verdict(from:)))
+        at: attempt.at, verdict: verdict(from: attempt.verdict),
+        source: evidenceSource(from: attempt.source), cold: attempt.cold,
+        selfPredicted: attempt.selfPredicted.map(verdict(from:)),
+        // Pre-#1214 rows knew only the block's level.
+        level: ParameterLevel(
+          tempoBpm: attempt.levelTempoBpm ?? blockLevel.tempoBpm,
+          clickLevel: attempt.levelClickLevel.map(clickLevel(from:)) ?? blockLevel.clickLevel))
     }
   }
 
-  private static func decodeRungs(_ json: String) -> [Rung] {
-    guard let raw = try? JSONDecoder().decode([String].self, from: Data(json.utf8)) else {
-      report(CoachCodecError(field: "escalation_fired (decode)"), decodeContext)
-      return []
+  private static func decodeRungs(_ json: String) throws -> [Rung] {
+    let raw: [String]
+    do { raw = try JSONDecoder().decode([String].self, from: Data(json.utf8)) } catch {
+      throw CoachCodecError(field: "escalation_fired", phase: "decode")
     }
     return raw.map(rung(from:))
   }

@@ -23,11 +23,12 @@ struct CoachRecordStoreTests {
 
   private func attempt(
     clean: Bool, cold: Bool = false, at: String = "2026-08-04T10:00:09Z",
-    source: EvidenceSource = .tapVerdict, selfPredicted: Verdict? = nil
+    source: EvidenceSource = .tapVerdict, selfPredicted: Verdict? = nil,
+    level: ParameterLevel = ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour)
   ) -> AttemptSummary {
     AttemptSummary(
       at: at, verdict: clean ? .clean : .missed, source: source, cold: cold,
-      selfPredicted: selfPredicted)
+      selfPredicted: selfPredicted, level: level)
   }
 
   private func block(
@@ -284,6 +285,84 @@ struct CoachRecordStoreTests {
     #expect(
       loaded.exit != .gatePassed,
       "a spelling this binary doesn't know must not replay a level-up (#949)")
+  }
+
+  @Test("an attempt keeps the rung it was played at, not the one the block closed on")
+  func readBackPerAttemptLevel() throws {
+    // An escalated block holds attempts on two rungs (#1214, spec §7).
+    let (store, _) = try makeStore()
+    let before = ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour)
+    let after = ParameterLevel(tempoBpm: 96, clickLevel: .twoAndFour)
+    try store.saveCoachRecords(
+      blocks: [
+        block(
+          attempts: [
+            attempt(clean: false, at: "2026-08-04T10:00:09Z", level: before),
+            attempt(clean: true, at: "2026-08-04T10:00:18Z", level: after),
+          ], escalations: [.tempoDown], exit: .gatePassed)
+      ], wanders: [], updatedAt: Self.updatedAt)
+
+    let read = try #require(try store.loadCoachRecords().first)
+    #expect(read.attempts.map(\.level) == [before, after])
+  }
+
+  @Test("every click level survives the round trip, since it is half the mastery key")
+  func readBackEveryClickLevel() throws {
+    let (store, _) = try makeStore()
+    let levels: [ClickLevel] = [.everyBeat, .twoAndFour, .barDownbeat, .everyOtherBar]
+    try store.saveCoachRecords(
+      blocks: levels.enumerated().map { index, level in
+        block(
+          "b\(index)",
+          attempts: [
+            attempt(
+              clean: true, at: "2026-08-04T10:0\(index):09Z",
+              level: ParameterLevel(tempoBpm: 80, clickLevel: level))
+          ])
+      }, wanders: [], updatedAt: Self.updatedAt)
+
+    let read = try store.loadCoachRecords()
+    #expect(
+      read.compactMap { $0.attempts.first?.level.clickLevel } == levels,
+      "a decoder that drifts from its encoder relocates evidence silently")
+  }
+
+  @Test("a row written before the per-attempt level falls back to the block's")
+  func readBackLegacyAttemptWithoutLevel() throws {
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      // A level no suite helper uses, so a hardcoded fallback would fail.
+      try db.execute(
+        sql: """
+          UPDATE block_record SET attempts = ?,
+            level_tempo_bpm = 77, level_click_level = 'bar_downbeat'
+          WHERE id = 'b1'
+          """,
+        arguments: [
+          """
+          [{"at":"2026-08-04T10:00:09Z","verdict":"clean","source":"tap_verdict","cold":false}]
+          """
+        ])
+    }
+
+    let read = try #require(try store.loadCoachRecords().first)
+    #expect(
+      read.attempts.first?.level == ParameterLevel(tempoBpm: 77, clickLevel: .barDownbeat),
+      "the block's level is all a pre-#1214 row ever knew; it must not be dropped")
+  }
+
+  @Test("an attempts blob that will not decode fails the read rather than emptying it")
+  func readBackCorruptAttemptsThrows() throws {
+    // Returning [] would replay as a block nobody played (invariant 5).
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(
+      blocks: [block(attempts: [attempt(clean: true)])], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(sql: "UPDATE block_record SET attempts = 'not json' WHERE id = 'b1'")
+    }
+
+    #expect(throws: (any Error).self) { try store.loadCoachRecords() }
   }
 
   // ── Upgrade path (CLAUDE.md "Local data migrations") ───────────────────
