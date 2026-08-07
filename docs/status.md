@@ -21,6 +21,13 @@ countable criteria.
 
 ## Recently landed
 
+- #1205 — `just worktree-new <name>` warm-start bootstrap: creates a worktree
+  off fresh `origin/main` and seeds `target/`, `ios/build/{spm,dd}` and
+  `ios/generated` from the main checkout via APFS clonefile (`cp -Rc`),
+  builds on the sccache work (#1206). Names are restricted to
+  `[A-Za-z0-9_-]` — no slashes — so `.claude/worktrees/` stays flat and the
+  sim-name collision check can see every worktree. Companion
+  `just worktree-rm <name>` cleans up the sim then removes the worktree
 - #1260 — the l0 drill screen: `DrillScreen` branches on `tempoBpm == nil`
   throughout. During `.playing` the tempo/click pill/beat position give way to
   `GateDots` alone, and the tap-verdict footer (`TapVerdict` + escapes) —
