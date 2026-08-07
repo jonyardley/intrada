@@ -2,3 +2,10 @@
 # (See CLAUDE.md → "Snapshot test hygiene" for how we keep these from bloating
 # git history — they're re-recorded on every intentional UI change.)
 ios/IntradaTests/__Snapshots__/**/*.png binary
+
+# status.md takes one prepended bullet from every PR that lands, so two
+# in-flight branches always collide on the same lines. Union keeps both
+# sides' bullets instead of conflicting (ordering may vary; harmless in a
+# list of unique entries). The "Last updated" line was removed for this:
+# a line every PR rewrites would duplicate under union.
+docs/status.md merge=union

@@ -5,9 +5,8 @@ Updated in every PR that changes scope or state (see CLAUDE.md → After
 completing work). Direction and phases live in [`roadmap.md`](roadmap.md);
 scope and timing detail on the
 [project board](https://github.com/users/jonyardley/projects/2). When this
-doc and the issues disagree, the issues are right.*
-
-> Last updated: 2026-08-07 (#1214 follow-up: an attempt carries its rung)
+doc and the issues disagree, the issues are right. For the last-updated date,
+ask git: `git log -1 --format=%cs docs/status.md`.*
 
 ## Where we are
 
