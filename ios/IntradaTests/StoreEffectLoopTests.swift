@@ -812,6 +812,38 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertNil(try bridge.view().error)
   }
 
+  /// Real-bridge rebuild round-trip (#846, #1214): the launch's
+  /// `LoadCoachRecords` request decodes in Swift, and a full `BlockRecord`
+  /// batch rides back across the bincode wire into the core's replay. A wire
+  /// break here would silently reset mastery on every restart.
+  func testRealBridgeLaunchLoadsCoachRecordsAndDecodesOnTheRealWire() throws {
+    let bridge = LiveBridge()
+    let requests = try bridge.update(
+      .startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    let request = try XCTUnwrap(
+      requests.first {
+        if case .persistence(.loadCoachRecords) = $0.effect { return true }
+        return false
+      }, "a local-first launch asks the store for the coach records")
+
+    let block = BlockRecord(
+      id: "b1", node: "rootless-a-b", drill: "rootless-under-melody",
+      gate: "rootless-under-melody",
+      level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour),
+      circle: .hands, mode: .keys,
+      startedAt: "2026-08-04T10:00:00Z", endedAt: "2026-08-04T10:00:30Z",
+      attempts: [
+        AttemptSummary(
+          at: "2026-08-04T10:00:09Z", verdict: .clean, source: .tapVerdict, cold: true,
+          selfPredicted: nil)
+      ],
+      attemptsToPass: 1, gateOpenedAtAttempt: 1, repsAfterGate: 0, activeMs: 30_000,
+      escalationFired: [], exit: .gatePassed)
+
+    _ = try bridge.resolve(request.id, persistenceOutput: .coachRecords([block]))
+    XCTAssertNil(try bridge.view().error, "a decoded batch is not a storage error")
+  }
+
   /// Real-bridge escalation (#846, #1176): "I'm stuck" is the core's decision —
   /// the ladder drops the tempo and the criterion follows it. The old Swift
   /// harness did this arithmetic itself.
@@ -1281,6 +1313,7 @@ private struct FailingStore: ItemStore {
   func saveCoachRecords(blocks: [BlockRecord], wanders: [WanderRecord], updatedAt: String) throws {
     throw TestError()
   }
+  func loadCoachRecords() throws -> [BlockRecord] { throw TestError() }
 }
 
 final class MockURLProtocol: URLProtocol {

@@ -177,6 +177,7 @@ final class Store {
       case .saveCoachRecords(let blocks, let wanders, let updatedAt):
         try store.saveCoachRecords(blocks: blocks, wanders: wanders, updatedAt: updatedAt)
         return .ack
+      case .loadCoachRecords: return .coachRecords(try store.loadCoachRecords())
       }
     } catch {
       report(error, "persistence")
