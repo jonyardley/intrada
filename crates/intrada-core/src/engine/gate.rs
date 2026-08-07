@@ -26,6 +26,10 @@ pub enum Verdict {
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum EvidenceSource {
     TapVerdict,
+    /// A tap at l0, where nothing bounds the pass but the tap itself
+    /// (decision 20). Its own class, so acquisition evidence and evidence
+    /// earned against a click never read as the same thing.
+    TapVerdictUntimed,
     Midi,
     Audio,
 }
@@ -41,11 +45,15 @@ pub enum Judge {
     SelfConfirmed,
 }
 
-/// The sparse-click ladder — gate levels *within* click-always (decision 2).
+/// The sparse-click ladder: gate levels *within* click-always (decision 2),
+/// plus the rung below them where the clock has not arrived yet (decision 20).
+/// Declared in ladder order, so `NoClick` sorts bottom.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum ClickLevel {
+    /// l0: no click, no tempo, no count-in.
+    NoClick,
     EveryBeat,
     TwoAndFour,
     BarDownbeat,
@@ -55,6 +63,7 @@ pub enum ClickLevel {
 impl ClickLevel {
     pub fn spoken(&self) -> &'static str {
         match self {
+            ClickLevel::NoClick => "no click",
             ClickLevel::EveryBeat => "every beat",
             ClickLevel::TwoAndFour => "beats 2 & 4",
             ClickLevel::BarDownbeat => "beat 1 of each bar",
@@ -67,6 +76,9 @@ impl ClickLevel {
     pub fn pattern(&self, beats_per_bar: u8) -> Vec<bool> {
         let bar = usize::from(beats_per_bar.max(1));
         let mut pattern = match self {
+            // Nothing sounds at l0, and a one-beat cycle rather than an empty
+            // one leaves the shell's `beat_index % len` something to divide by.
+            ClickLevel::NoClick => return vec![false],
             ClickLevel::EveryBeat => vec![true; bar],
             ClickLevel::TwoAndFour => (0..bar).map(|beat| beat == 1 || beat == 3).collect(),
             ClickLevel::BarDownbeat => (0..bar).map(|beat| beat == 0).collect(),
@@ -345,6 +357,27 @@ mod tests {
     fn click_levels_read_as_a_musician_says_them() {
         assert_eq!(ClickLevel::TwoAndFour.spoken(), "beats 2 & 4");
         assert_eq!(ClickLevel::EveryBeat.spoken(), "every beat");
+        assert_eq!(ClickLevel::NoClick.spoken(), "no click");
+    }
+
+    // ── l0, the acquisition rung (decision 20) ──
+
+    #[test]
+    fn l0_sits_below_every_clicked_level() {
+        assert!(
+            ClickLevel::NoClick < ClickLevel::EveryBeat,
+            "l0 is the bottom rung of the ladder, not a level beside it"
+        );
+    }
+
+    #[test]
+    fn l0_sounds_nothing_and_still_leaves_the_shell_a_cycle_to_divide_by() {
+        assert_eq!(
+            ClickLevel::NoClick.pattern(4),
+            vec![false],
+            "the metronome at l0 is absent, not silenced, and an empty cycle \
+             would divide by zero in the shell"
+        );
     }
 
     // ── Click placement ──

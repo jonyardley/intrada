@@ -233,6 +233,9 @@ struct CoachRecordStoreTests {
       attempts: [
         attempt(clean: false, cold: true, at: "2026-08-04T10:00:09Z"),
         attempt(clean: true, at: "2026-08-04T10:00:18Z", source: .midi, selfPredicted: .clean),
+        // An l0 tap: its own evidence class, and one a decoder that drifts
+        // would quietly demote to a clocked one (#1244).
+        attempt(clean: true, at: "2026-08-04T10:00:27Z", source: .tapVerdictUntimed),
       ],
       escalations: [.tempoDown, .changeMode], exit: .ceilingHit)
     try store.saveCoachRecords(blocks: [written], wanders: [], updatedAt: Self.updatedAt)
@@ -309,7 +312,7 @@ struct CoachRecordStoreTests {
   @Test("every click level survives the round trip, since it is half the mastery key")
   func readBackEveryClickLevel() throws {
     let (store, _) = try makeStore()
-    let levels: [ClickLevel] = [.everyBeat, .twoAndFour, .barDownbeat, .everyOtherBar]
+    let levels: [ClickLevel] = [.noClick, .everyBeat, .twoAndFour, .barDownbeat, .everyOtherBar]
     try store.saveCoachRecords(
       blocks: levels.enumerated().map { index, level in
         block(

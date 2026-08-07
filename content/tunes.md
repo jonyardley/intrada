@@ -14,8 +14,9 @@ with each join its own rung, then the full form. The size is never asked or
 authored; only the boundaries are (sections here, phrase marks per stage,
 TODO(jon) with the seeds). The
 know-it gate is a default, never a wall: Skip jumps it, and passing the
-clocked gate retires it. The engine can't run l0 yet (#1244, #1245), so until
-then the know-it column is practised by hand, Phase 0 style.
+clocked gate retires it. The engine runs an l0 block from #1244; no gate here
+authors one until #1245 pairs them, so until then the know-it column is
+practised by hand, Phase 0 style.
 
 Seeds marked `TODO(jon)` — fill from where the tune actually is (README,
 day-one checklist).

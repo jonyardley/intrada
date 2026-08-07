@@ -21,6 +21,15 @@ countable criteria.
 
 ## Recently landed
 
+- #1244 — the coach engine runs a clickless block (decision 20's engine half):
+  `ClickLevel` gains l0 at the bottom of the ladder, a block at it starts
+  playing rather than counting in, and the tap bounds the attempt (Jon's ruling
+  on the issue, 7 Aug) since there is no phrase boundary to open a window on.
+  Evidence is tagged `TapVerdictUntimed` and lands on l0's own mastery key, so
+  knowing it out of time never vouches for the tempo; a tempo-down rung cannot
+  act where there is no tempo. `DrillView::tempo_bpm` is now `Option<u16>`.
+  The l0 drill screen is #1260 and the gates that use l0 are #1245, so nothing
+  reaches it in the app yet
 - #1207 — the native-ios full-tier CI job fanned out: `native-ios-build`
   builds the test products once and uploads them as an artifact,
   `native-ios-test-unit` (IntradaTests) and `native-ios-test-ui`
@@ -109,5 +118,6 @@ countable criteria.
 ## Next (once 2a closes)
 
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
-  circling check, grind trade, acquisition before the clock (#1244, #1245;
-  see the phase plan in `roadmap.md`)
+  circling check, grind trade, the rest of acquisition before the clock
+  (#1245's gates and ramp, #1260's l0 screen; see the phase plan in
+  `roadmap.md`)

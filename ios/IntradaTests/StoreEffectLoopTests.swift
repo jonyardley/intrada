@@ -724,9 +724,10 @@ final class StoreEffectLoopTests: XCTestCase {
 
     _ = try bridge.update(.coach(.startBlock(now: SessionClock.nowRFC3339())))
     let opening = try XCTUnwrap(try bridge.view().coach.drill)
+    let openingTempo = try XCTUnwrap(opening.tempoBpm, "a clocked rung crosses with its tempo")
     XCTAssertFalse(opening.drillTitle.isEmpty, "the block crossed the wire with its title")
     XCTAssertEqual(
-      opening.gateQuestion, "Clean at \(opening.tempoBpm)?",
+      opening.gateQuestion, "Clean at \(openingTempo)?",
       "the criterion names the tempo it is asked at")
     XCTAssertGreaterThanOrEqual(opening.gateTarget, 1, "a gate needs at least one clean pass")
     XCTAssertEqual(opening.gateFilled, 0)
@@ -918,15 +919,17 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.coach(.stuck(now: SessionClock.nowRFC3339())))
     let after = try XCTUnwrap(try bridge.view().coach.drill)
 
-    let opened = UInt32(opening.tempoBpm)
+    let openingTempo = try XCTUnwrap(opening.tempoBpm, "a clocked rung has a tempo to drop")
+    let afterTempo = try XCTUnwrap(after.tempoBpm, "and still has one after the drop")
+    let opened = UInt32(openingTempo)
     let dropped = opened - opened * UInt32(min(config.tempoDownPct, 100)) / 100
     XCTAssertEqual(
-      after.tempoBpm, UInt16(max(dropped, UInt32(config.tempoFloorBpm))),
+      afterTempo, UInt16(max(dropped, UInt32(config.tempoFloorBpm))),
       "the first rung takes the configured percentage off, floored")
     XCTAssertLessThan(
-      after.tempoBpm, opening.tempoBpm, "a rung that moves nothing is not an escalation")
+      afterTempo, openingTempo, "a rung that moves nothing is not an escalation")
     XCTAssertEqual(
-      after.gateQuestion, "Clean at \(after.tempoBpm)?",
+      after.gateQuestion, "Clean at \(afterTempo)?",
       "the criterion follows the tempo down")
     XCTAssertEqual(after.phase, .playing, "escalation acts rather than narrates")
     XCTAssertGreaterThan(

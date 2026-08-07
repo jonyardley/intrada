@@ -165,6 +165,7 @@ impl CoachState {
         };
         let block = self.session.block()?;
         let spec = self.session.spec()?;
+        let tempo_bpm = (!block.level.is_untimed()).then_some(block.level.tempo_bpm);
 
         Some(DrillView {
             phase: match block.phase {
@@ -188,7 +189,7 @@ impl CoachState {
             section: spec.section.clone(),
             destination: spec.destination.clone(),
             kind: spec.kind.clone(),
-            tempo_bpm: block.level.tempo_bpm,
+            tempo_bpm,
             click_level: block.level.click_level.spoken().to_string(),
             beat: block.beat(),
             beats_per_bar: block.beats_per_bar,
@@ -197,7 +198,9 @@ impl CoachState {
             count_in_beats: block.count_in_beats,
             phrase_beats: block.body_beats(),
             pulse_seq: block.pulse_seq,
-            pulse_running: block.phase != Phase::BlockEntry,
+            // Never at l0: the metronome there is absent, not silenced, so the
+            // shell has no pulse to schedule and no key to hold.
+            pulse_running: block.phase != Phase::BlockEntry && !block.level.is_untimed(),
             click_pattern: block.level.click_level.pattern(block.beats_per_bar),
             elapsed_seconds: block.elapsed_seconds(),
             minutes: spec.minutes,
@@ -213,8 +216,8 @@ impl CoachState {
                 .map(|block| block.spec.kind.clone())
                 .collect(),
             block_index: block.spec_index,
-            gate_question: gate_question(&spec.gate.requirement, block.level.tempo_bpm),
-            gate_summary: gate_summary(&spec.gate.requirement, block.level.tempo_bpm),
+            gate_question: gate_question(&spec.gate.requirement, tempo_bpm),
+            gate_summary: gate_summary(&spec.gate.requirement, tempo_bpm),
             gate_filled: block.gate_progress.filled(),
             gate_target: block.gate_progress.target(),
         })
@@ -238,19 +241,29 @@ fn next_rung(record: &BlockRecord) -> Option<ParameterLevel> {
         .find_map(|drill| drill.level)
 }
 
-fn gate_question(requirement: &Requirement, tempo_bpm: u16) -> String {
+/// " at 120", where there is a tempo to be at: a gate must not ask for one
+/// the rung cannot name (decision 20).
+fn at_tempo(tempo_bpm: Option<u16>) -> String {
+    tempo_bpm
+        .map(|bpm| format!(" at {bpm}"))
+        .unwrap_or_default()
+}
+
+fn gate_question(requirement: &Requirement, tempo_bpm: Option<u16>) -> String {
+    let at = at_tempo(tempo_bpm);
     match requirement {
         Requirement::CleanPasses { .. } | Requirement::KeyCoverage { .. } => {
-            format!("Clean at {tempo_bpm}?")
+            format!("Clean{at}?")
         }
-        Requirement::Chained { .. } => format!("Clean at {tempo_bpm}, no stops?"),
+        Requirement::Chained { .. } => format!("Clean{at}, no stops?"),
         Requirement::SelfConfirmed { .. } => "Did that match?".to_string(),
     }
 }
 
-fn gate_summary(requirement: &Requirement, tempo_bpm: u16) -> String {
+fn gate_summary(requirement: &Requirement, tempo_bpm: Option<u16>) -> String {
+    let at = at_tempo(tempo_bpm);
     match requirement {
-        Requirement::CleanPasses { count, .. } => format!("{count} clean at {tempo_bpm}"),
+        Requirement::CleanPasses { count, .. } => format!("{count} clean{at}"),
         Requirement::KeyCoverage {
             keys_required,
             per_key_passes,
@@ -259,7 +272,7 @@ fn gate_summary(requirement: &Requirement, tempo_bpm: u16) -> String {
             if *first_attempt {
                 format!("clean first time, in {keys_required} keys")
             } else {
-                format!("{per_key_passes} clean at {tempo_bpm}, in {keys_required} keys")
+                format!("{per_key_passes} clean{at}, in {keys_required} keys")
             }
         }
         Requirement::Chained { min_keys } => format!("{min_keys} keys chained, no stops"),
@@ -333,7 +346,10 @@ pub struct DrillView {
     pub section: Option<String>,
     pub destination: Option<String>,
     pub kind: ItemKind,
-    pub tempo_bpm: u16,
+    /// `None` at l0, where the rung has no tempo to state (decision 20). It is
+    /// the same fact as having no beat to count, so a view with no tempo draws
+    /// no beat position either.
+    pub tempo_bpm: Option<u16>,
     /// The running click level in the musician's words — "beats 2 & 4".
     pub click_level: String,
     pub beat: u8,
@@ -401,7 +417,7 @@ mod tests {
         assert_eq!(drill.drill_title, "Rootless voicings");
         assert_eq!(drill.section.as_deref(), Some("A section"));
         assert_eq!(drill.destination.as_deref(), Some("Strasbourg / St. Denis"));
-        assert_eq!(drill.tempo_bpm, 120);
+        assert_eq!(drill.tempo_bpm, Some(120));
         assert_eq!(drill.click_level, "beats 2 & 4");
         assert_eq!(
             (drill.bar, drill.beat),
@@ -423,6 +439,120 @@ mod tests {
         assert!(
             !drill.why.is_empty(),
             "the card's why line is the core's sentence, not the shell's"
+        );
+    }
+
+    // ── l0: the clickless acquisition block (decision 20) ──
+
+    fn playing_untimed() -> CoachState {
+        let mut coach = CoachState::default();
+        coach.session.start_untimed_fixture(at(0));
+        coach.apply(&CoachEvent::StartBlock { now: at(0) });
+        coach
+    }
+
+    #[test]
+    fn the_drill_view_claims_no_tempo_at_l0() {
+        let drill = playing_untimed().view().drill.expect("a running drill");
+
+        assert_eq!(
+            drill.tempo_bpm, None,
+            "the shell cannot draw a tempo the rung does not have, and a beat \
+             position is the same fact"
+        );
+        assert_eq!(drill.click_level, "no click");
+        assert!(
+            !drill.pulse_running,
+            "the metronome at l0 is absent, not silenced"
+        );
+        assert_eq!(drill.count_in_beats, 0);
+        assert_eq!(
+            drill.elapsed_seconds, 0,
+            "the ceiling and the elapsed clock stay (decision 15)"
+        );
+        assert_eq!(drill.ceiling_seconds, Some(360));
+    }
+
+    #[test]
+    fn the_glance_at_l0_is_ended_by_the_clock_rather_than_by_a_beat() {
+        let mut coach = playing_untimed();
+        coach.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+        assert_eq!(
+            coach.view().drill.unwrap().phase,
+            DrillPhase::Acknowledged { clean: true },
+            "the tap is still acknowledged"
+        );
+
+        coach.apply(&CoachEvent::Tick { now: at(22) });
+
+        assert_eq!(
+            coach.view().drill.unwrap().phase,
+            DrillPhase::Playing,
+            "no beat turns the page at l0, so a glance left to a beat would \
+             hold the screen on a phase with nothing to tap"
+        );
+    }
+
+    #[test]
+    fn the_gate_question_at_l0_makes_no_claim_about_tempo() {
+        let drill = playing_untimed().view().drill.expect("a running drill");
+
+        assert_eq!(drill.gate_question, "Clean?");
+        assert_eq!(drill.gate_summary, "3 clean");
+    }
+
+    #[test]
+    fn l0_evidence_never_lands_on_the_clocked_rung() {
+        let mut coach = playing_untimed();
+        let clocked = ParameterLevel {
+            tempo_bpm: 120,
+            click_level: ClickLevel::TwoAndFour,
+        };
+        // Real evidence at the tempo, so "unchanged" is a claim about this
+        // tap rather than about a rung nothing has ever touched.
+        for second in [1, 2, 3] {
+            coach
+                .mastery
+                .record("rootless-a-b", clocked, Verdict::Clean, at(second));
+        }
+        // Read at the same instant as the assertion below: decay is a read,
+        // so two clocks would differ by elapsed time, not by the tap.
+        let before = coach
+            .mastery
+            .reading("rootless-a-b", clocked, at(20))
+            .evidence;
+        assert!(before > 0.0);
+
+        coach.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+
+        assert_eq!(
+            coach
+                .mastery
+                .reading("rootless-a-b", clocked, at(20))
+                .evidence,
+            before,
+            "l0 is a level, so knowing it out of time cannot vouch for the tempo"
+        );
+        assert!(
+            coach
+                .mastery
+                .reading(
+                    "rootless-a-b",
+                    ParameterLevel {
+                        tempo_bpm: 0,
+                        click_level: ClickLevel::NoClick,
+                    },
+                    at(20),
+                )
+                .evidence
+                > 0.0,
+            "and it lands on the rung that was actually played"
         );
     }
 
@@ -513,7 +643,7 @@ mod tests {
         coach.apply(&CoachEvent::Stuck { now: at(5) });
 
         let drill = coach.view().drill.unwrap();
-        assert_eq!(drill.tempo_bpm, 96);
+        assert_eq!(drill.tempo_bpm, Some(96));
         assert_eq!(drill.gate_question, "Clean at 96?");
         assert_eq!(drill.gate_summary, "3 clean at 96");
         assert_eq!(
@@ -1160,5 +1290,29 @@ mod tests {
         }
         assert_eq!(open.view().drill.unwrap().phase, DrillPhase::GateOpen);
         assert_round_trips(open.view());
+
+        // A view with no tempo: the one shape a bincode wire has no "absent"
+        // for, and the one the shell would otherwise draw a 0 from.
+        let mut untimed = playing_untimed();
+        assert_round_trips(untimed.view());
+        untimed.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+        assert_round_trips(untimed.view());
+    }
+
+    #[test]
+    fn an_l0_session_survives_the_ffi_wire() {
+        let mut coach = playing_untimed();
+        coach.apply(&CoachEvent::Tap {
+            clean: true,
+            now: at(20),
+        });
+
+        assert_round_trips(crate::app::Event::Coach(CoachEvent::RecoverSession {
+            session: coach.session.clone(),
+            now: at(30),
+        }));
     }
 }
