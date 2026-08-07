@@ -274,7 +274,7 @@ pub fn format_duration_display(secs: u64) -> String {
 /// The builder's planned-duration dialect ("12 min" for whole minutes) —
 /// shared by block rows, per-entry planned labels, and the builder total.
 pub fn format_planned_duration(secs: u64) -> String {
-    if secs % 60 == 0 {
+    if secs.is_multiple_of(60) {
         format!("{} min", secs / 60)
     } else {
         format_duration_display(secs)

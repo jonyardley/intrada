@@ -1383,6 +1383,46 @@ final class StoreEffectLoopTests: XCTestCase {
       "clearing the attribution round-trips")
   }
 
+  /// A stub bridge can't catch a regression here (#1272): the message is
+  /// assembled in the core, so only the real wire carries a 4xx body in and the
+  /// finished string back out.
+  func testRealBridgeSurfacesTheMessageTheServerSentWithARejection() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    let requests = try bridge.update(.account(.loadPreferences))
+    let http = try XCTUnwrap(
+      requests.first { if case .http = $0.effect { return true } else { return false } },
+      "preferences are server-backed, so loading them emits an Http effect")
+
+    let body = Array(#"{"error":"Your session has expired. Sign in again."}"#.utf8)
+    _ = try bridge.resolve(
+      http.id, httpResult: .ok(HttpResponse(status: 401, headers: [], body: body)))
+
+    XCTAssertEqual(
+      try bridge.view().error,
+      "Failed to load preferences: Your session has expired. Sign in again.",
+      "the API's sentence must reach the banner, not the bare status")
+  }
+
+  /// Guards the banner going blank rather than showing the status.
+  func testRealBridgeFallsBackToTheStatusWhenARejectionIsNotOurEnvelope() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+
+    let requests = try bridge.update(.account(.loadPreferences))
+    let http = try XCTUnwrap(
+      requests.first { if case .http = $0.effect { return true } else { return false } })
+
+    _ = try bridge.resolve(
+      http.id,
+      httpResult: .ok(
+        HttpResponse(status: 502, headers: [], body: Array("<html>Bad Gateway</html>".utf8))))
+
+    let error = try XCTUnwrap(try bridge.view().error, "a rejection must surface something")
+    XCTAssertTrue(error.contains("502"), "got \(error)")
+  }
+
   /// App effects come from `notify_shell` — fire-and-forget notifications the
   /// live bridge rejects resolving, so the Store must not resolve `.app`. The
   /// stub bridge can't enforce this; pinned here against the real bridge (#882).

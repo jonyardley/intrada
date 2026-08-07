@@ -50,8 +50,8 @@ specs/                   # Spec docs for major features (Tier 3 only)
 
 ## Tech Stack
 
-- **Rust** stable (1.90.0 CI; MSRV 1.75+, intrada-api 1.78+)
-- **Core**: crux_core 0.19.0, serde, ulid, chrono, thiserror
+- **Rust** stable (1.90.0 CI; MSRV 1.90 via crux_core 0.20, intrada-api 1.78+)
+- **Core**: crux_core 0.20.0, serde, ulid, chrono, thiserror
 - **API**: axum 0.8, tokio, libsql 0.9 (Turso), tower-http (CORS), jsonwebtoken 10
 - **Native iOS**: SwiftUI, iOS 17.0+, UniFFI + facet typegen, GRDB (on-device)
 - **Auth**: Clerk (Google OAuth) exchanged for a long-lived PAT on iOS; JWT RS256

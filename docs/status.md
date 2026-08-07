@@ -35,6 +35,23 @@ countable criteria.
   `[A-Za-z0-9_-]` — no slashes — so `.claude/worktrees/` stays flat and the
   sim-name collision check can see every worktree. Companion
   `just worktree-rm <name>` cleans up the sim then removes the worktree
+- #1272 — crux upgraded to 0.20.0 (`crux_core`, `crux_http`; `crux_macros`
+  0.10.1, `facet` pinned `=0.46.5`). The reason to take it: fire-and-forget
+  effects no longer leak the bridge registry. Every `Render` and `AppEffect`
+  took a slot that was never freed, because only a resolve removed one, so a
+  long practice session grew it for the life of the process. It also stops a
+  resolved `EffectId` being reissued to a later request, which could deliver
+  one request's response to another and succeed silently (our `Store` resolves
+  each request once, so we were not hit). No breaking change in 0.20 touches
+  us; the generated Swift moves only in doc comments and a redundant explicit
+  `Equatable` on 114 types (Swift's `Hashable` already refines it), with no
+  type, field, variant or wire change. Riding along: every one of the 19 HTTP
+  builders now routes its error arm through one `rejection_detail`, which
+  reads the API's `{"error": …}` envelope via `HttpError::body_json`. A
+  rejection surfaces the sentence the server wrote rather than
+  "HTTP error 409: 409 Conflict", since `Display` carries the status alone.
+  Pinned end-to-end through the live bridge, not just in the core.
+  `Retry-After` back-off on a 429 is now reachable too, and deferred to #1273
 - #1260 — the l0 drill screen: `DrillScreen` branches on `tempoBpm == nil`
   throughout. During `.playing` the tempo/click pill/beat position give way to
   `GateDots` alone, and the tap-verdict footer (`TapVerdict` + escapes) —
