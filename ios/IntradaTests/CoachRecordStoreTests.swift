@@ -34,7 +34,8 @@ struct CoachRecordStoreTests {
   private func block(
     _ id: String = "b1", attempts: [AttemptSummary] = [], escalations: [Rung] = [],
     exit: Exit = .gatePassed, attemptsToPass: UInt16? = 3, gateOpenedAtAttempt: UInt16? = 3,
-    repsAfterGate: UInt16 = 0, activeMs: UInt64 = 30_000
+    repsAfterGate: UInt16 = 0, activeMs: UInt64 = 30_000,
+    origin: BlockOrigin = .authored
   ) -> BlockRecord {
     BlockRecord(
       id: id, node: "rootless-a-b", drill: "shell-voicings", gate: "rootless-under-melody",
@@ -43,7 +44,7 @@ struct CoachRecordStoreTests {
       startedAt: "2026-08-04T10:00:00Z", endedAt: Self.updatedAt,
       attempts: attempts, attemptsToPass: attemptsToPass,
       gateOpenedAtAttempt: gateOpenedAtAttempt, repsAfterGate: repsAfterGate,
-      activeMs: activeMs, escalationFired: escalations, exit: exit)
+      activeMs: activeMs, escalationFired: escalations, exit: exit, origin: origin)
   }
 
   private func wander(
@@ -363,6 +364,19 @@ struct CoachRecordStoreTests {
       blocks: [block(attempts: [attempt(clean: true)])], wanders: [], updatedAt: Self.updatedAt)
     try queue.write { db in
       try db.execute(sql: "UPDATE block_record SET attempts = 'not json' WHERE id = 'b1'")
+    }
+
+    #expect(throws: (any Error).self) { try store.loadCoachRecords() }
+  }
+
+  @Test("an origin this build does not know fails the read rather than guessing")
+  func readBackUnknownOriginThrows() throws {
+    // Guessing `authored` would replay a judgement-track block's taps into the
+    // mastery track at launch, which is the one thing decision 17 forbids.
+    let (store, queue) = try makeStore()
+    try store.saveCoachRecords(blocks: [block()], wanders: [], updatedAt: Self.updatedAt)
+    try queue.write { db in
+      try db.execute(sql: "UPDATE block_record SET origin = 'from_the_future' WHERE id = 'b1'")
     }
 
     #expect(throws: (any Error).self) { try store.loadCoachRecords() }

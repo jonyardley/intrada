@@ -314,4 +314,36 @@ final class LibraryStoreMigrationTests: XCTestCase {
       loaded[0].linkedExerciseIds, ["e1", "e2"],
       "linked_exercise_ids must round-trip through JSON storage intact")
   }
+
+  /// #1256: `block_record.origin` arrives with built sessions. A record written
+  /// before they existed can only have been the planner's, so it must come
+  /// through as `authored` — the value the mastery rebuild reads to decide
+  /// whether a block's taps were ever evidence (decision 17). Get this wrong
+  /// and every historic block silently stops counting.
+  func testV12BackfillsBlockOriginOnRecordsWrittenBeforeBuiltSessions() throws {
+    let queue = try DatabaseQueue()
+    try LibraryStore.migrator.migrate(queue, upTo: "v11_built_session")
+    try queue.write { db in
+      try db.execute(
+        sql: """
+          INSERT INTO block_record
+            (id, node, drill, gate, level_tempo_bpm, level_click_level, circle, mode,
+             started_at, ended_at, attempts, attempts_to_pass, gate_opened_at_attempt,
+             reps_after_gate, active_ms, escalation_fired, exit, updated_at, deleted_at)
+          VALUES ('b1','rootless-a-b','shell-voicings','rootless-under-melody',92,'two_and_four',
+            'hands','keys','2026-08-04T10:00:00Z','2026-08-04T10:00:30Z','[]',3,3,0,30000,'[]',
+            'gate_passed','2026-08-04T10:00:30Z',NULL)
+          """)
+    }
+
+    try LibraryStore.migrator.migrate(queue)
+
+    let store = try LibraryStore(queue)
+    let records = try store.loadCoachRecords()
+    XCTAssertEqual(records.count, 1, "the historic record survives the upgrade")
+    XCTAssertEqual(
+      records[0].origin, .authored,
+      "a record from before built sessions is the planner's, and still counts")
+    XCTAssertEqual(records[0].node, "rootless-a-b", "the rest of the row is untouched")
+  }
 }

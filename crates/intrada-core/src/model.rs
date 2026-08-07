@@ -1,11 +1,16 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::analytics::AnalyticsView;
 use crate::domain::account::AccountPreferences;
+use crate::domain::built_session::blocks::BuildContext;
+use crate::domain::built_session::compose::{
+    BuiltView, ComposeDraft, Resolution, ResolutionContext,
+};
 use crate::domain::built_session::{
-    BuiltSession, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
+    BuiltSession, BuiltTarget, FeelEntry, JournalItem, PlayThroughRecord, Reflection, UserDrill,
 };
 use crate::domain::chart::{ChordChart, ScaffoldKind};
 use crate::domain::item::{Item, ItemKind, Modality};
@@ -17,7 +22,7 @@ use crate::domain::session::{
 };
 use crate::domain::set::Set;
 use crate::domain::{LibrarySort, ListQuery};
-use crate::engine::{CoachState, CoachView};
+use crate::engine::{CoachState, CoachView, ContentIndex};
 use crate::persistence::PersistenceOperation;
 
 /// Internal application state — not exposed to shells.
@@ -99,9 +104,72 @@ pub struct Model {
     pub play_throughs: Vec<PlayThroughRecord>,
     pub reflections: Vec<Reflection>,
     pub feel_entries: Vec<FeelEntry>,
+    /// The steer sheet's working state (A2). Deliberately not persisted: an
+    /// abandoned composition is abandoned, and what it created on the way is
+    /// already a row of its own.
+    pub compose: Option<ComposeDraft>,
+    /// Which composed session is today's steer, so a rebuilt view and a
+    /// restarted loop agree on which one they mean.
+    pub built_session_today: Option<String>,
 }
 
 impl Model {
+    /// What the resolver may look a name up against (decision 19).
+    pub fn resolution_context(&self, now: DateTime<Utc>) -> ResolutionContext<'_> {
+        ResolutionContext {
+            items: &self.items,
+            user_drills: &self.user_drills,
+            journal_items: &self.journal_items,
+            content: ContentIndex::shipped(),
+            mastery: &self.coach.mastery,
+            now,
+        }
+    }
+
+    /// What a composed session may be turned into blocks against.
+    pub fn build_context(&self) -> BuildContext<'_> {
+        BuildContext {
+            items: &self.items,
+            user_drills: &self.user_drills,
+            journal_items: &self.journal_items,
+            content: ContentIndex::shipped(),
+        }
+    }
+
+    /// The name the user typed for an entry — what a newly created drill or
+    /// journal target is called, so the next visit recognises it (A2r).
+    pub fn compose_entry_name(&self, entry_id: &str) -> Option<String> {
+        self.compose
+            .as_ref()?
+            .entries
+            .iter()
+            .find(|entry| entry.id == entry_id)
+            .map(|entry| entry.name.clone())
+    }
+
+    pub fn settle_compose_entry(&mut self, entry_id: &str, target: BuiltTarget) {
+        if let Some(entry) = self
+            .compose
+            .as_mut()
+            .and_then(|draft| draft.entry_mut(entry_id))
+        {
+            entry.resolution = Resolution::Settled(target);
+        }
+    }
+
+    /// The composed session the steer is currently about.
+    pub fn today_built_session(&self) -> Option<&BuiltSession> {
+        let id = self.built_session_today.as_deref()?;
+        self.built_sessions.iter().find(|session| session.id == id)
+    }
+
+    pub fn built_session_today_mut(&mut self) -> Option<&mut BuiltSession> {
+        let id = self.built_session_today.clone()?;
+        self.built_sessions
+            .iter_mut()
+            .find(|session| session.id == id)
+    }
+
     /// Surface an error from a background HTTP failure. Respects the
     /// dismiss-mute state set by [`Model::dismiss_error`]: if the user has
     /// already dismissed the banner and the system has not yet recovered,
@@ -223,6 +291,9 @@ pub struct ViewModel {
     pub oauth_redirect_url: Option<String>,
     pub last_set_save_request_id: Option<String>,
     pub coach: CoachView,
+    /// The steer sheet and the composed session (#1256). Both halves `None` is
+    /// the ordinary prescribed day.
+    pub built: BuiltView,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

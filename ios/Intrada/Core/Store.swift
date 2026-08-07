@@ -27,11 +27,16 @@ final class Store {
   /// went in at the bottom of their enums, renumbering the variants below them.
   /// A v2 blob still *decodes*, into a clocked block read back as an l0 one,
   /// with its evidence on a rung nothing practised.
-  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v3"
+  /// v4 (#1256): `BlockSpec` gained `origin` + `serves` and `BlockRecord` gained
+  /// `origin`, all inside `EngineSession`. `#[serde(default)]` buys nothing on a
+  /// non-self-describing wire — serde never reaches the default — so a v3 blob
+  /// would read the next struct's bytes as this one's tail.
+  static let coachSessionInProgressKey = "intrada.coach-session-in-progress.v4"
   /// Retired keys, cleared on the next write so a dead blob doesn't sit in
   /// UserDefaults for the life of the install.
   static let retiredCoachSessionKeys = [
     "intrada.coach-session-in-progress.v1", "intrada.coach-session-in-progress.v2",
+    "intrada.coach-session-in-progress.v3",
   ]
 
   private let bridge: CoreBridge

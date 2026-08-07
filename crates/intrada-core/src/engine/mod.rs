@@ -16,10 +16,15 @@ mod plan;
 mod session;
 
 pub use coach::{CoachState, CoachView, DrillPhase, DrillView, PlanView, PlannedBlockView};
+pub use content::ContentIndex;
 pub use gate::{
     ClickLevel, EvidenceSource, GateCriteria, GateProgress, Judge, Requirement, Verdict,
 };
-pub use plan::{BlockSpec, Circle, Mode, ParameterLevel, Plan, PlannedBlock};
+pub use mastery::MasteryStore;
+pub use plan::{
+    runnable_rung, BlockOrigin, BlockSpec, Circle, Maturity, Mode, NodeState, ParameterLevel, Plan,
+    PlannedBlock, Stage, Why,
+};
 pub use session::{
     AttemptSummary, BlockRecord, BlockState, CoachEvent, CoachWrites, EngineConfig, EngineSession,
     Exit, Phase, Rung, SessionState, SnapshotAction, WanderRecord,

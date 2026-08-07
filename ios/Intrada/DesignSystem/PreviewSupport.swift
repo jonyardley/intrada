@@ -27,12 +27,14 @@
 
     private let analytics: AnalyticsView?
     private let plan: PlanView?
+    private let built: BuiltView?
 
     init(
       items: [LibraryItemView] = [], activeQuery: ListQuery? = nil,
       sessions: [PracticeSessionView] = [],
       activeSession: ActiveSessionView? = nil, summary: SummaryView? = nil,
-      analytics: AnalyticsView? = nil, plan: PlanView? = nil
+      analytics: AnalyticsView? = nil, plan: PlanView? = nil,
+      built: BuiltView? = nil
     ) {
       self.items = items
       self.activeQuery = activeQuery
@@ -41,6 +43,7 @@
       self.summary = summary
       self.analytics = analytics
       self.plan = plan
+      self.built = built
     }
 
     func update(_ event: Event) throws -> [Request] { [] }
@@ -65,6 +68,7 @@
       viewModel.summary = summary
       if let analytics { viewModel.analytics = analytics }
       if let plan { viewModel.coach.plan = plan }
+      if let built { viewModel.built = built }
       return viewModel
     }
   }
@@ -137,6 +141,35 @@
       Store(
         bridge: PreviewBridge(
           sessions: [.previewCompleted, .previewEndedEarly], plan: .preview))
+    }
+
+    // ── The steer sheet (#1256, Journey A) ──────────────────────────
+
+    /// First use: a piece already known, a name nothing recognises. One
+    /// question owed, and the primary action says so.
+    static var previewComposing: Store {
+      Store(
+        bridge: PreviewBridge(
+          items: [.previewPiece],
+          built: BuiltView(compose: .previewFirstUse, session: nil)))
+    }
+
+    /// Repeat use (A2r): every row lands already known, so the price is zero.
+    static var previewComposingAllKnown: Store {
+      Store(bridge: PreviewBridge(built: BuiltView(compose: .previewAllKnown, session: nil)))
+    }
+
+    /// A3 — the proposed authored-node match, evidence on the card.
+    static var previewResolvingNodeMatch: Store {
+      Store(bridge: PreviewBridge(built: BuiltView(compose: .previewNodeMatch, session: nil)))
+    }
+
+    /// A6 — the composed session, shape offered.
+    static var previewComposedSession: Store {
+      Store(
+        bridge: PreviewBridge(
+          sessions: [.previewCompleted],
+          built: BuiltView(compose: nil, session: .preview)))
     }
 
     /// Practice home with a crash-recovery blob pending (#962) — drives the
@@ -688,6 +721,59 @@
         repTarget: nil, repCount: nil, repTargetReached: nil, repHistory: nil,
         plannedDurationSecs: nil, plannedDurationDisplay: nil, achievedTempo: tempo, groupId: nil,
         variantId: nil)
+    }
+  }
+
+  /// The steer sheet's three states (#1256, A2 / A2r / A3), fixed so the
+  /// snapshots assert layout rather than whatever the content currently says.
+  extension ComposeView {
+    static var previewFirstUse: ComposeView {
+      ComposeView(
+        entries: [
+          ComposeEntryView(
+            id: "e1", name: "Alice in Wonderland", kind: .piece,
+            note: "Joins your tunes — learn, memorise, run cold"),
+          ComposeEntryView(
+            id: "e2", name: "Stride pattern — bars 1–8", kind: .unresolved, note: nil),
+        ],
+        questions: [
+          ComposeQuestionView(
+            entryId: "e2", name: "Stride pattern — bars 1–8",
+            ask: .userDrill(
+              criterion: "Both hands together, bars 1–8, no stalls, at crotchet = 72.",
+              tempoBpm: 72, keys: ["F"], passesToOpen: 3,
+              servesOptions: [
+                ServesOptionView(label: "Alice in Wonderland", serves: .node("p1")),
+                ServesOptionView(label: "What your hands know", serves: .circle(.hands)),
+              ]))
+        ],
+        buildLabel: "Continue — one quick question", canBuild: false)
+    }
+
+    static var previewAllKnown: ComposeView {
+      ComposeView(
+        entries: [
+          ComposeEntryView(id: "e1", name: "Hanon №4, hands together", kind: .exercise, note: nil),
+          ComposeEntryView(id: "e2", name: "Stride pattern — bars 1–8", kind: .exercise, note: nil),
+          ComposeEntryView(id: "e3", name: "Freer rubato in the intro", kind: .journal, note: nil),
+        ],
+        questions: [],
+        buildLabel: "Build session — no questions today", canBuild: true)
+    }
+
+    static var previewNodeMatch: ComposeView {
+      ComposeView(
+        entries: [
+          ComposeEntryView(id: "e1", name: "Hanon №4, hands together", kind: .unresolved, note: nil)
+        ],
+        questions: [
+          ComposeQuestionView(
+            entryId: "e1", name: "Hanon №4, hands together",
+            ask: .nodeMatch(
+              title: "Hanon №4 — hands together, crotchet = 96",
+              evidenceLine: "Solid at 88", gateFilled: 2, gateTarget: 3))
+        ],
+        buildLabel: "Continue — one quick question", canBuild: false)
     }
   }
 #endif

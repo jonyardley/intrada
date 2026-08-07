@@ -133,7 +133,7 @@ final class StoreEffectLoopTests: XCTestCase {
         selfPredicted: nil, level: ParameterLevel(tempoBpm: 92, clickLevel: .twoAndFour))
     ],
     attemptsToPass: 3, gateOpenedAtAttempt: 3, repsAfterGate: 0, activeMs: 30_000,
-    escalationFired: [], exit: .gatePassed)
+    escalationFired: [], exit: .gatePassed, origin: .authored)
 
   private static func saveCoachRecords(id: UInt32) -> Request {
     Request(
@@ -650,6 +650,59 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(saved.source, "From Friday's lesson")
   }
 
+  /// Real-bridge steer sheet (#846, #1256, Phase B): the whole of Journey A
+  /// over the *real* wire — a name in, a question back through the ViewModel, a
+  /// drill created, a session built and started. Every one of those events and
+  /// views is a new bincode shape, and a stub bridge cannot break on any of them.
+  func testRealBridgeComposesResolvesAndStartsABuiltSession() throws {
+    let bridge = LiveBridge()
+    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
+    _ = try bridge.update(.builtSession(.openCompose))
+    _ = try bridge.update(
+      .builtSession(.addComposeEntry(text: "Zzz stride pattern", pickedItemId: nil)))
+
+    let asking = try bridge.view().built.compose
+    let question = try XCTUnwrap(asking?.questions.first, "an unknown name owes one question")
+    guard case .userDrill(let criterion, _, _, let passes, _) = question.ask else {
+      return XCTFail("expected the criterion form, got \(question.ask)")
+    }
+    XCTAssertEqual(criterion, "Zzz stride pattern", "the field opens on what was said")
+    XCTAssertEqual(passes, 3)
+    XCTAssertEqual(asking?.canBuild, false, "the price was stated, so it must be paid")
+
+    let created = try bridge.update(
+      .builtSession(
+        .resolveAsUserDrill(
+          entryId: question.entryId, criterion: "Three clean passes at 72",
+          serves: .circle(.hands))))
+    let drill = try XCTUnwrap(
+      created.compactMap { request -> UserDrill? in
+        if case .persistence(.saveUserDrill(let drill)) = request.effect { return drill }
+        return nil
+      }.first, "the answer creates the drill")
+    XCTAssertEqual(drill.tempoBpm, 72, "parsed from the sentence, never asked for")
+
+    let built = try bridge.update(.builtSession(.buildSession(source: "From Friday's lesson")))
+    let session = try XCTUnwrap(
+      built.compactMap { request -> BuiltSession? in
+        if case .persistence(.saveBuiltSession(let session)) = request.effect { return session }
+        return nil
+      }.first, "building persists the composition")
+    XCTAssertEqual(session.blocks.count, 1)
+
+    let composed = try XCTUnwrap(try bridge.view().built.session, "A6 reads back over the wire")
+    XCTAssertEqual(composed.source, "From Friday's lesson")
+    XCTAssertEqual(composed.blocks.first?.kind, .exercise)
+
+    _ = try bridge.update(
+      .builtSession(
+        .startBuiltSession(sessionId: session.id, now: "2026-08-07T10:00:00Z")))
+    let drillView = try XCTUnwrap(try bridge.view().coach.drill, "the loop is running")
+    XCTAssertEqual(drillView.origin, .userDrill, "the new origin field survives the wire")
+    XCTAssertEqual(drillView.serves, "Adds to what your hands know")
+    XCTAssertEqual(drillView.gateTarget, 3, "the sentence's passes became the gate")
+  }
+
   /// Real-bridge reflection + feel (#846, #1256): `RecordReflection` carries
   /// three optional Strings (the absent-vs-present hazard) and `RecordFeel` a
   /// fieldless enum; both must decode on the wire and emit their ops.
@@ -1065,7 +1118,7 @@ final class StoreEffectLoopTests: XCTestCase {
             level: ParameterLevel(tempoBpm: 120, clickLevel: .twoAndFour))
         ],
         attemptsToPass: nil, gateOpenedAtAttempt: nil, repsAfterGate: 0, activeMs: 30_000,
-        escalationFired: [], exit: .ceilingHit)
+        escalationFired: [], exit: .ceilingHit, origin: .authored)
     }
   }
 
