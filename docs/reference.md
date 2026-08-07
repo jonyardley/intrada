@@ -1,0 +1,236 @@
+# Operational reference
+
+> The detail behind the rules in [`CLAUDE.md`](../CLAUDE.md). That file says
+> *what* to do and stays short because it loads into every session; this one says
+> *how* and *why*, and is read on demand.
+>
+> Last reviewed: 2026-08-07.
+
+## Commands
+
+```bash
+just check                 # fmt-check → lint → test → hygiene; mirrors CI
+just test                  # nextest, same as CI's `test` job
+just lint                  # clippy -D warnings, same targets as CI's `clippy` job
+just hygiene               # typos + cargo-shear (CI's Security & hygiene job)
+cargo test -p intrada-api  # API tests only
+just ios-fmt               # format Swift sources in place (swift format)
+just ios-fmt-check         # Swift formatting gate (CI runs this too)
+just ios                   # regen bindings (if core changed) + open Xcode
+just ios-gen               # force a full binding regenerate
+just ios-run               # build + launch on simulator + screenshot
+just ios-logs              # stream booted-sim logs, filtered to our subsystem
+just ios-test              # unit + snapshot (fast inner-loop tier)
+just ios-test-full         # adds XCUITests (the merge gate; mirrors CI)
+just ios-snapshots-check   # fail orphaned / oversized snapshot references
+just ios-snapshots-optimize # drop Xcode's opaque alpha channel (~75% smaller)
+just check-all             # check + the fast ios-test tier
+just testflight            # signed Release .ipa → TestFlight (needs setup)
+```
+
+Test tiering, worktree simulator isolation, and the green-stamp skip (which lets
+a recipe no-op when HEAD is already stamped green at that tier) are documented in
+[`ios-testing.md`](ios-testing.md).
+
+### Binding regeneration
+
+`just ios` and `just ios-run` auto-regenerate the Swift bindings only when
+`intrada-core` or `intrada-ffi` changed (a `ios/generated/.gen-stamp` hash), so
+they stay in sync without slowing pure-Swift edits. `just ios-gen` forces a full
+regenerate. A stale `.gen-stamp` is the tell when iOS tests behave oddly after a
+core type change.
+
+### Swift formatting
+
+`just ios-fmt-check` covers the hand-written trees (`ios/Intrada`,
+`ios/IntradaTests`, `ios/IntradaUITests`) with the toolchain-bundled
+`swift format` on default config. `ios/generated` is excluded — generated
+bindings are never hand-edited. The one-time whole-tree reformat commit is listed
+in `.git-blame-ignore-revs`; run this once so `git blame` skips it:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+### Logging
+
+`just ios-logs` filters the unified log to `subsystem == "com.intrada.native"`,
+cutting the simulator's UIKit/keyboard/gesture noise so first-party signal is
+visible. `report(_:)` (`ios/Intrada/Core/Logging.swift`) logs swallowed FFI and
+bincode bridge errors there. That is the silent-no-op class (#846), which
+otherwise leaves no trace anywhere Sentry has no DSN: CI always, and dev unless
+`SENTRY_DSN_NATIVE` is set.
+
+### TestFlight
+
+`just testflight` builds a signed Release `.ipa` and uploads it to TestFlight
+(internal testing), mirroring `.github/workflows/release-testflight.yml` (which
+runs on `workflow_dispatch` or a `v*` tag, never per-PR). Signing is fastlane
+**match**, and it needs Ruby >= 3 — system Ruby 2.6 is too old, use `rbenv` —
+plus a one-time App Store Connect and match bootstrap. Full setup and decisions:
+[`../specs/ios-testflight-cicd.md`](../specs/ios-testflight-cicd.md) and
+SETUP.md §6a.
+
+### Git hooks
+
+Git hooks install automatically for Claude Code sessions (a `SessionStart` hook
+runs `scripts/install-git-hooks.sh`). They catch the "pushed onto a merged-PR
+branch and the commits orphaned" pitfall via a pre-push check against `gh`, and
+flag comment-bloat. Manual install, forking setup, and first-time iOS setup are
+in the [README](../README.md#prerequisites) — read that before your first
+`just ios`.
+
+### Demo data vs real on-device data
+
+A plain launch (`just ios` then Cmd+R on the default **Intrada** scheme, or any
+build with no launch args) runs **local-first**: the Library hydrates from the
+on-device GRDB store, so items you add survive restarts.
+
+The 6 sample pieces are **opt-in** via the `--seed-sample-data` launch arg. In
+Xcode, pick the **Intrada (Seeded)** scheme from the scheme dropdown (defined in
+`ios/project.yml`) and Cmd+R; the selection persists across `just ios`
+regenerations. `just ios-run` passes the same arg by default (`SEED=1`); use
+`SEED=0 just ios-run` to launch against your real data.
+
+Seed mode (`Event::LoadSampleData`) replaces the model with demo items and
+**skips store hydration**, so don't use it when testing persistence. Your saved
+rows are still on disk but won't be read back.
+
+## Knowledge graph (graphify)
+
+The graph lives in the **main checkout** at `graphify-out/` (gitignored, so
+worktrees don't carry it). Find the main checkout from any worktree via
+`git rev-parse --path-format=absolute --git-common-dir`, then take its parent.
+
+Scope is controlled by the committed `.graphifyignore`: vendored and minified JS,
+`specs/_archive/`, `.specify/`, and generated schemas are excluded.
+
+```bash
+graphify query "<question>"   # from the main checkout root
+graphify path A B             # trace how two concepts connect
+graphify . --update           # refresh after a doc-heavy merge
+```
+
+The post-commit and post-checkout hooks in the main checkout do free AST-only
+code refreshes automatically. Run `graphify . --update` manually after doc-heavy
+merges (specs/, docs/, CLAUDE.md); it is incremental and content-hash cached, so
+it costs a small fraction of a full build.
+
+## Environment variables
+
+### API (intrada-api)
+
+`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (required), `CLERK_ISSUER_URL` (required
+in prod), `ALLOWED_ORIGIN` (see SETUP.md §2), `PORT` (default 3001).
+
+### R2 photo storage (optional)
+
+The API starts without these; photo endpoints return 500 until they are set.
+`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`,
+`R2_PUBLIC_URL`. See SETUP.md §3 for provisioning.
+
+### Native iOS build (compile-time)
+
+`CLERK_PUBLISHABLE_KEY`, `INTRADA_API_URL` (default
+`https://intrada-api.fly.dev`).
+
+### Native iOS (optional): Sentry
+
+`SENTRY_DSN_NATIVE` in `.env` captures crash and error events from local dev
+builds, tagged `environment=development`. The plumbing is fiddly and was silently
+broken once, so the whole chain is worth stating:
+
+1. `xcodegen` writes the value to the `SENTRY_DSN` build setting.
+2. The target's partial `Info.plist` (`ios/Intrada/Info.plist`) carries
+   `SENTRY_DSN = $(SENTRY_DSN)` so the value lands in the built plist.
+3. The justfile's `set dotenv-load` feeds the var in.
+
+Step 2 is the non-obvious one: a custom key **cannot** ride `INFOPLIST_KEY_*`,
+which `GENERATE_INFOPLIST_FILE` only honours for Apple-recognised keys. That gap
+meant Sentry silently never started.
+
+It is **unset in CI**, so test and smoke runs send nothing. The app only starts
+Sentry on a real `https://` DSN, so an empty or unexpanded value is a safe no-op.
+
+## Gotchas, in full
+
+### JSON-only serde attrs break the Crux bincode FFI bridge
+
+The native iOS shell exchanges `Event` / `Effect` / `ViewModel` with the core as
+**positional bincode**, a non-self-describing format. serde attributes that only
+make sense for a self-describing format (JSON) silently corrupt that wire: the
+Swift side serializes every field and level by structure, but a JSON-oriented
+deserializer reads a different shape, **misaligns the byte stream, and the whole
+event fails to decode**. `Store.send` swallows the bridge error via `guarded`, so
+the symptom is a silent no-op — "editing doesn't save" (#846) — not a crash.
+
+The specific offender we hit was `#[serde(deserialize_with = "double_option")]`
+on `UpdateItem`'s three-state `Option<Option<T>>` fields. `double_option` reads a
+single option level, which is right for JSON (a present key is one `Option<T>`,
+and `null` means clear), but bincode needs both levels.
+
+The fix: make such helpers **format-aware** via
+`Deserializer::is_human_readable()`, with a JSON branch and a bincode branch, so
+the same type round-trips on both wires.
+
+Rules of thumb for any type crossing the bridge (`Event`, `Effect`, `ViewModel`,
+and everything they contain):
+
+- Be wary of `deserialize_with` / `serialize_with`, and of `skip_serializing_if`
+  combined with non-trailing fields — anything assuming "absent" versus "present"
+  semantics. bincode has no "absent".
+- **Stub-bridge tests can't catch this.** Cover bridge-crossing types with a
+  *real*-bridge round-trip (`LiveBridge` in `StoreEffectLoopTests`) that drives
+  the actual Swift↔Rust bincode serialization. See
+  `testRealBridgeEditAppliesToViewModel`.
+
+### `option_env!` needs `cargo:rerun-if-env-changed`
+
+If a build script — or an `option_env!` site indirectly, via macro expansion —
+reads an env var, pair it with `println!("cargo:rerun-if-env-changed=NAME")` in
+`build.rs`. Without it, cargo caches the macro expansion across builds and your
+"I changed the env var" rebuild silently uses stale values. We have hit this on
+`CLERK_PUBLISHABLE_KEY` and `INTRADA_API_URL`.
+
+## Why agent teams were retired (#1223)
+
+In-session agent teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`,
+`/team-vertical`) were tried on #1223 and retired. On a slice coupled by a bridge
+contract, the split cost more than it bought. Measured on that PR:
+
+- **The halves were never independent.** One genuinely parallel window of about
+  25 minutes, against roughly 20 coordination messages, three nudges to idle
+  teammates, and three replies to superseded instructions.
+- **The split caused the worst bug in the PR.** The shell teammate restarted the
+  click without bumping `pulse_seq`, because it could not see the core invariant
+  that says a restart is signalled by that field. It then rebuilt the hardest
+  code in the slice from scratch. One agent holding both sides would not have
+  written it.
+- **The quality came from elsewhere**: adversarial review, the pre-push comment
+  hook, and mutation-testing vacuous tests. All three work with one agent.
+
+The rule that came out of it — one agent per vertical slice, fan out only on
+genuinely independent work — is in CLAUDE.md under *Parallel work streams*.
+
+## Mutate-response variants, in full
+
+Writes reconcile with the server response directly, with no full-list refetch.
+Three create variants live in the codebase.
+
+**Temp-id mutate-response** (`Item`) — the default for new entities. The domain
+handler pushes the optimistic entry with a client-generated ulid; the HTTP
+wrapper carries that ulid; the `*Created { temp_id, entity }` event replaces the
+optimistic entry, since the server-assigned ulid differs from the client one.
+
+**Client-owned ulid** (`Session`) — the client ulid is the canonical id. POST is
+fire-and-forget: `SessionSaved` just clears the error state and the model keeps
+the optimistic write.
+
+**Save-counter + refetch** (`Set`) — optimistic push, bump
+`set_saves_committed`, then a full refetch via `SetSaveSucceeded`. The counter
+drives the save-form's optimistic-to-confirmed UI flip. This is tracked as tech
+debt to migrate to temp-id once the counter is decoupled from the UI state; do
+not copy it for a new entity.
+
+Updates use `*Updated { entity }` (the server echoes the row). Deletes use
+`DeleteConfirmed`, since the model is already mutated optimistically.
