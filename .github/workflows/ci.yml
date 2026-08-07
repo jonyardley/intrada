@@ -354,6 +354,20 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+      # `_ios-test-without-building` still passes `-clonedSourcePackagesDirPath
+      # build/spm` (it resolves the package graph even without compiling) —
+      # without restoring this cache here too, a fresh runner re-clones Sentry
+      # + swift-syntax + swift-snapshot-testing + GRDB over the network, which
+      # is exactly the #813 flake this cache exists to prevent. `native-ios-
+      # build` always writes this key, and it always finishes first (`needs:`
+      # below), so this is a guaranteed hit — not an extra build.
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v6
+        with:
+          path: ios/build/spm
+          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ios-spm-v1-${{ runner.os }}-
       - name: Download built test products
         uses: actions/download-artifact@v7
         with:
@@ -415,6 +429,16 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: xcodegen generate
+      # See the identical step + comment in native-ios-test-unit: without
+      # restoring this, `test-without-building`'s package-graph resolution
+      # re-clones SwiftPM deps over the network here too (#813 flake class).
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v6
+        with:
+          path: ios/build/spm
+          key: ios-spm-v1-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+          restore-keys: |
+            ios-spm-v1-${{ runner.os }}-
       - name: Download built test products
         uses: actions/download-artifact@v7
         with:
