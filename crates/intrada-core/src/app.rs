@@ -854,7 +854,7 @@ pub(crate) fn build_practice_summaries(
             record.0 += 1;
             record.1 += entry.duration_secs;
             // Keep the latest date (RFC3339 strings compare chronologically).
-            if record.4.as_ref().map_or(true, |cur| session_date > *cur) {
+            if record.4.as_ref().is_none_or(|cur| session_date > *cur) {
                 record.4 = Some(session_date.clone());
             }
 
@@ -966,16 +966,12 @@ fn build_exercise_contexts(
             if record
                 .last_practiced_at
                 .as_ref()
-                .map_or(true, |cur| date > *cur)
+                .is_none_or(|cur| date > *cur)
             {
                 record.last_practiced_at = Some(date.clone());
             }
             if let Some(score) = entry.score {
-                if record
-                    .latest_scored
-                    .as_ref()
-                    .map_or(true, |(d, _)| date > *d)
-                {
+                if record.latest_scored.as_ref().is_none_or(|(d, _)| date > *d) {
                     record.latest_scored = Some((date.clone(), score));
                 }
             }

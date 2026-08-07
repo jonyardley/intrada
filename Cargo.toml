@@ -8,14 +8,17 @@ members = [
   "crates/intrada-api",
 ]
 resolver = "2"
-package.rust-version = "1.75"
+# Set by crux_core 0.20, which declares rust-version 1.90 (rust-toolchain.toml
+# already pins it). intrada-api keeps its own lower floor: it has no crux.
+package.rust-version = "1.90"
 
 [workspace.dependencies]
-crux_core = "0.19.0"
-crux_http = "0.19.0" # tracks crux_core: crux_http 0.18 requires crux_core ^0.19
-# Must track the facet version crux_core 0.19 pulls in (0.44.x) so the
-# gated `derive(facet::Facet)` impls match crux's typegen reflection.
-facet = "0.44"
+crux_core = "0.20.0"
+crux_http = "0.20.0" # tracks crux_core: a capability on 0.19 pulls in a second, incompatible crux_core
+# Pinned exactly because crux_core 0.20's facet_generate 0.19 pins it too —
+# two facet versions in one tree surface as `Facet<'_> is not satisfied`
+# rather than a version conflict.
+facet = "=0.46.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ulid = "3"

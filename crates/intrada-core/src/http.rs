@@ -52,8 +52,25 @@ fn json_response<T: Clone>(
             Some(body) => on_body(body),
             None => Event::LoadFailed(empty_msg.to_string()),
         },
-        Err(e) => Event::LoadFailed(format!("{error_context}: {e}")),
+        Err(e) => {
+            let detail = rejection_reason(&e).unwrap_or_else(|| e.to_string());
+            Event::LoadFailed(format!("{error_context}: {detail}"))
+        }
     }
+}
+
+/// Reads `intrada-api`'s `{"error": …}` envelope. `Display` on `HttpError`
+/// reports the status alone, so without this a 409 reaches the user as
+/// "HTTP error 409: 409 Conflict" and the API's explanation is dropped (#1272).
+fn rejection_reason(error: &crux_http::HttpError) -> Option<String> {
+    #[derive(serde::Deserialize)]
+    struct Envelope {
+        error: String,
+    }
+
+    let envelope = error.body_json::<Envelope>().ok()?;
+    let reason = envelope.error.trim();
+    (!reason.is_empty()).then(|| reason.to_string())
 }
 
 // ── Fetch operations ────────────────────────────────────────────────────
@@ -816,5 +833,41 @@ mod tests {
             "Failed to load items",
         );
         assert!(matches!(event, Event::LoadFailed(m) if m == "Failed to load items: Timeout"));
+    }
+
+    // ── rejections ───────────────────────────────────────────────────
+
+    fn rejection_event(status: u16, body: &str) -> Event {
+        json_response::<Vec<u8>>(
+            crux_http::testing::rejection(status, body),
+            |_| panic!("on_body must not run on a rejection"),
+            "empty body",
+            "Failed to save set",
+        )
+    }
+
+    #[test]
+    fn rejection_surfaces_the_message_the_api_wrote() {
+        let event = rejection_event(409, r#"{"error":"A set with that name already exists"}"#);
+        assert!(matches!(event, Event::LoadFailed(m)
+                if m == "Failed to save set: A set with that name already exists"));
+    }
+
+    #[test]
+    fn rejection_falls_back_to_the_status_when_the_body_is_not_our_envelope() {
+        let event = rejection_event(502, "<html>Bad Gateway</html>");
+        assert!(matches!(event, Event::LoadFailed(m) if m.contains("502")));
+    }
+
+    #[test]
+    fn rejection_falls_back_to_the_status_when_there_is_no_body() {
+        let event = rejection_event(404, "");
+        assert!(matches!(event, Event::LoadFailed(m) if m.contains("404")));
+    }
+
+    #[test]
+    fn rejection_falls_back_to_the_status_when_the_message_is_blank() {
+        let event = rejection_event(422, r#"{"error":"   "}"#);
+        assert!(matches!(event, Event::LoadFailed(m) if m.contains("422")));
     }
 }
