@@ -220,35 +220,66 @@ _ios-test-run tier:
         fi
     fi
     just _ios-test-guard
+    just _ios-build-for-testing
+    if [ "{{tier}}" = "fast" ]; then
+        just _ios-test-without-building IntradaTests 0
+    else
+        # Relaunch-in-new-process, not in-process: the flake this recovers
+        # from kills the runner process (#1203). Fast tier (unit/snapshot,
+        # deterministic) stays strict. Full tier runs both targets in one
+        # `xcodebuild` call locally, so retry applies to both; CI's fanned-out
+        # jobs (#1207) call `_ios-test-without-building` once per target and
+        # scope retry to the UI job only.
+        just _ios-test-without-building "" 1
+    fi
+    # Same exact-tree guard as `check` above (#1204).
+    if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
+        printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
+    fi
+
+# Regenerate the Xcode project and build the test products (app + .xctest
+# bundles) for THIS worktree's pinned iPhone 16 / iOS 26.5 sim, without
+# running anything. Shared by `_ios-test-run` (local) and CI's
+# `native-ios-build` job (#1207) — the xcodebuild invocation lives in exactly
+# one place so CI and local dev can't drift apart.
+[private]
+_ios-build-for-testing:
+    #!/usr/bin/env bash
+    set -euo pipefail
     cd ios
     xcodegen generate --use-cache
     name="$(just _ios-test-sim-name)"
     udid="$(just _ios-test-sim-udid)"
     [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
-    only=""
-    retry=""
-    if [ "{{tier}}" = "fast" ]; then
-        only="-only-testing:IntradaTests"
-    else
-        # Relaunch-in-new-process, not in-process: the flake this recovers
-        # from kills the runner process (#1203). Fast tier (unit/snapshot,
-        # deterministic) stays strict.
-        retry="-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES"
-    fi
     xcodebuild build-for-testing -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
+
+# Run already-built tests against THIS worktree's sim, without rebuilding.
+# `only` is an xcodebuild target name (IntradaTests / IntradaUITests) or ""
+# to run everything the built products contain; `retry` is "1" to add the
+# relaunch-on-crash flags (#1203), else "0". Shared by `_ios-test-run` (local,
+# both targets in one call) and CI's fanned-out `native-ios-test-unit` /
+# `native-ios-test-ui` jobs (#1207), which call this once per target so a
+# UI-suite crash can't take the unit suite down with it.
+[private]
+_ios-test-without-building only retry:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd ios
+    name="$(just _ios-test-sim-name)"
+    udid="$(just _ios-test-sim-udid)"
+    [ -n "$udid" ] || udid=$(xcrun simctl create "$name" "iPhone 16" "iOS26.5")
+    onlyflag=""
+    [ -z "{{only}}" ] || onlyflag="-only-testing:{{only}}"
+    retryflags=""
+    [ "{{retry}}" != "1" ] || retryflags="-retry-tests-on-failure -test-iterations 2 -test-repetition-relaunch-enabled YES"
     xcodebuild test-without-building -project Intrada.xcodeproj -scheme Intrada -sdk iphonesimulator \
         -destination "id=$udid" -derivedDataPath build/dd \
         -clonedSourcePackagesDirPath build/spm -quiet \
-        $only $retry \
+        $onlyflag $retryflags \
         COMPILER_INDEX_STORE_ENABLE=NO CODE_SIGNING_ALLOWED=NO
-    cd ..
-    # Same exact-tree guard as `check` above (#1204).
-    if [ -z "$(git status --porcelain)" ] && [ "$(git rev-parse HEAD)" = "$sha" ]; then
-        printf '%s %s\n' "$sha" "{{tier}}" > "$stamp"
-    fi
 
 # Refuse to start while another xcodebuild/XCTestAgent is already running
 # against THIS checkout — two overlapping full-suite runs in one checkout

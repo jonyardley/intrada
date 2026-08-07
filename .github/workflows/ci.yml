@@ -164,16 +164,21 @@ jobs:
           category: clippy-native
           wait-for-processing: true
 
-  native-ios:
-    # Native SwiftUI app — regenerate bindings (facet typegen + cargo-swift),
-    # build, and run the snapshot test. Pinned to macos-26 + Xcode 26.5 so the
-    # toolchain matches local dev (and the spec's iOS 26 SDK): SwiftUI snapshots
-    # are renderer-specific, so dev and CI MUST share Xcode/iOS.
+  native-ios-build:
+    # Native SwiftUI app, build half — regenerate bindings (facet typegen +
+    # cargo-swift), build the test products once. Pinned to macos-26 + Xcode
+    # 26.5 so the toolchain matches local dev (and the spec's iOS 26 SDK):
+    # SwiftUI snapshots are renderer-specific, so dev and CI MUST share
+    # Xcode/iOS.
     #
-    # PR optimisations (vs main): the launch+screenshot smoke is skipped (the
-    # snapshot test is the regression gate) and DerivedData is restore-only.
-    # Main runs the full launch+screenshot and writes the cache.
-    name: Native iOS (build + test)
+    # Fanned out (#1207): this job builds once and uploads the built test
+    # products (app + .xctest bundles, not all of DerivedData) as an
+    # artifact; `native-ios-test-unit` and `native-ios-test-ui` consume it in
+    # parallel instead of each rebuilding. Parked since 2026-08-05 (doubles
+    # macOS runner minutes to save ~2min wall time, plus artifact transfer
+    # cost) until merges regularly wait on this job or the full tier's wall
+    # time grows past ~10 minutes — see #1207 for the full trade-off writeup.
+    name: "Native iOS: build"
     runs-on: macos-26
     timeout-minutes: 40
     needs: changes
@@ -298,15 +303,64 @@ jobs:
           # swift-snapshot-testing) — and skip the write. The exact-key on main
           # tracks `main`'s own source, so PR incremental builds stay warm.
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      # Full gate = unit + snapshot + XCUITests, via the same `just
-      # ios-test-full` recipe local dev runs (#1198) — one recipe shared
-      # between CI and local, instead of a hand-copied xcodebuild invocation
-      # that can drift from it. The reference is recorded on iOS 26.5 / Xcode
-      # 26.5 (= local dev); SwiftUI snapshots are renderer-specific — bump the
-      # pin in the justfile + the reference together when local dev moves to
-      # a newer Xcode/iOS.
-      - name: Run tests (just ios-test-full)
-        run: just ios-test-full
+      # Build only, via the same `_ios-build-for-testing` recipe local dev's
+      # `_ios-test-run` calls (#1198, split further in #1207) — the
+      # xcodebuild invocation lives in exactly one place shared between CI and
+      # local, instead of a hand-copied one that can drift from it. The
+      # reference is recorded on iOS 26.5 / Xcode 26.5 (= local dev); SwiftUI
+      # snapshots are renderer-specific — bump the pin in the justfile + the
+      # reference together when local dev moves to a newer Xcode/iOS.
+      - name: Build for testing (just _ios-build-for-testing)
+        run: just _ios-build-for-testing
+      # Not all of DerivedData — just the built app + .xctest bundles (and the
+      # .xctestrun that points at them) the test-without-building jobs need.
+      # ios/build/dd is a relative derivedDataPath under the same checkout
+      # layout in every job, so the .xctestrun's embedded __TESTROOT__
+      # resolves the same way there as it did here (#1207).
+      - name: Upload built test products
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-ios-test-products
+          path: ios/build/dd/Build/Products
+          retention-days: 1
+
+  native-ios-test-unit:
+    # Test half 1/2 (#1207): IntradaTests (unit + snapshot) against the
+    # products `native-ios-build` already built — no rebuild here. Also owns
+    # the main-only launch+screenshot smoke, since it already has the built
+    # app on disk via the downloaded artifact.
+    name: "Native iOS: unit + snapshot"
+    runs-on: macos-26
+    timeout-minutes: 20
+    needs: [changes, native-ios-build]
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
+      - uses: taiki-e/install-action@v2.85.5
+        with:
+          tool: just
+      - name: Cache Homebrew packages
+        uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+      - name: Install xcodegen
+        run: brew install xcodegen
+      # project.yml is checked in; regenerating the .xcodeproj from it needs
+      # no Rust/bindings step here (that already happened in native-ios-build).
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Download built test products
+        uses: actions/download-artifact@v7
+        with:
+          name: native-ios-test-products
+          path: ios/build/dd/Build/Products
+      - name: Test (just _ios-test-without-building IntradaTests)
+        run: just _ios-test-without-building IntradaTests 0
       - name: Upload snapshot failures
         if: failure()
         uses: actions/upload-artifact@v7
@@ -315,11 +369,12 @@ jobs:
           path: ios/IntradaTests/__Snapshots__/
           retention-days: 7
           if-no-files-found: ignore
-      # REUSE_BUILD: the snapshot-test step above already built the app into
-      # build/dd — install + launch it for the screenshot without rebuilding.
-      # Main only (~105s): the snapshot test is the per-PR UI regression gate;
-      # the launch+screenshot is a "does the real app boot through its FFI
-      # entry point" smoke + visual artifact, which only main needs.
+      # REUSE_BUILD: the test step above's downloaded artifact already has
+      # build/dd/Build/Products/Intrada.app — install + launch it for the
+      # screenshot without rebuilding. Main only (~105s): the unit/snapshot
+      # run is the per-PR UI regression gate; the launch+screenshot is a "does
+      # the real app boot through its FFI entry point" smoke + visual
+      # artifact, which only main needs.
       - name: Launch on simulator + screenshot
         if: github.event_name == 'push'
         run: REUSE_BUILD=1 bash scripts/ios-run-sim.sh "$GITHUB_WORKSPACE/ios-screenshots/native.png"
@@ -331,6 +386,63 @@ jobs:
           path: ios-screenshots/
           retention-days: 7
           if-no-files-found: ignore
+
+  native-ios-test-ui:
+    # Test half 2/2 (#1207): IntradaUITests against the products
+    # `native-ios-build` already built — no rebuild here. Keeps the
+    # relaunch-on-crash retry flags (#1203) scoped to this job only, so a UI
+    # flake's retry can't also re-run (and re-cost) the unit/snapshot suite.
+    name: "Native iOS: UI"
+    runs-on: macos-26
+    timeout-minutes: 20
+    needs: [changes, native-ios-build]
+    if: github.event_name == 'push' || needs.changes.outputs.native == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.5"
+      - uses: taiki-e/install-action@v2.85.5
+        with:
+          tool: just
+      - name: Cache Homebrew packages
+        uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/Homebrew/downloads
+          key: brew-xcodegen-${{ runner.os }}-${{ runner.arch }}
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Download built test products
+        uses: actions/download-artifact@v7
+        with:
+          name: native-ios-test-products
+          path: ios/build/dd/Build/Products
+      - name: Test (just _ios-test-without-building IntradaUITests)
+        run: just _ios-test-without-building IntradaUITests 1
+
+  # Fan-in gate (#1207): branch protection's required status check is this
+  # job's `name:`, unchanged from before the fan-out, so splitting the build
+  # and test jobs above needs no required-checks reconfiguration on GitHub.
+  # Skips in lockstep with the fanned-out jobs (same `if:`) — a skip is a pass
+  # for a required check, same as the single job's skip was before #1207.
+  native-ios:
+    name: Native iOS (build + test)
+    runs-on: ubuntu-latest
+    needs: [changes, native-ios-build, native-ios-test-unit, native-ios-test-ui]
+    if: always() && (github.event_name == 'push' || needs.changes.outputs.native == 'true')
+    steps:
+      - name: Check fan-out results
+        run: |
+          echo "build=${{ needs.native-ios-build.result }} unit=${{ needs.native-ios-test-unit.result }} ui=${{ needs.native-ios-test-ui.result }}"
+          for r in "${{ needs.native-ios-build.result }}" "${{ needs.native-ios-test-unit.result }}" "${{ needs.native-ios-test-ui.result }}"; do
+            if [ "$r" != "success" ]; then
+              echo "✗ native-ios fan-out did not all succeed" >&2
+              exit 1
+            fi
+          done
 
   # Cheap (<5s, no macOS) guard that keeps the snapshot-reference suite from
   # bloating git history: every PNG must map to a current test (no orphans) and
