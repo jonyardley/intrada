@@ -590,9 +590,9 @@ comment lines relative to code. Bypass for genuinely-justified cases
 (an incident write-up, a copy-pasted upstream notice) with
 `SKIP_COMMENT_CHECK=1 git push`.
 
-When invoking the `superpowers:code-reviewer` agent, include "comment-policy
-violations are Blockers, not Nits" in the prompt so the review treats drift
-as a merge-blocker.
+When invoking the code-reviewer subagent (via the `requesting-code-review`
+skill), include "comment-policy violations are Blockers, not Nits" in the
+prompt so the review treats drift as a merge-blocker.
 
 ## Testing
 
@@ -767,12 +767,12 @@ Discipline tightening after #719/#724, on top of the guidance above:
 
 - **TDD is the default for `intrada-core` changes** (`domain/*.rs`,
   `validation.rs`, `http.rs`, `model.rs`): invoke
-  `superpowers:test-driven-development` and write the failing test first. The
+  `test-driven-development` and write the failing test first. The
   #719 delete-404 bug shipped because the test was retrofit to pass after the
   fix rather than written to constrain behaviour.
 - **`requesting-code-review` is the standard channel for Tier 2+ PRs** — load
   the skill rather than hand-rolling a prompt; run
-  `superpowers:receiving-code-review` on the findings before acting on them.
+  `receiving-code-review` on the findings before acting on them.
 - **UI verification means actually driving the app on the simulator**, not
   claiming "all green" when that means cargo test green. If you can't reach
   the running app, say exactly what needs user verification.
@@ -785,7 +785,8 @@ Discipline tightening after #719/#724, on top of the guidance above:
    `gh pr create`/`git push` feature work directly.** `ship` runs the pre-push
    gates *and* the self-review in one funnel, so the review can't be skipped in
    a fast build→push cadence (which is exactly how it gets skipped when left to
-   "remember to review"). `ship` uses the `superpowers:code-reviewer` subagent;
+   "remember to review"). `ship` uses the code-reviewer subagent (via
+   `requesting-code-review`);
    post its summary as a `gh pr comment` (the reviewer doesn't see in-conversation
    subagent output), apply blockers / important findings inline, and defer the
    rest as tracked issues per (6). Tier 1 trivia (typos, dep bumps, single-line
@@ -890,7 +891,7 @@ where two agents would edit either side of one contract.
   other's work. Reconcile in one place.
 - **The simulator is machine-global.** Only one agent runs iOS tests at a time.
   See the shared-simulator rule under Commands.
-- `superpowers:using-git-worktrees` for the mechanics; the `Workflow` tool's
+- `using-git-worktrees` for the mechanics; the `Workflow` tool's
   `isolation: 'worktree'` does the same per-agent when scripting a fan-out.
 
 **Contract before code still applies, to one agent as much as to several.** Pin
