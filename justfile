@@ -280,6 +280,41 @@ ios-snapshots-optimize:
     find ios/IntradaTests/__Snapshots__ -name '*.png' -exec oxipng -o max --quiet {} +
     @echo "✓ snapshots optimized — review the git diff and commit"
 
+# Re-record snapshot references for the tests matching `filter`, then optimise
+# and re-check in one pass.
+#
+# Recording is delete-then-run-twice by nature: swift-snapshot-testing writes a
+# missing reference and *fails* that run, so the second run is what proves the
+# new image. Doing that by hand over the whole suite is the slow part of any UI
+# change — five rounds of it is most of what made #1256 Phase B feel long.
+#
+# `filter` is anything `-only-testing:` accepts, minus the target prefix:
+#   just ios-snapshots-record ScreenSnapshotTests/testComposeSheetFirstUse
+#   just ios-snapshots-record ScreenSnapshotTests   # the whole class
+[group('iOS')]
+ios-snapshots-record filter: _ios-sync
+    #!/usr/bin/env bash
+    set -euo pipefail
+    snaps=ios/IntradaTests/__Snapshots__
+    # A method filter names one reference; a class filter names all of its own.
+    # Newline-delimited rather than an array: macOS ships bash 3.2, no mapfile.
+    method="$(basename "{{filter}}")"
+    if [ "$method" != "{{filter}}" ]; then
+        refs="$(find "$snaps" -name "$method.*.png")"
+    else
+        refs="$(find "$snaps/$method" -name '*.png' 2>/dev/null || true)"
+    fi
+    [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 rm -v
+    just _ios-build-for-testing
+    # First run writes the references and fails by design; the second is the
+    # one whose result means anything.
+    just _ios-test-without-building "IntradaTests/{{filter}}" 0 || true
+    just _ios-test-without-building "IntradaTests/{{filter}}" 0
+    # Only what was just written: `oxipng -o max` over the whole suite costs
+    # more than the test run it follows.
+    [ -z "$refs" ] || printf '%s\n' "$refs" | tr '\n' '\0' | xargs -0 oxipng -o max --quiet
+    just ios-snapshots-check
+
 # Orphan + size-ceiling check on snapshot references (same as CI).
 [group('iOS')]
 ios-snapshots-check:
