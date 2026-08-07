@@ -18,6 +18,13 @@ countable criteria.
 ## In flight
 
 - #1143 — Phase 0 fortnight practising from `content/`
+- #1256 — built session, play-through altitudes, qualitative capture (2b).
+  Phase A landed the spec (`specs/built-session.md`), the pulled A/B/C mockups
+  (`specs/built-session/design/`), the voice spec graduated as T13, and the
+  core scaffold: entities (`UserDrill`, `JournalItem`, `BuiltSession`,
+  `PlayThroughRecord`, `Reflection`, `FeelEntry`), `BuiltSessionEvent`
+  handlers (local-first only), GRDB v11 with an upgrade-path test, and
+  real-bridge round-trips. Next: Phase B, Journey A end-to-end
 
 ## Recently landed
 

@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn built_session_round_trips_with_every_target_kind() {
         assert_round_trips(BuiltSession {
-            id: "01J0000000000000000000BULT".into(),
+            id: "01J000000000000000000BSESH".into(),
             source: Some("From Friday's lesson".into()),
             blocks: vec![
                 BuiltBlock {
@@ -494,7 +494,7 @@ mod tests {
             assert_round_trips(Reflection {
                 id: "01J0000000000000000000REFL".into(),
                 kind,
-                session_ref: Some("01J0000000000000000000BULT".into()),
+                session_ref: Some("01J000000000000000000BSESH".into()),
                 transcript: Some("The bridge still rushes from memory".into()),
                 audio_path: Some("reflections/01J.m4a".into()),
                 duration_s: Some(24),
@@ -684,7 +684,7 @@ mod tests {
 
     fn sample_built_session() -> BuiltSession {
         BuiltSession {
-            id: "01J0000000000000000000BULT".into(),
+            id: "01J000000000000000000BSESH".into(),
             source: None,
             blocks: vec![],
             created_at: at(),
