@@ -166,7 +166,6 @@ impl Model {
 pub enum SessionStatusView {
     #[default]
     Idle,
-    Building,
     Active,
     Summary,
 }
@@ -192,7 +191,6 @@ pub struct ViewModel {
     pub available_composers: Vec<String>,
     pub sessions: Vec<PracticeSessionView>,
     pub active_session: Option<ActiveSessionView>,
-    pub building_setlist: Option<BuildingSetlistView>,
     pub summary: Option<SummaryView>,
     pub session_status: SessionStatusView,
     pub error: Option<String>,
@@ -442,7 +440,8 @@ pub struct SetlistEntryView {
     pub planned_duration_secs: Option<u32>,
     pub planned_duration_display: Option<String>,
     pub achieved_tempo: Option<u16>,
-    /// The block this entry belongs to in the builder; `None` = standalone.
+    /// The block this entry belongs to (a piece with its related exercises);
+    /// `None` = standalone.
     pub group_id: Option<String>,
     /// The ladder step this entry practised, when attributed (#1083).
     #[serde(default)]
@@ -471,7 +470,7 @@ pub struct ActiveSessionView {
     pub current_rep_history: Option<Vec<RepAction>>,
     pub current_planned_duration_secs: Option<u32>,
     pub next_item_title: Option<String>,
-    /// The current entry's "Aim" note, set in the builder (`EntrySettingsSheet`).
+    /// The current entry's "Aim" note.
     pub current_item_intention: Option<String>,
     /// The anchor piece's title, when the current entry is a related exercise
     /// grouped into that piece's block; `None` for a standalone entry or when
@@ -482,53 +481,6 @@ pub struct ActiveSessionView {
     /// actually played, logged after completion).
     pub current_item_tempo_marking: Option<String>,
     pub current_item_tempo_bpm: Option<u16>,
-}
-
-/// Whether the builder's entries originate from, and relate to, a saved Set.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-#[cfg_attr(feature = "facet_typegen", repr(C))]
-pub enum SetSourceStatus {
-    #[default]
-    NoSource,
-    UnmodifiedFromSource {
-        set_id: String,
-        set_name: String,
-    },
-    ModifiedFromSource {
-        set_id: String,
-        set_name: String,
-    },
-}
-
-/// A unit in the builder queue: a block (a piece with its related exercises) or
-/// a single standalone item. `group_id == None` means standalone.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct SetlistBlockView {
-    pub group_id: Option<String>,
-    /// The block's anchor-piece title; `None` for a standalone item.
-    pub piece_title: Option<String>,
-    pub related_count: usize,
-    pub duration_display: String,
-    pub entries: Vec<SetlistEntryView>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
-pub struct BuildingSetlistView {
-    pub entries: Vec<SetlistEntryView>,
-    pub item_count: usize,
-    /// The same entries grouped into ordered units (blocks + standalone items).
-    pub blocks: Vec<SetlistBlockView>,
-    pub block_count: usize,
-    /// Sum of the entries' planned durations; `None` when nothing is planned
-    /// so shells can fall back to counts-only copy.
-    pub total_duration_display: Option<String>,
-    pub total_duration_summary: Option<String>,
-    pub session_intention: Option<String>,
-    pub target_duration_mins: Option<u32>,
-    pub source_status: SetSourceStatus,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -571,51 +523,6 @@ pub fn entry_to_view(entry: &SetlistEntry) -> SetlistEntryView {
         group_id: entry.group_id.clone(),
         variant_id: entry.variant_id.clone(),
     }
-}
-
-/// Project flat entry views into ordered units: a contiguous run sharing a
-/// `group_id` becomes one block (related exercises first, piece last); every
-/// ungrouped entry is its own standalone unit.
-pub fn build_blocks(entries: &[SetlistEntryView]) -> Vec<SetlistBlockView> {
-    let mut blocks: Vec<SetlistBlockView> = Vec::new();
-    for entry in entries {
-        let extends = match (&entry.group_id, blocks.last()) {
-            (Some(g), Some(last)) => last.group_id.as_deref() == Some(g.as_str()),
-            _ => false,
-        };
-        let is_piece = entry.item_type == ItemKind::Piece;
-        if extends {
-            let block = blocks.last_mut().expect("extends implies a last block");
-            if is_piece {
-                block.piece_title = Some(entry.item_title.clone());
-            } else {
-                block.related_count += 1;
-            }
-            block.entries.push(entry.clone());
-        } else {
-            let grouped = entry.group_id.is_some();
-            blocks.push(SetlistBlockView {
-                group_id: entry.group_id.clone(),
-                piece_title: (grouped && is_piece).then(|| entry.item_title.clone()),
-                related_count: usize::from(grouped && !is_piece),
-                duration_display: String::new(),
-                entries: vec![entry.clone()],
-            });
-        }
-    }
-    for block in &mut blocks {
-        let total: u32 = block
-            .entries
-            .iter()
-            .filter_map(|e| e.planned_duration_secs)
-            .sum();
-        block.duration_display = if total > 0 {
-            crate::domain::session::format_planned_duration(u64::from(total))
-        } else {
-            "—".to_string()
-        };
-    }
-    blocks
 }
 
 pub fn build_active_session_view(
@@ -1253,16 +1160,42 @@ mod tests {
             ..Default::default()
         };
 
-        update_model(&mut model, Event::Session(SessionEvent::StartBuilding));
+        use crate::domain::session::{ActiveSession, SetlistEntry};
+
+        let entry = SetlistEntry {
+            id: "e1".to_string(),
+            item_id: "piece-1".to_string(),
+            item_title: "Test Piece".to_string(),
+            item_type: ItemKind::Piece,
+            position: 0,
+            duration_secs: 0,
+            status: crate::domain::session::EntryStatus::NotAttempted,
+            notes: None,
+            score: None,
+            intention: None,
+            rep_target: None,
+            rep_count: None,
+            rep_target_reached: None,
+            rep_history: None,
+            planned_duration_secs: None,
+            achieved_tempo: None,
+            group_id: None,
+            variant_id: None,
+        };
+        let active = ActiveSession {
+            id: "s1".to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        };
         update_model(
             &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
             }),
-        );
-        update_model(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
         );
         let t1 = now + chrono::Duration::seconds(60);
         update_model(

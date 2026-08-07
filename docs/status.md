@@ -21,6 +21,14 @@ countable criteria.
 
 ## Recently landed
 
+- #1190 — the session-builder machinery deleted (2a close-out): the Building
+  phase and its screens (`SessionBuilderScreen`, `AddToSessionSheet`,
+  `EntrySettingsSheet`, `AddRelatedExerciseSheet`) are gone from both
+  `intrada-core` and `ios/Intrada`, along with the Building-coupled `Set`
+  events (`SaveBuildingAsSet`, `LoadSetIntoSetlist`, `UpdateSetFromBuilding`).
+  The session archive, the Active/Summary phases and their screens
+  (`FocusPlayerScreen`, `SessionSummaryScreen`) stay — that's the session
+  domain, not the builder. Recovery commit noted on the PR.
 - #1248 — the Claude Design project caught up with the repo design system
   (`CoachAction` synced up, `design/intrada-design-system.html` re-exported
   through Share → Export), closing #1233
@@ -82,7 +90,6 @@ countable criteria.
 
 ## Next (once 2a closes)
 
-- #1190 — delete the session-builder machinery (2a close-out)
 - Phase 2b — steer and guard: declaration surfaces, back-chaining, gap read,
   circling check, grind trade, acquisition before the clock (#1244, #1245;
   see the phase plan in `roadmap.md`)

@@ -612,9 +612,18 @@ final class StoreEffectLoopTests: XCTestCase {
     _ = try bridge.update(.item(.addVariant(itemId: itemId, label: "F major")))
     let stepId = try XCTUnwrap(try bridge.view().items.first?.variants.first?.id)
 
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let entryId = try XCTUnwrap(try bridge.view().buildingSetlist?.entries.first?.id)
+    let entry = SetlistEntry(
+      id: "e1", itemId: itemId, itemTitle: "Scales", itemType: .exercise,
+      position: 0, durationSecs: 0, status: .notAttempted,
+      notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: nil, variantId: nil)
+    let active = ActiveSession(
+      id: "s1", entries: [entry], currentIndex: 0,
+      currentItemStartedAt: "2026-06-16T09:00:00Z", sessionStartedAt: "2026-06-16T09:00:00Z",
+      sessionIntention: nil)
+    _ = try bridge.update(.session(.recoverSession(session: active, now: "2026-06-16T09:00:00Z")))
+    let entryId = try XCTUnwrap(try bridge.view().activeSession?.entries.first?.id)
 
     _ = try bridge.update(.session(.setEntryVariant(entryId: entryId, variantId: stepId)))
     XCTAssertNil(try bridge.view().error, "tagging a rung must decode on the wire (#846)")
@@ -1029,33 +1038,11 @@ final class StoreEffectLoopTests: XCTestCase {
     XCTAssertEqual(try bridge.view().items.first?.priority, false, "star should flip priority off")
   }
 
-  /// "Practise this" (#1034): StartBuildingWith is a new bridge-crossing
-  /// write — round-trip it through the real bincode bridge (#846).
-  func testRealBridgePractiseThisSeedsBuilder() throws {
-    let bridge = LiveBridge()
-    _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
-    _ = try bridge.update(
-      .item(
-        .add(
-          CreateItem(
-            title: "Hanon No. 1", kind: .exercise, composer: nil, key: nil, modality: nil,
-            tempo: nil, notes: nil, tags: []))))
-    let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
-
-    _ = try bridge.update(.session(.startBuildingWith(itemId: itemId)))
-    let vm = try bridge.view()
-    XCTAssertNotNil(vm.buildingSetlist, "startBuildingWith should open a seeded setlist")
-    XCTAssertEqual(vm.buildingSetlist?.entries.count, 1)
-    XCTAssertEqual(vm.buildingSetlist?.entries.first?.itemId, itemId)
-    XCTAssertNil(vm.error)
-  }
-
-  /// Real-bridge build→play→save lifecycle (#932): drives the actual bincode
-  /// bridge through Building → Active → Summary → Idle, mirroring the
-  /// SessionBuilder → FocusPlayer → Summary screens. A wire break surfaces here
-  /// as a failed transition instead of the silent no-op the stub bridge would
-  /// hide (#846).
-  func testRealBridgeSessionFlowBuildPlaySave() throws {
+  /// Real-bridge play→save lifecycle (#932): drives the actual bincode
+  /// bridge through Active → Summary → Idle, mirroring the FocusPlayer →
+  /// Summary screens. A wire break surfaces here as a failed transition
+  /// instead of the silent no-op the stub bridge would hide (#846).
+  func testRealBridgeSessionFlowPlaySave() throws {
     let bridge = LiveBridge()
     _ = try bridge.update(.startApp(apiBaseUrl: "http://localhost:3001", localFirst: true))
     _ = try bridge.update(
@@ -1066,17 +1053,19 @@ final class StoreEffectLoopTests: XCTestCase {
             tempo: nil, notes: nil, tags: []))))
     let itemId = try XCTUnwrap(try bridge.view().items.first?.id)
 
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: itemId)))
-    let building = try bridge.view()
-    XCTAssertNotNil(building.buildingSetlist, "startBuilding + add should open a setlist")
-    XCTAssertEqual(building.buildingSetlist?.entries.count, 1)
-    XCTAssertNil(building.activeSession)
-
-    _ = try bridge.update(.session(.startSession(now: "2026-06-16T10:00:00Z")))
+    let entry = SetlistEntry(
+      id: "e1", itemId: itemId, itemTitle: "Etude", itemType: .piece,
+      position: 0, durationSecs: 0, status: .notAttempted,
+      notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: nil, variantId: nil)
+    let building = ActiveSession(
+      id: "s1", entries: [entry], currentIndex: 0,
+      currentItemStartedAt: "2026-06-16T10:00:00Z", sessionStartedAt: "2026-06-16T10:00:00Z",
+      sessionIntention: nil)
+    _ = try bridge.update(.session(.recoverSession(session: building, now: "2026-06-16T10:00:00Z")))
     let active = try bridge.view()
-    XCTAssertNotNil(active.activeSession, "startSession should enter the player")
-    XCTAssertNil(active.buildingSetlist, "the builder should close on start")
+    XCTAssertNotNil(active.activeSession, "recoverSession should enter the player")
     XCTAssertNil(active.summary)
 
     // The FocusPlayer reaches the summary by advancing past the last item (its
@@ -1196,9 +1185,17 @@ final class StoreEffectLoopTests: XCTestCase {
       reordered.first { $0.label == "C" }?.id, stepId, "reordering keeps each step's id")
 
     // Practise it to the summary, then attribute the entry to a step + clear.
-    _ = try bridge.update(.session(.startBuilding))
-    _ = try bridge.update(.session(.addToSetlist(itemId: exId)))
-    _ = try bridge.update(.session(.startSession(now: "2026-07-17T10:00:00Z")))
+    let entry = SetlistEntry(
+      id: "e1", itemId: exId, itemTitle: "Shells", itemType: .exercise,
+      position: 0, durationSecs: 0, status: .notAttempted,
+      notes: nil, score: nil, intention: nil, repTarget: nil, repCount: nil,
+      repTargetReached: nil, repHistory: nil, plannedDurationSecs: nil, achievedTempo: nil,
+      groupId: nil, variantId: nil)
+    let active = ActiveSession(
+      id: "s1", entries: [entry], currentIndex: 0,
+      currentItemStartedAt: "2026-07-17T10:00:00Z", sessionStartedAt: "2026-07-17T10:00:00Z",
+      sessionIntention: nil)
+    _ = try bridge.update(.session(.recoverSession(session: active, now: "2026-07-17T10:00:00Z")))
     _ = try bridge.update(.session(.nextItem(now: "2026-07-17T10:10:00Z")))
     let summary = try bridge.view()
     let entryId = try XCTUnwrap(summary.summary?.entries.first?.id)

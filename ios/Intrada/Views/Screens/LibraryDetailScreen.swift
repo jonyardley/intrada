@@ -79,11 +79,6 @@ struct LibraryDetailScreen: View {
             recentSessionsSection
           }
 
-          if item.itemType == .exercise {
-            practiseButton
-              .padding(.top, IntradaSpacing.controlGap)
-          }
-
           deleteButton
             .padding(.top, IntradaSpacing.controlGap)
         }
@@ -601,26 +596,6 @@ struct LibraryDetailScreen: View {
       .buttonStyle(.plain)
     } else {
       ByPieceRow(context: context, locale: locale, calendar: calendar, discloses: false)
-    }
-  }
-
-  // One-tap into the session builder seeded with this exercise (core
-  // StartBuildingWith); RootView switches to the Practice tab when
-  // `buildingSetlist` goes non-nil.
-  private var practiseButton: some View {
-    BrandBarButton(action: practiseThis) {
-      Image(systemName: "timer")
-      Text("Practise this")
-    }
-    .accessibilityLabel("Practise this exercise")
-    .accessibilityHint("Starts a session plan with this exercise")
-  }
-
-  private func practiseThis() {
-    let before = store.viewModel?.errorSeq
-    store.send(.session(.startBuildingWith(itemId: item.id)))
-    if store.viewModel?.errorSeq == before {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
 

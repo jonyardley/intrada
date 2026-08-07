@@ -128,20 +128,6 @@ pub enum ReflectionField {
 
 // ── Transient State Types ──────────────────────────────────────────────
 
-/// State during setlist assembly (Building phase).
-#[derive(Debug, Clone, Default)]
-pub struct BuildingSession {
-    pub entries: Vec<SetlistEntry>,
-    pub session_intention: Option<String>,
-    /// Optional session-level time target (in minutes) set via presets.
-    /// Purely a UI guide — not enforced.
-    pub target_duration_mins: Option<u32>,
-    /// Which saved Set this builder was loaded from (if any).
-    pub source_set_id: Option<String>,
-    /// Ordered item_ids at load time — used to detect modifications.
-    pub source_set_entry_snapshot: Vec<String>,
-}
-
 /// State during active practice (Active phase).
 /// Persisted to `intrada:session-in-progress` for crash recovery.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -177,7 +163,6 @@ pub struct SummarySession {
 pub enum SessionStatus {
     #[default]
     Idle,
-    Building(BuildingSession),
     Active(ActiveSession),
     Summary(SummarySession),
 }
@@ -188,96 +173,14 @@ pub enum SessionStatus {
 #[cfg_attr(feature = "facet_typegen", derive(facet::Facet))]
 #[cfg_attr(feature = "facet_typegen", repr(C))]
 pub enum SessionEvent {
-    // === Building Phase ===
-    StartBuilding,
-    /// Start building with a session-level time target (in minutes).
-    /// The target is a UI guide, not enforced.
-    StartBuildingWithTarget {
-        target_duration_mins: u32,
-    },
-    SetSessionIntention {
-        intention: Option<String>,
-    },
-    SetEntryIntention {
-        entry_id: String,
-        intention: Option<String>,
-    },
     /// Attribute an entry to one step of its exercise's ladder; `None` clears
-    /// (#1083). Valid in every phase: Building tags the rung you plan to
-    /// practise, Active/Summary is the reflection attribution. The step must
-    /// be a live variant of the entry's item. Local-first only until sync.
+    /// (#1083). Valid in every phase: Active is the in-session tag, Summary is
+    /// the reflection attribution. The step must be a live variant of the
+    /// entry's item. Local-first only until sync.
     SetEntryVariant {
         entry_id: String,
         variant_id: Option<String>,
     },
-    /// Set or clear the rep target for an entry during building phase.
-    /// `None` disables the counter; `Some(n)` enables it with target `n`.
-    SetRepTarget {
-        entry_id: String,
-        target: Option<u8>,
-    },
-    /// Set or clear the planned duration for an entry during building phase.
-    /// `None` clears the planned duration; `Some(secs)` sets it (range: 60–3600).
-    SetEntryDuration {
-        entry_id: String,
-        duration_secs: Option<u32>,
-    },
-    AddToSetlist {
-        item_id: String,
-    },
-    /// One-tap "Practise this": from Idle, start building seeded with the
-    /// item (a piece brings its related exercises, as `AddToSetlist`).
-    StartBuildingWith {
-        item_id: String,
-    },
-    AddNewItemToSetlist {
-        title: String,
-        item_type: ItemKind,
-    },
-    RemoveFromSetlist {
-        entry_id: String,
-    },
-    ReorderSetlist {
-        entry_id: String,
-        new_position: usize,
-    },
-    /// Move a whole block to a new unit-position (blocks + standalone items,
-    /// in order). Keeps the block contiguous.
-    ReorderBlock {
-        group_id: String,
-        new_position: usize,
-    },
-    /// Drop a block's related exercises, keeping the piece (becomes standalone).
-    KeepOnlyPiece {
-        group_id: String,
-    },
-    /// Dissolve a block — its entries stay in place but become standalone.
-    UngroupBlock {
-        group_id: String,
-    },
-    /// Dissolve every block.
-    UngroupAllBlocks,
-    /// Remove a whole block (piece + its related exercises).
-    RemoveBlock {
-        group_id: String,
-    },
-    /// Add one more exercise into an already-present block, positioned before
-    /// the block's anchor piece. Membership is binary, same idempotency as
-    /// `AddToSetlist` (#939): re-adding a present item is a no-op.
-    AddExerciseToBlock {
-        group_id: String,
-        item_id: String,
-    },
-    StartSession {
-        now: DateTime<Utc>,
-    },
-    /// Set or clear the session-level time target during building phase.
-    /// `None` removes the target; `Some(mins)` sets it (validated against
-    /// MIN/MAX_SESSION_TARGET_MINS).
-    SetTargetDuration {
-        target_duration_mins: Option<u32>,
-    },
-    CancelBuilding,
 
     // === Active Phase ===
     NextItem {
@@ -428,83 +331,6 @@ fn create_entry(
     }
 }
 
-fn reindex_entries(entries: &mut [SetlistEntry]) {
-    for (i, entry) in entries.iter_mut().enumerate() {
-        entry.position = i;
-    }
-}
-
-/// Partition entries into ordered units: a contiguous run sharing a `Some`
-/// `group_id` is one unit (a block); every `None` entry is its own unit.
-fn into_units(entries: Vec<SetlistEntry>) -> Vec<Vec<SetlistEntry>> {
-    let mut units: Vec<Vec<SetlistEntry>> = Vec::new();
-    for entry in entries {
-        match &entry.group_id {
-            Some(g) => {
-                let extends = units
-                    .last()
-                    .and_then(|u| u.first())
-                    .and_then(|e| e.group_id.as_deref())
-                    == Some(g.as_str());
-                if extends {
-                    units.last_mut().expect("checked above").push(entry);
-                } else {
-                    units.push(vec![entry]);
-                }
-            }
-            None => units.push(vec![entry]),
-        }
-    }
-    units
-}
-
-/// True when every `group_id` occupies a single contiguous run — the block
-/// invariant a reorder must never break.
-fn groups_contiguous(entries: &[SetlistEntry]) -> bool {
-    let mut closed: std::collections::HashSet<&str> = std::collections::HashSet::new();
-    let mut current: Option<&str> = None;
-    for entry in entries {
-        let g = entry.group_id.as_deref();
-        if g != current {
-            if let Some(prev) = current {
-                closed.insert(prev);
-            }
-            if let Some(g) = g {
-                if closed.contains(g) {
-                    return false;
-                }
-            }
-            current = g;
-        }
-    }
-    true
-}
-
-/// Clear the `group_id` of any block left without its anchor piece — a block
-/// only means "this piece's warm-up", so when the piece goes the related
-/// exercises become standalone (§7.4 dissolve).
-fn dissolve_pieceless_groups(entries: &mut [SetlistEntry]) {
-    let anchored: std::collections::HashSet<&str> = entries
-        .iter()
-        .filter(|e| e.item_type == ItemKind::Piece)
-        .filter_map(|e| e.group_id.as_deref())
-        .collect();
-    let orphans: std::collections::HashSet<String> = entries
-        .iter()
-        .filter_map(|e| e.group_id.clone())
-        .filter(|g| !anchored.contains(g.as_str()))
-        .collect();
-    for entry in entries.iter_mut() {
-        if entry
-            .group_id
-            .as_deref()
-            .is_some_and(|g| orphans.contains(g))
-        {
-            entry.group_id = None;
-        }
-    }
-}
-
 fn create_item_from_title(title: &str, kind: ItemKind) -> Item {
     let now = Utc::now();
     Item {
@@ -538,17 +364,16 @@ fn entry_for_update_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a 
     match &mut model.session_status {
         SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
         SessionStatus::Summary(summary) => summary.entries.iter_mut().find(|e| e.id == entry_id),
-        SessionStatus::Idle | SessionStatus::Building(_) => None,
+        SessionStatus::Idle => None,
     }
 }
 
 // Unlike score/notes (post-play reflection only, `entry_for_update_mut`), the
-// step tag is also a Building-phase plan ("which rung am I about to climb"),
+// step tag is also set ahead of an item coming up ("which rung am I about to climb"),
 // so its lookup spans all three phases (#1083). The immutable twin exists for
 // checks that also read the library (a mutable borrow would lock the model).
 fn entry_for_variant<'a>(model: &'a Model, entry_id: &str) -> Option<&'a SetlistEntry> {
     match &model.session_status {
-        SessionStatus::Building(building) => building.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Active(active) => active.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Summary(summary) => summary.entries.iter().find(|e| e.id == entry_id),
         SessionStatus::Idle => None,
@@ -557,7 +382,6 @@ fn entry_for_variant<'a>(model: &'a Model, entry_id: &str) -> Option<&'a Setlist
 
 fn entry_for_variant_mut<'a>(model: &'a mut Model, entry_id: &str) -> Option<&'a mut SetlistEntry> {
     match &mut model.session_status {
-        SessionStatus::Building(building) => building.entries.iter_mut().find(|e| e.id == entry_id),
         SessionStatus::Active(active) => active.entries.iter_mut().find(|e| e.id == entry_id),
         SessionStatus::Summary(summary) => summary.entries.iter_mut().find(|e| e.id == entry_id),
         SessionStatus::Idle => None,
@@ -602,107 +426,6 @@ fn transition_to_summary(
 
 pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<Effect, Event> {
     match event {
-        // ── Building Phase ─────────────────────────────────────────
-        SessionEvent::StartBuilding => {
-            if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
-                return crux_core::render::render();
-            }
-            model.session_status = SessionStatus::Building(BuildingSession::default());
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::StartBuildingWithTarget {
-            target_duration_mins,
-        } => {
-            if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
-                return crux_core::render::render();
-            }
-            if !(validation::MIN_SESSION_TARGET_MINS..=validation::MAX_SESSION_TARGET_MINS)
-                .contains(&target_duration_mins)
-            {
-                model.last_error = Some(format!(
-                    "Session target must be between {} and {} minutes",
-                    validation::MIN_SESSION_TARGET_MINS,
-                    validation::MAX_SESSION_TARGET_MINS
-                ));
-                return crux_core::render::render();
-            }
-            model.session_status = SessionStatus::Building(BuildingSession {
-                target_duration_mins: Some(target_duration_mins),
-                ..Default::default()
-            });
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::SetSessionIntention { intention } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                // No-op when not in Building state
-                return crux_core::render::render();
-            };
-
-            if let Err(e) = validation::validate_intention(&intention) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            building.session_intention = intention;
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::SetTargetDuration {
-            target_duration_mins,
-        } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                return crux_core::render::render();
-            };
-
-            if let Some(mins) = target_duration_mins {
-                if !(validation::MIN_SESSION_TARGET_MINS..=validation::MAX_SESSION_TARGET_MINS)
-                    .contains(&mins)
-                {
-                    model.last_error = Some(format!(
-                        "Session target must be between {} and {} minutes",
-                        validation::MIN_SESSION_TARGET_MINS,
-                        validation::MAX_SESSION_TARGET_MINS
-                    ));
-                    return crux_core::render::render();
-                }
-            }
-
-            building.target_duration_mins = target_duration_mins;
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::SetEntryIntention {
-            entry_id,
-            intention,
-        } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                // No-op when not in Building state
-                return crux_core::render::render();
-            };
-
-            if let Err(e) = validation::validate_intention(&intention) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            entry.intention = intention;
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
         SessionEvent::SetEntryVariant {
             entry_id,
             variant_id,
@@ -742,424 +465,6 @@ pub fn handle_session_event(event: SessionEvent, model: &mut Model) -> Command<E
             };
             entry.variant_id = variant_id;
             model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::SetRepTarget { entry_id, target } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                // No-op when not in Building state
-                return crux_core::render::render();
-            };
-
-            if let Some(t) = target {
-                if let Err(e) = validation::validate_rep_target(&Some(t)) {
-                    model.last_error = Some(e.to_string());
-                    return crux_core::render::render();
-                }
-            }
-
-            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            entry.rep_target = target;
-            // Changing the target invalidates any prior progress.
-            entry.rep_count = None;
-            entry.rep_target_reached = None;
-            entry.rep_history = None;
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::SetEntryDuration {
-            entry_id,
-            duration_secs,
-        } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                // No-op when not in Building state
-                return crux_core::render::render();
-            };
-
-            if let Err(e) = validation::validate_planned_duration(&duration_secs) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let Some(entry) = building.entries.iter_mut().find(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            entry.planned_duration_secs = duration_secs;
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::StartBuildingWith { item_id } => {
-            if !matches!(model.session_status, SessionStatus::Idle) {
-                model.last_error = Some("A practice is already in progress".to_string());
-                return crux_core::render::render();
-            }
-            if !model.items.iter().any(|i| i.id == item_id) {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
-                return crux_core::render::render();
-            }
-            model.session_status = SessionStatus::Building(BuildingSession::default());
-            handle_session_event(SessionEvent::AddToSetlist { item_id }, model)
-        }
-
-        SessionEvent::AddToSetlist { item_id } => {
-            if !matches!(model.session_status, SessionStatus::Building(_)) {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            }
-
-            // Membership is binary (the picker/sheet toggle relies on it):
-            // re-adding a present item is an idempotent no-op, not a duplicate (#939).
-            if let SessionStatus::Building(ref building) = model.session_status {
-                if building.entries.iter().any(|e| e.item_id == item_id) {
-                    model.last_error = None;
-                    return crux_core::render::render();
-                }
-            }
-
-            // Resolve the item and — for a piece — its related exercises as owned
-            // tuples before taking the mutable Building borrow.
-            let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
-                return crux_core::render::render();
-            };
-            let piece = (item.id.clone(), item.title.clone(), item.kind.clone());
-            let related: Vec<(String, String, ItemKind)> = if item.kind == ItemKind::Piece {
-                item.linked_exercise_ids
-                    .iter()
-                    .filter_map(|ex_id| {
-                        model
-                            .items
-                            .iter()
-                            .find(|i| &i.id == ex_id && i.kind == ItemKind::Exercise)
-                            .map(|i| (i.id.clone(), i.title.clone(), i.kind.clone()))
-                    })
-                    .collect()
-            } else {
-                Vec::new()
-            };
-
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Internal error: expected Building state".to_string());
-                return crux_core::render::render();
-            };
-
-            // Skip related exercises already in the setlist — don't duplicate.
-            let existing: std::collections::HashSet<String> =
-                building.entries.iter().map(|e| e.item_id.clone()).collect();
-            let related_to_add: Vec<(String, String, ItemKind)> = related
-                .into_iter()
-                .filter(|(id, _, _)| !existing.contains(id))
-                .collect();
-
-            // A block forms only when ≥1 related exercise actually comes along.
-            let group_id = if related_to_add.is_empty() {
-                None
-            } else {
-                Some(ulid::Ulid::generate().to_string())
-            };
-
-            // Related first (warm-up order), then the piece.
-            for (id, title, kind) in &related_to_add {
-                let position = building.entries.len();
-                let mut entry = create_entry(id, title, kind.clone(), position);
-                entry.group_id.clone_from(&group_id);
-                building.entries.push(entry);
-            }
-            let position = building.entries.len();
-            let mut piece_entry = create_entry(&piece.0, &piece.1, piece.2, position);
-            piece_entry.group_id = group_id;
-            building.entries.push(piece_entry);
-
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::AddNewItemToSetlist { title, item_type } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            if let Err(e) = validation::validate_title(&title) {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let item = create_item_from_title(&title, item_type.clone());
-            let new_item_id = item.id.clone();
-            model.items.push(item.clone());
-
-            let position = building.entries.len();
-            let entry = create_entry(&new_item_id, &title, item_type, position);
-            building.entries.push(entry);
-            model.last_error = None;
-
-            Command::all([
-                crate::http::create_item(&model.api_base_url, &item, &new_item_id),
-                crux_core::render::render(),
-            ])
-        }
-
-        SessionEvent::RemoveFromSetlist { entry_id } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let len_before = building.entries.len();
-            building.entries.retain(|e| e.id != entry_id);
-
-            if building.entries.len() == len_before {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
-                return crux_core::render::render();
-            }
-
-            dissolve_pieceless_groups(&mut building.entries);
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::ReorderSetlist {
-            entry_id,
-            new_position,
-        } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let Some(current_index) = building.entries.iter().position(|e| e.id == entry_id) else {
-                model.last_error = Some(format!("Entry '{entry_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            if new_position >= building.entries.len() {
-                model.last_error = Some(format!(
-                    "Invalid position: {new_position} (max: {})",
-                    building.entries.len().saturating_sub(1)
-                ));
-                return crux_core::render::render();
-            }
-
-            let entry = building.entries.remove(current_index);
-            building.entries.insert(new_position, entry);
-            if !groups_contiguous(&building.entries) {
-                // Revert — the move would split a block.
-                let entry = building.entries.remove(new_position);
-                building.entries.insert(current_index, entry);
-                model.last_error = Some("Can't move an item out of its block".to_string());
-                return crux_core::render::render();
-            }
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::ReorderBlock {
-            group_id,
-            new_position,
-        } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let mut units = into_units(std::mem::take(&mut building.entries));
-            let Some(current) = units.iter().position(|u| {
-                u.first().and_then(|e| e.group_id.as_deref()) == Some(group_id.as_str())
-            }) else {
-                building.entries = units.into_iter().flatten().collect();
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            let target = new_position.min(units.len().saturating_sub(1));
-            let unit = units.remove(current);
-            units.insert(target, unit);
-            building.entries = units.into_iter().flatten().collect();
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::KeepOnlyPiece { group_id } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let in_block = |e: &SetlistEntry| e.group_id.as_deref() == Some(group_id.as_str());
-            if !building.entries.iter().any(in_block) {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
-                return crux_core::render::render();
-            }
-
-            building
-                .entries
-                .retain(|e| !(in_block(e) && e.item_type == ItemKind::Exercise));
-            // The lone piece left behind is no longer a block.
-            for entry in building.entries.iter_mut().filter(|e| in_block(e)) {
-                entry.group_id = None;
-            }
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::UngroupBlock { group_id } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let mut found = false;
-            for entry in building
-                .entries
-                .iter_mut()
-                .filter(|e| e.group_id.as_deref() == Some(group_id.as_str()))
-            {
-                entry.group_id = None;
-                found = true;
-            }
-            if !found {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
-                return crux_core::render::render();
-            }
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::UngroupAllBlocks => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-            for entry in &mut building.entries {
-                entry.group_id = None;
-            }
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::RemoveBlock { group_id } => {
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            let len_before = building.entries.len();
-            building
-                .entries
-                .retain(|e| e.group_id.as_deref() != Some(group_id.as_str()));
-            if building.entries.len() == len_before {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
-                return crux_core::render::render();
-            }
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::AddExerciseToBlock { group_id, item_id } => {
-            let SessionStatus::Building(ref building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            // Membership is binary, same idempotency as `AddToSetlist` (#939).
-            if building.entries.iter().any(|e| e.item_id == item_id) {
-                model.last_error = None;
-                return crux_core::render::render();
-            }
-
-            let Some(anchor_index) = building.entries.iter().position(|e| {
-                e.group_id.as_deref() == Some(group_id.as_str()) && e.item_type == ItemKind::Piece
-            }) else {
-                model.last_error = Some(format!("Block '{group_id}' not found in setlist"));
-                return crux_core::render::render();
-            };
-
-            let Some(item) = model.items.iter().find(|i| i.id == item_id) else {
-                model.last_error = Some(LibraryError::NotFound { id: item_id }.to_string());
-                return crux_core::render::render();
-            };
-            if item.kind != ItemKind::Exercise {
-                model.last_error = Some("Only an exercise can be added to a block".to_string());
-                return crux_core::render::render();
-            }
-            let (id, title, kind) = (item.id.clone(), item.title.clone(), item.kind.clone());
-
-            let SessionStatus::Building(ref mut building) = model.session_status else {
-                model.last_error = Some("Internal error: expected Building state".to_string());
-                return crux_core::render::render();
-            };
-            let mut entry = create_entry(&id, &title, kind, anchor_index);
-            entry.group_id = Some(group_id);
-            building.entries.insert(anchor_index, entry);
-            reindex_entries(&mut building.entries);
-            model.last_error = None;
-            crux_core::render::render()
-        }
-
-        SessionEvent::StartSession { now } => {
-            let SessionStatus::Building(ref building) = model.session_status else {
-                model.last_error = Some("Not in building state".to_string());
-                return crux_core::render::render();
-            };
-
-            if let Err(e) = validation::validate_entries_not_empty(&building.entries, "Setlist") {
-                model.last_error = Some(e.to_string());
-                return crux_core::render::render();
-            }
-
-            let mut entries = building.entries.clone();
-            for entry in &mut entries {
-                if entry.rep_target.is_some() {
-                    entry.rep_count = Some(0);
-                    entry.rep_target_reached = Some(false);
-                    entry.rep_history = Some(vec![]);
-                }
-            }
-
-            let active = ActiveSession {
-                id: ulid::Ulid::generate().to_string(),
-                entries,
-                current_index: 0,
-                current_item_started_at: now,
-                session_started_at: now,
-                session_intention: building.session_intention.clone(),
-            };
-
-            let save_effect = AppEffect::SaveSessionInProgress(active.clone());
-            model.session_status = SessionStatus::Active(active);
-            model.last_error = None;
-
-            Command::all([
-                Command::notify_shell(save_effect).into(),
-                crux_core::render::render(),
-            ])
-        }
-
-        SessionEvent::CancelBuilding => {
-            // Idempotent: already-Idle cancel is a no-op success, not a silent error (#944).
-            match model.session_status {
-                SessionStatus::Building(_) | SessionStatus::Idle => {
-                    model.session_status = SessionStatus::Idle;
-                    model.last_error = None;
-                }
-                _ => {
-                    model.last_error = Some("Not in building state".to_string());
-                }
-            }
             crux_core::render::render()
         }
 
@@ -1710,920 +1015,38 @@ mod tests {
         let _cmd = app.update(event, model);
     }
 
-    // --- Block grouping (related exercises travel with a piece) ---
-
-    fn linked_model() -> Model {
-        let now = Utc::now();
-        let mk = |id: &str, title: &str, kind: ItemKind, linked: &[&str]| Item {
-            id: id.to_string(),
-            title: title.to_string(),
-            kind,
-            composer: None,
-            key: None,
-            modality: None,
-            tempo: None,
-            notes: None,
-            tags: vec![],
-            linked_exercise_ids: linked.iter().map(|s| s.to_string()).collect(),
-            created_at: now,
-            updated_at: now,
-            priority: false,
-            chord_chart: None,
-            variants: vec![],
-        };
-        Model {
-            items: vec![
-                mk("piece-P", "Sonata", ItemKind::Piece, &["ex-A", "ex-B"]),
-                mk("piece-Q", "Nocturne", ItemKind::Piece, &[]),
-                mk("piece-R", "Etude", ItemKind::Piece, &["ex-C"]),
-                mk("ex-A", "Scales", ItemKind::Exercise, &[]),
-                mk("ex-B", "Arpeggios", ItemKind::Exercise, &[]),
-                mk("ex-C", "Sight-reading", ItemKind::Exercise, &[]),
-                mk("ex-D", "Trills", ItemKind::Exercise, &[]),
-            ],
-            api_base_url: "http://localhost:3001".to_string(),
-            ..Default::default()
-        }
-    }
-
-    fn building_entries(model: &Model) -> &[SetlistEntry] {
-        match &model.session_status {
-            SessionStatus::Building(b) => &b.entries,
-            _ => panic!("expected Building state"),
-        }
-    }
-
-    fn ids(model: &Model) -> Vec<String> {
-        building_entries(model)
-            .iter()
-            .map(|e| e.item_id.clone())
-            .collect()
-    }
-
-    fn add(model: &mut Model, item_id: &str) {
-        update(
-            model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: item_id.to_string(),
-            }),
-        );
-    }
-
-    fn group_of(model: &Model, item_id: &str) -> Option<String> {
-        building_entries(model)
-            .iter()
-            .find(|e| e.item_id == item_id)
-            .and_then(|e| e.group_id.clone())
-    }
-
-    #[test]
-    fn start_building_with_seeds_exercise_from_idle() {
-        let mut m = linked_model();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::StartBuildingWith {
-                item_id: "ex-C".to_string(),
-            }),
-        );
-        let e = building_entries(&m);
-        assert_eq!(e.len(), 1);
-        assert_eq!(e[0].item_id, "ex-C");
-        assert_eq!(e[0].group_id, None);
-        assert_eq!(m.last_error, None);
-    }
-
-    #[test]
-    fn start_building_with_piece_forms_block() {
-        let mut m = linked_model();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::StartBuildingWith {
-                item_id: "piece-P".to_string(),
-            }),
-        );
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-        let e = building_entries(&m);
-        assert!(e[0].group_id.is_some(), "block has a group_id");
-        assert!(e.iter().all(|x| x.group_id == e[0].group_id));
-    }
-
-    #[test]
-    fn start_building_with_rejects_when_not_idle() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-A");
-        update(
-            &mut m,
-            Event::Session(SessionEvent::StartBuildingWith {
-                item_id: "ex-C".to_string(),
-            }),
-        );
-        assert_eq!(
-            m.last_error.as_deref(),
-            Some("A practice is already in progress")
-        );
-        assert_eq!(ids(&m), ["ex-A"], "existing setlist untouched");
-    }
-
-    #[test]
-    fn start_building_with_unknown_item_stays_idle() {
-        let mut m = linked_model();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::StartBuildingWith {
-                item_id: "nope".to_string(),
-            }),
-        );
-        assert!(m.last_error.is_some());
-        assert!(
-            matches!(m.session_status, SessionStatus::Idle),
-            "a failed seed must not leave an empty building session"
-        );
-    }
-
-    #[test]
-    fn add_to_setlist_is_idempotent_by_item_id() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-C");
-        add(&mut m, "ex-C");
-        assert_eq!(ids(&m), ["ex-C"], "second add of the same item is a no-op");
-        assert_eq!(m.last_error, None);
-    }
-
-    #[test]
-    fn add_piece_twice_does_not_duplicate_block() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        add(&mut m, "piece-P");
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-        assert_eq!(m.last_error, None);
-    }
-
-    #[test]
-    fn re_adding_present_piece_is_a_full_no_op_even_with_new_relateds() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-Q");
-        if let Some(piece) = m.items.iter_mut().find(|i| i.id == "piece-Q") {
-            piece.linked_exercise_ids = vec!["ex-C".to_string()];
-        }
-        add(&mut m, "piece-Q");
-        assert_eq!(
-            ids(&m),
-            ["piece-Q"],
-            "membership no-op wins; newly linked relateds come in by removing and re-adding"
-        );
-    }
-
-    #[test]
-    fn add_piece_pulls_related_into_a_block_related_first() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let e = building_entries(&m);
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-        let g = e[0].group_id.clone();
-        assert!(g.is_some(), "block has a group_id");
-        assert!(
-            e.iter().all(|x| x.group_id == g),
-            "all three share the group"
-        );
-        assert_eq!((e[0].position, e[1].position, e[2].position), (0, 1, 2));
-    }
-
-    #[test]
-    fn add_piece_without_related_is_standalone() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-Q");
-        let e = building_entries(&m);
-        assert_eq!(e.len(), 1);
-        assert_eq!(e[0].group_id, None);
-    }
-
-    #[test]
-    fn add_exercise_directly_is_standalone() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-C");
-        let e = building_entries(&m);
-        assert_eq!(e.len(), 1);
-        assert_eq!(e[0].group_id, None);
-    }
-
-    #[test]
-    fn add_piece_skips_already_present_related() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-A");
-        add(&mut m, "piece-P");
-        let e = building_entries(&m);
-        assert_eq!(
-            e.iter().filter(|x| x.item_id == "ex-A").count(),
-            1,
-            "ex-A not duplicated"
-        );
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-        assert_eq!(
-            e[0].group_id, None,
-            "the pre-existing ex-A stays standalone"
-        );
-        assert!(e[1].group_id.is_some());
-        assert_eq!(e[1].group_id, e[2].group_id, "ex-B + piece form the block");
-    }
-
-    #[test]
-    fn add_exercise_to_block_inserts_before_anchor_piece() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::AddExerciseToBlock {
-                group_id: g.clone(),
-                item_id: "ex-D".to_string(),
-            }),
-        );
-        assert_eq!(m.last_error, None);
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "ex-D", "piece-P"]);
-        assert_eq!(group_of(&m, "ex-D"), Some(g.clone()));
-        assert!(groups_contiguous(building_entries(&m)));
-    }
-
-    #[test]
-    fn add_exercise_to_block_rejects_unknown_group() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        update(
-            &mut m,
-            Event::Session(SessionEvent::AddExerciseToBlock {
-                group_id: "no-such-group".to_string(),
-                item_id: "ex-D".to_string(),
-            }),
-        );
-        assert!(m.last_error.is_some());
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
-    }
-
-    #[test]
-    fn add_exercise_to_block_rejects_non_exercise_item() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::AddExerciseToBlock {
-                group_id: g,
-                item_id: "piece-Q".to_string(),
-            }),
-        );
-        assert!(m.last_error.is_some());
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"], "setlist untouched");
-    }
-
-    #[test]
-    fn add_exercise_to_block_is_idempotent_by_item_id() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        for _ in 0..2 {
-            update(
-                &mut m,
-                Event::Session(SessionEvent::AddExerciseToBlock {
-                    group_id: g.clone(),
-                    item_id: "ex-D".to_string(),
-                }),
-            );
-        }
-        assert_eq!(m.last_error, None);
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "ex-D", "piece-P"]);
-    }
-
-    #[test]
-    fn remove_block_removes_piece_and_related() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-C");
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::RemoveBlock { group_id: g }),
-        );
-        assert!(m.last_error.is_none());
-        assert_eq!(ids(&m), ["ex-C"]);
-    }
-
-    #[test]
-    fn keep_only_piece_drops_related_and_destandalones() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::KeepOnlyPiece { group_id: g }),
-        );
-        let e = building_entries(&m);
-        assert_eq!(ids(&m), ["piece-P"]);
-        assert_eq!(e[0].group_id, None, "lone piece is no longer a block");
-    }
-
-    #[test]
-    fn ungroup_block_keeps_items_in_place() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::UngroupBlock { group_id: g }),
-        );
-        let e = building_entries(&m);
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P"]);
-        assert!(e.iter().all(|x| x.group_id.is_none()));
-    }
-
-    #[test]
-    fn ungroup_all_clears_every_group() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        add(&mut m, "ex-C");
-        update(&mut m, Event::Session(SessionEvent::UngroupAllBlocks));
-        assert!(building_entries(&m).iter().all(|x| x.group_id.is_none()));
-    }
-
-    #[test]
-    fn reorder_block_moves_the_whole_unit() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        add(&mut m, "ex-C");
-        let g = group_of(&m, "piece-P").unwrap();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::ReorderBlock {
-                group_id: g,
-                new_position: 1,
-            }),
-        );
-        assert_eq!(ids(&m), ["ex-C", "ex-A", "ex-B", "piece-P"]);
-    }
-
-    #[test]
-    fn reorder_within_block_is_allowed() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        let ex_b = building_entries(&m)[1].id.clone();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::ReorderSetlist {
-                entry_id: ex_b,
-                new_position: 0,
-            }),
-        );
-        assert!(m.last_error.is_none());
-        let e = building_entries(&m);
-        assert_eq!(ids(&m), ["ex-B", "ex-A", "piece-P"]);
-        assert!(e.iter().all(|x| x.group_id == e[0].group_id));
-    }
-
-    #[test]
-    fn reorder_that_splits_a_block_is_rejected() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "ex-C");
-        add(&mut m, "piece-P");
-        let ex_c = building_entries(&m)[0].id.clone();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::ReorderSetlist {
-                entry_id: ex_c,
-                new_position: 2,
-            }),
-        );
-        assert!(m.last_error.is_some(), "splitting move rejected");
-        assert_eq!(
-            ids(&m),
-            ["ex-C", "ex-A", "ex-B", "piece-P"],
-            "order unchanged"
-        );
-    }
-
-    #[test]
-    fn building_view_projects_blocks_and_standalones() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P");
-        add(&mut m, "ex-C");
-        let vm = Intrada.view(&m);
-        let b = vm.building_setlist.expect("building view");
-        assert_eq!(b.item_count, 4);
-        assert_eq!(b.block_count, 2);
-        let block = &b.blocks[0];
-        assert!(block.group_id.is_some());
-        assert_eq!(block.piece_title.as_deref(), Some("Sonata"));
-        assert_eq!(block.related_count, 2);
-        assert_eq!(block.entries.len(), 3);
-        let solo = &b.blocks[1];
-        assert_eq!(solo.group_id, None);
-        assert_eq!(solo.piece_title, None);
-        assert_eq!(solo.related_count, 0);
-    }
-
-    #[test]
-    fn two_adjacent_blocks_project_separately() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P"); // block G1: ex-A, ex-B, piece-P
-        add(&mut m, "piece-R"); // block G2: ex-C, piece-R
-        assert_eq!(ids(&m), ["ex-A", "ex-B", "piece-P", "ex-C", "piece-R"]);
-        let g1 = group_of(&m, "piece-P");
-        let g2 = group_of(&m, "piece-R");
-        assert!(g1.is_some() && g2.is_some() && g1 != g2, "distinct blocks");
-        let b = Intrada.view(&m).building_setlist.unwrap();
-        assert_eq!(b.block_count, 2);
-        assert_eq!(b.item_count, 5);
-        assert_eq!(b.blocks[0].piece_title.as_deref(), Some("Sonata"));
-        assert_eq!(b.blocks[0].related_count, 2);
-        assert_eq!(b.blocks[1].piece_title.as_deref(), Some("Etude"));
-        assert_eq!(b.blocks[1].related_count, 1);
-    }
-
-    #[test]
-    fn standalone_can_move_between_two_blocks() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P"); // G1: 0,1,2
-        add(&mut m, "piece-R"); // G2: 3,4
-        add(&mut m, "ex-D"); // standalone: 5
-        let ex_d = building_entries(&m)
-            .iter()
-            .find(|e| e.item_id == "ex-D")
-            .unwrap()
-            .id
-            .clone();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::ReorderSetlist {
-                entry_id: ex_d,
-                new_position: 3,
-            }),
-        );
-        assert!(
-            m.last_error.is_none(),
-            "a standalone between blocks splits neither"
-        );
-        assert_eq!(
-            ids(&m),
-            ["ex-A", "ex-B", "piece-P", "ex-D", "ex-C", "piece-R"]
-        );
-        assert!(groups_contiguous(building_entries(&m)));
-    }
-
-    #[test]
-    fn removing_the_piece_dissolves_the_block_to_standalone() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P"); // ex-A, ex-B, piece-P (group)
-        let piece = building_entries(&m)
-            .iter()
-            .find(|e| e.item_id == "piece-P")
-            .unwrap()
-            .id
-            .clone();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::RemoveFromSetlist { entry_id: piece }),
-        );
-        assert!(m.last_error.is_none());
-        assert_eq!(ids(&m), ["ex-A", "ex-B"]);
-        assert!(
-            building_entries(&m).iter().all(|x| x.group_id.is_none()),
-            "related become standalone when their piece is removed"
-        );
-        let b = Intrada.view(&m).building_setlist.unwrap();
-        assert_eq!(
-            b.block_count, 2,
-            "two standalone units, not one pieceless block"
-        );
-    }
-
-    #[test]
-    fn removing_a_related_keeps_the_block() {
-        let mut m = linked_model();
-        update(&mut m, Event::Session(SessionEvent::StartBuilding));
-        add(&mut m, "piece-P"); // ex-A, ex-B, piece-P
-        let ex_a = building_entries(&m)[0].id.clone();
-        update(
-            &mut m,
-            Event::Session(SessionEvent::RemoveFromSetlist { entry_id: ex_a }),
-        );
-        assert!(m.last_error.is_none());
-        assert_eq!(ids(&m), ["ex-B", "piece-P"]);
-        let e = building_entries(&m);
-        assert!(
-            e[0].group_id.is_some() && e[0].group_id == e[1].group_id,
-            "the piece + remaining related stay one block"
-        );
-    }
-
-    // --- Building Phase Tests ---
-
-    #[test]
-    fn test_start_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-
-        assert!(model.last_error.is_none());
-        assert!(matches!(model.session_status, SessionStatus::Building(_)));
-    }
-
-    #[test]
-    fn test_start_building_when_already_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-
-        assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_start_building_with_target() {
-        let mut model = model_with_library();
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartBuildingWithTarget {
-                target_duration_mins: 20,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.target_duration_mins, Some(20));
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_start_building_with_target_when_already_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartBuildingWithTarget {
-                target_duration_mins: 15,
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_start_building_with_target_out_of_range() {
-        let mut model = model_with_library();
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartBuildingWithTarget {
-                target_duration_mins: 0,
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartBuildingWithTarget {
-                target_duration_mins: 999,
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-    }
-
-    #[test]
-    fn test_start_building_without_target_has_none() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.target_duration_mins, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_target_duration_during_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetTargetDuration {
-                target_duration_mins: Some(20),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.target_duration_mins, Some(20));
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_target_duration_clear() {
-        let mut model = model_with_library();
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartBuildingWithTarget {
-                target_duration_mins: 15,
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetTargetDuration {
-                target_duration_mins: None,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.target_duration_mins, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_target_duration_out_of_range() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetTargetDuration {
-                target_duration_mins: Some(999),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.target_duration_mins, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_target_duration_when_not_building() {
-        let mut model = model_with_library();
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetTargetDuration {
-                target_duration_mins: Some(20),
-            }),
-        );
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-        assert!(model.last_error.is_none());
-    }
-
-    #[test]
-    fn test_add_to_setlist() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries.len(), 1);
-            assert_eq!(b.entries[0].item_title, "Moonlight Sonata");
-            assert_eq!(b.entries[0].item_type, ItemKind::Piece);
-            assert_eq!(b.entries[0].position, 0);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_add_to_setlist_item_not_found() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "nonexistent".to_string(),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_remove_from_setlist() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-2".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::RemoveFromSetlist { entry_id }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries.len(), 1);
-            assert_eq!(b.entries[0].item_title, "Clair de Lune");
-            assert_eq!(b.entries[0].position, 0); // Re-indexed
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_reorder_setlist() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-2".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "exercise-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[2].id.clone() // exercise-1 at position 2
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::ReorderSetlist {
-                entry_id,
-                new_position: 0,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].item_title, "C Major Scale");
-            assert_eq!(b.entries[1].item_title, "Moonlight Sonata");
-            assert_eq!(b.entries[2].item_title, "Clair de Lune");
-            assert_eq!(b.entries[0].position, 0);
-            assert_eq!(b.entries[1].position, 1);
-            assert_eq!(b.entries[2].position, 2);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_start_session_empty_setlist() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        assert!(model.last_error.is_some());
-        assert!(matches!(model.session_status, SessionStatus::Building(_)));
-    }
-
-    #[test]
-    fn test_start_session_with_items() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Active(ref active) = model.session_status {
-            assert_eq!(active.current_index, 0);
-            assert_eq!(active.entries.len(), 1);
-            assert_eq!(active.session_started_at, now);
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_cancel_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
-
-        assert!(model.last_error.is_none());
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-    }
-
-    #[test]
-    fn test_cancel_building_when_idle_is_noop_success() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
-
-        assert!(model.last_error.is_none());
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-    }
-
-    #[test]
-    fn test_cancel_building_is_idempotent_when_called_twice() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
-        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
-
-        assert!(model.last_error.is_none());
-        assert!(matches!(model.session_status, SessionStatus::Idle));
-    }
-
-    #[test]
-    fn test_cancel_building_from_active_is_a_wrong_state_error() {
-        // Cancelling the builder must not silently nuke an Active session (#944).
-        let (mut model, _) = model_with_active_session(2);
-
-        update(&mut model, Event::Session(SessionEvent::CancelBuilding));
-
-        assert_eq!(model.last_error.as_deref(), Some("Not in building state"));
-        assert!(matches!(model.session_status, SessionStatus::Active(_)));
-    }
-
     // --- Active Phase Tests ---
 
     fn model_with_active_session(item_count: usize) -> (Model, DateTime<Utc>) {
         let mut model = model_with_library();
         let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
 
-        let items = ["piece-1", "piece-2", "exercise-1"];
-        for item_id in items.iter().take(item_count.min(3)) {
-            update(
-                &mut model,
-                Event::Session(SessionEvent::AddToSetlist {
-                    item_id: (*item_id).to_string(),
-                }),
-            );
-        }
+        let items = [
+            ("piece-1", "Moonlight Sonata", ItemKind::Piece),
+            ("piece-2", "Clair de Lune", ItemKind::Piece),
+            ("exercise-1", "C Major Scale", ItemKind::Exercise),
+        ];
+        let entries: Vec<SetlistEntry> = items
+            .iter()
+            .take(item_count.min(3))
+            .enumerate()
+            .map(|(position, (id, title, kind))| create_entry(id, title, kind.clone(), position))
+            .collect();
 
+        let active = ActiveSession {
+            id: ulid::Ulid::generate().to_string(),
+            entries,
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        };
         update(
             &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
         );
         (model, now)
     }
@@ -3233,8 +1656,7 @@ mod tests {
 
     #[test]
     fn test_recover_session_when_not_idle() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        let (mut model, _start) = model_with_active_session(1);
 
         let now = Utc::now();
         let active = ActiveSession {
@@ -3343,60 +1765,30 @@ mod tests {
 
     #[test]
     fn test_complete_lifecycle() {
-        let mut model = model_with_library();
-        let t0 = Utc::now();
+        let (mut model, t0) = model_with_active_session(3);
 
-        // 1. Start building
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-
-        // 2. Add 3 items
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-2".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "exercise-1".to_string(),
-            }),
-        );
-
-        // 3. Start session
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now: t0 }),
-        );
-
-        // 4. Practice first item for 30s, then Next
+        // 1. Practice first item for 30s, then Next
         let t1 = t0 + chrono::Duration::seconds(30);
         update(
             &mut model,
             Event::Session(SessionEvent::NextItem { now: t1 }),
         );
 
-        // 5. Skip second item
+        // 2. Skip second item
         let t2 = t1 + chrono::Duration::seconds(5);
         update(
             &mut model,
             Event::Session(SessionEvent::SkipItem { now: t2 }),
         );
 
-        // 6. Finish on third item after 60s
+        // 3. Finish on third item after 60s
         let t3 = t2 + chrono::Duration::seconds(60);
         update(
             &mut model,
             Event::Session(SessionEvent::FinishSession { now: t3 }),
         );
 
-        // 7. Add notes
+        // 4. Add notes
         let entry_id_0 = if let SessionStatus::Summary(ref s) = model.session_status {
             s.entries[0].id.clone()
         } else {
@@ -3416,7 +1808,7 @@ mod tests {
             }),
         );
 
-        // 8. Save
+        // 5. Save
         let t_save = Utc::now();
         update(
             &mut model,
@@ -3941,16 +2333,21 @@ mod tests {
         model.local_first = true;
         give_exercise_a_ladder(&mut model);
         let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
+        let entry = create_entry("exercise-1", "C Major Scale", ItemKind::Exercise, 0);
+        let active = ActiveSession {
+            id: ulid::Ulid::generate().to_string(),
+            entries: vec![entry],
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        };
         update(
             &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "exercise-1".to_string(),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
             }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
         );
         update(
             &mut model,
@@ -4075,18 +2472,24 @@ mod tests {
         model.local_first = true;
         give_exercise_a_ladder(&mut model);
         let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        for id in ["exercise-1", "piece-1"] {
-            update(
-                &mut model,
-                Event::Session(SessionEvent::AddToSetlist {
-                    item_id: id.to_string(),
-                }),
-            );
-        }
+        let entries = vec![
+            create_entry("exercise-1", "C Major Scale", ItemKind::Exercise, 0),
+            create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 1),
+        ];
+        let active = ActiveSession {
+            id: ulid::Ulid::generate().to_string(),
+            entries,
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        };
         update(
             &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
         );
         update(
             &mut model,
@@ -4373,426 +2776,36 @@ mod tests {
         assert!(parsed.sessions.is_empty());
     }
 
-    // --- AddNewItemToSetlist Tests ---
-
-    #[test]
-    fn test_add_new_item_to_setlist_piece() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddNewItemToSetlist {
-                title: "New Piece".to_string(),
-                item_type: ItemKind::Piece,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        // Verify new item in library (3 original + 1 new)
-        assert_eq!(model.items.len(), 4);
-        assert_eq!(model.items[3].title, "New Piece");
-        // Verify in setlist
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries.len(), 1);
-            assert_eq!(b.entries[0].item_title, "New Piece");
-            assert_eq!(b.entries[0].item_type, ItemKind::Piece);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_add_new_item_to_setlist_exercise() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddNewItemToSetlist {
-                title: "New Exercise".to_string(),
-                item_type: ItemKind::Exercise,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        // 3 original + 1 new
-        assert_eq!(model.items.len(), 4);
-    }
-
-    // test_add_new_item_invalid_type removed — item_type is now ItemKind enum,
-    // invalid values are prevented at compile time.
-
-    // --- Intention Tests ---
-
-    #[test]
-    fn test_set_session_intention() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some("Focus on dynamics".to_string()),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.session_intention, Some("Focus on dynamics".to_string()));
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_entry_intention() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryIntention {
-                entry_id,
-                intention: Some("Work on left hand".to_string()),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(
-                b.entries[0].intention,
-                Some("Work on left hand".to_string())
-            );
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_entry_variant_tags_the_rung_while_building() {
-        let mut model = model_with_library();
-        model.local_first = true;
-        give_exercise_a_ladder(&mut model);
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "exercise-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].variant_id, None, "entries start with no rung");
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryVariant {
-                entry_id: entry_id.clone(),
-                variant_id: Some("v-c".to_string()),
-            }),
-        );
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].variant_id, Some("v-c".to_string()));
-        } else {
-            panic!("Expected Building state");
-        }
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryVariant {
-                entry_id,
-                variant_id: None,
-            }),
-        );
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].variant_id, None, "None clears the rung");
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_entry_variant_unknown_entry_surfaces_error() {
-        let mut model = model_with_library();
-        model.local_first = true;
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryVariant {
-                entry_id: "nope".to_string(),
-                variant_id: Some("var-1".to_string()),
-            }),
-        );
-        assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_intention_too_long() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-
-        let long_text = "a".repeat(501);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some(long_text),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.session_intention, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_intention_threaded_to_active() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        // Set session intention
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some("Session intention".to_string()),
-            }),
-        );
-
-        // Set entry intention
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryIntention {
-                entry_id,
-                intention: Some("Entry intention".to_string()),
-            }),
-        );
-
-        // Start session
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.session_intention, Some("Session intention".to_string()));
-            assert_eq!(a.entries[0].intention, Some("Entry intention".to_string()));
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_intention_threaded_to_summary() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some("Summary test".to_string()),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryIntention {
-                entry_id,
-                intention: Some("Entry summary test".to_string()),
-            }),
-        );
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        let t1 = now + chrono::Duration::seconds(30);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t1 }),
-        );
-
-        if let SessionStatus::Summary(ref s) = model.session_status {
-            assert_eq!(s.session_intention, Some("Summary test".to_string()));
-            assert_eq!(
-                s.entries[0].intention,
-                Some("Entry summary test".to_string())
-            );
-        } else {
-            panic!("Expected Summary state");
-        }
-    }
-
-    #[test]
-    fn test_intention_persisted_in_save() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some("Save test".to_string()),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetEntryIntention {
-                entry_id,
-                intention: Some("Entry save test".to_string()),
-            }),
-        );
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        let t1 = now + chrono::Duration::seconds(30);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::FinishSession { now: t1 }),
-        );
-
-        let t2 = t1 + chrono::Duration::seconds(5);
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SaveSession { now: t2 }),
-        );
-
-        assert_eq!(model.sessions.len(), 1);
-        assert_eq!(
-            model.sessions[0].session_intention,
-            Some("Save test".to_string())
-        );
-        assert_eq!(
-            model.sessions[0].entries[0].intention,
-            Some("Entry save test".to_string())
-        );
-    }
-
-    #[test]
-    fn test_set_intention_outside_building() {
-        let (mut model, _start) = model_with_active_session(2);
-
-        // In Active state, try to set session intention — should be no-op
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetSessionIntention {
-                intention: Some("Should not stick".to_string()),
-            }),
-        );
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.session_intention, None);
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
     // --- Rep Counter Tests ---
 
     /// Helper: create an active session with a rep target on the first item.
     fn model_with_active_session_and_rep(target: u8) -> (Model, DateTime<Utc>) {
         let mut model = model_with_library();
         let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-2".to_string(),
-            }),
-        );
 
-        // Set rep target on first entry during building
-        if let SessionStatus::Building(ref mut b) = model.session_status {
-            b.entries[0].rep_target = Some(target);
-        } else {
-            panic!("Expected Building state");
-        }
+        let mut first = create_entry("piece-1", "Moonlight Sonata", ItemKind::Piece, 0);
+        first.rep_target = Some(target);
+        first.rep_count = Some(0);
+        first.rep_target_reached = Some(false);
+        first.rep_history = Some(vec![]);
+        let second = create_entry("piece-2", "Clair de Lune", ItemKind::Piece, 1);
 
+        let active = ActiveSession {
+            id: ulid::Ulid::generate().to_string(),
+            entries: vec![first, second],
+            current_index: 0,
+            current_item_started_at: now,
+            session_started_at: now,
+            session_intention: None,
+        };
         update(
             &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
+            Event::Session(SessionEvent::RecoverSession {
+                session: active,
+                now,
+            }),
         );
         (model, now)
-    }
-
-    #[test]
-    fn test_rep_initialized_on_start_session() {
-        let (model, _now) = model_with_active_session_and_rep(5);
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            // First entry has rep target → initialized
-            assert_eq!(a.entries[0].rep_target, Some(5));
-            assert_eq!(a.entries[0].rep_count, Some(0));
-            assert_eq!(a.entries[0].rep_target_reached, Some(false));
-            // Second entry has no rep target → not initialized
-            assert_eq!(a.entries[1].rep_target, None);
-            assert_eq!(a.entries[1].rep_count, None);
-            assert_eq!(a.entries[1].rep_target_reached, None);
-        } else {
-            panic!("Expected Active state");
-        }
     }
 
     #[test]
@@ -5100,192 +3113,6 @@ mod tests {
         }
     }
 
-    // ── SetRepTarget (Building phase) tests ──────────────────────────
-
-    #[test]
-    fn test_set_rep_target_in_building() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id: entry_id.clone(),
-                target: Some(7),
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].rep_target, Some(7));
-            assert_eq!(b.entries[0].rep_count, None);
-            assert_eq!(b.entries[0].rep_target_reached, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_rep_target_clear() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        // Set target first
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id: entry_id.clone(),
-                target: Some(5),
-            }),
-        );
-
-        // Then clear it
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id,
-                target: None,
-            }),
-        );
-
-        assert!(model.last_error.is_none());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].rep_target, None);
-        } else {
-            panic!("Expected Building state");
-        }
-    }
-
-    #[test]
-    fn test_set_rep_target_invalid_value() {
-        let mut model = model_with_library();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        // Target below minimum (3)
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id: entry_id.clone(),
-                target: Some(1),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-        if let SessionStatus::Building(ref b) = model.session_status {
-            assert_eq!(b.entries[0].rep_target, None); // unchanged
-        } else {
-            panic!("Expected Building state");
-        }
-
-        // Target above maximum (10)
-        model.last_error = None;
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id,
-                target: Some(15),
-            }),
-        );
-
-        assert!(model.last_error.is_some());
-    }
-
-    #[test]
-    fn test_set_rep_target_flows_to_active() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-
-        let entry_id = if let SessionStatus::Building(ref b) = model.session_status {
-            b.entries[0].id.clone()
-        } else {
-            panic!("Expected Building state");
-        };
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id,
-                target: Some(8),
-            }),
-        );
-
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(8));
-            assert_eq!(a.entries[0].rep_count, Some(0)); // initialized
-            assert_eq!(a.entries[0].rep_target_reached, Some(false)); // initialized
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
-    #[test]
-    fn test_set_rep_target_no_op_outside_building() {
-        let (mut model, _now) = model_with_active_session_and_rep(5);
-
-        // SetRepTarget should no-op in Active state
-        update(
-            &mut model,
-            Event::Session(SessionEvent::SetRepTarget {
-                entry_id: "whatever".to_string(),
-                target: Some(10),
-            }),
-        );
-
-        if let SessionStatus::Active(ref a) = model.session_status {
-            assert_eq!(a.entries[0].rep_target, Some(5)); // unchanged
-        } else {
-            panic!("Expected Active state");
-        }
-    }
-
     // --- Rep History Tests (US1) ---
 
     #[test]
@@ -5382,20 +3209,8 @@ mod tests {
 
     #[test]
     fn test_rep_history_initialised_on_enable_counter() {
-        let mut model = model_with_library();
-        let now = Utc::now();
-        update(&mut model, Event::Session(SessionEvent::StartBuilding));
-        update(
-            &mut model,
-            Event::Session(SessionEvent::AddToSetlist {
-                item_id: "piece-1".to_string(),
-            }),
-        );
-        // Start session WITHOUT rep target set during building
-        update(
-            &mut model,
-            Event::Session(SessionEvent::StartSession { now }),
-        );
+        // A session with no preset rep target on the current entry.
+        let (mut model, _now) = model_with_active_session(1);
 
         // Init counter mid-session
         update(&mut model, Event::Session(SessionEvent::InitRepCounter));

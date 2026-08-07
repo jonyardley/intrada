@@ -35,12 +35,6 @@ struct RootView: View {
         .tag(AppTab.progress)
     }
     .tint(IntradaColor.accent)
-    // State-driven: building can now start outside the Practice tab (the
-    // exercise detail's "Practise this"), and the builder only presents from
-    // PracticeScreen's navigationDestination — so follow the core there.
-    .onChange(of: store.viewModel?.buildingSetlist != nil) { _, isBuilding in
-      if isBuilding { selectedTab = .practice }
-    }
     // The session player takes over the whole screen (no tab bar) while the core
     // is Active or Summary — "the app disappears during practice". State-driven:
     // the core drives presentation and dismissal (Save/Discard → Idle), so there's

@@ -236,9 +236,8 @@ struct FocusPlayerScreen: View {
       id: entry.id, title: active.currentItemTitle,
       elapsedDisplay: SessionClock.clockDisplay(elapsed),
       tempoTargetBpm: active.currentItemTempoBpm,
-      // The entry's own tag (set ahead of time via EntrySettingsSheet) wins
-      // over the item's derived "current step" — otherwise a pre-assigned
-      // step would be silently overwritten on save.
+      // A pre-assigned entry tag wins over the item's derived "current step"
+      // — otherwise it would be silently overwritten on save.
       variants: item?.variants ?? [],
       currentVariantId: entry.variantId ?? item?.variants.first(where: \.isCurrent)?.id)
   }
